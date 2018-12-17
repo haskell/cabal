@@ -40,7 +40,7 @@ import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(disp), display )
 
 import qualified Distribution.SPDX as SPDX
@@ -231,9 +231,9 @@ info verbosity packageDBs repoCtxt comp progdb
 
         selectedInstalledPkgs = InstalledPackageIndex.lookupDependency
                                 installedPkgIndex
-                                (Dependency name verConstraint)
+                                name verConstraint
         selectedSourcePkgs    = PackageIndex.lookupDependency sourcePkgIndex
-                                (Dependency name verConstraint)
+                                name verConstraint
         selectedSourcePkg'    = latestWithPref pref selectedSourcePkgs
 
                          -- display a specific package version if the user

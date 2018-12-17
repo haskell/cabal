@@ -50,10 +50,13 @@ module Distribution.Client.Targets (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
          , PackageIdentifier(..), packageName, packageVersion )
 import Distribution.Types.Dependency
+import Distribution.Types.LibraryName
 import Distribution.Client.Types
          ( PackageLocation(..), ResolvedPkgLoc, UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -75,10 +78,10 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, parseFlagAssignment, nullFlagAssignment )
+         ( GenericPackageDescription, nullFlagAssignment)
 import Distribution.Version
          ( nullVersion, thisVersion, anyVersion, isAnyVersion )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
@@ -91,13 +94,14 @@ import Distribution.PackageDescription.Parsec
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ReadP
          ( (+++), (<++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
@@ -187,7 +191,7 @@ data UserTargetProblem
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case testNamedTargets targetstr of
-      Just (Dependency pkgn verrange)
+      Just (Dependency pkgn verrange _)
         | pkgn == mkPackageName "world"
           -> return $ if verrange == anyVersion
                       then Right UserTargetWorld
@@ -255,8 +259,8 @@ readUserTarget targetstr =
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
-          v | v == nullVersion -> Dependency (packageName p) anyVersion
-            | otherwise        -> Dependency (packageName p) (thisVersion v)
+          v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
+            | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 
 reportUserTargetProblems :: Verbosity -> [UserTargetProblem] -> IO ()
@@ -376,7 +380,7 @@ expandUserTarget :: Verbosity
                  -> IO [PackageTarget (PackageLocation ())]
 expandUserTarget verbosity worldFile userTarget = case userTarget of
 
-    UserTargetNamed (Dependency name vrange) ->
+    UserTargetNamed (Dependency name vrange _cs) ->
       let props = [ PackagePropertyVersion vrange
                   | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name props userTarget]
@@ -385,7 +389,7 @@ expandUserTarget verbosity worldFile userTarget = case userTarget of
       worldPkgs <- World.getContents verbosity worldFile
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name props userTarget
-             | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
+             | World.WorldPkgInfo (Dependency name vrange _) flags <- worldPkgs
              , let props = [ PackagePropertyVersion vrange
                            | not (isAnyVersion vrange) ]
                         ++ [ PackagePropertyFlags flags
@@ -774,7 +778,7 @@ instance Text UserConstraint where
               -- don't get an ambiguous parse from 'installed',
               -- 'source', etc. being regarded as flags.
               <++
-              (Parse.skipSpaces1 >> parseFlagAssignment
+                (Parse.skipSpaces1 >> parseFlagAssignment
                >>= return . PackagePropertyFlags)
     
       -- Result

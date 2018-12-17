@@ -87,11 +87,11 @@ actually do development on.
 
 In more detail, suppose you have checkouts of Cabal at `~/cabal-prod`
 and `~/cabal-dev`, and you have a release copy of cabal installed at
-`/opt/cabal/1.24/bin/cabal`.  First, build your production tree:
+`/opt/cabal/2.4/bin/cabal`.  First, build your production tree:
 
 ~~~~
 cd ~/cabal-prod
-/opt/cabal/1.24/bin/cabal new-build cabal
+/opt/cabal/2.4/bin/cabal new-build cabal
 ~~~~
 
 This will produce a cabal binary (see also: [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)

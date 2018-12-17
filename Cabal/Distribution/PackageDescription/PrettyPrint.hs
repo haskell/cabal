@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.PrettyPrint
@@ -16,6 +17,7 @@ module Distribution.PackageDescription.PrettyPrint (
     -- * Generic package descriptions
     writeGenericPackageDescription,
     showGenericPackageDescription,
+    ppGenericPackageDescription,
 
     -- * Package descriptions
      writePackageDescription,
@@ -26,31 +28,28 @@ module Distribution.PackageDescription.PrettyPrint (
      showHookedBuildInfo,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Types.Dependency
-import Distribution.Types.ForeignLib (ForeignLib (foreignLibName))
-import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
+import Distribution.Types.Dependency
+import Distribution.Types.ForeignLib          (ForeignLib (foreignLibName))
+import Distribution.Types.UnqualComponentName
 
 import Distribution.PackageDescription
+import Distribution.Pretty
+import Distribution.Fields.Pretty
 import Distribution.Simple.Utils
-import Distribution.ParseUtils
-import Distribution.Text
 
-import Distribution.FieldGrammar (PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.FieldGrammar                    (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.FieldGrammar
-       (packageDescriptionFieldGrammar, buildInfoFieldGrammar,
-        flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
-        benchmarkFieldGrammar, testSuiteFieldGrammar,
-        setupBInfoFieldGrammar, sourceRepoFieldGrammar, executableFieldGrammar)
+       (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar,
+       foreignLibFieldGrammar, libraryFieldGrammar, packageDescriptionFieldGrammar,
+       setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 
-import Text.PrettyPrint
-       (hsep, space, parens, char, nest, ($$), (<+>),
-        text, vcat, ($+$), Doc, render)
+import Text.PrettyPrint (Doc, char, hsep, parens, text, (<+>))
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -60,63 +59,61 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 
 -- | Writes a generic package description to a string
 showGenericPackageDescription :: GenericPackageDescription -> String
-showGenericPackageDescription            = render . ($+$ text "") . ppGenericPackageDescription
+showGenericPackageDescription = showFields . ppGenericPackageDescription
 
-ppGenericPackageDescription :: GenericPackageDescription -> Doc
-ppGenericPackageDescription gpd          =
-        ppPackageDescription (packageDescription gpd)
-        $+$ ppSetupBInfo (setupBuildInfo (packageDescription gpd))
-        $+$ ppGenPackageFlags (genPackageFlags gpd)
-        $+$ ppCondLibrary (condLibrary gpd)
-        $+$ ppCondSubLibraries (condSubLibraries gpd)
-        $+$ ppCondForeignLibs (condForeignLibs gpd)
-        $+$ ppCondExecutables (condExecutables gpd)
-        $+$ ppCondTestSuites (condTestSuites gpd)
-        $+$ ppCondBenchmarks (condBenchmarks gpd)
+-- | Convert a generic package description to 'PrettyField's.
+ppGenericPackageDescription :: GenericPackageDescription -> [PrettyField]
+ppGenericPackageDescription gpd = concat
+    [ ppPackageDescription (packageDescription gpd)
+    , ppSetupBInfo (setupBuildInfo (packageDescription gpd))
+    , ppGenPackageFlags (genPackageFlags gpd)
+    , ppCondLibrary (condLibrary gpd)
+    , ppCondSubLibraries (condSubLibraries gpd)
+    , ppCondForeignLibs (condForeignLibs gpd)
+    , ppCondExecutables (condExecutables gpd)
+    , ppCondTestSuites (condTestSuites gpd)
+    , ppCondBenchmarks (condBenchmarks gpd)
+    ]
 
-ppPackageDescription :: PackageDescription -> Doc
+ppPackageDescription :: PackageDescription -> [PrettyField]
 ppPackageDescription pd =
     prettyFieldGrammar packageDescriptionFieldGrammar pd
-    $+$ ppSourceRepos (sourceRepos pd)
+    ++ ppSourceRepos (sourceRepos pd)
 
-ppSourceRepos :: [SourceRepo] -> Doc
-ppSourceRepos []                         = mempty
-ppSourceRepos (hd:tl)                    = ppSourceRepo hd $+$ ppSourceRepos tl
+ppSourceRepos :: [SourceRepo] -> [PrettyField]
+ppSourceRepos = map ppSourceRepo
 
-ppSourceRepo :: SourceRepo -> Doc
-ppSourceRepo repo =
-    emptyLine $ text "source-repository" <+> disp kind $+$
-    nest indentWith (prettyFieldGrammar (sourceRepoFieldGrammar kind) repo)
+ppSourceRepo :: SourceRepo -> PrettyField
+ppSourceRepo repo = PrettySection "source-repository" [pretty kind] $
+    prettyFieldGrammar (sourceRepoFieldGrammar kind) repo
   where
     kind = repoKind repo
 
-ppSetupBInfo :: Maybe SetupBuildInfo -> Doc
+ppSetupBInfo :: Maybe SetupBuildInfo -> [PrettyField]
 ppSetupBInfo Nothing = mempty
 ppSetupBInfo (Just sbi)
     | defaultSetupDepends sbi = mempty
-    | otherwise =
-        emptyLine $ text "custom-setup" $+$
-        nest indentWith (prettyFieldGrammar (setupBInfoFieldGrammar False) sbi)
+    | otherwise = pure $ PrettySection "custom-setup" [] $
+        prettyFieldGrammar (setupBInfoFieldGrammar False) sbi
 
-ppGenPackageFlags :: [Flag] -> Doc
-ppGenPackageFlags flds = vcat [ppFlag f | f <- flds]
+ppGenPackageFlags :: [Flag] -> [PrettyField]
+ppGenPackageFlags = map ppFlag
 
-ppFlag :: Flag -> Doc
-ppFlag flag@(MkFlag name _ _ _)  =
-    emptyLine $ text "flag" <+> ppFlagName name $+$
-    nest indentWith (prettyFieldGrammar (flagFieldGrammar name) flag)
+ppFlag :: Flag -> PrettyField
+ppFlag flag@(MkFlag name _ _ _)  = PrettySection "flag" [ppFlagName name] $
+    prettyFieldGrammar (flagFieldGrammar name) flag
 
-ppCondTree2 :: PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> Doc
+ppCondTree2 :: PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField]
 ppCondTree2 grammar = go
   where
     -- TODO: recognise elif opportunities
     go (CondNode it _ ifs) =
-        prettyFieldGrammar grammar it
-        $+$ vcat (map ppIf ifs)
+        prettyFieldGrammar grammar it ++
+        concatMap ppIf ifs
 
     ppIf (CondBranch c thenTree Nothing)
 --        | isEmpty thenDoc = mempty
-        | otherwise       = ppIfCondition c $$ nest indentWith thenDoc
+        | otherwise       = [ppIfCondition c thenDoc]
       where
         thenDoc = go thenTree
 
@@ -124,52 +121,52 @@ ppCondTree2 grammar = go
           case (False, False) of
  --       case (isEmpty thenDoc, isEmpty elseDoc) of
               (True,  True)  -> mempty
-              (False, True)  -> ppIfCondition c $$ nest indentWith thenDoc
-              (True,  False) -> ppIfCondition (cNot c) $$ nest indentWith elseDoc
-              (False, False) -> (ppIfCondition c $$ nest indentWith thenDoc)
-                                $+$ (text "else" $$ nest indentWith elseDoc)
+              (False, True)  -> [ ppIfCondition c thenDoc ]
+              (True,  False) -> [ ppIfCondition (cNot c) elseDoc ]
+              (False, False) -> [ ppIfCondition c thenDoc
+                                , PrettySection "else" [] elseDoc
+                                ]
       where
         thenDoc = go thenTree
         elseDoc = go elseTree
 
-ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
+ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField]
 ppCondLibrary Nothing = mempty
-ppCondLibrary (Just condTree) =
-    emptyLine $ text "library" $+$
-    nest indentWith (ppCondTree2 (libraryFieldGrammar Nothing) condTree)
+ppCondLibrary (Just condTree) = pure $ PrettySection "library" [] $
+    ppCondTree2 (libraryFieldGrammar Nothing) condTree
 
-ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> Doc
-ppCondSubLibraries libs = vcat
-    [ emptyLine $ (text "library" <+> disp n) $+$
-      nest indentWith (ppCondTree2 (libraryFieldGrammar $ Just n) condTree)
+ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField]
+ppCondSubLibraries libs =
+    [ PrettySection "library" [pretty n]
+    $ ppCondTree2 (libraryFieldGrammar $ Just n) condTree
     | (n, condTree) <- libs
     ]
 
-ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> Doc
-ppCondForeignLibs flibs = vcat
-    [ emptyLine $ (text "foreign-library" <+> disp n) $+$
-      nest indentWith (ppCondTree2 (foreignLibFieldGrammar n) condTree)
+ppCondForeignLibs :: [(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)] -> [PrettyField]
+ppCondForeignLibs flibs =
+    [ PrettySection "foreign-library" [pretty n]
+    $ ppCondTree2 (foreignLibFieldGrammar n) condTree
     | (n, condTree) <- flibs
     ]
 
-ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> Doc
-ppCondExecutables exes = vcat
-    [ emptyLine $ (text "executable" <+> disp n) $+$
-      nest indentWith (ppCondTree2 (executableFieldGrammar n) condTree)
+ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> [PrettyField]
+ppCondExecutables exes =
+    [ PrettySection "executable" [pretty n]
+    $ ppCondTree2 (executableFieldGrammar n) condTree
     | (n, condTree) <- exes
     ]
 
-ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> Doc
-ppCondTestSuites suites = vcat
-    [ emptyLine $ (text "test-suite" <+> disp n) $+$
-      nest indentWith (ppCondTree2 testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree))
+ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> [PrettyField]
+ppCondTestSuites suites =
+    [ PrettySection "test-suite" [pretty n]
+    $ ppCondTree2 testSuiteFieldGrammar (fmap FG.unvalidateTestSuite condTree)
     | (n, condTree) <- suites
     ]
 
-ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> Doc
-ppCondBenchmarks suites = vcat
-    [ emptyLine $ (text "benchmark" <+> disp n) $+$
-      nest indentWith (ppCondTree2 benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree))
+ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> [PrettyField]
+ppCondBenchmarks suites =
+    [ PrettySection "benchmark" [pretty n]
+    $ ppCondTree2 benchmarkFieldGrammar (fmap FG.unvalidateBenchmark condTree)
     | (n, condTree) <- suites
     ]
 
@@ -182,19 +179,16 @@ ppCondition (COr c1 c2)                  = parens (hsep [ppCondition c1, text "|
 ppCondition (CAnd c1 c2)                 = parens (hsep [ppCondition c1, text "&&"
                                                          <+> ppCondition c2])
 ppConfVar :: ConfVar -> Doc
-ppConfVar (OS os)                        = text "os"   <<>> parens (disp os)
-ppConfVar (Arch arch)                    = text "arch" <<>> parens (disp arch)
+ppConfVar (OS os)                        = text "os"   <<>> parens (pretty os)
+ppConfVar (Arch arch)                    = text "arch" <<>> parens (pretty arch)
 ppConfVar (Flag name)                    = text "flag" <<>> parens (ppFlagName name)
-ppConfVar (Impl c v)                     = text "impl" <<>> parens (disp c <+> disp v)
+ppConfVar (Impl c v)                     = text "impl" <<>> parens (pretty c <+> pretty v)
 
 ppFlagName :: FlagName -> Doc
 ppFlagName                               = text . unFlagName
 
-ppIfCondition :: (Condition ConfVar) -> Doc
-ppIfCondition c = (emptyLine $ text "if" <+> ppCondition c)
-
-emptyLine :: Doc -> Doc
-emptyLine d                              = text "" $+$ d
+ppIfCondition :: (Condition ConfVar) -> [PrettyField] -> PrettyField
+ppIfCondition c = PrettySection "if" [ppCondition c]
 
 -- | @since 2.0.0.2
 writePackageDescription :: FilePath -> PackageDescription -> NoCallStackIO ()
@@ -236,12 +230,9 @@ writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
 
 -- | @since 2.0.0.2
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
-    maybe mempty (prettyFieldGrammar buildInfoFieldGrammar) mb_lib_bi
-    $$ vcat
-        [ space
-        $$ (text "executable:" <+> disp name)
-        $$  prettyFieldGrammar buildInfoFieldGrammar bi
-        | (name, bi) <- ex_bis
-        ]
-    $+$ text ""
+showHookedBuildInfo (mb_lib_bi, ex_bis) = showFields $
+    maybe mempty (prettyFieldGrammar buildInfoFieldGrammar) mb_lib_bi ++
+    [ PrettySection "executable:" [pretty name]
+    $ prettyFieldGrammar buildInfoFieldGrammar bi
+    | (name, bi) <- ex_bis
+    ]

@@ -67,7 +67,7 @@ import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.Version
          ( Version, mkVersion, intersectVersionRanges )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
          ( die', warn, info )
@@ -275,7 +275,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
 
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
-                 [ (name, range) | Dependency name range <- prefs ]
+                 [ (name, range) | Dependency name range _ <- prefs ]
   _ <- evaluate pkgs
   _ <- evaluate prefs'
   return SourcePackageDb {
@@ -703,7 +703,7 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg:btrs) prefs entries
 
-    accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _) _ _ : entries) =
+    accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _ _) _ _ : entries) =
       accum srcpkgs btrs (Map.insert pn pref prefs) entries
 
     getEntryContent :: BlockNo -> IO ByteString

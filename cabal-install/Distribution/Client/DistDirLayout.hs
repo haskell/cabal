@@ -27,15 +27,14 @@ import System.FilePath
 
 import Distribution.Package
          ( PackageId, ComponentId, UnitId )
-import Distribution.Client.Setup
-         ( ArchiveFormat(..) )
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
-import Distribution.Text
+import Distribution.Deprecated.Text
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.System
 
 
@@ -114,7 +113,7 @@ data DistDirLayout = DistDirLayout {
        distPackageCacheDirectory    :: DistDirParams -> FilePath,
 
        -- | The location that sdists are placed by default.
-       distSdistFile                :: PackageId -> ArchiveFormat -> FilePath,
+       distSdistFile                :: PackageId -> FilePath,
        distSdistDirectory           :: FilePath,
 
        distTempDirectory            :: FilePath,
@@ -199,8 +198,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
         display (distParamPackageId params) </>
         (case distParamComponentName params of
             Nothing                  -> ""
-            Just CLibName            -> ""
-            Just (CSubLibName name)  -> "l" </> display name
+            Just (CLibName LMainLibName) -> ""
+            Just (CLibName (LSubLibName name)) -> "l" </> display name
             Just (CFLibName name)    -> "f" </> display name
             Just (CExeName name)     -> "x" </> display name
             Just (CTestName name)    -> "t" </> display name
@@ -226,12 +225,8 @@ defaultDistDirLayout projectRoot mdistDirectory =
     distPackageCacheDirectory params = distBuildDirectory params </> "cache"
     distPackageCacheFile params name = distPackageCacheDirectory params </> name
 
-    distSdistFile pid format = distSdistDirectory </> prettyShow pid <.> ext
-        where
-          ext = case format of
-            TargzFormat -> "tar.gz"
-            ZipFormat -> "zip"
-    
+    distSdistFile pid = distSdistDirectory </> prettyShow pid <.> "tar.gz"
+
     distSdistDirectory = distDirectory </> "sdist"
 
     distTempDirectory = distDirectory </> "tmp"
@@ -273,7 +268,7 @@ defaultCabalDirLayout cabalDir =
     mkCabalDirLayout cabalDir Nothing Nothing
 
 mkCabalDirLayout :: FilePath -- ^ Cabal directory
-                 -> Maybe FilePath -- ^ Store directory
+                 -> Maybe FilePath -- ^ Store directory. Must be absolute
                  -> Maybe FilePath -- ^ Log directory
                  -> CabalDirLayout
 mkCabalDirLayout cabalDir mstoreDir mlogDir =

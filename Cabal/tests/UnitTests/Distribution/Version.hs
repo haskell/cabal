@@ -9,8 +9,8 @@ import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
 import Distribution.Version
-import Distribution.Text
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
+import Distribution.Pretty
 
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
@@ -40,10 +40,9 @@ versionTests =
     , tp "read example"                                        prop_ShowRead_example
 
     , tp "normaliseVersionRange involutive"                    prop_normalise_inv
-    , tp "parse . display involutive"                          prop_parse_disp_inv
-    , tp "parsec . display involutive"                         prop_parsec_disp_inv
+    , tp "parsec . prettyShow involutive"                      prop_parsec_disp_inv
 
-    , tp "simpleParsec . display = Just" prop_parse_disp
+    , tp "simpleParsec . prettyShow = Just" prop_parse_disp
     ]
 
     ++
@@ -686,24 +685,15 @@ adjacentVersions ver1 ver2 = v1 ++ [0] == v2 || v2 ++ [0] == v1
 --------------------------------
 -- Parsing and pretty printing
 --
-
-prop_parse_disp_inv :: VersionRange -> Property
-prop_parse_disp_inv vr =
-    parseDisp vr === (parseDisp vr >>= parseDisp)
-  where
-    parseDisp = simpleParse . display
-
 prop_parsec_disp_inv :: VersionRange -> Property
 prop_parsec_disp_inv vr =
     parseDisp vr === (parseDisp vr >>= parseDisp)
   where
-    parseDisp = simpleParsec . display
+    parseDisp = simpleParsec . prettyShow
 
 prop_parse_disp :: VersionRange -> Property
-prop_parse_disp vr = counterexample (show (display vr')) $
-    fmap s (simpleParse (display vr')) === Just vr'
-    .&&.
-    fmap s (simpleParsec (display vr')) === Just vr'
+prop_parse_disp vr = counterexample (show (prettyShow vr')) $
+    fmap s (simpleParsec (prettyShow vr')) === Just vr'
   where
     -- we have to strip parens, because arbitrary 'VersionRange' may have
     -- too little parens constructors.
@@ -712,7 +702,7 @@ prop_parse_disp vr = counterexample (show (display vr')) $
 
 prop_parse_disp1 :: VersionRange -> Bool
 prop_parse_disp1 vr =
-    fmap stripParens (simpleParse (display vr)) == Just (normaliseVersionRange vr)
+    fmap stripParens (simpleParsec (prettyShow vr)) == Just (normaliseVersionRange vr)
   where
     stripParens :: VersionRange -> VersionRange
     stripParens (VersionRangeParens v) = stripParens v
@@ -724,8 +714,8 @@ prop_parse_disp1 vr =
 
 prop_parse_disp2 :: VersionRange -> Property
 prop_parse_disp2 vr =
-  let b = fmap (display :: VersionRange -> String) (simpleParse (display vr))
-      a = Just (display vr)
+  let b = fmap (prettyShow :: VersionRange -> String) (simpleParsec (prettyShow vr))
+      a = Just (prettyShow vr)
   in
    counterexample ("Expected: " ++ show a) $
    counterexample ("But got: " ++ show b) $
@@ -733,8 +723,8 @@ prop_parse_disp2 vr =
 
 prop_parse_disp3 :: VersionRange -> Property
 prop_parse_disp3 vr =
-  let a = Just (display vr)
-      b = fmap displayRaw (simpleParse (display vr))
+  let a = Just (prettyShow vr)
+      b = fmap displayRaw (simpleParsec (prettyShow vr))
   in
    counterexample ("Expected: " ++ show a) $
    counterexample ("But got: " ++ show b) $
@@ -743,7 +733,7 @@ prop_parse_disp3 vr =
 prop_parse_disp4 :: VersionRange -> Property
 prop_parse_disp4 vr =
   let a = Just vr
-      b = (simpleParse (display vr))
+      b = (simpleParsec (prettyShow vr))
   in
    counterexample ("Expected: " ++ show a) $
    counterexample ("But got: " ++ show b) $
@@ -752,7 +742,7 @@ prop_parse_disp4 vr =
 prop_parse_disp5 :: VersionRange -> Property
 prop_parse_disp5 vr =
   let a = Just vr
-      b = simpleParse (displayRaw vr)
+      b = simpleParsec (displayRaw vr)
   in
    counterexample ("Expected: " ++ show a) $
    counterexample ("But got: " ++ show b) $
@@ -764,13 +754,13 @@ displayRaw =
  . foldVersionRange'                         -- precedence:
      -- All the same as the usual pretty printer, except for the parens
      (          Disp.text "-any")
-     (\v     -> Disp.text "==" <<>> disp v)
-     (\v     -> Disp.char '>'  <<>> disp v)
-     (\v     -> Disp.char '<'  <<>> disp v)
-     (\v     -> Disp.text ">=" <<>> disp v)
-     (\v     -> Disp.text "<=" <<>> disp v)
+     (\v     -> Disp.text "==" <<>> pretty v)
+     (\v     -> Disp.char '>'  <<>> pretty v)
+     (\v     -> Disp.char '<'  <<>> pretty v)
+     (\v     -> Disp.text ">=" <<>> pretty v)
+     (\v     -> Disp.text "<=" <<>> pretty v)
      (\v _   -> Disp.text "==" <<>> dispWild v)
-     (\v _   -> Disp.text "^>=" <<>> disp v)
+     (\v _   -> Disp.text "^>=" <<>> pretty v)
      (\r1 r2 -> r1 <+> Disp.text "||" <+> r2)
      (\r1 r2 -> r1 <+> Disp.text "&&" <+> r2)
      (\r     -> Disp.parens r) -- parens

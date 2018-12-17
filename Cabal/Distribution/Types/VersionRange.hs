@@ -46,14 +46,12 @@ import Distribution.Types.Version
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 import Text.PrettyPrint          ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint                as Disp
 
 data VersionRange
@@ -501,64 +499,6 @@ instance Parsec VersionRange where
             case ts of
                 []      -> pure ()
                 (_ : _) -> parsecWarning PWTVersionTag "version with tags"
-
-
-instance Text VersionRange where
-  parse = expr
-   where
-        expr   = do Parse.skipSpaces
-                    t <- term
-                    Parse.skipSpaces
-                    (do _  <- Parse.string "||"
-                        Parse.skipSpaces
-                        e <- expr
-                        return (UnionVersionRanges t e)
-                     Parse.+++
-                     return t)
-        term   = do f <- factor
-                    Parse.skipSpaces
-                    (do _  <- Parse.string "&&"
-                        Parse.skipSpaces
-                        t <- term
-                        return (IntersectVersionRanges f t)
-                     Parse.+++
-                     return f)
-        factor = Parse.choice $ parens expr
-                              : parseAnyVersion
-                              : parseNoVersion
-                              : parseWildcardRange
-                              : map parseRangeOp rangeOps
-        parseAnyVersion    = Parse.string "-any" >> return AnyVersion
-        parseNoVersion     = Parse.string "-none" >> return noVersion
-
-        parseWildcardRange = do
-          _ <- Parse.string "=="
-          Parse.skipSpaces
-          branch <- Parse.sepBy1 digits (Parse.char '.')
-          _ <- Parse.char '.'
-          _ <- Parse.char '*'
-          return (WildcardVersion (mkVersion branch))
-
-        parens p = Parse.between (Parse.char '(' >> Parse.skipSpaces)
-                                 (Parse.char ')' >> Parse.skipSpaces)
-                                 (do a <- p
-                                     Parse.skipSpaces
-                                     return (VersionRangeParens a))
-
-        digits = do
-          firstDigit <- Parse.satisfy isDigit
-          if firstDigit == '0'
-            then return 0
-            else do rest <- Parse.munch isDigit
-                    return (read (firstDigit : rest)) -- TODO: eradicateNoParse
-
-        parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
-        rangeOps = [ ("<",  EarlierVersion),
-                     ("<=", orEarlierVersion),
-                     (">",  LaterVersion),
-                     (">=", orLaterVersion),
-                     ("^>=", MajorBoundVersion),
-                     ("==", ThisVersion) ]
 
 -- | Does the version range have an upper bound?
 --

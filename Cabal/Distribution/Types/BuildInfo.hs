@@ -77,25 +77,28 @@ data BuildInfo = BuildInfo {
 
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraGHCiLibs     :: [String], -- ^ if present, overrides extraLibs when package is loaded with GHCi.
-        extraBundledLibs  :: [String], -- ^ if present, adds libs to hs-lirbaries, which become part of the package.
+        extraBundledLibs  :: [String], -- ^ if present, adds libs to hs-libraries, which become part of the package.
                                        --   Example: the Cffi library shipping with the rts, alognside the HSrts-1.0.a,.o,...
                                        --   Example 2: a library that is being built by a foreing tool (e.g. rust)
                                        --              and copied and registered together with this library.  The
                                        --              logic on how this library is built will have to be encoded in a
                                        --              custom Setup for now.  Oherwise cabal would need to lear how to
-                                       --              call arbitary lirbary builders.
-        extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all lirbaries when
+                                       --              call arbitary library builders.
+        extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all libraries when
                                        --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
                                        --   should only be needed in very specific cases, e.g. the `rts` package, where
                                        --   there are multiple copies of slightly differently built libs.
+        extraDynLibFlavours :: [String], -- ^ Hidden Flag. This set of strings will be be appended to all /dynamic/
+                                         --   libraries when copying. This is particularly useful with the `rts` package,
+                                         --   where we want different dynamic flavours of the RTS library to be installed.
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
         installIncludes   :: [FilePath], -- ^ .h files to install with the package
-        options           :: [(CompilerFlavor,[String])],
-        profOptions       :: [(CompilerFlavor,[String])],
-        sharedOptions     :: [(CompilerFlavor,[String])],
-        staticOptions     :: [(CompilerFlavor,[String])],
+        options           :: PerCompilerFlavor [String],
+        profOptions       :: PerCompilerFlavor [String],
+        sharedOptions     :: PerCompilerFlavor [String],
+        staticOptions     :: PerCompilerFlavor [String],
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
@@ -140,14 +143,15 @@ instance Monoid BuildInfo where
     extraGHCiLibs       = [],
     extraBundledLibs    = [],
     extraLibFlavours    = [],
+    extraDynLibFlavours = [],
     extraLibDirs        = [],
     includeDirs         = [],
     includes            = [],
     installIncludes     = [],
-    options             = [],
-    profOptions         = [],
-    sharedOptions       = [],
-    staticOptions       = [],
+    options             = mempty,
+    profOptions         = mempty,
+    sharedOptions       = mempty,
+    staticOptions       = mempty,
     customFieldsBI      = [],
     targetBuildDepends  = [],
     mixins              = []
@@ -186,6 +190,7 @@ instance Semigroup BuildInfo where
     extraGHCiLibs       = combine    extraGHCiLibs,
     extraBundledLibs    = combine    extraBundledLibs,
     extraLibFlavours    = combine    extraLibFlavours,
+    extraDynLibFlavours = combine    extraDynLibFlavours,
     extraLibDirs        = combineNub extraLibDirs,
     includeDirs         = combineNub includeDirs,
     includes            = combineNub includes,
@@ -245,8 +250,10 @@ hcSharedOptions = lookupHcOptions sharedOptions
 hcStaticOptions :: CompilerFlavor -> BuildInfo -> [String]
 hcStaticOptions = lookupHcOptions staticOptions
 
-lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
+lookupHcOptions :: (BuildInfo -> PerCompilerFlavor [String])
                 -> CompilerFlavor -> BuildInfo -> [String]
-lookupHcOptions f hc bi = [ opt | (hc',opts) <- f bi
-                          , hc' == hc
-                          , opt <- opts ]
+lookupHcOptions f hc bi = case f bi of
+    PerCompilerFlavor ghc ghcjs
+        | hc == GHC   -> ghc
+        | hc == GHCJS -> ghcjs
+        | otherwise   -> mempty

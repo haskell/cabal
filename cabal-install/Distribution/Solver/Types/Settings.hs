@@ -3,6 +3,7 @@
 module Distribution.Solver.Types.Settings
     ( ReorderGoals(..)
     , IndependentGoals(..)
+    , MinimizeConflictSet(..)
     , AvoidReinstalls(..)
     , ShadowPkgs(..)
     , StrongFlags(..)
@@ -16,16 +17,19 @@ module Distribution.Solver.Types.Settings
 import Distribution.Simple.Setup ( BooleanFlag(..) )
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.Pretty ( Pretty(pretty) )
-import Distribution.Text ( Text(parse) )
+import Distribution.Deprecated.Text ( Text(parse) )
 import GHC.Generics (Generic)
 
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
 import qualified Text.PrettyPrint as PP
 
 newtype ReorderGoals = ReorderGoals Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
 newtype CountConflicts = CountConflicts Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype MinimizeConflictSet = MinimizeConflictSet Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
 newtype IndependentGoals = IndependentGoals Bool
@@ -59,6 +63,7 @@ newtype SolveExecutables = SolveExecutables Bool
 instance Binary ReorderGoals
 instance Binary CountConflicts
 instance Binary IndependentGoals
+instance Binary MinimizeConflictSet
 instance Binary AvoidReinstalls
 instance Binary ShadowPkgs
 instance Binary StrongFlags

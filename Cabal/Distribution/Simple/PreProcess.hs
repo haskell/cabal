@@ -396,6 +396,8 @@ ppHsc2hs bi lbi clbi =
       (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
                                           hsc2hsProgram anyVersion (withPrograms lbi)
       -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
+      let isCross = hostPlatform lbi /= buildPlatform
+          prependCrossFlags = if isCross then ("-x":) else id
       let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
           pureArgs = genPureArgs gccProg inFile outFile
       if hsc2hsSupportsResponseFiles
@@ -407,8 +409,8 @@ ppHsc2hs bi lbi clbi =
              Nothing
              pureArgs
              (\responseFileName ->
-                runProgram verbosity hsc2hsProg ["@"++ responseFileName])
-      else runProgram verbosity hsc2hsProg pureArgs
+                runProgram verbosity hsc2hsProg (prependCrossFlags ["@"++ responseFileName]))
+      else runProgram verbosity hsc2hsProg (prependCrossFlags pureArgs)
   }
   where
     -- Returns a list of command line arguments that can either be passed

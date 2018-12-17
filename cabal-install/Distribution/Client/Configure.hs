@@ -63,7 +63,11 @@ import Distribution.Simple.PackageIndex
 import Distribution.Package
          ( Package(..), packageName, PackageId )
 import Distribution.Types.Dependency
-         ( Dependency(..), thisPackageVersion )
+         ( thisPackageVersion )
+import Distribution.Types.GivenComponent
+         ( GivenComponent(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint(..) )
 import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
@@ -77,7 +81,7 @@ import Distribution.Simple.Utils as Utils
          , defaultPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Text ( display )
+import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
@@ -254,7 +258,9 @@ configureSetupScript packageDBs
       -- Return the setup dependencies computed by the solver
       ReadyPackage cpkg <- mpkg
       return [ ( cid, srcid )
-             | ConfiguredId srcid (Just PkgDesc.CLibName) cid <- CD.setupDeps (confPkgDeps cpkg)
+             | ConfiguredId srcid
+               (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) cid
+                 <- CD.setupDeps (confPkgDeps cpkg)
              ]
 
 -- | Warn if any constraints or preferences name packages that are not in the
@@ -275,7 +281,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
   where
     unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
                          configExConstraints flags
-    unknownPreferences = filter (unknown . \(Dependency name _) -> name) $
+    unknownPreferences = filter (unknown . \(PackageVersionConstraint name _) -> name) $
                          configPreferences flags
     unknown pkg = null (lookupPackageName installedPkgIndex pkg)
                && not (elemByPackageName sourcePkgIndex pkg)
@@ -322,7 +328,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
-            | Dependency name ver <- configPreferences configExFlags ]
+            | PackageVersionConstraint name ver <- configPreferences configExFlags ]
 
         . addConstraints
             -- version constraints from the config file or command line
@@ -401,9 +407,11 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion srcid
-                           | ConfiguredId srcid (Just PkgDesc.CLibName) _uid <- CD.nonSetupDeps deps ],
-      configDependencies = [ (packageName srcid, uid)
-                           | ConfiguredId srcid (Just PkgDesc.CLibName) uid <- CD.nonSetupDeps deps ],
+                           | ConfiguredId srcid (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) _uid
+                               <- CD.nonSetupDeps deps ],
+      configDependencies = [ GivenComponent (packageName srcid) cname uid
+                           | ConfiguredId srcid (Just (PkgDesc.CLibName cname)) uid
+                               <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

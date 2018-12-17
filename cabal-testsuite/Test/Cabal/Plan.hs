@@ -6,7 +6,8 @@ module Test.Cabal.Plan (
     planDistDir,
 ) where
 
-import Distribution.Text
+import Distribution.Parsec (simpleParsec)
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.ComponentName
 import Distribution.Package
 import qualified Data.Text as Text
@@ -61,7 +62,7 @@ instance FromJSON PackageName where
 
 instance FromJSON ComponentName where
     parseJSON (String t) =
-        case simpleParse s of
+        case simpleParsec s of
             Nothing -> fail ("could not parse component-name: " ++ s)
             Just r  -> return r
       where s = Text.unpack t
@@ -71,11 +72,11 @@ planDistDir :: Plan -> PackageName -> ComponentName -> FilePath
 planDistDir plan pkg_name cname =
     case concatMap p (planInstallPlan plan) of
         [x] -> x
-        []  -> error $ "planDistDir: component " ++ display cname
-                    ++ " of package " ++ display pkg_name ++ " either does not"
+        []  -> error $ "planDistDir: component " ++ prettyShow cname
+                    ++ " of package " ++ prettyShow pkg_name ++ " either does not"
                     ++ " exist in the install plan or does not have a dist-dir"
-        _   -> error $ "planDistDir: found multiple copies of component " ++ display cname
-                    ++ " of package " ++ display pkg_name ++ " in install plan"
+        _   -> error $ "planDistDir: found multiple copies of component " ++ prettyShow cname
+                    ++ " of package " ++ prettyShow pkg_name ++ " in install plan"
   where
     p APreExisting      = []
     p AConfiguredGlobal = []

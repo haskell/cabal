@@ -31,16 +31,17 @@ module Distribution.Simple.Build (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.Dependency
-import Distribution.Types.LocalBuildInfo
-import Distribution.Types.TargetInfo
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.Dependency
+import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
+import Distribution.Types.LibraryVisibility
+import Distribution.Types.LocalBuildInfo
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.TargetInfo
 import Distribution.Types.UnqualComponentName
-import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.ExecutableScope
 
 import Distribution.Package
 import Distribution.Backpack
@@ -458,6 +459,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
             reexportedModules = [],
             signatures = [],
             libExposed     = True,
+            libVisibility  = LibraryVisibilityPrivate,
             libBuildInfo   = bi
           }
     -- This is, like, the one place where we use a CTestName for a library.
@@ -470,7 +472,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentInternalDeps = componentInternalDeps clbi
                 , componentIsIndefinite_ = False
                 , componentExeDeps = componentExeDeps clbi
-                , componentLocalName = CSubLibName (testName test)
+                , componentLocalName = CLibName $ LSubLibName $ testName test
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi
@@ -688,6 +690,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
             rewriteFileEx verbosity sigPath $
+                "{-# OPTIONS_GHC -w #-}\n" ++
                 "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
                 "signature " ++ prettyShow mod_name ++ " where"
     _ -> return ()

@@ -18,11 +18,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 
@@ -68,7 +66,7 @@ import Text.PrettyPrint (text)
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
-{-# DEPRECATED InstalledPackageId "Use UnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED InstalledPackageId "Use UnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 type InstalledPackageId = UnitId
 
 instance Binary UnitId
@@ -84,9 +82,6 @@ instance Pretty UnitId where
 --
 instance Parsec UnitId where
     parsec = mkUnitId <$> P.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
-
-instance Text UnitId where
-    parse = mkUnitId <$> Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
 
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.
@@ -111,17 +106,17 @@ newSimpleUnitId = mkUnitId . unComponentId
 -- | Make an old-style UnitId from a package identifier.
 -- Assumed to be for the public library
 mkLegacyUnitId :: PackageId -> UnitId
-mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
+mkLegacyUnitId = newSimpleUnitId . mkComponentId . prettyShow
 
 -- | Returns library name prefixed with HS, suitable for filenames
 getHSLibraryName :: UnitId -> String
-getHSLibraryName uid = "HS" ++ display uid
+getHSLibraryName uid = "HS" ++ prettyShow uid
 
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty, Text)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty)
 
 -- Workaround for a GHC 8.0.1 bug, see
 -- https://github.com/haskell/cabal/issues/4793#issuecomment-334258288

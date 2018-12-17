@@ -48,11 +48,12 @@ import Distribution.PackageDescription.Utils
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
+import Distribution.Parsec
+import Distribution.Pretty
+import Distribution.Compat.CharParsing hiding (char)
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Simple.Utils
-import Distribution.Text
 import Distribution.Compat.Lens
-import Distribution.Compat.ReadP as ReadP hiding ( char )
-import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.Component
@@ -65,6 +66,8 @@ import Distribution.Types.DependencyMap
 
 import qualified Data.Map.Strict as Map.Strict
 import qualified Data.Map.Lazy   as Map
+import Data.Set ( Set )
+import qualified Data.Set as Set
 import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
@@ -107,28 +110,29 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
 --
 
 -- | Parse a configuration condition from a string.
-parseCondition :: ReadP r (Condition ConfVar)
+parseCondition :: CabalParsing m => m (Condition ConfVar)
 parseCondition = condOr
   where
     condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
     condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
-    cond     = sp >> (boolLiteral +++ inparens condOr +++ notCond +++ osCond
-                      +++ archCond +++ flagCond +++ implCond )
-    inparens   = between (ReadP.char '(' >> sp) (sp >> ReadP.char ')' >> sp)
-    notCond  = ReadP.char '!' >> sp >> cond >>= return . CNot
+    -- TODO: try?
+    cond     = sp >> (boolLiteral <|> inparens condOr <|> notCond <|> osCond
+                      <|> archCond <|> flagCond <|> implCond )
+    inparens   = between (P.char '(' >> sp) (sp >> P.char ')' >> sp)
+    notCond  = P.char '!' >> sp >> cond >>= return . CNot
     osCond   = string "os" >> sp >> inparens osIdent >>= return . Var
     archCond = string "arch" >> sp >> inparens archIdent >>= return . Var
     flagCond = string "flag" >> sp >> inparens flagIdent >>= return . Var
     implCond = string "impl" >> sp >> inparens implIdent >>= return . Var
-    boolLiteral   = fmap Lit  parse
-    archIdent     = fmap Arch parse
-    osIdent       = fmap OS   parse
+    boolLiteral   = fmap Lit  parsec
+    archIdent     = fmap Arch parsec
+    osIdent       = fmap OS   parsec
     flagIdent     = fmap (Flag . mkFlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
-    sp            = skipSpaces
-    implIdent     = do i <- parse
-                       vr <- sp >> option anyVersion parse
+    sp            = spaces 
+    implIdent     = do i <- parsec
+                       vr <- sp >> option anyVersion parsec
                        return $ Impl i vr
 
 ------------------------------------------------------------------------------
@@ -229,7 +233,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     mp (Left xs)   (Left ys)   =
         let union = Map.foldrWithKey (Map.Strict.insertWith combine)
                     (unDepMapUnion xs) (unDepMapUnion ys)
-            combine x y = simplifyVersionRange $ unionVersionRanges x y
+            combine x y = (\(vr, cs) -> (simplifyVersionRange vr,cs)) $ unionVersionRanges' x y
         in union `seq` Left (DepMapUnion union)
 
     -- `mzero'
@@ -307,14 +311,22 @@ extractConditions f gpkg =
 
 
 -- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, Set LibraryName) }
+
+-- An union of versions should correspond to an intersection of the components.
+-- The intersection may not be necessary.
+unionVersionRanges' :: (VersionRange, Set LibraryName)
+                    -> (VersionRange, Set LibraryName)
+                    -> (VersionRange, Set LibraryName)
+unionVersionRanges' (vra, csa) (vrb, csb) =
+  (unionVersionRanges vra vrb, Set.intersection csa csb)
 
 toDepMapUnion :: [Dependency] -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ Map.fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DepMapUnion $ Map.fromListWith unionVersionRanges' [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
 
 fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [ Dependency p vr | (p,vr) <- Map.toList (unDepMapUnion m) ]
+fromDepMapUnion m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDepMapUnion m) ]
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
 freeVars t = [ f | Flag f <- freeVars' t ]
@@ -344,12 +356,14 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
     -- UGH. The embedded componentName in the 'Component's here is
     -- BLANK.  I don't know whose fault this is but I'll use the tag
     -- instead. -- ezyang
-    removeDisabledSections (Lib _)     = componentNameRequested enabled CLibName
+    removeDisabledSections (Lib _)     = componentNameRequested
+                                           enabled
+                                           (CLibName LMainLibName)
     removeDisabledSections (SubComp t c)
         -- Do NOT use componentName
         = componentNameRequested enabled
         $ case c of
-            CLib  _ -> CSubLibName t
+            CLib  _ -> CLibName (LSubLibName t)
             CFLib _ -> CFLibName   t
             CExe  _ -> CExeName    t
             CTest _ -> CTestName   t
@@ -365,7 +379,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets whe
     (Lib l, (Nothing, comps)) -> (Just $ redoBD l, comps)
     (SubComp n c, (mb_lib, comps))
       | any ((== n) . fst) comps ->
-        userBug $ "There exist several components with the same name: '" ++ display n ++ "'"
+        userBug $ "There exist several components with the same name: '" ++ prettyShow n ++ "'"
       | otherwise -> (mb_lib, (n, redoBD c) : comps)
     (PDNull, x) -> x  -- actually this should not happen, but let's be liberal
     where
@@ -478,7 +492,7 @@ finalizePD userflags enabled satisfyDep
                       then DepOk
                       else MissingDeps missingDeps
 
-{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of

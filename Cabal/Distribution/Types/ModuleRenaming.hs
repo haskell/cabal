@@ -12,15 +12,12 @@ import Distribution.Compat.Prelude hiding (empty)
 import Prelude ()
 
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 
 import qualified Data.Map                   as Map
 import qualified Data.Set                   as Set
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Compat.ReadP  ((<++))
-import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           (hsep, parens, punctuate, text, (<+>), comma)
 
 -- | Renaming applied to the modules provided by a package.
@@ -108,33 +105,3 @@ instance Parsec ModuleRenaming where
                 new <- parsec
                 P.spaces
                 return (orig, new)
-
-
-
-instance Text ModuleRenaming where
-  parse = do fmap ModuleRenaming parseRns
-             <++ parseHidingRenaming
-             <++ return DefaultRenaming
-    where parseRns = do
-             rns <- Parse.between (Parse.char '(') (Parse.char ')') parseList
-             Parse.skipSpaces
-             return rns
-          parseHidingRenaming = do
-            _ <- Parse.string "hiding"
-            Parse.skipSpaces
-            hides <- Parse.between (Parse.char '(') (Parse.char ')')
-                        (Parse.sepBy parse (Parse.char ',' >> Parse.skipSpaces))
-            return (HidingRenaming hides)
-          parseList =
-            Parse.sepBy parseEntry (Parse.char ',' >> Parse.skipSpaces)
-          parseEntry :: Parse.ReadP r (ModuleName, ModuleName)
-          parseEntry = do
-            orig <- parse
-            Parse.skipSpaces
-            (do _ <- Parse.string "as"
-                Parse.skipSpaces
-                new <- parse
-                Parse.skipSpaces
-                return (orig, new)
-             <++
-                return (orig, orig))

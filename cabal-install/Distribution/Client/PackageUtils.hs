@@ -33,7 +33,7 @@ externalBuildDepends pkg spec = filter (not . internal) (enabledBuildDepends pkg
   where
     -- True if this dependency is an internal one (depends on a library
     -- defined in the same package).
-    internal (Dependency depName versionRange) =
+    internal (Dependency depName versionRange _) =
            (depName == packageName pkg &&
             packageVersion pkg `withinRange` versionRange) ||
            (Just (packageNameToUnqualComponentName depName) `elem` map libName (subLibraries pkg) &&

@@ -40,9 +40,9 @@ import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display, simpleParse )
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
 
@@ -74,8 +74,8 @@ delete = modifyWorld $ flip (deleteFirstsBy equalUDep)
 -- | WorldPkgInfo values are considered equal if they refer to
 -- the same package, i.e., we don't care about differing versions or flags.
 equalUDep :: WorldPkgInfo -> WorldPkgInfo -> Bool
-equalUDep (WorldPkgInfo (Dependency pkg1 _) _)
-          (WorldPkgInfo (Dependency pkg2 _) _) = pkg1 == pkg2
+equalUDep (WorldPkgInfo (Dependency pkg1 _ _) _)
+          (WorldPkgInfo (Dependency pkg2 _ _) _) = pkg1 == pkg2
 
 -- | Modifies the world file by applying an update-function ('unionBy'
 -- for 'insert', 'deleteFirstsBy' for 'delete') to the given list of

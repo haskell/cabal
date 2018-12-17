@@ -10,9 +10,9 @@ module Distribution.Client.Dependency.Types (
 import Data.Char
          ( isAlpha, toLower )
 
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
          ( pfail, munch1 )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..) )
 
 import Text.PrettyPrint

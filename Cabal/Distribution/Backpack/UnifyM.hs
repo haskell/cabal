@@ -56,7 +56,7 @@ import qualified Distribution.Utils.UnionFind as UnionFind
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Text
+import Distribution.Pretty
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
 import Distribution.Types.AnnotatedId
@@ -436,15 +436,15 @@ type ModuleWithSourceU s = WithSource (ModuleU s)
 ci_msg :: ComponentInclude (OpenUnitId, ModuleShape) IncludeRenaming -> Doc
 ci_msg ci
   | ci_implicit ci = text "build-depends:" <+> pp_pn
-  | otherwise = text "mixins:" <+> pp_pn <+> disp (ci_renaming ci)
+  | otherwise = text "mixins:" <+> pp_pn <+> pretty (ci_renaming ci)
   where
     pn = pkgName (ci_pkgid ci)
     pp_pn =
         case ci_cname ci of
-            CLibName -> disp pn
-            CSubLibName cn -> disp pn <<>> colon <<>> disp cn
+            CLibName LMainLibName -> pretty pn
+            CLibName (LSubLibName cn) -> pretty pn <<>> colon <<>> pretty cn
             -- Shouldn't happen
-            cn -> disp pn <+> parens (disp cn)
+            cn -> pretty pn <+> parens (pretty cn)
 
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
@@ -505,8 +505,8 @@ convertInclude ci@(ComponentInclude {
         []  -> error "req_rename"
         [v] -> return v
         v:vs -> do addErr $
-                    text "Conflicting renamings of requirement" <+> quotes (disp k) $$
-                    text "Renamed to: " <+> vcat (map disp (v:vs))
+                    text "Conflicting renamings of requirement" <+> quotes (pretty k) $$
+                    text "Renamed to: " <+> vcat (map pretty (v:vs))
                    return v
 
     let req_rename_fn k = case Map.lookup k req_rename of
@@ -536,9 +536,9 @@ convertInclude ci@(ComponentInclude {
     unless (Set.null leftover) $
         addErr $
             hang (text "The" <+> text (showComponentName compname) <+>
-                  text "from package" <+> quotes (disp pid)
+                  text "from package" <+> quotes (pretty pid)
                   <+> text "does not require:") 4
-                 (vcat (map disp (Set.toList leftover)))
+                 (vcat (map pretty (Set.toList leftover)))
 
     -- Provision computation is more complex.
     -- For example, if we have:
@@ -576,8 +576,8 @@ convertInclude ci@(ComponentInclude {
                 [ case Map.lookup from provs of
                     Just m -> return (to, m)
                     Nothing -> failWith $
-                        text "Package" <+> quotes (disp pid) <+>
-                        text "does not expose the module" <+> quotes (disp from)
+                        text "Package" <+> quotes (pretty pid) <+>
+                        text "does not expose the module" <+> quotes (pretty from)
                 | (from, to) <- rns ]
               return (r, prov_rns)
     let prov_scope = modSubst req_subst

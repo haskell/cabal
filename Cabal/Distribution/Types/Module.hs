@@ -9,12 +9,10 @@ module Distribution.Types.Module
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 import Distribution.Types.UnitId
 import Distribution.ModuleName
 
@@ -41,13 +39,6 @@ instance Parsec Module where
         uid <- parsec
         _ <- P.char ':'
         mod_name <- parsec
-        return (Module uid mod_name)
-
-instance Text Module where
-    parse = do
-        uid <- parse
-        _ <- Parse.char ':'
-        mod_name <- parse
         return (Module uid mod_name)
 
 instance NFData Module where

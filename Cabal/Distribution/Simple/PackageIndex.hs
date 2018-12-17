@@ -303,7 +303,7 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
 -- | Backwards compatibility wrapper for Cabal pre-1.24.
-{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 deleteInstalledPackageId :: UnitId -> InstalledPackageIndex
                          -> InstalledPackageIndex
 deleteInstalledPackageId = deleteUnitId
@@ -419,7 +419,7 @@ lookupComponentId index cid =
     Map.lookup (newSimpleUnitId cid) (unitIdIndex index)
 
 -- | Backwards compatibility for Cabal pre-1.24.
-{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 lookupInstalledPackageId :: PackageIndex a -> UnitId
                          -> Maybe a
 lookupInstalledPackageId = lookupUnitId
@@ -469,11 +469,11 @@ lookupPackageName index name =
 --
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
-lookupDependency :: InstalledPackageIndex -> Dependency
+lookupDependency :: InstalledPackageIndex -> PackageName -> VersionRange
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupDependency index dep =
+lookupDependency index pn vr =
     -- Yes, a little bit of a misnomer here!
-    lookupInternalDependency index dep Nothing
+    lookupInternalDependency index pn vr Nothing
 
 -- | Does a lookup by source package name and a range of versions.
 --
@@ -482,10 +482,10 @@ lookupDependency index dep =
 --
 -- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
 --
-lookupInternalDependency :: InstalledPackageIndex -> Dependency
+lookupInternalDependency :: InstalledPackageIndex -> PackageName -> VersionRange
                  -> Maybe UnqualComponentName
                  -> [(Version, [IPI.InstalledPackageInfo])]
-lookupInternalDependency index (Dependency name versionRange) libn =
+lookupInternalDependency index name versionRange libn =
   case Map.lookup (name, libn) (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ (ver, pkgs')

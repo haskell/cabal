@@ -199,7 +199,7 @@ import qualified Paths_Cabal (version)
 #endif
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )

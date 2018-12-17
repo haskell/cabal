@@ -36,6 +36,7 @@ import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
+import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice, writeFileAtomic
          , copyFileVerbose,  withTempFile )
@@ -45,8 +46,6 @@ import Distribution.Client.Types
          ( RemoteRepo(..) )
 import Distribution.System
          ( buildOS, buildArch )
-import Distribution.Text
-         ( display )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
 import System.FilePath
@@ -72,6 +71,7 @@ import Distribution.Simple.Program.Run
 import Numeric (showHex)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
+import Data.Version (showVersion)
 
 
 ------------------------------------------------------------------------------
@@ -269,7 +269,7 @@ supportedTransports =
 configureTransport :: Verbosity -> [FilePath] -> Maybe String -> IO HttpTransport
 
 configureTransport verbosity extraPath (Just name) =
-    -- the user secifically selected a transport by name so we'll try and
+    -- the user specifically selected a transport by name so we'll try and
     -- configure that one
 
     case find (\(name',_,_,_) -> name' == name) supportedTransports of
@@ -807,8 +807,8 @@ plainHttpTransport =
 --
 
 userAgent :: String
-userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
-                   , " (", display buildOS, "; ", display buildArch, ")"
+userAgent = concat [ "cabal-install/", showVersion Paths_cabal_install.version
+                   , " (", prettyShow buildOS, "; ", prettyShow buildArch, ")"
                    ]
 
 statusParseFail :: Verbosity -> URI -> String -> IO a

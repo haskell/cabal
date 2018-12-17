@@ -73,8 +73,8 @@ import Distribution.PackageDescription
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Setup
-import Distribution.Text
 import Distribution.System
+import Distribution.Pretty
 
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
@@ -176,10 +176,10 @@ instance Binary LocalBuildInfo
 -- on the package ID.
 localComponentId :: LocalBuildInfo -> ComponentId
 localComponentId lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentComponentId = cid }]
           -> cid
-        _ -> mkComponentId (display (localPackage lbi))
+        _ -> mkComponentId (prettyShow (localPackage lbi))
 
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
@@ -191,7 +191,7 @@ localPackage lbi = package (localPkgDescr lbi)
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
 localUnitId lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentUnitId = uid }]
           -> uid
         _ -> mkLegacyUnitId $ localPackage lbi
@@ -201,10 +201,10 @@ localUnitId lbi =
 -- on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
-    case componentNameCLBIs lbi CLibName of
+    case componentNameCLBIs lbi (CLibName LMainLibName) of
         [LibComponentLocalBuildInfo { componentCompatPackageKey = pk }]
           -> pk
-        _ -> display (localPackage lbi)
+        _ -> prettyShow (localPackage lbi)
 
 -- | Convenience function to generate a default 'TargetInfo' from a
 -- 'ComponentLocalBuildInfo'.  The idea is to call this once, and then
@@ -267,7 +267,7 @@ withAllTargetsInBuildOrder' pkg_descr lbi f
 neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
 neededTargetsInBuildOrder' pkg_descr lbi uids =
   case Graph.closure (componentGraph lbi) uids of
-    Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map display uids)
+    Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map prettyShow uids)
     Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromDistinctList clos))
 
 -- | Execute @f@ for every 'TargetInfo' needed to build @uid@s, respecting

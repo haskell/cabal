@@ -55,7 +55,7 @@ import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName
          , HasUnitId(..), PackageId, packageVersion, packageName )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 
 import Distribution.Client.Types

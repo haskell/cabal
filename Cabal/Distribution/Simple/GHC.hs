@@ -423,7 +423,7 @@ checkPackageDbStackPre76 verbosity rest
   | GlobalPackageDB `notElem` rest =
   die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+     ++ "see http://ghc.haskell.org/trac/ghc/ticket/5977"
 checkPackageDbStackPre76 verbosity _ =
   die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
@@ -503,7 +503,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         when (forceShared || withSharedLib lbi)
       whenStaticLib forceStatic =
         when (forceStatic || withStaticLib lbi)
-      whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
+      whenGHCiLib = when (withGHCiLib lbi)
       forRepl = maybe False (const True) mReplFlags
       ifReplLib = when forRepl
       replFlags = fromMaybe mempty mReplFlags
@@ -708,6 +708,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
         staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
+        ghciProfLibFilePath = libTargetDir </> Internal.mkGHCiProfLibName uid
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
 
@@ -751,10 +752,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                  hProfObjs
               ++ map (libTargetDir </>) cProfObjs
               ++ stubProfObjs
-          ghciObjFiles =
-                 hObjs
-              ++ map (libTargetDir </>) cObjs
-              ++ stubObjs
           dynamicObjectFiles =
                  hSharedObjs
               ++ map (libTargetDir </>) cSharedObjs
@@ -833,16 +830,19 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
-      whenVanillaLib False $
+      whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciLibFilePath staticObjectFiles
 
-      whenProfLib $
+      whenProfLib $ do
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
-
-      whenGHCiLib $ do
-        (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-        Ld.combineObjectFiles verbosity lbi ldProg
-          ghciLibFilePath ghciObjFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciProfLibFilePath profObjectFiles
 
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
@@ -1659,16 +1659,13 @@ popThreadedFlag bi =
 
   where
     filterHcOptions :: (String -> Bool)
-                    -> [(CompilerFlavor, [String])]
-                    -> [(CompilerFlavor, [String])]
-    filterHcOptions p hcoptss =
-      [ (hc, if hc == GHC then filter p opts else opts)
-      | (hc, opts) <- hcoptss ]
+                    -> PerCompilerFlavor [String]
+                    -> PerCompilerFlavor [String]
+    filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
+        PerCompilerFlavor (filter p ghc) ghcjs
 
-    hasThreaded :: [(CompilerFlavor, [String])] -> Bool
-    hasThreaded hcoptss =
-      or [ if hc == GHC then elem "-threaded" opts else False
-         | (hc, opts) <- hcoptss ]
+    hasThreaded :: PerCompilerFlavor [String] -> Bool
+    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -1836,9 +1833,16 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
                 | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
                 , f <- "":extraLibFlavours (libBuildInfo lib)
                 ]
-    whenProf    $ installOrdinary builtDir targetDir       profileLibName
-    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
-    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
+      whenGHCi $ installOrdinary builtDir targetDir ghciLibName
+    whenProf $ do
+      installOrdinary builtDir targetDir profileLibName
+      whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
+    whenShared  $
+      sequence_ [ installShared builtDir dynlibTargetDir
+                    (mkGenericSharedLibName platform compiler_id (l ++ f))
+                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                , f <- "":extraDynLibFlavours (libBuildInfo lib)
+                ]
 
   where
     builtDir = componentBuildDir lbi clbi
@@ -1854,7 +1858,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
         else installOrdinaryFile   verbosity src dst
 
       when (stripLibs lbi) $ Strip.stripLib verbosity
-                             (hostPlatform lbi) (withPrograms lbi) dst
+                             platform (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -1864,10 +1868,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
+    platform = hostPlatform lbi
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
-    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
+    ghciProfLibName = Internal.mkGHCiProfLibName uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))

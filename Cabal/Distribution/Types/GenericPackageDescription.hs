@@ -21,7 +21,6 @@ module Distribution.Types.GenericPackageDescription (
     nullFlagAssignment,
     showFlagValue,
     dispFlagAssignment,
-    parseFlagAssignment,
     parsecFlagAssignment,
     ConfVar(..),
 ) where
@@ -32,9 +31,7 @@ import Distribution.Utils.ShortText
 import Distribution.Utils.Generic (lowercase)
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.ReadP ((+++))
 
 -- lens
 import Distribution.Compat.Lens                     as L
@@ -55,9 +52,8 @@ import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
@@ -170,20 +166,13 @@ instance Pretty FlagName where
     pretty = Disp.text . unFlagName
 
 instance Parsec FlagName where
+    -- Note:  we don't check that FlagName doesn't have leading dash,
+    -- cabal check will do that.
     parsec = mkFlagName . lowercase <$> parsec'
       where
         parsec' = (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
         rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
-
-instance Text FlagName where
-    -- Note:  we don't check that FlagName doesn't have leading dash,
-    -- cabal check will do that.
-    parse = mkFlagName . lowercase <$> parse'
-      where
-        parse' = (:) <$> lead <*> rest
-        lead = Parse.satisfy (\c ->  isAlphaNum c || c == '_')
-        rest = Parse.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
@@ -311,7 +300,7 @@ dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
 
 -- | Parses a flag assignment.
-parsecFlagAssignment :: ParsecParser FlagAssignment
+parsecFlagAssignment :: CabalParsing m => m FlagAssignment
 parsecFlagAssignment = mkFlagAssignment <$>
                        P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
@@ -323,20 +312,7 @@ parsecFlagAssignment = mkFlagAssignment <$>
         _ <- P.char '-'
         f <- parsec
         return (f, False)
-
--- | Parses a flag assignment.
-parseFlagAssignment :: Parse.ReadP r FlagAssignment
-parseFlagAssignment = mkFlagAssignment <$>
-                      Parse.sepBy parseFlagValue Parse.skipSpaces1
-  where
-    parseFlagValue =
-          (do Parse.optional (Parse.char '+')
-              f <- parse
-              return (f, True))
-      +++ (do _ <- Parse.char '-'
-              f <- parse
-              return (f, False))
--- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+-- {-# DEPRECATED parseFlagAssignment "Use parsecFlagAssignment. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 
 -- -----------------------------------------------------------------------------
 -- The 'CondVar' type

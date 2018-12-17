@@ -13,7 +13,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
@@ -46,16 +46,17 @@ data LicenseExceptionId
     | I2p_gpl_java_exception -- ^ @i2p-gpl-java-exception@, i2p GPL+Java Exception
     | Libtool_exception -- ^ @Libtool-exception@, Libtool Exception
     | Linux_syscall_note -- ^ @Linux-syscall-note@, Linux Syscall Note
-    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2
+    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2, SPDX License List 3.3
     | LZMA_exception -- ^ @LZMA-exception@, LZMA exception
     | Mif_exception -- ^ @mif-exception@, Macros and Inline Functions Exception
     | Nokia_Qt_exception_1_1 -- ^ @Nokia-Qt-exception-1.1@, Nokia Qt LGPL exception 1.1
+    | OCaml_LGPL_linking_exception -- ^ @OCaml-LGPL-linking-exception@, OCaml LGPL Linking Exception, SPDX License List 3.3
     | OCCT_exception_1_0 -- ^ @OCCT-exception-1.0@, Open CASCADE Exception 1.0
-    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2
+    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2, SPDX License List 3.3
     | Openvpn_openssl_exception -- ^ @openvpn-openssl-exception@, OpenVPN OpenSSL Exception
-    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2
-    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2
-    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2
+    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2, SPDX License List 3.3
+    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2, SPDX License List 3.3
+    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2, SPDX License List 3.3
     | Qwt_exception_1_0 -- ^ @Qwt-exception-1.0@, Qwt exception 1.0
     | U_boot_exception_2_0 -- ^ @u-boot-exception-2.0@, U-Boot exception 2.0
     | WxWindows_exception_3_1 -- ^ @WxWindows-exception-3.1@, WxWindows Library Exception 3.1
@@ -105,6 +106,7 @@ licenseExceptionId LLVM_exception = "LLVM-exception"
 licenseExceptionId LZMA_exception = "LZMA-exception"
 licenseExceptionId Mif_exception = "mif-exception"
 licenseExceptionId Nokia_Qt_exception_1_1 = "Nokia-Qt-exception-1.1"
+licenseExceptionId OCaml_LGPL_linking_exception = "OCaml-LGPL-linking-exception"
 licenseExceptionId OCCT_exception_1_0 = "OCCT-exception-1.0"
 licenseExceptionId OpenJDK_assembly_exception_1_0 = "OpenJDK-assembly-exception-1.0"
 licenseExceptionId Openvpn_openssl_exception = "openvpn-openssl-exception"
@@ -140,6 +142,7 @@ licenseExceptionName LLVM_exception = "LLVM Exception"
 licenseExceptionName LZMA_exception = "LZMA exception"
 licenseExceptionName Mif_exception = "Macros and Inline Functions Exception"
 licenseExceptionName Nokia_Qt_exception_1_1 = "Nokia Qt LGPL exception 1.1"
+licenseExceptionName OCaml_LGPL_linking_exception = "OCaml LGPL Linking Exception"
 licenseExceptionName OCCT_exception_1_0 = "Open CASCADE Exception 1.0"
 licenseExceptionName OpenJDK_assembly_exception_1_0 = "OpenJDK Assembly exception 1.0"
 licenseExceptionName Openvpn_openssl_exception = "OpenVPN OpenSSL Exception"
@@ -166,11 +169,21 @@ licenseExceptionIdList LicenseListVersion_3_2 =
     , Qt_LGPL_exception_1_1
     ]
     ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_3 =
+    [ LLVM_exception
+    , OCaml_LGPL_linking_exception
+    , OpenJDK_assembly_exception_1_0
+    , PS_or_PDF_font_exception_20170817
+    , Qt_GPL_exception_1_0
+    , Qt_LGPL_exception_1_1
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
 mkLicenseExceptionId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseExceptionId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
+mkLicenseExceptionId LicenseListVersion_3_3 s = Map.lookup s stringLookup_3_3
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -178,7 +191,11 @@ stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 
 stringLookup_3_2 :: Map String LicenseExceptionId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
-    licenseExceptionIdList LicenseListVersion_3_2
+    licenseExceptionIdList LicenseListVersion_3_3
+
+stringLookup_3_3 :: Map String LicenseExceptionId
+stringLookup_3_3 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_3
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]

@@ -44,6 +44,7 @@ import Distribution.Solver.Compat.Prelude
 import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 -- Cabal
 import qualified Distribution.Compiler                  as C
@@ -545,7 +546,7 @@ exAvSrcPkg ex =
            }
 
     mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr
+    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr (Set.singleton C.LMainLibName)
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo
@@ -645,6 +646,7 @@ exResolve :: ExampleDb
           -> [ExamplePkgName]
           -> Maybe Int
           -> CountConflicts
+          -> MinimizeConflictSet
           -> IndependentGoals
           -> ReorderGoals
           -> AllowBootLibInstalls
@@ -657,8 +659,9 @@ exResolve :: ExampleDb
           -> C.Verbosity
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
-exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
-          reorder allowBootLibInstalls onlyConstrained enableBj solveExes goalOrder constraints
+exResolve db exts langs pkgConfigDb targets mbj countConflicts
+          minimizeConflictSet indepGoals reorder allowBootLibInstalls
+          onlyConstrained enableBj solveExes goalOrder constraints
           prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
@@ -683,6 +686,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts indepGoals
                    $ addConstraints (fmap toLpc enableTests)
                    $ addPreferences (fmap toPref prefs)
                    $ setCountConflicts countConflicts
+                   $ setMinimizeConflictSet minimizeConflictSet
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj

@@ -61,7 +61,7 @@ import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Pretty
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
 import Distribution.Utils.NubList
 import Distribution.Version
 import Distribution.Verbosity

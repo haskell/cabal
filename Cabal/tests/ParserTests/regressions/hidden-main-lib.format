@@ -1,0 +1,11 @@
+hidden-main-lib.cabal:11:3: Unknown field: "visibility"
+cabal-version: 2.5
+name:          hidden-main-lib
+version:       0
+synopsis:      main lib have to be visible
+build-type:    Simple
+
+library
+    exposed-modules:  ElseIf
+    default-language: Haskell2010
+    build-depends:    base -any

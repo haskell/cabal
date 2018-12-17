@@ -22,13 +22,11 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 
 import qualified Data.Version                    as Base
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint                as Disp
 import qualified Text.Read                       as Read
 
@@ -121,15 +119,6 @@ instance Parsec Version where
             case ts of
                 []      -> pure ()
                 (_ : _) -> parsecWarning PWTVersionTag "version with tags"
-
-instance Text Version where
-  parse = do
-      branch <- Parse.sepBy1 parseNat (Parse.char '.')
-                -- allow but ignore tags:
-      _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 isAlphaNum)
-      return (mkVersion branch)
-    where
-      parseNat = read `fmap` Parse.munch1 isDigit
 
 -- | Construct 'Version' from list of version number components.
 --
@@ -252,4 +241,4 @@ validVersion v = v /= nullVersion && all (>=0) (versionNumbers v)
 
 showVersion :: Version -> String
 showVersion = prettyShow
-{-# DEPRECATED showVersion "Use prettyShow. This function will be removed in Cabal-3.0 (estimated Oct 2018)" #-}
+{-# DEPRECATED showVersion "Use prettyShow. This function will be removed in Cabal-3.0 (estimated Mar 2019)" #-}

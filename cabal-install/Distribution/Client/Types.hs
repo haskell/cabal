@@ -46,6 +46,8 @@ import Distribution.Types.PackageName
          ( PackageName, mkPackageName )
 import Distribution.Types.ComponentName
          ( ComponentName(..) )
+import Distribution.Types.LibraryName
+         ( LibraryName(..) )
 import Distribution.Types.SourceRepo
          ( SourceRepo )
 
@@ -61,10 +63,10 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.ParseUtils (parseOptCommaList)
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ParseUtils (parseOptCommaList)
 import Distribution.Simple.Utils (ordNub)
-import Distribution.Text (Text(..))
+import Distribution.Deprecated.Text (Text(..))
 
 import Network.URI (URI(..), URIAuth(..), nullURI)
 import Control.Exception
@@ -129,7 +131,7 @@ data ConfiguredPackage loc = ConfiguredPackage {
 -- 'ElaboratedPackage' and 'ElaboratedComponent'.
 --
 instance HasConfiguredId (ConfiguredPackage loc) where
-    configuredId pkg = ConfiguredId (packageId pkg) (Just CLibName) (confPkgId pkg)
+    configuredId pkg = ConfiguredId (packageId pkg) (Just (CLibName LMainLibName)) (confPkgId pkg)
 
 -- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
 -- to never have a nontrivial 'UnitId'
@@ -589,3 +591,19 @@ instance Monoid AllowNewer where
 instance Monoid AllowOlder where
   mempty  = AllowOlder mempty
   mappend = (<>)
+
+-- ------------------------------------------------------------
+-- * --write-ghc-environment-file
+-- ------------------------------------------------------------
+
+-- | Whether 'v2-build' should write a .ghc.environment file after
+-- success. Possible values: 'always', 'never', 'ghc8.4.4+' (the
+-- default; GHC 8.4.4 is the earliest version that supports
+-- '-package-env -').
+data WriteGhcEnvironmentFilesPolicy
+  = AlwaysWriteGhcEnvironmentFiles
+  | NeverWriteGhcEnvironmentFiles
+  | WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+  deriving (Eq, Enum, Bounded, Generic, Show)
+
+instance Binary WriteGhcEnvironmentFilesPolicy

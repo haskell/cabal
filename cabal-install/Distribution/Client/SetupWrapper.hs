@@ -36,7 +36,6 @@ import Distribution.Package
          ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId
          , PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName )
-import Distribution.Types.Dependency
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion, buildType
@@ -97,7 +96,7 @@ import Distribution.Client.Utils
 
 import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Utils.NubList
          ( toNubListR )
@@ -128,11 +127,11 @@ import qualified System.Win32 as Win32
 
 -- | @Setup@ encapsulates the outcome of configuring a setup method to build a
 -- particular package.
-data Setup = Setup { setupMethod :: SetupMethod
+data Setup = Setup { setupMethod        :: SetupMethod
                    , setupScriptOptions :: SetupScriptOptions
-                   , setupVersion :: Version
-                   , setupBuildType :: BuildType
-                   , setupPackage :: PackageDescription
+                   , setupVersion       :: Version
+                   , setupBuildType     :: BuildType
+                   , setupPackage       :: PackageDescription
                    }
 
 -- | @SetupMethod@ represents one of the methods used to run Cabal commands.
@@ -719,10 +718,10 @@ getExternalSetupMethod verbosity options pkg bt = do
     return (packageVersion pkg, Nothing, options')
   installedCabalVersion options' compiler progdb = do
     index <- maybeGetInstalledPackages options' compiler progdb
-    let cabalDep   = Dependency (mkPackageName "Cabal")
-                                (useCabalVersion options')
-        options''  = options' { usePackageIndex = Just index }
-    case PackageIndex.lookupDependency index cabalDep of
+    let cabalDepName    = mkPackageName "Cabal"
+        cabalDepVersion = useCabalVersion options'
+        options''       = options' { usePackageIndex = Just index }
+    case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
       []   -> die' verbosity $ "The package '" ++ display (packageName pkg)
                  ++ "' requires Cabal library version "
                  ++ display (useCabalVersion options)

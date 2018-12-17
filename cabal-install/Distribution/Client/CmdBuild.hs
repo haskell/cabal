@@ -14,13 +14,16 @@ module Distribution.Client.CmdBuild (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Compat.Semigroup ((<>))
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         , liftOptions, yesNoOpt )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags
+         , Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, option )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -29,8 +32,11 @@ import Distribution.Simple.Utils
 import qualified Data.Map as Map
 
 
-buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-buildCommand = Client.installCommand {
+buildCommand ::
+  CommandUI
+  (BuildFlags, ( ConfigFlags, ConfigExFlags
+               , InstallFlags, HaddockFlags, TestFlags))
+buildCommand = CommandUI {
   commandName         = "v2-build",
   commandSynopsis     = "Compile targets within the project.",
   commandUsage        = usageAlternatives "v2-build" [ "[TARGETS] [FLAGS]" ],
@@ -49,7 +55,8 @@ buildCommand = Client.installCommand {
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " v2-build\n"
-     ++ "    Build the package in the current directory or all packages in the project\n"
+     ++ "    Build the package in the current directory "
+     ++ "or all packages in the project\n"
      ++ "  " ++ pname ++ " v2-build pkgname\n"
      ++ "    Build the package named pkgname in the project\n"
      ++ "  " ++ pname ++ " v2-build ./pkgfoo\n"
@@ -57,11 +64,35 @@ buildCommand = Client.installCommand {
      ++ "  " ++ pname ++ " v2-build cname\n"
      ++ "    Build the component named cname in the project\n"
      ++ "  " ++ pname ++ " v2-build cname --enable-profiling\n"
-     ++ "    Build the component in profiling mode (including dependencies as needed)\n\n"
+     ++ "    Build the component in profiling mode "
+     ++ "(including dependencies as needed)\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
-   }
+     ++ cmdCommonHelpTextNewBuildBeta,
+  commandDefaultFlags =
+      (defaultBuildFlags, commandDefaultFlags Client.installCommand),
+  commandOptions = \ showOrParseArgs ->
+      liftOptions snd setSnd
+          (commandOptions Client.installCommand showOrParseArgs) ++
+      liftOptions fst setFst
+          [ option [] ["only-configure"]
+              "Instead of performing a full build just run the configure step"
+              buildOnlyConfigure (\v flags -> flags { buildOnlyConfigure = v })
+              (yesNoOpt showOrParseArgs)
+          ]
+  }
 
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+data BuildFlags = BuildFlags
+    { buildOnlyConfigure  :: Flag Bool
+    }
+
+defaultBuildFlags :: BuildFlags
+defaultBuildFlags = BuildFlags
+    { buildOnlyConfigure = toFlag False
+    }
 
 -- | The @build@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
@@ -70,15 +101,26 @@ buildCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-            -> [String] -> GlobalFlags -> IO ()
-buildAction (configFlags, configExFlags, installFlags, haddockFlags)
+buildAction ::
+  ( BuildFlags
+  , (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
+  -> [String] -> GlobalFlags -> IO ()
+buildAction
+  ( buildFlags
+  , (configFlags, configExFlags, installFlags, haddockFlags, testFlags))
             targetStrings globalFlags = do
+    -- TODO: This flags defaults business is ugly
+    let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
+                                 <> buildOnlyConfigure buildFlags)
+        targetAction
+            | onlyConfigure = TargetActionConfigure
+            | otherwise = TargetActionBuild
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
 
-    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+    targetSelectors <-
+      either (reportTargetSelectorProblems verbosity) return
+      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -95,7 +137,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
                          targetSelectors
 
             let elaboratedPlan' = pruneInstallPlanToTargets
-                                    TargetActionBuild
+                                    targetAction
                                     targets
                                     elaboratedPlan
             elaboratedPlan'' <-
@@ -115,14 +157,15 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @build@ command select all components except non-buildable and disabled
--- tests\/benchmarks, fail if there are no such components
+-- For the @build@ command select all components except non-buildable
+-- and disabled tests\/benchmarks, fail if there are no such
+-- components
 --
 selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem [k]
@@ -192,4 +235,3 @@ renderTargetProblem(TargetProblemNoTargets targetSelector) =
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =
     die' verbosity . renderCannotPruneDependencies
-

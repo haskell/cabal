@@ -29,12 +29,12 @@ import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
@@ -73,12 +73,10 @@ import Distribution.PackageDescription.FieldGrammar
          ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
-import Distribution.Parsec.Common
+import Distribution.Parsec
          ( Position(..) )
-import Distribution.Parsec.ParseResult
-         ( ParseResult, parseString, parseFatalFailure )
-import Distribution.Parsec.Parser
-         ( readFields )
+import Distribution.Fields
+         ( ParseResult, parseString, parseFatalFailure, readFields )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
          ( SourcePackage(..) )
@@ -108,7 +106,8 @@ import System.Directory
 import System.FilePath
          ( (</>) )
 
-runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+
+runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 runCommand = Client.installCommand {
   commandName         = "v2-run",
   commandSynopsis     = "Run an executable.",
@@ -154,9 +153,9 @@ runCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
           -> [String] -> GlobalFlags -> IO ()
-runAction (configFlags, configExFlags, installFlags, haddockFlags)
+runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tempDir <- createTempDirectory globalTmp "cabal-repl."
@@ -296,7 +295,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 handleShebang :: String -> IO ()

@@ -4,7 +4,9 @@ Quickstart
 ==========
 
 Suppose that you are in a directory containing a single Cabal package
-which you wish to build. You can configure and build it using Nix-style
+which you wish to build (if you haven't set up a package yet check
+out `developing packages <developing-packages.html>`__ for
+instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
 ::
@@ -139,8 +141,8 @@ identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
 built version.
 
-The global package store is ``~/.cabal/store`` (configurable via 
-global `store-dir` option); if you need to clear your store for 
+The global package store is ``~/.cabal/store`` (configurable via
+global `store-dir` option); if you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
 store is corrupted), deleting this directory is safe (``new-build``
 will just rebuild everything it needs on its next invocation).
@@ -178,7 +180,7 @@ version of cabal-install:
    executable or test suite named ``pexe``, it would be located at
    ``dist-newstyle/build/p-0.1/build/pexe/pexe``.
 
--  In cabal-install-2.0 and above, the dist directory for a package ``p-0.1``
+-  In cabal-install-2.0, the dist directory for a package ``p-0.1``
    defining a library built with GHC 8.0.1 on 64-bit Linux is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1``. When
    per-component builds are enabled (any non-Custom package), a
@@ -188,6 +190,17 @@ version of cabal-install:
    the full path of the executable is
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
    (you can see why we want this to be an implementation detail!)
+
+- In cabal-install-2.2 and above, the ``/c/`` part of the above path
+   is replaced with one of ``/l/``, ``/x/``, ``/f/``, ``/t/``, or
+   ``/b/``, depending on the type of component (sublibrary,
+   executable, foreign library, test suite, or benchmark
+   respectively). So the full path to an executable named ``pexe``
+   compiled with GHC 8.0.1 on a 64-bit Linux is now
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/x/pexe/build/pexe/pexe``;
+   for a benchmark named ``pbench`` it now is
+   ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/b/pbench/build/pbench/pbench``;
+
 
 The paths are a bit longer in 2.0 and above but the benefit is that you can
 transparently have multiple builds with different versions of GHC. We
@@ -308,7 +321,7 @@ cabal new-update
 project contains multiple remote package repositories it will update
 the index of all of them (e.g. when using overlays).
 
-Seom examples:
+Some examples:
 
 ::
 
@@ -368,6 +381,12 @@ cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
 
+In addition ``cabal new-build`` accepts these flags:
+
+- ``--only-configure``: When given we will forgoe performing a full build and
+  abort after running the configure phase of each target package.
+
+
 cabal new-repl
 --------------
 
@@ -392,7 +411,7 @@ them manually or to install them globally.
 This command opens a REPL with the current default target loaded, and a version
 of the ``vector`` package matching that specification exposed.
 
-:: 
+::
 
     $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
 
@@ -521,7 +540,7 @@ invocations and bringing the project's executables into scope.
 cabal new-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and 
+``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and
 symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
@@ -540,7 +559,7 @@ repository, this command will build cabal-install HEAD and symlink the
 
     $ cabal new-install exe:cabal
 
-It is also possible to "install" libraries using the ``--lib`` flag. For 
+It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:
 
 ::
@@ -610,10 +629,6 @@ and two archives of the same format built from the same source will hash to the 
 - ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
   Output is to ``stdout`` by default. The file paths are relative to the project's root
   directory.
-
-- ``--targz``: Output an archive in ``.tar.gz`` format.
-
-- ``--zip``: Output an archive in ``.zip`` format.
 
 - ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
   ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
@@ -688,9 +703,9 @@ project are:
        directories ``foo`` and ``bar``, use
        ``packages: */*.cabal ../{foo,bar}/``
 
-    3. [STRIKEOUT:They can specify an ``http``, ``https`` or ``file``
+    3. They can specify an ``http``, ``https`` or ``file``
        URL, representing the path to a remote tarball to be downloaded
-       and built.] (not implemented yet)
+       and built.
 
     There is no command line variant of this field; see :issue:`3585`.
 
@@ -876,7 +891,7 @@ package, and thus apply globally:
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
-    
+
 Solver configuration options
 ----------------------------
 
@@ -889,7 +904,7 @@ The following settings control the behavior of the dependency solver:
     Add extra constraints to the version bounds, flag settings,
     and other properties a solver can pick for a
     package. For example:
-               
+
     ::
 
         constraints: bar == 2.1
@@ -1905,6 +1920,21 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
+.. cfg-field:: write-ghc-environment-files: always, never, or ghc-8.4.4+
+               --write-ghc-enviroment-files=policy
+    :synopsis: Whether a ``.ghc.enviroment`` should be created after a successful build.
+
+    :default: ``ghc-8.4.4+``
+
+    Whether a `GHC package environment file <https://downloads.haskell.org/~ghc/master/users-guide/packages.html#package-environments>`_
+    should be created after a successful build.
+
+    Defaults to creating them only when compiling with GHC 8.4.4 and
+    older (GHC 8.4.4 `is the first version <https://ghc.haskell.org/trac/ghc/ticket/13753>`_ that supports the
+    ``-package-env -`` option that allows ignoring the package
+    environment files).
+
+
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
     :synopsis: Transport to use with http(s) requests.
@@ -2042,6 +2072,21 @@ Most users generally won't need these.
 
     The command line variant of this field is
     ``--(no-)count-conflicts``.
+
+.. cfg-field:: minimize-conflict-set: boolean
+               --minimize-conflict-set
+               --no-minimize-conflict-set
+    :synopsis: Try to improve the solver error message when there is no
+	       solution.
+
+    :default: False
+
+    When there is no solution, try to improve the solver error message
+    by finding a minimal conflict set. This option may increase run
+    time significantly, so it is off by default.
+
+    The command line variant of this field is
+    ``--(no-)minimize-conflict-set``.
 
 .. cfg-field:: strong-flags: boolean
                --strong-flags

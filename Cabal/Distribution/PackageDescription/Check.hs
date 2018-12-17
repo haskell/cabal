@@ -51,7 +51,6 @@ import Distribution.Simple.CCompiler
 import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
-import Distribution.Text
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
 import Distribution.Types.ExeDependency
@@ -164,7 +163,7 @@ checkConfiguredPackage pkg =
  ++ checkFields pkg
  ++ checkLicense pkg
  ++ checkSourceRepos pkg
- ++ checkGhcOptions pkg
+ ++ checkAllGhcOptions pkg
  ++ checkCCOptions pkg
  ++ checkCxxOptions pkg
  ++ checkCPPOptions pkg
@@ -209,13 +208,13 @@ checkSanity pkg =
 
   -- NB: but it's OK for executables to have the same name!
   -- TODO shouldn't need to compare on the string level
-  , check (any (== display (packageName pkg)) (display <$> subLibNames)) $
+  , check (any (== prettyShow (packageName pkg)) (prettyShow <$> subLibNames)) $
       PackageBuildImpossible $ "Illegal internal library name "
-        ++ display (packageName pkg)
+        ++ prettyShow (packageName pkg)
         ++ ". Internal libraries cannot have the same name as the package."
         ++ " Maybe you wanted a non-internal library?"
         ++ " If so, rewrite the section stanza"
-        ++ " from 'library: '" ++ display (packageName pkg) ++ "' to 'library'."
+        ++ " from 'library: '" ++ prettyShow (packageName pkg) ++ "' to 'library'."
   ]
   --TODO: check for name clashes case insensitively: windows file systems cannot
   --cope.
@@ -230,8 +229,8 @@ checkSanity pkg =
     check (specVersion pkg > cabalVersion) $
       PackageBuildImpossible $
            "This package description follows version "
-        ++ display (specVersion pkg) ++ " of the Cabal specification. This "
-        ++ "tool only supports up to version " ++ display cabalVersion ++ "."
+        ++ prettyShow (specVersion pkg) ++ " of the Cabal specification. This "
+        ++ "tool only supports up to version " ++ prettyShow cabalVersion ++ "."
   ]
   where
     -- The public 'library' gets special dispensation, because it
@@ -250,14 +249,14 @@ checkLibrary pkg lib =
     check (not (null moduleDuplicates)) $
        PackageBuildImpossible $
             "Duplicate modules in library: "
-         ++ commaSep (map display moduleDuplicates)
+         ++ commaSep (map prettyShow moduleDuplicates)
 
   -- TODO: This check is bogus if a required-signature was passed through
   , check (null (explicitLibModules lib) && null (reexportedModules lib)) $
       PackageDistSuspiciousWarn $
            "Library " ++ (case libName lib of
                             Nothing -> ""
-                            Just n -> display n
+                            Just n -> prettyShow n
                             ) ++ "does not expose any modules"
 
     -- check use of signatures sections
@@ -291,7 +290,7 @@ checkExecutable pkg exe =
 
     check (null (modulePath exe)) $
       PackageBuildImpossible $
-        "No 'main-is' field found for executable " ++ display (exeName exe)
+        "No 'main-is' field found for executable " ++ prettyShow (exeName exe)
 
   , check (not (null (modulePath exe))
        && (not $ fileExtensionSupportedLanguage $ modulePath exe)) $
@@ -309,14 +308,14 @@ checkExecutable pkg exe =
 
   , check (not (null moduleDuplicates)) $
        PackageBuildImpossible $
-            "Duplicate modules in executable '" ++ display (exeName exe) ++ "': "
-         ++ commaSep (map display moduleDuplicates)
+            "Duplicate modules in executable '" ++ prettyShow (exeName exe) ++ "': "
+         ++ commaSep (map prettyShow moduleDuplicates)
 
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (exeModules exe)) (exeModulesAutogen exe)) $
       PackageBuildImpossible $
-           "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
+           "On executable '" ++ prettyShow (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
   ]
   where
@@ -329,21 +328,21 @@ checkTestSuite pkg test =
     case testInterface test of
       TestSuiteUnsupported tt@(TestTypeUnknown _ _) -> Just $
         PackageBuildWarning $
-             quote (display tt) ++ " is not a known type of test suite. "
+             quote (prettyShow tt) ++ " is not a known type of test suite. "
           ++ "The known test suite types are: "
-          ++ commaSep (map display knownTestTypes)
+          ++ commaSep (map prettyShow knownTestTypes)
 
       TestSuiteUnsupported tt -> Just $
         PackageBuildWarning $
-             quote (display tt) ++ " is not a supported test suite version. "
+             quote (prettyShow tt) ++ " is not a supported test suite version. "
           ++ "The known test suite types are: "
-          ++ commaSep (map display knownTestTypes)
+          ++ commaSep (map prettyShow knownTestTypes)
       _ -> Nothing
 
   , check (not $ null moduleDuplicates) $
       PackageBuildImpossible $
-           "Duplicate modules in test suite '" ++ display (testName test) ++ "': "
-        ++ commaSep (map display moduleDuplicates)
+           "Duplicate modules in test suite '" ++ prettyShow (testName test) ++ "': "
+        ++ commaSep (map prettyShow moduleDuplicates)
 
   , check mainIsWrongExt $
       PackageBuildImpossible $
@@ -363,7 +362,7 @@ checkTestSuite pkg test =
         (testModulesAutogen test)
       ) $
       PackageBuildImpossible $
-           "On test suite '" ++ display (testName test) ++ "' an 'autogen-module' is not "
+           "On test suite '" ++ prettyShow (testName test) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
   ]
   where
@@ -384,21 +383,21 @@ checkBenchmark _pkg bm =
     case benchmarkInterface bm of
       BenchmarkUnsupported tt@(BenchmarkTypeUnknown _ _) -> Just $
         PackageBuildWarning $
-             quote (display tt) ++ " is not a known type of benchmark. "
+             quote (prettyShow tt) ++ " is not a known type of benchmark. "
           ++ "The known benchmark types are: "
-          ++ commaSep (map display knownBenchmarkTypes)
+          ++ commaSep (map prettyShow knownBenchmarkTypes)
 
       BenchmarkUnsupported tt -> Just $
         PackageBuildWarning $
-             quote (display tt) ++ " is not a supported benchmark version. "
+             quote (prettyShow tt) ++ " is not a supported benchmark version. "
           ++ "The known benchmark types are: "
-          ++ commaSep (map display knownBenchmarkTypes)
+          ++ commaSep (map prettyShow knownBenchmarkTypes)
       _ -> Nothing
 
   , check (not $ null moduleDuplicates) $
       PackageBuildImpossible $
-           "Duplicate modules in benchmark '" ++ display (benchmarkName bm) ++ "': "
-        ++ commaSep (map display moduleDuplicates)
+           "Duplicate modules in benchmark '" ++ prettyShow (benchmarkName bm) ++ "': "
+        ++ commaSep (map prettyShow moduleDuplicates)
 
   , check mainIsWrongExt $
       PackageBuildImpossible $
@@ -412,7 +411,7 @@ checkBenchmark _pkg bm =
         (benchmarkModulesAutogen bm)
       ) $
       PackageBuildImpossible $
-             "On benchmark '" ++ display (benchmarkName bm) ++ "' an 'autogen-module' is "
+             "On benchmark '" ++ prettyShow (benchmarkName bm) ++ "' an 'autogen-module' is "
           ++ "not on 'other-modules'"
   ]
   where
@@ -430,14 +429,14 @@ checkFields :: PackageDescription -> [PackageCheck]
 checkFields pkg =
   catMaybes [
 
-    check (not . FilePath.Windows.isValid . display . packageName $ pkg) $
+    check (not . FilePath.Windows.isValid . prettyShow . packageName $ pkg) $
       PackageDistInexcusable $
-           "Unfortunately, the package name '" ++ display (packageName pkg)
+           "Unfortunately, the package name '" ++ prettyShow (packageName pkg)
         ++ "' is one of the reserved system file names on Windows. Many tools "
         ++ "need to convert package names to file names so using this name "
         ++ "would cause problems."
 
-  , check ((isPrefixOf "z-") . display . packageName $ pkg) $
+  , check ((isPrefixOf "z-") . prettyShow . packageName $ pkg) $
       PackageDistInexcusable $
            "Package names with the prefix 'z-' are reserved by Cabal and "
         ++ "cannot be used."
@@ -476,10 +475,10 @@ checkFields pkg =
   , check (not (null ourDeprecatedExtensions)) $
       PackageDistSuspicious $
            "Deprecated extensions: "
-        ++ commaSep (map (quote . display . fst) ourDeprecatedExtensions)
+        ++ commaSep (map (quote . prettyShow . fst) ourDeprecatedExtensions)
         ++ ". " ++ unwords
-             [ "Instead of '" ++ display ext
-            ++ "' use '" ++ display replacement ++ "'."
+             [ "Instead of '" ++ prettyShow ext
+            ++ "' use '" ++ prettyShow replacement ++ "'."
              | (ext, Just replacement) <- ourDeprecatedExtensions ]
 
   , check (null (category pkg)) $
@@ -525,7 +524,7 @@ checkFields pkg =
   , check (not (null testedWithImpossibleRanges)) $
       PackageDistInexcusable $
            "Invalid 'tested-with' version range: "
-        ++ commaSep (map display testedWithImpossibleRanges)
+        ++ commaSep (map prettyShow testedWithImpossibleRanges)
         ++ ". To indicate that you have tested a package with multiple "
         ++ "different versions of the same compiler use multiple entries, "
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
@@ -535,7 +534,7 @@ checkFields pkg =
       PackageBuildWarning $
            "The package has an extraneous version range for a dependency on an "
         ++ "internal library: "
-        ++ commaSep (map display depInternalLibraryWithExtraVersion)
+        ++ commaSep (map prettyShow depInternalLibraryWithExtraVersion)
         ++ ". This version range includes the current package but isn't needed "
         ++ "as the current package's library will always be used."
 
@@ -543,7 +542,7 @@ checkFields pkg =
       PackageBuildImpossible $
            "The package has an impossible version range for a dependency on an "
         ++ "internal library: "
-        ++ commaSep (map display depInternalLibraryWithImpossibleVersion)
+        ++ commaSep (map prettyShow depInternalLibraryWithImpossibleVersion)
         ++ ". This version range does not include the current package, and must "
         ++ "be removed as the current package's library will always be used."
 
@@ -551,7 +550,7 @@ checkFields pkg =
       PackageBuildWarning $
            "The package has an extraneous version range for a dependency on an "
         ++ "internal executable: "
-        ++ commaSep (map display depInternalExecutableWithExtraVersion)
+        ++ commaSep (map prettyShow depInternalExecutableWithExtraVersion)
         ++ ". This version range includes the current package but isn't needed "
         ++ "as the current package's executable will always be used."
 
@@ -559,14 +558,14 @@ checkFields pkg =
       PackageBuildImpossible $
            "The package has an impossible version range for a dependency on an "
         ++ "internal executable: "
-        ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
+        ++ commaSep (map prettyShow depInternalExecutableWithImpossibleVersion)
         ++ ". This version range does not include the current package, and must "
         ++ "be removed as the current package's executable will always be used."
 
   , check (not (null depMissingInternalExecutable)) $
       PackageBuildImpossible $
            "The package depends on a missing internal executable: "
-        ++ commaSep (map display depInternalExecutableWithImpossibleVersion)
+        ++ commaSep (map prettyShow depInternalExecutableWithImpossibleVersion)
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
@@ -574,7 +573,7 @@ checkFields pkg =
                                , UnknownLanguage name <- allLanguages bi ]
     unknownExtensions = [ name | bi <- allBuildInfo pkg
                                , UnknownExtension name <- allExtensions bi
-                               , name `notElem` map display knownLanguages ]
+                               , name `notElem` map prettyShow knownLanguages ]
     ourDeprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) deprecatedExtensions
       | bi <- allBuildInfo pkg
@@ -582,10 +581,10 @@ checkFields pkg =
     languagesUsedAsExtensions =
       [ name | bi <- allBuildInfo pkg
              , UnknownExtension name <- allExtensions bi
-             , name `elem` map display knownLanguages ]
+             , name `elem` map prettyShow knownLanguages ]
 
     testedWithImpossibleRanges =
-      [ Dependency (mkPackageName (display compiler)) vr
+      [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
 
@@ -598,7 +597,7 @@ checkFields pkg =
     internalLibDeps =
       [ dep
       | bi <- allBuildInfo pkg
-      , dep@(Dependency name _) <- targetBuildDepends bi
+      , dep@(Dependency name _ _) <- targetBuildDepends bi
       , name `elem` internalLibraries
       ]
 
@@ -611,14 +610,14 @@ checkFields pkg =
 
     depInternalLibraryWithExtraVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(Dependency _ versionRange _) <- internalLibDeps
       , not $ isAnyVersion versionRange
       , packageVersion pkg `withinRange` versionRange
       ]
 
     depInternalLibraryWithImpossibleVersion =
       [ dep
-      | dep@(Dependency _ versionRange) <- internalLibDeps
+      | dep@(Dependency _ versionRange _) <- internalLibDeps
       , not $ packageVersion pkg `withinRange` versionRange
       ]
 
@@ -676,7 +675,7 @@ checkOldLicense pkg lic = catMaybes
         PackageBuildWarning $
              quote ("license: " ++ l) ++ " is not a recognised license. The "
           ++ "known licenses are: "
-          ++ commaSep (map display knownLicenses)
+          ++ commaSep (map prettyShow knownLicenses)
       _ -> Nothing
 
   , check (lic == BSD4) $
@@ -688,9 +687,9 @@ checkOldLicense pkg lic = catMaybes
   , case unknownLicenseVersion (lic) of
       Just knownVersions -> Just $
         PackageDistSuspicious $
-             "'license: " ++ display (lic) ++ "' is not a known "
+             "'license: " ++ prettyShow (lic) ++ "' is not a known "
           ++ "version of that license. The known versions are "
-          ++ commaSep (map display knownVersions)
+          ++ commaSep (map prettyShow knownVersions)
           ++ ". If this is not a mistake and you think it should be a known "
           ++ "version then please file a ticket."
       _ -> Nothing
@@ -762,86 +761,97 @@ checkSourceRepos pkg =
 
 --TODO: check location looks like a URL for some repo types.
 
-checkGhcOptions :: PackageDescription -> [PackageCheck]
-checkGhcOptions pkg =
+-- | Checks GHC options from all ghc-*-options fields in the given
+-- PackageDescription and reports commonly misused or non-portable flags
+checkAllGhcOptions :: PackageDescription -> [PackageCheck]
+checkAllGhcOptions pkg =
+    checkGhcOptions "ghc-options" (hcOptions GHC) pkg
+ ++ checkGhcOptions "ghc-prof-options" (hcProfOptions GHC) pkg
+ ++ checkGhcOptions "ghc-shared-options" (hcSharedOptions GHC) pkg
+
+-- | Extracts GHC options belonging to the given field from the given
+-- PackageDescription using given function and checks them for commonly misused
+-- or non-portable flags
+checkGhcOptions :: String -> (BuildInfo -> [String]) -> PackageDescription -> [PackageCheck]
+checkGhcOptions fieldName getOptions pkg =
   catMaybes [
 
     checkFlags ["-fasm"] $
       PackageDistInexcusable $
-           "'ghc-options: -fasm' is unnecessary and will not work on CPU "
+           "'" ++ fieldName ++ ": -fasm' is unnecessary and will not work on CPU "
         ++ "architectures other than x86, x86-64, ppc or sparc."
 
   , checkFlags ["-fvia-C"] $
       PackageDistSuspicious $
-           "'ghc-options: -fvia-C' is usually unnecessary. If your package "
+           "'" ++ fieldName ++": -fvia-C' is usually unnecessary. If your package "
         ++ "needs -via-C for correctness rather than performance then it "
         ++ "is using the FFI incorrectly and will probably not work with GHC "
         ++ "6.10 or later."
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-           "'ghc-options: -fhpc' is not not necessary. Use the configure flag "
+           "'" ++ fieldName ++ ": -fhpc' is not not necessary. Use the configure flag "
         ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
-           "'ghc-options: -prof' is not necessary and will lead to problems "
+           "'" ++ fieldName ++ ": -prof' is not necessary and will lead to problems "
         ++ "when used on a library. Use the configure flag "
         ++ "--enable-library-profiling and/or --enable-profiling."
 
   , checkFlags ["-o"] $
       PackageBuildWarning $
-           "'ghc-options: -o' is not needed. "
+           "'" ++ fieldName ++ ": -o' is not needed. "
         ++ "The output files are named automatically."
 
   , checkFlags ["-hide-package"] $
       PackageBuildWarning $
-      "'ghc-options: -hide-package' is never needed. "
+      "'" ++ fieldName ++ ": -hide-package' is never needed. "
       ++ "Cabal hides all packages."
 
   , checkFlags ["--make"] $
       PackageBuildWarning $
-      "'ghc-options: --make' is never needed. Cabal uses this automatically."
+      "'" ++ fieldName ++ ": --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
       PackageDistSuspicious $
-      "'ghc-options: -main-is' is not portable."
+      "'" ++ fieldName ++ ": -main-is' is not portable."
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O0' is not needed. "
+      "'" ++ fieldName ++ ": -O0' is not needed. "
       ++ "Use the --disable-optimization configure flag."
 
   , checkFlags [ "-O", "-O1"] $
       PackageDistInexcusable $
-      "'ghc-options: -O' is not needed. "
+      "'" ++ fieldName ++ ": -O' is not needed. "
       ++ "Cabal automatically adds the '-O' flag. "
       ++ "Setting it yourself interferes with the --disable-optimization flag."
 
   , checkFlags ["-O2"] $
       PackageDistSuspiciousWarn $
-      "'ghc-options: -O2' is rarely needed. "
+      "'" ++ fieldName ++ ": -O2' is rarely needed. "
       ++ "Check that it is giving a real benefit "
       ++ "and not just imposing longer compile times on your users."
 
   , checkFlags ["-split-sections"] $
       PackageBuildWarning $
-        "'ghc-options: -split-sections' is not needed. "
+        "'" ++ fieldName ++ ": -split-sections' is not needed. "
         ++ "Use the --enable-split-sections configure flag."
 
   , checkFlags ["-split-objs"] $
       PackageBuildWarning $
-        "'ghc-options: -split-objs' is not needed. "
+        "'" ++ fieldName ++ ": -split-objs' is not needed. "
         ++ "Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
       PackageDistInexcusable $
-           "'ghc-options: -optl-Wl,-s' is not needed and is not portable to all"
+           "'" ++ fieldName ++ ": -optl-Wl,-s' is not needed and is not portable to all"
         ++ " operating systems. Cabal 1.4 and later automatically strip"
         ++ " executables. Cabal also has a flag --disable-executable-stripping"
         ++ " which is necessary when building packages for some Linux"
@@ -849,67 +859,64 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious $
-        "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
+        "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
         ++ "the 'extensions' field."
 
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -threaded' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check ("-rtsopts" `elem` lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -rtsopts' has no effect for libraries. It should "
+           "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
         ++ "only be used for executables."
 
   , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
       PackageBuildWarning $
-           "'ghc-options: -with-rtsopts' has no effect for libraries. It "
+           "'" ++ fieldName ++ ": -with-rtsopts' has no effect for libraries. It "
         ++ "should only be used for executables."
 
-  , checkAlternatives "ghc-options" "extensions"
-      [ (flag, display extension) | flag <- all_ghc_options
+  , checkAlternatives fieldName "extensions"
+      [ (flag, prettyShow extension) | flag <- all_ghc_options
                                   , Just extension <- [ghcExtension flag] ]
 
-  , checkAlternatives "ghc-options" "extensions"
+  , checkAlternatives fieldName "extensions"
       [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "cpp-options" $
+  , checkAlternatives fieldName "cpp-options" $
          [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
       ++ [ (flag, flag) | flag@('-':'U':_) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "include-dirs"
+  , checkAlternatives fieldName "include-dirs"
       [ (flag, dir) | flag@('-':'I':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-libraries"
+  , checkAlternatives fieldName "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "extra-lib-dirs"
+  , checkAlternatives fieldName "extra-lib-dirs"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
 
-  , checkAlternatives "ghc-options" "frameworks"
+  , checkAlternatives fieldName "frameworks"
       [ (flag, fmwk) | (flag@"-framework", fmwk) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
 
-  , checkAlternatives "ghc-options" "extra-framework-dirs"
+  , checkAlternatives fieldName "extra-framework-dirs"
       [ (flag, dir) | (flag@"-framework-path", dir) <-
            zip all_ghc_options (safeTail all_ghc_options) ]
   ]
 
   where
-    all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo)
+    all_ghc_options    = concatMap getOptions (allBuildInfo pkg)
+    lib_ghc_options    = concatMap (getOptions . libBuildInfo)
                          (allLibraries pkg)
-    get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
-                         ++ hcSharedOptions GHC bi
-
-    test_ghc_options      = concatMap (get_ghc_options . testBuildInfo)
+    test_ghc_options      = concatMap (getOptions . testBuildInfo)
                             (testSuites pkg)
-    benchmark_ghc_options = concatMap (get_ghc_options . benchmarkBuildInfo)
+    benchmark_ghc_options = concatMap (getOptions . benchmarkBuildInfo)
                             (benchmarks pkg)
     test_and_benchmark_ghc_options     = test_ghc_options ++
                                          benchmark_ghc_options
-    non_test_and_benchmark_ghc_options = concatMap get_ghc_options
+    non_test_and_benchmark_ghc_options = concatMap getOptions
                                          (allBuildInfo (pkg { testSuites = []
                                                             , benchmarks = []
                                                             }))
@@ -1050,7 +1057,7 @@ checkPaths pkg =
       ++ "manager). In addition the layout of the 'dist' directory is subject "
       ++ "to change in future versions of Cabal."
   | bi <- allBuildInfo pkg
-  , (GHC, flags) <- options bi
+  , (GHC, flags) <- perCompilerFlavorToList $ options bi
   , path <- flags
   , isInsideDist path ]
   ++
@@ -1123,7 +1130,7 @@ checkCabalVersion pkg =
       PackageBuildWarning $
            "Packages relying on Cabal 1.10 or later must only specify a "
         ++ "version range of the form 'cabal-version: >= x.y'. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+        ++ "'cabal-version: >= " ++ prettyShow (specVersion pkg) ++ "'."
 
     -- check syntax of cabal-version field
   , check (specVersion pkg < mkVersion [1,9]
@@ -1131,7 +1138,7 @@ checkCabalVersion pkg =
       PackageDistSuspicious $
            "It is recommended that the 'cabal-version' field only specify a "
         ++ "version range of the form '>= x.y'. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'. "
+        ++ "'cabal-version: >= " ++ prettyShow (specVersion pkg) ++ "'. "
         ++ "Tools based on Cabal 1.10 and later will ignore upper bounds."
 
     -- check syntax of cabal-version field
@@ -1139,7 +1146,7 @@ checkCabalVersion pkg =
       PackageBuildWarning $
            "With Cabal 1.10 or earlier, the 'cabal-version' field must use "
         ++ "range syntax rather than a simple version number. Use "
-        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+        ++ "'cabal-version: >= " ++ prettyShow (specVersion pkg) ++ "'."
 
     -- check syntax of cabal-version field
   , check (specVersion pkg >= mkVersion [1,12]
@@ -1148,7 +1155,7 @@ checkCabalVersion pkg =
            "Packages relying on Cabal 1.12 or later should specify a "
         ++ "specific version of the Cabal spec of the form "
         ++ "'cabal-version: x.y'. "
-        ++ "Use 'cabal-version: " ++ display (specVersion pkg) ++ "'."
+        ++ "Use 'cabal-version: " ++ prettyShow (specVersion pkg) ++ "'."
 
     -- check use of test suite sections
   , checkVersion [1,8] (not (null $ testSuites pkg)) $
@@ -1239,24 +1246,24 @@ checkCabalVersion pkg =
   , checkVersion [1,6] (not (null depsUsingWildcardSyntax)) $
       PackageDistInexcusable $
            "The package uses wildcard syntax in the 'build-depends' field: "
-        ++ commaSep (map display depsUsingWildcardSyntax)
+        ++ commaSep (map prettyShow depsUsingWildcardSyntax)
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- depsUsingWildcardSyntax ]
+           [ prettyShow (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- depsUsingWildcardSyntax ]
 
     -- check use of "build-depends: foo ^>= 1.2.3" syntax
   , checkVersion [2,0] (not (null depsUsingMajorBoundSyntax)) $
       PackageDistInexcusable $
            "The package uses major bounded version syntax in the "
         ++ "'build-depends' field: "
-        ++ commaSep (map display depsUsingMajorBoundSyntax)
+        ++ commaSep (map prettyShow depsUsingMajorBoundSyntax)
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: 2.0'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateMajorBoundSyntax versionRange))
-           | Dependency name versionRange <- depsUsingMajorBoundSyntax ]
+           [ prettyShow (Dependency name (eliminateMajorBoundSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- depsUsingMajorBoundSyntax ]
 
   , checkVersion [2,1] (any (not . null)
                         (concatMap buildInfoField
@@ -1268,6 +1275,14 @@ checkCabalVersion pkg =
            "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
         ++ " and 'extra-library-flavours' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.1'."
+
+  , checkVersion [2,5] (any (not . null) $ buildInfoField extraDynLibFlavours) $
+      PackageDistInexcusable $
+           "The use of 'extra-dynamic-library-flavours' requires the package "
+        ++ " to specify at least 'cabal-version: >= 2.5'. The flavours are: "
+        ++ commaSep [ flav
+                    | flavs <- buildInfoField extraDynLibFlavours
+                    , flav <- flavs ]
 
   , checkVersion [2,1] (any (not . null)
                         (buildInfoField virtualModules)) $
@@ -1288,12 +1303,12 @@ checkCabalVersion pkg =
   , checkVersion [1,6] (not (null testedWithUsingWildcardSyntax)) $
       PackageDistInexcusable $
            "The package uses wildcard syntax in the 'tested-with' field: "
-        ++ commaSep (map display testedWithUsingWildcardSyntax)
+        ++ commaSep (map prettyShow testedWithUsingWildcardSyntax)
         ++ ". To use this new syntax the package need to specify at least "
         ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
-           [ display (Dependency name (eliminateWildcardSyntax versionRange))
-           | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
+           [ prettyShow (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
+           | Dependency name versionRange _ <- testedWithUsingWildcardSyntax ]
 
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
@@ -1306,7 +1321,7 @@ checkCabalVersion pkg =
   , checkVersion [1,2,3] (not (null mentionedExtensionsThatNeedCabal12)) $
       PackageDistInexcusable $
            "Unfortunately the language extensions "
-        ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal12)
+        ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal12)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.2.3'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
@@ -1315,7 +1330,7 @@ checkCabalVersion pkg =
   , checkVersion [1,4] (not (null mentionedExtensionsThatNeedCabal14)) $
       PackageDistInexcusable $
            "Unfortunately the language extensions "
-        ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal14)
+        ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal14)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
@@ -1367,11 +1382,11 @@ checkCabalVersion pkg =
     buildInfoField field         = map field (allBuildInfo pkg)
 
     versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+        [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
-        [ Dependency (mkPackageName (display compiler)) vr
+        [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
         | (compiler, vr) <- testedWith pkg
         , usesNewVersionRangeSyntax vr ]
 
@@ -1395,16 +1410,16 @@ checkCabalVersion pkg =
         alg (VersionRangeParensF _) = 3
         alg _ = 1 :: Int
 
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- allBuildDepends pkg
+    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
                                       , usesMajorBoundSyntax vr ]
 
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
 
     testedWithUsingWildcardSyntax =
-      [ Dependency (mkPackageName (display compiler)) vr
+      [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
       | (compiler, vr) <- testedWith pkg
       , usesWildcardSyntax vr ]
 
@@ -1493,8 +1508,8 @@ checkCabalVersion pkg =
     allModuleNamesAutogen = concatMap autogenModules (allBuildInfo pkg)
 
 displayRawDependency :: Dependency -> String
-displayRawDependency (Dependency pkg vr) =
-  display pkg ++ " " ++ display vr
+displayRawDependency (Dependency pkg vr _sublibs) =
+  prettyShow pkg ++ " " ++ prettyShow vr
 
 
 -- ------------------------------------------------------------
@@ -1545,7 +1560,7 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency pname vr <- allBuildDepends pkg'
+            [ vr | Dependency pname vr _ <- allBuildDepends pkg'
                  , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,
@@ -1692,41 +1707,53 @@ checkPathsModuleExtensions pd
         strings = EnableExtension OverloadedStrings
         lists   = EnableExtension OverloadedLists
 
+-- | Checks GHC options from all ghc-*-options fields from the given BuildInfo
+-- and reports flags that are OK during development process, but are
+-- unacceptable in a distrubuted package
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
+    checkDevelopmentOnlyFlagsOptions "ghc-options" (hcOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-prof-options" (hcProfOptions GHC bi)
+ ++ checkDevelopmentOnlyFlagsOptions "ghc-shared-options" (hcSharedOptions GHC bi)
+
+-- | Checks the given list of flags belonging to the given field and reports
+-- flags that are OK during development process, but are unacceptable in a
+-- distributed package
+checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
+checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
     check has_WerrorWall $
       PackageDistInexcusable $
-           "'ghc-options: -Wall -Werror' makes the package very easy to "
+           "'" ++ fieldName ++ ": -Wall -Werror' makes the package very easy to "
         ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
+        ++ "add new warnings. Use just '" ++ fieldName ++ ": -Wall' instead."
         ++ extraExplanation
 
   , check (not has_WerrorWall && has_Werror) $
       PackageDistInexcusable $
-           "'ghc-options: -Werror' makes the package easy to "
+           "'" ++ fieldName ++ ": -Werror' makes the package easy to "
         ++ "break with future GHC versions because new GHC versions often "
         ++ "add new warnings. "
         ++ extraExplanation
 
   , check (has_J) $
       PackageDistInexcusable $
-           "'ghc-options: -j[N]' can make sense for specific user's setup,"
+           "'" ++ fieldName ++ ": -j[N]' can make sense for specific user's setup,"
         ++ " but it is not appropriate for a distributed package."
         ++ extraExplanation
 
   , checkFlags ["-fdefer-type-errors"] $
       PackageDistInexcusable $
-           "'ghc-options: -fdefer-type-errors' is fine during development but "
+           "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development but "
         ++ "is not appropriate for a distributed package. "
         ++ extraExplanation
 
     -- -dynamic is not a debug flag
   , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
-           ghc_options) $
+           ghcOptions) $
       PackageDistInexcusable $
-           "'ghc-options: -d*' debug flags are not appropriate "
+           "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
         ++ "for a distributed package. "
         ++ extraExplanation
 
@@ -1734,7 +1761,7 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
                "-fprof-cafs", "-fno-prof-count-entries",
                "-auto-all", "-auto", "-caf-all"] $
       PackageDistSuspicious $
-           "'ghc-options/ghc-prof-options: -fprof*' profiling flags are typically not "
+           "'" ++ fieldName ++ ": -fprof*' profiling flags are typically not "
         ++ "appropriate for a distributed library package. These flags are "
         ++ "useful to profile this package, but when profiling other packages "
         ++ "that use this one these flags clutter the profile output with "
@@ -1750,21 +1777,18 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
       ++ "False') and enable that flag during development."
 
     has_WerrorWall   = has_Werror && ( has_Wall || has_W )
-    has_Werror       = "-Werror" `elem` ghc_options
-    has_Wall         = "-Wall"   `elem` ghc_options
-    has_W            = "-W"      `elem` ghc_options
+    has_Werror       = "-Werror" `elem` ghcOptions
+    has_Wall         = "-Wall"   `elem` ghcOptions
+    has_W            = "-W"      `elem` ghcOptions
     has_J            = any
                          (\o -> case o of
                            "-j"                -> True
                            ('-' : 'j' : d : _) -> isDigit d
                            _                   -> False
                          )
-                         ghc_options
-    ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
-                       ++ hcSharedOptions GHC bi
-
+                         ghcOptions
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags flags = check (any (`elem` flags) ghc_options)
+    checkFlags flags = check (any (`elem` flags) ghcOptions)
 
 checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
 checkDevelopmentOnlyFlags pkg =

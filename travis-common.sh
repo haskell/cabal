@@ -2,6 +2,7 @@ set -e
 
 HACKAGE_REPO_TOOL_VERSION="0.1.1.1"
 CABAL_VERSION="2.5.0.0"
+CABAL_INSTALL_VERSION="2.5.0.0"
 
 if [ "$TRAVIS_OS_NAME" = "linux" ]; then
     ARCH="x86_64-linux"
@@ -13,10 +14,10 @@ CABAL_STORE_DB="${HOME}/.cabal/store/ghc-${GHCVER}/package.db"
 CABAL_LOCAL_DB="${TRAVIS_BUILD_DIR}/dist-newstyle/packagedb/ghc-${GHCVER}"
 CABAL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/Cabal-${CABAL_VERSION}"
 CABAL_TESTSUITE_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-testsuite-${CABAL_VERSION}"
-CABAL_INSTALL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-install-${CABAL_VERSION}"
+CABAL_INSTALL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-install-${CABAL_INSTALL_VERSION}"
 SOLVER_BENCHMARKS_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/solver-benchmarks-${CABAL_VERSION}"
-HACKAGE_REPO_TOOL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}/c/hackage-repo-tool"
-CABAL_INSTALL_EXE=${CABAL_INSTALL_BDIR}/c/cabal/build/cabal/cabal
+HACKAGE_REPO_TOOL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}/x/hackage-repo-tool"
+CABAL_INSTALL_EXE=${CABAL_INSTALL_BDIR}/x/cabal/build/cabal/cabal
 
 # ---------------------------------------------------------------------
 # Timing / diagnostic output

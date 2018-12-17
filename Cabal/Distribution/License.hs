@@ -52,14 +52,12 @@ module Distribution.License (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Version
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Data.Map.Strict                 as Map
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Distribution.SPDX               as SPDX
 import qualified Text.PrettyPrint                as Disp
 
@@ -244,32 +242,11 @@ instance Parsec License where
       ("AllRightsReserved", Nothing)  -> AllRightsReserved
       ("OtherLicense",      Nothing)  -> OtherLicense
       _                               -> UnknownLicense $ name ++
-                                         maybe "" (('-':) . display) version
-
-instance Text License where
-  parse = do
-    name    <- Parse.munch1 (\c -> isAlphaNum c && c /= '-')
-    version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
-    return $! case (name, version :: Maybe Version) of
-      ("GPL",               _      ) -> GPL  version
-      ("LGPL",              _      ) -> LGPL version
-      ("AGPL",              _      ) -> AGPL version
-      ("BSD2",              Nothing) -> BSD2
-      ("BSD3",              Nothing) -> BSD3
-      ("BSD4",              Nothing) -> BSD4
-      ("ISC",               Nothing) -> ISC
-      ("MIT",               Nothing) -> MIT
-      ("MPL",         Just version') -> MPL version'
-      ("Apache",            _      ) -> Apache version
-      ("PublicDomain",      Nothing) -> PublicDomain
-      ("AllRightsReserved", Nothing) -> AllRightsReserved
-      ("OtherLicense",      Nothing) -> OtherLicense
-      _                              -> UnknownLicense $ name ++
-                                        maybe "" (('-':) . display) version
+                                         maybe "" (('-':) . prettyShow) version
 
 dispOptVersion :: Maybe Version -> Disp.Doc
 dispOptVersion Nothing  = Disp.empty
 dispOptVersion (Just v) = dispVersion v
 
 dispVersion :: Version -> Disp.Doc
-dispVersion v = Disp.char '-' <<>> disp v
+dispVersion v = Disp.char '-' <<>> pretty v

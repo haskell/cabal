@@ -27,6 +27,7 @@ import Distribution.Client.Setup
   , GlobalFlags
   , InstallFlags
   )
+import qualified Distribution.Client.Setup as Client
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
   , runProjectPreBuildPhase
@@ -73,6 +74,7 @@ import Distribution.Simple.GHC
   , GhcImplInfo(supportsPkgEnvFiles) )
 import Distribution.Simple.Setup
   ( HaddockFlags
+  , TestFlags
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
@@ -86,8 +88,6 @@ import Distribution.Verbosity
   , normal
   )
 
-import qualified Distribution.Client.CmdBuild as CmdBuild
-
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
@@ -95,7 +95,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Map as M
 
-execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 execCommand = CommandUI
   { commandName = "v2-exec"
   , commandSynopsis = "Give a command access to the store."
@@ -116,13 +116,13 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandOptions = commandOptions CmdBuild.buildCommand
-  , commandDefaultFlags = commandDefaultFlags CmdBuild.buildCommand
+  , commandOptions = commandOptions Client.installCommand
+  , commandDefaultFlags = commandDefaultFlags Client.installCommand
   }
 
-execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
            -> [String] -> GlobalFlags -> IO ()
-execAction (configFlags, configExFlags, installFlags, haddockFlags)
+execAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
            extraArgs globalFlags = do
 
   baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -194,7 +194,7 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
     withOverrides env args program = program
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}

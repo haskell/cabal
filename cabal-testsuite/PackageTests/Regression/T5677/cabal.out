@@ -1,0 +1,29 @@
+# cabal new-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - impl-0 (lib) (first run)
+ - sig-0 (lib) (first run)
+ - prog-0 (lib) (first run)
+ - prog-0 (lib with Sig=impl-0-inplace:Sig) (first run)
+ - prog-0 (exe:prog) (first run)
+Configuring library for impl-0..
+Preprocessing library for impl-0..
+Building library for impl-0..
+Configuring library for sig-0..
+Preprocessing library for sig-0..
+Building library instantiated with Sig = <Sig>
+for sig-0..
+Configuring library for prog-0..
+Preprocessing library for prog-0..
+Building library instantiated with Sig = <Sig>
+for prog-0..
+Configuring library instantiated with Sig = impl-0-inplace:Sig
+for prog-0..
+Preprocessing library for prog-0..
+Building library instantiated with Sig = impl-0-inplace:Sig
+for prog-0..
+Configuring executable 'prog' for prog-0..
+Warning: The package has an extraneous version range for a dependency on an internal library: prog -any && ==0. This version range includes the current package but isn't needed as the current package's library will always be used.
+Preprocessing executable 'prog' for prog-0..
+Building executable 'prog' for prog-0..

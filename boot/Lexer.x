@@ -1,7 +1,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Parsec.Lexer
+-- Module      :  Distribution.Fields.Lexer
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
@@ -14,7 +14,7 @@
 {-# LANGUAGE PatternGuards #-}
 #endif
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-module Distribution.Parsec.Lexer
+module Distribution.Fields.Lexer
   (ltest, lexToken, Token(..), LToken(..)
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
@@ -35,8 +35,8 @@ import Prelude ()
 import qualified Prelude as Prelude
 import Distribution.Compat.Prelude
 
-import Distribution.Parsec.LexerMonad
-import Distribution.Parsec.Common (Position (..), incPos, retPos)
+import Distribution.Fields.LexerMonad
+import Distribution.Parsec.Position (Position (..), incPos, retPos)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B.Char8

@@ -86,6 +86,7 @@ module Distribution.PackageDescription (
         allBuildDepends,
         enabledBuildDepends,
         ComponentName(..),
+        LibraryName(..),
         defaultLibName,
         HookedBuildInfo,
         emptyHookedBuildInfo,
@@ -98,7 +99,7 @@ module Distribution.PackageDescription (
         FlagAssignment, mkFlagAssignment, unFlagAssignment,
         nullFlagAssignment, showFlagValue,
         diffFlagAssignment, lookupFlagAssignment, insertFlagAssignment,
-        dispFlagAssignment, parseFlagAssignment, parsecFlagAssignment,
+        dispFlagAssignment, parsecFlagAssignment,
         findDuplicateFlagAssignments,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
@@ -135,5 +136,6 @@ import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
 import Distribution.Types.HookedBuildInfo
 import Distribution.Types.SourceRepo

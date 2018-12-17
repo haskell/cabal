@@ -7,7 +7,6 @@ module Distribution.Pretty (
     showFilePath,
     showToken,
     showFreeText,
-    indentWith,
     -- * Deprecated
     Separator,
     ) where
@@ -89,7 +88,3 @@ lines_ s  =
     in  l : case s' of
         []      -> []
         (_:s'') -> lines_ s''
-
--- | the indentation used for pretty printing
-indentWith :: Int
-indentWith = 4

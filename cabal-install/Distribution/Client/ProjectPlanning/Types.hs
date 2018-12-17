@@ -54,6 +54,8 @@ module Distribution.Client.ProjectPlanning.Types (
     isTestComponentTarget,
     isBenchComponentTarget,
 
+    componentOptionalStanza,
+
     -- * Setup script
     SetupScriptStyle(..),
   ) where
@@ -74,7 +76,7 @@ import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
 import           Distribution.Verbosity
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
@@ -87,10 +89,11 @@ import           Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import qualified Distribution.Simple.BuildTarget as Cabal
 import           Distribution.Simple.Program
 import           Distribution.ModuleName (ModuleName)
-import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
+import           Distribution.Simple.LocalBuildInfo
+                   ( ComponentName(..), LibraryName(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
-import           Distribution.Simple.Setup (HaddockTarget)
+import           Distribution.Simple.Setup (HaddockTarget, TestShowDetails)
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -285,6 +288,13 @@ data ElaboratedConfiguredPackage
        elabHaddockHscolourCss    :: Maybe FilePath,
        elabHaddockContents       :: Maybe PathTemplate,
 
+       elabTestMachineLog        :: Maybe PathTemplate,
+       elabTestHumanLog          :: Maybe PathTemplate,
+       elabTestShowDetails       :: Maybe TestShowDetails,
+       elabTestKeepTix           :: Bool,
+       elabTestFailWhenNoTestSuites :: Bool,
+       elabTestTestOptions       :: [PathTemplate],
+
        -- Setup.hs related things:
 
        -- | One of four modes for how we build and interact with the Setup.hs
@@ -298,6 +308,7 @@ data ElaboratedConfiguredPackage
        elabSetupScriptCliVersion :: Version,
 
        -- Build time related:
+       elabConfigureTargets      :: [ComponentTarget],
        elabBuildTargets          :: [ComponentTarget],
        elabTestTargets           :: [ComponentTarget],
        elabBenchTargets          :: [ComponentTarget],
@@ -388,8 +399,7 @@ elabRequiresRegistration elab =
     -- single file
     is_lib_target (ComponentTarget cn WholeComponent) = is_lib cn
     is_lib_target _ = False
-    is_lib CLibName = True
-    is_lib (CSubLibName _) = True
+    is_lib (CLibName _) = True
     is_lib _ = False
 
 -- | Construct the environment needed for the data files to work.
@@ -460,7 +470,7 @@ instance Binary ElaboratedPackageOrComponent
 elabComponentName :: ElaboratedConfiguredPackage -> Maybe ComponentName
 elabComponentName elab =
     case elabPkgOrComp elab of
-        ElabPackage _      -> Just CLibName -- there could be more, but default this
+        ElabPackage _      -> Just $ CLibName LMainLibName -- there could be more, but default this
         ElabComponent comp -> compComponentName comp
 
 -- | A user-friendly descriptor for an 'ElaboratedConfiguredPackage'.
@@ -472,7 +482,7 @@ elabConfiguredName verbosity elab
         ElabComponent comp ->
             case compComponentName comp of
                 Nothing -> "setup from "
-                Just CLibName -> ""
+                Just (CLibName LMainLibName) -> ""
                 Just cname -> display cname ++ " from ")
       ++ display (packageId elab)
     | otherwise
@@ -776,8 +786,13 @@ isExeComponentTarget (ComponentTarget (CExeName _) _ ) = True
 isExeComponentTarget _                                 = False
 
 isSubLibComponentTarget :: ComponentTarget -> Bool
-isSubLibComponentTarget (ComponentTarget (CSubLibName _) _) = True
-isSubLibComponentTarget _                                   = False
+isSubLibComponentTarget (ComponentTarget (CLibName (LSubLibName _)) _) = True
+isSubLibComponentTarget _                                              = False
+
+componentOptionalStanza :: CD.Component -> Maybe OptionalStanza
+componentOptionalStanza (CD.ComponentTest _)  = Just TestStanzas
+componentOptionalStanza (CD.ComponentBench _) = Just BenchStanzas
+componentOptionalStanza _                     = Nothing
 
 ---------------------------
 -- Setup.hs script policy
@@ -807,4 +822,3 @@ data SetupScriptStyle = SetupCustomExplicitDeps
   deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SetupScriptStyle
-

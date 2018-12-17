@@ -55,7 +55,7 @@ import Distribution.Simple.Utils
          ( die', notice, debug, writeFileAtomic )
 import Distribution.System
          ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
@@ -175,6 +175,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setCountConflicts countConflicts
 
+      . setMinimizeConflictSet minimizeConflictSet
+
       . setShadowPkgs shadowPkgs
 
       . setStrongFlags strongFlags
@@ -205,6 +207,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
     reorderGoals     = fromFlag (freezeReorderGoals     freezeFlags)
     countConflicts   = fromFlag (freezeCountConflicts   freezeFlags)
+    minimizeConflictSet = fromFlag (freezeMinimizeConflictSet freezeFlags)
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     strongFlags      = fromFlag (freezeStrongFlags      freezeFlags)

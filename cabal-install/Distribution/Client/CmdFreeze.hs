@@ -33,7 +33,7 @@ import Distribution.PackageDescription
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText )
 import Distribution.Verbosity
@@ -49,7 +49,7 @@ import Distribution.Simple.Command
 import qualified Distribution.Client.Setup as Client
 
 
-freezeCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+freezeCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 freezeCommand = Client.installCommand {
   commandName         = "v2-freeze",
   commandSynopsis     = "Freeze dependencies.",
@@ -99,9 +99,9 @@ freezeCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-freezeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+freezeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
              -> [String] -> GlobalFlags -> IO ()
-freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
+freezeAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
              extraArgs globalFlags = do
 
     unless (null extraArgs) $
@@ -130,7 +130,7 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 
 
 

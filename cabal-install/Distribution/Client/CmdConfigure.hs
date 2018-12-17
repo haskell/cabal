@@ -16,7 +16,7 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, fromFlagOrDefault )
 import Distribution.Verbosity
          ( normal )
 
@@ -27,7 +27,7 @@ import Distribution.Simple.Utils
 import qualified Distribution.Client.Setup as Client
 
 configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
-                              ,InstallFlags, HaddockFlags)
+                              ,InstallFlags, HaddockFlags, TestFlags)
 configureCommand = Client.installCommand {
   commandName         = "v2-configure",
   commandSynopsis     = "Add extra project configuration",
@@ -78,9 +78,9 @@ configureCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
                 -> [String] -> GlobalFlags -> IO ()
-configureAction (configFlags, configExFlags, installFlags, haddockFlags)
+configureAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
@@ -121,5 +121,5 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 

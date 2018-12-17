@@ -30,9 +30,12 @@ module Distribution.Compiler (
   buildCompilerId,
   buildCompilerFlavor,
   defaultCompilerFlavor,
-  parseCompilerFlavorCompat,
   classifyCompilerFlavor,
   knownCompilerFlavors,
+
+  -- * Per compiler flavor
+  PerCompilerFlavor (..),
+  perCompilerFlavorToList,
 
   -- * Compiler id
   CompilerId(..),
@@ -51,10 +54,8 @@ import Language.Haskell.Extension
 import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified System.Info (compilerName, compilerVersion)
-import Distribution.Parsec.Class (Parsec (..))
-import Distribution.Pretty (Pretty (..))
-import Distribution.Text (Text(..), display)
-import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Parsec (Parsec (..))
+import Distribution.Pretty (Pretty (..), prettyShow)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -85,43 +86,12 @@ instance Parsec CompilerFlavor where
           cs <- P.munch1 isAlphaNum
           if all isDigit cs then fail "all digits compiler name" else return cs
 
-instance Text CompilerFlavor where
-  parse = do
-    comp <- Parse.munch1 isAlphaNum
-    when (all isDigit comp) Parse.pfail
-    return (classifyCompilerFlavor comp)
-
 classifyCompilerFlavor :: String -> CompilerFlavor
 classifyCompilerFlavor s =
   fromMaybe (OtherCompiler s) $ lookup (lowercase s) compilerMap
   where
-    compilerMap = [ (lowercase (display compiler), compiler)
+    compilerMap = [ (lowercase (prettyShow compiler), compiler)
                   | compiler <- knownCompilerFlavors ]
-
-
---TODO: In some future release, remove 'parseCompilerFlavorCompat' and use
--- ordinary 'parse'. Also add ("nhc", NHC) to the above 'compilerMap'.
-
--- | Like 'classifyCompilerFlavor' but compatible with the old ReadS parser.
---
--- It is compatible in the sense that it accepts only the same strings,
--- eg "GHC" but not "ghc". However other strings get mapped to 'OtherCompiler'.
--- The point of this is that we do not allow extra valid values that would
--- upset older Cabal versions that had a stricter parser however we cope with
--- new values more gracefully so that we'll be able to introduce new value in
--- future without breaking things so much.
---
-parseCompilerFlavorCompat :: Parse.ReadP r CompilerFlavor
-parseCompilerFlavorCompat = do
-  comp <- Parse.munch1 isAlphaNum
-  when (all isDigit comp) Parse.pfail
-  case lookup comp compilerMap of
-    Just compiler -> return compiler
-    Nothing       -> return (OtherCompiler comp)
-  where
-    compilerMap = [ (show compiler, compiler)
-                  | compiler <- knownCompilerFlavors
-                  , compiler /= YHC ]
 
 buildCompilerFlavor :: CompilerFlavor
 buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
@@ -143,6 +113,31 @@ defaultCompilerFlavor = case buildCompilerFlavor of
   OtherCompiler _ -> Nothing
   _               -> Just buildCompilerFlavor
 
+-------------------------------------------------------------------------------
+-- Per compiler data
+-------------------------------------------------------------------------------
+
+-- | 'PerCompilerFlavor' carries only info per GHC and GHCJS
+--
+-- Cabal parses only @ghc-options@ and @ghcjs-options@, others are omitted.
+--
+data PerCompilerFlavor v = PerCompilerFlavor v v
+  deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary a => Binary (PerCompilerFlavor a)
+instance NFData a => NFData (PerCompilerFlavor a)
+
+perCompilerFlavorToList :: PerCompilerFlavor v -> [(CompilerFlavor, v)]
+perCompilerFlavorToList (PerCompilerFlavor a b) = [(GHC, a), (GHCJS, b)]
+
+instance Semigroup a => Semigroup (PerCompilerFlavor a) where
+    PerCompilerFlavor a b <> PerCompilerFlavor a' b' = PerCompilerFlavor
+        (a <> a') (b <> b')
+
+instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
+    mempty = PerCompilerFlavor mempty mempty
+    mappend = (<>)
+
 -- ------------------------------------------------------------
 -- * Compiler Id
 -- ------------------------------------------------------------
@@ -163,12 +158,6 @@ instance Parsec CompilerId where
   parsec = do
     flavour <- parsec
     version <- (P.char '-' >> parsec) <|> return nullVersion
-    return (CompilerId flavour version)
-
-instance Text CompilerId where
-  parse = do
-    flavour <- parse
-    version <- (Parse.char '-' >> parse) Parse.<++ return nullVersion
     return (CompilerId flavour version)
 
 lowercase :: String -> String
@@ -207,12 +196,13 @@ data AbiTag
 
 instance Binary AbiTag
 
-instance Text AbiTag where
-  disp NoAbiTag     = Disp.empty
-  disp (AbiTag tag) = Disp.text tag
+instance Pretty AbiTag where
+  pretty NoAbiTag     = Disp.empty
+  pretty (AbiTag tag) = Disp.text tag
 
-  parse = do
-    tag <- Parse.munch (\c -> isAlphaNum c || c == '_')
+instance Parsec AbiTag where
+  parsec = do
+    tag <- P.munch (\c -> isAlphaNum c || c == '_')
     if null tag then return NoAbiTag else return (AbiTag tag)
 
 abiTagString :: AbiTag -> String

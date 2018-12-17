@@ -24,8 +24,9 @@ import Distribution.Types.MungedPackageName
 import Distribution.Utils.Base62
 import Distribution.Version
 
-import Distribution.Text
-    ( display, simpleParse )
+import Distribution.Pretty
+    ( prettyShow )
+import Distribution.Parsec ( simpleParsec )
 
 -- | This method computes a default, "good enough" 'ComponentId'
 -- for a package.  The intent is that cabal-install (or the user) will
@@ -50,11 +51,11 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
                 -- For safety, include the package + version here
                 -- for GHC 7.10, where just the hash is used as
                 -- the package key
-                    (    display pid
+                    (    prettyShow pid
                       ++ show dep_ipids
                       ++ show flags     )
             | otherwise = ""
-        generated_base = display pid ++ hash_suffix
+        generated_base = prettyShow pid ++ hash_suffix
         explicit_base cid0 = fromPathTemplate (InstallDirs.substPathTemplate env
                                                     (toPathTemplate cid0))
             -- Hack to reuse install dirs machinery
@@ -62,7 +63,7 @@ computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
           where env = packageTemplateEnv pid (mkUnitId "")
         actual_base = case mb_ipid of
                         Flag ipid0 -> explicit_base ipid0
-                        NoFlag | deterministic -> display pid
+                        NoFlag | deterministic -> prettyShow pid
                                | otherwise     -> generated_base
     in case mb_cid of
           Flag cid -> cid
@@ -126,15 +127,15 @@ computeCompatPackageKey
     -> String
 computeCompatPackageKey comp pkg_name pkg_version uid
     | not (packageKeySupported comp) =
-        display pkg_name ++ "-" ++ display pkg_version
+        prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
     | not (unifiedIPIDRequired comp) =
         let str = unUnitId uid -- assume no Backpack support
             mb_verbatim_key
-                = case simpleParse str :: Maybe PackageId of
+                = case simpleParsec str :: Maybe PackageId of
                     -- Something like 'foo-0.1', use it verbatim.
                     -- (NB: hash tags look like tags, so they are parsed,
                     -- so the extra equality check tests if a tag was dropped.)
-                    Just pid0 | display pid0 == str -> Just str
+                    Just pid0 | prettyShow pid0 == str -> Just str
                     _ -> Nothing
             mb_truncated_key
                 = let cand = reverse (takeWhile isAlphaNum (reverse str))
@@ -143,4 +144,4 @@ computeCompatPackageKey comp pkg_name pkg_version uid
                         else Nothing
             rehashed_key = hashToBase62 str
         in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
-    | otherwise = display uid
+    | otherwise = prettyShow uid

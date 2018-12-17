@@ -10,6 +10,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Backpack
+import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens               (Lens', (&), (.~))
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
@@ -17,10 +18,9 @@ import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
 import Distribution.ModuleName
 import Distribution.Package
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Parsec.Newtypes
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
@@ -56,7 +56,8 @@ ipiFieldGrammar
 ipiFieldGrammar = mkInstalledPackageInfo
     -- Deprecated fields
     <$> monoidalFieldAla    "hugs-options"         (alaList' FSep Token)         unitedList
-        ^^^ deprecatedField' "hugs isn't supported anymore"
+        --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
+        ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
     -- Very basic fields: name, version, package-name and lib-name
     <+> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields
@@ -127,8 +128,8 @@ unitedList f s = s <$ f []
 
 showExposedModules :: [ExposedModule] -> Disp.Doc
 showExposedModules xs
-    | all isExposedModule xs = Disp.fsep (map disp xs)
-    | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map disp xs))
+    | all isExposedModule xs = Disp.fsep (map pretty xs)
+    | otherwise = Disp.fsep (Disp.punctuate Disp.comma (map pretty xs))
     where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 

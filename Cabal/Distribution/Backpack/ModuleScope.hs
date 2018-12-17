@@ -23,10 +23,11 @@ import Distribution.ModuleName
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.PackageName
 import Distribution.Types.ComponentName
+import Distribution.Types.LibraryName
+import Distribution.Pretty
 
 import Distribution.Backpack
 import Distribution.Backpack.ModSubst
-import Distribution.Text
 
 import qualified Data.Map as Map
 import Text.PrettyPrint
@@ -96,15 +97,15 @@ data ModuleSource
 -- TODO: Deduplicate this with Distribution.Backpack.UnifyM.ci_msg
 dispModuleSource :: ModuleSource -> Doc
 dispModuleSource (FromMixins pn cn incls)
-  = text "mixins:" <+> dispComponent pn cn <+> disp incls
+  = text "mixins:" <+> dispComponent pn cn <+> pretty incls
 dispModuleSource (FromBuildDepends pn cn)
   = text "build-depends:" <+> dispComponent pn cn
 dispModuleSource (FromExposedModules m)
-  = text "exposed-modules:" <+> disp m
+  = text "exposed-modules:" <+> pretty m
 dispModuleSource (FromOtherModules m)
-  = text "other-modules:" <+> disp m
+  = text "other-modules:" <+> pretty m
 dispModuleSource (FromSignatures m)
-  = text "signatures:" <+> disp m
+  = text "signatures:" <+> pretty m
 
 -- Dependency
 dispComponent :: PackageName -> ComponentName -> Doc
@@ -113,10 +114,10 @@ dispComponent pn cn =
     -- should be clear enough.  To do source syntax, we'd
     -- need to know what the package we're linking is.
     case cn of
-        CLibName -> disp pn
-        CSubLibName ucn -> disp pn <<>> colon <<>> disp ucn
+        CLibName LMainLibName -> pretty pn
+        CLibName (LSubLibName ucn) -> pretty pn <<>> colon <<>> pretty ucn
         -- Case below shouldn't happen
-        _ -> disp pn <+> parens (disp cn)
+        _ -> pretty pn <+> parens (pretty cn)
 
 -- | An 'OpenModule', annotated with where it came from in a Cabal file.
 data WithSource a = WithSource ModuleSource a

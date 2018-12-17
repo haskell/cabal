@@ -222,7 +222,7 @@ checkPackageDbStack verbosity rest
   | GlobalPackageDB `notElem` rest =
   die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation may be lifted in "
-     ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
+     ++ "future, see http://ghc.haskell.org/trac/ghc/ticket/5977"
 checkPackageDbStack verbosity _ =
   die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
@@ -282,7 +282,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       whenProfLib = when (not forRepl && withProfLib lbi)
       whenSharedLib forceShared =
         when (not forRepl &&  (forceShared || withSharedLib lbi))
-      whenGHCiLib = when (not forRepl && withGHCiLib lbi && withVanillaLib lbi)
+      whenGHCiLib = when (not forRepl && withGHCiLib lbi)
       forRepl = maybe False (const True) mReplFlags
       ifReplLib = when forRepl
       replFlags = fromMaybe mempty mReplFlags
@@ -435,6 +435,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         profileLibFilePath = libTargetDir </> mkProfLibName        uid
         sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
+        ghciProfLibFilePath = libTargetDir </> Internal.mkGHCiProfLibName uid
 
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir objExtension True
@@ -457,9 +458,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
           profObjectFiles =
                  hProfObjs
               ++ map (libTargetDir </>) cProfObjs
-          ghciObjFiles =
-                 hObjs
-              ++ map (libTargetDir </>) cObjs
           dynamicObjectFiles =
                  hSharedObjs
               ++ map (libTargetDir </>) cSharedObjs
@@ -483,14 +481,17 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciLibFilePath staticObjectFiles
 
       whenProfLib $ do
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
-
-      whenGHCiLib $ do
-        (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-        Ld.combineObjectFiles verbosity lbi ldProg
-          ghciLibFilePath ghciObjFiles
+        whenGHCiLib $ do
+          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+          Ld.combineObjectFiles verbosity lbi ldProg
+            ghciProfLibFilePath profObjectFiles
 
       whenSharedLib False $
         runGhcjsProg ghcSharedLinkArgs
@@ -713,10 +714,13 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     whenShared  $ copyModuleFiles "dyn_hi"
 
     -- copy the built library files over:
-    whenVanilla $ installOrdinaryNative builtDir targetDir       vanillaLibName
-    whenProf    $ installOrdinaryNative builtDir targetDir       profileLibName
-    whenGHCi    $ installOrdinaryNative builtDir targetDir       ghciLibName
-    whenShared  $ installSharedNative   builtDir dynlibTargetDir sharedLibName
+    whenVanilla $ do
+      installOrdinaryNative builtDir targetDir vanillaLibName
+      whenGHCi $ installOrdinaryNative builtDir targetDir ghciLibName
+    whenProf $ do
+      installOrdinaryNative builtDir targetDir profileLibName
+      whenGHCi $ installOrdinaryNative builtDir targetDir ghciProfLibName
+    whenShared $ installSharedNative builtDir dynlibTargetDir sharedLibName
 
   where
     install isShared isJS srcDir dstDir name = do
@@ -747,6 +751,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
+    ghciProfLibName = Internal.mkGHCiProfLibName uid
     sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id)  uid
 
     hasLib    = not $ null (allLibModules lib clbi)

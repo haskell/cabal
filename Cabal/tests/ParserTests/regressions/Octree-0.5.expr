@@ -9,13 +9,16 @@ GenericPackageDescription
                                                `PackageName "base"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [4,0]`)
-                                                  (EarlierVersion `mkVersion [4,7]`)),
+                                                  (EarlierVersion `mkVersion [4,7]`))
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "AC-Vector"`
-                                               (OrLaterVersion `mkVersion [2,3,0]`),
+                                               (OrLaterVersion `mkVersion [2,3,0]`)
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "QuickCheck"`
-                                               (OrLaterVersion `mkVersion [2,4,0]`)],
+                                               (OrLaterVersion `mkVersion [2,4,0]`)
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["Data","Octree"]`],
                                         libBuildInfo = BuildInfo
@@ -36,6 +39,7 @@ GenericPackageDescription
                                                           defaultExtensions = [],
                                                           defaultLanguage = Nothing,
                                                           extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
                                                           extraFrameworkDirs = [],
                                                           extraGHCiLibs = [],
                                                           extraLibDirs = [],
@@ -51,32 +55,39 @@ GenericPackageDescription
                                                           mixins = [],
                                                           oldExtensions = [EnableExtension
                                                                              ScopedTypeVariables],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [`ModuleName ["Data","Octree","Internal"]`],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [4,0]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [4,7]`)),
+                                                                                        `mkVersion [4,7]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "AC-Vector"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [2,3,0]`),
+                                                                                     `mkVersion [2,3,0]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "QuickCheck"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [2,4,0]`)],
+                                                                                     `mkVersion [2,4,0]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
+                                        libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [],
@@ -88,13 +99,16 @@ GenericPackageDescription
                                                    `PackageName "base"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [4,0]`)
-                                                      (EarlierVersion `mkVersion [4,7]`)),
+                                                      (EarlierVersion `mkVersion [4,7]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "AC-Vector"`
-                                                   (OrLaterVersion `mkVersion [2,3,0]`),
+                                                   (OrLaterVersion `mkVersion [2,3,0]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "QuickCheck"`
-                                                   (OrLaterVersion `mkVersion [2,4,0]`)],
+                                                   (OrLaterVersion `mkVersion [2,4,0]`)
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -114,6 +128,7 @@ GenericPackageDescription
                                                                defaultExtensions = [],
                                                                defaultLanguage = Nothing,
                                                                extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
                                                                extraFrameworkDirs = [],
                                                                extraGHCiLibs = [],
                                                                extraLibDirs = [],
@@ -128,29 +143,38 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [],
+                                                               options = PerCompilerFlavor [] [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [4,0]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [4,7]`)),
+                                                                                             `mkVersion [4,7]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "AC-Vector"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [2,3,0]`),
+                                                                                          `mkVersion [2,3,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "QuickCheck"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [2,4,0]`)],
+                                                                                          `mkVersion [2,4,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]`
@@ -164,15 +188,20 @@ GenericPackageDescription
                                                    `PackageName "base"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [4,0]`)
-                                                      (EarlierVersion `mkVersion [4,7]`)),
+                                                      (EarlierVersion `mkVersion [4,7]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "AC-Vector"`
-                                                   (OrLaterVersion `mkVersion [2,3,0]`),
+                                                   (OrLaterVersion `mkVersion [2,3,0]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "QuickCheck"`
-                                                   (OrLaterVersion `mkVersion [2,4,0]`),
+                                                   (OrLaterVersion `mkVersion [2,4,0]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "markdown-unlit"` AnyVersion],
+                                                   `PackageName "markdown-unlit"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -192,6 +221,7 @@ GenericPackageDescription
                                                                defaultExtensions = [],
                                                                defaultLanguage = Nothing,
                                                                extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
                                                                extraFrameworkDirs = [],
                                                                extraGHCiLibs = [],
                                                                extraLibDirs = [],
@@ -206,35 +236,46 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [_×_
-                                                                            GHC
-                                                                            ["-pgmL",
-                                                                             "markdown-unlit"]],
+                                                               options = PerCompilerFlavor
+                                                                           ["-pgmL",
+                                                                            "markdown-unlit"]
+                                                                           [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [4,0]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [4,7]`)),
+                                                                                             `mkVersion [4,7]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "AC-Vector"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [2,3,0]`),
+                                                                                          `mkVersion [2,3,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "QuickCheck"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [2,4,0]`),
+                                                                                          `mkVersion [2,4,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "markdown-unlit"`
-                                                                                       AnyVersion],
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "README.lhs",

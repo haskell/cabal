@@ -34,7 +34,7 @@ import           Distribution.Compiler (CompilerId)
 import           Distribution.Simple.Utils
                    ( withTempDirectory, debug, info )
 import           Distribution.Verbosity
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 
 import           Data.Set (Set)
 import qualified Data.Set as Set

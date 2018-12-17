@@ -39,11 +39,14 @@ module Distribution.Client.ParseUtils (
   )
        where
 
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), ParseResult(..), warning, LineNo, lineNo
          , Field(..), liftField, readFieldsFlat )
+import Distribution.Deprecated.ViewAsFieldDescr
+         ( viewAsFieldDescr )
+
 import Distribution.Simple.Command
-         ( OptionField, viewAsFieldDescr )
+         ( OptionField  )
 
 import Control.Monad    ( foldM )
 import Text.PrettyPrint ( (<+>), ($+$) )
@@ -150,7 +153,7 @@ parseFields fieldDescrs =
       warning $ "Unrecognized stanza on line " ++ show (lineNo f)
       return accum
 
--- | This is a customised version of the functions from Distribution.ParseUtils
+-- | This is a customised version of the functions from Distribution.Deprecated.ParseUtils
 -- that also optionally print default values for empty fields as comments.
 --
 ppFields :: [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc

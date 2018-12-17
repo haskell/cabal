@@ -19,7 +19,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
-import           Distribution.Client.PackageHash (showHashValue)
+import           Distribution.Client.PackageHash (showHashValue, hashValue)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -40,7 +40,7 @@ import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
@@ -141,6 +141,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         , "pkg-src"    J..= packageLocationToJ (elabPkgSourceLocation elab)
         ] ++
+        [ "pkg-cabal-sha256" J..= J.String (showHashValue hash)
+        | Just hash <- [ fmap hashValue (elabPkgDescriptionOverride elab) ] ] ++
         [ "pkg-src-sha256" J..= J.String (showHashValue hash)
         | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
@@ -155,7 +157,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             let components = J.object $
                   [ comp2str c J..= (J.object $
                     [ "depends"     J..= map (jdisplay . confInstId) ldeps
-                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ] ++
+                    , "exe-depends" J..= map (jdisplay . confInstId) edeps
+                    ] ++
                     bin_file c)
                   | (c,(ldeps,edeps))
                       <- ComponentDeps.toList $

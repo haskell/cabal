@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), fromFlagOrDefault )
+         ( HaddockFlags(..), TestFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
@@ -32,7 +32,7 @@ import Control.Monad (when)
 
 
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
-                            ,HaddockFlags)
+                            ,HaddockFlags, TestFlags)
 haddockCommand = Client.installCommand {
   commandName         = "v2-haddock",
   commandSynopsis     = "Build Haddock documentation",
@@ -69,9 +69,9 @@ haddockCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
                  -> [String] -> GlobalFlags -> IO ()
-haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
+haddockAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                 targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig
@@ -111,7 +111,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags haddockFlags testFlags
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

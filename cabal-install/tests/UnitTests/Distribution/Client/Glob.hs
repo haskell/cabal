@@ -8,8 +8,8 @@ import Control.Applicative
 #endif
 import Data.Char
 import Data.List
-import Distribution.Text (display, parse, simpleParse)
-import Distribution.Compat.ReadP
+import Distribution.Deprecated.Text (display, parse, simpleParse)
+import Distribution.Deprecated.ReadP
 
 import Distribution.Client.Glob
 import UnitTests.Distribution.Client.ArbitraryInstances

@@ -17,11 +17,9 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- ------------------------------------------------------------
@@ -151,9 +149,6 @@ instance Pretty RepoKind where
 instance Parsec RepoKind where
   parsec = classifyRepoKind <$> P.munch1 isIdent
 
-instance Text RepoKind where
-  parse = fmap classifyRepoKind ident
-
 classifyRepoKind :: String -> RepoKind
 classifyRepoKind name = case lowercase name of
   "head" -> RepoHead
@@ -167,19 +162,13 @@ instance Pretty RepoType where
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 
-instance Text RepoType where
-  parse = fmap classifyRepoType ident
-
 classifyRepoType :: String -> RepoType
 classifyRepoType s =
     fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
   where
     repoTypeMap = [ (name, repoType')
                   | repoType' <- knownRepoTypes
-                  , name <- display repoType' : repoTypeAliases repoType' ]
-
-ident :: Parse.ReadP r String
-ident = Parse.munch1 isIdent
+                  , name <- prettyShow repoType' : repoTypeAliases repoType' ]
 
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c == '_' || c == '-'

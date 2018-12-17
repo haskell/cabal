@@ -28,6 +28,7 @@ GenericPackageDescription
                                                                                                            defaultExtensions = [],
                                                                                                            defaultLanguage = Nothing,
                                                                                                            extraBundledLibs = [],
+                                                                                                           extraDynLibFlavours = [],
                                                                                                            extraFrameworkDirs = [],
                                                                                                            extraGHCiLibs = [],
                                                                                                            extraLibDirs = [],
@@ -42,17 +43,23 @@ GenericPackageDescription
                                                                                                            ldOptions = [],
                                                                                                            mixins = [],
                                                                                                            oldExtensions = [],
-                                                                                                           options = [_×_
-                                                                                                                        GHC
-                                                                                                                        ["-threaded",
-                                                                                                                         "-with-rtsopts=-I0 -qg -qb"]],
+                                                                                                           options = PerCompilerFlavor
+                                                                                                                       ["-threaded",
+                                                                                                                        "-with-rtsopts=-I0 -qg -qb"]
+                                                                                                                       [],
                                                                                                            otherExtensions = [],
                                                                                                            otherLanguages = [],
                                                                                                            otherModules = [],
                                                                                                            pkgconfigDepends = [],
-                                                                                                           profOptions = [],
-                                                                                                           sharedOptions = [],
-                                                                                                           staticOptions = [],
+                                                                                                           profOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                           sharedOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
+                                                                                                           staticOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
                                                                                                            targetBuildDepends = [],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
@@ -70,7 +77,9 @@ GenericPackageDescription
                                                                                                                             condTreeConstraints = [Dependency
                                                                                                                                                      `PackageName "unix"`
                                                                                                                                                      (OrLaterVersion
-                                                                                                                                                        `mkVersion [2,5,1]`)],
+                                                                                                                                                        `mkVersion [2,5,1]`)
+                                                                                                                                                     (Set.fromList
+                                                                                                                                                        [LMainLibName])],
                                                                                                                             condTreeData = Executable
                                                                                                                                              {buildInfo = BuildInfo
                                                                                                                                                             {asmOptions = [],
@@ -90,6 +99,7 @@ GenericPackageDescription
                                                                                                                                                              defaultExtensions = [],
                                                                                                                                                              defaultLanguage = Nothing,
                                                                                                                                                              extraBundledLibs = [],
+                                                                                                                                                             extraDynLibFlavours = [],
                                                                                                                                                              extraFrameworkDirs = [],
                                                                                                                                                              extraGHCiLibs = [],
                                                                                                                                                              extraLibDirs = [],
@@ -104,18 +114,28 @@ GenericPackageDescription
                                                                                                                                                              ldOptions = [],
                                                                                                                                                              mixins = [],
                                                                                                                                                              oldExtensions = [],
-                                                                                                                                                             options = [],
+                                                                                                                                                             options = PerCompilerFlavor
+                                                                                                                                                                         []
+                                                                                                                                                                         [],
                                                                                                                                                              otherExtensions = [],
                                                                                                                                                              otherLanguages = [],
                                                                                                                                                              otherModules = [],
                                                                                                                                                              pkgconfigDepends = [],
-                                                                                                                                                             profOptions = [],
-                                                                                                                                                             sharedOptions = [],
-                                                                                                                                                             staticOptions = [],
+                                                                                                                                                             profOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
+                                                                                                                                                             sharedOptions = PerCompilerFlavor
+                                                                                                                                                                               []
+                                                                                                                                                                               [],
+                                                                                                                                                             staticOptions = PerCompilerFlavor
+                                                                                                                                                                               []
+                                                                                                                                                                               [],
                                                                                                                                                              targetBuildDepends = [Dependency
                                                                                                                                                                                      `PackageName "unix"`
                                                                                                                                                                                      (OrLaterVersion
-                                                                                                                                                                                        `mkVersion [2,5,1]`)],
+                                                                                                                                                                                        `mkVersion [2,5,1]`)
+                                                                                                                                                                                     (Set.fromList
+                                                                                                                                                                                        [LMainLibName])],
                                                                                                                                                              virtualModules = []},
                                                                                                                                               exeName = `UnqualComponentName "shake"`,
                                                                                                                                               exeScope = ExecutablePublic,
@@ -140,6 +160,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -154,14 +175,22 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          []
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                                exeName = `UnqualComponentName "shake"`,
@@ -175,7 +204,9 @@ GenericPackageDescription
                                                                                                                         {condTreeComponents = [],
                                                                                                                          condTreeConstraints = [Dependency
                                                                                                                                                   `PackageName "old-time"`
-                                                                                                                                                  AnyVersion],
+                                                                                                                                                  AnyVersion
+                                                                                                                                                  (Set.fromList
+                                                                                                                                                     [LMainLibName])],
                                                                                                                          condTreeData = Executable
                                                                                                                                           {buildInfo = BuildInfo
                                                                                                                                                          {asmOptions = [],
@@ -195,6 +226,7 @@ GenericPackageDescription
                                                                                                                                                           defaultExtensions = [],
                                                                                                                                                           defaultLanguage = Nothing,
                                                                                                                                                           extraBundledLibs = [],
+                                                                                                                                                          extraDynLibFlavours = [],
                                                                                                                                                           extraFrameworkDirs = [],
                                                                                                                                                           extraGHCiLibs = [],
                                                                                                                                                           extraLibDirs = [],
@@ -209,17 +241,27 @@ GenericPackageDescription
                                                                                                                                                           ldOptions = [],
                                                                                                                                                           mixins = [],
                                                                                                                                                           oldExtensions = [],
-                                                                                                                                                          options = [],
+                                                                                                                                                          options = PerCompilerFlavor
+                                                                                                                                                                      []
+                                                                                                                                                                      [],
                                                                                                                                                           otherExtensions = [],
                                                                                                                                                           otherLanguages = [],
                                                                                                                                                           otherModules = [],
                                                                                                                                                           pkgconfigDepends = [],
-                                                                                                                                                          profOptions = [],
-                                                                                                                                                          sharedOptions = [],
-                                                                                                                                                          staticOptions = [],
+                                                                                                                                                          profOptions = PerCompilerFlavor
+                                                                                                                                                                          []
+                                                                                                                                                                          [],
+                                                                                                                                                          sharedOptions = PerCompilerFlavor
+                                                                                                                                                                            []
+                                                                                                                                                                            [],
+                                                                                                                                                          staticOptions = PerCompilerFlavor
+                                                                                                                                                                            []
+                                                                                                                                                                            [],
                                                                                                                                                           targetBuildDepends = [Dependency
                                                                                                                                                                                   `PackageName "old-time"`
-                                                                                                                                                                                  AnyVersion],
+                                                                                                                                                                                  AnyVersion
+                                                                                                                                                                                  (Set.fromList
+                                                                                                                                                                                     [LMainLibName])],
                                                                                                                                                           virtualModules = []},
                                                                                                                                            exeName = `UnqualComponentName "shake"`,
                                                                                                                                            exeScope = ExecutablePublic,
@@ -244,6 +286,7 @@ GenericPackageDescription
                                                                                                            defaultExtensions = [],
                                                                                                            defaultLanguage = Nothing,
                                                                                                            extraBundledLibs = [],
+                                                                                                           extraDynLibFlavours = [],
                                                                                                            extraFrameworkDirs = [],
                                                                                                            extraGHCiLibs = [],
                                                                                                            extraLibDirs = [],
@@ -258,14 +301,22 @@ GenericPackageDescription
                                                                                                            ldOptions = [],
                                                                                                            mixins = [],
                                                                                                            oldExtensions = [],
-                                                                                                           options = [],
+                                                                                                           options = PerCompilerFlavor
+                                                                                                                       []
+                                                                                                                       [],
                                                                                                            otherExtensions = [],
                                                                                                            otherLanguages = [],
                                                                                                            otherModules = [],
                                                                                                            pkgconfigDepends = [],
-                                                                                                           profOptions = [],
-                                                                                                           sharedOptions = [],
-                                                                                                           staticOptions = [],
+                                                                                                           profOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                           sharedOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
+                                                                                                           staticOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
                                                                                                            targetBuildDepends = [],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
@@ -278,7 +329,9 @@ GenericPackageDescription
                                                                          {condTreeComponents = [],
                                                                           condTreeConstraints = [Dependency
                                                                                                    `PackageName "unix"`
-                                                                                                   AnyVersion],
+                                                                                                   AnyVersion
+                                                                                                   (Set.fromList
+                                                                                                      [LMainLibName])],
                                                                           condTreeData = Executable
                                                                                            {buildInfo = BuildInfo
                                                                                                           {asmOptions = [],
@@ -298,6 +351,7 @@ GenericPackageDescription
                                                                                                            defaultExtensions = [],
                                                                                                            defaultLanguage = Nothing,
                                                                                                            extraBundledLibs = [],
+                                                                                                           extraDynLibFlavours = [],
                                                                                                            extraFrameworkDirs = [],
                                                                                                            extraGHCiLibs = [],
                                                                                                            extraLibDirs = [],
@@ -312,54 +366,99 @@ GenericPackageDescription
                                                                                                            ldOptions = [],
                                                                                                            mixins = [],
                                                                                                            oldExtensions = [],
-                                                                                                           options = [],
+                                                                                                           options = PerCompilerFlavor
+                                                                                                                       []
+                                                                                                                       [],
                                                                                                            otherExtensions = [],
                                                                                                            otherLanguages = [],
                                                                                                            otherModules = [],
                                                                                                            pkgconfigDepends = [],
-                                                                                                           profOptions = [],
-                                                                                                           sharedOptions = [],
-                                                                                                           staticOptions = [],
+                                                                                                           profOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                           sharedOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
+                                                                                                           staticOptions = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
                                                                                                            targetBuildDepends = [Dependency
                                                                                                                                    `PackageName "unix"`
-                                                                                                                                   AnyVersion],
+                                                                                                                                   AnyVersion
+                                                                                                                                   (Set.fromList
+                                                                                                                                      [LMainLibName])],
                                                                                                            virtualModules = []},
                                                                                             exeName = `UnqualComponentName "shake"`,
                                                                                             exeScope = ExecutablePublic,
                                                                                             modulePath = ""}}}],
                            condTreeConstraints = [Dependency
                                                     `PackageName "base"`
-                                                    (WildcardVersion `mkVersion [4]`),
-                                                  Dependency `PackageName "directory"` AnyVersion,
+                                                    (WildcardVersion `mkVersion [4]`)
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "directory"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "hashable"`
-                                                    (OrLaterVersion `mkVersion [1,1,2,3]`),
-                                                  Dependency `PackageName "binary"` AnyVersion,
-                                                  Dependency `PackageName "filepath"` AnyVersion,
+                                                    (OrLaterVersion `mkVersion [1,1,2,3]`)
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "binary"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "filepath"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "process"`
-                                                    (OrLaterVersion `mkVersion [1,1]`),
+                                                    (OrLaterVersion `mkVersion [1,1]`)
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "unordered-containers"`
-                                                    (OrLaterVersion `mkVersion [0,2,1]`),
-                                                  Dependency `PackageName "bytestring"` AnyVersion,
+                                                    (OrLaterVersion `mkVersion [0,2,1]`)
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "bytestring"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "utf8-string"`
-                                                    (OrLaterVersion `mkVersion [0,3]`),
-                                                  Dependency `PackageName "time"` AnyVersion,
-                                                  Dependency `PackageName "random"` AnyVersion,
-                                                  Dependency `PackageName "js-jquery"` AnyVersion,
-                                                  Dependency `PackageName "js-flot"` AnyVersion,
+                                                    (OrLaterVersion `mkVersion [0,3]`)
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "time"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "random"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "js-jquery"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "js-flot"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "transformers"`
-                                                    (OrLaterVersion `mkVersion [0,2]`),
+                                                    (OrLaterVersion `mkVersion [0,2]`)
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "extra"`
-                                                    (OrLaterVersion `mkVersion [1,4,8]`),
+                                                    (OrLaterVersion `mkVersion [1,4,8]`)
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "deepseq"`
-                                                    (OrLaterVersion `mkVersion [1,1]`),
-                                                  Dependency `PackageName "primitive"` AnyVersion],
+                                                    (OrLaterVersion `mkVersion [1,1]`)
+                                                    (Set.fromList [LMainLibName]),
+                                                  Dependency
+                                                    `PackageName "primitive"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -379,6 +478,7 @@ GenericPackageDescription
                                                             defaultExtensions = [],
                                                             defaultLanguage = Just Haskell2010,
                                                             extraBundledLibs = [],
+                                                            extraDynLibFlavours = [],
                                                             extraFrameworkDirs = [],
                                                             extraGHCiLibs = [],
                                                             extraLibDirs = [],
@@ -393,11 +493,11 @@ GenericPackageDescription
                                                             ldOptions = [],
                                                             mixins = [],
                                                             oldExtensions = [],
-                                                            options = [_×_
-                                                                         GHC
-                                                                         ["-main-is",
-                                                                          "Run.main",
-                                                                          "-rtsopts"]],
+                                                            options = PerCompilerFlavor
+                                                                        ["-main-is",
+                                                                         "Run.main",
+                                                                         "-rtsopts"]
+                                                                        [],
                                                             otherExtensions = [],
                                                             otherLanguages = [],
                                                             otherModules = [`ModuleName ["Development","Make","All"]`,
@@ -456,68 +556,102 @@ GenericPackageDescription
                                                                             `ModuleName ["Paths_shake"]`,
                                                                             `ModuleName ["Run"]`],
                                                             pkgconfigDepends = [],
-                                                            profOptions = [],
-                                                            sharedOptions = [],
-                                                            staticOptions = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
                                                                                     `PackageName "base"`
                                                                                     (WildcardVersion
-                                                                                       `mkVersion [4]`),
+                                                                                       `mkVersion [4]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "directory"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "hashable"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [1,1,2,3]`),
+                                                                                       `mkVersion [1,1,2,3]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "binary"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "filepath"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "process"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [1,1]`),
+                                                                                       `mkVersion [1,1]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "unordered-containers"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0,2,1]`),
+                                                                                       `mkVersion [0,2,1]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "bytestring"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "utf8-string"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0,3]`),
+                                                                                       `mkVersion [0,3]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "time"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "random"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "js-jquery"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "js-flot"`
-                                                                                    AnyVersion,
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "transformers"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0,2]`),
+                                                                                       `mkVersion [0,2]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "extra"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [1,4,8]`),
+                                                                                       `mkVersion [1,4,8]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "deepseq"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [1,1]`),
+                                                                                       `mkVersion [1,1]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "primitive"`
-                                                                                    AnyVersion],
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName])],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "shake"`,
                                              exeScope = ExecutablePublic,
@@ -537,7 +671,9 @@ GenericPackageDescription
                                                                                                                        condTreeConstraints = [Dependency
                                                                                                                                                 `PackageName "unix"`
                                                                                                                                                 (OrLaterVersion
-                                                                                                                                                   `mkVersion [2,5,1]`)],
+                                                                                                                                                   `mkVersion [2,5,1]`)
+                                                                                                                                                (Set.fromList
+                                                                                                                                                   [LMainLibName])],
                                                                                                                        condTreeData = Library
                                                                                                                                         {exposedModules = [],
                                                                                                                                          libBuildInfo = BuildInfo
@@ -558,6 +694,7 @@ GenericPackageDescription
                                                                                                                                                            defaultExtensions = [],
                                                                                                                                                            defaultLanguage = Nothing,
                                                                                                                                                            extraBundledLibs = [],
+                                                                                                                                                           extraDynLibFlavours = [],
                                                                                                                                                            extraFrameworkDirs = [],
                                                                                                                                                            extraGHCiLibs = [],
                                                                                                                                                            extraLibDirs = [],
@@ -572,21 +709,32 @@ GenericPackageDescription
                                                                                                                                                            ldOptions = [],
                                                                                                                                                            mixins = [],
                                                                                                                                                            oldExtensions = [],
-                                                                                                                                                           options = [],
+                                                                                                                                                           options = PerCompilerFlavor
+                                                                                                                                                                       []
+                                                                                                                                                                       [],
                                                                                                                                                            otherExtensions = [],
                                                                                                                                                            otherLanguages = [],
                                                                                                                                                            otherModules = [],
                                                                                                                                                            pkgconfigDepends = [],
-                                                                                                                                                           profOptions = [],
-                                                                                                                                                           sharedOptions = [],
-                                                                                                                                                           staticOptions = [],
+                                                                                                                                                           profOptions = PerCompilerFlavor
+                                                                                                                                                                           []
+                                                                                                                                                                           [],
+                                                                                                                                                           sharedOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
+                                                                                                                                                           staticOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
                                                                                                                                                            targetBuildDepends = [Dependency
                                                                                                                                                                                    `PackageName "unix"`
                                                                                                                                                                                    (OrLaterVersion
-                                                                                                                                                                                      `mkVersion [2,5,1]`)],
+                                                                                                                                                                                      `mkVersion [2,5,1]`)
+                                                                                                                                                                                   (Set.fromList
+                                                                                                                                                                                      [LMainLibName])],
                                                                                                                                                            virtualModules = []},
                                                                                                                                          libExposed = True,
                                                                                                                                          libName = Nothing,
+                                                                                                                                         libVisibility = LibraryVisibilityPublic,
                                                                                                                                          reexportedModules = [],
                                                                                                                                          signatures = []}}}],
                                                                         condTreeConstraints = [],
@@ -610,6 +758,7 @@ GenericPackageDescription
                                                                                                             defaultExtensions = [],
                                                                                                             defaultLanguage = Nothing,
                                                                                                             extraBundledLibs = [],
+                                                                                                            extraDynLibFlavours = [],
                                                                                                             extraFrameworkDirs = [],
                                                                                                             extraGHCiLibs = [],
                                                                                                             extraLibDirs = [],
@@ -624,18 +773,27 @@ GenericPackageDescription
                                                                                                             ldOptions = [],
                                                                                                             mixins = [],
                                                                                                             oldExtensions = [],
-                                                                                                            options = [],
+                                                                                                            options = PerCompilerFlavor
+                                                                                                                        []
+                                                                                                                        [],
                                                                                                             otherExtensions = [],
                                                                                                             otherLanguages = [],
                                                                                                             otherModules = [],
                                                                                                             pkgconfigDepends = [],
-                                                                                                            profOptions = [],
-                                                                                                            sharedOptions = [],
-                                                                                                            staticOptions = [],
+                                                                                                            profOptions = PerCompilerFlavor
+                                                                                                                            []
+                                                                                                                            [],
+                                                                                                            sharedOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                            staticOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
                                                                                                             targetBuildDepends = [],
                                                                                                             virtualModules = []},
                                                                                           libExposed = True,
                                                                                           libName = Nothing,
+                                                                                          libVisibility = LibraryVisibilityPublic,
                                                                                           reexportedModules = [],
                                                                                           signatures = []}},
                                                condBranchIfTrue = CondNode
@@ -646,7 +804,9 @@ GenericPackageDescription
                                                                                                                    {condTreeComponents = [],
                                                                                                                     condTreeConstraints = [Dependency
                                                                                                                                              `PackageName "old-time"`
-                                                                                                                                             AnyVersion],
+                                                                                                                                             AnyVersion
+                                                                                                                                             (Set.fromList
+                                                                                                                                                [LMainLibName])],
                                                                                                                     condTreeData = Library
                                                                                                                                      {exposedModules = [],
                                                                                                                                       libBuildInfo = BuildInfo
@@ -667,6 +827,7 @@ GenericPackageDescription
                                                                                                                                                         defaultExtensions = [],
                                                                                                                                                         defaultLanguage = Nothing,
                                                                                                                                                         extraBundledLibs = [],
+                                                                                                                                                        extraDynLibFlavours = [],
                                                                                                                                                         extraFrameworkDirs = [],
                                                                                                                                                         extraGHCiLibs = [],
                                                                                                                                                         extraLibDirs = [],
@@ -681,20 +842,31 @@ GenericPackageDescription
                                                                                                                                                         ldOptions = [],
                                                                                                                                                         mixins = [],
                                                                                                                                                         oldExtensions = [],
-                                                                                                                                                        options = [],
+                                                                                                                                                        options = PerCompilerFlavor
+                                                                                                                                                                    []
+                                                                                                                                                                    [],
                                                                                                                                                         otherExtensions = [],
                                                                                                                                                         otherLanguages = [],
                                                                                                                                                         otherModules = [],
                                                                                                                                                         pkgconfigDepends = [],
-                                                                                                                                                        profOptions = [],
-                                                                                                                                                        sharedOptions = [],
-                                                                                                                                                        staticOptions = [],
+                                                                                                                                                        profOptions = PerCompilerFlavor
+                                                                                                                                                                        []
+                                                                                                                                                                        [],
+                                                                                                                                                        sharedOptions = PerCompilerFlavor
+                                                                                                                                                                          []
+                                                                                                                                                                          [],
+                                                                                                                                                        staticOptions = PerCompilerFlavor
+                                                                                                                                                                          []
+                                                                                                                                                                          [],
                                                                                                                                                         targetBuildDepends = [Dependency
                                                                                                                                                                                 `PackageName "old-time"`
-                                                                                                                                                                                AnyVersion],
+                                                                                                                                                                                AnyVersion
+                                                                                                                                                                                (Set.fromList
+                                                                                                                                                                                   [LMainLibName])],
                                                                                                                                                         virtualModules = []},
                                                                                                                                       libExposed = True,
                                                                                                                                       libName = Nothing,
+                                                                                                                                      libVisibility = LibraryVisibilityPublic,
                                                                                                                                       reexportedModules = [],
                                                                                                                                       signatures = []}}}],
                                                                      condTreeConstraints = [],
@@ -718,6 +890,7 @@ GenericPackageDescription
                                                                                                          defaultExtensions = [],
                                                                                                          defaultLanguage = Nothing,
                                                                                                          extraBundledLibs = [],
+                                                                                                         extraDynLibFlavours = [],
                                                                                                          extraFrameworkDirs = [],
                                                                                                          extraGHCiLibs = [],
                                                                                                          extraLibDirs = [],
@@ -732,18 +905,27 @@ GenericPackageDescription
                                                                                                          ldOptions = [],
                                                                                                          mixins = [],
                                                                                                          oldExtensions = [],
-                                                                                                         options = [],
+                                                                                                         options = PerCompilerFlavor
+                                                                                                                     []
+                                                                                                                     [],
                                                                                                          otherExtensions = [],
                                                                                                          otherLanguages = [],
                                                                                                          otherModules = [],
                                                                                                          pkgconfigDepends = [],
-                                                                                                         profOptions = [],
-                                                                                                         sharedOptions = [],
-                                                                                                         staticOptions = [],
+                                                                                                         profOptions = PerCompilerFlavor
+                                                                                                                         []
+                                                                                                                         [],
+                                                                                                         sharedOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                         staticOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
                                                                                                          targetBuildDepends = [],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = Nothing,
+                                                                                       libVisibility = LibraryVisibilityPublic,
                                                                                        reexportedModules = [],
                                                                                        signatures = []}}},
                                             CondBranch
@@ -753,7 +935,9 @@ GenericPackageDescription
                                                                     {condTreeComponents = [],
                                                                      condTreeConstraints = [Dependency
                                                                                               `PackageName "unix"`
-                                                                                              AnyVersion],
+                                                                                              AnyVersion
+                                                                                              (Set.fromList
+                                                                                                 [LMainLibName])],
                                                                      condTreeData = Library
                                                                                       {exposedModules = [],
                                                                                        libBuildInfo = BuildInfo
@@ -774,6 +958,7 @@ GenericPackageDescription
                                                                                                          defaultExtensions = [],
                                                                                                          defaultLanguage = Nothing,
                                                                                                          extraBundledLibs = [],
+                                                                                                         extraDynLibFlavours = [],
                                                                                                          extraFrameworkDirs = [],
                                                                                                          extraGHCiLibs = [],
                                                                                                          extraLibDirs = [],
@@ -788,54 +973,97 @@ GenericPackageDescription
                                                                                                          ldOptions = [],
                                                                                                          mixins = [],
                                                                                                          oldExtensions = [],
-                                                                                                         options = [],
+                                                                                                         options = PerCompilerFlavor
+                                                                                                                     []
+                                                                                                                     [],
                                                                                                          otherExtensions = [],
                                                                                                          otherLanguages = [],
                                                                                                          otherModules = [],
                                                                                                          pkgconfigDepends = [],
-                                                                                                         profOptions = [],
-                                                                                                         sharedOptions = [],
-                                                                                                         staticOptions = [],
+                                                                                                         profOptions = PerCompilerFlavor
+                                                                                                                         []
+                                                                                                                         [],
+                                                                                                         sharedOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                         staticOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "unix"`
-                                                                                                                                 AnyVersion],
+                                                                                                                                 AnyVersion
+                                                                                                                                 (Set.fromList
+                                                                                                                                    [LMainLibName])],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = Nothing,
+                                                                                       libVisibility = LibraryVisibilityPublic,
                                                                                        reexportedModules = [],
                                                                                        signatures = []}}}],
                       condTreeConstraints = [Dependency
                                                `PackageName "base"`
-                                               (OrLaterVersion `mkVersion [4,5]`),
-                                             Dependency `PackageName "directory"` AnyVersion,
+                                               (OrLaterVersion `mkVersion [4,5]`)
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "directory"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "hashable"`
-                                               (OrLaterVersion `mkVersion [1,1,2,3]`),
-                                             Dependency `PackageName "binary"` AnyVersion,
-                                             Dependency `PackageName "filepath"` AnyVersion,
+                                               (OrLaterVersion `mkVersion [1,1,2,3]`)
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "binary"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "filepath"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "process"`
-                                               (OrLaterVersion `mkVersion [1,1]`),
+                                               (OrLaterVersion `mkVersion [1,1]`)
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "unordered-containers"`
-                                               (OrLaterVersion `mkVersion [0,2,1]`),
-                                             Dependency `PackageName "bytestring"` AnyVersion,
+                                               (OrLaterVersion `mkVersion [0,2,1]`)
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "bytestring"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "utf8-string"`
-                                               (OrLaterVersion `mkVersion [0,3]`),
-                                             Dependency `PackageName "time"` AnyVersion,
-                                             Dependency `PackageName "random"` AnyVersion,
-                                             Dependency `PackageName "js-jquery"` AnyVersion,
-                                             Dependency `PackageName "js-flot"` AnyVersion,
+                                               (OrLaterVersion `mkVersion [0,3]`)
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "time"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "random"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "js-jquery"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "js-flot"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "transformers"`
-                                               (OrLaterVersion `mkVersion [0,2]`),
+                                               (OrLaterVersion `mkVersion [0,2]`)
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "extra"`
-                                               (OrLaterVersion `mkVersion [1,4,8]`),
+                                               (OrLaterVersion `mkVersion [1,4,8]`)
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "deepseq"`
-                                               (OrLaterVersion `mkVersion [1,1]`)],
+                                               (OrLaterVersion `mkVersion [1,1]`)
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["Development","Shake"]`,
                                                           `ModuleName ["Development","Shake","Classes"]`,
@@ -863,6 +1091,7 @@ GenericPackageDescription
                                                           defaultExtensions = [],
                                                           defaultLanguage = Just Haskell2010,
                                                           extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
                                                           extraFrameworkDirs = [],
                                                           extraGHCiLibs = [],
                                                           extraLibDirs = [],
@@ -877,7 +1106,7 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [`ModuleName ["Development","Ninja","Env"]`,
@@ -923,68 +1152,101 @@ GenericPackageDescription
                                                                           `ModuleName ["General","Timing"]`,
                                                                           `ModuleName ["Paths_shake"]`],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [4,5]`),
+                                                                                     `mkVersion [4,5]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "directory"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "hashable"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1,1,2,3]`),
+                                                                                     `mkVersion [1,1,2,3]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "binary"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "filepath"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "process"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1,1]`),
+                                                                                     `mkVersion [1,1]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "unordered-containers"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0,2,1]`),
+                                                                                     `mkVersion [0,2,1]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "bytestring"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "utf8-string"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0,3]`),
+                                                                                     `mkVersion [0,3]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "time"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "random"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "js-jquery"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "js-flot"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "transformers"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0,2]`),
+                                                                                     `mkVersion [0,2]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "extra"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1,4,8]`),
+                                                                                     `mkVersion [1,4,8]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "deepseq"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1,1]`)],
+                                                                                     `mkVersion [1,1]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
+                                        libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [],
@@ -1016,6 +1278,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -1030,16 +1293,22 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [_×_
-                                                                                                                           GHC
-                                                                                                                           ["-with-rtsopts=-K1K"]],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          ["-with-rtsopts=-K1K"]
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
@@ -1072,6 +1341,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -1086,16 +1356,22 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [_×_
-                                                                                                                           GHC
-                                                                                                                           ["-threaded"]],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          ["-threaded"]
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
@@ -1115,7 +1391,9 @@ GenericPackageDescription
                                                                                                                            condTreeConstraints = [Dependency
                                                                                                                                                     `PackageName "unix"`
                                                                                                                                                     (OrLaterVersion
-                                                                                                                                                       `mkVersion [2,5,1]`)],
+                                                                                                                                                       `mkVersion [2,5,1]`)
+                                                                                                                                                    (Set.fromList
+                                                                                                                                                       [LMainLibName])],
                                                                                                                            condTreeData = TestSuite
                                                                                                                                             {testBuildInfo = BuildInfo
                                                                                                                                                                {asmOptions = [],
@@ -1135,6 +1413,7 @@ GenericPackageDescription
                                                                                                                                                                 defaultExtensions = [],
                                                                                                                                                                 defaultLanguage = Nothing,
                                                                                                                                                                 extraBundledLibs = [],
+                                                                                                                                                                extraDynLibFlavours = [],
                                                                                                                                                                 extraFrameworkDirs = [],
                                                                                                                                                                 extraGHCiLibs = [],
                                                                                                                                                                 extraLibDirs = [],
@@ -1149,18 +1428,28 @@ GenericPackageDescription
                                                                                                                                                                 ldOptions = [],
                                                                                                                                                                 mixins = [],
                                                                                                                                                                 oldExtensions = [],
-                                                                                                                                                                options = [],
+                                                                                                                                                                options = PerCompilerFlavor
+                                                                                                                                                                            []
+                                                                                                                                                                            [],
                                                                                                                                                                 otherExtensions = [],
                                                                                                                                                                 otherLanguages = [],
                                                                                                                                                                 otherModules = [],
                                                                                                                                                                 pkgconfigDepends = [],
-                                                                                                                                                                profOptions = [],
-                                                                                                                                                                sharedOptions = [],
-                                                                                                                                                                staticOptions = [],
+                                                                                                                                                                profOptions = PerCompilerFlavor
+                                                                                                                                                                                []
+                                                                                                                                                                                [],
+                                                                                                                                                                sharedOptions = PerCompilerFlavor
+                                                                                                                                                                                  []
+                                                                                                                                                                                  [],
+                                                                                                                                                                staticOptions = PerCompilerFlavor
+                                                                                                                                                                                  []
+                                                                                                                                                                                  [],
                                                                                                                                                                 targetBuildDepends = [Dependency
                                                                                                                                                                                         `PackageName "unix"`
                                                                                                                                                                                         (OrLaterVersion
-                                                                                                                                                                                           `mkVersion [2,5,1]`)],
+                                                                                                                                                                                           `mkVersion [2,5,1]`)
+                                                                                                                                                                                        (Set.fromList
+                                                                                                                                                                                           [LMainLibName])],
                                                                                                                                                                 virtualModules = []},
                                                                                                                                              testInterface = TestSuiteUnsupported
                                                                                                                                                                (TestTypeUnknown
@@ -1187,6 +1476,7 @@ GenericPackageDescription
                                                                                                                  defaultExtensions = [],
                                                                                                                  defaultLanguage = Nothing,
                                                                                                                  extraBundledLibs = [],
+                                                                                                                 extraDynLibFlavours = [],
                                                                                                                  extraFrameworkDirs = [],
                                                                                                                  extraGHCiLibs = [],
                                                                                                                  extraLibDirs = [],
@@ -1201,14 +1491,22 @@ GenericPackageDescription
                                                                                                                  ldOptions = [],
                                                                                                                  mixins = [],
                                                                                                                  oldExtensions = [],
-                                                                                                                 options = [],
+                                                                                                                 options = PerCompilerFlavor
+                                                                                                                             []
+                                                                                                                             [],
                                                                                                                  otherExtensions = [],
                                                                                                                  otherLanguages = [],
                                                                                                                  otherModules = [],
                                                                                                                  pkgconfigDepends = [],
-                                                                                                                 profOptions = [],
-                                                                                                                 sharedOptions = [],
-                                                                                                                 staticOptions = [],
+                                                                                                                 profOptions = PerCompilerFlavor
+                                                                                                                                 []
+                                                                                                                                 [],
+                                                                                                                 sharedOptions = PerCompilerFlavor
+                                                                                                                                   []
+                                                                                                                                   [],
+                                                                                                                 staticOptions = PerCompilerFlavor
+                                                                                                                                   []
+                                                                                                                                   [],
                                                                                                                  targetBuildDepends = [],
                                                                                                                  virtualModules = []},
                                                                                               testInterface = TestSuiteUnsupported
@@ -1224,7 +1522,9 @@ GenericPackageDescription
                                                                                                                        {condTreeComponents = [],
                                                                                                                         condTreeConstraints = [Dependency
                                                                                                                                                  `PackageName "old-time"`
-                                                                                                                                                 AnyVersion],
+                                                                                                                                                 AnyVersion
+                                                                                                                                                 (Set.fromList
+                                                                                                                                                    [LMainLibName])],
                                                                                                                         condTreeData = TestSuite
                                                                                                                                          {testBuildInfo = BuildInfo
                                                                                                                                                             {asmOptions = [],
@@ -1244,6 +1544,7 @@ GenericPackageDescription
                                                                                                                                                              defaultExtensions = [],
                                                                                                                                                              defaultLanguage = Nothing,
                                                                                                                                                              extraBundledLibs = [],
+                                                                                                                                                             extraDynLibFlavours = [],
                                                                                                                                                              extraFrameworkDirs = [],
                                                                                                                                                              extraGHCiLibs = [],
                                                                                                                                                              extraLibDirs = [],
@@ -1258,17 +1559,27 @@ GenericPackageDescription
                                                                                                                                                              ldOptions = [],
                                                                                                                                                              mixins = [],
                                                                                                                                                              oldExtensions = [],
-                                                                                                                                                             options = [],
+                                                                                                                                                             options = PerCompilerFlavor
+                                                                                                                                                                         []
+                                                                                                                                                                         [],
                                                                                                                                                              otherExtensions = [],
                                                                                                                                                              otherLanguages = [],
                                                                                                                                                              otherModules = [],
                                                                                                                                                              pkgconfigDepends = [],
-                                                                                                                                                             profOptions = [],
-                                                                                                                                                             sharedOptions = [],
-                                                                                                                                                             staticOptions = [],
+                                                                                                                                                             profOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
+                                                                                                                                                             sharedOptions = PerCompilerFlavor
+                                                                                                                                                                               []
+                                                                                                                                                                               [],
+                                                                                                                                                             staticOptions = PerCompilerFlavor
+                                                                                                                                                                               []
+                                                                                                                                                                               [],
                                                                                                                                                              targetBuildDepends = [Dependency
                                                                                                                                                                                      `PackageName "old-time"`
-                                                                                                                                                                                     AnyVersion],
+                                                                                                                                                                                     AnyVersion
+                                                                                                                                                                                     (Set.fromList
+                                                                                                                                                                                        [LMainLibName])],
                                                                                                                                                              virtualModules = []},
                                                                                                                                           testInterface = TestSuiteUnsupported
                                                                                                                                                             (TestTypeUnknown
@@ -1295,6 +1606,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -1309,14 +1621,22 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          []
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
@@ -1331,7 +1651,9 @@ GenericPackageDescription
                                                                         {condTreeComponents = [],
                                                                          condTreeConstraints = [Dependency
                                                                                                   `PackageName "unix"`
-                                                                                                  AnyVersion],
+                                                                                                  AnyVersion
+                                                                                                  (Set.fromList
+                                                                                                     [LMainLibName])],
                                                                          condTreeData = TestSuite
                                                                                           {testBuildInfo = BuildInfo
                                                                                                              {asmOptions = [],
@@ -1351,6 +1673,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -1365,17 +1688,27 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          []
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [Dependency
                                                                                                                                       `PackageName "unix"`
-                                                                                                                                      AnyVersion],
+                                                                                                                                      AnyVersion
+                                                                                                                                      (Set.fromList
+                                                                                                                                         [LMainLibName])],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
                                                                                                              (TestTypeUnknown
@@ -1384,39 +1717,72 @@ GenericPackageDescription
                                                                                            testName = `UnqualComponentName ""`}}}],
                           condTreeConstraints = [Dependency
                                                    `PackageName "base"`
-                                                   (WildcardVersion `mkVersion [4]`),
-                                                 Dependency `PackageName "directory"` AnyVersion,
+                                                   (WildcardVersion `mkVersion [4]`)
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "directory"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "hashable"`
-                                                   (OrLaterVersion `mkVersion [1,1,2,3]`),
-                                                 Dependency `PackageName "binary"` AnyVersion,
-                                                 Dependency `PackageName "filepath"` AnyVersion,
+                                                   (OrLaterVersion `mkVersion [1,1,2,3]`)
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "binary"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "filepath"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "process"`
-                                                   (OrLaterVersion `mkVersion [1,1]`),
+                                                   (OrLaterVersion `mkVersion [1,1]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "unordered-containers"`
-                                                   (OrLaterVersion `mkVersion [0,2,1]`),
-                                                 Dependency `PackageName "bytestring"` AnyVersion,
+                                                   (OrLaterVersion `mkVersion [0,2,1]`)
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "bytestring"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "utf8-string"`
-                                                   (OrLaterVersion `mkVersion [0,3]`),
-                                                 Dependency `PackageName "time"` AnyVersion,
-                                                 Dependency `PackageName "random"` AnyVersion,
-                                                 Dependency `PackageName "js-jquery"` AnyVersion,
-                                                 Dependency `PackageName "js-flot"` AnyVersion,
+                                                   (OrLaterVersion `mkVersion [0,3]`)
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "time"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "random"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "js-jquery"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "js-flot"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "transformers"`
-                                                   (OrLaterVersion `mkVersion [0,2]`),
+                                                   (OrLaterVersion `mkVersion [0,2]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "deepseq"`
-                                                   (OrLaterVersion `mkVersion [1,1]`),
+                                                   (OrLaterVersion `mkVersion [1,1]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "extra"`
-                                                   (OrLaterVersion `mkVersion [1,4,8]`),
+                                                   (OrLaterVersion `mkVersion [1,4,8]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "QuickCheck"`
-                                                   (OrLaterVersion `mkVersion [2,0]`)],
+                                                   (OrLaterVersion `mkVersion [2,0]`)
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -1436,6 +1802,7 @@ GenericPackageDescription
                                                                defaultExtensions = [],
                                                                defaultLanguage = Just Haskell2010,
                                                                extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
                                                                extraFrameworkDirs = [],
                                                                extraGHCiLibs = [],
                                                                extraLibDirs = [],
@@ -1450,11 +1817,11 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [_×_
-                                                                            GHC
-                                                                            ["-main-is",
-                                                                             "Test.main",
-                                                                             "-rtsopts"]],
+                                                               options = PerCompilerFlavor
+                                                                           ["-main-is",
+                                                                            "Test.main",
+                                                                            "-rtsopts"]
+                                                                           [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [`ModuleName ["Development","Make","All"]`,
@@ -1554,69 +1921,106 @@ GenericPackageDescription
                                                                                `ModuleName ["Test","Verbosity"]`,
                                                                                `ModuleName ["Test","Version"]`],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
                                                                                        (WildcardVersion
-                                                                                          `mkVersion [4]`),
+                                                                                          `mkVersion [4]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "directory"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "hashable"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [1,1,2,3]`),
+                                                                                          `mkVersion [1,1,2,3]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "binary"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "filepath"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "process"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [1,1]`),
+                                                                                          `mkVersion [1,1]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "unordered-containers"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0,2,1]`),
+                                                                                          `mkVersion [0,2,1]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "bytestring"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "utf8-string"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0,3]`),
+                                                                                          `mkVersion [0,3]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "time"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "random"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "js-jquery"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "js-flot"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "transformers"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0,2]`),
+                                                                                          `mkVersion [0,2]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "deepseq"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [1,1]`),
+                                                                                          `mkVersion [1,1]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "extra"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [1,4,8]`),
+                                                                                          `mkVersion [1,4,8]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "QuickCheck"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [2,0]`)],
+                                                                                          `mkVersion [2,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "Test.hs",

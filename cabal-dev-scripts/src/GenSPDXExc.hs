@@ -1,23 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Control.Lens   hiding ((.=))
-import Data.Aeson     (FromJSON (..), Value, eitherDecode, object, withObject, (.:), (.=))
-import Data.Foldable  (for_)
-import Data.Semigroup ((<>))
-import Data.Text      (Text)
+import Control.Lens     hiding ((.=))
+import Data.Aeson       (FromJSON (..), Value, eitherDecode, object, withObject, (.:), (.=))
+import Data.Foldable    (for_)
+import Data.List        (sortOn)
+import Data.Semigroup   ((<>))
+import Data.Text        (Text)
+import Data.Traversable (for)
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Set             as Set
 import qualified Data.Text            as T
 import qualified Data.Text.Lazy       as TL
 import qualified Data.Text.Lazy.IO    as TL
-import qualified Data.Set             as Set
 import qualified Options.Applicative  as O
 import qualified Text.Microstache     as M
 
 import GenUtils
 
-data Opts = Opts FilePath FilePath FilePath FilePath
+data Opts = Opts FilePath (PerV FilePath) FilePath
 
 main :: IO ()
 main = generate =<< O.execParser opts where
@@ -27,7 +29,12 @@ main = generate =<< O.execParser opts where
         ]
 
     parser :: O.Parser Opts
-    parser = Opts <$> template <*> licenses "3.0" <*> licenses "3.2" <*> output
+    parser = Opts <$> template <*> licensesAll <*> output
+
+    licensesAll = PerV
+        <$> licenses "3.0"
+        <*> licenses "3.2"
+        <*> licenses "3.3"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseExceptionId.template.hs"
@@ -45,21 +52,19 @@ main = generate =<< O.execParser opts where
         ]
 
 generate :: Opts -> IO ()
-generate (Opts tmplFile fn3_0 fn3_2 out) = do
-    LicenseList ls3_0 <- either fail pure . eitherDecode =<< LBS.readFile fn3_0
-    LicenseList ls3_2 <- either fail pure . eitherDecode =<< LBS.readFile fn3_2
+generate (Opts tmplFile fns out) = do
+    lss <- for fns $ \fn -> either fail pure . eitherDecode =<< LBS.readFile fn
     template <- M.compileMustacheFile tmplFile
-    let (ws, rendered) = generate' ls3_0 ls3_2 template
+    let (ws, rendered) = generate' lss template
     for_ ws $ putStrLn . M.displayMustacheWarning
     TL.writeFile out (header <> "\n" <> rendered)
     putStrLn $ "Generated file " ++ out
 
 generate'
-    :: [License]  -- SPDX 3.0
-    -> [License]  -- SPDX 3.2
+    :: PerV LicenseList
     -> M.Template
     -> ([M.MustacheWarning], TL.Text)
-generate' ls_3_0 ls_3_2 template = M.renderMustacheW template $ object
+generate' lss template = M.renderMustacheW template $ object
     [ "licenseIds" .= licenseIds
     , "licenses"   .= licenseValues
     , "licenseList_all" .= mkLicenseList (== allVers)
@@ -67,12 +72,17 @@ generate' ls_3_0 ls_3_2 template = M.renderMustacheW template $ object
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
     , "licenseList_3_2" .= mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
+    , "licenseList_3_3" .= mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_3 vers)
     ]
   where
+    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_3) = lss
+
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
         $ combine licenseId $ \ver -> case ver of
+            SPDXLicenseListVersion_3_3 -> filterDeprecated ls_3_3
             SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
             SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
 
@@ -117,9 +127,10 @@ instance FromJSON License where
         fixSpace '\n' = ' '
         fixSpace c =   c
 
-newtype LicenseList = LicenseList [License]
+newtype LicenseList = LL [License]
   deriving (Show)
 
 instance FromJSON LicenseList where
-    parseJSON = withObject "Exceptions list" $ \obj -> LicenseList
-        <$> obj .: "exceptions"
+    parseJSON = withObject "Exceptions list" $ \obj ->
+        LL . sortOn (OrdT . T.toLower . licenseId)
+            <$> obj .: "exceptions"

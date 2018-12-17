@@ -4,9 +4,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 #ifdef MIN_VERSION_base
+#define MINVER_base_411 MIN_VERSION_base(4,11,0)
 #define MINVER_base_48 MIN_VERSION_base(4,8,0)
 #define MINVER_base_47 MIN_VERSION_base(4,7,0)
 #else
+#define MINVER_base_411 (__GLASGOW_HASKELL__ >= 804)
 #define MINVER_base_48 (__GLASGOW_HASKELL__ >= 710)
 #define MINVER_base_47 (__GLASGOW_HASKELL__ >= 708)
 #endif
@@ -90,10 +92,14 @@ module Distribution.Compat.Prelude (
     -- * Text.PrettyPrint
     (<<>>),
     ) where
-
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
   ( IO, mapM, mapM_, sequence, null, length, foldr, any, all
+#if MINVER_base_411
+  -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
+  -- Hide this so we instead rely on Distribution.Compat.Semigroup.
+  , Semigroup(..)
+#endif
 #if MINVER_base_48
   , Word
   -- We hide them, as we import only some members

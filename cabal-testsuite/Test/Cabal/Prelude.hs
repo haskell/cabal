@@ -354,9 +354,11 @@ withProjectFile fp m =
 withPlan :: TestM a -> TestM a
 withPlan m = do
     env0 <- getTestEnv
-    Just plan <- JSON.decode `fmap`
-                    liftIO (BSL.readFile (testDistDir env0 </> "cache" </> "plan.json"))
-    withReaderT (\env -> env { testPlan = Just plan }) m
+    let filepath = testDistDir env0 </> "cache" </> "plan.json"
+    mplan <- JSON.eitherDecode `fmap` liftIO (BSL.readFile filepath)
+    case mplan of
+        Left err   -> fail $ "withPlan: cannot decode plan " ++ err
+        Right plan -> withReaderT (\env -> env { testPlan = Just plan }) m
 
 -- | Run an executable from a package.  Requires 'withPlan' to have
 -- been run so that we can find the dist dir.

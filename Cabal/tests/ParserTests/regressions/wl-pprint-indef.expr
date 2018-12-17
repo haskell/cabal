@@ -6,12 +6,16 @@ GenericPackageDescription
                           {condTreeComponents = [],
                            condTreeConstraints = [Dependency
                                                     `PackageName "base"`
-                                                    (EarlierVersion `mkVersion [5]`),
+                                                    (EarlierVersion `mkVersion [5]`)
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "str-string"`
-                                                    (OrLaterVersion `mkVersion [0,1,0,0]`),
+                                                    (OrLaterVersion `mkVersion [0,1,0,0]`)
+                                                    (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "wl-pprint-indef"` AnyVersion],
+                                                    `PackageName "wl-pprint-indef"`
+                                                    AnyVersion
+                                                    (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -31,6 +35,7 @@ GenericPackageDescription
                                                             defaultExtensions = [],
                                                             defaultLanguage = Nothing,
                                                             extraBundledLibs = [],
+                                                            extraDynLibFlavours = [],
                                                             extraFrameworkDirs = [],
                                                             extraGHCiLibs = [],
                                                             extraLibDirs = [],
@@ -45,25 +50,31 @@ GenericPackageDescription
                                                             ldOptions = [],
                                                             mixins = [],
                                                             oldExtensions = [],
-                                                            options = [],
+                                                            options = PerCompilerFlavor [] [],
                                                             otherExtensions = [],
                                                             otherLanguages = [],
                                                             otherModules = [`ModuleName ["StringImpl"]`],
                                                             pkgconfigDepends = [],
-                                                            profOptions = [],
-                                                            sharedOptions = [],
-                                                            staticOptions = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
                                                                                     `PackageName "base"`
                                                                                     (EarlierVersion
-                                                                                       `mkVersion [5]`),
+                                                                                       `mkVersion [5]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "str-string"`
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0,1,0,0]`),
+                                                                                       `mkVersion [0,1,0,0]`)
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "wl-pprint-indef"`
-                                                                                    AnyVersion],
+                                                                                    AnyVersion
+                                                                                    (Set.fromList
+                                                                                       [LMainLibName])],
                                                             virtualModules = []},
                                              exeName = `UnqualComponentName "wl-pprint-string-example"`,
                                              exeScope = ExecutablePublic,
@@ -74,10 +85,12 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "base"`
-                                               (EarlierVersion `mkVersion [5]`),
+                                               (EarlierVersion `mkVersion [5]`)
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "str-sig"`
-                                               (OrLaterVersion `mkVersion [0,1,0,0]`)],
+                                               (OrLaterVersion `mkVersion [0,1,0,0]`)
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["Text","PrettyPrint","Leijen"]`],
                                         libBuildInfo = BuildInfo
@@ -98,6 +111,7 @@ GenericPackageDescription
                                                           defaultExtensions = [],
                                                           defaultLanguage = Nothing,
                                                           extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
                                                           extraFrameworkDirs = [],
                                                           extraGHCiLibs = [],
                                                           extraLibDirs = [],
@@ -112,25 +126,30 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (EarlierVersion
-                                                                                     `mkVersion [5]`),
+                                                                                     `mkVersion [5]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "str-sig"`
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0,1,0,0]`)],
+                                                                                     `mkVersion [0,1,0,0]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
+                                        libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [],

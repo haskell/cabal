@@ -15,7 +15,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
@@ -129,11 +129,15 @@ licenseIdList LicenseListVersion_3_0 =
 licenseIdList LicenseListVersion_3_2 =
 {{{licenseList_3_2}}}
     ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_3 =
+{{{licenseList_3_3}}}
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
 mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
+mkLicenseId LicenseListVersion_3_3 s = Map.lookup s stringLookup_3_3
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -141,6 +145,10 @@ stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
 
 stringLookup_3_2 :: Map String LicenseId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_2
+
+stringLookup_3_3 :: Map String LicenseId
+stringLookup_3_3 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_2
 
 --  | Licenses in all SPDX License lists

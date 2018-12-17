@@ -28,8 +28,8 @@ import Distribution.ModuleName
 import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Text
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.Text
 
 import GHC.Generics ( Generic )
 
@@ -44,6 +44,7 @@ data InitFlags =
               , packageDir     :: Flag FilePath
               , noComments     :: Flag Bool
               , minimal        :: Flag Bool
+              , simpleProject  :: Flag Bool
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
@@ -69,6 +70,8 @@ data InitFlags =
               , sourceDirs   :: Maybe [String]
               , buildTools   :: Maybe [String]
 
+              , initHcPath    :: Flag FilePath
+
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool
               }
@@ -80,6 +83,7 @@ data InitFlags =
 
 data BuildType = LibBuild | ExecBuild
 
+-- The type of package to initialize.
 data PackageType = Library | Executable | LibraryAndExecutable
   deriving (Show, Read, Eq)
 
@@ -118,4 +122,3 @@ data Category
 instance Text Category where
   disp  = Disp.text . show
   parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ] -- TODO: eradicateNoParse
-

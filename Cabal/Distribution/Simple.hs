@@ -92,7 +92,8 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.License
-import Distribution.Text
+import Distribution.Pretty
+import Distribution.System (buildPlatform)
 
 -- Base
 import System.Environment (getArgs, getProgName)
@@ -168,9 +169,9 @@ defaultMainHelper hooks args = topHandler $
     printErrors errs = do
       putStr (intercalate "\n" errs)
       exitWith (ExitFailure 1)
-    printNumericVersion = putStrLn $ display cabalVersion
+    printNumericVersion = putStrLn $ prettyShow cabalVersion
     printVersion        = putStrLn $ "Cabal library version "
-                                  ++ display cabalVersion
+                                  ++ prettyShow cabalVersion
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     commands =
@@ -497,7 +498,7 @@ sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
 sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
     | not (null nonExistant)
     = die $ "The buildinfo contains info for an executable called '"
-         ++ display (head nonExistant) ++ "' but the package does not have a "
+         ++ prettyShow (head nonExistant) ++ "' but the package does not have a "
          ++ "executable with that name."
   where
     pkgExeNames  = nub (map exeName (executables pkg_descr))
@@ -755,7 +756,9 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
                 [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = configureFile':args ++ ["CC=" ++ ccProgShort]
+      hp = hostPlatform lbi
+      maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
+      args' = configureFile':args ++ ["CC=" ++ ccProgShort] ++ maybeHostFlag
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath
                (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb

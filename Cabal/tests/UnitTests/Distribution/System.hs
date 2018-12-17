@@ -4,13 +4,14 @@ module UnitTests.Distribution.System
     ) where
 
 import Control.Monad (liftM2)
-import Distribution.Text (Text(..), display, simpleParse)
+import Distribution.Parsec
+import Distribution.Pretty
 import Distribution.System
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
-textRoundtrip :: (Show a, Eq a, Text a) => a -> Property
-textRoundtrip x = simpleParse (display x) === Just x
+textRoundtrip :: (Show a, Eq a, Pretty a, Parsec a) => a -> Property
+textRoundtrip x = simpleParsec (prettyShow x) === Just x
 
 tests :: [TestTree]
 tests =

@@ -35,7 +35,7 @@ import Distribution.Simple.Utils             (die', notice, warn,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
 import Distribution.Verbosity                (Verbosity)
-import Distribution.Text                     (display)
+import Distribution.Deprecated.Text                     (display)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 

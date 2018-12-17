@@ -79,7 +79,7 @@ import Distribution.Package
          , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
-import Distribution.Text
+import Distribution.Deprecated.Text
 import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -527,7 +527,7 @@ configureInstallPlan configFlags solverPlan =
                         Cabal.NoFlag
                         Cabal.NoFlag
                         (packageId spkg)
-                        PD.CLibName
+                        (PD.CLibName PD.LMainLibName)
                         (Just (map confInstId (CD.libraryDeps deps),
                                solverPkgFlags spkg)),
         confPkgSource = solverPkgSource spkg,

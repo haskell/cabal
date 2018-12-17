@@ -29,8 +29,6 @@ module Distribution.Backpack (
     OpenModuleSubst,
     dispOpenModuleSubst,
     dispOpenModuleSubstEntry,
-    parseOpenModuleSubst,
-    parseOpenModuleSubstEntry,
     parsecOpenModuleSubst,
     parsecOpenModuleSubstEntry,
     openModuleSubstFreeHoles,
@@ -41,18 +39,15 @@ module Distribution.Backpack (
 ) where
 
 import Distribution.Compat.Prelude hiding (mod)
-import Distribution.Compat.ReadP   ((<++))
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Prelude ()
 import Text.PrettyPrint            (hcat)
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint                as Disp
 
 import Distribution.ModuleName
-import Distribution.Text
 import Distribution.Types.ComponentId
 import Distribution.Types.Module
 import Distribution.Types.UnitId
@@ -134,15 +129,6 @@ instance Parsec OpenUnitId where
                        parsecOpenModuleSubst
             return (IndefFullUnitId cid insts)
 
-instance Text OpenUnitId where
-    parse = parseOpenUnitId <++ fmap DefiniteUnitId parse
-      where
-        parseOpenUnitId = do
-            cid <- parse
-            insts <- Parse.between (Parse.char '[') (Parse.char ']')
-                       parseOpenModuleSubst
-            return (IndefFullUnitId cid insts)
-
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
 openUnitIdFreeHoles (IndefFullUnitId _ insts) = openModuleSubstFreeHoles insts
@@ -211,20 +197,6 @@ instance Parsec OpenModule where
             _ <- P.char '>'
             return (OpenModuleVar mod_name)
 
-instance Text OpenModule where
-    parse = parseModuleVar <++ parseOpenModule
-      where
-        parseOpenModule = do
-            uid <- parse
-            _ <- Parse.char ':'
-            mod_name <- parse
-            return (OpenModule uid mod_name)
-        parseModuleVar = do
-            _ <- Parse.char '<'
-            mod_name <- parse
-            _ <- Parse.char '>'
-            return (OpenModuleVar mod_name)
-
 -- | Get the set of holes ('ModuleVar') embedded in a 'Module'.
 openModuleFreeHoles :: OpenModule -> Set ModuleName
 openModuleFreeHoles (OpenModuleVar mod_name) = Set.singleton mod_name
@@ -249,21 +221,7 @@ dispOpenModuleSubst subst
 
 -- | Pretty-print a single entry of a module substitution.
 dispOpenModuleSubstEntry :: (ModuleName, OpenModule) -> Disp.Doc
-dispOpenModuleSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
-
--- | Inverse to 'dispModSubst'.
-parseOpenModuleSubst :: Parse.ReadP r OpenModuleSubst
-parseOpenModuleSubst = fmap Map.fromList
-      . flip Parse.sepBy (Parse.char ',')
-      $ parseOpenModuleSubstEntry
-
--- | Inverse to 'dispModSubstEntry'.
-parseOpenModuleSubstEntry :: Parse.ReadP r (ModuleName, OpenModule)
-parseOpenModuleSubstEntry =
-    do k <- parse
-       _ <- Parse.char '='
-       v <- parse
-       return (k, v)
+dispOpenModuleSubstEntry (k, v) = pretty k <<>> Disp.char '=' <<>> pretty v
 
 -- | Inverse to 'dispModSubst'.
 --
@@ -307,5 +265,5 @@ hashModuleSubst subst
   | Map.null subst = Nothing
   | otherwise =
       Just . hashToBase62 $
-        concat [ display mod_name ++ "=" ++ display m ++ "\n"
+        concat [ prettyShow mod_name ++ "=" ++ prettyShow m ++ "\n"
                | (mod_name, m) <- Map.toList subst]

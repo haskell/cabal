@@ -801,7 +801,7 @@ describe the package as a whole:
     The version of the Cabal specification that this package
     description uses. The Cabal specification does slowly evolve (see
     also :ref:`spec-history`), introducing new features and
-    occasionally changing the meaning of existing features.  By
+    occasionally changing the meaning of existing features. By
     specifying which version of the specification you are using it
     enables programs which process the package description to know
     what syntax to expect and what each part means.
@@ -812,7 +812,9 @@ describe the package as a whole:
     Older tools will of course only work with older versions of the
     Cabal specification that was known at the time. Most of the time,
     tools that are too old will recognise this fact and produce a
-    suitable error message.
+    suitable error message. Likewise, ``cabal check`` will tell you
+    whether the version number is sufficiently high for the features
+    you use in the package description.
 
     As for behaviour, new versions of the Cabal specification can change the
     meaning of existing syntax. This means if you want to take advantage
@@ -1216,6 +1218,16 @@ The library section should contain the following fields:
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
 
+.. pkg-field:: visibility: visibilty specifiers
+
+    :since 3.0
+
+    :default: ``private`` for internal libraries. Cannot be set for public library.
+
+    Cabal recognizes ``public`` and ``private`` here...
+
+    Multiple public libraries...
+
 .. pkg-field:: reexported-modules: exportlist
     :since: 1.22
 
@@ -1248,7 +1260,7 @@ The library section should contain the following fields:
     `signature thinning
     <https://wiki.haskell.org/Module_signature#How_to_use_a_signature_package>`__.
 
-    
+
 
 The library section may also contain build information fields (see the
 section on `build information`_).
@@ -2161,7 +2173,8 @@ system-dependent values for these fields.
     :pkg-field:`other-extensions` declarations.
 
 .. pkg-field:: extensions: identifier list
-   :deprecated:
+   :deprecated: 1.12
+   :removed: 3.0
 
    Deprecated in favor of :pkg-field:`default-extensions`.
 
@@ -2206,7 +2219,7 @@ system-dependent values for these fields.
     so for Nix-style builds. Specifically:
 
     a) For Nix-style local builds, both internal and external dependencies.
-    b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_. 
+    b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_.
        It's up to the user to provide needed executables in this case under `$PATH.`
 
 
@@ -2218,7 +2231,8 @@ system-dependent values for these fields.
       compatibility.
 
 .. pkg-field:: build-tools: program list
-    :deprecated:
+    :deprecated: 2.0
+    :removed: 3.0
 
     Deprecated in favor of :pkg-field:`build-tool-depends`, but :ref:`see below for backwards compatibility information <buildtoolsbc>`.
 
@@ -2435,10 +2449,10 @@ system-dependent values for these fields.
 
    A list of libraries that are supposed to be copied from the build
    directory alongside the produced Haskell libraries.  Note that you
-   are under the obligation to produce those lirbaries in the build
+   are under the obligation to produce those libraries in the build
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
-   ``hs-libraries`` of the package configuration.
+   ``hs-libraries`` of the package configuration in the package database.
 
 .. pkg-field:: extra-lib-dirs: directory list
 
@@ -2492,10 +2506,11 @@ system-dependent values for these fields.
     the system and to find the extra compilation and linker options
     needed to use the packages.
 
-    If you need to bind to a C library that supports ``pkg-config`` (use
-    ``pkg-config --list-all`` to find out if it is supported) then it is
-    much preferable to use this field rather than hard code options into
-    the other fields.
+    If you need to bind to a C library that supports ``pkg-config`` then
+    it is much preferable to use this field rather than hard code options
+    into the other fields. ``pkg-config --list-all`` will show you all
+    supported libraries. Depending on your system you may need to adjust
+    ``PKG_CONFIG_PATH``.
 
 .. pkg-field:: frameworks: token list
 
@@ -2597,7 +2612,7 @@ system-dependent values for these fields.
     the names of the signature and of the implementation are already the same,
     the matching is automatic. But when the names don't coincide, or we want to
     instantiate a signature in two different ways, adding mixin entries that
-    perform renamings becomes necessary.  
+    perform renamings becomes necessary.
 
     .. Warning::
 
@@ -2987,7 +3002,8 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
 
 -  You can import multiple stanzas at once. Stanza names must be separated by commas.
 
--  ``import`` must be the first field in a section.
+-  ``import`` must be the first field in a section. Since Cabal 3.0 imports
+   are also allowed inside conditionals.
 
 .. Note::
 

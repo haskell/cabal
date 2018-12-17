@@ -6,6 +6,8 @@ module Distribution.Simple.HaskellSuite where
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Data.Either (partitionEithers)
+
 import qualified Data.Map as Map (empty)
 
 import Distribution.Simple.Program
@@ -15,7 +17,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Pretty
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
 import Distribution.Package
 import Distribution.InstalledPackageInfo hiding (includeDirs)
 import Distribution.Simple.PackageIndex as PackageIndex
@@ -135,10 +137,9 @@ getInstalledPackages verbosity packagedbs progdb =
 
   where
     parsePackages str =
-      let parsed = map parseInstalledPackageInfo (splitPkgs str)
-       in case [ msg | ParseFailed msg <- parsed ] of
-            []   -> Right [ pkg | ParseOk _ pkg <- parsed ]
-            msgs -> Left msgs
+        case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
+            ([], ok)   -> Right [ pkg | (_, pkg) <- ok ]
+            (msgss, _) -> Left (concat msgss)
 
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines

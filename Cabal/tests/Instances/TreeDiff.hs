@@ -16,7 +16,7 @@ import Instances.TreeDiff.Version ()
 -------------------------------------------------------------------------------
 
 import Distribution.Backpack                  (OpenModule, OpenUnitId)
-import Distribution.Compiler                  (CompilerFlavor)
+import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo      (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package                   (Dependency, PackageIdentifier, PackageName)
@@ -31,6 +31,7 @@ import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.IncludeRenaming     (IncludeRenaming)
 import Distribution.Types.LegacyExeDependency
+import Distribution.Types.LibraryVisibility   (LibraryVisibility)
 import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnitId              (DefUnitId, UnitId)
@@ -43,6 +44,8 @@ import Distribution.Types.UnqualComponentName
 instance (Eq a, Show a) => ToExpr (Condition a) where toExpr = defaultExprViaShow
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondTree a b c)
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
+
+instance ToExpr a => ToExpr (PerCompilerFlavor a)
 
 instance ToExpr AbiDependency where toExpr = defaultExprViaShow
 instance ToExpr AbiHash where toExpr = defaultExprViaShow
@@ -70,6 +73,8 @@ instance ToExpr InstalledPackageInfo
 instance ToExpr LegacyExeDependency where toExpr = defaultExprViaShow
 instance ToExpr LibVersionInfo where toExpr = defaultExprViaShow
 instance ToExpr Library
+instance ToExpr LibraryVisibility
+instance ToExpr LibraryName
 instance ToExpr Mixin where toExpr = defaultExprViaShow
 instance ToExpr ModuleName where toExpr = defaultExprViaShow
 instance ToExpr ModuleReexport

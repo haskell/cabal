@@ -137,6 +137,9 @@ while [ "$#" -gt 0 ]; do
     "--no-doc")
       NO_DOCUMENTATION=1
       shift;;
+    "--no-install")
+      NO_INSTALL=1
+      shift;;
     "-j"|"--jobs")
         shift
         # check if there is another argument which doesn't start with - or --
@@ -276,6 +279,7 @@ NO_DOCS_PACKAGES_VER_REGEXP="hackage-security-0\.5\.[0-9]+\.[0-9]+"
 echo "Checking installed packages for ghc-${GHC_VER}..."
 ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg.list ||
   die "running '${GHC_PKG} list' failed"
+trap "rm ghc-pkg.list" EXIT
 
 # Will we need to install this package, or is a suitable version installed?
 need_pkg () {
@@ -297,11 +301,14 @@ info_pkg () {
 
   if need_pkg ${PKG} ${VER_MATCH}
   then
-    if [ -r "${PKG}-${VER}.tar.gz" ]
+    if [ -d "${PKG}-${VER}" ]
     then
-        echo "${PKG}-${VER} will be installed from local tarball."
+      echo "${PKG}-${VER} will be installed from local directory."
+    elif [ -r "${PKG}-${VER}.tar.gz" ]
+    then
+      echo "${PKG}-${VER} will be installed from local tarball."
     else
-        echo "${PKG}-${VER} will be downloaded and installed."
+      echo "${PKG}-${VER} will be downloaded and installed."
     fi
   else
     echo "${PKG} is already installed and the version is ok."
@@ -348,6 +355,8 @@ unpack_pkg () {
 }
 
 install_pkg () {
+  [ ${NO_INSTALL} ] && return 0
+
   PKG=$1
   VER=$2
 
@@ -397,14 +406,19 @@ do_pkg () {
   if need_pkg ${PKG} ${VER_MATCH}
   then
     echo
-    if [ -r "${PKG}-${VER}.tar.gz" ]
+    if [ -d "${PKG}-${VER}" ]
     then
-        echo "Using local tarball for ${PKG}-${VER}."
+      echo "Using local directory for ${PKG}-${VER}."
     else
+      if [ -r "${PKG}-${VER}.tar.gz" ]
+      then
+        echo "Using local tarball for ${PKG}-${VER}."
+      else
         echo "Downloading ${PKG}-${VER}..."
         fetch_pkg ${PKG} ${VER}
+      fi
+      unpack_pkg "${PKG}" "${VER}"
     fi
-    unpack_pkg "${PKG}" "${VER}"
     (cd "${PKG}-${VER}" && install_pkg ${PKG} ${VER})
   fi
 }
@@ -501,6 +515,7 @@ do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
 
 
 install_pkg "cabal-install"
+[ ${NO_INSTALL} ] && exit 0
 
 # Use the newly built cabal to turn the prefix/package database into a
 # legit cabal sandbox. This works because 'cabal sandbox init' will
@@ -532,5 +547,3 @@ else
     echo "$CABAL_BIN/"
 fi
 echo
-
-rm ghc-pkg.list

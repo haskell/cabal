@@ -24,6 +24,8 @@ module Distribution.Client.Init (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (empty)
 
+import Distribution.Deprecated.ReadP (readP_to_E)
+
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
@@ -39,6 +41,7 @@ import Data.List
 import Data.Function
   ( on )
 import qualified Data.Map as M
+import qualified Data.Set as Set
 import Control.Monad
   ( (>=>), join, forM_, mapM, mapM_ )
 import Control.Arrow
@@ -56,6 +59,8 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
+import Distribution.Types.LibraryName
+  ( LibraryName(..) )
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
@@ -73,7 +78,7 @@ import Distribution.License
 import qualified Distribution.SPDX as SPDX
 
 import Distribution.ReadE
-  ( runReadE, readP_to_E )
+  ( runReadE )
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
 import Distribution.Simple.Utils
@@ -86,11 +91,11 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
-import Distribution.Text
+import Distribution.Deprecated.Text
   ( display, Text(..) )
 import Distribution.Pretty
   ( prettyShow )
-import Distribution.Parsec.Class
+import Distribution.Parsec
   ( eitherParsec )
 
 import Distribution.Solver.Types.PackageIndex
@@ -138,7 +143,9 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --   user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
-      getCabalVersion
+      getSimpleProject
+  >=> getLibOrExec
+  >=> getCabalVersion
   >=> getPackageName sourcePkgDb
   >=> getVersion
   >=> getLicense
@@ -147,7 +154,6 @@ extendFlags pkgIx sourcePkgDb =
   >=> getSynopsis
   >=> getCategory
   >=> getExtraSourceFiles
-  >=> getLibOrExec
   >=> getSrcDir
   >=> getLanguage
   >=> getGenComments
@@ -177,6 +183,24 @@ displayCabalVersion v = case versionNumbers v of
   [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
   [2,4]  -> "2.4    (+ support for '**' globbing)"
   _      -> display v
+
+-- | Ask if a simple project with sensible defaults should be created.
+getSimpleProject :: InitFlags -> IO InitFlags
+getSimpleProject flags = do
+  simpleProj <-     return (flagToMaybe $ simpleProject flags)
+                ?>> maybePrompt flags
+                    (promptYesNo
+                      "Should I generate a simple project with sensible defaults"
+                      (Just True))
+  return $ case maybeToFlag simpleProj of
+    Flag True ->
+      flags { nonInteractive = Flag True
+            , simpleProject = Flag True
+            , packageType = Flag LibraryAndExecutable
+            }
+    simpleProjFlag@_ ->
+      flags { simpleProject = simpleProjFlag }
+
 
 -- | Ask which version of the cabal spec to use.
 getCabalVersion :: InitFlags -> IO InitFlags
@@ -360,12 +384,15 @@ getLibOrExec flags = do
                                    [Library, Executable, LibraryAndExecutable]
                                    Nothing displayPackageType False)
            ?>> return (Just Library)
+
+  -- If this package contains an executable, get the main file name.
   mainFile <- if pkgType == Just Library then return Nothing else
                     getMainFile flags
 
   return $ flags { packageType = maybeToFlag pkgType
                  , mainIs = maybeToFlag mainFile
                  }
+
 
 -- | Try to guess the main file of the executable, and prompt the user to choose
 -- one of them. Top-level modules including the word 'Main' in the file name
@@ -527,13 +554,14 @@ chooseDep flags (m, Just ps)
     toDep :: [P.PackageIdentifier] -> IO P.Dependency
 
     -- If only one version, easy.  We change e.g. 0.4.2  into  0.4.*
-    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid)
+    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid) (Set.singleton LMainLibName) --TODO sublibraries
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
       message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
       return $ P.Dependency (P.pkgName . head $ pids)
                             (pvpize desugar . maximum . map P.pkgVersion $ pids)
+                            (Set.singleton LMainLibName) --TODO take into account sublibraries
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

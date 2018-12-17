@@ -31,11 +31,9 @@ import Distribution.Utils.ShortText
 import System.FilePath ( pathSeparator )
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint as Disp
 
 -- | A valid Haskell module name.
@@ -60,17 +58,6 @@ instance Parsec ModuleName where
             cs <- P.munch validModuleChar
             return (c:cs)
 
-instance Text ModuleName where
-  parse = do
-    ms <- Parse.sepBy1 component (Parse.char '.')
-    return (ModuleName $ stlFromStrings ms)
-
-    where
-      component = do
-        c  <- Parse.satisfy isUpper
-        cs <- Parse.munch validModuleChar
-        return (c:cs)
-
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''
 
@@ -79,7 +66,7 @@ validModuleComponent []     = False
 validModuleComponent (c:cs) = isUpper c
                            && all validModuleChar cs
 
-{-# DEPRECATED simple "use ModuleName.fromString instead. This symbol will be removed in Cabal-3.0 (est. Oct 2018)." #-}
+{-# DEPRECATED simple "use ModuleName.fromString instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 simple :: String -> ModuleName
 simple str = ModuleName (stlFromStrings [str])
 

@@ -9,31 +9,40 @@ GenericPackageDescription
                                                `PackageName "base"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [4,4]`)
-                                                  (EarlierVersion `mkVersion [5]`)),
+                                                  (EarlierVersion `mkVersion [5]`))
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "template-haskell"`
-                                               (EarlierVersion `mkVersion [2,10]`),
-                                             Dependency `PackageName "th-lift"` AnyVersion,
+                                               (EarlierVersion `mkVersion [2,10]`)
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "th-lift"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "containers"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [0,4]`)
-                                                  (EarlierVersion `mkVersion [0,6]`)),
+                                                  (EarlierVersion `mkVersion [0,6]`))
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "vector"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [0,9]`)
-                                                  (EarlierVersion `mkVersion [0,11]`)),
+                                                  (EarlierVersion `mkVersion [0,11]`))
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "text"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [0,11]`)
-                                                  (EarlierVersion `mkVersion [1,3]`)),
+                                                  (EarlierVersion `mkVersion [1,3]`))
+                                               (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "bytestring"`
                                                (IntersectVersionRanges
                                                   (OrLaterVersion `mkVersion [0,9]`)
-                                                  (EarlierVersion `mkVersion [0,11]`))],
+                                                  (EarlierVersion `mkVersion [0,11]`))
+                                               (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName ["Instances","TH","Lift"]`],
                                         libBuildInfo = BuildInfo
@@ -54,6 +63,7 @@ GenericPackageDescription
                                                           defaultExtensions = [],
                                                           defaultLanguage = Just Haskell2010,
                                                           extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
                                                           extraFrameworkDirs = [],
                                                           extraGHCiLibs = [],
                                                           extraLibDirs = [],
@@ -68,62 +78,76 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [_×_
-                                                                       GHC
-                                                                       ["-Wall", "-fwarn-tabs"]],
+                                                          options = PerCompilerFlavor
+                                                                      ["-Wall", "-fwarn-tabs"] [],
                                                           otherExtensions = [EnableExtension
                                                                                TemplateHaskell],
                                                           otherLanguages = [],
                                                           otherModules = [],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [4,4]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [5]`)),
+                                                                                        `mkVersion [5]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "template-haskell"`
                                                                                   (EarlierVersion
-                                                                                     `mkVersion [2,10]`),
+                                                                                     `mkVersion [2,10]`)
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "th-lift"`
-                                                                                  AnyVersion,
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "containers"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [0,4]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [0,6]`)),
+                                                                                        `mkVersion [0,6]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "vector"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [0,9]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [0,11]`)),
+                                                                                        `mkVersion [0,11]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "text"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [0,11]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [1,3]`)),
+                                                                                        `mkVersion [1,3]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "bytestring"`
                                                                                   (IntersectVersionRanges
                                                                                      (OrLaterVersion
                                                                                         `mkVersion [0,9]`)
                                                                                      (EarlierVersion
-                                                                                        `mkVersion [0,11]`))],
+                                                                                        `mkVersion [0,11]`))
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
+                                        libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [],
@@ -131,37 +155,48 @@ GenericPackageDescription
                        `UnqualComponentName "tests"`
                        CondNode
                          {condTreeComponents = [],
-                          condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "template-haskell"`
-                                                   (EarlierVersion `mkVersion [2,10]`),
+                                                   (EarlierVersion `mkVersion [2,10]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "containers"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [0,4]`)
-                                                      (EarlierVersion `mkVersion [0,6]`)),
+                                                      (EarlierVersion `mkVersion [0,6]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "vector"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [0,9]`)
-                                                      (EarlierVersion `mkVersion [0,11]`)),
+                                                      (EarlierVersion `mkVersion [0,11]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "text"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [0,11]`)
-                                                      (EarlierVersion `mkVersion [1,2]`)),
+                                                      (EarlierVersion `mkVersion [1,2]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "bytestring"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [0,9]`)
-                                                      (EarlierVersion `mkVersion [0,11]`)),
+                                                      (EarlierVersion `mkVersion [0,11]`))
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "th-lift-instances"` AnyVersion,
+                                                   `PackageName "th-lift-instances"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "QuickCheck"`
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion `mkVersion [2,6]`)
-                                                      (EarlierVersion `mkVersion [2,8]`))],
+                                                      (EarlierVersion `mkVersion [2,8]`))
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -181,6 +216,7 @@ GenericPackageDescription
                                                                defaultExtensions = [],
                                                                defaultLanguage = Just Haskell2010,
                                                                extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
                                                                extraFrameworkDirs = [],
                                                                extraGHCiLibs = [],
                                                                extraLibDirs = [],
@@ -195,60 +231,79 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [],
+                                                               options = PerCompilerFlavor [] [],
                                                                otherExtensions = [EnableExtension
                                                                                     TemplateHaskell],
                                                                otherLanguages = [],
                                                                otherModules = [`ModuleName ["Data"]`],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "template-haskell"`
                                                                                        (EarlierVersion
-                                                                                          `mkVersion [2,10]`),
+                                                                                          `mkVersion [2,10]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "containers"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [0,4]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [0,6]`)),
+                                                                                             `mkVersion [0,6]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "vector"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [0,9]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [0,11]`)),
+                                                                                             `mkVersion [0,11]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "text"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [0,11]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [1,2]`)),
+                                                                                             `mkVersion [1,2]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "bytestring"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [0,9]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [0,11]`)),
+                                                                                             `mkVersion [0,11]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "th-lift-instances"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "QuickCheck"`
                                                                                        (IntersectVersionRanges
                                                                                           (OrLaterVersion
                                                                                              `mkVersion [2,6]`)
                                                                                           (EarlierVersion
-                                                                                             `mkVersion [2,8]`))],
+                                                                                             `mkVersion [2,8]`))
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "Main.hs",
@@ -281,6 +336,7 @@ GenericPackageDescription
                                                                                                               defaultExtensions = [],
                                                                                                               defaultLanguage = Nothing,
                                                                                                               extraBundledLibs = [],
+                                                                                                              extraDynLibFlavours = [],
                                                                                                               extraFrameworkDirs = [],
                                                                                                               extraGHCiLibs = [],
                                                                                                               extraLibDirs = [],
@@ -295,16 +351,22 @@ GenericPackageDescription
                                                                                                               ldOptions = [],
                                                                                                               mixins = [],
                                                                                                               oldExtensions = [],
-                                                                                                              options = [_×_
-                                                                                                                           GHC
-                                                                                                                           ["-Werror"]],
+                                                                                                              options = PerCompilerFlavor
+                                                                                                                          ["-Werror"]
+                                                                                                                          [],
                                                                                                               otherExtensions = [],
                                                                                                               otherLanguages = [],
                                                                                                               otherModules = [],
                                                                                                               pkgconfigDepends = [],
-                                                                                                              profOptions = [],
-                                                                                                              sharedOptions = [],
-                                                                                                              staticOptions = [],
+                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
+                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                []
+                                                                                                                                [],
                                                                                                               targetBuildDepends = [],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
@@ -312,14 +374,22 @@ GenericPackageDescription
                                                                                                                 ""
                                                                                                                 `mkVersion []`),
                                                                                            testName = `UnqualComponentName ""`}}}],
-                          condTreeConstraints = [Dependency `PackageName "base"` AnyVersion,
+                          condTreeConstraints = [Dependency
+                                                   `PackageName "base"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "directory"`
-                                                   (OrLaterVersion `mkVersion [1,0]`),
+                                                   (OrLaterVersion `mkVersion [1,0]`)
+                                                   (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "doctest"`
-                                                   (OrLaterVersion `mkVersion [0,9,1]`),
-                                                 Dependency `PackageName "filepath"` AnyVersion],
+                                                   (OrLaterVersion `mkVersion [0,9,1]`)
+                                                   (Set.fromList [LMainLibName]),
+                                                 Dependency
+                                                   `PackageName "filepath"`
+                                                   AnyVersion
+                                                   (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -339,6 +409,7 @@ GenericPackageDescription
                                                                defaultExtensions = [],
                                                                defaultLanguage = Just Haskell2010,
                                                                extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
                                                                extraFrameworkDirs = [],
                                                                extraGHCiLibs = [],
                                                                extraLibDirs = [],
@@ -353,30 +424,41 @@ GenericPackageDescription
                                                                ldOptions = [],
                                                                mixins = [],
                                                                oldExtensions = [],
-                                                               options = [_×_
-                                                                            GHC
-                                                                            ["-Wall", "-threaded"]],
+                                                               options = PerCompilerFlavor
+                                                                           ["-Wall", "-threaded"]
+                                                                           [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
                                                                otherModules = [],
                                                                pkgconfigDepends = [],
-                                                               profOptions = [],
-                                                               sharedOptions = [],
-                                                               staticOptions = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
-                                                                                       AnyVersion,
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "directory"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [1,0]`),
+                                                                                          `mkVersion [1,0]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "doctest"`
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0,9,1]`),
+                                                                                          `mkVersion [0,9,1]`)
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "filepath"`
-                                                                                       AnyVersion],
+                                                                                       AnyVersion
+                                                                                       (Set.fromList
+                                                                                          [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "doctests.hs",

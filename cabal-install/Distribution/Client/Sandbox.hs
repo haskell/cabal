@@ -91,6 +91,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramDb )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
+                                              , emptyTestFlags
                                               , fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die', debug, notice, info, warn
@@ -99,7 +100,7 @@ import Distribution.Simple.Utils              ( die', debug, notice, info, warn
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
-import Distribution.Text                      ( display )
+import Distribution.Deprecated.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity )
 import Distribution.Compat.Environment        ( lookupEnv, setEnv )
 import Distribution.Client.Compat.FilePerms   ( setFileHidden )
@@ -684,7 +685,7 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
                   ,comp, platform, progdb
                   ,UseSandbox sandboxDir, Just sandboxPkgInfo
                   ,globalFlags, configFlags, configExFlags, installFlags
-                  ,haddockFlags)
+                  ,haddockFlags, emptyTestFlags)
 
         -- This can actually be replaced by a call to 'install', but we use a
         -- lower-level API because of layer separation reasons. Additionally, we

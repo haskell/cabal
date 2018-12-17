@@ -48,11 +48,9 @@ import Control.Applicative (liftA2)
 import qualified System.Info (os, arch)
 import Distribution.Utils.Generic (lowercase)
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -134,16 +132,13 @@ instance Pretty OS where
 instance Parsec OS where
   parsec = classifyOS Compat <$> parsecIdent
 
-instance Text OS where
-  parse = fmap (classifyOS Compat) ident
-
 classifyOS :: ClassificationStrictness -> String -> OS
 classifyOS strictness s =
   fromMaybe (OtherOS s) $ lookup (lowercase s) osMap
   where
     osMap = [ (name, os)
             | os <- knownOSs
-            , name <- display os : osAliases strictness os ]
+            , name <- prettyShow os : osAliases strictness os ]
 
 buildOS :: OS
 buildOS = classifyOS Permissive System.Info.os
@@ -203,16 +198,13 @@ instance Pretty Arch where
 instance Parsec Arch where
   parsec = classifyArch Strict <$> parsecIdent
 
-instance Text Arch where
-  parse = fmap (classifyArch Strict) ident
-
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
   fromMaybe (OtherArch s) $ lookup (lowercase s) archMap
   where
     archMap = [ (name, arch)
               | arch <- knownArches
-              , name <- display arch : archAliases strictness arch ]
+              , name <- prettyShow arch : archAliases strictness arch ]
 
 buildArch :: Arch
 buildArch = classifyArch Permissive System.Info.arch
@@ -232,6 +224,13 @@ instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os
 
 instance Parsec Platform where
+    -- TODO: there are ambigious platforms like: `arch-word-os`
+    -- which could be parsed as
+    --   * Platform "arch-word" "os"
+    --   * Platform "arch" "word-os"
+    -- We could support that preferring variants 'OtherOS' or 'OtherArch'
+    --
+    -- For now we split into arch and os parts on the first dash.
     parsec = do
         arch <- parsecDashlessArch
         _ <- P.char '-'
@@ -245,28 +244,6 @@ instance Parsec Platform where
             firstChar = P.satisfy isAlpha
             rest = P.munch (\c -> isAlphaNum c || c == '_')
 
-instance Text Platform where
-  -- TODO: there are ambigious platforms like: `arch-word-os`
-  -- which could be parsed as
-  --   * Platform "arch-word" "os"
-  --   * Platform "arch" "word-os"
-  -- We could support that preferring variants 'OtherOS' or 'OtherArch'
-  --
-  -- For now we split into arch and os parts on the first dash.
-  parse = do
-    arch <- parseDashlessArch
-    _ <- Parse.char '-'
-    os   <- parse
-    return (Platform arch os)
-      where
-        parseDashlessArch :: Parse.ReadP r Arch
-        parseDashlessArch = fmap (classifyArch Strict) dashlessIdent
-
-        dashlessIdent :: Parse.ReadP r String
-        dashlessIdent = liftM2 (:) firstChar rest
-          where firstChar = Parse.satisfy isAlpha
-                rest = Parse.munch (\c -> isAlphaNum c || c == '_')
-
 -- | The platform Cabal was compiled on. In most cases,
 -- @LocalBuildInfo.hostPlatform@ should be used instead (the platform we're
 -- targeting).
@@ -274,11 +251,6 @@ buildPlatform :: Platform
 buildPlatform = Platform buildArch buildOS
 
 -- Utils:
-
-ident :: Parse.ReadP r String
-ident = liftM2 (:) firstChar rest
-  where firstChar = Parse.satisfy isAlpha
-        rest = Parse.munch (\c -> isAlphaNum c || c == '_' || c == '-')
 
 parsecIdent :: CabalParsing m => m String
 parsecIdent = (:) <$> firstChar <*> rest
@@ -288,13 +260,13 @@ parsecIdent = (:) <$> firstChar <*> rest
 
 platformFromTriple :: String -> Maybe Platform
 platformFromTriple triple =
-  fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
-  where parseWord = Parse.munch1 (\c -> isAlphaNum c || c == '_')
+    either (const Nothing) Just $ explicitEitherParsec parseTriple triple
+  where parseWord = P.munch1 (\c -> isAlphaNum c || c == '_')
         parseTriple = do
           arch <- fmap (classifyArch Permissive) parseWord
-          _ <- Parse.char '-'
+          _ <- P.char '-'
           _ <- parseWord -- Skip vendor
-          _ <- Parse.char '-'
-          os <- fmap (classifyOS Permissive) ident -- OS may have hyphens, like
+          _ <- P.char '-'
+          os <- fmap (classifyOS Permissive) parsecIdent -- OS may have hyphens, like
                                                -- 'nto-qnx'
           return $ Platform arch os

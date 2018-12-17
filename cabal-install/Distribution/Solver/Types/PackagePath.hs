@@ -10,7 +10,7 @@ module Distribution.Solver.Types.PackagePath
     ) where
 
 import Distribution.Package
-import Distribution.Text
+import Distribution.Deprecated.Text
 import qualified Text.PrettyPrint as Disp
 import Distribution.Solver.Compat.Prelude ((<<>>))
 
