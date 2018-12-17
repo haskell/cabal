@@ -1,4 +1,4 @@
-# cabal new-sdist
+# cabal v2-sdist
 a/Main.hs
 a/a.cabal
 a/doc/index.html

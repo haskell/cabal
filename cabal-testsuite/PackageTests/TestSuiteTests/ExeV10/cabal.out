@@ -1,4 +1,4 @@
-# cabal new-test
+# cabal v2-test
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:

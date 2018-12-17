@@ -1,4 +1,4 @@
-# cabal new-build
+# cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -10,5 +10,5 @@ Building library for p-1.0..
 Configuring library for q-1.0..
 Preprocessing library for q-1.0..
 Building library for q-1.0..
-# cabal new-build
+# cabal v2-build
 Up to date

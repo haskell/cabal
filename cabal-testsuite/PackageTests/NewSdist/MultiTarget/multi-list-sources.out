@@ -1,4 +1,4 @@
-# cabal new-sdist
+# cabal v2-sdist
 a/Main.hs
 a/Test.hs
 a/a.cabal

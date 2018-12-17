@@ -1,2 +1,2 @@
-# cabal new-sdist
+# cabal v2-sdist
 cabal: The package base cannot be packaged for distribution, because it is not local to this project.

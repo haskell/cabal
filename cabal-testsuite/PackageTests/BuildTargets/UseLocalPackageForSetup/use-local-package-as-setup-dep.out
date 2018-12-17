@@ -1,6 +1,6 @@
 # cabal v1-update
 Downloading the latest package list from test-local-repo
-# cabal new-build
+# cabal v2-build
 Resolving dependencies...
 cabal: Could not resolve dependencies:
 [__0] trying: pkg-1.0 (user goal)
