@@ -109,12 +109,15 @@ instance Monad ParseResult where
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
-#if MIN_VERSION_base(4,9,0)
-        fail = Fail.fail
 
-instance Fail.MonadFail ParseResult where
+#if !(MIN_VERSION_base(4,9,0))
         fail = parseResultFail
-#else
+#elif !(MIN_VERSION_base(4,13,0))
+        fail = Fail.fail
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Fail.MonadFail ParseResult where
         fail = parseResultFail
 #endif
 
