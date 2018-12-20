@@ -44,7 +44,7 @@ import qualified Distribution.Package                        as D
 import qualified Distribution.PackageDescription             as D
 import qualified Distribution.Simple.Setup                   as D
 import qualified Distribution.System                         as D
-import qualified Distribution.Types.PackageVersionConstraint as D
+import qualified Distribution.Client.PackageVersionConstraint as D
 import qualified Distribution.Types.SourceRepo               as D
 import qualified Distribution.Types.UnqualComponentName      as D
 import qualified Distribution.Version                        as D

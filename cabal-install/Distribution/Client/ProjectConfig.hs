@@ -83,7 +83,7 @@ import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.Package
          ( PackageName, PackageId, packageId, UnitId )
-import Distribution.Types.PackageVersionConstraint
+import Distribution.Client.PackageVersionConstraint
          ( PackageVersionConstraint(..) )
 import Distribution.System
          ( Platform )

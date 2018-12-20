@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module Distribution.Types.PackageVersionConstraint
+module Distribution.Client.PackageVersionConstraint
   ( PackageVersionConstraint(..)
   ) where
 
-import Distribution.Compat.Prelude
+import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Parsec

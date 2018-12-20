@@ -138,6 +138,7 @@ Version:            2.5.0.0
         Distribution.Client.Outdated
         Distribution.Client.PackageHash
         Distribution.Client.PackageUtils
+        Distribution.Client.PackageVersionConstraint
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectBuilding.Types

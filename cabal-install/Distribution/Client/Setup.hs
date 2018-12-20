@@ -119,7 +119,7 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
-import Distribution.Types.PackageVersionConstraint
+import Distribution.Client.PackageVersionConstraint
          ( PackageVersionConstraint(..) )
 import Distribution.Types.UnqualComponentName
          ( unqualComponentNameToPackageName )

@@ -83,7 +83,7 @@ import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
-import Distribution.Types.PackageVersionConstraint
+import Distribution.Client.PackageVersionConstraint
          ( PackageVersionConstraint )
 
 import qualified Data.Map as Map

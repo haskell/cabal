@@ -115,7 +115,7 @@ import           Distribution.Types.ComponentName
 import           Distribution.Types.LibraryName
 import           Distribution.Types.GivenComponent
   (GivenComponent(..))
-import           Distribution.Types.PackageVersionConstraint
+import           Distribution.Client.PackageVersionConstraint
 import           Distribution.Types.PkgconfigDependency
 import           Distribution.Types.UnqualComponentName
 import           Distribution.System

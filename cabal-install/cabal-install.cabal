@@ -213,6 +213,7 @@ executable cabal
         Distribution.Client.Outdated
         Distribution.Client.PackageHash
         Distribution.Client.PackageUtils
+        Distribution.Client.PackageVersionConstraint
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectBuilding.Types

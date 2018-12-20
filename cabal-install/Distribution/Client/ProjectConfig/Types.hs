@@ -38,7 +38,7 @@ import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
          ( PackageName, PackageId, UnitId )
-import Distribution.Types.PackageVersionConstraint
+import Distribution.Client.PackageVersionConstraint
          ( PackageVersionConstraint )
 import Distribution.Version
          ( Version )
