@@ -14,6 +14,7 @@
 	  error message, but with an increase in run time. (#5647)
 	* v2-test now succeeds when there are no test suites. (#5435)
 	* Add '--lib', '--exe', and '--libandexe' shorthands to init. (#5759)
+	* init now generates valid `Main.lhs` files. (#5577)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)

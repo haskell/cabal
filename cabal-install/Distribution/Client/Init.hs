@@ -32,7 +32,7 @@ import System.Directory
   ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
   , getDirectoryContents, createDirectoryIfMissing )
 import System.FilePath
-  ( (</>), (<.>), takeBaseName, equalFilePath )
+  ( (</>), (<.>), takeBaseName, takeExtension, equalFilePath )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -831,7 +831,7 @@ writeMainHs flags mainPath = do
   exists <- doesFileExist mainFullPath
   unless exists $ do
       message flags $ "Generating " ++ mainPath ++ "..."
-      writeFileSafe flags mainFullPath mainHs
+      writeFileSafe flags mainFullPath (mainHs flags)
 
 -- | Check that a main file exists.
 hasMainHs :: InitFlags -> Bool
@@ -840,14 +840,23 @@ hasMainHs flags = case mainIs flags of
              || packageType flags == Flag LibraryAndExecutable)
   _ -> False
 
--- | Default Main.hs file.  Used when no Main.hs exists.
-mainHs :: String
-mainHs = unlines
+-- | Default Main.(l)hs file.  Used when no Main.(l)hs exists.
+mainHs :: InitFlags -> String
+mainHs flags = (unlines . fmap prependPrefix)
   [ "module Main where"
   , ""
   , "main :: IO ()"
   , "main = putStrLn \"Hello, Haskell!\""
   ]
+  where
+    prependPrefix "" = ""
+    prependPrefix line
+      | isLiterate = "> " ++ line
+      | otherwise  = line
+    isLiterate = case mainIs flags of
+      Flag mainPath -> takeExtension mainPath == ".lhs"
+      _             -> False
+ 
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
