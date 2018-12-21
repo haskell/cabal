@@ -7,16 +7,16 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.ModuleName                (ModuleName)
-import Distribution.Types.BuildInfo           (BuildInfo)
-import Distribution.Types.Library             (Library)
-import Distribution.Types.LibraryVisibility   (LibraryVisibility)
-import Distribution.Types.ModuleReexport      (ModuleReexport)
-import Distribution.Types.UnqualComponentName (UnqualComponentName)
+import Distribution.ModuleName              (ModuleName)
+import Distribution.Types.BuildInfo         (BuildInfo)
+import Distribution.Types.Library           (Library)
+import Distribution.Types.LibraryName       (LibraryName)
+import Distribution.Types.LibraryVisibility (LibraryVisibility)
+import Distribution.Types.ModuleReexport    (ModuleReexport)
 
 import qualified Distribution.Types.Library as T
 
-libName :: Lens' Library (Maybe UnqualComponentName)
+libName :: Lens' Library LibraryName
 libName f s = fmap (\x -> s { T.libName = x }) (f (T.libName s))
 {-# INLINE libName #-}
 

@@ -39,7 +39,6 @@ module Distribution.Simple.Configure (configure,
                                       getInternalPackages,
                                       computeComponentId,
                                       computeCompatPackageKey,
-                                      computeCompatPackageName,
                                       localBuildInfoFile,
                                       getInstalledPackages,
                                       getInstalledPackagesMonitorFiles,
@@ -82,8 +81,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
-import Distribution.Types.MungedPackageName
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.LibraryName
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -858,8 +857,8 @@ getInternalPackages pkg_descr0 =
     -- TODO: some day, executables will be fair game here too!
     let pkg_descr = flattenPackageDescription pkg_descr0
         f lib = case libName lib of
-                    Nothing -> (packageName pkg_descr, Nothing)
-                    Just n' -> (unqualComponentNameToPackageName n', Just n')
+                    LMainLibName   -> (packageName pkg_descr, Nothing)
+                    LSubLibName n' -> (unqualComponentNameToPackageName n', Just n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function may
@@ -929,11 +928,11 @@ dependencySatisfiable
                         installedPackageSet pn vr cn
       where
         cn | pn == depName
-           = Nothing
+           = LMainLibName 
            | otherwise
            -- Reinterpret the "package name" as an unqualified component
            -- name
-           = Just $ packageNameToUnqualComponentName depName
+           = LSubLibName $ packageNameToUnqualComponentName depName
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering
@@ -1230,7 +1229,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
   -- even if there is a newer installed library "MyLibrary-0.2".
   case Map.lookup dep_pkgname internalIndex of
     Just cname -> if use_external_internal_deps
-                    then do_external (Just cname) <$> Set.toList libs
+                    then do_external (Just $ maybeToLibraryName cname) <$> Set.toList libs
                     else do_internal
     _          -> do_external Nothing <$> Set.toList libs
   where
@@ -1240,7 +1239,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
                     $ PackageIdentifier dep_pkgname $ packageVersion pkgid]
 
     -- We have to look it up externally
-    do_external :: Maybe (Maybe UnqualComponentName) -> LibraryName -> Either FailedDependency DependencyResolution
+    do_external :: Maybe LibraryName -> LibraryName -> Either FailedDependency DependencyResolution
     do_external is_internal lib = do
       ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
@@ -1248,8 +1247,8 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         -- Otherwise we just pick an arbitrary instance of the latest version.
         Nothing ->
             case is_internal of
-                Nothing     -> do_external_external
-                Just mb_uqn -> do_external_internal mb_uqn
+                Nothing -> do_external_external
+                Just ln -> do_external_internal ln
       return $ ExternalDependency $ ipiToPreExistingComponent ipi
 
     -- It's an external package, normal situation
@@ -1259,9 +1258,10 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
           pkgs -> Right $ head $ snd $ last pkgs
 
     -- It's an internal library, being looked up externally
-    do_external_internal mb_uqn =
+    do_external_internal :: LibraryName -> Either FailedDependency InstalledPackageInfo
+    do_external_internal ln =
         case PackageIndex.lookupInternalDependency installedIndex
-                (packageName pkgid) vr mb_uqn of
+                (packageName pkgid) vr ln of
           []   -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
           pkgs -> Right $ head $ snd $ last pkgs
 

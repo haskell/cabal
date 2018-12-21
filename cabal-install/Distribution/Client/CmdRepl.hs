@@ -76,12 +76,12 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
+import Distribution.Types.PackageName.Magic
+         ( fakePackageId )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.Version
-         ( mkVersion, version0 )
+         ( mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Deprecated.Text
@@ -373,7 +373,7 @@ withoutProject config verbosity extraArgs = do
       , defaultLanguage = Just Haskell2010
       }
     baseDep = Dependency "base" anyVersion (Set.singleton LMainLibName)
-    pkgId = PackageIdentifier "fake-package" version0
+    pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   

@@ -38,7 +38,7 @@ InstalledPackageInfo
    pkgRoot = Just
                "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist",
    pkgUrl = "",
-   sourceLibName = Nothing,
+   sourceLibName = LMainLibName,
    sourcePackageId = PackageIdentifier
                        {pkgName = `PackageName "internal-preprocessor-test"`,
                         pkgVersion = `mkVersion [0,1,0,0]`},

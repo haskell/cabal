@@ -23,14 +23,12 @@ import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
 import Distribution.Types.ForeignLib.Lens     (foreignLibName, foreignLibBuildInfo)
 import Distribution.Types.Library             (Library, explicitLibModules)
 import Distribution.Types.Library.Lens        (libName, libBuildInfo)
-import Distribution.Types.LibraryName         (LibraryName(..))
 import Distribution.Types.PackageDescription  (PackageDescription)
 import Distribution.Types.PackageId           (PackageIdentifier)
 import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
 import Distribution.Types.SourceRepo          (SourceRepo)
 import Distribution.Types.TestSuite           (TestSuite, testModules)
 import Distribution.Types.TestSuite.Lens      (testName, testBuildInfo)
-import Distribution.Types.UnqualComponentName ( UnqualComponentName )
 import Distribution.Version                   (Version, VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
@@ -156,38 +154,37 @@ extraDocFiles :: Lens' PackageDescription [String]
 extraDocFiles f s = fmap (\x -> s { T.extraDocFiles = x }) (f (T.extraDocFiles s))
 {-# INLINE extraDocFiles #-}
 
+-- | @since 3.0.0.0
+allLibraries :: Traversal' PackageDescription Library
+allLibraries f pd = mk <$> traverse f (T.library pd) <*> traverse f (T.subLibraries pd)
+  where
+    mk l ls = pd { T.library = l, T.subLibraries = ls }
+
 -- | @since 2.4
 componentModules :: Monoid r => ComponentName -> Getting r PackageDescription [ModuleName]
 componentModules cname = case cname of
-    CLibName LMainLibName -> library  . traverse . getting explicitLibModules
-    CLibName (LSubLibName name) -> 
-      componentModules' name subLibraries (libName . non "") explicitLibModules
+    CLibName    name ->
+      componentModules' name allLibraries             libName            explicitLibModules
     CFLibName   name -> 
-      componentModules' name foreignLibs  foreignLibName     foreignLibModules
+      componentModules' name (foreignLibs . traverse) foreignLibName     foreignLibModules
     CExeName    name -> 
-      componentModules' name executables  exeName            exeModules
+      componentModules' name (executables . traverse) exeName            exeModules
     CTestName   name -> 
-      componentModules' name testSuites   testName           testModules
+      componentModules' name (testSuites  . traverse) testName           testModules
     CBenchName  name ->
-      componentModules' name benchmarks   benchmarkName      benchmarkModules
+      componentModules' name (benchmarks  . traverse) benchmarkName      benchmarkModules
   where
     componentModules'
-        :: Monoid r
-        => UnqualComponentName
-        -> Traversal' PackageDescription [a]
-        -> Traversal' a UnqualComponentName
+        :: (Eq name, Monoid r)
+        => name 
+        -> Traversal' PackageDescription a
+        -> Lens' a name
         -> (a -> [ModuleName])
         -> Getting r PackageDescription [ModuleName]
     componentModules' name pdL nameL modules =
         pdL
-      . traverse
       . filtered ((== name) . view nameL)
       . getting modules
-
-    -- This are easily wrongly used, so we have them here locally only.
-    non :: Eq a => a -> Lens' (Maybe a) a
-    non x afb s = f <$> afb (fromMaybe x s)
-        where f y = if x == y then Nothing else Just y
 
     filtered :: (a -> Bool) -> Traversal' a a
     filtered p f s = if p s then f s else pure s
@@ -195,35 +192,27 @@ componentModules cname = case cname of
 -- | @since 2.4
 componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
 componentBuildInfo cname = case cname of
-    CLibName LMainLibName -> 
-      library  . traverse . libBuildInfo
-    CLibName (LSubLibName name) -> 
-      componentBuildInfo' name subLibraries (libName . non "") libBuildInfo
+    CLibName    name -> 
+      componentBuildInfo' name allLibraries             libName            libBuildInfo
     CFLibName   name -> 
-      componentBuildInfo' name foreignLibs  foreignLibName     foreignLibBuildInfo
+      componentBuildInfo' name (foreignLibs . traverse) foreignLibName     foreignLibBuildInfo
     CExeName    name -> 
-      componentBuildInfo' name executables  exeName            exeBuildInfo
+      componentBuildInfo' name (executables . traverse) exeName            exeBuildInfo
     CTestName   name -> 
-      componentBuildInfo' name testSuites   testName           testBuildInfo
+      componentBuildInfo' name (testSuites  . traverse) testName           testBuildInfo
     CBenchName  name ->
-      componentBuildInfo' name benchmarks   benchmarkName      benchmarkBuildInfo
+      componentBuildInfo' name (benchmarks  . traverse) benchmarkName      benchmarkBuildInfo
   where
-    componentBuildInfo' :: UnqualComponentName
-                         -> Traversal' PackageDescription [a]
-                         -> Traversal' a UnqualComponentName
-                         -> Traversal' a BuildInfo
-                         -> Traversal' PackageDescription BuildInfo
+    componentBuildInfo' :: Eq name
+                        => name 
+                        -> Traversal' PackageDescription a
+                        -> Lens' a name 
+                        -> Traversal' a BuildInfo
+                        -> Traversal' PackageDescription BuildInfo
     componentBuildInfo' name pdL nameL biL =
         pdL
-      . traverse
       . filtered ((== name) . view nameL)
       . biL
-
-    -- This are easily wrongly used, so we have them here locally only.
-    -- We have to repeat these, as everything is exported from this module.
-    non :: Eq a => a -> Lens' (Maybe a) a
-    non x afb s = f <$> afb (fromMaybe x s)
-        where f y = if x == y then Nothing else Just y
 
     filtered :: (a -> Bool) -> Traversal' a a
     filtered p f s = if p s then f s else pure s

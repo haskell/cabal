@@ -370,6 +370,7 @@ library
     Distribution.Types.LibraryName
     Distribution.Types.MungedPackageName
     Distribution.Types.PackageName
+    Distribution.Types.PackageName.Magic
     Distribution.Types.PkgconfigName
     Distribution.Types.UnqualComponentName
     Distribution.Types.IncludeRenaming

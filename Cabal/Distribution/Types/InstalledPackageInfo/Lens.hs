@@ -12,8 +12,8 @@ import Distribution.License                    (License)
 import Distribution.ModuleName                 (ModuleName)
 import Distribution.Package                    (AbiHash, ComponentId, PackageIdentifier, UnitId)
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
+import Distribution.Types.LibraryName          (LibraryName)
 import Distribution.Types.LibraryVisibility    (LibraryVisibility)
-import Distribution.Types.UnqualComponentName  (UnqualComponentName)
 
 import qualified Distribution.SPDX                       as SPDX
 import qualified Distribution.Types.InstalledPackageInfo as T
@@ -34,7 +34,7 @@ instantiatedWith :: Lens' InstalledPackageInfo [(ModuleName,OpenModule)]
 instantiatedWith f s = fmap (\x -> s { T.instantiatedWith = x }) (f (T.instantiatedWith s))
 {-# INLINE instantiatedWith #-}
 
-sourceLibName :: Lens' InstalledPackageInfo (Maybe UnqualComponentName)
+sourceLibName :: Lens' InstalledPackageInfo LibraryName
 sourceLibName f s = fmap (\x -> s { T.sourceLibName = x }) (f (T.sourceLibName s))
 {-# INLINE sourceLibName #-}
 

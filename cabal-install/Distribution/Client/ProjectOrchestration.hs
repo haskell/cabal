@@ -152,7 +152,8 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
-import           Distribution.Deprecated.Text
+import           Distribution.Pretty
+                   ( prettyShow )
 import           Distribution.Simple.Compiler
                    ( compilerCompatVersion, showCompilerId
                    , OptimisationLevel(..))
@@ -859,8 +860,8 @@ printPlan verbosity
     showPkgAndReason (ReadyPackage elab) =
       " - " ++
       (if verbosity >= deafening
-        then display (installedUnitId elab)
-        else display (packageId elab)
+        then prettyShow (installedUnitId elab)
+        else prettyShow (packageId elab)
         ) ++
       (case elabPkgOrComp elab of
           ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
@@ -873,13 +874,13 @@ printPlan verbosity
       " (" ++ showBuildStatus buildStatus ++ ")"
 
     showComp elab comp =
-        maybe "custom" display (compComponentName comp) ++
+        maybe "custom" prettyShow (compComponentName comp) ++
         if Map.null (elabInstantiatedWith elab)
             then ""
             else " with " ++
                 intercalate ", "
                     -- TODO: Abbreviate the UnitIds
-                    [ display k ++ "=" ++ display v
+                    [ prettyShow k ++ "=" ++ prettyShow v
                     | (k,v) <- Map.toList (elabInstantiatedWith elab) ]
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
@@ -1104,8 +1105,8 @@ dieOnBuildFailures verbosity plan buildOutcomes
           BenchFailed     _ -> "Benchmarks failed for " ++ pkgstr
           InstallFailed   _ -> "Failed to build "  ++ pkgstr
           DependentFailed depid
-                            -> "Failed to build " ++ display (packageId pkg)
-                            ++ " because it depends on " ++ display depid
+                            -> "Failed to build " ++ prettyShow (packageId pkg)
+                            ++ " because it depends on " ++ prettyShow depid
                             ++ " which itself failed to build"
       where
         pkgstr = elabConfiguredName verbosity pkg

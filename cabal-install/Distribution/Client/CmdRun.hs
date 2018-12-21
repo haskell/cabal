@@ -90,10 +90,10 @@ import Distribution.Types.GenericPackageDescription as GPD
          ( GenericPackageDescription(..), emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.Version
-         ( mkVersion, version0 )
+         ( mkVersion )
+import Distribution.Types.PackageName.Magic
+         ( fakePackageId )
 import Language.Haskell.Extension
          ( Language(..) )
 
@@ -368,7 +368,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
       , specVersionRaw = Left (mkVersion [2, 2])
       , licenseRaw = Left SPDX.NONE
       }
-    pkgId = PackageIdentifier "fake-package" version0
+    pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   BS.writeFile (tempDir </> "Main.hs") contents'

@@ -9,7 +9,6 @@ import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
 import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
-import Distribution.Types.PackageName
 import Distribution.Types.MungedPackageName
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import GHC.Generics (Generic)
@@ -29,7 +28,7 @@ instance Package InstSolverPackage where
     packageId i =
         -- HACK! See Note [Index conversion with internal libraries]
         let MungedPackageId mpn v = mungedId i
-        in PackageIdentifier (mkPackageName (unMungedPackageName mpn)) v
+        in PackageIdentifier (encodeCompatPackageName mpn) v
 
 instance HasMungedPackageId InstSolverPackage where
     mungedId = mungedId . instSolverPkgIPI

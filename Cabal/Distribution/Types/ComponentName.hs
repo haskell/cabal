@@ -3,7 +3,6 @@
 
 module Distribution.Types.ComponentName (
   ComponentName(..),
-  libraryComponentName,
   showComponentName,
   componentNameStanza,
   componentNameString,
@@ -32,7 +31,7 @@ instance Binary ComponentName
 
 -- Build-target-ish syntax
 instance Pretty ComponentName where
-    pretty (CLibName lib)    = pretty lib
+    pretty (CLibName lib)    = prettyLibraryNameComponent lib
     pretty (CFLibName str)   = Disp.text "flib:" <<>> pretty str
     pretty (CExeName str)    = Disp.text "exe:" <<>> pretty str
     pretty (CTestName str)   = Disp.text "test:" <<>> pretty str
@@ -42,7 +41,7 @@ instance Parsec ComponentName where
     -- note: this works as lib/flib/... all start with different character!
     parsec = parseComposite <|> parseLib
       where
-        parseLib = CLibName <$> parsec
+        parseLib = CLibName <$> parsecLibraryNameComponent
         parseComposite = do
             ctor <- P.choice
                 [ P.string "flib:" >> return CFLibName
@@ -76,9 +75,3 @@ componentNameString (CFLibName  n) = Just n
 componentNameString (CExeName   n) = Just n
 componentNameString (CTestName  n) = Just n
 componentNameString (CBenchName n) = Just n
-
--- | Convert the 'UnqualComponentName' of a library into a
--- 'ComponentName'.
-libraryComponentName :: Maybe UnqualComponentName -> ComponentName
-libraryComponentName Nothing = CLibName LMainLibName
-libraryComponentName (Just n) = CLibName $ LSubLibName n

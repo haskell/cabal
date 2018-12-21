@@ -57,7 +57,7 @@ GenericPackageDescription
                                                           targetBuildDepends = [],
                                                           virtualModules = []},
                                         libExposed = True,
-                                        libName = Nothing,
+                                        libName = LMainLibName,
                                         libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},

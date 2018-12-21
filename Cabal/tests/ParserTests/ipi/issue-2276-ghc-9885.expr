@@ -2078,7 +2078,7 @@ InstalledPackageInfo
    maintainer = "Ross Paterson <R.Paterson@city.ac.uk>",
    pkgRoot = Nothing,
    pkgUrl = "",
-   sourceLibName = Nothing,
+   sourceLibName = LMainLibName,
    sourcePackageId = PackageIdentifier
                        {pkgName = `PackageName "transformers"`,
                         pkgVersion = `mkVersion [0,5,2,0]`},

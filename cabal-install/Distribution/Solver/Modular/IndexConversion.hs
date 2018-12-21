@@ -86,7 +86,7 @@ convId :: InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
-        pn = mkPackageName (unMungedPackageName mpn)
+        pn = encodeCompatPackageName mpn
 
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
@@ -100,7 +100,7 @@ convIP idx ipi =
   (pn, i) = convId ipi
   -- 'sourceLibName' is unreliable, but for now we only really use this for
   -- primary libs anyways
-  comp = componentNameToComponent $ libraryComponentName $ sourceLibName ipi
+  comp = componentNameToComponent $ CLibName $ sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
 
 -- Note [Index conversion with internal libraries]

@@ -183,7 +183,7 @@ instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
 instance HasMungedPackageId (ConfiguredPackage loc) where
-  mungedId cpkg = computeCompatPackageId (packageId cpkg) Nothing
+  mungedId cpkg = computeCompatPackageId (packageId cpkg) LMainLibName
 
 -- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where

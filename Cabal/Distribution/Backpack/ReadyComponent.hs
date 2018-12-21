@@ -25,14 +25,15 @@ import Distribution.Types.Component
 import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentId
 import Distribution.Types.ComponentName
-import Distribution.Types.LibraryName
 import Distribution.Types.PackageId
+import Distribution.Types.PackageName.Magic
 import Distribution.Types.UnitId
 import Distribution.Compat.Graph (IsNode(..))
 import Distribution.Types.Module
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.Library
+import Distribution.Types.LibraryName
 
 import Distribution.ModuleName
 import Distribution.Package
@@ -140,8 +141,7 @@ rc_depends rc = ordNub $
         computeCompatPackageId
             (ci_pkgid ci)
             (case ci_cname ci of
-                CLibName LMainLibName -> Nothing
-                CLibName (LSubLibName uqn) -> Just uqn
+                CLibName name -> name
                 _ -> error $ prettyShow (rc_cid rc) ++
                         " depends on non-library " ++ prettyShow (ci_id ci))
 
@@ -275,7 +275,7 @@ toReadyComponents pid_map subst0 comps
                             fmap rc_munged_id (join (Map.lookup dep_uid s)))]
                   where
                     err_pid = MungedPackageId
-                        (mkMungedPackageName "nonexistent-package-this-is-a-cabal-bug")
+                        (MungedPackageName nonExistentPackageThisIsCabalBug LMainLibName)
                         (mkVersion [0])
                 instc = InstantiatedComponent {
                             instc_insts = Map.toList insts,

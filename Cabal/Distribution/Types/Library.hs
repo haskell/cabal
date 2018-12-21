@@ -16,12 +16,12 @@ import Distribution.ModuleName
 import Distribution.Types.BuildInfo
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.LibraryName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
 
 data Library = Library
-    { libName           :: Maybe UnqualComponentName
+    { libName           :: LibraryName
     , exposedModules    :: [ModuleName]
     , reexportedModules :: [ModuleReexport]
     , signatures        :: [ModuleName]       -- ^ What sigs need implementations?
@@ -40,7 +40,7 @@ instance NFData Library where rnf = genericRnf
 
 emptyLibrary :: Library
 emptyLibrary = Library
-    { libName           = mempty
+    { libName           = LMainLibName
     , exposedModules    = mempty
     , reexportedModules = mempty
     , signatures        = mempty
@@ -63,7 +63,7 @@ instance Monoid Library where
 
 instance Semigroup Library where
   a <> b = Library
-    { libName           = combine libName
+    { libName           = combineLibraryName (libName a) (libName b)
     , exposedModules    = combine exposedModules
     , reexportedModules = combine reexportedModules
     , signatures        = combine signatures
@@ -97,3 +97,11 @@ libModulesAutogen lib = autogenModules (libBuildInfo lib)
 {-# DEPRECATED libModules "If you want all modules that are built with a library, use 'allLibModules'.  Otherwise, use 'explicitLibModules' for ONLY the modules explicitly mentioned in the package description. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 libModules :: Library -> [ModuleName]
 libModules = explicitLibModules
+
+-- | Combine 'LibraryName'. in parsing we prefer value coming
+-- from munged @name@ field over the @lib-name@.
+--
+-- /Should/ be irrelevant.
+combineLibraryName :: LibraryName -> LibraryName -> LibraryName
+combineLibraryName l@(LSubLibName _) _ = l
+combineLibraryName _ l                 = l

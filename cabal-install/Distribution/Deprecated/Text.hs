@@ -44,8 +44,6 @@ import qualified Distribution.Package                        as D
 import qualified Distribution.PackageDescription             as D
 import qualified Distribution.Simple.Setup                   as D
 import qualified Distribution.System                         as D
-import qualified Distribution.Types.MungedPackageId        as D
-import qualified Distribution.Types.MungedPackageName        as D
 import qualified Distribution.Types.PackageVersionConstraint as D
 import qualified Distribution.Types.SourceRepo               as D
 import qualified Distribution.Types.UnqualComponentName      as D
@@ -202,14 +200,6 @@ instance Text E.Language where
     lang <- Parse.munch1 isAlphaNum
     return (E.classifyLanguage lang)
 
-instance Text D.LibraryName where
-    parse = parseComposite <++ parseSingle
-     where
-      parseSingle = Parse.string "lib" >> return D.LMainLibName
-      parseComposite = do
-        ctor <- Parse.string "lib:" >> return D.LSubLibName
-        ctor <$> parse
-
 instance Text D.License where
   parse = do
     name    <- Parse.munch1 (\c -> isAlphaNum c && c /= '-')
@@ -248,15 +238,6 @@ instance Text D.ModuleName where
         c  <- Parse.satisfy isUpper
         cs <- Parse.munch validModuleChar
         return (c:cs)
-
-instance Text D.MungedPackageId where
-  parse = do
-    n <- parse
-    v <- (Parse.char '-' >> parse) <++ return D.nullVersion
-    return (D.MungedPackageId n v)
-
-instance Text D.MungedPackageName where
-  parse = D.mkMungedPackageName <$> parsePackageName
 
 instance Text D.OS where
   parse = fmap (D.classifyOS D.Compat) ident
@@ -302,17 +283,6 @@ instance Text D.RepoType where
 
 instance Text D.UnqualComponentName where
   parse = D.mkUnqualComponentName <$> parsePackageName
-
-instance Text D.ComponentName where
-    parse = parseComposite <++ parseLib
-     where
-      parseLib = D.CLibName <$> parse
-      parseComposite = do
-        ctor <- Parse.choice [ Parse.string "flib:" >> return D.CFLibName
-                             , Parse.string "exe:" >> return D.CExeName
-                             , Parse.string "bench:" >> return D.CBenchName
-                             , Parse.string "test:" >> return D.CTestName ]
-        ctor <$> parse
 
 instance Text D.PackageIdentifier where
   parse = do
