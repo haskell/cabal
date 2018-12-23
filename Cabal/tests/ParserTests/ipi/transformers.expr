@@ -4,9 +4,9 @@ InstalledPackageInfo
    author = "Andy Gill, Ross Paterson",
    category = "Control",
    ccOptions = [],
-   cxxOptions = [],
    compatPackageKey = "transformers-0.5.2.0",
    copyright = "",
+   cxxOptions = [],
    dataDir = "/opt/ghc/8.2.2/share/x86_64-linux-ghc-8.2.2/transformers-0.5.2.0",
    depends = [`UnitId "base-4.10.1.0"`],
    description = concat
@@ -71,6 +71,7 @@ InstalledPackageInfo
    installedUnitId = `UnitId "transformers-0.5.2.0"`,
    instantiatedWith = [],
    ldOptions = [],
+   libVisibility = LibraryVisibilityPrivate,
    libraryDirs = ["/opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0"],
    libraryDynDirs = ["/opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0"],
    license = Right BSD3,

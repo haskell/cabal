@@ -21,6 +21,7 @@ import Distribution.Package
 import Distribution.Parsec
 import Distribution.Parsec.Newtypes
 import Distribution.Pretty
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
@@ -100,6 +101,7 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
     <+> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
     <+> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
+    <+> optionalFieldDef    "visibility"                                         L.libVisibility LibraryVisibilityPrivate
   where
     mkInstalledPackageInfo _ Basic {..} = InstalledPackageInfo
         -- _basicPkgName is not used

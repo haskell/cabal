@@ -447,7 +447,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.frameworkDirs      = extraFrameworkDirs bi,
     IPI.haddockInterfaces  = [haddockdir installDirs </> haddockName pkg],
     IPI.haddockHTMLs       = [htmldir installDirs],
-    IPI.pkgRoot            = Nothing
+    IPI.pkgRoot            = Nothing,
+    IPI.libVisibility      = libVisibility lib
   }
   where
     ghc84 = case compilerId $ compiler lbi of

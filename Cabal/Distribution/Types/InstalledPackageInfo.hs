@@ -20,6 +20,7 @@ import Distribution.ModuleName
 import Distribution.Package                   hiding (installedUnitId)
 import Distribution.Types.AbiDependency
 import Distribution.Types.ExposedModule
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.UnqualComponentName
@@ -86,7 +87,8 @@ data InstalledPackageInfo
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath
+        pkgRoot           :: Maybe FilePath,
+        libVisibility     :: LibraryVisibility
     }
     deriving (Eq, Generic, Typeable, Read, Show)
 
@@ -166,5 +168,6 @@ emptyInstalledPackageInfo
         frameworks        = [],
         haddockInterfaces = [],
         haddockHTMLs      = [],
-        pkgRoot           = Nothing
+        pkgRoot           = Nothing,
+        libVisibility     = LibraryVisibilityPrivate
     }
