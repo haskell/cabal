@@ -49,9 +49,9 @@ import Distribution.FieldGrammar
 import Distribution.ModuleName                (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Parsec.Common
+import Distribution.Parsec
 import Distribution.Parsec.Newtypes
-import Distribution.Parsec.ParseResult
+import Distribution.Fields
 import Distribution.Pretty                    (prettyShow)
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib

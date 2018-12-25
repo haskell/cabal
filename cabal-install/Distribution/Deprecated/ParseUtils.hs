@@ -36,7 +36,7 @@ module Distribution.Deprecated.ParseUtils (
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
         commaListField, commaListFieldWithSep, commaNewLineListField,
-        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted, indentWith,
+        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
@@ -109,12 +109,15 @@ instance Monad ParseResult where
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
-#if MIN_VERSION_base(4,9,0)
-        fail = Fail.fail
 
-instance Fail.MonadFail ParseResult where
+#if !(MIN_VERSION_base(4,9,0))
         fail = parseResultFail
-#else
+#elif !(MIN_VERSION_base(4,13,0))
+        fail = Fail.fail
+#endif
+
+#if MIN_VERSION_base(4,9,0)
+instance Fail.MonadFail ParseResult where
         fail = parseResultFail
 #endif
 
@@ -669,6 +672,7 @@ ppField name fielddoc
    | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
    | otherwise                = text name <<>> colon <+> fielddoc
    where
+      indentWith = 4
       nestedFields =
          [ "description"
          , "build-depends"

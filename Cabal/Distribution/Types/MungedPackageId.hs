@@ -8,7 +8,7 @@ module Distribution.Types.MungedPackageId
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.MungedPackageName
 import Distribution.Types.PackageId

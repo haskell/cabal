@@ -36,7 +36,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Types.MungedPackageId
 import Distribution.Verbosity
 import Distribution.Version

@@ -22,6 +22,7 @@ Params (with defaults)
     CABALTESTS=true          Run Cabal tests
     CABALINSTALLTESTS=true   Run cabal-install tests
     CABALSUITETESTS=true     Run cabal-testsuite
+    CABAL_LIB_ONLY=YES       Validate only Cabal-the-library
 EOF
 exit 0
 fi
@@ -156,7 +157,8 @@ CMD="$($CABALPLAN list-bin Cabal:test:parser-tests) $TESTSUITEJOBS --hide-succes
 (cd Cabal && timed $CMD) || exit 1
 
 CMD=$($CABALPLAN list-bin Cabal:test:hackage-tests)
-(cd Cabal && timed $CMD parsec d) || exit 1
+(cd Cabal && timed $CMD read-fields) || exit 1
+(cd Cabal && timed $CMD parsec d)    || exit 1
 (cd Cabal && timed $CMD roundtrip k) || exit 1
 
 fi # $CABALTESTS

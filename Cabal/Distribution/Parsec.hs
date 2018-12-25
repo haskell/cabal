@@ -1,18 +1,32 @@
-{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Parsec.Class (
+module Distribution.Parsec (
     Parsec(..),
     ParsecParser (..),
     runParsecParser,
+    runParsecParser',
     simpleParsec,
     lexemeParsec,
     eitherParsec,
     explicitEitherParsec,
-    -- * CabalParsing & warnings
+    -- * CabalParsing and and diagnostics
     CabalParsing (..),
+    -- ** Warnings
     PWarnType (..),
+    PWarning (..),
+    showPWarning,
+    -- ** Errors
+    PError (..),
+    showPError,
+    -- * Position
+    Position (..),
+    incPos,
+    retPos,
+    showPos,
+    zeroPos,
     -- * Utilities
     parsecToken,
     parsecToken',
@@ -27,14 +41,16 @@ module Distribution.Parsec.Class (
     parsecUnqualComponentName,
     ) where
 
-import Data.Char                     (digitToInt, intToDigit)
-import Data.Functor.Identity         (Identity (..))
-import Data.List                     (transpose)
+import Data.Char                           (digitToInt, intToDigit)
+import Data.Functor.Identity               (Identity (..))
+import Data.List                           (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
-import Distribution.Parsec.FieldLineStream
-import Distribution.Parsec.Common    (PWarnType (..), PWarning (..), Position (..))
-import Numeric                       (showIntAtBase)
+import Distribution.Parsec.Error           (PError (..), showPError)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString)
+import Distribution.Parsec.Position        (Position (..), incPos, retPos, showPos, zeroPos)
+import Distribution.Parsec.Warning         (PWarnType (..), PWarning (..), showPWarning)
+import Numeric                             (showIntAtBase)
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
@@ -46,6 +62,9 @@ import qualified Text.Parsec                     as Parsec
 -------------------------------------------------------------------------------
 
 -- | Class for parsing with @parsec@. Mainly used for @.cabal@ file fields.
+--
+-- For parsing @.cabal@ like file structure, see "Distribution.Fields".
+--
 class Parsec a where
     parsec :: CabalParsing m => m a
 
@@ -112,7 +131,9 @@ instance Monad ParsecParser where
     (>>) = (*>)
     {-# INLINE (>>) #-}
 
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
+#endif
 
 instance MonadPlus ParsecParser where
     mzero = empty
@@ -164,7 +185,14 @@ explicitEitherParsec parser
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
 runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
-runParsecParser p n = Parsec.runParser (unPP p cabalSpecLatest <* P.eof) [] n
+runParsecParser = runParsecParser' cabalSpecLatest
+
+-- | Like 'runParsecParser' but lets specify 'CabalSpecVersion' used.
+--
+-- @since 3.0.0.0
+--
+runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
+runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 instance Parsec a => Parsec (Identity a) where
     parsec = Identity <$> parsec

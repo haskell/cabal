@@ -14,8 +14,8 @@ import Data.Functor.Identity (Identity (..))
 
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype   (Newtype)
-import Distribution.Parsec.Class     (Parsec)
-import Distribution.Parsec.Field
+import Distribution.Fields.Field
+import Distribution.Parsec           (Parsec)
 import Distribution.Pretty           (Pretty)
 
 -- | 'FieldGrammar' is parametrised by

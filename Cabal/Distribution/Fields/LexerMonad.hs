@@ -1,12 +1,12 @@
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Parsec.LexerMonad
+-- Module      :  Distribution.Fields.LexerMonad
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
-module Distribution.Parsec.LexerMonad (
+module Distribution.Fields.LexerMonad (
     InputStream,
     LexState(..),
     LexResult(..),
@@ -31,9 +31,10 @@ module Distribution.Parsec.LexerMonad (
 
   ) where
 
-import qualified Data.ByteString             as B
+import qualified Data.ByteString              as B
 import           Distribution.Compat.Prelude
-import           Distribution.Parsec.Common  (PWarnType (..), PWarning (..), Position (..), showPos)
+import           Distribution.Parsec.Position (Position (..), showPos)
+import           Distribution.Parsec.Warning  (PWarnType (..), PWarning (..))
 import           Prelude ()
 
 import qualified Data.Map.Strict as Map

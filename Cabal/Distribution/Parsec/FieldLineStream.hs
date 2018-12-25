@@ -1,18 +1,18 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings    , ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# OPTIONS_GHC -Wall -Werror #-}
 module Distribution.Parsec.FieldLineStream (
     FieldLineStream (..),
-    fieldLinesToStream,
     fieldLineStreamFromString,
     fieldLineStreamFromBS,
+    fieldLineStreamEnd,
     ) where
 
 import Data.Bits
 import Data.ByteString             (ByteString)
 import Distribution.Compat.Prelude
-import Distribution.Parsec.Field   (FieldLine (..))
 import Distribution.Utils.Generic  (toUTF8BS)
 import Prelude ()
 
@@ -25,13 +25,8 @@ data FieldLineStream
     | FLSCons {-# UNPACK #-} !ByteString FieldLineStream
   deriving Show
 
-fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
-fieldLinesToStream []                    = end
-fieldLinesToStream [FieldLine _ bs]      = FLSLast bs
-fieldLinesToStream (FieldLine _ bs : fs) = FLSCons bs (fieldLinesToStream fs)
-
-end :: FieldLineStream
-end = FLSLast ""
+fieldLineStreamEnd :: FieldLineStream
+fieldLineStreamEnd = FLSLast mempty
 
 -- | Convert 'String' to 'FieldLineStream'.
 --
@@ -45,7 +40,7 @@ fieldLineStreamFromBS = FLSLast
 instance Monad m => Parsec.Stream FieldLineStream m Char where
     uncons (FLSLast bs) = return $ case BS.uncons bs of
         Nothing       -> Nothing
-        Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSLast bs'') end)
+        Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSLast bs'') fieldLineStreamEnd)
 
     uncons (FLSCons bs s) = return $ case BS.uncons bs of
         -- as lines are glued with '\n', we return '\n' here!

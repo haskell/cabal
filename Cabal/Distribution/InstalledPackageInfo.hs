@@ -51,16 +51,13 @@ import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.ModuleName
 import Distribution.Package                  hiding (installedPackageId, installedUnitId)
-import Distribution.Pretty.Field             (showFields)
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
 import Distribution.Utils.Generic            (toUTF8BS)
 
-import qualified Data.Map                        as Map
-import qualified Distribution.Parsec.Common      as P
-import qualified Distribution.Parsec.Parser      as P
-import qualified Distribution.Parsec.ParseResult as P
-import qualified Text.PrettyPrint                as Disp
+import qualified Data.Map            as Map
+import qualified Distribution.Fields as P
+import qualified Text.PrettyPrint    as Disp
 
 import Distribution.Types.InstalledPackageInfo
 import Distribution.Types.InstalledPackageInfo.FieldGrammar
@@ -135,7 +132,7 @@ showInstalledPackageInfo ipi =
 
 -- | The variant of 'showInstalledPackageInfo' which outputs @pkgroot@ field too.
 showFullInstalledPackageInfo :: InstalledPackageInfo -> String
-showFullInstalledPackageInfo = showFields . prettyFieldGrammar ipiFieldGrammar
+showFullInstalledPackageInfo = P.showFields . prettyFieldGrammar ipiFieldGrammar
 
 -- |
 --
@@ -144,11 +141,11 @@ showFullInstalledPackageInfo = showFields . prettyFieldGrammar ipiFieldGrammar
 -- Just "maintainer: Tester"
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField fn =
-    fmap (\g -> Disp.render . ppField fn . g) $ fieldDescrPretty ipiFieldGrammar fn
+    fmap (\g -> Disp.render . ppField fn . g) $ fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField fn =
-    fmap (Disp.renderStyle myStyle .) $ fieldDescrPretty ipiFieldGrammar fn
+    fmap (Disp.renderStyle myStyle .) $ fieldDescrPretty ipiFieldGrammar (toUTF8BS fn)
   where
     myStyle = Disp.style { Disp.mode = Disp.LeftMode }
 

@@ -52,7 +52,7 @@ import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 -- ---------------------------------------------------------------------------

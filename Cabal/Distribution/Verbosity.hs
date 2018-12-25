@@ -56,7 +56,7 @@ import Distribution.ReadE
 
 import Data.List (elemIndex)
 import Data.Set (Set)
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P

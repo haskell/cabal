@@ -135,7 +135,7 @@ import System.IO
     ( hPutStrLn, hClose )
 import Distribution.Pretty
     ( pretty, defaultStyle, prettyShow )
-import Distribution.Parsec.Class
+import Distribution.Parsec
     ( simpleParsec )
 import Text.PrettyPrint
     ( Doc, (<+>), ($+$), char, comma, hsep, nest

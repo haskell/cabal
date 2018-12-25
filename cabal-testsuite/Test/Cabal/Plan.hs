@@ -6,7 +6,7 @@ module Test.Cabal.Plan (
     planDistDir,
 ) where
 
-import Distribution.Parsec.Class (simpleParsec)
+import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty (prettyShow)
 import Distribution.Types.ComponentName
 import Distribution.Package

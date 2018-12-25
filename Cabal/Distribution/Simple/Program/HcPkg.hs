@@ -52,7 +52,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Utils
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId

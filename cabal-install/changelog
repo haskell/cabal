@@ -9,6 +9,7 @@
 	* Add '--minimize-conflict-set' flag to try to improve the solver's
 	  error message, but with an increase in run time. (#5647)
 	* v2-test now succeeds when there are no test suites. (#5435)
+	* Add '--lib', '--exe', and '--libandexe' shorthands to init. (#5759)
   * Init improvements: add flag '--application-dir', and creating
 	  a library create MyLib.hs. (#5740)
 

@@ -7,7 +7,7 @@ module Distribution.Types.LegacyExeDependency
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version      (VersionRange, anyVersion)
 

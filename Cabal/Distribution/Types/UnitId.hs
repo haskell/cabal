@@ -20,7 +20,7 @@ import Distribution.Utils.ShortText
 
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 

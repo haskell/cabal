@@ -7,7 +7,7 @@ module Distribution.Types.PackageVersionConstraint
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 import Distribution.Types.VersionRange

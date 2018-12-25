@@ -38,7 +38,7 @@ import Data.List                     (dropWhileEnd)
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
        (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)

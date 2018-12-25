@@ -12,7 +12,7 @@ import Distribution.Compat.Prelude hiding (empty)
 import Prelude ()
 
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Data.Map                   as Map

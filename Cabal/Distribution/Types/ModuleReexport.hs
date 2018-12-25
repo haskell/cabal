@@ -9,7 +9,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
 
