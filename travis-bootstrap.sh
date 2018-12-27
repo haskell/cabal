@@ -21,10 +21,10 @@ PATH=$HOME/.cabal/bin:$PATH
 install_from_tarball() {
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
-   if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install --force-reinstalls $jobs "dist/$SRC_TGZ" -v2;
+   if [ -f "dist-newstyle/sdist/$SRC_TGZ" ]; then
+      cabal install --force-reinstalls $jobs "dist-newstyle/sdist/$SRC_TGZ" -v2;
    else
-      echo "expected 'dist/$SRC_TGZ' not found";
+      echo "expected 'dist-newstyle/sdist/$SRC_TGZ' not found";
       exit 1;
    fi
 }
