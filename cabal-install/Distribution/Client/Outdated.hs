@@ -80,7 +80,7 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
 
   when (not newFreezeFile && isJust mprojectFile) $
     die' verbosity $
-      "--project-file must only be used with --new-freeze-file."
+      "--project-file must only be used with --v2-freeze-file."
 
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
   let pkgIndex = packageIndex sourcePkgDb
