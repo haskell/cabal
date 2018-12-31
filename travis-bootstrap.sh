@@ -19,11 +19,14 @@ PATH=$HOME/.cabal/bin:$PATH
 # The following scriptlet checks that the resulting source distribution can be
 # built & installed.
 install_from_tarball() {
-   SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+   SRC_NAME=$(cabal info . | awk '{print $2;exit}') ;
+   SRC_TGZ="$SRC_NAME.tar.gz"
+   SRC_PATH="$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ"
    export SRC_TGZ
-   if [ -f "$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ" ]; then
-      cd $TRAVIS_BUILD_DIR;
-      cabal install --force-reinstalls $jobs "dist-newstyle/sdist/$SRC_TGZ" -v2;
+   if [ -f "$SRC_PATH" ]; then
+      tar xzf $SRC_PATH -C /tmp;
+      cd /tmp/$SRC_NAME;
+      cabal build --force-reinstalls $jobs all -v2;
    else
       echo "expected '$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ' not found";
       exit 1;
