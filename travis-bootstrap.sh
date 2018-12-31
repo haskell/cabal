@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -x
+
 . ./travis-common.sh
 
 # ---------------------------------------------------------------------
@@ -19,6 +21,7 @@ PATH=$HOME/.cabal/bin:$PATH
 # The following scriptlet checks that the resulting source distribution can be
 # built & installed.
 install_from_tarball() {
+   echo $PWD ;
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
    if [ -f "dist-newstyle/sdist/$SRC_TGZ" ]; then
