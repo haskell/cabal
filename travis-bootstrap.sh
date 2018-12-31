@@ -22,7 +22,8 @@ install_from_tarball() {
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
    if [ -f "$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ" ]; then
-      cabal install --force-reinstalls $jobs "$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ" -v2;
+      cd $TRAVIS_BUILD_DIR;
+      cabal install --force-reinstalls $jobs "dist-newstyle/sdist/$SRC_TGZ" -v2;
    else
       echo "expected '$TRAVIS_BUILD_DIR/dist-newstyle/sdist/$SRC_TGZ' not found";
       exit 1;
