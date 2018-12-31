@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -x
-
 . ./travis-common.sh
 
 # ---------------------------------------------------------------------
@@ -21,7 +19,6 @@ PATH=$HOME/.cabal/bin:$PATH
 # The following scriptlet checks that the resulting source distribution can be
 # built & installed.
 install_from_tarball() {
-   echo $PWD ;
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
    if [ -f "dist-newstyle/sdist/$SRC_TGZ" ]; then
@@ -47,9 +44,9 @@ timed cabal update
 echo Cabal
 (cd Cabal && timed cabal clean) || exit $?
 (cd Cabal && timed cabal sdist) || exit $?
-(cd Cabal && timed install_from_tarball) || exit $?
+(timed install_from_tarball) || exit $?
 
 echo cabal-install
 (cd cabal-install && timed cabal clean) || exit $?
 (cd cabal-install && timed cabal sdist) || exit $?
-(cd cabal-install && timed install_from_tarball) || exit $?
+(timed install_from_tarball) || exit $?
