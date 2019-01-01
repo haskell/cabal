@@ -5,13 +5,13 @@ import Test.Cabal.Prelude
 -- building its setup script with the installed Cabal, which depends on the
 -- installed time, even though the installed time doesn't fit the constraint.
 main = cabalTest $ do
-  cabal "new-build" ["time", "--constraint=time==99999", "--dry-run"]
+  cabal "v2-build" ["time", "--constraint=time==99999", "--dry-run"]
 
   -- Temporarily disabled recording here because output is not stable
   recordMode DoNotRecord $ do
     -- Constraining all uses of 'time' fails because the installed 'time'
     -- doesn't fit the constraint.
-    r <- fails $ cabal' "new-build" ["time", "--constraint=any.time==99999", "--dry-run"]
+    r <- fails $ cabal' "v2-build" ["time", "--constraint=any.time==99999", "--dry-run"]
     assertRegex "Expected cabal to reject the setup dependency on the installed time"
                 ("rejecting: time:setup.time-[0-9.]*/installed-[^[:space:]]* "
                   ++ "\\(constraint from command line flag requires ==99999\\)")

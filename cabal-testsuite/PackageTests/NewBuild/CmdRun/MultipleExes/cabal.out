@@ -1,4 +1,4 @@
-# cabal new-run
+# cabal v2-run
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -6,16 +6,16 @@ In order, the following will be built:
 Configuring executable 'foo' for MultipleExes-1.0..
 Preprocessing executable 'foo' for MultipleExes-1.0..
 Building executable 'foo' for MultipleExes-1.0..
-# cabal new-run
+# cabal v2-run
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - MultipleExes-1.0 (exe:bar) (first run)
 Configuring executable 'bar' for MultipleExes-1.0..
 Preprocessing executable 'bar' for MultipleExes-1.0..
 Building executable 'bar' for MultipleExes-1.0..
-# cabal new-run
+# cabal v2-run
 Up to date
-# cabal new-run
+# cabal v2-run
 cabal: The run command is for running a single executable at once. The target '' refers to the package MultipleExes-1.0 which includes the executable 'foo' and the executable 'bar'.
-# cabal new-run
+# cabal v2-run
 cabal: The run command is for running a single executable at once. The target 'MultipleExes' refers to the package MultipleExes-1.0 which includes the executable 'foo' and the executable 'bar'.

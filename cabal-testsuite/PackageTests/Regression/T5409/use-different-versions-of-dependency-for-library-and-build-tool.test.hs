@@ -7,7 +7,7 @@ import Test.Cabal.Prelude
 -- as a preprocessor to insert the executable's version number into the source
 -- code.  Then the pkg executable prints out both versions.
 --
--- Issue #5409 caused new-build to use the same instance of build-tool-pkg for
+-- Issue #5409 caused v2-build to use the same instance of build-tool-pkg for
 -- the build-depends and build-tool-depends dependencies, even though it
 -- violated the version constraints.
 main = withShorterPathForNewBuildStore $ \storeDir ->
@@ -15,7 +15,7 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
     skipUnless =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $
-            cabalG' ["--store-dir=" ++ storeDir] "new-build" ["pkg:my-exe"]
+            cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
       let msg = "In order, the following will be built:"
              ++ "  - build-tool-pkg-1 (lib) (requires download & build)"
              ++ "  - build-tool-pkg-2 (lib) (requires download & build)"  -- dependency of build-tool-exe

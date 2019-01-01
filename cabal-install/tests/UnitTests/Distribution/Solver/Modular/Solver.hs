@@ -889,7 +889,7 @@ db15 = [
 
 -- | Detect a cycle between a package and its setup script.
 --
--- This type of cycle can easily occur when new-build adds default setup
+-- This type of cycle can easily occur when v2-build adds default setup
 -- dependencies to packages without custom-setup stanzas. For example, cabal
 -- adds 'time' as a setup dependency for 'time'. The solver should detect the
 -- cycle when it attempts to link the setup and non-setup instances of the

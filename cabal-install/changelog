@@ -1,6 +1,9 @@
 -*-change-log-*-
 
-2.6.0.0 (current development version)
+3.0.0.0 (current development version)
+	* Legacy commands are now only accessible with the `v1-` prefixes, and the `v2-`
+	  commands are the new default. Accordingly, the next version of Cabal will be
+	  the start of the 3.x version series. (#5800)
 	* New solver flag: '--reject-unconstrained-dependencies'. (#2568)
 	* Ported old-style test options to the new-style commands (#5455).
 	* Improved error messages for cabal file parse errors. (#5710)

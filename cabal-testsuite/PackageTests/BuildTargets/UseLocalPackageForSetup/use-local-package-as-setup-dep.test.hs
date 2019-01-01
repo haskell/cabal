@@ -14,12 +14,12 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
     skipUnless =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
-      fails $ cabalG ["--store-dir=" ++ storeDir] "new-build" ["pkg:my-exe", "--dry-run"]
+      fails $ cabalG ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe", "--dry-run"]
       -- Disabled recording because whether or not we get
       -- detailed information for the build of my-exe depends
       -- on whether or not the Cabal library version is recent
       -- enough
-      r1 <- recordMode DoNotRecord $ cabalG' ["--store-dir=" ++ storeDir] "new-build" ["pkg:my-exe", "--independent-goals"]
+      r1 <- recordMode DoNotRecord $ cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe", "--independent-goals"]
       assertOutputContains "Setup.hs: setup-dep from project" r1
       withPlan $ do
         r2 <- runPlanExe' "pkg" "my-exe" []

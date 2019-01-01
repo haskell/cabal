@@ -37,9 +37,9 @@ buildCommand ::
   (BuildFlags, ( ConfigFlags, ConfigExFlags
                , InstallFlags, HaddockFlags, TestFlags))
 buildCommand = CommandUI {
-  commandName         = "new-build",
+  commandName         = "v2-build",
   commandSynopsis     = "Compile targets within the project.",
-  commandUsage        = usageAlternatives "new-build" [ "[TARGETS] [FLAGS]" ],
+  commandUsage        = usageAlternatives "v2-build" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Build one or more targets from within the project. The available "
      ++ "targets are the packages in the project as well as individual "
@@ -54,16 +54,16 @@ buildCommand = CommandUI {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-build\n"
+     ++ "  " ++ pname ++ " v2-build\n"
      ++ "    Build the package in the current directory "
      ++ "or all packages in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname\n"
+     ++ "  " ++ pname ++ " v2-build pkgname\n"
      ++ "    Build the package named pkgname in the project\n"
-     ++ "  " ++ pname ++ " new-build ./pkgfoo\n"
+     ++ "  " ++ pname ++ " v2-build ./pkgfoo\n"
      ++ "    Build the package in the ./pkgfoo directory\n"
-     ++ "  " ++ pname ++ " new-build cname\n"
+     ++ "  " ++ pname ++ " v2-build cname\n"
      ++ "    Build the component named cname in the project\n"
-     ++ "  " ++ pname ++ " new-build cname --enable-profiling\n"
+     ++ "  " ++ pname ++ " v2-build cname --enable-profiling\n"
      ++ "    Build the component in profiling mode "
      ++ "(including dependencies as needed)\n\n"
 

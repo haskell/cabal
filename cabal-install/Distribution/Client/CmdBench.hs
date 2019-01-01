@@ -35,9 +35,9 @@ import Control.Monad (when)
 
 benchCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 benchCommand = Client.installCommand {
-  commandName         = "new-bench",
+  commandName         = "v2-bench",
   commandSynopsis     = "Run benchmarks",
-  commandUsage        = usageAlternatives "new-bench" [ "[TARGETS] [FLAGS]" ],
+  commandUsage        = usageAlternatives "v2-bench" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Runs the specified benchmarks, first ensuring they are up to "
      ++ "date.\n\n"
@@ -53,13 +53,13 @@ benchCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-bench\n"
+     ++ "  " ++ pname ++ " v2-bench\n"
      ++ "    Run all the benchmarks in the package in the current directory\n"
-     ++ "  " ++ pname ++ " new-bench pkgname\n"
+     ++ "  " ++ pname ++ " v2-bench pkgname\n"
      ++ "    Run all the benchmarks in the package named pkgname\n"
-     ++ "  " ++ pname ++ " new-bench cname\n"
+     ++ "  " ++ pname ++ " v2-bench cname\n"
      ++ "    Run the benchmark named cname\n"
-     ++ "  " ++ pname ++ " new-bench cname -O2\n"
+     ++ "  " ++ pname ++ " v2-bench cname -O2\n"
      ++ "    Run the benchmark built with '-O2' (including local libs used)\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta

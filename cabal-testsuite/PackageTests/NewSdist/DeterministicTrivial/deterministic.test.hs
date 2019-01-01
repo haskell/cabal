@@ -6,7 +6,7 @@ import System.FilePath
     ( (</>) )
 
 main = cabalTest $ do
-    cabal "new-sdist" ["deterministic"]
+    cabal "v2-sdist" ["deterministic"]
     env <- getTestEnv
     let dir = testCurrentDir env
         knownSdist = dir </> "deterministic-0.tar.gz"

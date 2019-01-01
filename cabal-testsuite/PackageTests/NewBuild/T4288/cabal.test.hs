@@ -8,7 +8,7 @@ import Test.Cabal.Prelude
 -- on, even though Cabal is only a transitive dependency.
 main = cabalTest $ do
   skipUnless =<< hasNewBuildCompatBootCabal
-  r <- recordMode DoNotRecord $ cabal' "new-build" ["T4288"]
+  r <- recordMode DoNotRecord $ cabal' "v2-build" ["T4288"]
   assertOutputContains "This is setup-helper-1.0." r
   assertOutputContains
       ("In order, the following will be built: "

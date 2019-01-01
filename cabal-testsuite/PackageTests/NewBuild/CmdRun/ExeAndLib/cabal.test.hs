@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 import Control.Monad ( (>=>) )
 main = cabalTest $ do
     -- the exe
-    cabal' "new-run" ["foo"] >>= assertOutputContains "Hello World"
+    cabal' "v2-run" ["foo"] >>= assertOutputContains "Hello World"
     -- the lib
-    fails (cabal' "new-run" ["ExeAndLib"]) >>= assertOutputDoesNotContain "Hello World"
+    fails (cabal' "v2-run" ["ExeAndLib"]) >>= assertOutputDoesNotContain "Hello World"
 
