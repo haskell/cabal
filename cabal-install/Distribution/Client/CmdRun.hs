@@ -39,7 +39,7 @@ import Distribution.Deprecated.Text
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub, info
+         ( wrapText, warn, die', ordNub, info
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.CmdInstall
          ( establishDummyProjectBaseContext )
@@ -316,22 +316,44 @@ readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
 readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity str = 
+readScriptBlockFromScript verbosity str = do
+    str' <- case extractScriptBlock str of
+              Left e -> die' verbosity $ "Failed extracting script block: " ++ e
+              Right x -> return x
+    when (BS.all isSpace str') $ warn verbosity "Empty script block"
     (\x -> (x, noShebang)) <$> readScriptBlock verbosity str'
   where
-    start = "{- cabal:"
-    end   = "-}"
+    noShebang = BS.unlines . filter (not . BS.isPrefixOf "#!") . BS.lines $ str
 
-    str' = BS.unlines
-          . takeWhile (/= end)
-          . drop 1 . dropWhile (/= start)
-          $ lines'
-    
-    noShebang = BS.unlines 
-              . filter ((/= "#!") . BS.take 2)
-              $ lines'
+-- | Extract the first encountered script metadata block started end
+-- terminated by the tokens
+--
+-- * @{- cabal:@
+--
+-- * @-}@
+--
+-- appearing alone on lines (while tolerating trailing whitespace).
+-- These tokens are not part of the 'Right' result.
+--
+-- In case of missing or unterminated blocks a 'Left'-error is
+-- returned.
+extractScriptBlock :: BS.ByteString -> Either String BS.ByteString
+extractScriptBlock str = goPre (BS.lines str)
+  where
+    isStartMarker = (== "{- cabal:") . stripTrailSpace
+    isEndMarker   = (== "-}") . stripTrailSpace
+    stripTrailSpace = fst . BS.spanEnd isSpace
 
-    lines' = BS.lines str
+    -- before start marker
+    goPre ls = case dropWhile (not . isStartMarker) ls of
+                 [] -> Left "`{- cabal:` start marker not found"
+                 (_:ls') -> goBody [] ls'
+
+    goBody _ [] = Left "`-}` end marker not found"
+    goBody acc (l:ls)
+      | isEndMarker l = Right $! BS.unlines $ reverse acc
+      | otherwise     = goBody (l:acc) ls
+
 
 handleScriptCase :: Verbosity
                  -> ProjectBaseContext
