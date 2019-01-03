@@ -10,7 +10,7 @@ install:
   - set PATH=%APPDATA%\cabal\bin;C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;C:\msys64\usr\bin;%PATH%
   - cabal --version
   - cabal %CABOPTS% update
-  - cabal %CABOPTS% install happy alex
+  - cabal %CABOPTS% v1-install happy alex
 
 environment:
   global:
