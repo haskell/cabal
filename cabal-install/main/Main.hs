@@ -1141,6 +1141,7 @@ initAction initFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config `mappend`
                      -- override with `--with-compiler` from CLI if available
                      mempty { configHcPath = initHcPath initFlags }
+  let initFlags'   = savedInitFlags      config `mappend` initFlags
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
@@ -1149,7 +1150,7 @@ initAction initFlags extraArgs globalFlags = do
             repoContext
             comp
             progdb
-            initFlags
+            initFlags'
 
 sandboxAction :: SandboxFlags -> [String] -> Action
 sandboxAction sandboxFlags extraArgs globalFlags = do
