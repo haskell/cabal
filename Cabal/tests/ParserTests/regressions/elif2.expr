@@ -34,6 +34,7 @@ GenericPackageDescription
                                                                                                                                                               defaultExtensions = [],
                                                                                                                                                               defaultLanguage = Nothing,
                                                                                                                                                               extraBundledLibs = [],
+                                                                                                                                                              extraDynLibFlavours = [],
                                                                                                                                                               extraFrameworkDirs = [],
                                                                                                                                                               extraGHCiLibs = [],
                                                                                                                                                               extraLibDirs = [],
@@ -48,18 +49,27 @@ GenericPackageDescription
                                                                                                                                                               ldOptions = [],
                                                                                                                                                               mixins = [],
                                                                                                                                                               oldExtensions = [],
-                                                                                                                                                              options = [],
+                                                                                                                                                              options = PerCompilerFlavor
+                                                                                                                                                                          []
+                                                                                                                                                                          [],
                                                                                                                                                               otherExtensions = [],
                                                                                                                                                               otherLanguages = [],
                                                                                                                                                               otherModules = [],
                                                                                                                                                               pkgconfigDepends = [],
-                                                                                                                                                              profOptions = [],
-                                                                                                                                                              sharedOptions = [],
-                                                                                                                                                              staticOptions = [],
+                                                                                                                                                              profOptions = PerCompilerFlavor
+                                                                                                                                                                              []
+                                                                                                                                                                              [],
+                                                                                                                                                              sharedOptions = PerCompilerFlavor
+                                                                                                                                                                                []
+                                                                                                                                                                                [],
+                                                                                                                                                              staticOptions = PerCompilerFlavor
+                                                                                                                                                                                []
+                                                                                                                                                                                [],
                                                                                                                                                               targetBuildDepends = [],
                                                                                                                                                               virtualModules = []},
                                                                                                                                             libExposed = True,
                                                                                                                                             libName = Nothing,
+                                                                                                                                            libVisibility = LibraryVisibilityPublic,
                                                                                                                                             reexportedModules = [],
                                                                                                                                             signatures = []}},
                                                                                                  condBranchIfTrue = CondNode
@@ -89,6 +99,7 @@ GenericPackageDescription
                                                                                                                                                            defaultExtensions = [],
                                                                                                                                                            defaultLanguage = Nothing,
                                                                                                                                                            extraBundledLibs = [],
+                                                                                                                                                           extraDynLibFlavours = [],
                                                                                                                                                            extraFrameworkDirs = [],
                                                                                                                                                            extraGHCiLibs = [],
                                                                                                                                                            extraLibDirs = [],
@@ -103,14 +114,22 @@ GenericPackageDescription
                                                                                                                                                            ldOptions = [],
                                                                                                                                                            mixins = [],
                                                                                                                                                            oldExtensions = [],
-                                                                                                                                                           options = [],
+                                                                                                                                                           options = PerCompilerFlavor
+                                                                                                                                                                       []
+                                                                                                                                                                       [],
                                                                                                                                                            otherExtensions = [],
                                                                                                                                                            otherLanguages = [],
                                                                                                                                                            otherModules = [],
                                                                                                                                                            pkgconfigDepends = [],
-                                                                                                                                                           profOptions = [],
-                                                                                                                                                           sharedOptions = [],
-                                                                                                                                                           staticOptions = [],
+                                                                                                                                                           profOptions = PerCompilerFlavor
+                                                                                                                                                                           []
+                                                                                                                                                                           [],
+                                                                                                                                                           sharedOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
+                                                                                                                                                           staticOptions = PerCompilerFlavor
+                                                                                                                                                                             []
+                                                                                                                                                                             [],
                                                                                                                                                            targetBuildDepends = [Dependency
                                                                                                                                                                                    `PackageName "Win32"`
                                                                                                                                                                                    AnyVersion
@@ -119,6 +138,7 @@ GenericPackageDescription
                                                                                                                                                            virtualModules = []},
                                                                                                                                          libExposed = True,
                                                                                                                                          libName = Nothing,
+                                                                                                                                         libVisibility = LibraryVisibilityPublic,
                                                                                                                                          reexportedModules = [],
                                                                                                                                          signatures = []}}}],
                                                                         condTreeConstraints = [],
@@ -142,6 +162,7 @@ GenericPackageDescription
                                                                                                             defaultExtensions = [],
                                                                                                             defaultLanguage = Nothing,
                                                                                                             extraBundledLibs = [],
+                                                                                                            extraDynLibFlavours = [],
                                                                                                             extraFrameworkDirs = [],
                                                                                                             extraGHCiLibs = [],
                                                                                                             extraLibDirs = [],
@@ -156,18 +177,27 @@ GenericPackageDescription
                                                                                                             ldOptions = [],
                                                                                                             mixins = [],
                                                                                                             oldExtensions = [],
-                                                                                                            options = [],
+                                                                                                            options = PerCompilerFlavor
+                                                                                                                        []
+                                                                                                                        [],
                                                                                                             otherExtensions = [],
                                                                                                             otherLanguages = [],
                                                                                                             otherModules = [],
                                                                                                             pkgconfigDepends = [],
-                                                                                                            profOptions = [],
-                                                                                                            sharedOptions = [],
-                                                                                                            staticOptions = [],
+                                                                                                            profOptions = PerCompilerFlavor
+                                                                                                                            []
+                                                                                                                            [],
+                                                                                                            sharedOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
+                                                                                                            staticOptions = PerCompilerFlavor
+                                                                                                                              []
+                                                                                                                              [],
                                                                                                             targetBuildDepends = [],
                                                                                                             virtualModules = []},
                                                                                           libExposed = True,
                                                                                           libName = Nothing,
+                                                                                          libVisibility = LibraryVisibilityPublic,
                                                                                           reexportedModules = [],
                                                                                           signatures = []}},
                                                condBranchIfTrue = CondNode
@@ -197,6 +227,7 @@ GenericPackageDescription
                                                                                                          defaultExtensions = [],
                                                                                                          defaultLanguage = Nothing,
                                                                                                          extraBundledLibs = [],
+                                                                                                         extraDynLibFlavours = [],
                                                                                                          extraFrameworkDirs = [],
                                                                                                          extraGHCiLibs = [],
                                                                                                          extraLibDirs = [],
@@ -211,14 +242,22 @@ GenericPackageDescription
                                                                                                          ldOptions = [],
                                                                                                          mixins = [],
                                                                                                          oldExtensions = [],
-                                                                                                         options = [],
+                                                                                                         options = PerCompilerFlavor
+                                                                                                                     []
+                                                                                                                     [],
                                                                                                          otherExtensions = [],
                                                                                                          otherLanguages = [],
                                                                                                          otherModules = [],
                                                                                                          pkgconfigDepends = [],
-                                                                                                         profOptions = [],
-                                                                                                         sharedOptions = [],
-                                                                                                         staticOptions = [],
+                                                                                                         profOptions = PerCompilerFlavor
+                                                                                                                         []
+                                                                                                                         [],
+                                                                                                         sharedOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
+                                                                                                         staticOptions = PerCompilerFlavor
+                                                                                                                           []
+                                                                                                                           [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "unix"`
                                                                                                                                  AnyVersion
@@ -227,6 +266,7 @@ GenericPackageDescription
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = Nothing,
+                                                                                       libVisibility = LibraryVisibilityPublic,
                                                                                        reexportedModules = [],
                                                                                        signatures = []}}}],
                       condTreeConstraints = [],
@@ -250,6 +290,7 @@ GenericPackageDescription
                                                           defaultExtensions = [],
                                                           defaultLanguage = Just Haskell2010,
                                                           extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
                                                           extraFrameworkDirs = [],
                                                           extraGHCiLibs = [],
                                                           extraLibDirs = [],
@@ -264,18 +305,19 @@ GenericPackageDescription
                                                           ldOptions = [],
                                                           mixins = [],
                                                           oldExtensions = [],
-                                                          options = [],
+                                                          options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
                                                           otherModules = [],
                                                           pkgconfigDepends = [],
-                                                          profOptions = [],
-                                                          sharedOptions = [],
-                                                          staticOptions = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = Nothing,
+                                        libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [],

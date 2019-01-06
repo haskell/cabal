@@ -13,11 +13,8 @@ import Prelude ()
 import Distribution.Types.ModuleRenaming
 
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Compat.ReadP  ((<++))
-import qualified Distribution.Compat.ReadP  as Parse
-import           Distribution.Parsec.Class
+import           Distribution.Parsec
 import           Distribution.Pretty
-import           Distribution.Text
 import           Text.PrettyPrint           (text, (<+>))
 import qualified Text.PrettyPrint           as Disp
 
@@ -60,12 +57,6 @@ instance Parsec IncludeRenaming where
             _ <- P.string "requires"
             P.spaces
             parsec
-        return (IncludeRenaming prov_rn req_rn)
-
-instance Text IncludeRenaming where
-    parse = do
-        prov_rn <- parse
-        req_rn <- (Parse.string "requires" >> Parse.skipSpaces >> parse) <++ return defaultRenaming
         -- Requirements don't really care if they're mentioned
         -- or not (since you can't thin a requirement.)  But
         -- we have a little hack in Configure to combine

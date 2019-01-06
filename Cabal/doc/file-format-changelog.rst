@@ -19,6 +19,36 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.0``
+----------------------
+
+* Added the :pkg-field:`extra-dynamic-library-flavours` field to specify non-trivial
+  variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
+  shared libraries. Mainly useful for GHC's RTS library.
+
+* License fields use identifiers from SPDX License List version
+  ``3.3 2018-10-24``
+
+* Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
+  :pkg-field:`build-tools` fields.
+
+* Common stanzas are now allowed also in the beginnning of conditional
+  sections.  In other words, the following is valid
+
+    ::
+
+        library
+            import deps
+
+            if flag(foo)
+                import foo-deps
+
+* Allow redundant leading or trailing commas in package fields with
+  optional commas, such as :pkg-field:`exposed-modules`
+
+* Require fields with optional commas to consistently omit or place
+  commas between elements.
+
 ``cabal-version: 2.4``
 ----------------------
 
@@ -95,7 +125,7 @@ relative to the respective preceding *published* version.
 * New CPP Macro ``CURRENT_PACKAGE_VERSION``.
 
 ``cabal-version: 1.24``
-----------------------
+-----------------------
 
 * New :pkg-section:`custom-setup` stanza and
   :pkg-field:`custom-setup:setup-depends` field added for specifying dependencies
@@ -110,7 +140,7 @@ relative to the respective preceding *published* version.
   extra locations to find OS X frameworks.
 
 ``cabal-version: 1.22``
-----------------------
+-----------------------
 
 * New :pkg-field:`library:reexported-modules` field.
 
@@ -120,7 +150,7 @@ relative to the respective preceding *published* version.
 * New :pkg-field:`license` type ``ISC`` added.
 
 ``cabal-version: 1.20``
-----------------------
+-----------------------
 
 * Add support for new :pkg-field:`license-files` field for declaring
   multiple license documents.
@@ -130,7 +160,7 @@ relative to the respective preceding *published* version.
 * New :pkg-field:`license` types ``BSD2`` and ``MPL-2.0`` added.
 
 ``cabal-version: 1.18``
-----------------------
+-----------------------
 
 * Add support for new :pkg-field:`extra-doc-files` field for
   specifying extra file assets referenced by the Haddock
@@ -144,7 +174,7 @@ relative to the respective preceding *published* version.
 * Add ``getSysconfDir`` operation to ``Paths_`` API.
 
 ``cabal-version: 1.16``
-----------------------
+-----------------------
 
 .. todo::
 
@@ -152,7 +182,7 @@ relative to the respective preceding *published* version.
    1.12 and 1.18;
 
 ``cabal-version: 1.12``
-----------------------
+-----------------------
 
 * Change syntax of :pkg-field:`cabal-version` to support the new recommended
   ``cabal-version: x.y`` style

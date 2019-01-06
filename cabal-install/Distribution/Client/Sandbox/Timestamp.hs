@@ -31,7 +31,7 @@ import qualified Data.Map as M
 import Distribution.Compiler                         (CompilerId)
 import Distribution.Simple.Utils                     (debug, die', warn)
 import Distribution.System                           (Platform)
-import Distribution.Text                             (display)
+import Distribution.Deprecated.Text                             (display)
 import Distribution.Verbosity                        (Verbosity)
 
 import Distribution.Client.SrcDist (allPackageSourceFiles)

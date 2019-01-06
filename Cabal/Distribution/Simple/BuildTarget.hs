@@ -50,7 +50,7 @@ import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 

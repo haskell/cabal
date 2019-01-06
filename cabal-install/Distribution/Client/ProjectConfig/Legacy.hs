@@ -23,6 +23,8 @@ module Distribution.Client.ProjectConfig.Legacy (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
          ( RemoteRepo(..), emptyRemoteRepo
@@ -36,7 +38,7 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.Package
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..)
-         , dispFlagAssignment, parseFlagAssignment )
+         , dispFlagAssignment )
 import Distribution.Client.SourceRepoParse
          ( sourceRepoFieldDescrs )
 import Distribution.Simple.Compiler
@@ -64,16 +66,16 @@ import Distribution.Utils.NubList
 import Distribution.Simple.LocalBuildInfo
          ( toPathTemplate, fromPathTemplate )
 
-import Distribution.Text
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
+import Distribution.Deprecated.Text
+import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Deprecated.ReadP
          ( ReadP, (+++), (<++) )
 import qualified Text.Read as Read
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( Doc, ($+$) )
-import qualified Distribution.ParseUtils as ParseUtils (field)
-import Distribution.ParseUtils
+import qualified Distribution.Deprecated.ParseUtils as ParseUtils (field)
+import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..), warning
          , simpleField, commaNewLineListField
          , showToken )
@@ -334,7 +336,9 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configPreferences         = projectConfigPreferences,
       configSolver              = projectConfigSolver,
       configAllowOlder          = projectConfigAllowOlder,
-      configAllowNewer          = projectConfigAllowNewer
+      configAllowNewer          = projectConfigAllowNewer,
+      configWriteGhcEnvironmentFilesPolicy
+                                = projectConfigWriteGhcEnvironmentFilesPolicy
     } = configExFlags
 
     InstallFlags {
@@ -348,6 +352,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installPerComponent       = projectConfigPerComponent,
       installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
@@ -432,6 +437,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags testFlags =
       testMachineLog            = packageConfigTestMachineLog,
       testShowDetails           = packageConfigTestShowDetails,
       testKeepTix               = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites  = packageConfigTestFailWhenNoTestSuites,
       testOptions               = packageConfigTestTestOptions
     } = testFlags
 
@@ -555,8 +561,9 @@ convertToLegacySharedConfig
       configPreferences   = projectConfigPreferences,
       configSolver        = projectConfigSolver,
       configAllowOlder    = projectConfigAllowOlder,
-      configAllowNewer    = projectConfigAllowNewer
-
+      configAllowNewer    = projectConfigAllowNewer,
+      configWriteGhcEnvironmentFilesPolicy
+                          = projectConfigWriteGhcEnvironmentFilesPolicy
     }
 
     installFlags = InstallFlags {
@@ -571,6 +578,7 @@ convertToLegacySharedConfig
       installUpgradeDeps       = mempty, --projectConfigUpgradeDeps,
       installReorderGoals      = projectConfigReorderGoals,
       installCountConflicts    = projectConfigCountConflicts,
+      installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installIndependentGoals  = projectConfigIndependentGoals,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
@@ -769,6 +777,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       testMachineLog  = packageConfigTestMachineLog,
       testShowDetails = packageConfigTestShowDetails,
       testKeepTix     = packageConfigTestKeepTix,
+      testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites,
       testOptions     = packageConfigTestTestOptions
     }
 
@@ -925,7 +934,7 @@ legacySharedConfigFieldDescrs =
         (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
   . filterFields
-      [ "cabal-lib-version", "solver"
+      [ "cabal-lib-version", "solver", "write-ghc-environment-files"
         -- not "constraint" or "preference", we use our own plural ones above
       ]
   . commandOptionsToFields
@@ -947,7 +956,8 @@ legacySharedConfigFieldDescrs =
       , "remote-build-reporting", "report-planning-failure"
       , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
-      , "max-backjumps", "reorder-goals", "count-conflicts", "independent-goals"
+      , "max-backjumps", "reorder-goals", "count-conflicts"
+      , "minimize-conflict-set", "independent-goals"
       , "strong-flags" , "allow-boot-library-installs", "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
@@ -1056,7 +1066,7 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { testOptions = v })
       ]
   . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files" ]
+      [ "log", "machine-log", "show-details", "keep-tix-files", "fail-when-no-test-suites" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 
@@ -1354,7 +1364,7 @@ remoteRepoSectionDescr =
 -- Local field utils
 --
 
---TODO: [code cleanup] all these utils should move to Distribution.ParseUtils
+--TODO: [code cleanup] all these utils should move to Distribution.Deprecated.ParseUtils
 -- either augmenting or replacing the ones there
 
 --TODO: [code cleanup] this is a different definition from listField, like
@@ -1408,7 +1418,7 @@ parseTokenQ = parseHaskellString
           <++ Parse.munch1 (\x -> not (isSpace x) && x /= ',')
 
 --TODO: [code cleanup] use this to replace the parseHaskellString in
--- Distribution.ParseUtils. It turns out Read instance for String accepts
+-- Distribution.Deprecated.ParseUtils. It turns out Read instance for String accepts
 -- the ['a', 'b'] syntax, which we do not want. In particular it messes
 -- up any token starting with [].
 parseHaskellString :: ReadP r String

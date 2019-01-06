@@ -4,12 +4,10 @@ module Distribution.Types.AbiDependency where
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Distribution.Package            as Package
 import qualified Text.PrettyPrint                as Disp
 
@@ -31,7 +29,7 @@ data AbiDependency = AbiDependency {
 
 instance Pretty AbiDependency where
     pretty (AbiDependency uid abi) =
-        disp uid <<>> Disp.char '=' <<>> disp abi
+        pretty uid <<>> Disp.char '=' <<>> pretty abi
 
 instance  Parsec AbiDependency where
     parsec = do
@@ -40,13 +38,5 @@ instance  Parsec AbiDependency where
         abi <- parsec
         return (AbiDependency uid abi)
 
-instance Text AbiDependency where
-    parse = do
-        uid <- parse
-        _ <- Parse.char '='
-        abi <- parse
-        return (AbiDependency uid abi)
-
 instance Binary AbiDependency
-
 instance NFData AbiDependency where rnf = genericRnf

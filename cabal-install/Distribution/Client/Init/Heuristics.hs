@@ -23,7 +23,7 @@ module Distribution.Client.Init.Heuristics (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Text         (simpleParse)
+import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
@@ -147,7 +147,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
       where
         relRoot       = makeRelative projectRoot srcRoot
         unqualModName = dropExtension entry
-        modName       = simpleParse
+        modName       = simpleParsec
                       $ intercalate "." . reverse $ (unqualModName : hierarchy)
         ext           = case takeExtension entry of '.':e -> e; e -> e
     scanRecursive parent hierarchy entry
@@ -179,7 +179,7 @@ findImportsAndExts projectRoot sf = do
       -- minimum.
 
       -- A poor man's LANGUAGE pragma parser.
-      exts = mapMaybe simpleParse
+      exts = mapMaybe simpleParsec
            . concatMap getPragmas
            . filter isLANGUAGEPragma
            . map fst
@@ -205,7 +205,7 @@ findImportsAndExts projectRoot sf = do
  where getModName :: [String] -> Maybe ModuleName
        getModName []               = Nothing
        getModName ("qualified":ws) = getModName ws
-       getModName (ms:_)           = simpleParse ms
+       getModName (ms:_)           = simpleParsec ms
 
 
 

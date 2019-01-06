@@ -36,7 +36,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
        (die', notice, debug, tryFindPackageDesc)
 import Distribution.System                           (Platform)
-import Distribution.Text                             (display)
+import Distribution.Deprecated.Text                             (display)
 import Distribution.Types.ComponentRequestedSpec
        (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency

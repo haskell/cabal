@@ -10,10 +10,8 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import qualified Text.PrettyPrint as Disp
-import Distribution.ParseUtils
-import Distribution.Text
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 -- | A package name.
 --
@@ -54,9 +52,6 @@ instance Pretty PackageName where
 
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
-
-instance Text PackageName where
-  parse = mkPackageName <$> parsePackageName
 
 instance NFData PackageName where
     rnf (PackageName pkg) = rnf pkg

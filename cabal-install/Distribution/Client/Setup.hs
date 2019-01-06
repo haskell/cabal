@@ -1,7 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE LambdaCase          #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -42,7 +43,7 @@ module Distribution.Client.Setup
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, IT.InitFlags(..)
-    , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , sdistCommand, SDistFlags(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
@@ -67,9 +68,12 @@ module Distribution.Client.Setup
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
 
+import Distribution.Deprecated.ReadP (readP_to_E)
+
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
+         , WriteGhcEnvironmentFilesPolicy(..)
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
@@ -122,13 +126,13 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), readP_to_E, succeedReadE )
-import qualified Distribution.Compat.ReadP as Parse
+         ( ReadE(..), succeedReadE )
+import qualified Distribution.Deprecated.ReadP as Parse
          ( ReadP, char, munch1, pfail, sepBy1, (+++) )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
@@ -637,12 +641,14 @@ configCompilerAux' configFlags =
 -- | cabal configure takes some extra flags beyond runghc Setup configure
 --
 data ConfigExFlags = ConfigExFlags {
-    configCabalVersion :: Flag Version,
-    configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [PackageVersionConstraint],
-    configSolver       :: Flag PreSolver,
-    configAllowNewer   :: Maybe AllowNewer,
-    configAllowOlder   :: Maybe AllowOlder
+    configCabalVersion  :: Flag Version,
+    configExConstraints :: [(UserConstraint, ConstraintSource)],
+    configPreferences   :: [PackageVersionConstraint],
+    configSolver        :: Flag PreSolver,
+    configAllowNewer    :: Maybe AllowNewer,
+    configAllowOlder    :: Maybe AllowOlder,
+    configWriteGhcEnvironmentFilesPolicy
+      :: Flag WriteGhcEnvironmentFilesPolicy
   }
   deriving (Eq, Generic)
 
@@ -707,7 +713,32 @@ configureExOptions _showOrParseArgs src =
      (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
+  , option [] ["write-ghc-environment-files"]
+    ("Whether to create a .ghc.environment file after a successful build"
+      ++ " (v2-build only)")
+    configWriteGhcEnvironmentFilesPolicy
+    (\v flags -> flags { configWriteGhcEnvironmentFilesPolicy = v})
+    (reqArg "always|never|ghc8.4.4+"
+     writeGhcEnvironmentFilesPolicyParser
+     writeGhcEnvironmentFilesPolicyPrinter)
   ]
+
+
+writeGhcEnvironmentFilesPolicyParser :: ReadE (Flag WriteGhcEnvironmentFilesPolicy)
+writeGhcEnvironmentFilesPolicyParser = ReadE $ \case
+  "always"    -> Right $ Flag AlwaysWriteGhcEnvironmentFiles
+  "never"     -> Right $ Flag NeverWriteGhcEnvironmentFiles
+  "ghc8.4.4+" -> Right $ Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+  policy      -> Left  $ "Cannot parse the GHC environment file write policy '"
+                 <> policy <> "'"
+
+writeGhcEnvironmentFilesPolicyPrinter
+  :: Flag WriteGhcEnvironmentFilesPolicy -> [String]
+writeGhcEnvironmentFilesPolicyPrinter = \case
+  (Flag AlwaysWriteGhcEnvironmentFiles)                -> ["always"]
+  (Flag NeverWriteGhcEnvironmentFiles)                 -> ["never"]
+  (Flag WriteGhcEnvironmentFilesOnlyForGhc844AndNewer) -> ["ghc8.4.4+"]
+  NoFlag                                               -> []
 
 
 relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)
@@ -942,6 +973,7 @@ data FetchFlags = FetchFlags {
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag ReorderGoals,
       fetchCountConflicts   :: Flag CountConflicts,
+      fetchMinimizeConflictSet :: Flag MinimizeConflictSet,
       fetchIndependentGoals :: Flag IndependentGoals,
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
@@ -961,6 +993,7 @@ defaultFetchFlags = FetchFlags {
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
     fetchReorderGoals     = Flag (ReorderGoals False),
     fetchCountConflicts   = Flag (CountConflicts True),
+    fetchMinimizeConflictSet = Flag (MinimizeConflictSet False),
     fetchIndependentGoals = Flag (IndependentGoals False),
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
@@ -1022,6 +1055,7 @@ fetchCommand = CommandUI {
                          fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchCountConflicts   (\v flags -> flags { fetchCountConflicts   = v })
+                         fetchMinimizeConflictSet (\v flags -> flags { fetchMinimizeConflictSet = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
@@ -1042,6 +1076,7 @@ data FreezeFlags = FreezeFlags {
       freezeMaxBackjumps     :: Flag Int,
       freezeReorderGoals     :: Flag ReorderGoals,
       freezeCountConflicts   :: Flag CountConflicts,
+      freezeMinimizeConflictSet :: Flag MinimizeConflictSet,
       freezeIndependentGoals :: Flag IndependentGoals,
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
@@ -1059,6 +1094,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
     freezeReorderGoals     = Flag (ReorderGoals False),
     freezeCountConflicts   = Flag (CountConflicts True),
+    freezeMinimizeConflictSet = Flag (MinimizeConflictSet False),
     freezeIndependentGoals = Flag (IndependentGoals False),
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
@@ -1111,6 +1147,7 @@ freezeCommand = CommandUI {
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
                          freezeCountConflicts   (\v flags -> flags { freezeCountConflicts   = v })
+                         freezeMinimizeConflictSet (\v flags -> flags { freezeMinimizeConflictSet = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
@@ -1680,6 +1717,7 @@ data InstallFlags = InstallFlags {
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
     installCountConflicts   :: Flag CountConflicts,
+    installMinimizeConflictSet :: Flag MinimizeConflictSet,
     installIndependentGoals :: Flag IndependentGoals,
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
@@ -1726,6 +1764,7 @@ defaultInstallFlags = InstallFlags {
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
     installCountConflicts  = Flag (CountConflicts True),
+    installMinimizeConflictSet = Flag (MinimizeConflictSet False),
     installIndependentGoals= Flag (IndependentGoals False),
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
@@ -1896,7 +1935,7 @@ testOptions showOrParseArgs
     | opt <- commandOptions Cabal.testCommand showOrParseArgs
     , let name = optionName opt
     , name `elem` ["log", "machine-log", "show-details", "keep-tix-files"
-                  ,"test-options", "test-option"]
+                  ,"fail-when-no-test-suites", "test-options", "test-option"]
     ]
   where
     prefixTest name | "test-" `isPrefixOf` name = name
@@ -1937,6 +1976,7 @@ installOptions showOrParseArgs =
                         installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
                         installCountConflicts   (\v flags -> flags { installCountConflicts   = v })
+                        installMinimizeConflictSet (\v flags -> flags { installMinimizeConflictSet = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v })
@@ -2286,6 +2326,12 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.LibraryAndExecutable))
 
+      , option [] ["simple"]
+        "Create a simple project with sensible defaults."
+        IT.simpleProject
+        (\v flags -> flags { IT.simpleProject = v })
+        trueArg
+
       , option [] ["main-is"]
         "Specify the main module."
         IT.mainIs
@@ -2353,49 +2399,13 @@ initCommand = CommandUI {
 
 -- | Extra flags to @sdist@ beyond runghc Setup sdist
 --
-data SDistExFlags = SDistExFlags {
-    sDistFormat    :: Flag ArchiveFormat
-  }
-  deriving (Show, Generic)
-
-data ArchiveFormat = TargzFormat | ZipFormat -- ...
-  deriving (Show, Eq)
-
-defaultSDistExFlags :: SDistExFlags
-defaultSDistExFlags = SDistExFlags {
-    sDistFormat  = Flag TargzFormat
-  }
-
-sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
+sdistCommand :: CommandUI SDistFlags
 sdistCommand = Cabal.sdistCommand {
     commandUsage        = \pname ->
         "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
-    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
-    commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
-      ++ liftOptions snd setSnd sdistExOptions
+    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand)
   }
-  where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
 
-    sdistExOptions =
-      [option [] ["archive-format"] "archive-format"
-         sDistFormat (\v flags -> flags { sDistFormat = v })
-         (choiceOpt
-            [ (Flag TargzFormat, ([], ["targz"]),
-                 "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
-            , (Flag ZipFormat,   ([], ["zip"]),
-                 "Produce a '.zip' format archive")
-            ])
-      ]
-
-instance Monoid SDistExFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup SDistExFlags where
-  (<>) = gmappend
 
 --
 
@@ -2777,14 +2787,16 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
                   -> (flags -> Flag ReorderGoals)     -> (Flag ReorderGoals     -> flags -> flags)
                   -> (flags -> Flag CountConflicts)   -> (Flag CountConflicts   -> flags -> flags)
+                  -> (flags -> Flag MinimizeConflictSet) -> (Flag MinimizeConflictSet -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig setig
-                  getsip setsip getstrfl setstrfl getib setib getoc setoc =
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
+                  getmc setmc getig setig getsip setsip getstrfl setstrfl
+                  getib setib getoc setoc =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -2799,6 +2811,13 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getig se
       "Try to speed up solving by preferring goals that are involved in a lot of conflicts (default)."
       (fmap asBool . getcc)
       (setcc . fmap CountConflicts)
+      (yesNoOpt showOrParseArgs)
+  , option [] ["minimize-conflict-set"]
+      ("When there is no solution, try to improve the error message by finding "
+        ++ "a minimal conflict set (default: false). May increase run time "
+        ++ "significantly.")
+      (fmap asBool . getmc)
+      (setmc . fmap MinimizeConflictSet)
       (yesNoOpt showOrParseArgs)
   , option [] ["independent-goals"]
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."

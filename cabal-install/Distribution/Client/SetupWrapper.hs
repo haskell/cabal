@@ -96,7 +96,7 @@ import Distribution.Client.Utils
 
 import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Utils.NubList
          ( toNubListR )
@@ -127,11 +127,11 @@ import qualified System.Win32 as Win32
 
 -- | @Setup@ encapsulates the outcome of configuring a setup method to build a
 -- particular package.
-data Setup = Setup { setupMethod :: SetupMethod
+data Setup = Setup { setupMethod        :: SetupMethod
                    , setupScriptOptions :: SetupScriptOptions
-                   , setupVersion :: Version
-                   , setupBuildType :: BuildType
-                   , setupPackage :: PackageDescription
+                   , setupVersion       :: Version
+                   , setupBuildType     :: BuildType
+                   , setupPackage       :: PackageDescription
                    }
 
 -- | @SetupMethod@ represents one of the methods used to run Cabal commands.

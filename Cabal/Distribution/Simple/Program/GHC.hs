@@ -85,8 +85,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
             checkComponent = foldMap fun . filterGhcOptions . allGhcOptions
 
             allGhcOptions :: BuildInfo -> [(CompilerFlavor, [String])]
-            allGhcOptions =
-                mconcat [options, profOptions, sharedOptions, staticOptions]
+            allGhcOptions = foldMap (perCompilerFlavorToList .)
+                [options, profOptions, sharedOptions, staticOptions]
 
             filterGhcOptions :: [(CompilerFlavor, [String])] -> [[String]]
             filterGhcOptions l = [opts | (GHC, opts) <- l]
@@ -170,7 +170,8 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
             [ [ "reverse-errors", "warn-unused-binds", "break-on-error"
               , "break-on-exception", "print-bind-result"
               , "print-bind-contents", "print-evld-with-show"
-              , "implicit-import-qualified" ]
+              , "implicit-import-qualified", "error-spans"
+              ]
             , from [8,2]
                 [ "diagnostics-show-caret", "local-ghci-history"
                 , "show-warning-groups", "hide-source-paths"

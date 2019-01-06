@@ -45,7 +45,7 @@ import Distribution.Simple.Utils
          ( tryFindPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )

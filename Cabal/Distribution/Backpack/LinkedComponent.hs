@@ -45,8 +45,7 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Traversable
     ( mapM )
-import Distribution.Text
-    ( Text(disp) )
+import Distribution.Pretty (pretty)
 import Text.PrettyPrint
 import Data.Either
 
@@ -104,11 +103,11 @@ lc_insts lc = [ (req, OpenModuleVar req)
 
 dispLinkedComponent :: LinkedComponent -> Doc
 dispLinkedComponent lc =
-    hang (text "unit" <+> disp (lc_uid lc)) 4 $
-         vcat [ text "include" <+> disp (ci_id incl) <+> disp (ci_renaming incl)
+    hang (text "unit" <+> pretty (lc_uid lc)) 4 $
+         vcat [ text "include" <+> pretty (ci_id incl) <+> pretty (ci_renaming incl)
               | incl <- lc_includes lc ]
             $+$
-         vcat [ text "signature include" <+> disp (ci_id incl)
+         vcat [ text "signature include" <+> pretty (ci_id incl)
               | incl <- lc_sig_includes lc ]
             $+$ dispOpenModuleSubst (modShapeProvides (lc_shape lc))
 
@@ -230,7 +229,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     when (not (Set.null reqs) && isNotLib component) $
         dieProgress $
             hang (text "Non-library component has unfilled requirements:")
-                4 (vcat [disp req | req <- Set.toList reqs])
+                4 (vcat [pretty req | req <- Set.toList reqs])
 
     -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
     -- won't allow it (since someone could directly synthesize
@@ -285,7 +284,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     let build_reexports m (k, v)
             | Map.member k m =
                 dieProgress $ hsep
-                    [ text "Module name ", disp k, text " is exported multiple times." ]
+                    [ text "Module name ", pretty k, text " is exported multiple times." ]
             | otherwise = return (Map.insert k v m)
     provs <- foldM build_reexports Map.empty $
                 -- TODO: doublecheck we have checked for
@@ -364,17 +363,17 @@ extendLinkedComponentMap lc m =
 
 brokenReexportMsg :: ModuleReexport -> Doc
 brokenReexportMsg (ModuleReexport (Just pn) from _to) =
-  vcat [ text "The package" <+> quotes (disp pn)
-       , text "does not export a module" <+> quotes (disp from) ]
+  vcat [ text "The package" <+> quotes (pretty pn)
+       , text "does not export a module" <+> quotes (pretty from) ]
 brokenReexportMsg (ModuleReexport Nothing from _to) =
-  vcat [ text "The module" <+> quotes (disp from)
+  vcat [ text "The module" <+> quotes (pretty from)
        , text "is not exported by any suitable package."
        , text "It occurs in neither the 'exposed-modules' of this package,"
        , text "nor any of its 'build-depends' dependencies." ]
 
 ambiguousReexportMsg :: ModuleReexport -> ModuleWithSource -> [ModuleWithSource] -> Doc
 ambiguousReexportMsg (ModuleReexport mb_pn from _to) y1 ys =
-  vcat [ text "Ambiguous reexport" <+> quotes (disp from)
+  vcat [ text "Ambiguous reexport" <+> quotes (pretty from)
        , hang (text "It could refer to either:") 2
             (vcat (msg : msgs))
        , help_msg mb_pn ]
@@ -393,7 +392,7 @@ ambiguousReexportMsg (ModuleReexport mb_pn from _to) y1 ys =
            , text "mixins field to rename one of the module"
            , text "names differently." ]
     displayModuleWithSource y
-      = vcat [ quotes (disp (unWithSource y))
+      = vcat [ quotes (pretty (unWithSource y))
              , text "brought into scope by" <+>
                 dispModuleSource (getSource y)
              ]

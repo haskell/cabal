@@ -34,7 +34,7 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )
@@ -73,12 +73,10 @@ import Distribution.PackageDescription.FieldGrammar
          ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
-import Distribution.Parsec.Common
+import Distribution.Parsec
          ( Position(..) )
-import Distribution.Parsec.ParseResult
-         ( ParseResult, parseString, parseFatalFailure )
-import Distribution.Parsec.Parser
-         ( readFields )
+import Distribution.Fields
+         ( ParseResult, parseString, parseFatalFailure, readFields )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
          ( SourcePackage(..) )

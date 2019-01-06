@@ -53,7 +53,7 @@ import Distribution.Simple.Command
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
-import Distribution.Parsec.Class
+import Distribution.Parsec
          ( Parsec(..) )
 import Distribution.Pretty
          ( prettyShow )
@@ -84,7 +84,7 @@ import Distribution.Types.Version
          ( mkVersion, version0 )
 import Distribution.Types.VersionRange
          ( anyVersion )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )

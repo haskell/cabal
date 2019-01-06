@@ -423,7 +423,7 @@ checkPackageDbStackPre76 verbosity rest
   | GlobalPackageDB `notElem` rest =
   die' verbosity $ "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+     ++ "see http://ghc.haskell.org/trac/ghc/ticket/5977"
 checkPackageDbStackPre76 verbosity _ =
   die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
@@ -1659,16 +1659,13 @@ popThreadedFlag bi =
 
   where
     filterHcOptions :: (String -> Bool)
-                    -> [(CompilerFlavor, [String])]
-                    -> [(CompilerFlavor, [String])]
-    filterHcOptions p hcoptss =
-      [ (hc, if hc == GHC then filter p opts else opts)
-      | (hc, opts) <- hcoptss ]
+                    -> PerCompilerFlavor [String]
+                    -> PerCompilerFlavor [String]
+    filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
+        PerCompilerFlavor (filter p ghc) ghcjs
 
-    hasThreaded :: [(CompilerFlavor, [String])] -> Bool
-    hasThreaded hcoptss =
-      or [ if hc == GHC then elem "-threaded" opts else False
-         | (hc, opts) <- hcoptss ]
+    hasThreaded :: PerCompilerFlavor [String] -> Bool
+    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
@@ -1840,7 +1837,12 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     whenProf $ do
       installOrdinary builtDir targetDir profileLibName
       whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
-    whenShared  $ installShared builtDir dynlibTargetDir sharedLibName
+    whenShared  $
+      sequence_ [ installShared builtDir dynlibTargetDir
+                    (mkGenericSharedLibName platform compiler_id (l ++ f))
+                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+                , f <- "":extraDynLibFlavours (libBuildInfo lib)
+                ]
 
   where
     builtDir = componentBuildDir lbi clbi
@@ -1856,7 +1858,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
         else installOrdinaryFile   verbosity src dst
 
       when (stripLibs lbi) $ Strip.stripLib verbosity
-                             (hostPlatform lbi) (withPrograms lbi) dst
+                             platform (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -1866,11 +1868,11 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
+    platform = hostPlatform lbi
     uid = componentUnitId clbi
     profileLibName = mkProfLibName          uid
     ghciLibName    = Internal.mkGHCiLibName uid
     ghciProfLibName = Internal.mkGHCiProfLibName uid
-    sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id) uid
 
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))

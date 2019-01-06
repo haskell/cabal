@@ -1,18 +1,32 @@
-{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Parsec.Class (
+module Distribution.Parsec (
     Parsec(..),
     ParsecParser (..),
     runParsecParser,
+    runParsecParser',
     simpleParsec,
     lexemeParsec,
     eitherParsec,
     explicitEitherParsec,
-    -- * CabalParsing & warnings
+    -- * CabalParsing and and diagnostics
     CabalParsing (..),
+    -- ** Warnings
     PWarnType (..),
+    PWarning (..),
+    showPWarning,
+    -- ** Errors
+    PError (..),
+    showPError,
+    -- * Position
+    Position (..),
+    incPos,
+    retPos,
+    showPos,
+    zeroPos,
     -- * Utilities
     parsecToken,
     parsecToken',
@@ -22,23 +36,25 @@ module Distribution.Parsec.Class (
     parsecCommaList,
     parsecLeadingCommaList,
     parsecOptCommaList,
+    parsecLeadingOptCommaList,
     parsecStandard,
     parsecUnqualComponentName,
     ) where
 
-import Data.Char                     (digitToInt, intToDigit)
-import Data.Functor.Identity         (Identity (..))
-import Data.List                     (transpose)
+import Data.Char                           (digitToInt, intToDigit)
+import Data.Functor.Identity               (Identity (..))
+import Data.List                           (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
-import Distribution.Parsec.FieldLineStream
-import Distribution.Parsec.Common    (PWarnType (..), PWarning (..), Position (..))
-import Numeric                       (showIntAtBase)
+import Distribution.Parsec.Error           (PError (..), showPError)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString)
+import Distribution.Parsec.Position        (Position (..), incPos, retPos, showPos, zeroPos)
+import Distribution.Parsec.Warning         (PWarnType (..), PWarning (..), showPWarning)
+import Numeric                             (showIntAtBase)
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.MonadFail   as Fail
-import qualified Distribution.Compat.ReadP       as ReadP
 import qualified Text.Parsec                     as Parsec
 
 -------------------------------------------------------------------------------
@@ -46,6 +62,9 @@ import qualified Text.Parsec                     as Parsec
 -------------------------------------------------------------------------------
 
 -- | Class for parsing with @parsec@. Mainly used for @.cabal@ file fields.
+--
+-- For parsing @.cabal@ like file structure, see "Distribution.Fields".
+--
 class Parsec a where
     parsec :: CabalParsing m => m a
 
@@ -62,10 +81,6 @@ class (P.CharParsing m, MonadPlus m) => CabalParsing m where
     parsecHaskellString = stringLiteral
 
     askCabalSpecVersion :: m CabalSpecVersion
-
-instance t ~ Char => CabalParsing (ReadP.Parser r t) where
-    parsecWarning _ _   = pure ()
-    askCabalSpecVersion = pure cabalSpecLatest
 
 -- | 'parsec' /could/ consume trailing spaces, this function /will/ consume.
 lexemeParsec :: (CabalParsing m, Parsec a) => m a
@@ -116,7 +131,9 @@ instance Monad ParsecParser where
     (>>) = (*>)
     {-# INLINE (>>) #-}
 
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
+#endif
 
 instance MonadPlus ParsecParser where
     mzero = empty
@@ -142,7 +159,10 @@ instance P.CharParsing ParsecParser where
     string    = liftParsec . P.string
 
 instance CabalParsing ParsecParser where
-    parsecWarning t w = liftParsec $ Parsec.modifyState (PWarning t (Position 0 0) w :)
+    parsecWarning t w = liftParsec $ do
+        spos <- Parsec.getPosition
+        Parsec.modifyState
+            (PWarning t (Position (Parsec.sourceLine spos) (Parsec.sourceColumn spos)) w :)
     askCabalSpecVersion = PP pure
 
 -- | Parse a 'String' with 'lexemeParsec'.
@@ -165,7 +185,14 @@ explicitEitherParsec parser
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.
 runParsecParser :: ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
-runParsecParser p n = Parsec.runParser (unPP p cabalSpecLatest <* P.eof) [] n
+runParsecParser = runParsecParser' cabalSpecLatest
+
+-- | Like 'runParsecParser' but lets specify 'CabalSpecVersion' used.
+--
+-- @since 3.0.0.0
+--
+runParsecParser' :: CabalSpecVersion -> ParsecParser a -> FilePath -> FieldLineStream -> Either Parsec.ParseError a
+runParsecParser' v p n = Parsec.runParser (unPP p v <* P.eof) [] n
 
 instance Parsec a => Parsec (Identity a) where
     parsec = Identity <$> parsec
@@ -243,6 +270,37 @@ parsecOptCommaList :: CabalParsing m => m a -> m [a]
 parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
   where
     comma = P.char ',' *>  P.spaces
+
+-- | Like 'parsecOptCommaList' but
+--
+-- * require all or none commas
+-- * accept leading or trailing comma.
+--
+-- @
+-- p (comma p)*  -- p `sepBy` comma
+-- (comma p)*    -- leading comma
+-- (p comma)*    -- trailing comma
+-- p*            -- no commas: many p
+-- @
+--
+-- @since 3.0.0.0
+--
+parsecLeadingOptCommaList :: CabalParsing m => m a -> m [a]
+parsecLeadingOptCommaList p = do
+    c <- P.optional comma
+    case c of
+        Nothing -> sepEndBy1Start <|> pure []
+        Just _  -> P.sepBy1 lp comma
+  where
+    lp = p <* P.spaces
+    comma = P.char ',' *> P.spaces P.<?> "comma"
+
+    sepEndBy1Start = do
+        x <- lp
+        c <- P.optional comma
+        case c of
+            Nothing -> (x :) <$> many lp
+            Just _  -> (x :) <$> P.sepEndBy lp comma
 
 -- | Content isn't unquoted
 parsecQuoted :: CabalParsing m => m a -> m a

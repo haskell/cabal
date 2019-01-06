@@ -8,7 +8,7 @@ module Distribution.Solver.Modular.Message (
 import qualified Data.List as L
 import Prelude hiding (pi)
 
-import Distribution.Text -- from Cabal
+import Distribution.Pretty (prettyShow) -- from Cabal
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -102,9 +102,9 @@ showGR UserGoal            = " (user goal)"
 showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
-showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ display ext ++ ")"
-showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ display lang ++ ")"
-showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ display pn ++ display vr ++ ", not found in the pkg-config database)"
+showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ prettyShow ext ++ ")"
+showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ prettyShow lang ++ ")"
+showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ prettyShow pn ++ prettyShow vr ++ ", not found in the pkg-config database)"
 showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
 showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"
 showFR _ (NewPackageIsMissingRequiredComponent comp dr) = " (does not contain " ++ showExposedComponent comp ++ ", which is required by " ++ showDependencyReason dr ++ ")"
@@ -117,7 +117,7 @@ showFR _ NotExplicit                      = " (not a user-provided goal nor ment
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ Broken                           = " (package is broken)"
 showFR _ UnknownPackage                   = " (unknown package)"
-showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ display vr ++ ")"
+showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ prettyShow vr ++ ")"
 showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
 showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
@@ -126,7 +126,7 @@ showFR c Backjump                         = " (backjumping, conflict set: " ++ s
 showFR _ MultipleInstances                = " (multiple instances)"
 showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showConflictSet c ++ ")"
 showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showConflictSet c ++ ")"
-showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ display ver ++ ")"
+showFR _ (UnsupportedSpecVer ver)         = " (unsupported spec-version " ++ prettyShow ver ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.

@@ -16,7 +16,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
@@ -43,8 +43,8 @@ data LicenseId
     | AFL_3_0 -- ^ @AFL-3.0@, Academic Free License v3.0
     | Afmparse -- ^ @Afmparse@, Afmparse License
     | AGPL_1_0 -- ^ @AGPL-1.0@, Affero General Public License v1.0, SPDX License List 3.0
-    | AGPL_1_0_only -- ^ @AGPL-1.0-only@, Affero General Public License v1.0 only, SPDX License List 3.2
-    | AGPL_1_0_or_later -- ^ @AGPL-1.0-or-later@, Affero General Public License v1.0 or later, SPDX License List 3.2
+    | AGPL_1_0_only -- ^ @AGPL-1.0-only@, Affero General Public License v1.0 only, SPDX License List 3.2, SPDX License List 3.3
+    | AGPL_1_0_or_later -- ^ @AGPL-1.0-or-later@, Affero General Public License v1.0 or later, SPDX License List 3.2, SPDX License List 3.3
     | AGPL_3_0_only -- ^ @AGPL-3.0-only@, GNU Affero General Public License v3.0 only
     | AGPL_3_0_or_later -- ^ @AGPL-3.0-or-later@, GNU Affero General Public License v3.0 or later
     | Aladdin -- ^ @Aladdin@, Aladdin Free Public License
@@ -138,6 +138,7 @@ data LicenseId
     | CNRI_Python_GPL_Compatible -- ^ @CNRI-Python-GPL-Compatible@, CNRI Python Open Source GPL Compatible License Agreement
     | CNRI_Python -- ^ @CNRI-Python@, CNRI Python License
     | Condor_1_1 -- ^ @Condor-1.1@, Condor Public License v1.1
+    | Copyleft_next_0_3_1 -- ^ @copyleft-next-0.3.1@, copyleft-next 0.3.1, SPDX License List 3.3
     | CPAL_1_0 -- ^ @CPAL-1.0@, Common Public Attribution License 1.0
     | CPL_1_0 -- ^ @CPL-1.0@, Common Public License 1.0
     | CPOL_1_02 -- ^ @CPOL-1.02@, Code Project Open License 1.02
@@ -170,8 +171,8 @@ data LicenseId
     | Frameworx_1_0 -- ^ @Frameworx-1.0@, Frameworx Open License 1.0
     | FreeImage -- ^ @FreeImage@, FreeImage Public License v1.0
     | FSFAP -- ^ @FSFAP@, FSF All Permissive License
-    | FSFUL -- ^ @FSFUL@, FSF Unlimited License
     | FSFULLR -- ^ @FSFULLR@, FSF Unlimited License (with License Retention)
+    | FSFUL -- ^ @FSFUL@, FSF Unlimited License
     | FTL -- ^ @FTL@, Freetype Project License
     | GFDL_1_1_only -- ^ @GFDL-1.1-only@, GNU Free Documentation License v1.1 only
     | GFDL_1_1_or_later -- ^ @GFDL-1.1-or-later@, GNU Free Documentation License v1.1 or later
@@ -224,9 +225,9 @@ data LicenseId
     | LiLiQ_P_1_1 -- ^ @LiLiQ-P-1.1@, Licence Libre du Québec – Permissive version 1.1
     | LiLiQ_R_1_1 -- ^ @LiLiQ-R-1.1@, Licence Libre du Québec – Réciprocité version 1.1
     | LiLiQ_Rplus_1_1 -- ^ @LiLiQ-Rplus-1.1@, Licence Libre du Québec – Réciprocité forte version 1.1
-    | Linux_OpenIB -- ^ @Linux-OpenIB@, Linux Kernel Variant of OpenIB.org license, SPDX License List 3.2
-    | LPL_1_0 -- ^ @LPL-1.0@, Lucent Public License Version 1.0
+    | Linux_OpenIB -- ^ @Linux-OpenIB@, Linux Kernel Variant of OpenIB.org license, SPDX License List 3.2, SPDX License List 3.3
     | LPL_1_02 -- ^ @LPL-1.02@, Lucent Public License v1.02
+    | LPL_1_0 -- ^ @LPL-1.0@, Lucent Public License Version 1.0
     | LPPL_1_0 -- ^ @LPPL-1.0@, LaTeX Project Public License v1.0
     | LPPL_1_1 -- ^ @LPPL-1.1@, LaTeX Project Public License v1.1
     | LPPL_1_2 -- ^ @LPPL-1.2@, LaTeX Project Public License v1.2
@@ -234,13 +235,13 @@ data LicenseId
     | LPPL_1_3c -- ^ @LPPL-1.3c@, LaTeX Project Public License v1.3c
     | MakeIndex -- ^ @MakeIndex@, MakeIndex License
     | MirOS -- ^ @MirOS@, MirOS License
-    | MIT_0 -- ^ @MIT-0@, MIT No Attribution, SPDX License List 3.2
+    | MIT_0 -- ^ @MIT-0@, MIT No Attribution, SPDX License List 3.2, SPDX License List 3.3
     | MIT_advertising -- ^ @MIT-advertising@, Enlightenment License (e16)
     | MIT_CMU -- ^ @MIT-CMU@, CMU License
     | MIT_enna -- ^ @MIT-enna@, enna License
     | MIT_feh -- ^ @MIT-feh@, feh License
-    | MIT -- ^ @MIT@, MIT License
     | MITNFA -- ^ @MITNFA@, MIT +no-false-attribs license
+    | MIT -- ^ @MIT@, MIT License
     | Motosoto -- ^ @Motosoto@, Motosoto License
     | Mpich2 -- ^ @mpich2@, mpich2 License
     | MPL_1_0 -- ^ @MPL-1.0@, Mozilla Public License 1.0
@@ -273,9 +274,12 @@ data LicenseId
     | OCCT_PL -- ^ @OCCT-PL@, Open CASCADE Technology Public License
     | OCLC_2_0 -- ^ @OCLC-2.0@, OCLC Research Public License 2.0
     | ODbL_1_0 -- ^ @ODbL-1.0@, ODC Open Database License v1.0
-    | ODC_By_1_0 -- ^ @ODC-By-1.0@, Open Data Commons Attribution License v1.0, SPDX License List 3.2
+    | ODC_By_1_0 -- ^ @ODC-By-1.0@, Open Data Commons Attribution License v1.0, SPDX License List 3.2, SPDX License List 3.3
     | OFL_1_0 -- ^ @OFL-1.0@, SIL Open Font License 1.0
     | OFL_1_1 -- ^ @OFL-1.1@, SIL Open Font License 1.1
+    | OGL_UK_1_0 -- ^ @OGL-UK-1.0@, Open Government Licence v1.0, SPDX License List 3.3
+    | OGL_UK_2_0 -- ^ @OGL-UK-2.0@, Open Government Licence v2.0, SPDX License List 3.3
+    | OGL_UK_3_0 -- ^ @OGL-UK-3.0@, Open Government Licence v3.0, SPDX License List 3.3
     | OGTSL -- ^ @OGTSL@, Open Group Test Suite License
     | OLDAP_1_1 -- ^ @OLDAP-1.1@, Open LDAP Public License v1.1
     | OLDAP_1_2 -- ^ @OLDAP-1.2@, Open LDAP Public License v1.2
@@ -303,8 +307,8 @@ data LicenseId
     | OSL_2_1 -- ^ @OSL-2.1@, Open Software License 2.1
     | OSL_3_0 -- ^ @OSL-3.0@, Open Software License 3.0
     | PDDL_1_0 -- ^ @PDDL-1.0@, ODC Public Domain Dedication & License 1.0
-    | PHP_3_0 -- ^ @PHP-3.0@, PHP License v3.0
     | PHP_3_01 -- ^ @PHP-3.01@, PHP License v3.01
+    | PHP_3_0 -- ^ @PHP-3.0@, PHP License v3.0
     | Plexus -- ^ @Plexus@, Plexus Classworlds License
     | PostgreSQL -- ^ @PostgreSQL@, PostgreSQL License
     | Psfrag -- ^ @psfrag@, psfrag License
@@ -323,6 +327,7 @@ data LicenseId
     | SAX_PD -- ^ @SAX-PD@, Sax Public Domain Notice
     | Saxpath -- ^ @Saxpath@, Saxpath License
     | SCEA -- ^ @SCEA@, SCEA Shared Source License
+    | Sendmail_8_23 -- ^ @Sendmail-8.23@, Sendmail License 8.23, SPDX License List 3.3
     | Sendmail -- ^ @Sendmail@, Sendmail License
     | SGI_B_1_0 -- ^ @SGI-B-1.0@, SGI Free Software License B v1.0
     | SGI_B_1_1 -- ^ @SGI-B-1.1@, SGI Free Software License B v1.1
@@ -345,8 +350,8 @@ data LicenseId
     | TMate -- ^ @TMate@, TMate Open Source License
     | TORQUE_1_1 -- ^ @TORQUE-1.1@, TORQUE v2.5+ Software License v1.1
     | TOSL -- ^ @TOSL@, Trusster Open Source License
-    | TU_Berlin_1_0 -- ^ @TU-Berlin-1.0@, Technische Universitaet Berlin License 1.0, SPDX License List 3.2
-    | TU_Berlin_2_0 -- ^ @TU-Berlin-2.0@, Technische Universitaet Berlin License 2.0, SPDX License List 3.2
+    | TU_Berlin_1_0 -- ^ @TU-Berlin-1.0@, Technische Universitaet Berlin License 1.0, SPDX License List 3.2, SPDX License List 3.3
+    | TU_Berlin_2_0 -- ^ @TU-Berlin-2.0@, Technische Universitaet Berlin License 2.0, SPDX License List 3.2, SPDX License List 3.3
     | Unicode_DFS_2015 -- ^ @Unicode-DFS-2015@, Unicode License Agreement - Data Files and Software (2015)
     | Unicode_DFS_2016 -- ^ @Unicode-DFS-2016@, Unicode License Agreement - Data Files and Software (2016)
     | Unicode_TOU -- ^ @Unicode-TOU@, Unicode Terms of Use
@@ -557,6 +562,7 @@ licenseId CNRI_Jython = "CNRI-Jython"
 licenseId CNRI_Python_GPL_Compatible = "CNRI-Python-GPL-Compatible"
 licenseId CNRI_Python = "CNRI-Python"
 licenseId Condor_1_1 = "Condor-1.1"
+licenseId Copyleft_next_0_3_1 = "copyleft-next-0.3.1"
 licenseId CPAL_1_0 = "CPAL-1.0"
 licenseId CPL_1_0 = "CPL-1.0"
 licenseId CPOL_1_02 = "CPOL-1.02"
@@ -589,8 +595,8 @@ licenseId Fair = "Fair"
 licenseId Frameworx_1_0 = "Frameworx-1.0"
 licenseId FreeImage = "FreeImage"
 licenseId FSFAP = "FSFAP"
-licenseId FSFUL = "FSFUL"
 licenseId FSFULLR = "FSFULLR"
+licenseId FSFUL = "FSFUL"
 licenseId FTL = "FTL"
 licenseId GFDL_1_1_only = "GFDL-1.1-only"
 licenseId GFDL_1_1_or_later = "GFDL-1.1-or-later"
@@ -644,8 +650,8 @@ licenseId LiLiQ_P_1_1 = "LiLiQ-P-1.1"
 licenseId LiLiQ_R_1_1 = "LiLiQ-R-1.1"
 licenseId LiLiQ_Rplus_1_1 = "LiLiQ-Rplus-1.1"
 licenseId Linux_OpenIB = "Linux-OpenIB"
-licenseId LPL_1_0 = "LPL-1.0"
 licenseId LPL_1_02 = "LPL-1.02"
+licenseId LPL_1_0 = "LPL-1.0"
 licenseId LPPL_1_0 = "LPPL-1.0"
 licenseId LPPL_1_1 = "LPPL-1.1"
 licenseId LPPL_1_2 = "LPPL-1.2"
@@ -658,8 +664,8 @@ licenseId MIT_advertising = "MIT-advertising"
 licenseId MIT_CMU = "MIT-CMU"
 licenseId MIT_enna = "MIT-enna"
 licenseId MIT_feh = "MIT-feh"
-licenseId MIT = "MIT"
 licenseId MITNFA = "MITNFA"
+licenseId MIT = "MIT"
 licenseId Motosoto = "Motosoto"
 licenseId Mpich2 = "mpich2"
 licenseId MPL_1_0 = "MPL-1.0"
@@ -695,6 +701,9 @@ licenseId ODbL_1_0 = "ODbL-1.0"
 licenseId ODC_By_1_0 = "ODC-By-1.0"
 licenseId OFL_1_0 = "OFL-1.0"
 licenseId OFL_1_1 = "OFL-1.1"
+licenseId OGL_UK_1_0 = "OGL-UK-1.0"
+licenseId OGL_UK_2_0 = "OGL-UK-2.0"
+licenseId OGL_UK_3_0 = "OGL-UK-3.0"
 licenseId OGTSL = "OGTSL"
 licenseId OLDAP_1_1 = "OLDAP-1.1"
 licenseId OLDAP_1_2 = "OLDAP-1.2"
@@ -722,8 +731,8 @@ licenseId OSL_2_0 = "OSL-2.0"
 licenseId OSL_2_1 = "OSL-2.1"
 licenseId OSL_3_0 = "OSL-3.0"
 licenseId PDDL_1_0 = "PDDL-1.0"
-licenseId PHP_3_0 = "PHP-3.0"
 licenseId PHP_3_01 = "PHP-3.01"
+licenseId PHP_3_0 = "PHP-3.0"
 licenseId Plexus = "Plexus"
 licenseId PostgreSQL = "PostgreSQL"
 licenseId Psfrag = "psfrag"
@@ -742,6 +751,7 @@ licenseId Ruby = "Ruby"
 licenseId SAX_PD = "SAX-PD"
 licenseId Saxpath = "Saxpath"
 licenseId SCEA = "SCEA"
+licenseId Sendmail_8_23 = "Sendmail-8.23"
 licenseId Sendmail = "Sendmail"
 licenseId SGI_B_1_0 = "SGI-B-1.0"
 licenseId SGI_B_1_1 = "SGI-B-1.1"
@@ -909,6 +919,7 @@ licenseName CNRI_Jython = "CNRI Jython License"
 licenseName CNRI_Python_GPL_Compatible = "CNRI Python Open Source GPL Compatible License Agreement"
 licenseName CNRI_Python = "CNRI Python License"
 licenseName Condor_1_1 = "Condor Public License v1.1"
+licenseName Copyleft_next_0_3_1 = "copyleft-next 0.3.1"
 licenseName CPAL_1_0 = "Common Public Attribution License 1.0"
 licenseName CPL_1_0 = "Common Public License 1.0"
 licenseName CPOL_1_02 = "Code Project Open License 1.02"
@@ -941,8 +952,8 @@ licenseName Fair = "Fair License"
 licenseName Frameworx_1_0 = "Frameworx Open License 1.0"
 licenseName FreeImage = "FreeImage Public License v1.0"
 licenseName FSFAP = "FSF All Permissive License"
-licenseName FSFUL = "FSF Unlimited License"
 licenseName FSFULLR = "FSF Unlimited License (with License Retention)"
+licenseName FSFUL = "FSF Unlimited License"
 licenseName FTL = "Freetype Project License"
 licenseName GFDL_1_1_only = "GNU Free Documentation License v1.1 only"
 licenseName GFDL_1_1_or_later = "GNU Free Documentation License v1.1 or later"
@@ -996,8 +1007,8 @@ licenseName LiLiQ_P_1_1 = "Licence Libre du Qu\233bec \8211 Permissive version 1
 licenseName LiLiQ_R_1_1 = "Licence Libre du Qu\233bec \8211 R\233ciprocit\233 version 1.1"
 licenseName LiLiQ_Rplus_1_1 = "Licence Libre du Qu\233bec \8211 R\233ciprocit\233 forte version 1.1"
 licenseName Linux_OpenIB = "Linux Kernel Variant of OpenIB.org license"
-licenseName LPL_1_0 = "Lucent Public License Version 1.0"
 licenseName LPL_1_02 = "Lucent Public License v1.02"
+licenseName LPL_1_0 = "Lucent Public License Version 1.0"
 licenseName LPPL_1_0 = "LaTeX Project Public License v1.0"
 licenseName LPPL_1_1 = "LaTeX Project Public License v1.1"
 licenseName LPPL_1_2 = "LaTeX Project Public License v1.2"
@@ -1010,8 +1021,8 @@ licenseName MIT_advertising = "Enlightenment License (e16)"
 licenseName MIT_CMU = "CMU License"
 licenseName MIT_enna = "enna License"
 licenseName MIT_feh = "feh License"
-licenseName MIT = "MIT License"
 licenseName MITNFA = "MIT +no-false-attribs license"
+licenseName MIT = "MIT License"
 licenseName Motosoto = "Motosoto License"
 licenseName Mpich2 = "mpich2 License"
 licenseName MPL_1_0 = "Mozilla Public License 1.0"
@@ -1047,6 +1058,9 @@ licenseName ODbL_1_0 = "ODC Open Database License v1.0"
 licenseName ODC_By_1_0 = "Open Data Commons Attribution License v1.0"
 licenseName OFL_1_0 = "SIL Open Font License 1.0"
 licenseName OFL_1_1 = "SIL Open Font License 1.1"
+licenseName OGL_UK_1_0 = "Open Government Licence v1.0"
+licenseName OGL_UK_2_0 = "Open Government Licence v2.0"
+licenseName OGL_UK_3_0 = "Open Government Licence v3.0"
 licenseName OGTSL = "Open Group Test Suite License"
 licenseName OLDAP_1_1 = "Open LDAP Public License v1.1"
 licenseName OLDAP_1_2 = "Open LDAP Public License v1.2"
@@ -1074,8 +1088,8 @@ licenseName OSL_2_0 = "Open Software License 2.0"
 licenseName OSL_2_1 = "Open Software License 2.1"
 licenseName OSL_3_0 = "Open Software License 3.0"
 licenseName PDDL_1_0 = "ODC Public Domain Dedication & License 1.0"
-licenseName PHP_3_0 = "PHP License v3.0"
 licenseName PHP_3_01 = "PHP License v3.01"
+licenseName PHP_3_0 = "PHP License v3.0"
 licenseName Plexus = "Plexus Classworlds License"
 licenseName PostgreSQL = "PostgreSQL License"
 licenseName Psfrag = "psfrag License"
@@ -1094,6 +1108,7 @@ licenseName Ruby = "Ruby License"
 licenseName SAX_PD = "Sax Public Domain Notice"
 licenseName Saxpath = "Saxpath License"
 licenseName SCEA = "SCEA Shared Source License"
+licenseName Sendmail_8_23 = "Sendmail License 8.23"
 licenseName Sendmail = "Sendmail License"
 licenseName SGI_B_1_0 = "SGI Free Software License B v1.0"
 licenseName SGI_B_1_1 = "SGI Free Software License B v1.1"
@@ -1263,6 +1278,7 @@ licenseIsOsiApproved CNRI_Jython = False
 licenseIsOsiApproved CNRI_Python_GPL_Compatible = False
 licenseIsOsiApproved CNRI_Python = True
 licenseIsOsiApproved Condor_1_1 = False
+licenseIsOsiApproved Copyleft_next_0_3_1 = False
 licenseIsOsiApproved CPAL_1_0 = True
 licenseIsOsiApproved CPL_1_0 = True
 licenseIsOsiApproved CPOL_1_02 = False
@@ -1295,8 +1311,8 @@ licenseIsOsiApproved Fair = True
 licenseIsOsiApproved Frameworx_1_0 = True
 licenseIsOsiApproved FreeImage = False
 licenseIsOsiApproved FSFAP = False
-licenseIsOsiApproved FSFUL = False
 licenseIsOsiApproved FSFULLR = False
+licenseIsOsiApproved FSFUL = False
 licenseIsOsiApproved FTL = False
 licenseIsOsiApproved GFDL_1_1_only = False
 licenseIsOsiApproved GFDL_1_1_or_later = False
@@ -1350,8 +1366,8 @@ licenseIsOsiApproved LiLiQ_P_1_1 = True
 licenseIsOsiApproved LiLiQ_R_1_1 = True
 licenseIsOsiApproved LiLiQ_Rplus_1_1 = True
 licenseIsOsiApproved Linux_OpenIB = False
-licenseIsOsiApproved LPL_1_0 = True
 licenseIsOsiApproved LPL_1_02 = True
+licenseIsOsiApproved LPL_1_0 = True
 licenseIsOsiApproved LPPL_1_0 = False
 licenseIsOsiApproved LPPL_1_1 = False
 licenseIsOsiApproved LPPL_1_2 = False
@@ -1364,8 +1380,8 @@ licenseIsOsiApproved MIT_advertising = False
 licenseIsOsiApproved MIT_CMU = False
 licenseIsOsiApproved MIT_enna = False
 licenseIsOsiApproved MIT_feh = False
-licenseIsOsiApproved MIT = True
 licenseIsOsiApproved MITNFA = False
+licenseIsOsiApproved MIT = True
 licenseIsOsiApproved Motosoto = True
 licenseIsOsiApproved Mpich2 = False
 licenseIsOsiApproved MPL_1_0 = True
@@ -1401,6 +1417,9 @@ licenseIsOsiApproved ODbL_1_0 = False
 licenseIsOsiApproved ODC_By_1_0 = False
 licenseIsOsiApproved OFL_1_0 = False
 licenseIsOsiApproved OFL_1_1 = True
+licenseIsOsiApproved OGL_UK_1_0 = False
+licenseIsOsiApproved OGL_UK_2_0 = False
+licenseIsOsiApproved OGL_UK_3_0 = False
 licenseIsOsiApproved OGTSL = True
 licenseIsOsiApproved OLDAP_1_1 = False
 licenseIsOsiApproved OLDAP_1_2 = False
@@ -1428,8 +1447,8 @@ licenseIsOsiApproved OSL_2_0 = True
 licenseIsOsiApproved OSL_2_1 = True
 licenseIsOsiApproved OSL_3_0 = True
 licenseIsOsiApproved PDDL_1_0 = False
-licenseIsOsiApproved PHP_3_0 = True
 licenseIsOsiApproved PHP_3_01 = False
+licenseIsOsiApproved PHP_3_0 = True
 licenseIsOsiApproved Plexus = False
 licenseIsOsiApproved PostgreSQL = True
 licenseIsOsiApproved Psfrag = False
@@ -1448,6 +1467,7 @@ licenseIsOsiApproved Ruby = False
 licenseIsOsiApproved SAX_PD = False
 licenseIsOsiApproved Saxpath = False
 licenseIsOsiApproved SCEA = False
+licenseIsOsiApproved Sendmail_8_23 = False
 licenseIsOsiApproved Sendmail = False
 licenseIsOsiApproved SGI_B_1_0 = False
 licenseIsOsiApproved SGI_B_1_1 = False
@@ -1524,11 +1544,27 @@ licenseIdList LicenseListVersion_3_2 =
     , TU_Berlin_2_0
     ]
     ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_3 =
+    [ AGPL_1_0_only
+    , AGPL_1_0_or_later
+    , Copyleft_next_0_3_1
+    , Linux_OpenIB
+    , MIT_0
+    , ODC_By_1_0
+    , OGL_UK_1_0
+    , OGL_UK_2_0
+    , OGL_UK_3_0
+    , Sendmail_8_23
+    , TU_Berlin_1_0
+    , TU_Berlin_2_0
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
 mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
+mkLicenseId LicenseListVersion_3_3 s = Map.lookup s stringLookup_3_3
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -1536,6 +1572,10 @@ stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
 
 stringLookup_3_2 :: Map String LicenseId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_2
+
+stringLookup_3_3 :: Map String LicenseId
+stringLookup_3_3 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_2
 
 --  | Licenses in all SPDX License lists
@@ -1678,8 +1718,8 @@ bulkOfLicenses =
     , Frameworx_1_0
     , FreeImage
     , FSFAP
-    , FSFUL
     , FSFULLR
+    , FSFUL
     , FTL
     , GFDL_1_1_only
     , GFDL_1_1_or_later
@@ -1732,8 +1772,8 @@ bulkOfLicenses =
     , LiLiQ_P_1_1
     , LiLiQ_R_1_1
     , LiLiQ_Rplus_1_1
-    , LPL_1_0
     , LPL_1_02
+    , LPL_1_0
     , LPPL_1_0
     , LPPL_1_1
     , LPPL_1_2
@@ -1745,8 +1785,8 @@ bulkOfLicenses =
     , MIT_CMU
     , MIT_enna
     , MIT_feh
-    , MIT
     , MITNFA
+    , MIT
     , Motosoto
     , Mpich2
     , MPL_1_0
@@ -1808,8 +1848,8 @@ bulkOfLicenses =
     , OSL_2_1
     , OSL_3_0
     , PDDL_1_0
-    , PHP_3_0
     , PHP_3_01
+    , PHP_3_0
     , Plexus
     , PostgreSQL
     , Psfrag

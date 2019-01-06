@@ -67,7 +67,7 @@ import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.Version
          ( Version, mkVersion, intersectVersionRanges )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
          ( die', warn, info )

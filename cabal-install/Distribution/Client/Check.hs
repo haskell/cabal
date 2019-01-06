@@ -16,17 +16,20 @@ module Distribution.Client.Check (
     check
   ) where
 
+
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Utils.Parsec              (renderParseError)
 import Distribution.PackageDescription               (GenericPackageDescription)
 import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec
        (parseGenericPackageDescription, runParseResult)
-import Distribution.Parsec.Common                    (PWarning (..), showPError, showPWarning)
+import Distribution.Parsec                           (PWarning (..), showPError, showPWarning)
 import Distribution.Simple.Utils                     (defaultPackageDesc, die', notice, warn)
 import Distribution.Verbosity                        (Verbosity)
+import System.IO                                     (hPutStr, stderr)
 
 import qualified Data.ByteString  as BS
 import qualified System.Directory as Dir
@@ -42,7 +45,8 @@ readGenericPackageDescriptionCheck verbosity fpath = do
     case result of
         Left (_, errors) -> do
             traverse_ (warn verbosity . showPError fpath) errors
-            die' verbosity $ "Failed parsing \"" ++ fpath ++ "\"."
+            hPutStr stderr $ renderParseError fpath bs errors warnings
+            die' verbosity "parse error"
         Right x  -> return (warnings, x)
 
 -- | Note: must be called with the CWD set to the directory containing

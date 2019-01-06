@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                      #-}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE PatternGuards            #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
@@ -20,13 +21,25 @@ import Control.Monad
 import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
 import Data.List
-import Data.Monoid (mempty, (<>))
 import Text.Printf
 import qualified System.Clock as Clock
 import System.IO
 import System.FilePath
 import System.Exit
-import System.Process (callProcess, showCommandForUser)
+import System.Process (
+#if MIN_VERSION_process(1,2,0)
+    callProcess,
+#else
+    proc, createProcess, waitForProcess, terminateProcess,
+#endif
+    showCommandForUser)
+
+#if !MIN_VERSION_base(4,12,0)
+import Data.Monoid ((<>))
+#endif
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid (mempty)
+#endif
 
 -- | Record for arguments that can be passed to @cabal-tests@ executable.
 data MainArgs = MainArgs {
@@ -298,3 +311,20 @@ getTime = do
     t <- Clock.getTime Clock.Monotonic
     let ns = realToFrac $ Clock.toNanoSecs t
     return $ ns / 10 ^ (9 :: Int)
+
+-------------------------------------------------------------------------------
+-- compat
+-------------------------------------------------------------------------------
+
+#if !MIN_VERSION_process(1,2,0)
+callProcess :: FilePath -> [String] -> IO ()
+callProcess cmd args = do
+    exit_code <- bracket (createProcess (proc cmd args)) cleanupProcess
+        $ \(_, _, _, ph) -> waitForProcess ph
+    case exit_code of
+        ExitSuccess   -> return ()
+        ExitFailure r -> fail $ "processFailedException " ++ show (cmd, args, r)
+  where
+    cleanupProcess (_, _, _, ph) = terminateProcess ph
+
+#endif

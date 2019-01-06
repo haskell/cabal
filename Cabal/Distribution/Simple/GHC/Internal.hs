@@ -67,7 +67,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System
 import Distribution.Pretty ( prettyShow )
-import Distribution.Parsec.Class ( simpleParsec )
+import Distribution.Parsec ( simpleParsec )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Distribution.Compat.Stack

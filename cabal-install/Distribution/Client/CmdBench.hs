@@ -23,7 +23,7 @@ import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity, normal )

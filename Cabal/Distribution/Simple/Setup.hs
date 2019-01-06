@@ -82,7 +82,7 @@ import Distribution.Compat.Prelude hiding (get)
 
 import Distribution.Compiler
 import Distribution.ReadE
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -108,10 +108,6 @@ import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..))
 
 import Data.Function (on)
-
--- To be removed
-import Distribution.Text (Text (..))
-import qualified Distribution.Compat.ReadP as Parse
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -1378,11 +1374,6 @@ instance Parsec HaddockTarget where
     parsec = P.choice [ P.try $ P.string "for-hackage"     >> return ForHackage
                       , P.string "for-development" >> return ForDevelopment]
 
-instance Text HaddockTarget where
-    parse = Parse.choice [ Parse.string "for-hackage"     >> return ForHackage
-                         , Parse.string "for-development" >> return ForDevelopment]
-
-
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],
@@ -1864,6 +1855,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
   } deriving (Generic)
@@ -1876,6 +1868,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testFailWhenNoTestSuites = toFlag False,
     testOptions     = []
   }
 
@@ -1939,6 +1932,10 @@ testOptions' showOrParseArgs =
   , option [] ["keep-tix-files"]
         "keep .tix files for HPC between test runs"
         testKeepTix (\v flags -> flags { testKeepTix = v})
+        trueArg
+  , option [] ["fail-when-no-test-suites"]
+        ("Exit with failure when no test suites are found.")
+        testFailWhenNoTestSuites (\v flags -> flags { testFailWhenNoTestSuites = v})
         trueArg
   , option [] ["test-options"]
         ("give extra options to test executables "

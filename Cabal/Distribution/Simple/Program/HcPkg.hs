@@ -45,12 +45,14 @@ module Distribution.Simple.Program.HcPkg (
 import Prelude ()
 import Distribution.Compat.Prelude hiding (init)
 
+import Data.Either (partitionEithers)
+
 import Distribution.InstalledPackageInfo
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Utils
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
@@ -257,15 +259,11 @@ dump hpi verbosity packagedb = do
     _       -> die' verbosity $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " dump'"
 
-parsePackages :: String -> Either [InstalledPackageInfo] [PError]
+parsePackages :: String -> Either [InstalledPackageInfo] [String]
 parsePackages str =
-  let parsed = map parseInstalledPackageInfo (splitPkgs str)
-   in case [ msg | ParseFailed msg <- parsed ] of
-        []   -> Left [   setUnitId
-                       . maybe id mungePackagePaths (pkgRoot pkg)
-                       $ pkg
-                     | ParseOk _ pkg <- parsed ]
-        msgs -> Right msgs
+    case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
+        ([], ok)   -> Left [ setUnitId . maybe id mungePackagePaths (pkgRoot pkg) $ pkg | (_, pkg) <- ok ]
+        (msgss, _) -> Right (concat msgss)
 
 --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
 -- and converting back and forth with lines/unlines.

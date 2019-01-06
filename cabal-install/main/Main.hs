@@ -39,7 +39,7 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
-         , SDistFlags(..), SDistExFlags(..), sdistCommand
+         , SDistFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
          , SandboxFlags(..), sandboxCommand
@@ -79,7 +79,6 @@ import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
          ( list, info )
-
 
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdUpdate    as CmdUpdate
@@ -194,6 +193,7 @@ import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (SomeException(..), try)
 import Control.Monad            (mapM_)
+import Data.Version             (showVersion)
 
 #ifdef MONOLITHIC
 import qualified UnitTests
@@ -234,7 +234,7 @@ main' = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  validScript <- 
+  validScript <-
     if null args
       then return False
       else doesFileExist (last args)
@@ -252,7 +252,7 @@ mainWorker args = do
               -> printNumericVersion
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
-          CommandErrors   errs           
+          CommandErrors   errs
             | validScript                -> CmdRun.handleShebang (last args)
             | otherwise                  -> printErrors errs
           CommandReadyToGo action        -> do
@@ -275,9 +275,9 @@ mainWorker args = do
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ display Paths_cabal_install.version
+    printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ display Paths_cabal_install.version
+                                  ++ showVersion Paths_cabal_install.version
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
@@ -316,9 +316,9 @@ mainWorker args = do
       , newCmd  CmdTest.testCommand           CmdTest.testAction
       , newCmd  CmdBench.benchCommand         CmdBench.benchAction
       , newCmd  CmdExec.execCommand           CmdExec.execAction
-      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction 
+      , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction
       , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
-      
+
       , legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
@@ -1066,16 +1066,15 @@ uninstallAction verbosityFlag extraArgs _globalFlags = do
     ++ package ++ "' or 'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
 
 
-sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> Action
-sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
+sdistAction :: SDistFlags -> [String] -> Action
+sdistAction sdistFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sDistVerbosity sdistFlags)
   unless (null extraArgs) $
     die' verbosity $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
   let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
-  let sdistFlags' = sdistFlags { sDistDistPref = toFlag distPref }
-  sdist sdistFlags' sdistExFlags
+  sdist sdistFlags { sDistDistPref = toFlag distPref }
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do

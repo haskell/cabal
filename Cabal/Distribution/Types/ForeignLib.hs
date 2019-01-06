@@ -20,10 +20,9 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
-import Distribution.Text
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
@@ -31,7 +30,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP  as Parse
 import qualified Text.PrettyPrint           as Disp
 import qualified Text.Read                  as Read
 
@@ -102,18 +100,6 @@ instance Parsec LibVersionInfo where
                 P.integral
             return (r,a)
         return $ mkLibVersionInfo (c,r,a)
-
-instance Text LibVersionInfo where
-    parse = do
-        c <- parseNat
-        (r, a) <- Parse.option (0,0) $ do
-            _ <- Parse.char ':'
-            r <- parseNat
-            a <- Parse.option 0 (Parse.char ':' >> parseNat)
-            return (r, a)
-        return $ mkLibVersionInfo (c,r,a)
-      where
-        parseNat = read `fmap` Parse.munch1 isDigit
 
 -- | Construct 'LibVersionInfo' from @(current, revision, age)@
 -- numbers.

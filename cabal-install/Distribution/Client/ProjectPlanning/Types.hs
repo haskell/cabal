@@ -76,7 +76,7 @@ import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
 import           Distribution.Verbosity
-import           Distribution.Text
+import           Distribution.Deprecated.Text
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
@@ -292,6 +292,7 @@ data ElaboratedConfiguredPackage
        elabTestHumanLog          :: Maybe PathTemplate,
        elabTestShowDetails       :: Maybe TestShowDetails,
        elabTestKeepTix           :: Bool,
+       elabTestFailWhenNoTestSuites :: Bool,
        elabTestTestOptions       :: [PathTemplate],
 
        -- Setup.hs related things:
@@ -821,4 +822,3 @@ data SetupScriptStyle = SetupCustomExplicitDeps
   deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SetupScriptStyle
-

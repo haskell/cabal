@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes       #-}
 -- | A parse result type for parsers from AST to Haskell types.
-module Distribution.Parsec.ParseResult (
+module Distribution.Fields.ParseResult (
     ParseResult,
     runParseResult,
     recoverWith,
@@ -18,16 +18,16 @@ module Distribution.Parsec.ParseResult (
     parseString
     ) where
 
-import qualified Data.ByteString.Char8 as BS
-import Distribution.Compat.Prelude
-import Distribution.Parsec.Common
-       ( PError (..), PWarnType (..), PWarning (..), Position (..), zeroPos
-       , showPWarning, showPError)
-import Distribution.Simple.Utils   (die', warn)
-import Distribution.Verbosity      (Verbosity)
-import Distribution.Version        (Version)
-import Prelude ()
-import System.Directory            (doesFileExist)
+import qualified Data.ByteString.Char8        as BS
+import           Distribution.Compat.Prelude
+import           Distribution.Parsec.Error    (PError (..), showPError)
+import           Distribution.Parsec.Position (Position (..), zeroPos)
+import           Distribution.Parsec.Warning  (PWarnType (..), PWarning (..), showPWarning)
+import           Distribution.Simple.Utils    (die', warn)
+import           Distribution.Verbosity       (Verbosity)
+import           Distribution.Version         (Version)
+import           Prelude ()
+import           System.Directory             (doesFileExist)
 
 #if MIN_VERSION_base(4,10,0)
 import Control.Applicative (Applicative (..))

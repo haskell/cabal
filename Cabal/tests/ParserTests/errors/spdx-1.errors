@@ -2,5 +2,3 @@ VERSION: Just (mkVersion [2,2])
 spdx-1.cabal:6:26: 
 unexpected Unknown SPDX license identifier: 'BSD3' Do you mean BSD-3-Clause?
 
-BSD3
-

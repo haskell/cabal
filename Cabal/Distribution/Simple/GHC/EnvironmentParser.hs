@@ -4,7 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-module Distribution.Simple.GHC.EnvironmentParser 
+module Distribution.Simple.GHC.EnvironmentParser
     ( parseGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc(..) ) where
 
 import Prelude ()
@@ -20,7 +20,7 @@ import Distribution.Types.UnitId
 import Control.Exception
     ( Exception, throwIO )
 import qualified Text.Parsec as P
-import Text.Parsec.String 
+import Text.Parsec.String
     ( Parser, parseFromFile )
 
 parseEnvironmentFileLine :: Parser GhcEnvironmentFileEntry
@@ -30,7 +30,7 @@ parseEnvironmentFileLine =      GhcEnvFileComment             <$> comment
                        <|> pure GhcEnvFileClearPackageDbStack <*  clearDb
     where
         comment = P.string "--" *> P.many (P.noneOf "\r\n")
-        unitId = P.try $ P.string "package-id" *> P.spaces *> 
+        unitId = P.try $ P.string "package-id" *> P.spaces *>
             (mkUnitId <$> P.many1 (P.satisfy $ \c -> isAlphaNum c || c `elem` "-_.+"))
         packageDb = (P.string "global-package-db"      *> pure GlobalPackageDB)
                 <|> (P.string "user-package-db"        *> pure UserPackageDB)

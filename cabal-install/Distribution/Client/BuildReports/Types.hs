@@ -15,10 +15,10 @@ module Distribution.Client.BuildReports.Types (
     ReportLevel(..),
   ) where
 
-import qualified Distribution.Text as Text
+import qualified Distribution.Deprecated.Text as Text
          ( Text(..) )
 
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
          ( pfail, munch1 )
 import qualified Text.PrettyPrint as Disp
          ( text )

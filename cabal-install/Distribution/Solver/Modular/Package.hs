@@ -21,7 +21,7 @@ module Distribution.Solver.Modular.Package
 import Data.List as L
 
 import Distribution.Package -- from Cabal
-import Distribution.Text (display)
+import Distribution.Deprecated.Text (display)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath

@@ -10,26 +10,27 @@ import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
-import Control.Monad                               (void)
+import Control.Monad                               (unless, void)
 import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
+import Distribution.Fields                         (runParseResult)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec.Common
+import Distribution.Parsec
        (PWarnType (..), PWarning (..), showPError, showPWarning)
-import Distribution.Parsec.ParseResult             (runParseResult)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
+import System.Directory                            (setCurrentDirectory)
+import System.Environment                          (getArgs, withArgs)
 import System.FilePath                             (replaceExtension, (</>))
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
 
 import qualified Distribution.InstalledPackageInfo as IPI
-import qualified Distribution.ParseUtils           as ReadP
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff        (toExpr)
+import Data.TreeDiff        (ansiWlEditExpr, ediff, toExpr)
 import Data.TreeDiff.Golden (ediffGolden)
 import Instances.TreeDiff ()
 #endif
@@ -95,6 +96,9 @@ errorTests = testGroup "errors"
     , errorTest "common2.cabal"
     , errorTest "common3.cabal"
     , errorTest "leading-comma.cabal"
+    , errorTest "leading-comma-2.cabal"
+    , errorTest "leading-comma-2b.cabal"
+    , errorTest "leading-comma-2c.cabal"
     , errorTest "range-ge-wild.cabal"
     , errorTest "forward-compat.cabal"
     , errorTest "forward-compat2.cabal"
@@ -103,9 +107,11 @@ errorTests = testGroup "errors"
     , errorTest "issue-5055-2.cabal"
     , errorTest "noVersion.cabal"
     , errorTest "noVersion2.cabal"
+    , errorTest "multiple-libs.cabal"
     , errorTest "spdx-1.cabal"
     , errorTest "spdx-2.cabal"
     , errorTest "spdx-3.cabal"
+    , errorTest "removed-fields.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -133,6 +139,7 @@ regressionTests = testGroup "regressions"
     [ regressionTest "encoding-0.8.cabal"
     , regressionTest "Octree-0.5.cabal"
     , regressionTest "nothing-unicode.cabal"
+    , regressionTest "multiple-libs-2.cabal"
     , regressionTest "issue-774.cabal"
     , regressionTest "generics-sop.cabal"
     , regressionTest "elif.cabal"
@@ -140,7 +147,9 @@ regressionTests = testGroup "regressions"
     , regressionTest "shake.cabal"
     , regressionTest "common.cabal"
     , regressionTest "common2.cabal"
+    , regressionTest "common-conditional.cabal"
     , regressionTest "leading-comma.cabal"
+    , regressionTest "leading-comma-2.cabal"
     , regressionTest "wl-pprint-indef.cabal"
     , regressionTest "th-lift-instances.cabal"
     , regressionTest "issue-5055.cabal"
@@ -148,6 +157,8 @@ regressionTests = testGroup "regressions"
     , regressionTest "spdx-1.cabal"
     , regressionTest "spdx-2.cabal"
     , regressionTest "spdx-3.cabal"
+    , regressionTest "hidden-main-lib.cabal"
+    , regressionTest "jaeger-flamegraph.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
@@ -197,7 +208,21 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
     y <- parse (toUTF8BS contents')
     -- previously we mangled licenses a bit
     let y' = y
-    assertEqual "re-parsed doesn't match" x y'
+    unless (x == y') $
+#ifdef MIN_VERSION_tree_diff
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , show $ ansiWlEditExpr $ ediff x y
+            ]
+#else
+        assertFailure $ unlines
+            [ "re-parsed doesn't match"
+            , "expected"
+            , show x
+            , "actual"
+            , show y
+            ]
+#endif
   where
     parse :: BS.ByteString -> IO GenericPackageDescription
     parse c = do
@@ -235,10 +260,9 @@ ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
     contents <- readFile input
     let res = IPI.parseInstalledPackageInfo contents
     return $ toUTF8BS $ case res of
-        ReadP.ParseFailed err -> "ERROR " ++ show err
-        ReadP.ParseOk ws ipi  ->
-            unlines (map (ReadP.showPWarning fp) ws)
-            ++ IPI.showInstalledPackageInfo ipi
+        Left err -> "ERROR " ++ show err
+        Right (ws, ipi)  ->
+            unlines ws ++ IPI.showInstalledPackageInfo ipi
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     correct = replaceExtension input "format"
@@ -249,8 +273,8 @@ ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     contents <- readFile input
     let res = IPI.parseInstalledPackageInfo contents
     case res of
-        ReadP.ParseFailed err -> fail $ "ERROR " ++ show err
-        ReadP.ParseOk _ws ipi -> pure (toExpr ipi)
+        Left err -> fail $ "ERROR " ++ show err
+        Right (_ws, ipi) -> pure (toExpr ipi)
   where
     input = "tests" </> "ParserTests" </> "ipi" </> fp
     exprFile = replaceExtension input "expr"
@@ -278,8 +302,8 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
     parse :: String -> IO IPI.InstalledPackageInfo
     parse c = do
         case IPI.parseInstalledPackageInfo c of
-            ReadP.ParseOk _ ipi   -> return ipi
-            ReadP.ParseFailed err -> do
+            Right (_, ipi) -> return ipi
+            Left err       -> do
               void $ assertFailure $ show err
               fail "failure"
     input = "tests" </> "ParserTests" </> "ipi" </> fp
@@ -289,7 +313,13 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
 -------------------------------------------------------------------------------
 
 main :: IO ()
-main = defaultMain tests
+main = do
+    args <- getArgs
+    case args of
+        ("--cwd" : cwd : args') -> do
+            setCurrentDirectory cwd
+            withArgs args' $ defaultMain tests
+        _ -> defaultMain tests
 
 cabalGoldenTest :: TestName -> FilePath -> IO BS.ByteString -> TestTree
 cabalGoldenTest name ref act = goldenTest name (BS.readFile ref) act cmp upd

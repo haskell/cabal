@@ -9,11 +9,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 data ForeignLibOption =
@@ -34,11 +32,6 @@ instance Parsec ForeignLibOption where
     case name of
       "standalone" -> return ForeignLibStandalone
       _            -> fail "unrecognized foreign-library option"
-
-instance Text ForeignLibOption where
-  parse = Parse.choice [
-      do _ <- Parse.string "standalone" ; return ForeignLibStandalone
-    ]
 
 instance Binary ForeignLibOption
 

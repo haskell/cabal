@@ -8,15 +8,12 @@ module Distribution.Types.PackageId
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compat.ReadP
-import Distribution.Parsec.Class      (Parsec (..), simpleParsec)
+import Distribution.Parsec      (Parsec (..), simpleParsec)
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.PackageName
 import Distribution.Version           (Version, nullVersion)
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP       as Parse
 import qualified Text.PrettyPrint                as Disp
 
 -- | Type alias so we can use the shorter name PackageId.
@@ -36,31 +33,6 @@ instance Pretty PackageIdentifier where
   pretty (PackageIdentifier n v)
     | v == nullVersion = pretty n -- if no version, don't show version.
     | otherwise        = pretty n <<>> Disp.char '-' <<>> pretty v
-
--- |
---
--- >>> simpleParse "foo-bar-0" :: Maybe PackageIdentifier
--- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion [0]})
---
--- >>> simpleParse "foo-bar" :: Maybe PackageIdentifier
--- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion []})
---
--- /Note:/ Broken (too lenient, doesn't require full consumption)
---
--- >>> simpleParse "foo-bar-0-0" :: Maybe PackageIdentifier
--- Just (PackageIdentifier {pkgName = PackageName "foo-bar", pkgVersion = mkVersion [0]})
---
--- >>> simpleParse "foo-bar.0" :: Maybe PackageIdentifier
--- Nothing
---
--- >>> simpleParse "foo-bar.4-2" :: Maybe PackageIdentifier
--- Nothing
---
-instance Text PackageIdentifier where
-  parse = do
-    n <- parse
-    v <- (Parse.char '-' >> parse) <++ return nullVersion
-    return (PackageIdentifier n v)
 
 -- |
 --

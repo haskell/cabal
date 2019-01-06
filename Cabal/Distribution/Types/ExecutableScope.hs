@@ -9,11 +9,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Pretty
-import Distribution.Parsec.Class
-import Distribution.Text
+import Distribution.Parsec
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
 data ExecutableScope = ExecutablePublic
@@ -28,12 +26,6 @@ instance Parsec ExecutableScope where
     parsec = P.try pub <|> pri where
         pub = ExecutablePublic  <$ P.string "public"
         pri = ExecutablePrivate <$ P.string "private"
-
-instance Text ExecutableScope where
-    parse = Parse.choice
-        [ Parse.string "public"  >> return ExecutablePublic
-        , Parse.string "private" >> return ExecutablePrivate
-        ]
 
 instance Binary ExecutableScope
 

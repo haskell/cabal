@@ -44,6 +44,9 @@ module Distribution.Client.Config (
     remoteRepoFields
   ) where
 
+import Distribution.Deprecated.ViewAsFieldDescr
+         ( viewAsFieldDescr )
+
 import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo
          , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
@@ -72,7 +75,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
          , PathTemplate, toPathTemplate )
-import Distribution.ParseUtils
+import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), liftField
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
@@ -83,13 +86,12 @@ import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
          ( isOldHackageURI )
-import qualified Distribution.ParseUtils as ParseUtils
+import qualified Distribution.Deprecated.ParseUtils as ParseUtils
          ( Field(..) )
-import qualified Distribution.Text as Text
+import qualified Distribution.Deprecated.Text as Text
          ( Text(..), display )
 import Distribution.Simple.Command
-         ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
-         , viewAsFieldDescr )
+         ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..) )
 import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
@@ -107,7 +109,7 @@ import Data.Maybe
          ( fromMaybe )
 import Control.Monad
          ( when, unless, foldM, liftM )
-import qualified Distribution.Compat.ReadP as Parse
+import qualified Distribution.Deprecated.ReadP as Parse
          ( (<++), option )
 import Distribution.Compat.Semigroup
 import qualified Text.PrettyPrint as Disp
@@ -252,6 +254,7 @@ instance Semigroup SavedConfig where
         installMaxBackjumps          = combine installMaxBackjumps,
         installReorderGoals          = combine installReorderGoals,
         installCountConflicts        = combine installCountConflicts,
+        installMinimizeConflictSet   = combine installMinimizeConflictSet,
         installIndependentGoals      = combine installIndependentGoals,
         installShadowPkgs            = combine installShadowPkgs,
         installStrongFlags           = combine installStrongFlags,
@@ -363,7 +366,9 @@ instance Semigroup SavedConfig where
         configPreferences   = lastNonEmpty configPreferences,
         configSolver        = combine configSolver,
         configAllowNewer    = combineMonoid savedConfigureExFlags configAllowNewer,
-        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder
+        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder,
+        configWriteGhcEnvironmentFilesPolicy
+                            = combine configWriteGhcEnvironmentFilesPolicy
         }
         where
           combine      = combine' savedConfigureExFlags
@@ -432,6 +437,7 @@ instance Semigroup SavedConfig where
         testMachineLog  = combine testMachineLog,
         testShowDetails = combine testShowDetails,
         testKeepTix     = combine testKeepTix,
+        testFailWhenNoTestSuites = combine testFailWhenNoTestSuites,
         testOptions     = lastNonEmpty testOptions
         }
         where

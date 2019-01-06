@@ -14,7 +14,6 @@ import Distribution.Verbosity
 import Distribution.Compat.Time
 
 import qualified UnitTests.Distribution.Compat.CreatePipe
-import qualified UnitTests.Distribution.Compat.ReadP
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
 import qualified UnitTests.Distribution.Simple.Glob
@@ -35,11 +34,9 @@ tests mtimeChangeCalibrated =
                     then mtimeChangeProvided
                     else mtimeChangeCalibrated
   in
-  testGroup "Unit Tests" $
+  testGroup "Unit Tests"
     [ testGroup "Distribution.Compat.CreatePipe"
         UnitTests.Distribution.Compat.CreatePipe.tests
-    , testGroup "Distribution.Compat.ReadP"
-        UnitTests.Distribution.Compat.ReadP.tests
     , testGroup "Distribution.Compat.Time"
         (UnitTests.Distribution.Compat.Time.tests mtimeChange)
     , testGroup "Distribution.Compat.Graph"

@@ -24,6 +24,8 @@ module Distribution.Client.Init (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (empty)
 
+import Distribution.Deprecated.ReadP (readP_to_E)
+
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
@@ -76,7 +78,7 @@ import Distribution.License
 import qualified Distribution.SPDX as SPDX
 
 import Distribution.ReadE
-  ( runReadE, readP_to_E )
+  ( runReadE )
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
 import Distribution.Simple.Utils
@@ -89,11 +91,11 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
-import Distribution.Text
+import Distribution.Deprecated.Text
   ( display, Text(..) )
 import Distribution.Pretty
   ( prettyShow )
-import Distribution.Parsec.Class
+import Distribution.Parsec
   ( eitherParsec )
 
 import Distribution.Solver.Types.PackageIndex
@@ -141,7 +143,9 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --   user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
-      getCabalVersion
+      getSimpleProject
+  >=> getLibOrExec
+  >=> getCabalVersion
   >=> getPackageName sourcePkgDb
   >=> getVersion
   >=> getLicense
@@ -150,7 +154,6 @@ extendFlags pkgIx sourcePkgDb =
   >=> getSynopsis
   >=> getCategory
   >=> getExtraSourceFiles
-  >=> getLibOrExec
   >=> getSrcDir
   >=> getLanguage
   >=> getGenComments
@@ -180,6 +183,24 @@ displayCabalVersion v = case versionNumbers v of
   [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
   [2,4]  -> "2.4    (+ support for '**' globbing)"
   _      -> display v
+
+-- | Ask if a simple project with sensible defaults should be created.
+getSimpleProject :: InitFlags -> IO InitFlags
+getSimpleProject flags = do
+  simpleProj <-     return (flagToMaybe $ simpleProject flags)
+                ?>> maybePrompt flags
+                    (promptYesNo
+                      "Should I generate a simple project with sensible defaults"
+                      (Just True))
+  return $ case maybeToFlag simpleProj of
+    Flag True ->
+      flags { nonInteractive = Flag True
+            , simpleProject = Flag True
+            , packageType = Flag LibraryAndExecutable
+            }
+    simpleProjFlag@_ ->
+      flags { simpleProject = simpleProjFlag }
+
 
 -- | Ask which version of the cabal spec to use.
 getCabalVersion :: InitFlags -> IO InitFlags
@@ -363,12 +384,15 @@ getLibOrExec flags = do
                                    [Library, Executable, LibraryAndExecutable]
                                    Nothing displayPackageType False)
            ?>> return (Just Library)
+
+  -- If this package contains an executable, get the main file name.
   mainFile <- if pkgType == Just Library then return Nothing else
                     getMainFile flags
 
   return $ flags { packageType = maybeToFlag pkgType
                  , mainIs = maybeToFlag mainFile
                  }
+
 
 -- | Try to guess the main file of the executable, and prompt the user to choose
 -- one of them. Top-level modules including the word 'Main' in the file name

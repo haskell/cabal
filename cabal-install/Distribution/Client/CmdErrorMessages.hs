@@ -19,7 +19,7 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Solver.Types.OptionalStanza
          ( OptionalStanza(..) )
-import Distribution.Text
+import Distribution.Deprecated.Text
          ( display )
 
 import Data.Maybe (isNothing)

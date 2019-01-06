@@ -21,7 +21,8 @@ module Distribution.Client.ProjectConfig.Types (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo, AllowNewer(..), AllowOlder(..) )
+         ( RemoteRepo, AllowNewer(..), AllowOlder(..)
+         , WriteGhcEnvironmentFilesPolicy )
 import Distribution.Client.Dependency.Types
          ( PreSolver )
 import Distribution.Client.Targets
@@ -187,9 +188,12 @@ data ProjectConfigShared
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowOlder        :: Maybe AllowOlder,
        projectConfigAllowNewer        :: Maybe AllowNewer,
+       projectConfigWriteGhcEnvironmentFilesPolicy
+                                      :: Flag WriteGhcEnvironmentFilesPolicy,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag ReorderGoals,
        projectConfigCountConflicts    :: Flag CountConflicts,
+       projectConfigMinimizeConflictSet :: Flag MinimizeConflictSet,
        projectConfigStrongFlags       :: Flag StrongFlags,
        projectConfigAllowBootLibInstalls :: Flag AllowBootLibInstalls,
        projectConfigOnlyConstrained   :: Flag OnlyConstrained,
@@ -282,6 +286,7 @@ data PackageConfig
        packageConfigTestMachineLog      :: Flag PathTemplate,
        packageConfigTestShowDetails     :: Flag TestShowDetails,
        packageConfigTestKeepTix         :: Flag Bool,
+       packageConfigTestFailWhenNoTestSuites :: Flag Bool,
        packageConfigTestTestOptions     :: [PathTemplate]
      }
   deriving (Eq, Show, Generic)
@@ -379,6 +384,7 @@ data SolverSettings
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: ReorderGoals,
        solverSettingCountConflicts    :: CountConflicts,
+       solverSettingMinimizeConflictSet :: MinimizeConflictSet,
        solverSettingStrongFlags       :: StrongFlags,
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
        solverSettingOnlyConstrained   :: OnlyConstrained,

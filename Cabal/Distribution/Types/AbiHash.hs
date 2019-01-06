@@ -10,11 +10,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
-import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Text
 import Distribution.Pretty
-import Distribution.Parsec.Class
+import Distribution.Parsec
 
 import Text.PrettyPrint (text)
 
@@ -61,6 +59,3 @@ instance Pretty AbiHash where
 
 instance Parsec AbiHash where
     parsec = fmap mkAbiHash (P.munch isAlphaNum)
-
-instance Text AbiHash where
-    parse = fmap mkAbiHash (Parse.munch isAlphaNum)

@@ -9,13 +9,11 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.ModuleName
-import Distribution.Parsec.Class
+import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Text
 import Distribution.Types.PackageName
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Compat.ReadP  as Parse
 import           Text.PrettyPrint           ((<+>))
 import qualified Text.PrettyPrint           as Disp
 
@@ -51,17 +49,3 @@ instance Parsec ModuleReexport where
             P.spaces
             parsec
         return (ModuleReexport mpkgname origname newname)
-
-instance Text ModuleReexport where
-    parse = do
-      mpkgname <- Parse.option Nothing $ do
-                    pkgname <- parse
-                    _       <- Parse.char ':'
-                    return (Just pkgname)
-      origname <- parse
-      newname  <- Parse.option origname $ do
-                    Parse.skipSpaces
-                    _ <- Parse.string "as"
-                    Parse.skipSpaces
-                    parse
-      return (ModuleReexport mpkgname origname newname)

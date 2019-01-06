@@ -4,6 +4,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
   , maxBackjumps
+  , minimizeConflictSet
   , independentGoals
   , allowBootLibInstalls
   , onlyConstrained
@@ -53,6 +54,10 @@ import UnitTests.Options
 maxBackjumps :: Maybe Int -> SolverTest -> SolverTest
 maxBackjumps mbj test = test { testMaxBackjumps = mbj }
 
+minimizeConflictSet :: SolverTest -> SolverTest
+minimizeConflictSet test =
+    test { testMinimizeConflictSet = MinimizeConflictSet True }
+
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.
 independentGoals :: SolverTest -> SolverTest
@@ -100,6 +105,7 @@ data SolverTest = SolverTest {
   , testTargets              :: [String]
   , testResult               :: SolverResult
   , testMaxBackjumps         :: Maybe Int
+  , testMinimizeConflictSet  :: MinimizeConflictSet
   , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
   , testOnlyConstrained      :: OnlyConstrained
@@ -195,6 +201,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets              = targets
   , testResult               = result
   , testMaxBackjumps         = Nothing
+  , testMinimizeConflictSet  = MinimizeConflictSet False
   , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
   , testOnlyConstrained      = OnlyConstrainedNone
@@ -216,7 +223,8 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
-                     testMaxBackjumps (CountConflicts True) testIndepGoals
+                     testMaxBackjumps (CountConflicts True)
+                     testMinimizeConflictSet testIndepGoals
                      (ReorderGoals False) testAllowBootLibInstalls
                      testOnlyConstrained testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
