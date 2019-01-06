@@ -41,6 +41,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ComponentInclude
+import Distribution.Types.MungedPackageName
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
@@ -277,7 +278,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
                     Right instc -> [ (m, OpenModule (DefiniteUnitId uid') m')
                                    | (m, Module uid' m') <- instc_insts instc ]
 
-            compat_name = computeCompatPackageName (packageName rc) (libName lib)
+            compat_name = MungedPackageName (packageName rc) (libName lib)
             compat_key = computeCompatPackageKey comp compat_name (packageVersion rc) this_uid
 
         in LibComponentLocalBuildInfo {

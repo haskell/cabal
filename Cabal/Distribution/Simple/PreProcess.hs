@@ -54,6 +54,7 @@ import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Types.ForeignLib
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 
 import System.Directory (doesFileExist)
@@ -748,7 +749,7 @@ preprocessExtras verbosity comp lbi = case comp of
     component_dirs = component_names (localPkgDescr lbi)
     -- TODO: libify me
     component_names pkg_descr = fmap unUnqualComponentName $
-        mapMaybe libName (subLibraries pkg_descr) ++
+        mapMaybe (libraryNameString . libName) (subLibraries pkg_descr) ++
         map exeName (executables pkg_descr) ++
         map testName (testSuites pkg_descr) ++
         map benchmarkName (benchmarks pkg_descr)

@@ -93,7 +93,7 @@ import           Distribution.Simple.Compiler
 import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
-import           Distribution.Deprecated.Text
+import           Distribution.Pretty
 import           Distribution.Compat.Graph (IsNode(..))
 
 import           Data.Map (Map)
@@ -314,7 +314,7 @@ improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
         Just BuildStatusUpToDate {} -> True
         Just _                      -> False
         Nothing -> error $ "improveInstallPlanWithUpToDatePackages: "
-                        ++ display (packageId pkg) ++ " not in status map"
+                        ++ prettyShow (packageId pkg) ++ " not in status map"
 
 
 -----------------------------
@@ -831,7 +831,7 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
           withTempDirectory verbosity tmpdir "src"   $ \unpackdir -> do
             unpackPackageTarball verbosity tarball unpackdir
                                  pkgid pkgTextOverride
-            let srcdir   = unpackdir </> display pkgid
+            let srcdir   = unpackdir </> prettyShow pkgid
                 builddir = srcdir </> "dist"
             buildPkg srcdir builddir
 
@@ -878,14 +878,14 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
       case pkgTextOverride of
         Nothing     -> return ()
         Just pkgtxt -> do
-          info verbosity $ "Updating " ++ display pkgname <.> "cabal"
+          info verbosity $ "Updating " ++ prettyShow pkgname <.> "cabal"
                         ++ " with the latest revision from the index."
           writeFileAtomic cabalFile pkgtxt
 
   where
     cabalFile = parentdir </> pkgsubdir
-                          </> display pkgname <.> "cabal"
-    pkgsubdir = display pkgid
+                          </> prettyShow pkgname <.> "cabal"
+    pkgsubdir = prettyShow pkgid
     pkgname   = packageName pkgid
 
 
@@ -908,7 +908,7 @@ moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
       --TODO: [nice to have] or perhaps better to copy, and use a file monitor
       renameDirectory tarballDistDir targetDistDir
   where
-    tarballDistDir = parentdir </> display pkgid </> "dist"
+    tarballDistDir = parentdir </> prettyShow pkgid </> "dist"
     targetDistDir  = distBuildDirectory dparams
 
 
@@ -1019,7 +1019,7 @@ buildAndInstallUnpackedPackage verbosity
             | not (elabRequiresRegistration pkg) =
               debug verbosity $
                 "registerPkg: elab does NOT require registration for "
-                ++ display uid
+                ++ prettyShow uid
             | otherwise = do
             -- We register ourselves rather than via Setup.hs. We need to
             -- grab and modify the InstalledPackageInfo. We decide what
@@ -1071,10 +1071,10 @@ buildAndInstallUnpackedPackage verbosity
     compid = compilerId compiler
 
     dispname = case elabPkgOrComp pkg of
-        ElabPackage _ -> display pkgid
+        ElabPackage _ -> prettyShow pkgid
             ++ " (all, legacy fallback)"
-        ElabComponent comp -> display pkgid
-            ++ " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
+        ElabComponent comp -> prettyShow pkgid
+            ++ " (" ++ maybe "custom" prettyShow (compComponentName comp) ++ ")"
 
     noticeProgress phase = when isParallelBuild $
         progressMessage verbosity phase dispname

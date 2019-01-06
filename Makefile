@@ -80,6 +80,9 @@ check-tests :
 parser-tests :
 	$(CABALRUN) parser-tests -- --cwd Cabal ${TEST}
 
+parser-tests-accept :
+	$(CABALRUN) parser-tests -- --cwd Cabal --accept ${TEST}
+
 custom-setup-tests :
 	$(CABALRUN) custom-setup-tests --
 

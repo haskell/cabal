@@ -73,8 +73,9 @@ mkComponentsGraph enabled pkg_descr =
       where
         bi = componentBuildInfo component
         internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
-        conv Nothing = packageNameToUnqualComponentName $ packageName pkg_descr
-        conv (Just s) = s
+
+        conv LMainLibName    = packageNameToUnqualComponentName $ packageName pkg_descr
+        conv (LSubLibName s) = s
 
 -- | Given the package description and a 'PackageDescription' (used
 -- to determine if a package name is internal or not), sort the

@@ -165,8 +165,8 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
         buildPref = componentBuildDir lbi clbi
 
     case libName lib of
-        Nothing -> noticeNoWrap verbosity ("Installing library in " ++ libPref)
-        Just n -> noticeNoWrap verbosity ("Installing internal library " ++ prettyShow n ++ " in " ++ libPref)
+        LMainLibName  -> noticeNoWrap verbosity ("Installing library in " ++ libPref)
+        LSubLibName n -> noticeNoWrap verbosity ("Installing internal library " ++ prettyShow n ++ " in " ++ libPref)
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)

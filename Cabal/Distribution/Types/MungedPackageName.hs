@@ -1,17 +1,17 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Types.MungedPackageName
-  ( MungedPackageName, unMungedPackageName, mkMungedPackageName
-  , computeCompatPackageName
+  ( MungedPackageName (..)
   , decodeCompatPackageName
+  , encodeCompatPackageName
   ) where
 
 import Distribution.Compat.Prelude
-import Distribution.Utils.ShortText
 import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
@@ -26,41 +26,15 @@ import qualified Text.PrettyPrint as Disp
 --
 -- Use 'mkMungedPackageName' and 'unMungedPackageName' to convert from/to a 'String'.
 --
--- @since 2.0.0.2
-newtype MungedPackageName = MungedPackageName ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
-
--- | Convert 'MungedPackageName' to 'String'
-unMungedPackageName :: MungedPackageName -> String
-unMungedPackageName (MungedPackageName s) = fromShortText s
-
--- | Construct a 'MungedPackageName' from a 'String'
---
--- 'mkMungedPackageName' is the inverse to 'unMungedPackageName'
---
--- Note: No validations are performed to ensure that the resulting
--- 'MungedPackageName' is valid
+-- In @3.0.0.0@ representation was changed from opaque (string) to semantic representation.
 --
 -- @since 2.0.0.2
-mkMungedPackageName :: String -> MungedPackageName
-mkMungedPackageName = MungedPackageName . toShortText
-
--- | 'mkMungedPackageName'
 --
--- @since 2.0.0.2
-instance IsString MungedPackageName where
-  fromString = mkMungedPackageName
+data MungedPackageName = MungedPackageName !PackageName !LibraryName
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary MungedPackageName
-
-instance Pretty MungedPackageName where
-  pretty = Disp.text . unMungedPackageName
-
-instance Parsec MungedPackageName where
-  parsec = mkMungedPackageName <$> parsecUnqualComponentName
-
-instance NFData MungedPackageName where
-    rnf (MungedPackageName pkg) = rnf pkg
+instance NFData MungedPackageName where rnf = genericRnf
 
 -- | Computes the package name for a library.  If this is the public
 -- library, it will just be the original package name; otherwise,
@@ -91,23 +65,67 @@ instance NFData MungedPackageName where
 -- When we have the public library, the compat-pkg-name is just the
 -- package-name, no surprises there!
 --
-computeCompatPackageName :: PackageName -> Maybe UnqualComponentName -> MungedPackageName
--- First handle the cases where we can just use the original 'PackageName'.
--- This is for the PRIMARY library, and it is non-Backpack, or the
--- indefinite package for us.
-computeCompatPackageName pkg_name Nothing
-    = mkMungedPackageName $ unPackageName pkg_name
-computeCompatPackageName pkg_name (Just uqn)
-    = mkMungedPackageName $
-         "z-" ++ zdashcode (unPackageName pkg_name) ++
-        "-z-" ++ zdashcode (unUnqualComponentName uqn)
+-- >>> prettyShow $ MungedPackageName "servant" LMainLibName
+-- "servant"
+--
+-- >>> prettyShow $ MungedPackageName "servant" (LSubLibName "lackey") 
+-- "z-servant-z-lackey"
+--
+instance Pretty MungedPackageName where
+    -- First handle the cases where we can just use the original 'PackageName'.
+    -- This is for the PRIMARY library, and it is non-Backpack, or the
+    -- indefinite package for us.
+    pretty = Disp.text . encodeCompatPackageName'
 
-decodeCompatPackageName :: MungedPackageName -> (PackageName, Maybe UnqualComponentName)
-decodeCompatPackageName m =
-    case unMungedPackageName m of
+-- | 
+--
+-- >>> simpleParsec "servant" :: Maybe MungedPackageName
+-- Just (MungedPackageName (PackageName "servant") LMainLibName)
+--
+-- >>> simpleParsec "z-servant-z-lackey" :: Maybe MungedPackageName
+-- Just (MungedPackageName (PackageName "servant") (LSubLibName (UnqualComponentName "lackey")))
+--
+-- >>> simpleParsec "z-servant-zz" :: Maybe MungedPackageName
+-- Just (MungedPackageName (PackageName "z-servant-zz") LMainLibName)
+--
+instance Parsec MungedPackageName where
+    parsec = decodeCompatPackageName' <$> parsecUnqualComponentName
+
+-------------------------------------------------------------------------------
+-- ZDashCode conversions
+-------------------------------------------------------------------------------
+
+-- | Intended for internal use only
+--
+-- >>> decodeCompatPackageName "z-servant-z-lackey"
+-- MungedPackageName (PackageName "servant") (LSubLibName (UnqualComponentName "lackey"))
+--
+decodeCompatPackageName :: PackageName -> MungedPackageName
+decodeCompatPackageName = decodeCompatPackageName' . unPackageName
+
+-- | Intended for internal use only
+--
+-- >>> encodeCompatPackageName $ MungedPackageName "servant" (LSubLibName "lackey")
+-- PackageName "z-servant-z-lackey"
+--
+-- This is used in @cabal-install@ in the Solver.
+-- May become obsolete as solver moves to per-component solving.
+--
+encodeCompatPackageName :: MungedPackageName -> PackageName
+encodeCompatPackageName = mkPackageName . encodeCompatPackageName'
+
+decodeCompatPackageName' :: String -> MungedPackageName
+decodeCompatPackageName' m =
+    case m of
         'z':'-':rest | Right [pn, cn] <- explicitEitherParsec parseZDashCode rest
-            -> (mkPackageName pn, Just (mkUnqualComponentName cn))
-        s   -> (mkPackageName s, Nothing)
+            -> MungedPackageName (mkPackageName pn) (LSubLibName (mkUnqualComponentName cn))
+        s   -> MungedPackageName (mkPackageName s) LMainLibName
+
+encodeCompatPackageName' :: MungedPackageName -> String
+encodeCompatPackageName' (MungedPackageName pn LMainLibName)      = unPackageName pn
+encodeCompatPackageName' (MungedPackageName pn (LSubLibName uqn)) =
+     "z-" ++ zdashcode (unPackageName pn) ++
+    "-z-" ++ zdashcode (unUnqualComponentName uqn)
 
 zdashcode :: String -> String
 zdashcode s = go s (Nothing :: Maybe Int) []
@@ -133,3 +151,6 @@ parseZDashCode = do
     unZ r = r
     paste :: [String] -> String
     paste = intercalate "-" . map unZ
+
+-- $setup
+-- >>> :seti -XOverloadedStrings

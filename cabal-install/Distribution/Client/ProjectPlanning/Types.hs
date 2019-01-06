@@ -75,8 +75,8 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
+import           Distribution.Pretty
 import           Distribution.Verbosity
-import           Distribution.Deprecated.Text
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
@@ -133,8 +133,8 @@ type ElaboratedPlanPackage
 -- | User-friendly display string for an 'ElaboratedPlanPackage'.
 elabPlanPackageName :: Verbosity -> ElaboratedPlanPackage -> String
 elabPlanPackageName verbosity (PreExisting ipkg)
-    | verbosity <= normal = display (packageName ipkg)
-    | otherwise           = display (installedUnitId ipkg)
+    | verbosity <= normal = prettyShow (packageName ipkg)
+    | otherwise           = prettyShow (installedUnitId ipkg)
 elabPlanPackageName verbosity (Configured elab)
     = elabConfiguredName verbosity elab
 elabPlanPackageName verbosity (Installed elab)
@@ -483,10 +483,10 @@ elabConfiguredName verbosity elab
             case compComponentName comp of
                 Nothing -> "setup from "
                 Just (CLibName LMainLibName) -> ""
-                Just cname -> display cname ++ " from ")
-      ++ display (packageId elab)
+                Just cname -> prettyShow cname ++ " from ")
+      ++ prettyShow (packageId elab)
     | otherwise
-    = display (elabUnitId elab)
+    = prettyShow (elabUnitId elab)
 
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared elab = DistDirParams {
@@ -762,7 +762,7 @@ showComponentTarget pkgid =
         FileTarget   fname -> Cabal.BuildTargetFile      cname fname
 
 showTestComponentTarget :: PackageId -> ComponentTarget -> Maybe String
-showTestComponentTarget _ (ComponentTarget (CTestName n) _) = Just $ display n
+showTestComponentTarget _ (ComponentTarget (CTestName n) _) = Just $ prettyShow n
 showTestComponentTarget _ _ = Nothing
 
 isTestComponentTarget :: ComponentTarget -> Bool
@@ -770,7 +770,7 @@ isTestComponentTarget (ComponentTarget (CTestName _) _) = True
 isTestComponentTarget _                                 = False
 
 showBenchComponentTarget :: PackageId -> ComponentTarget -> Maybe String
-showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ display n
+showBenchComponentTarget _ (ComponentTarget (CBenchName n) _) = Just $ prettyShow n
 showBenchComponentTarget _ _ = Nothing
 
 isBenchComponentTarget :: ComponentTarget -> Bool

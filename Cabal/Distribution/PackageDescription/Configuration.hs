@@ -455,7 +455,7 @@ finalizePD userflags enabled satisfyDep
     (mb_lib, comps) = flattenTaggedTargets targetSet
     mb_lib' = fmap libFillInDefaults mb_lib
     comps' = flip map comps $ \(n,c) -> foldComponent
-      (\l -> CLib   (libFillInDefaults l)   { libName = Just n
+      (\l -> CLib   (libFillInDefaults l)   { libName = LSubLibName n
                                             , libExposed = False })
       (\l -> CFLib  (flibFillInDefaults l)  { foreignLibName = n })
       (\e -> CExe   (exeFillInDefaults e)   { exeName = n })
@@ -541,14 +541,14 @@ flattenPackageDescription
         }
   where
     mlib = f <$> mlib0
-      where f lib = (libFillInDefaults . fst . ignoreConditions $ lib) { libName = Nothing }
+      where f lib = (libFillInDefaults . fst . ignoreConditions $ lib) { libName = LMainLibName }
     sub_libs = flattenLib  <$> sub_libs0
     flibs    = flattenFLib <$> flibs0
     exes     = flattenExe  <$> exes0
     tests    = flattenTst  <$> tests0
     bms      = flattenBm   <$> bms0
     flattenLib (n, t) = libFillInDefaults $ (fst $ ignoreConditions t)
-      { libName = Just n, libExposed = False }
+      { libName = LSubLibName n, libExposed = False }
     flattenFLib (n, t) = flibFillInDefaults $ (fst $ ignoreConditions t)
       { foreignLibName = n }
     flattenExe (n, t) = exeFillInDefaults $ (fst $ ignoreConditions t)

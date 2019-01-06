@@ -80,7 +80,6 @@ import Distribution.Simple.Utils
 import Distribution.Utils.MapAccum
 import Distribution.System
 import Distribution.Pretty
-import Distribution.Types.ComponentName
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 import Distribution.Compat.Graph (IsNode(nodeKey))
@@ -157,7 +156,7 @@ registerAll pkg lbi regFlags ipis
       for_ ipis $ \installedPkgInfo ->
         -- Only print the public library's IPI
         when (packageId installedPkgInfo == packageId pkg
-              && IPI.sourceLibName installedPkgInfo == Nothing) $
+              && IPI.sourceLibName installedPkgInfo == LMainLibName) $
           putStrLn (prettyShow (IPI.installedUnitId installedPkgInfo))
 
      -- Three different modes:
@@ -167,7 +166,7 @@ registerAll pkg lbi regFlags ipis
        | otherwise             -> do
            for_ ipis $ \ipi -> do
                setupMessage' verbosity "Registering" (packageId pkg)
-                 (libraryComponentName (IPI.sourceLibName ipi))
+                 (CLibName (IPI.sourceLibName ipi))
                  (Just (IPI.instantiatedWith ipi))
                registerPackage verbosity (compiler lbi) (withPrograms lbi)
                                packageDbs ipi HcPkg.defaultRegisterOptions

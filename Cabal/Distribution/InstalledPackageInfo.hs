@@ -52,7 +52,6 @@ import Distribution.FieldGrammar.FieldDescrs
 import Distribution.ModuleName
 import Distribution.Package                  hiding (installedPackageId, installedUnitId)
 import Distribution.Types.ComponentName
-import Distribution.Types.LibraryName
 import Distribution.Utils.Generic            (toUTF8BS)
 
 import qualified Data.Map            as Map
@@ -97,10 +96,7 @@ installedPackageId = installedUnitId
 -- Munging
 
 sourceComponentName :: InstalledPackageInfo -> ComponentName
-sourceComponentName ipi =
-    case sourceLibName ipi of
-        Nothing -> CLibName LMainLibName
-        Just qn -> CLibName $ LSubLibName qn
+sourceComponentName = CLibName . sourceLibName
 
 -- -----------------------------------------------------------------------------
 -- Parsing

@@ -123,7 +123,7 @@ packageDescriptionFieldGrammar = PackageDescription
 
 libraryFieldGrammar
     :: (FieldGrammar g, Applicative (g Library), Applicative (g BuildInfo))
-    => Maybe UnqualComponentName
+    => LibraryName
     -> g Library Library
 libraryFieldGrammar n = Library n
     <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
@@ -134,16 +134,16 @@ libraryFieldGrammar n = Library n
     <*> visibilityField
     <*> blurFieldGrammar L.libBuildInfo buildInfoFieldGrammar
   where
-    visibilityField
+    visibilityField = case n of
         -- nameless/"main" libraries are public
-        | isNothing n = pure LibraryVisibilityPublic
+        LMainLibName -> pure LibraryVisibilityPublic
         -- named libraries have the field
-        | otherwise   =
+        LSubLibName _ ->
             optionalFieldDef "visibility" L.libVisibility LibraryVisibilityPrivate
             ^^^ availableSince CabalSpecV3_0 LibraryVisibilityPrivate
 
-{-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> ParsecFieldGrammar' Library #-}
-{-# SPECIALIZE libraryFieldGrammar :: Maybe UnqualComponentName -> PrettyFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> ParsecFieldGrammar' Library #-}
+{-# SPECIALIZE libraryFieldGrammar :: LibraryName -> PrettyFieldGrammar' Library #-}
 
 -------------------------------------------------------------------------------
 -- Foreign library

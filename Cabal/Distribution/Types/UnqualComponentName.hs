@@ -67,6 +67,10 @@ instance NFData UnqualComponentName where
 -- Useful in legacy situations where a package name may refer to an internal
 -- component, if one is defined with that name.
 --
+-- 2018-12-21: These "legacy" situations are not legacy.
+-- We can @build-depends@ on the internal library. However
+-- Now dependency contains @Set LibraryName@, and we should use that.
+--
 -- @since 2.0.0.2
 packageNameToUnqualComponentName :: PackageName -> UnqualComponentName
 packageNameToUnqualComponentName = mkUnqualComponentName . unPackageName

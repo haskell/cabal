@@ -454,7 +454,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
   where
     bi  = testBuildInfo test
     lib = Library {
-            libName = Nothing,
+            libName = LMainLibName,
             exposedModules = [ m ],
             reexportedModules = [],
             signatures = [],
@@ -465,7 +465,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- This is, like, the one place where we use a CTestName for a library.
     -- Should NOT use library name, since that could conflict!
     PackageIdentifier pkg_name pkg_ver = package pkg_descr
-    compat_name = computeCompatPackageName pkg_name (Just (testName test))
+    -- Note: we do make internal library from the test!
+    compat_name = MungedPackageName pkg_name (LSubLibName (testName test))
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
@@ -483,7 +484,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = mkPackageName $ unMungedPackageName compat_name }
+            package      = (package pkg_descr) { pkgName = mkPackageName $ prettyShow compat_name }
           , executables  = []
           , testSuites   = []
           , subLibraries = [lib]
@@ -505,7 +506,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
     -- that exposes the relevant test suite library.
     deps = (IPI.installedUnitId ipi, mungedId ipi)
-         : (filter (\(_, x) -> let name = unMungedPackageName $ mungedName x
+         : (filter (\(_, x) -> let name = prettyShow $ mungedName x
                                in name == "Cabal" || name == "base")
                    (componentPackageDeps clbi))
     exeClbi = ExeComponentLocalBuildInfo {

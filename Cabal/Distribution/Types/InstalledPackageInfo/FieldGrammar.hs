@@ -23,6 +23,7 @@ import Distribution.Parsec.Newtypes
 import Distribution.Pretty
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageName
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Version
 
@@ -107,10 +108,10 @@ ipiFieldGrammar = mkInstalledPackageInfo
         -- _basicPkgName is not used
         -- setMaybePackageId says it can be no-op.
         (PackageIdentifier pn _basicVersion)
-        (mb_uqn <|> _basicLibName)
+        (combineLibraryName ln _basicLibName)
         (mkComponentId "") -- installedComponentId_, not in use
       where
-        (pn, mb_uqn) = decodeCompatPackageName _basicName
+        MungedPackageName pn ln = _basicName
 {-# SPECIALIZE ipiFieldGrammar :: FieldDescrs InstalledPackageInfo InstalledPackageInfo #-}
 {-# SPECIALIZE ipiFieldGrammar :: ParsecFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
 {-# SPECIALIZE ipiFieldGrammar :: PrettyFieldGrammar InstalledPackageInfo InstalledPackageInfo #-}
@@ -122,6 +123,14 @@ unitedList f s = s <$ f []
 -------------------------------------------------------------------------------
 -- Helper functions
 -------------------------------------------------------------------------------
+
+-- | Combine 'LibraryName'. in parsing we prefer value coming
+-- from munged @name@ field over the @lib-name@.
+--
+-- /Should/ be irrelevant.
+combineLibraryName :: LibraryName -> LibraryName -> LibraryName
+combineLibraryName l@(LSubLibName _) _ = l
+combineLibraryName _ l                 = l
 
 -- To maintain backwards-compatibility, we accept both comma/non-comma
 -- separated variants of this field.  You SHOULD use the comma syntax if you
@@ -135,30 +144,27 @@ showExposedModules xs
     where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 
--- | Returns @Just@ if the @name@ field of the IPI record would not contain
--- the package name verbatim.  This helps us avoid writing @package-name@
--- when it's redundant.
-maybePackageName :: InstalledPackageInfo -> Maybe PackageName
-maybePackageName ipi =
-    case sourceLibName ipi of
-        Nothing -> Nothing
-        Just _ -> Just (packageName ipi)
-
 -- | Setter for the @package-name@ field.  It should be acceptable for this
 -- to be a no-op.
 setMaybePackageName :: Maybe PackageName -> InstalledPackageInfo -> InstalledPackageInfo
-setMaybePackageName Nothing ipi = ipi
-setMaybePackageName (Just pn) ipi = ipi {
-        sourcePackageId=(sourcePackageId ipi){pkgName=pn}
+setMaybePackageName Nothing   ipi = ipi
+setMaybePackageName (Just pn) ipi = ipi
+    { sourcePackageId = (sourcePackageId ipi) {pkgName=pn}
     }
 
 setMungedPackageName :: MungedPackageName -> InstalledPackageInfo -> InstalledPackageInfo
-setMungedPackageName mpn ipi =
-    let (pn, mb_uqn) = decodeCompatPackageName mpn
-    in ipi {
-            sourcePackageId = (sourcePackageId ipi) {pkgName=pn},
-            sourceLibName   = mb_uqn
-        }
+setMungedPackageName (MungedPackageName pn ln) ipi = ipi
+    { sourcePackageId = (sourcePackageId ipi) {pkgName=pn}
+    , sourceLibName   = ln
+    }
+
+--- | Returns @Just@ if the @name@ field of the IPI record would not contain
+--- the package name verbatim.  This helps us avoid writing @package-name@
+--- when it's redundant.
+maybePackageName :: InstalledPackageInfo -> Maybe PackageName
+maybePackageName ipi = case sourceLibName ipi of
+    LMainLibName  -> Nothing
+    LSubLibName _ -> Just (packageName ipi)
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -217,12 +223,18 @@ instance Parsec SpecLicenseLenient where
 instance Pretty SpecLicenseLenient where
     pretty = either pretty pretty . unpack
 
+-------------------------------------------------------------------------------
+-- Basic fields
+-------------------------------------------------------------------------------
 
+-- | This type is used to mangle fields as
+-- in serialised textual representation
+-- to the actual 'InstalledPackageInfo' fields.
 data Basic = Basic
     { _basicName    :: MungedPackageName
     , _basicVersion :: Version
     , _basicPkgName :: Maybe PackageName
-    , _basicLibName :: Maybe UnqualComponentName
+    , _basicLibName :: LibraryName
     }
 
 basic :: Lens' InstalledPackageInfo Basic
@@ -253,14 +265,17 @@ basicPkgName f b = (\x -> b { _basicPkgName = x }) <$> f (_basicPkgName b)
 {-# INLINE basicPkgName #-}
 
 basicLibName :: Lens' Basic (Maybe UnqualComponentName)
-basicLibName f b = (\x -> b { _basicLibName = x }) <$> f (_basicLibName b)
+basicLibName f b = (\x -> b { _basicLibName = maybeToLibraryName x }) <$>
+    f (libraryNameString (_basicLibName b))
 {-# INLINE basicLibName #-}
 
 basicFieldGrammar
     :: (FieldGrammar g, Applicative (g Basic))
     => g Basic Basic
-basicFieldGrammar = Basic
+basicFieldGrammar = mkBasic
     <$> optionalFieldDefAla "name"          MQuoted  basicName (mungedPackageName emptyInstalledPackageInfo)
     <*> optionalFieldDefAla "version"       MQuoted  basicVersion nullVersion
     <*> optionalField       "package-name"           basicPkgName
     <*> optionalField       "lib-name"               basicLibName
+  where
+    mkBasic n v pn ln = Basic n v pn (maybe LMainLibName LSubLibName ln)

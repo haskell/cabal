@@ -136,6 +136,11 @@ import Distribution.Types.UnqualComponentName
        (unUnqualComponentName)
 #endif
 
+#if MIN_VERSION_Cabal(2,5,0)
+import Distribution.Types.LibraryName
+       (libraryNameString)
+#endif
+
 #if MIN_VERSION_directory(1,2,2)
 import System.Directory
        (makeAbsolute)
@@ -449,9 +454,12 @@ generateBuildModule testSuiteName flags pkg lbi = do
        isSpecific _                     = False
 
     mbLibraryName :: Library -> Name
-#if MIN_VERSION_Cabal(2,0,0)
+#if MIN_VERSION_Cabal(2,5,0)
+    -- Cabal-2.5 library's name is LibraryName
+    mbLibraryName = NameLib . fmap display . libraryNameString . libName
+#elif MIN_VERSION_Cabal(2,0,0)
     -- Cabal-2.0 introduced internal libraries, which are named.
-    mbLibraryName = NameLib . fmap unUnqualComponentName . libName
+    mbLibraryName = NameLib . fmap display . libName
 #else
     -- Before that, there was only ever at most one library per
     -- .cabal file, which has no name.
