@@ -1,4 +1,4 @@
-# cabal new-build
+# cabal v2-build
 Resolving dependencies...
 Error:
     Internal libraries only supported with per-component builds.

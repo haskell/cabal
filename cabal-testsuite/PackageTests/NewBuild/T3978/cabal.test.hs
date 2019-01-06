@@ -1,3 +1,3 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    fails $ cabal "new-build" ["q"]
+    fails $ cabal "v2-build" ["q"]

@@ -1,4 +1,4 @@
-# cabal new-build
+# cabal v2-build
 Resolving dependencies...
 Error:
     Problem with module re-exports:

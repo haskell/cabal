@@ -1,4 +1,4 @@
 import Test.Cabal.Prelude
 import Data.List
 main = cabalTest $
-  cabal "new-sdist" ["--list-only", "--null"]
+  cabal "v2-sdist" ["--list-only", "--null"]

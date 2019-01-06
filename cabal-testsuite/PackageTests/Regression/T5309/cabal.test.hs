@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-        cabal "new-build" ["all"]
-        cabal "new-test"  ["all"]
-        cabal "new-bench" ["all"]
+        cabal "v2-build" ["all"]
+        cabal "v2-test"  ["all"]
+        cabal "v2-bench" ["all"]

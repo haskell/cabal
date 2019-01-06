@@ -36,7 +36,7 @@ main = cabalTest $ do
                 not hpcOk
                 || (not hasShared && (exeDyn || shared))
                 || (not hasProfiled && (libProf || exeProf))
-          unless skip $ cabal "new-test" args
+          unless skip $ cabal "v2-test" args
   where
     choose4 :: [a] -> [(a, a, a, a)]
     choose4 xs = liftM4 (,,,) xs xs xs xs

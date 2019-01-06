@@ -1,4 +1,4 @@
 import Test.Cabal.Prelude
 main = cabalTest $ withSourceCopy $ do
-  cabal "new-sdist" ["a", "--list-only"]
+  cabal "v2-sdist" ["a", "--list-only"]
 

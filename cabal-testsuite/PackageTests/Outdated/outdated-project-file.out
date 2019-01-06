@@ -7,4 +7,4 @@ base ==3.0.3.2 (latest: 4.0.0.0)
 Outdated dependencies:
 base ==3.0.3.2 (latest: 4.0.0.0)
 # cabal outdated
-cabal: --project-file must only be used with --new-freeze-file.
+cabal: --project-file must only be used with --v2-freeze-file.

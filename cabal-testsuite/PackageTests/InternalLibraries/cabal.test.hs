@@ -1,3 +1,3 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    cabal "new-build" ["p"]
+    cabal "v2-build" ["p"]

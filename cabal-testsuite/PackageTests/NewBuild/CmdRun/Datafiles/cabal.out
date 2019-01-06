@@ -1,4 +1,4 @@
-# cabal new-run
+# cabal v2-run
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -6,7 +6,7 @@ In order, the following will be built:
 Configuring executable 'foo' for foo-1.0..
 Preprocessing executable 'foo' for foo-1.0..
 Building executable 'foo' for foo-1.0..
-# cabal new-run
+# cabal v2-run
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - foo-1.0 (lib) (first run)

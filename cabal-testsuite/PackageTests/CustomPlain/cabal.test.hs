@@ -8,4 +8,4 @@ main = cabalTest $ do
         withEnvFilter (`notElem` ["HOME", "CABAL_DIR"]) $ do
             -- On -v2, we don't have vQuiet set, which suppressed
             -- the error
-            cabal "new-build" ["-v1"]
+            cabal "v2-build" ["-v1"]

@@ -1,2 +1,3 @@
 /Cabal/ChangeLog.md merge=union
 /cabal-install/changelog merge=union
+/cabal-testsuite/PackageTests/NewBuild/CmdRun/Script/script.hs eol=crlf

@@ -29,6 +29,7 @@ InstalledPackageInfo
    installedUnitId = `UnitId "internal-preprocessor-test-0.1.0.0"`,
    instantiatedWith = [],
    ldOptions = [],
+   libVisibility = LibraryVisibilityPrivate,
    libraryDirs = ["/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build",
                   "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build"],
    libraryDynDirs = [],

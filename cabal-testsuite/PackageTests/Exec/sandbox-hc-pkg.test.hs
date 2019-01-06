@@ -22,5 +22,5 @@ main = cabalTest $ do
                             -- TODO: Ugh. Test abstractions leaking
                             -- through
                             " --sandbox-config-file " ++ show (testSandboxConfigFile env) ++
-                            " sandbox hc-pkg list"]
+                            " v1-sandbox hc-pkg list"]
                 >>= assertOutputContains "my-0.1"

@@ -1,2 +1,2 @@
-# cabal new-sdist
+# cabal v2-sdist
 Wrote tarball sdist to <ROOT>/many-data-files.dist/source/dist-newstyle/sdist/many-data-files-0.tar.gz

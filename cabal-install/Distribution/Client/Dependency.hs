@@ -635,7 +635,7 @@ basicInstallPolicy
 
 
 -- | The policy used by all the standard commands, install, fetch, freeze etc
--- (but not the new-build and related commands).
+-- (but not the v2-build and related commands).
 --
 -- It extends the 'basicInstallPolicy' with a policy on setup deps.
 --
