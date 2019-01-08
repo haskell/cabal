@@ -9,7 +9,7 @@ module Distribution.Client.CmdRun (
     -- * The @run@ CLI and action
     runCommand,
     runAction,
-    handleShebang,
+    handleShebang, validScript,
 
     -- * Internals exposed for testing
     TargetProblem(..),
@@ -104,7 +104,7 @@ import qualified Text.Parsec as P
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
 import System.FilePath
-         ( (</>) )
+         ( (</>), isValid, isPathSeparator )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
@@ -298,9 +298,31 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   installFlags haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
-handleShebang :: String -> IO ()
-handleShebang script =
-  runAction (commandDefaultFlags runCommand) [script] defaultGlobalFlags
+-- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
+-- invoked as a script interpreter, i.e. via
+--
+-- > #! /usr/bin/env cabal
+--
+-- or
+--
+-- > #! /usr/bin/cabal
+--
+-- As the first argument passed to `cabal` will be a filepath to the
+-- script to be interpreted.
+--
+-- See also 'handleShebang'
+validScript :: String -> IO Bool
+validScript script
+  | isValid script && any isPathSeparator script = doesFileExist script
+  | otherwise = return False
+
+-- | Handle @cabal@ invoked as script interpreter, see also 'validScript'
+--
+-- First argument is the 'FilePath' to the script to be executed; second
+-- argument is a list of arguments to be passed to the script.
+handleShebang :: FilePath -> [String] -> IO ()
+handleShebang script args =
+  runAction (commandDefaultFlags runCommand) (script:args) defaultGlobalFlags
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
@@ -366,14 +388,14 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
   -- We need to create a dummy package that lives in our dummy project.
   let
     sourcePackage = SourcePackage
-      { packageInfoId        = pkgId
-      , SP.packageDescription   = genericPackageDescription
-      , packageSource        = LocalUnpackedPackage tempDir
-      , packageDescrOverride = Nothing
+      { packageInfoId         = pkgId
+      , SP.packageDescription = genericPackageDescription
+      , packageSource         = LocalUnpackedPackage tempDir
+      , packageDescrOverride  = Nothing
       }
-    genericPackageDescription = emptyGenericPackageDescription 
+    genericPackageDescription  = emptyGenericPackageDescription
       { GPD.packageDescription = packageDescription
-      , condExecutables    = [("script", CondNode executable' targetBuildDepends [])]
+      , condExecutables        = [("script", CondNode executable' targetBuildDepends [])]
       }
     executable' = executable
       { modulePath = "Main.hs"
