@@ -1,5 +1,14 @@
 -*-change-log-*-
 
+2.4.2.0 TBD
+	* Fix `--with-compiler` failing to locate compiler on Windows
+	  without explicit `.exe` suffix
+	* Make parsing of cabal script metadata block more robust in
+	  the presence of whitespace (#5775) and fail loudly in case
+	  of missing or not properly terminated script metadata blocks
+	* Fix Shebang detection heuristics and properly support passing
+	  through program arguments to Shebang cabal scripts (#5600)
+
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
 	* new-clean no longer deletes dist-newstyle/src with `-s`. (#5699)
