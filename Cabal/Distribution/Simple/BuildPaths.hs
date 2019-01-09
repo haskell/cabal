@@ -31,7 +31,8 @@ module Distribution.Simple.BuildPaths (
     mkGenericSharedLibName,
     mkSharedLibName,
     mkStaticLibName,
-    
+    mkGenericSharedBundledLibName,
+
     exeExtension,
     objExtension,
     dllExtension,
@@ -57,6 +58,7 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Simple.Utils
 
+import Data.List (stripPrefix)
 import System.FilePath ((</>), (<.>), normalise)
 
 -- ---------------------------------------------------------------------------
@@ -217,6 +219,24 @@ mkStaticLibName :: Platform -> CompilerId -> UnitId -> String
 mkStaticLibName platform (CompilerId compilerFlavor compilerVersion) lib
   = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> staticLibExtension platform
   where comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
+
+-- | Create a library name for a bundled shared library from a given name.
+-- This matches the naming convention for shared libraries as implemented in
+-- GHC's packageHsLibs function in the Packages module.
+-- If the given name is prefixed with HS, then this prepends 'lib' and appends
+-- the compiler flavour/version and shared library extension e.g.:
+--     "HSrts-1.0" -> "libHSrts-1.0-ghc8.7.20190109.so"
+-- Otherwise the given name should be prefixed with 'C', then this strips the
+-- 'C', prepends 'lib' and appends the shared library extension e.g.:
+--     "Cffi" -> "libffi.so"
+mkGenericSharedBundledLibName :: Platform -> CompilerId -> String -> String
+mkGenericSharedBundledLibName platform comp lib
+  | "HS" `isPrefixOf` lib
+    = mkGenericSharedLibName platform comp lib
+  | Just lib' <- stripPrefix "C" lib
+    = "lib" ++ lib' <.> dllExtension platform
+  | otherwise
+    = error ("Don't understand library name " ++ lib)
 
 -- ------------------------------------------------------------
 -- * Platform file extensions

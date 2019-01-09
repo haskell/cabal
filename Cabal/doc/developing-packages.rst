@@ -2453,6 +2453,15 @@ system-dependent values for these fields.
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
    ``hs-libraries`` of the package configuration in the package database.
+   Library names must either be prefixed with "HS" or "C" and corresponding
+   library file names must match:
+
+      - Libraries with name "HS<library-name>":
+         - `libHS<library-name>.a`
+         - `libHS<library-name>-ghc<ghc-flavour><ghc-version>.<dyn-library-extension>*`
+      - Libraries with name "C<library-name>":
+         - `libC<library-name>.a`
+         - `lib<library-name>.<dyn-library-extension>*`
 
 .. pkg-field:: extra-lib-dirs: directory list
 
