@@ -125,7 +125,9 @@ type PreProcessorExtras = FilePath -> IO [FilePath]
 
 -- | A newtype around 'PreProcessorExtras', useful for storing
 -- 'PreProcessorExtras' inside of another type constructor (e.g., a list)
--- without impredicativity.
+-- without impredicativity (recall that the 'IO' type, which is contained in
+-- 'PreProcessorExtras', is a synonym for @'HasCallStack' => Prelude.IO@, which
+-- is a polymorphic type).
 newtype WrappedPreProcessorExtras = WrapPPE { unWrapPPE :: PreProcessorExtras }
 
 mkSimplePreProcessor :: (FilePath -> FilePath -> Verbosity -> IO ())
