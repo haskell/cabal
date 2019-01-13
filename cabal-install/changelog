@@ -8,6 +8,7 @@
 	  of missing or not properly terminated script metadata blocks
 	* Fix Shebang detection heuristics and properly support passing
 	  through program arguments to Shebang cabal scripts (#5600)
+	* Fix misplaced creation of `dist/` folders in CWD (#3699)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
