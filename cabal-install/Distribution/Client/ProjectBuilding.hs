@@ -939,7 +939,7 @@ buildAndInstallUnpackedPackage verbosity
                                plan rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
 
-    createDirectoryIfMissingVerbose verbosity True builddir
+    createDirectoryIfMissingVerbose verbosity True (srcdir </> builddir)
     initLogFile
 
     --TODO: [code cleanup] deal consistently with talking to older
