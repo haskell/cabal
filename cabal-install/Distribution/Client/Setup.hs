@@ -42,7 +42,7 @@ module Distribution.Client.Setup
     , uploadCommand, UploadFlags(..), IsCandidate(..)
     , reportCommand, ReportFlags(..)
     , runCommand
-    , initCommand, IT.InitFlags(..)
+    , initCommand, initOptions, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
@@ -2201,180 +2201,183 @@ initCommand = CommandUI {
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",
     commandDefaultFlags = defaultInitFlags,
-    commandOptions = \_ ->
-      [ option ['n'] ["non-interactive"]
-        "Non-interactive mode."
-        IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
-        trueArg
-
-      , option ['q'] ["quiet"]
-        "Do not generate log messages to stdout."
-        IT.quiet (\v flags -> flags { IT.quiet = v })
-        trueArg
-
-      , option [] ["no-comments"]
-        "Do not generate explanatory comments in the .cabal file."
-        IT.noComments (\v flags -> flags { IT.noComments = v })
-        trueArg
-
-      , option ['m'] ["minimal"]
-        "Generate a minimal .cabal file, that is, do not include extra empty fields.  Also implies --no-comments."
-        IT.minimal (\v flags -> flags { IT.minimal = v })
-        trueArg
-
-      , option [] ["overwrite"]
-        "Overwrite any existing .cabal, LICENSE, or Setup.hs files without warning."
-        IT.overwrite (\v flags -> flags { IT.overwrite = v })
-        trueArg
-
-      , option [] ["package-dir", "packagedir"]
-        "Root directory of the package (default = current directory)."
-        IT.packageDir (\v flags -> flags { IT.packageDir = v })
-        (reqArgFlag "DIRECTORY")
-
-      , option ['p'] ["package-name"]
-        "Name of the Cabal package to create."
-        IT.packageName (\v flags -> flags { IT.packageName = v })
-        (reqArg "PACKAGE" (readP_to_E ("Cannot parse package name: "++)
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
-
-      , option [] ["version"]
-        "Initial version of the package."
-        IT.version (\v flags -> flags { IT.version = v })
-        (reqArg "VERSION" (readP_to_E ("Cannot parse package version: "++)
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
-
-      , option [] ["cabal-version"]
-        "Version of the Cabal specification."
-        IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
-        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal specification version: "++)
-                                            (toFlag `fmap` parse))
-                                (flagToList . fmap display))
-
-      , option ['l'] ["license"]
-        "Project license."
-        IT.license (\v flags -> flags { IT.license = v })
-        (reqArg "LICENSE" (readP_to_E ("Cannot parse license: "++)
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
-
-      , option ['a'] ["author"]
-        "Name of the project's author."
-        IT.author (\v flags -> flags { IT.author = v })
-        (reqArgFlag "NAME")
-
-      , option ['e'] ["email"]
-        "Email address of the maintainer."
-        IT.email (\v flags -> flags { IT.email = v })
-        (reqArgFlag "EMAIL")
-
-      , option ['u'] ["homepage"]
-        "Project homepage and/or repository."
-        IT.homepage (\v flags -> flags { IT.homepage = v })
-        (reqArgFlag "URL")
-
-      , option ['s'] ["synopsis"]
-        "Short project synopsis."
-        IT.synopsis (\v flags -> flags { IT.synopsis = v })
-        (reqArgFlag "TEXT")
-
-      , option ['c'] ["category"]
-        "Project category."
-        IT.category (\v flags -> flags { IT.category = v })
-        (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
-                            (flagToList . fmap (either id show)))
-
-      , option ['x'] ["extra-source-file"]
-        "Extra source file to be distributed with tarball."
-        IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
-        (reqArg' "FILE" (Just . (:[]))
-                        (fromMaybe []))
-
-      , option [] ["lib", "is-library"]
-        "Build a library."
-        IT.packageType (\v flags -> flags { IT.packageType = v })
-        (noArg (Flag IT.Library))
-
-      , option [] ["exe", "is-executable"]
-        "Build an executable."
-        IT.packageType
-        (\v flags -> flags { IT.packageType = v })
-        (noArg (Flag IT.Executable))
-
-        , option [] ["libandexe", "is-libandexe"]
-        "Build a library and an executable."
-        IT.packageType
-        (\v flags -> flags { IT.packageType = v })
-        (noArg (Flag IT.LibraryAndExecutable))
-
-      , option [] ["simple"]
-        "Create a simple project with sensible defaults."
-        IT.simpleProject
-        (\v flags -> flags { IT.simpleProject = v })
-        trueArg
-
-      , option [] ["main-is"]
-        "Specify the main module."
-        IT.mainIs
-        (\v flags -> flags { IT.mainIs = v })
-        (reqArgFlag "FILE")
-
-      , option [] ["language"]
-        "Specify the default language."
-        IT.language
-        (\v flags -> flags { IT.language = v })
-        (reqArg "LANGUAGE" (readP_to_E ("Cannot parse language: "++)
-                                       (toFlag `fmap` parse))
-                          (flagToList . fmap display))
-
-      , option ['o'] ["expose-module"]
-        "Export a module from the package."
-        IT.exposedModules
-        (\v flags -> flags { IT.exposedModules = v })
-        (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
-                                     ((Just . (:[])) `fmap` parse))
-                         (maybe [] (fmap display)))
-
-      , option [] ["extension"]
-        "Use a LANGUAGE extension (in the other-extensions field)."
-        IT.otherExts
-        (\v flags -> flags { IT.otherExts = v })
-        (reqArg "EXTENSION" (readP_to_E ("Cannot parse extension: "++)
-                                        ((Just . (:[])) `fmap` parse))
-                            (maybe [] (fmap display)))
-
-      , option ['d'] ["dependency"]
-        "Package dependency."
-        IT.dependencies (\v flags -> flags { IT.dependencies = v })
-        (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
-                                      ((Just . (:[])) `fmap` parse))
-                          (maybe [] (fmap display)))
-
-      , option [] ["source-dir", "sourcedir"]
-        "Directory containing package source."
-        IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
-        (reqArg' "DIR" (Just . (:[]))
-                       (fromMaybe []))
-
-      , option [] ["build-tool"]
-        "Required external build tool."
-        IT.buildTools (\v flags -> flags { IT.buildTools = v })
-        (reqArg' "TOOL" (Just . (:[]))
-                        (fromMaybe []))
-
-        -- NB: this is a bit of a transitional hack and will likely be
-        -- removed again if `cabal init` is migrated to the v2-* command
-        -- framework
-      , option "w" ["with-compiler"]
-        "give the path to a particular compiler"
-        IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
-        (reqArgFlag "PATH")
-
-      , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
-      ]
+    commandOptions = initOptions
   }
+
+initOptions :: ShowOrParseArgs -> [OptionField IT.InitFlags]
+initOptions _ =
+  [ option ['n'] ["non-interactive"]
+    "Non-interactive mode."
+    IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
+    trueArg
+
+  , option ['q'] ["quiet"]
+    "Do not generate log messages to stdout."
+    IT.quiet (\v flags -> flags { IT.quiet = v })
+    trueArg
+
+  , option [] ["no-comments"]
+    "Do not generate explanatory comments in the .cabal file."
+    IT.noComments (\v flags -> flags { IT.noComments = v })
+    trueArg
+
+  , option ['m'] ["minimal"]
+    "Generate a minimal .cabal file, that is, do not include extra empty fields.  Also implies --no-comments."
+    IT.minimal (\v flags -> flags { IT.minimal = v })
+    trueArg
+
+  , option [] ["overwrite"]
+    "Overwrite any existing .cabal, LICENSE, or Setup.hs files without warning."
+    IT.overwrite (\v flags -> flags { IT.overwrite = v })
+    trueArg
+
+  , option [] ["package-dir", "packagedir"]
+    "Root directory of the package (default = current directory)."
+    IT.packageDir (\v flags -> flags { IT.packageDir = v })
+    (reqArgFlag "DIRECTORY")
+
+  , option ['p'] ["package-name"]
+    "Name of the Cabal package to create."
+    IT.packageName (\v flags -> flags { IT.packageName = v })
+    (reqArg "PACKAGE" (readP_to_E ("Cannot parse package name: "++)
+                                  (toFlag `fmap` parse))
+                      (flagToList . fmap display))
+
+  , option [] ["version"]
+    "Initial version of the package."
+    IT.version (\v flags -> flags { IT.version = v })
+    (reqArg "VERSION" (readP_to_E ("Cannot parse package version: "++)
+                                  (toFlag `fmap` parse))
+                      (flagToList . fmap display))
+
+  , option [] ["cabal-version"]
+    "Version of the Cabal specification."
+    IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
+    (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal specification version: "++)
+                                        (toFlag `fmap` parse))
+                            (flagToList . fmap display))
+
+  , option ['l'] ["license"]
+    "Project license."
+    IT.license (\v flags -> flags { IT.license = v })
+    (reqArg "LICENSE" (readP_to_E ("Cannot parse license: "++)
+                                  (toFlag `fmap` parse))
+                      (flagToList . fmap display))
+
+  , option ['a'] ["author"]
+    "Name of the project's author."
+    IT.author (\v flags -> flags { IT.author = v })
+    (reqArgFlag "NAME")
+
+  , option ['e'] ["email"]
+    "Email address of the maintainer."
+    IT.email (\v flags -> flags { IT.email = v })
+    (reqArgFlag "EMAIL")
+
+  , option ['u'] ["homepage"]
+    "Project homepage and/or repository."
+    IT.homepage (\v flags -> flags { IT.homepage = v })
+    (reqArgFlag "URL")
+
+  , option ['s'] ["synopsis"]
+    "Short project synopsis."
+    IT.synopsis (\v flags -> flags { IT.synopsis = v })
+    (reqArgFlag "TEXT")
+
+  , option ['c'] ["category"]
+    "Project category."
+    IT.category (\v flags -> flags { IT.category = v })
+    (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
+                        (flagToList . fmap (either id show)))
+
+  , option ['x'] ["extra-source-file"]
+    "Extra source file to be distributed with tarball."
+    IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
+    (reqArg' "FILE" (Just . (:[]))
+                    (fromMaybe []))
+
+  , option [] ["lib", "is-library"]
+    "Build a library."
+    IT.packageType (\v flags -> flags { IT.packageType = v })
+    (noArg (Flag IT.Library))
+
+  , option [] ["exe", "is-executable"]
+    "Build an executable."
+    IT.packageType
+    (\v flags -> flags { IT.packageType = v })
+    (noArg (Flag IT.Executable))
+
+    , option [] ["libandexe", "is-libandexe"]
+    "Build a library and an executable."
+    IT.packageType
+    (\v flags -> flags { IT.packageType = v })
+    (noArg (Flag IT.LibraryAndExecutable))
+
+  , option [] ["simple"]
+    "Create a simple project with sensible defaults."
+    IT.simpleProject
+    (\v flags -> flags { IT.simpleProject = v })
+    trueArg
+
+  , option [] ["main-is"]
+    "Specify the main module."
+    IT.mainIs
+    (\v flags -> flags { IT.mainIs = v })
+    (reqArgFlag "FILE")
+
+  , option [] ["language"]
+    "Specify the default language."
+    IT.language
+    (\v flags -> flags { IT.language = v })
+    (reqArg "LANGUAGE" (readP_to_E ("Cannot parse language: "++)
+                                   (toFlag `fmap` parse))
+                      (flagToList . fmap display))
+
+  , option ['o'] ["expose-module"]
+    "Export a module from the package."
+    IT.exposedModules
+    (\v flags -> flags { IT.exposedModules = v })
+    (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
+                                 ((Just . (:[])) `fmap` parse))
+                     (maybe [] (fmap display)))
+
+  , option [] ["extension"]
+    "Use a LANGUAGE extension (in the other-extensions field)."
+    IT.otherExts
+    (\v flags -> flags { IT.otherExts = v })
+    (reqArg "EXTENSION" (readP_to_E ("Cannot parse extension: "++)
+                                    ((Just . (:[])) `fmap` parse))
+                        (maybe [] (fmap display)))
+
+  , option ['d'] ["dependency"]
+    "Package dependency."
+    IT.dependencies (\v flags -> flags { IT.dependencies = v })
+    (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
+                                  ((Just . (:[])) `fmap` parse))
+                      (maybe [] (fmap display)))
+
+  , option [] ["source-dir", "sourcedir"]
+    "Directory containing package source."
+    IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
+    (reqArg' "DIR" (Just . (:[]))
+                   (fromMaybe []))
+
+  , option [] ["build-tool"]
+    "Required external build tool."
+    IT.buildTools (\v flags -> flags { IT.buildTools = v })
+    (reqArg' "TOOL" (Just . (:[]))
+                    (fromMaybe []))
+
+    -- NB: this is a bit of a transitional hack and will likely be
+    -- removed again if `cabal init` is migrated to the v2-* command
+    -- framework
+  , option "w" ["with-compiler"]
+    "give the path to a particular compiler"
+    IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
+    (reqArgFlag "PATH")
+
+  , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
+  ]
 
 -- ------------------------------------------------------------
 -- * SDist flags
