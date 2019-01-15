@@ -54,7 +54,7 @@ import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
-         ( Parsec(..) )
+         ( Parsec(..), parsecCommaList )
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.ReadE
@@ -135,10 +135,9 @@ envOptions _ =
   where
     dependencyReadE :: ReadE [Dependency]
     dependencyReadE =
-      fmap pure $
-        parsecToReadE
-          ("couldn't parse dependency: " ++)
-          parsec
+      parsecToReadE
+        ("couldn't parse dependency: " ++)
+        (parsecCommaList parsec)
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ReplFlags, EnvFlags)
 replCommand = Client.installCommand {
