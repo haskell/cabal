@@ -27,9 +27,9 @@
 	* Register monolithic packages installed into the store due to a
 	  build-tool dependency if they also happen to contain a buildable
 	  public lib. (#5379,#5604)
-        * Fixed a Windows bug where cabal-install tried to copy files
-          after moving them (#5631).
-        * 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
+	* Fixed a Windows bug where cabal-install tried to copy files
+	  after moving them (#5631).
+	* 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
 	* Set data dir environment variable for tarballs and remote repos (#5469)
 	* Fix monolithic inplace build tool PATH (#5633)
 	* 'cabal init' now supports '-w'/'--with-compiler' flag (#4936, #5654)

@@ -856,7 +856,7 @@ mainHs flags = (unlines . fmap prependPrefix)
     isLiterate = case mainIs flags of
       Flag mainPath -> takeExtension mainPath == ".lhs"
       _             -> False
- 
+
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
