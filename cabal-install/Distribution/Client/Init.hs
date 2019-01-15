@@ -842,7 +842,7 @@ hasMainHs flags = case mainIs flags of
 
 -- | Default Main.(l)hs file.  Used when no Main.(l)hs exists.
 mainHs :: InitFlags -> String
-mainHs flags = (unlines . fmap prependPrefix)
+mainHs flags = (unlines . map prependPrefix)
   [ "module Main where"
   , ""
   , "main :: IO ()"
