@@ -54,7 +54,7 @@ import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
-         ( Parsec(..) )
+         ( Parsec(..), parsecCommaList )
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.ReadE
@@ -76,12 +76,12 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
+import Distribution.Types.PackageName.Magic
+         ( fakePackageId )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.Version
-         ( mkVersion, version0 )
+         ( mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Deprecated.Text
@@ -135,10 +135,9 @@ envOptions _ =
   where
     dependencyReadE :: ReadE [Dependency]
     dependencyReadE =
-      fmap pure $
-        parsecToReadE
-          ("couldn't parse dependency: " ++)
-          parsec
+      parsecToReadE
+        ("couldn't parse dependency: " ++)
+        (parsecCommaList parsec)
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ReplFlags, EnvFlags)
 replCommand = Client.installCommand {
@@ -373,7 +372,7 @@ withoutProject config verbosity extraArgs = do
       , defaultLanguage = Just Haskell2010
       }
     baseDep = Dependency "base" anyVersion (Set.singleton LMainLibName)
-    pkgId = PackageIdentifier "fake-package" version0
+    pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   

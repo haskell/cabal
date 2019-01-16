@@ -34,6 +34,7 @@ import Prelude ()
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency
 import Distribution.Types.ForeignLib          (ForeignLib (foreignLibName))
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 
 import Distribution.PackageDescription
@@ -133,12 +134,12 @@ ppCondTree2 grammar = go
 ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField]
 ppCondLibrary Nothing = mempty
 ppCondLibrary (Just condTree) = pure $ PrettySection "library" [] $
-    ppCondTree2 (libraryFieldGrammar Nothing) condTree
+    ppCondTree2 (libraryFieldGrammar LMainLibName) condTree
 
 ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> [PrettyField]
 ppCondSubLibraries libs =
     [ PrettySection "library" [pretty n]
-    $ ppCondTree2 (libraryFieldGrammar $ Just n) condTree
+    $ ppCondTree2 (libraryFieldGrammar $ LSubLibName n) condTree
     | (n, condTree) <- libs
     ]
 
@@ -216,7 +217,7 @@ pdToGpd pd = GenericPackageDescription
     -- We set CondTree's [Dependency] to an empty list, as it
     -- is not pretty printed anyway.
     mkCondTree  x = CondNode x [] []
-    mkCondTreeL l = (fromMaybe (mkUnqualComponentName "") (libName l), CondNode l [] [])
+    mkCondTreeL l = (fromMaybe (mkUnqualComponentName "") (libraryNameString (libName l)), CondNode l [] [])
 
     mkCondTree'
         :: (a -> UnqualComponentName)

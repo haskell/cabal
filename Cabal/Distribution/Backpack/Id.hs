@@ -5,7 +5,6 @@
 module Distribution.Backpack.Id(
     computeComponentId,
     computeCompatPackageKey,
-    computeCompatPackageName,
 ) where
 
 import Prelude ()

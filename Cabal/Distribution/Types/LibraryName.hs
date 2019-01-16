@@ -8,6 +8,9 @@ module Distribution.Types.LibraryName (
   showLibraryName,
   libraryNameStanza,
   libraryNameString,
+  -- * Pretty & Parse
+  prettyLibraryNameComponent,
+  parsecLibraryNameComponent,
   ) where
 
 import Prelude ()
@@ -27,20 +30,24 @@ data LibraryName = LMainLibName
 instance Binary LibraryName
 instance NFData LibraryName where rnf = genericRnf
 
--- Build-target-ish syntax
-instance Pretty LibraryName where
-    pretty LMainLibName = Disp.text "lib"
-    pretty (LSubLibName str) = Disp.text "lib:" <<>> pretty str
+-- | Pretty print 'LibraryName' in build-target-ish syntax.
+--
+-- /Note:/ there are no 'Pretty' or 'Parsec' instances,
+-- as there's other way to represent 'LibraryName', namely as bare
+-- 'UnqualComponentName'. 
+prettyLibraryNameComponent :: LibraryName -> Disp.Doc
+prettyLibraryNameComponent LMainLibName      = Disp.text "lib"
+prettyLibraryNameComponent (LSubLibName str) = Disp.text "lib:" <<>> pretty str
 
-instance Parsec LibraryName where
-    parsec = do
-        _ <- P.string "lib"
-        parseComposite <|> parseSingle
-      where
-        parseSingle = return LMainLibName
-        parseComposite = do
-            _ <- P.char ':'
-            LSubLibName <$> parsec
+parsecLibraryNameComponent :: CabalParsing m => m LibraryName
+parsecLibraryNameComponent = do
+    _ <- P.string "lib"
+    parseComposite <|> parseSingle
+  where
+    parseSingle = return LMainLibName
+    parseComposite = do
+        _ <- P.char ':'
+        LSubLibName <$> parsec
 
 defaultLibName :: LibraryName
 defaultLibName = LMainLibName

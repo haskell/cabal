@@ -78,7 +78,7 @@ InstalledPackageInfo
    maintainer = "Ross Paterson <R.Paterson@city.ac.uk>",
    pkgRoot = Just "/opt/ghc/8.2.2/lib/ghc-8.2.2",
    pkgUrl = "",
-   sourceLibName = Nothing,
+   sourceLibName = LMainLibName,
    sourcePackageId = PackageIdentifier
                        {pkgName = `PackageName "transformers"`,
                         pkgVersion = `mkVersion [0,5,2,0]`},

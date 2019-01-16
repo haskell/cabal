@@ -43,7 +43,7 @@ InstalledPackageInfo
    maintainer = "ezyang@cs.stanford.edu",
    pkgRoot = Nothing,
    pkgUrl = "",
-   sourceLibName = Just `UnqualComponentName "mylib"`,
+   sourceLibName = LSubLibName `UnqualComponentName "mylib"`,
    sourcePackageId = PackageIdentifier
                        {pkgName = `PackageName "Includes2"`,
                         pkgVersion = `mkVersion [0,1,0,0]`},

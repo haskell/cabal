@@ -267,8 +267,10 @@ goSections specVer = traverse_ process
                 "Multiple main libraries; have you forgotten to specify a name for an internal library?"
 
             commonStanzas <- use stateCommonStanzas
-            lib <- lift $ parseCondTree' (libraryFieldGrammar Nothing) (libraryFromBuildInfo Nothing) commonStanzas fields
-
+            let name'' = LMainLibName
+            lib <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
+            --
+            -- TODO check that not set
             stateGpd . L.condLibrary ?= lib
 
         -- Sublibraries
@@ -276,7 +278,7 @@ goSections specVer = traverse_ process
         | name == "library" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            let name'' = Just name'
+            let name'' = LSubLibName name'
             lib   <- lift $ parseCondTree' (libraryFieldGrammar name'') (libraryFromBuildInfo name'') commonStanzas fields
             -- TODO check duplicate name here?
             stateGpd . L.condSubLibraries %= snoc (name', lib)
@@ -545,10 +547,12 @@ type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
 class L.HasBuildInfo a => FromBuildInfo a where
     fromBuildInfo' :: BuildInfo -> a
 
-libraryFromBuildInfo :: Maybe UnqualComponentName -> BuildInfo -> Library
+libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
 libraryFromBuildInfo n bi = emptyLibrary
     { libName       = n
-    , libVisibility = if isNothing n then LibraryVisibilityPublic else LibraryVisibilityPrivate
+    , libVisibility = case n of
+        LMainLibName  -> LibraryVisibilityPublic
+        LSubLibName _ -> LibraryVisibilityPrivate
     , libBuildInfo  = bi
     }
 
@@ -726,7 +730,7 @@ data Syntax = OldSyntax | NewSyntax
 
 -- TODO:
 libFieldNames :: [FieldName]
-libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar Nothing)
+libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 
 -------------------------------------------------------------------------------
 -- Suplementary build information

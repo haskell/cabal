@@ -53,13 +53,16 @@ instance Pretty PackageIdentifier where
 -- >>> simpleParsec "foo-bar.4-2" :: Maybe PackageIdentifier
 -- Nothing
 --
+-- >>> simpleParsec "1.2.3" :: Maybe PackageIdentifier
+-- Nothing
+--
 instance Parsec PackageIdentifier where
   parsec = do
       xs' <- P.sepBy1 component (P.char '-')
       (v, xs) <- case simpleParsec (last xs') of
           Nothing -> return (nullVersion, xs') -- all components are version
           Just v  -> return (v, init xs')
-      if all (\c ->  all (/= '.') c && not (all isDigit c)) xs
+      if not (null xs) && all (\c ->  all (/= '.') c && not (all isDigit c)) xs
       then return $ PackageIdentifier (mkPackageName (intercalate  "-" xs)) v
       else fail "all digits or a dot in a portion of package name"
     where

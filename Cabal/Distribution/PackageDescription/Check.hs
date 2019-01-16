@@ -54,6 +54,7 @@ import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.CondTree
 import Distribution.Types.ExeDependency
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
@@ -195,7 +196,7 @@ checkSanity pkg =
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
-  , check (any isNothing (map libName $ subLibraries pkg)) $
+  , check (any (== LMainLibName) (map libName $ subLibraries pkg)) $
       PackageBuildImpossible $ "Found one or more unnamed internal libraries. "
         ++ "Only the non-internal library can have the same name as the package."
 
@@ -236,7 +237,7 @@ checkSanity pkg =
     -- The public 'library' gets special dispensation, because it
     -- is common practice to export a library and name the executable
     -- the same as the package.
-    subLibNames = catMaybes . map libName $ subLibraries pkg
+    subLibNames = mapMaybe (libraryNameString . libName) $ subLibraries pkg
     exeNames = map exeName $ executables pkg
     testNames = map testName $ testSuites pkg
     bmNames = map benchmarkName $ benchmarks pkg
@@ -254,10 +255,7 @@ checkLibrary pkg lib =
   -- TODO: This check is bogus if a required-signature was passed through
   , check (null (explicitLibModules lib) && null (reexportedModules lib)) $
       PackageDistSuspiciousWarn $
-           "Library " ++ (case libName lib of
-                            Nothing -> ""
-                            Just n -> prettyShow n
-                            ) ++ "does not expose any modules"
+           showLibraryName (libName lib) ++ " does not expose any modules"
 
     -- check use of signatures sections
   , checkVersion [1,25] (not (null (signatures lib))) $
@@ -589,7 +587,7 @@ checkFields pkg =
       , isNoVersion vr ]
 
     internalLibraries =
-        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libName)
+        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libraryNameString . libName)
             (allLibraries pkg)
 
     internalExecutables = map exeName $ executables pkg

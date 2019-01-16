@@ -197,6 +197,7 @@ getSimpleProject flags = do
       flags { nonInteractive = Flag True
             , simpleProject = Flag True
             , packageType = Flag LibraryAndExecutable
+            , cabalVersion = Flag (mkVersion [2,4])
             }
     simpleProjFlag@_ ->
       flags { simpleProject = simpleProjFlag }

@@ -186,7 +186,7 @@ import qualified Paths_cabal_install (version)
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
-                                , takeExtension, (</>), (<.>))
+                                , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stderr, stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
@@ -234,10 +234,9 @@ main' = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  validScript <-
-    if null args
-      then return False
-      else doesFileExist (last args)
+  hasScript <- if not (null args)
+    then CmdRun.validScript (head args)
+    else return False
 
   topHandler $
     case commandsRun (globalCommand commands) commands args of
@@ -253,7 +252,7 @@ mainWorker args = do
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
           CommandErrors   errs
-            | validScript                -> CmdRun.handleShebang (last args)
+            | hasScript                  -> CmdRun.handleShebang (head args) (tail args)
             | otherwise                  -> printErrors errs
           CommandReadyToGo action        -> do
             globalFlags' <- updateSandboxConfigFileFlag globalFlags
@@ -1141,6 +1140,7 @@ initAction initFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config `mappend`
                      -- override with `--with-compiler` from CLI if available
                      mempty { configHcPath = initHcPath initFlags }
+  let initFlags'   = savedInitFlags      config `mappend` initFlags
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
@@ -1149,7 +1149,7 @@ initAction initFlags extraArgs globalFlags = do
             repoContext
             comp
             progdb
-            initFlags
+            initFlags'
 
 sandboxAction :: SandboxFlags -> [String] -> Action
 sandboxAction sandboxFlags extraArgs globalFlags = do

@@ -73,7 +73,7 @@ componentBuildable = buildable . componentBuildInfo
 
 componentName :: Component -> ComponentName
 componentName =
-  foldComponent (libraryComponentName . libName)
+  foldComponent (CLibName . libName)
                 (CFLibName  . foreignLibName)
                 (CExeName   . exeName)
                 (CTestName  . testName)
