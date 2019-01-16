@@ -233,6 +233,10 @@ library
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
                  -Wnoncanonical-monadfail-instances
+  else
+    -- at least one of lib:Cabal's dependency (`parsec`)
+    -- already depends on `fail` transitively
+    build-depends: fail == 4.9.*
 
   exposed-modules:
     Distribution.Backpack

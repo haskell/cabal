@@ -83,9 +83,7 @@ import Distribution.Client.Compat.Prelude hiding (many, get)
 
 import Control.Monad( replicateM, (>=>) )
 
-#if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
-#endif
 
 import           Distribution.CabalSpecVersion   (cabalSpecLatest)
 import qualified Distribution.Compat.CharParsing as P
@@ -130,10 +128,8 @@ instance Monad (P s) where
   fail = Fail.fail
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Fail.MonadFail (P s) where
   fail _ = Fail
-#endif
 
 instance Alternative (P s) where
       empty = mzero
@@ -197,10 +193,8 @@ instance Monad (Parser r s) where
   fail = Fail.fail
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Fail.MonadFail (Parser r s) where
   fail _    = R (const Fail)
-#endif
 
 instance s ~ Char => MonadPlus (Parser r s) where
   mzero = pfail
