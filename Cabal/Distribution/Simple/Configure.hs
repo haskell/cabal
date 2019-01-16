@@ -83,6 +83,7 @@ import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -913,12 +914,7 @@ dependencySatisfiable
                       packageNameToUnqualComponentName depName)
                  requiredDepsMap)
 
-          || all
-               (\lib ->
-                 (depName, CLibName lib)
-                 `Map.member`
-                 requiredDepsMap)
-               sublibs
+          || all visible sublibs
 
     | isInternalDep
     = if use_external_internal_deps
@@ -949,6 +945,20 @@ dependencySatisfiable
            -- Reinterpret the "package name" as an unqualified component
            -- name
            = LSubLibName $ packageNameToUnqualComponentName depName
+    -- Check whether a libray exists and is visible.
+    -- We don't disambiguate between dependency on non-existent or private
+    -- library yet, so we just return a bool and later report a generic error.
+    visible lib = maybe
+                    False -- Does not even exist (wasn't in the depsMap)
+                    (\ipi -> Installed.libVisibility ipi == LibraryVisibilityPublic
+                          -- If it's a library of the same package then it's
+                          -- always visible.
+                          -- This is only triggered when passing a component
+                          -- of the same package as --dependency, such as in:
+                          -- cabal-testsuite/PackageTests/ConfigureComponent/SubLib/setup-explicit.test.hs
+                          || pkgName (Installed.sourcePackageId ipi) == pn)
+                    maybeIPI
+      where maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering
@@ -981,7 +991,7 @@ configureFinalizedPackage verbosity cfg enabled
                    pkg_descr0
             of Right r -> return r
                Left missing ->
-                   die' verbosity $ "Encountered missing dependencies:\n"
+                   die' verbosity $ "Encountered missing or private dependencies:\n"
                      ++ (render . nest 4 . sep . punctuate comma
                                 . map (pretty . simplifyDependency)
                                 $ missing)
