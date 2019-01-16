@@ -74,7 +74,7 @@ class Parsec a where
 --
 -- * knows @cabal-version@ we work with
 --
-class (P.CharParsing m, MonadPlus m) => CabalParsing m where
+class (P.CharParsing m, MonadPlus m, Fail.MonadFail m) => CabalParsing m where
     parsecWarning :: PWarnType -> String -> m ()
 
     parsecHaskellString :: m String
