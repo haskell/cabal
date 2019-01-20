@@ -802,7 +802,8 @@ commentSavedConfig = do
             IT.nonInteractive  = toFlag False,
             IT.cabalVersion    = toFlag (mkVersion [1,10]),
             IT.language        = toFlag Haskell2010,
-            IT.license         = toFlag BSD3
+            IT.license         = toFlag BSD3,
+            IT.sourceDirs      = Nothing
             },
         savedInstallFlags      = defaultInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {
@@ -1260,7 +1261,7 @@ initFlagsFields = [ field
        "package-dir", "packagedir", "package-name", "version", "homepage",
         "synopsis", "category", "extra-source-file", "lib", "exe", "libandexe",
         "simple", "main-is", "expose-module", "exposed-modules", "extension",
-        "dependency", "source-dir", "build-tool", "with-compiler",
+        "dependency", "build-tool", "with-compiler",
         "verbose"]
 
 -- | Fields for the 'program-locations' section.
