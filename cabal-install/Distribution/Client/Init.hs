@@ -195,9 +195,11 @@ getSimpleProject flags = do
   return $ case maybeToFlag simpleProj of
     Flag True ->
       flags { nonInteractive = Flag True
-            , simpleProject = Flag True
-            , packageType = Flag LibraryAndExecutable
-            , cabalVersion = Flag (mkVersion [2,4])
+            , simpleProject  = Flag True
+            , packageType    = Flag LibraryAndExecutable
+            , cabalVersion   = Flag (mkVersion [2,4])
+            , language       = Flag Haskell2010
+            , license        = Flag BSD3
             }
     simpleProjFlag@_ ->
       flags { simpleProject = simpleProjFlag }
