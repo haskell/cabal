@@ -7,6 +7,7 @@
   * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
+  * Add a `LibraryVisibility` field to `InstalledPackageInfo`
 
 ----
 

@@ -294,8 +294,8 @@ cabalG' global_args cmd args = do
           | cmd `elem` ["v1-update", "outdated", "user-config", "manpage", "v1-freeze", "check"]
           = [ ]
           -- new-build commands are affected by testCabalProjectFile
-          | cmd == "new-sdist" = [ "--project-file", testCabalProjectFile env ]
-          | "new-" `isPrefixOf` cmd
+          | cmd == "v2-sdist" = [ "--project-file", testCabalProjectFile env ]
+          | "v2-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
             , "--project-file", testCabalProjectFile env
             , "-j1" ]

@@ -54,7 +54,7 @@ import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
-         ( Parsec(..) )
+         ( Parsec(..), parsecCommaList )
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.ReadE
@@ -76,12 +76,12 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
+import Distribution.Types.PackageName.Magic
+         ( fakePackageId )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.Version
-         ( mkVersion, version0 )
+         ( mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Deprecated.Text
@@ -135,19 +135,18 @@ envOptions _ =
   where
     dependencyReadE :: ReadE [Dependency]
     dependencyReadE =
-      fmap pure $
-        parsecToReadE
-          ("couldn't parse dependency: " ++)
-          parsec
+      parsecToReadE
+        ("couldn't parse dependency: " ++)
+        (parsecCommaList parsec)
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ReplFlags, EnvFlags)
 replCommand = Client.installCommand {
-  commandName         = "new-repl",
+  commandName         = "v2-repl",
   commandSynopsis     = "Open an interactive session for the given component.",
-  commandUsage        = usageAlternatives "new-repl" [ "[TARGET] [FLAGS]" ],
+  commandUsage        = usageAlternatives "v2-repl" [ "[TARGET] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Open an interactive session for a component within the project. The "
-     ++ "available targets are the same as for the 'new-build' command: "
+     ++ "available targets are the same as for the 'v2-build' command: "
      ++ "individual components within packages in the project, including "
      ++ "libraries, executables, test-suites or benchmarks. Packages can "
      ++ "also be specified in which case the library component in the "
@@ -160,20 +159,20 @@ replCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples, open an interactive session:\n"
-     ++ "  " ++ pname ++ " new-repl\n"
+     ++ "  " ++ pname ++ " v2-repl\n"
      ++ "    for the default component in the package in the current directory\n"
-     ++ "  " ++ pname ++ " new-repl pkgname\n"
+     ++ "  " ++ pname ++ " v2-repl pkgname\n"
      ++ "    for the default component in the package named 'pkgname'\n"
-     ++ "  " ++ pname ++ " new-repl ./pkgfoo\n"
+     ++ "  " ++ pname ++ " v2-repl ./pkgfoo\n"
      ++ "    for the default component in the package in the ./pkgfoo directory\n"
-     ++ "  " ++ pname ++ " new-repl cname\n"
+     ++ "  " ++ pname ++ " v2-repl cname\n"
      ++ "    for the component named 'cname'\n"
-     ++ "  " ++ pname ++ " new-repl pkgname:cname\n"
+     ++ "  " ++ pname ++ " v2-repl pkgname:cname\n"
      ++ "    for the component 'cname' in the package 'pkgname'\n\n"
-     ++ "  " ++ pname ++ " new-repl --build-depends lens\n"
+     ++ "  " ++ pname ++ " v2-repl --build-depends lens\n"
      ++ "    add the latest version of the library 'lens' to the default component "
         ++ "(or no componentif there is no project present)\n"
-     ++ "  " ++ pname ++ " new-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
+     ++ "  " ++ pname ++ " v2-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
      ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
         ++ "to the default component (or no component if there is no project present)\n"
 
@@ -373,7 +372,7 @@ withoutProject config verbosity extraArgs = do
       , defaultLanguage = Just Haskell2010
       }
     baseDep = Dependency "base" anyVersion (Set.singleton LMainLibName)
-    pkgId = PackageIdentifier "fake-package" version0
+    pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   

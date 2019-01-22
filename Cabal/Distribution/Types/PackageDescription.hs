@@ -77,7 +77,6 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Dependency
 import Distribution.Types.PackageId
 import Distribution.Types.ComponentName
-import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.SetupBuildInfo
@@ -450,9 +449,8 @@ enabledComponents :: PackageDescription -> ComponentRequestedSpec -> [Component]
 enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildableComponents pkg
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
-lookupComponent pkg (CLibName LMainLibName) = fmap CLib (library pkg)
-lookupComponent pkg (CLibName (LSubLibName name)) =
-    fmap CLib $ find ((Just name ==) . libName) (subLibraries pkg)
+lookupComponent pkg (CLibName name) =
+    fmap CLib $ find ((name ==) . libName) (allLibraries pkg)
 lookupComponent pkg (CFLibName name) =
     fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
 lookupComponent pkg (CExeName name) =

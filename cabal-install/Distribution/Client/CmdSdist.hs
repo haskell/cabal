@@ -87,10 +87,10 @@ import System.FilePath
 
 sdistCommand :: CommandUI SdistFlags
 sdistCommand = CommandUI
-    { commandName = "new-sdist"
+    { commandName = "v2-sdist"
     , commandSynopsis = "Generate a source distribution file (.tar.gz)."
     , commandUsage = \pname ->
-        "Usage: " ++ pname ++ " new-sdist [FLAGS] [PACKAGES]\n"
+        "Usage: " ++ pname ++ " v2-sdist [FLAGS] [PACKAGES]\n"
     , commandDescription  = Just $ \_ ->
         "Generates tarballs of project packages suitable for upload to Hackage."
     , commandNotes = Nothing

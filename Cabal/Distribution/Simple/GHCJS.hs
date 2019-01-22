@@ -563,8 +563,11 @@ buildOrReplExe mReplFlags verbosity numJobs _pkg_descr lbi
   let isGhcjsDynamic      = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       buildRunner = case clbi of
-                       ExeComponentLocalBuildInfo {} -> False
-                       _                             -> True
+                      LibComponentLocalBuildInfo   {} -> False
+                      FLibComponentLocalBuildInfo  {} -> False
+                      ExeComponentLocalBuildInfo   {} -> True
+                      TestComponentLocalBuildInfo  {} -> True
+                      BenchComponentLocalBuildInfo {} -> True
       isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
       jsSrcs        = jsSources exeBi
       cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]

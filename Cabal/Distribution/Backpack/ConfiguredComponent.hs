@@ -315,4 +315,4 @@ fixFakePkgName pkg_descr pn =
   else (pn,                    CLibName LMainLibName            )
   where
     subLibName = packageNameToUnqualComponentName pn
-    internalLibraries = mapMaybe libName (allLibraries pkg_descr)
+    internalLibraries = mapMaybe (libraryNameString . libName) (allLibraries pkg_descr)

@@ -72,7 +72,7 @@ GenericPackageDescription
                                                                                                                                     [LMainLibName])],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
-                                                                                       libName = Nothing,
+                                                                                       libName = LMainLibName,
                                                                                        libVisibility = LibraryVisibilityPublic,
                                                                                        reexportedModules = [],
                                                                                        signatures = []}}}],
@@ -154,7 +154,7 @@ GenericPackageDescription
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
                                         libExposed = True,
-                                        libName = Nothing,
+                                        libName = LMainLibName,
                                         libVisibility = LibraryVisibilityPublic,
                                         reexportedModules = [],
                                         signatures = []}},
@@ -229,7 +229,7 @@ GenericPackageDescription
                                                                                                                                           [LMainLibName])],
                                                                                                                virtualModules = []},
                                                                                              libExposed = True,
-                                                                                             libName = Just
+                                                                                             libName = LSubLibName
                                                                                                          `UnqualComponentName "internal"`,
                                                                                              libVisibility = LibraryVisibilityPrivate,
                                                                                              reexportedModules = [],
@@ -315,7 +315,8 @@ GenericPackageDescription
                                                                                            [LMainLibName])],
                                                                 virtualModules = []},
                                               libExposed = True,
-                                              libName = Just `UnqualComponentName "internal"`,
+                                              libName = LSubLibName
+                                                          `UnqualComponentName "internal"`,
                                               libVisibility = LibraryVisibilityPrivate,
                                               reexportedModules = [],
                                               signatures = []}}],

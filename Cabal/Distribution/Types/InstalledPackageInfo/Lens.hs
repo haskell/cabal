@@ -12,7 +12,8 @@ import Distribution.License                    (License)
 import Distribution.ModuleName                 (ModuleName)
 import Distribution.Package                    (AbiHash, ComponentId, PackageIdentifier, UnitId)
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
-import Distribution.Types.UnqualComponentName  (UnqualComponentName)
+import Distribution.Types.LibraryName          (LibraryName)
+import Distribution.Types.LibraryVisibility    (LibraryVisibility)
 
 import qualified Distribution.SPDX                       as SPDX
 import qualified Distribution.Types.InstalledPackageInfo as T
@@ -33,7 +34,7 @@ instantiatedWith :: Lens' InstalledPackageInfo [(ModuleName,OpenModule)]
 instantiatedWith f s = fmap (\x -> s { T.instantiatedWith = x }) (f (T.instantiatedWith s))
 {-# INLINE instantiatedWith #-}
 
-sourceLibName :: Lens' InstalledPackageInfo (Maybe UnqualComponentName)
+sourceLibName :: Lens' InstalledPackageInfo LibraryName
 sourceLibName f s = fmap (\x -> s { T.sourceLibName = x }) (f (T.sourceLibName s))
 {-# INLINE sourceLibName #-}
 
@@ -180,4 +181,8 @@ haddockHTMLs f s = fmap (\x -> s { T.haddockHTMLs = x }) (f (T.haddockHTMLs s))
 pkgRoot :: Lens' InstalledPackageInfo (Maybe FilePath)
 pkgRoot f s = fmap (\x -> s { T.pkgRoot = x }) (f (T.pkgRoot s))
 {-# INLINE pkgRoot #-}
+
+libVisibility :: Lens' InstalledPackageInfo LibraryVisibility
+libVisibility f s = fmap (\x -> s { T.libVisibility = x }) (f (T.libVisibility s))
+{-# INLINE libVisibility #-}
 

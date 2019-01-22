@@ -34,9 +34,9 @@ import Control.Monad (when)
 haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
                             ,HaddockFlags, TestFlags)
 haddockCommand = Client.installCommand {
-  commandName         = "new-haddock",
+  commandName         = "v2-haddock",
   commandSynopsis     = "Build Haddock documentation",
-  commandUsage        = usageAlternatives "new-haddock" [ "[FLAGS] TARGET" ],
+  commandUsage        = usageAlternatives "v2-haddock" [ "[FLAGS] TARGET" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Build Haddock documentation for the specified packages within the "
      ++ "project.\n\n"
@@ -56,7 +56,7 @@ haddockCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-haddock pkgname"
+     ++ "  " ++ pname ++ " v2-haddock pkgname"
      ++ "    Build documentation for the package named pkgname\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
@@ -153,7 +153,7 @@ selectPackageTargets haddockFlags targetSelector targets
     isRequested _ LibKind    = True
 --  isRequested _ SubLibKind = True --TODO: what about sublibs?
 
-    -- TODO/HACK, we encode some defaults here as new-haddock's logic;
+    -- TODO/HACK, we encode some defaults here as v2-haddock's logic;
     -- make sure this matches the defaults applied in
     -- "Distribution.Client.ProjectPlanning"; this may need more work
     -- to be done properly

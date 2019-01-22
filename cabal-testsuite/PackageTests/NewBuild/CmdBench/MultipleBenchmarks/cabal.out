@@ -1,4 +1,4 @@
-# cabal new-bench
+# cabal v2-bench
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
@@ -9,7 +9,7 @@ Building benchmark 'foo' for MultipleBenchmarks-1.0..
 Running 1 benchmarks...
 Benchmark foo: RUNNING...
 Benchmark foo: FINISH
-# cabal new-bench
+# cabal v2-bench
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - MultipleBenchmarks-1.0 (bench:bar) (first run)

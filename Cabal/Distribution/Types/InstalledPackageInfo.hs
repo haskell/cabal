@@ -14,16 +14,17 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Backpack
-import Distribution.Compat.Graph              (IsNode (..))
+import Distribution.Compat.Graph            (IsNode (..))
 import Distribution.License
 import Distribution.ModuleName
-import Distribution.Package                   hiding (installedUnitId)
+import Distribution.Package                 hiding (installedUnitId)
 import Distribution.Types.AbiDependency
 import Distribution.Types.ExposedModule
+import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
-import Distribution.Types.UnqualComponentName
-import Distribution.Version                   (nullVersion)
+import Distribution.Version                 (nullVersion)
 
 import qualified Distribution.Package as Package
 import qualified Distribution.SPDX    as SPDX
@@ -38,7 +39,7 @@ data InstalledPackageInfo
         -- these parts (sourcePackageId, installedUnitId) are
         -- exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
-        sourceLibName     :: Maybe UnqualComponentName,
+        sourceLibName     :: LibraryName,
         installedComponentId_ :: ComponentId,
         installedUnitId   :: UnitId,
         -- INVARIANT: if this package is definite, OpenModule's
@@ -86,7 +87,8 @@ data InstalledPackageInfo
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath
+        pkgRoot           :: Maybe FilePath,
+        libVisibility     :: LibraryVisibility
     }
     deriving (Eq, Generic, Typeable, Read, Show)
 
@@ -118,16 +120,13 @@ mungedPackageId ipi =
 -- | Returns the munged package name, which we write into @name@ for
 -- compatibility with old versions of GHC.
 mungedPackageName :: InstalledPackageInfo -> MungedPackageName
-mungedPackageName ipi =
-    computeCompatPackageName
-        (packageName ipi)
-        (sourceLibName ipi)
+mungedPackageName ipi = MungedPackageName (packageName ipi) (sourceLibName ipi)
 
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
         sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
-        sourceLibName     = Nothing,
+        sourceLibName     = LMainLibName,
         installedComponentId_ = mkComponentId "",
         installedUnitId   = mkUnitId "",
         instantiatedWith  = [],
@@ -166,5 +165,6 @@ emptyInstalledPackageInfo
         frameworks        = [],
         haddockInterfaces = [],
         haddockHTMLs      = [],
-        pkgRoot           = Nothing
+        pkgRoot           = Nothing,
+        libVisibility     = LibraryVisibilityPrivate
     }

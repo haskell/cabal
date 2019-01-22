@@ -174,10 +174,10 @@ installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, TestFlags, NewInstallFlags
                             )
 installCommand = CommandUI
-  { commandName         = "new-install"
+  { commandName         = "v2-install"
   , commandSynopsis     = "Install packages."
   , commandUsage        = usageAlternatives
-                          "new-install" [ "[TARGETS] [FLAGS]" ]
+                          "v2-install" [ "[TARGETS] [FLAGS]" ]
   , commandDescription  = Just $ \_ -> wrapText $
     "Installs one or more packages. This is done by installing them "
     ++ "in the store and symlinking the executables in the directory "
@@ -190,12 +190,12 @@ installCommand = CommandUI
     ++ "the previously installed libraries. This is currently not implemented."
   , commandNotes        = Just $ \pname ->
       "Examples:\n"
-      ++ "  " ++ pname ++ " new-install\n"
+      ++ "  " ++ pname ++ " v2-install\n"
       ++ "    Install the package in the current directory\n"
-      ++ "  " ++ pname ++ " new-install pkgname\n"
+      ++ "  " ++ pname ++ " v2-install pkgname\n"
       ++ "    Install the package named pkgname"
       ++ " (fetching it from hackage if necessary)\n"
-      ++ "  " ++ pname ++ " new-install ./pkgfoo\n"
+      ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
@@ -244,7 +244,7 @@ installCommand = CommandUI
 --   estra packages and using a temporary dist directory.
 -- * libraries
 --   Libraries install through a similar process, but using GHC environment
---   files instead of symlinks. This means that 'new-install'ing libraries
+--   files instead of symlinks. This means that 'v2-install'ing libraries
 --   only works on GHC >= 8.0.
 --
 -- For more details on how this works, see the module

@@ -2025,10 +2025,7 @@ matchPlanPkg p = InstallPlan.foldPlanPackage (p . ipiComponentName) (matchElabPk
 -- | Get the appropriate 'ComponentName' which identifies an installed
 -- component.
 ipiComponentName :: IPI.InstalledPackageInfo -> ComponentName
-ipiComponentName ipkg =
-    case IPI.sourceLibName ipkg of
-        Nothing -> CLibName LMainLibName
-        Just n  -> CLibName (LSubLibName n)
+ipiComponentName = CLibName . IPI.sourceLibName
 
 -- | Given a 'ElaboratedConfiguredPackage', report if it matches a
 -- 'ComponentName'.

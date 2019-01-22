@@ -46,6 +46,9 @@ Version:            2.5.0.0
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2
 
+    if !impl(ghc >= 8.0)
+        build-depends: fail        == 4.9.*
+
     if flag(native-dns)
       if os(windows)
         build-depends: windns      >= 0.1.0 && < 0.2

@@ -111,7 +111,7 @@ type InstalledPackageId = ComponentId
 -- final configure process will be independent of the environment.
 --
 -- 'ConfiguredPackage' is assumed to not support Backpack.  Only the
--- @new-build@ codepath supports Backpack.
+-- @v2-build@ codepath supports Backpack.
 --
 data ConfiguredPackage loc = ConfiguredPackage {
        confPkgId :: InstalledPackageId,
@@ -183,7 +183,7 @@ instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
 instance HasMungedPackageId (ConfiguredPackage loc) where
-  mungedId cpkg = computeCompatPackageId (packageId cpkg) Nothing
+  mungedId cpkg = computeCompatPackageId (packageId cpkg) LMainLibName
 
 -- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where

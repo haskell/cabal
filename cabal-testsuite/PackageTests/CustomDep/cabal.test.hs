@@ -9,4 +9,4 @@ main = cabalTest $ do
     recordMode DoNotRecord $ do
         -- TODO: Hack, delete me
         withEnvFilter (`notElem` ["HOME", "CABAL_DIR"]) $ do
-            cabal "new-build" ["all"]
+            cabal "v2-build" ["all"]

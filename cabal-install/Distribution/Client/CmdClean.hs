@@ -49,7 +49,7 @@ defaultCleanFlags = CleanFlags
 
 cleanCommand :: CommandUI CleanFlags
 cleanCommand = CommandUI
-    { commandName         = "new-clean"
+    { commandName         = "v2-clean"
     , commandSynopsis     = "Clean the package store and remove temporary files."
     , commandUsage        = \pname ->
         "Usage: " ++ pname ++ " new-clean [FLAGS]\n"

@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 import Control.Monad.IO.Class
 import System.Directory
 
--- Test that 'cabal new-freeze' works with multiple versions of a build tool
+-- Test that 'cabal v2-freeze' works with multiple versions of a build tool
 -- dependency.
 --
 -- The repository contains versions 1.0, 2.0, and 3.0 of the build tool. There
@@ -11,10 +11,10 @@ import System.Directory
 -- of the build tool when there are no constraints.
 main = cabalTest $ withSourceCopy $ do
   withRepo "repo" $ do
-    cabal' "new-build" ["--dry-run"] >>= assertUsesLatestBuildTool
+    cabal' "v2-build" ["--dry-run"] >>= assertUsesLatestBuildTool
 
     -- Force the project to use versions 1.0 and 2.0 of the build tool.
-    cabal "new-freeze" ["--constraint=any.my-build-tool-dep < 3"]
+    cabal "v2-freeze" ["--constraint=any.my-build-tool-dep < 3"]
 
     cwd <- fmap testCurrentDir getTestEnv
     let freezeFile = cwd </> "cabal.project.freeze"
@@ -33,7 +33,7 @@ main = cabalTest $ withSourceCopy $ do
 
     -- cabal should be able to find an install plan that fits the constraints
     -- from the freeze file.
-    cabal' "new-build" ["--dry-run"] >>= assertDoesNotUseLatestBuildTool
+    cabal' "v2-build" ["--dry-run"] >>= assertDoesNotUseLatestBuildTool
   where
     assertUsesLatestBuildTool out = do
       assertOutputContains "my-build-tool-dep-3.0 (exe:my-build-tool)" out

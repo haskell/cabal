@@ -161,7 +161,7 @@ withExeLBI pkg lbi f =
 withBenchLBI :: PackageDescription -> LocalBuildInfo
             -> (Benchmark -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withBenchLBI pkg lbi f =
-    sequence_ [ f test clbi | (test, clbi) <- enabledBenchLBIs pkg lbi ]
+    sequence_ [ f bench clbi | (bench, clbi) <- enabledBenchLBIs pkg lbi ]
 
 withTestLBI :: PackageDescription -> LocalBuildInfo
             -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()

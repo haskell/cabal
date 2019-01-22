@@ -36,13 +36,14 @@ InstalledPackageInfo
                                (DefUnitId `UnitId "Includes2-0.1.0.0-inplace-mysql"`))
                             `ModuleName ["Database","MySQL"]`)],
    ldOptions = [],
+   libVisibility = LibraryVisibilityPrivate,
    libraryDirs = ["/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
    libraryDynDirs = ["/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
    license = Right BSD3,
    maintainer = "ezyang@cs.stanford.edu",
    pkgRoot = Nothing,
    pkgUrl = "",
-   sourceLibName = Just `UnqualComponentName "mylib"`,
+   sourceLibName = LSubLibName `UnqualComponentName "mylib"`,
    sourcePackageId = PackageIdentifier
                        {pkgName = `PackageName "Includes2"`,
                         pkgVersion = `mkVersion [0,1,0,0]`},

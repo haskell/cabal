@@ -274,7 +274,9 @@ haddock pkg_descr lbi suffixes flags' = do
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
 
               case libName lib of
-                Just _ -> do
+                LMainLibName ->
+                  pure index
+                LSubLibName _ -> do
                   pwd <- getCurrentDirectory
 
                   let
@@ -292,8 +294,6 @@ haddock pkg_descr lbi suffixes flags' = do
                     }
 
                   return $ PackageIndex.insert ipi index
-                Nothing ->
-                  pure index
 
         CFLib flib -> (when (flag haddockForeignLibs) $ do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $

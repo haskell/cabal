@@ -46,7 +46,7 @@ ipiToPreExistingComponent :: InstalledPackageInfo -> PreExistingComponent
 ipiToPreExistingComponent ipi =
     PreExistingComponent {
         pc_pkgname = packageName ipi,
-        pc_compname = libraryComponentName $ Installed.sourceLibName ipi,
+        pc_compname = CLibName $ Installed.sourceLibName ipi,
         pc_munged_id = mungedId ipi,
         pc_uid   = Installed.installedUnitId ipi,
         pc_cid   = Installed.installedComponentId ipi,

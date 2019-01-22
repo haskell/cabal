@@ -53,9 +53,12 @@ import Distribution.Client.Types
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import qualified Distribution.Client.Init.Types as IT
+         ( InitFlags(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, defaultGlobalFlags
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
+         , initOptions
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
@@ -147,6 +150,7 @@ import GHC.Generics ( Generic )
 
 data SavedConfig = SavedConfig {
     savedGlobalFlags       :: GlobalFlags,
+    savedInitFlags         :: IT.InitFlags,
     savedInstallFlags      :: InstallFlags,
     savedConfigureFlags    :: ConfigFlags,
     savedConfigureExFlags  :: ConfigExFlags,
@@ -165,6 +169,7 @@ instance Monoid SavedConfig where
 instance Semigroup SavedConfig where
   a <> b = SavedConfig {
     savedGlobalFlags       = combinedSavedGlobalFlags,
+    savedInitFlags         = combinedSavedInitFlags,
     savedInstallFlags      = combinedSavedInstallFlags,
     savedConfigureFlags    = combinedSavedConfigureFlags,
     savedConfigureExFlags  = combinedSavedConfigureExFlags,
@@ -245,6 +250,39 @@ instance Semigroup SavedConfig where
         where
           combine        = combine'        savedGlobalFlags
           lastNonEmptyNL = lastNonEmptyNL' savedGlobalFlags
+
+      combinedSavedInitFlags = IT.InitFlags {
+        IT.author         = combine IT.author,
+        IT.buildTools     = combineMonoid savedInitFlags IT.buildTools,
+        IT.cabalVersion   = combine IT.cabalVersion,
+        IT.category       = combine IT.category,
+        IT.dependencies   = combineMonoid savedInitFlags IT.dependencies,
+        IT.email          = combine IT.email,
+        IT.exposedModules = combineMonoid savedInitFlags IT.exposedModules,
+        IT.extraSrc       = combineMonoid savedInitFlags IT.extraSrc,
+        IT.homepage       = combine IT.homepage,
+        IT.initHcPath     = combine IT.initHcPath,
+        IT.initVerbosity  = combine IT.initVerbosity,
+        IT.language       = combine IT.language,
+        IT.license        = combine IT.license,
+        IT.mainIs         = combine IT.mainIs,
+        IT.minimal        = combine IT.minimal,
+        IT.noComments     = combine IT.noComments,
+        IT.nonInteractive = combine IT.nonInteractive,
+        IT.otherExts      = combineMonoid savedInitFlags IT.otherExts,
+        IT.otherModules   = combineMonoid savedInitFlags IT.otherModules,
+        IT.overwrite      = combine IT.overwrite,
+        IT.packageDir     = combine IT.packageDir,
+        IT.packageName    = combine IT.packageName,
+        IT.packageType    = combine IT.packageType,
+        IT.quiet          = combine IT.quiet,
+        IT.simpleProject  = combine IT.simpleProject,
+        IT.sourceDirs     = combineMonoid savedInitFlags IT.sourceDirs,
+        IT.synopsis       = combine IT.synopsis,
+        IT.version        = combine IT.version
+        }
+        where
+          combine = combine' savedInitFlags
 
       combinedSavedInstallFlags = InstallFlags {
         installDocumentation         = combine installDocumentation,
@@ -754,6 +792,9 @@ commentSavedConfig = do
         savedGlobalFlags       = defaultGlobalFlags {
             globalRemoteRepos = toNubList [defaultRemoteRepo]
             },
+        savedInitFlags       = mempty {
+            IT.nonInteractive  = toFlag False
+            },
         savedInstallFlags      = defaultInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {
             configAllowNewer     = Just (AllowNewer mempty),
@@ -873,6 +914,15 @@ configFieldDescriptions src =
         configAllowNewer (\v flags -> flags { configAllowNewer = v })
        ]
 
+  ++ toSavedConfig liftInitFlag
+       (initOptions ParseArgs)
+       ["quiet", "no-comments", "minimal", "overwrite", "package-dir",
+        "packagedir", "package-name", "version", "cabal-version", "license",
+        "author", "email", "homepage", "synopsis", "category",
+        "extra-source-file", "lib", "exe", "libandexe", "simple",
+        "main-is", "language", "exposed-module", "extension", "dependency",
+        "source-dir", "build-tool", "with-compiler"] []
+
   ++ toSavedConfig liftInstallFlag
        (installOptions ParseArgs)
        ["dry-run", "only", "only-dependencies", "dependencies-only"] []
@@ -979,6 +1029,10 @@ liftConfigFlag = liftField
 liftConfigExFlag :: FieldDescr ConfigExFlags -> FieldDescr SavedConfig
 liftConfigExFlag = liftField
   savedConfigureExFlags (\flags conf -> conf { savedConfigureExFlags = flags })
+
+liftInitFlag :: FieldDescr IT.InitFlags -> FieldDescr SavedConfig
+liftInitFlag = liftField
+  savedInitFlags (\flags conf -> conf { savedInitFlags = flags })
 
 liftInstallFlag :: FieldDescr InstallFlags -> FieldDescr SavedConfig
 liftInstallFlag = liftField

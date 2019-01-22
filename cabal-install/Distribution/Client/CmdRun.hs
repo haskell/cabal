@@ -9,7 +9,7 @@ module Distribution.Client.CmdRun (
     -- * The @run@ CLI and action
     runCommand,
     runAction,
-    handleShebang,
+    handleShebang, validScript,
 
     -- * Internals exposed for testing
     TargetProblem(..),
@@ -39,7 +39,7 @@ import Distribution.Deprecated.Text
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText, die', ordNub, info
+         ( wrapText, warn, die', ordNub, info
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.CmdInstall
          ( establishDummyProjectBaseContext )
@@ -90,10 +90,10 @@ import Distribution.Types.GenericPackageDescription as GPD
          ( GenericPackageDescription(..), emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.PackageId
-         ( PackageIdentifier(..) )
 import Distribution.Types.Version
-         ( mkVersion, version0 )
+         ( mkVersion )
+import Distribution.Types.PackageName.Magic
+         ( fakePackageId )
 import Language.Haskell.Extension
          ( Language(..) )
 
@@ -104,14 +104,14 @@ import qualified Text.Parsec as P
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
 import System.FilePath
-         ( (</>) )
+         ( (</>), isValid, isPathSeparator )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
 runCommand = Client.installCommand {
-  commandName         = "new-run",
+  commandName         = "v2-run",
   commandSynopsis     = "Run an executable.",
-  commandUsage        = usageAlternatives "new-run"
+  commandUsage        = usageAlternatives "v2-run"
                           [ "[TARGET] [FLAGS] [-- EXECUTABLE_FLAGS]" ],
   commandDescription  = Just $ \pname -> wrapText $
         "Runs the specified executable-like component (an executable, a test, "
@@ -133,13 +133,13 @@ runCommand = Client.installCommand {
      ++ "'cabal.project.local' and other files.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-run\n"
+     ++ "  " ++ pname ++ " v2-run\n"
      ++ "    Run the executable-like in the package in the current directory\n"
-     ++ "  " ++ pname ++ " new-run foo-tool\n"
+     ++ "  " ++ pname ++ " v2-run foo-tool\n"
      ++ "    Run the named executable-like (in any package in the project)\n"
-     ++ "  " ++ pname ++ " new-run pkgfoo:foo-tool\n"
+     ++ "  " ++ pname ++ " v2-run pkgfoo:foo-tool\n"
      ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
-     ++ "  " ++ pname ++ " new-run foo -O2 -- dothing --fooflag\n"
+     ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
@@ -298,9 +298,31 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   installFlags haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
-handleShebang :: String -> IO ()
-handleShebang script =
-  runAction (commandDefaultFlags runCommand) [script] defaultGlobalFlags
+-- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
+-- invoked as a script interpreter, i.e. via
+--
+-- > #! /usr/bin/env cabal
+--
+-- or
+--
+-- > #! /usr/bin/cabal
+--
+-- As the first argument passed to `cabal` will be a filepath to the
+-- script to be interpreted.
+--
+-- See also 'handleShebang'
+validScript :: String -> IO Bool
+validScript script
+  | isValid script && any isPathSeparator script = doesFileExist script
+  | otherwise = return False
+
+-- | Handle @cabal@ invoked as script interpreter, see also 'validScript'
+--
+-- First argument is the 'FilePath' to the script to be executed; second
+-- argument is a list of arguments to be passed to the script.
+handleShebang :: FilePath -> [String] -> IO ()
+handleShebang script args =
+  runAction (commandDefaultFlags runCommand) (script:args) defaultGlobalFlags
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
@@ -316,22 +338,44 @@ readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
 readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity str = 
+readScriptBlockFromScript verbosity str = do
+    str' <- case extractScriptBlock str of
+              Left e -> die' verbosity $ "Failed extracting script block: " ++ e
+              Right x -> return x
+    when (BS.all isSpace str') $ warn verbosity "Empty script block"
     (\x -> (x, noShebang)) <$> readScriptBlock verbosity str'
   where
-    start = "{- cabal:"
-    end   = "-}"
+    noShebang = BS.unlines . filter (not . BS.isPrefixOf "#!") . BS.lines $ str
 
-    str' = BS.unlines
-          . takeWhile (/= end)
-          . drop 1 . dropWhile (/= start)
-          $ lines'
-    
-    noShebang = BS.unlines 
-              . filter ((/= "#!") . BS.take 2)
-              $ lines'
+-- | Extract the first encountered script metadata block started end
+-- terminated by the tokens
+--
+-- * @{- cabal:@
+--
+-- * @-}@
+--
+-- appearing alone on lines (while tolerating trailing whitespace).
+-- These tokens are not part of the 'Right' result.
+--
+-- In case of missing or unterminated blocks a 'Left'-error is
+-- returned.
+extractScriptBlock :: BS.ByteString -> Either String BS.ByteString
+extractScriptBlock str = goPre (BS.lines str)
+  where
+    isStartMarker = (== "{- cabal:") . stripTrailSpace
+    isEndMarker   = (== "-}") . stripTrailSpace
+    stripTrailSpace = fst . BS.spanEnd isSpace
 
-    lines' = BS.lines str
+    -- before start marker
+    goPre ls = case dropWhile (not . isStartMarker) ls of
+                 [] -> Left "`{- cabal:` start marker not found"
+                 (_:ls') -> goBody [] ls'
+
+    goBody _ [] = Left "`-}` end marker not found"
+    goBody acc (l:ls)
+      | isEndMarker l = Right $! BS.unlines $ reverse acc
+      | otherwise     = goBody (l:acc) ls
+
 
 handleScriptCase :: Verbosity
                  -> ProjectBaseContext
@@ -344,14 +388,14 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
   -- We need to create a dummy package that lives in our dummy project.
   let
     sourcePackage = SourcePackage
-      { packageInfoId        = pkgId
-      , SP.packageDescription   = genericPackageDescription
-      , packageSource        = LocalUnpackedPackage tempDir
-      , packageDescrOverride = Nothing
+      { packageInfoId         = pkgId
+      , SP.packageDescription = genericPackageDescription
+      , packageSource         = LocalUnpackedPackage tempDir
+      , packageDescrOverride  = Nothing
       }
-    genericPackageDescription = emptyGenericPackageDescription 
+    genericPackageDescription  = emptyGenericPackageDescription
       { GPD.packageDescription = packageDescription
-      , condExecutables    = [("script", CondNode executable' targetBuildDepends [])]
+      , condExecutables        = [("script", CondNode executable' targetBuildDepends [])]
       }
     executable' = executable
       { modulePath = "Main.hs"
@@ -368,7 +412,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
       , specVersionRaw = Left (mkVersion [2, 2])
       , licenseRaw = Left SPDX.NONE
       }
-    pkgId = PackageIdentifier "fake-package" version0
+    pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   BS.writeFile (tempDir </> "Main.hs") contents'

@@ -29,9 +29,9 @@ import qualified Distribution.Client.Setup as Client
 configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
                               ,InstallFlags, HaddockFlags, TestFlags)
 configureCommand = Client.installCommand {
-  commandName         = "new-configure",
+  commandName         = "v2-configure",
   commandSynopsis     = "Add extra project configuration",
-  commandUsage        = usageAlternatives "new-configure" [ "[FLAGS]" ],
+  commandUsage        = usageAlternatives "v2-configure" [ "[FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Adjust how the project is built by setting additional package flags "
      ++ "and other flags.\n\n"
@@ -40,28 +40,28 @@ configureCommand = Client.installCommand {
      ++ "file (or '$project_file.local', if '--project-file' is specified) "
      ++ "which extends the configuration from the 'cabal.project' file "
      ++ "(if any). This combination is used as the project configuration for "
-     ++ "all other commands (such as 'new-build', 'new-repl' etc) though it "
+     ++ "all other commands (such as 'v2-build', 'v2-repl' etc) though it "
      ++ "can be extended/overridden on a per-command basis.\n\n"
 
-     ++ "The new-configure command also checks that the project configuration "
+     ++ "The v2-configure command also checks that the project configuration "
      ++ "will work. In particular it checks that there is a consistent set of "
      ++ "dependencies for the project as a whole.\n\n"
 
-     ++ "The 'cabal.project.local' file persists across 'new-clean' but is "
-     ++ "overwritten on the next use of the 'new-configure' command. The "
+     ++ "The 'cabal.project.local' file persists across 'v2-clean' but is "
+     ++ "overwritten on the next use of the 'v2-configure' command. The "
      ++ "intention is that the 'cabal.project' file should be kept in source "
      ++ "control but the 'cabal.project.local' should not.\n\n"
 
-     ++ "It is never necessary to use the 'new-configure' command. It is "
+     ++ "It is never necessary to use the 'v2-configure' command. It is "
      ++ "merely a convenience in cases where you do not want to specify flags "
-     ++ "to 'new-build' (and other commands) every time and yet do not want "
+     ++ "to 'v2-build' (and other commands) every time and yet do not want "
      ++ "to alter the 'cabal.project' persistently.",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-configure --with-compiler ghc-7.10.3\n"
+     ++ "  " ++ pname ++ " v2-configure --with-compiler ghc-7.10.3\n"
      ++ "    Adjust the project configuration to use the given compiler\n"
      ++ "    program and check the resulting configuration works.\n"
-     ++ "  " ++ pname ++ " new-configure\n"
+     ++ "  " ++ pname ++ " v2-configure\n"
      ++ "    Reset the local configuration to empty and check the overall\n"
      ++ "    project configuration works.\n\n"
 

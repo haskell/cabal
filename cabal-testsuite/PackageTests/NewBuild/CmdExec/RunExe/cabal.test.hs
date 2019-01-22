@@ -1,5 +1,5 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
-    cabal "new-build" []
-    cabal' "new-exec" ["foo"] >>= assertOutputContains "Hello World"
+    cabal "v2-build" []
+    cabal' "v2-exec" ["foo"] >>= assertOutputContains "Hello World"
 
