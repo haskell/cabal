@@ -3,7 +3,7 @@
 
 -- | This module does two things:
 --
--- * Acts as a compatiblity layer, like @base-compat@.
+-- * Acts as a compatibility layer, like @base-compat@.
 --
 -- * Provides commonly used imports.
 --

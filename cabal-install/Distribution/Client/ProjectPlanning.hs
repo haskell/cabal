@@ -1071,7 +1071,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- current and past compilers; in fact recent lib:Cabal versions
     -- will warn when they encounter a too new or unknown GHC compiler
     -- version (c.f. #415). To avoid running into unsupported
-    -- configurations we encode the compatiblity matrix as lower
+    -- configurations we encode the compatibility matrix as lower
     -- bounds on lib:Cabal here (effectively corresponding to the
     -- respective major Cabal version bundled with the respective GHC
     -- release).

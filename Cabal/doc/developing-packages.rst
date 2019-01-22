@@ -2259,7 +2259,7 @@ system-dependent values for these fields.
 
     .. _buildtoolsbc:
 
-    **Backward Compatiblity**
+    **Backward Compatibility**
 
     Although this field is deprecated in favor of :pkg-field:`build-tool-depends`, there are some situations where you may prefer to use :pkg-field:`build-tools` in cases (1) and (2), as it is supported by more versions of Cabal.
     In case (3), :pkg-field:`build-tool-depends` is better for backwards-compatibility, as it will be ignored by old versions of Cabal; if you add the executable to :pkg-field:`build-tools`, a setup script built against old Cabal will choke.
