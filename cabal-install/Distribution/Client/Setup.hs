@@ -2206,10 +2206,10 @@ initCommand = CommandUI {
 
 initOptions :: ShowOrParseArgs -> [OptionField IT.InitFlags]
 initOptions _ =
-  [ option ['n'] ["non-interactive"]
-    "Non-interactive mode."
-    IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
-    trueArg
+  [ option ['i'] ["interactive"]
+    "interactive mode."
+    IT.interactive (\v flags -> flags { IT.interactive = v })
+    (boolOpt' (['i'], ["interactive"]) (['n'], ["nonInteractive"]))
 
   , option ['q'] ["quiet"]
     "Do not generate log messages to stdout."
