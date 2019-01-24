@@ -185,6 +185,27 @@ The last is just shorthand, for example ``base == 4.*`` means exactly
 the same thing as ``base >= 4 && < 5``. Please refer to the documentation
 on the :pkg-field:`build-depends` field for more information.
 
+Also, you can factor out shared ``build-depends`` (and other fields such
+as ``ghc-options``) into a ``common`` stanza which you can ``import`` in
+your libraries and executable sections. For example:
+
+::
+
+    common shared-properties
+      default-language: Haskell2010
+      build-depends:
+        base == 4.*
+      ghc-options:
+        -Wall
+
+    library
+      import: shared-properties
+      exposed-modules:
+        Proglet
+
+Note that the ``import`` **must** be the first thing in the stanza. For more
+information see the `Common stanzas`_ section.
+
 Building the package
 --------------------
 
