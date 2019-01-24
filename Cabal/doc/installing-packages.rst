@@ -15,6 +15,10 @@ explicitly ask ``cabal`` to create it for you using
 
     $ cabal user-config update
 
+You can change the location of the global configuration file by specifying
+either ``--config-file=FILE`` on the command line or by setting the
+``CABAL_CONFIG`` environment variable.
+
 Most of the options in this configuration file are also available as
 command line arguments, and the corresponding documentation can be used
 to lookup their meaning. The created configuration file only specifies
