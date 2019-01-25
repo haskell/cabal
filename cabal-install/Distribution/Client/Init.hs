@@ -131,8 +131,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
   writeChangeLog initFlags'
   createDirectories (sourceDirs initFlags')
   createMainHs initFlags'
-  -- If a test suite was requested and this in not an executable only
-  -- then create the "test" directory.
+  -- If a test suite was requested and this is not an executable-only
+  -- package, then create the "test" directory.
   when (eligibleForTestSuite initFlags') $ do
     createDirectories (testDirs initFlags')
     createTestHs initFlags'
