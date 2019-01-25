@@ -258,6 +258,7 @@ instance Semigroup SavedConfig where
           lastNonEmptyNL = lastNonEmptyNL' savedGlobalFlags
 
       combinedSavedInitFlags = IT.InitFlags {
+        IT.applicationDirs = combineMonoid savedInitFlags IT.applicationDirs,
         IT.author          = combine IT.author,
         IT.buildTools      = combineMonoid savedInitFlags IT.buildTools,
         IT.cabalVersion    = combine IT.cabalVersion,
@@ -283,7 +284,6 @@ instance Semigroup SavedConfig where
         IT.packageType     = combine IT.packageType,
         IT.quiet           = combine IT.quiet,
         IT.simpleProject   = combine IT.simpleProject,
-        IT.applicationDirs = combineMonoid savedInitFlags IT.applicationDirs,
         IT.sourceDirs      = combineMonoid savedInitFlags IT.sourceDirs,
         IT.synopsis        = combine IT.synopsis,
         IT.version         = combine IT.version

@@ -457,9 +457,16 @@ getAppDir flags = do
              ?>> fmap (:[]) `fmap` guessAppDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "Application directory" ["src-exe", "app"] id))
+                      (promptListOptional'
+                       ("Application " ++ mainFile ++ "directory")
+                       ["src-exe", "app"] id))
 
   return $ flags { applicationDirs = appDirs }
+
+  where
+    mainFile = case mainIs flags of
+      Flag mainPath -> "(" ++ mainPath ++ ") "
+      _             -> ""
 
 -- | Try to guess app directory. Could try harder; for the
 --   moment just looks to see whether there is a directory called 'app'.
