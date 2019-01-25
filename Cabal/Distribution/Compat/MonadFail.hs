@@ -2,7 +2,9 @@
 
 -- | Compatibility layer for "Control.Monad.Fail"
 module Distribution.Compat.MonadFail ( MonadFail(fail) ) where
-#if __GLASGOW_HASKELL__ >= 800
+#if MIN_VERSION_base(4,13,0)
+import Prelude (MonadFail(fail))
+#elif MIN_VERSION_base(4,9,0)
 -- provided by base-4.9.0.0 and later
 import Control.Monad.Fail (MonadFail(fail))
 #else
