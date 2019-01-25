@@ -2349,12 +2349,6 @@ initOptions _ =
                                     ((Just . (:[])) `fmap` parse))
                         (maybe [] (fmap display)))
 
-  , option [] ["application-dir"]
-    "Directory containing package application executable."
-    IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
-    (reqArg' "DIR" (Just . (:[]))
-                   (fromMaybe []))
-
   , option ['d'] ["dependency"]
     "Package dependency."
     IT.dependencies (\v flags -> flags { IT.dependencies = v })
@@ -2362,15 +2356,15 @@ initOptions _ =
                                   ((Just . (:[])) `fmap` parse))
                       (maybe [] (fmap display)))
 
-  , option [] ["source-dir", "sourcedir"]
-    "Directory containing package source."
-    IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
-    (reqArg' "DIR" (Just . (:[]))
-                   (fromMaybe []))
-
   , option [] ["application-dir"]
     "Directory containing package application executable."
     IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
+    (reqArg' "DIR" (Just . (:[]))
+                   (fromMaybe []))
+
+  , option [] ["source-dir", "sourcedir"]
+    "Directory containing package library source."
+    IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
     (reqArg' "DIR" (Just . (:[]))
                    (fromMaybe []))
 

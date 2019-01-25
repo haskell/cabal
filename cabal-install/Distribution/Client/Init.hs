@@ -487,7 +487,8 @@ getSrcDir flags = do
              ?>> fmap (:[]) `fmap` guessSourceDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "Source directory" ["src", "lib", "src-lib"] id))
+                      (promptListOptional' "Library source directory"
+                       ["src", "lib", "src-lib"] id))
 
   return $ flags { sourceDirs = srcDirs }
 
