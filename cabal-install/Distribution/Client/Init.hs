@@ -32,7 +32,7 @@ import System.Directory
   ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
   , getDirectoryContents, createDirectoryIfMissing )
 import System.FilePath
-  ( (</>), (<.>), takeBaseName, equalFilePath )
+  ( (</>), (<.>), takeBaseName, takeExtension, equalFilePath )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -915,7 +915,7 @@ writeMainHs flags mainPath = do
   exists <- doesFileExist mainFullPath
   unless exists $ do
       message flags $ "Generating " ++ mainPath ++ "..."
-      writeFileSafe flags mainFullPath (mainHs (packageType flags))
+      writeFileSafe flags mainFullPath (mainHs flags)
 
 -- | Check that a main file exists.
 hasMainHs :: InitFlags -> Bool
@@ -924,28 +924,35 @@ hasMainHs flags = case mainIs flags of
              || packageType flags == Flag LibraryAndExecutable)
   _ -> False
 
--- | Default Main.hs file.  Used when no Main.hs exists.
+-- | Default Main.(l)hs file.  Used when no Main.(l)hs exists.
 --
 --   If we are initializing a new 'LibraryAndExecutable' then import 'MyLib'.
-mainHs :: Flag PackageType -> String
-mainHs pkgTypeFlag = case pkgTypeFlag of
+mainHs :: InitFlags -> String
+mainHs flags = (unlines . map prependPrefix) $ case packageType flags of
   Flag LibraryAndExecutable ->
-    unlines
     [ "module Main where"
     , ""
     , "import qualified MyLib (someFunc)"
     , ""
+    , "main :: IO ()"
     , "main = do"
     , "  putStrLn \"Hello, Haskell!\""
     , "  MyLib.someFunc"
     ]
   _ ->
-    unlines
     [ "module Main where"
     , ""
     , "main :: IO ()"
     , "main = putStrLn \"Hello, Haskell!\""
     ]
+  where
+    prependPrefix "" = ""
+    prependPrefix line
+      | isLiterate = "> " ++ line
+      | otherwise  = line
+    isLiterate = case mainIs flags of
+      Flag mainPath -> takeExtension mainPath == ".lhs"
+      _             -> False
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
