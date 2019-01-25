@@ -245,8 +245,8 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
 -- It generates a DAG based on ranks of nodes. Nodes in each rank can only
 -- have edges to nodes in subsequent ranks.
 --
--- The generator is paramterised by a generator for the number of ranks and
--- the number of nodes within each rank. It is also paramterised by the
+-- The generator is parametrised by a generator for the number of ranks and
+-- the number of nodes within each rank. It is also parametrised by the
 -- chance that each node in each rank will have an edge from each node in
 -- each previous rank. Thus a higher chance will produce a more densely
 -- connected graph.

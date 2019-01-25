@@ -32,7 +32,7 @@ import System.Directory
   ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
   , getDirectoryContents, createDirectoryIfMissing )
 import System.FilePath
-  ( (</>), (<.>), takeBaseName, equalFilePath )
+  ( (</>), (<.>), takeBaseName, takeExtension, equalFilePath )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -129,8 +129,13 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
     _                 -> writeLicense initFlags'
   writeSetupFile initFlags'
   writeChangeLog initFlags'
-  createSourceDirectories initFlags'
+  createDirectories (sourceDirs initFlags')
   createMainHs initFlags'
+  -- If a test suite was requested and this is not an executable-only
+  -- package, then create the "test" directory.
+  when (eligibleForTestSuite initFlags') $ do
+    createDirectories (testDirs initFlags')
+    createTestHs initFlags'
   success <- writeCabalFile initFlags'
 
   when success $ generateWarnings initFlags'
@@ -155,6 +160,8 @@ extendFlags pkgIx sourcePkgDb =
   >=> getCategory
   >=> getExtraSourceFiles
   >=> getSrcDir
+  >=> getGenTests
+  >=> getTestDir
   >=> getLanguage
   >=> getGenComments
   >=> getModulesBuildToolsAndDeps pkgIx
@@ -380,11 +387,11 @@ guessExtraSourceFiles flags = do
 getLibOrExec :: InitFlags -> IO InitFlags
 getLibOrExec flags = do
   pkgType <-     return (flagToMaybe $ packageType flags)
-           ?>> maybePrompt flags (either (const Library) id `fmap`
+           ?>> maybePrompt flags (either (const Executable) id `fmap`
                                    promptList "What does the package build"
-                                   [Library, Executable, LibraryAndExecutable]
+                                   [Executable, Library, LibraryAndExecutable]
                                    Nothing displayPackageType False)
-           ?>> return (Just Library)
+           ?>> return (Just Executable)
 
   -- If this package contains an executable, get the main file name.
   mainFile <- if pkgType == Just Library then return Nothing else
@@ -410,6 +417,30 @@ getMainFile flags =
                        candidates
                        defaultFile showCandidate True)
       ?>> return (fmap (either id id) defaultFile)
+
+-- | Ask if a test suite should be generated for the library.
+getGenTests :: InitFlags -> IO InitFlags
+getGenTests flags = do
+  genTests <-     return (flagToMaybe $ initializeTestSuite flags)
+                  -- Only generate a test suite if the package contains a library.
+              ?>> if (packageType flags) == Flag Executable then return (Just False) else return Nothing
+              ?>> maybePrompt flags
+                  (promptYesNo
+                    "Should I generate a test suite for the library"
+                    (Just True))
+  return $ flags { initializeTestSuite = maybeToFlag genTests }
+
+-- | Ask for the test root directory.
+getTestDir :: InitFlags -> IO InitFlags
+getTestDir flags = do
+  dirs <- return (testDirs flags)
+              -- Only need testDirs when test suite generation is enabled.
+          ?>> if not (eligibleForTestSuite flags) then return (Just []) else return Nothing
+          ?>> fmap (fmap ((:[]) . either id id)) (maybePrompt
+                   flags
+                   (promptList "Test directory" ["test"] (Just "test") id True))
+
+  return $ flags { testDirs = dirs }
 
 -- | Ask for the base language of the package.
 getLanguage :: InitFlags -> IO InitFlags
@@ -587,6 +618,12 @@ incVersion n = alterVersion (incVersion' n)
     incVersion' 0 (v:_)  = [v+1]
     incVersion' m []     = replicate m 0 ++ [1]
     incVersion' m (v:vs) = v : incVersion' (m-1) vs
+
+-- | Returns true if this package is eligible for test suite initialization.
+eligibleForTestSuite :: InitFlags -> Bool
+eligibleForTestSuite flags =
+  Flag True == initializeTestSuite flags
+  && Flag Executable /= packageType flags
 
 ---------------------------------------------------------------------------
 --  Prompting/user interaction  -------------------------------------------
@@ -805,11 +842,11 @@ writeFileSafe flags fileName content = do
   moveExistingFile flags fileName
   writeFile fileName content
 
--- | Create source directories, if they were given.
-createSourceDirectories :: InitFlags -> IO ()
-createSourceDirectories flags = case sourceDirs flags of
-                                  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
-                                  Nothing   -> return ()
+-- | Create directories, if they were given, and don't already exist.
+createDirectories :: Maybe [String] -> IO ()
+createDirectories mdirs = case mdirs of
+  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
+  Nothing   -> return ()
 
 -- | Create Main.hs, but only if we are init'ing an executable and
 --   the mainIs flag has been provided.
@@ -831,7 +868,7 @@ writeMainHs flags mainPath = do
   exists <- doesFileExist mainFullPath
   unless exists $ do
       message flags $ "Generating " ++ mainPath ++ "..."
-      writeFileSafe flags mainFullPath mainHs
+      writeFileSafe flags mainFullPath (mainHs flags)
 
 -- | Check that a main file exists.
 hasMainHs :: InitFlags -> Bool
@@ -840,14 +877,55 @@ hasMainHs flags = case mainIs flags of
              || packageType flags == Flag LibraryAndExecutable)
   _ -> False
 
--- | Default Main.hs file.  Used when no Main.hs exists.
-mainHs :: String
-mainHs = unlines
+-- | Default Main.(l)hs file.  Used when no Main.(l)hs exists.
+mainHs :: InitFlags -> String
+mainHs flags = (unlines . map prependPrefix)
   [ "module Main where"
   , ""
   , "main :: IO ()"
   , "main = putStrLn \"Hello, Haskell!\""
   ]
+  where
+    prependPrefix "" = ""
+    prependPrefix line
+      | isLiterate = "> " ++ line
+      | otherwise  = line
+    isLiterate = case mainIs flags of
+      Flag mainPath -> takeExtension mainPath == ".lhs"
+      _             -> False
+
+
+testFile :: String
+testFile = "MyLibTest.hs"
+
+-- | Create MyLibTest.hs, but only if we are init'ing a library and
+--   the initializeTestSuite flag has been set.
+createTestHs :: InitFlags -> IO ()
+createTestHs flags =
+  when (eligibleForTestSuite flags) $
+    case testDirs flags of
+      Just (testPath:_) -> writeTestHs flags (testPath </> testFile)
+      _ -> writeMainHs flags testFile
+
+--- | Write a test file.
+writeTestHs :: InitFlags -> FilePath -> IO ()
+writeTestHs flags testPath = do
+  dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
+  let testFullPath = dir </> testPath
+  exists <- doesFileExist testFullPath
+  unless exists $ do
+      message flags $ "Generating " ++ testPath ++ "..."
+      writeFileSafe flags testFullPath testHs
+
+-- | Default MyLibTest.hs file.
+testHs :: String
+testHs = unlines
+  [ "module Main (main) where"
+  , ""
+  , "main :: IO ()"
+  , "main = putStrLn \"Test suite not yet implemented.\""
+  ]
+
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
@@ -963,6 +1041,8 @@ generateCabalFile fileName c = trimTrailingWS $
            Flag Library    -> libraryStanza
            Flag LibraryAndExecutable -> libraryStanza $+$ executableStanza
            _               -> empty
+
+       , if eligibleForTestSuite c then testSuiteStanza else empty
        ]
  where
    specVer = fromMaybe defaultCabalVersion $ flagToMaybe (cabalVersion c)
@@ -1070,6 +1150,30 @@ generateCabalFile fileName c = trimTrailingWS $
              , generateBuildInfo LibBuild c
              ])
 
+   testSuiteStanza :: Doc
+   testSuiteStanza = text "\ntest-suite" <+>
+     text (maybe "" ((++"-test") . display) . flagToMaybe $ packageName c) $$
+     nest 2 (vcat
+             [ field  "default-language" (language c)
+               (Just "Base language which the package is written in.")
+               True
+
+             , fieldS "type" (Flag "exitcode-stdio-1.0")
+               (Just "The interface type and version of the test suite.")
+               True
+
+             , fieldS "hs-source-dirs" (listFieldS (testDirs c))
+               (Just "The directory where the test specifications are found.")
+               True
+
+             , fieldS "main-is" (Flag testFile)
+               (Just "The entrypoint to the test suite.")
+               True
+
+             , fieldS "build-depends" (listField (dependencies c))
+               (Just "Test dependencies.")
+               True
+             ])
 
 -- | Generate warnings for missing fields etc.
 generateWarnings :: InitFlags -> IO ()

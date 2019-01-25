@@ -70,6 +70,9 @@ data InitFlags =
               , sourceDirs   :: Maybe [String]
               , buildTools   :: Maybe [String]
 
+              , initializeTestSuite :: Flag Bool
+              , testDirs            :: Maybe [String]
+
               , initHcPath    :: Flag FilePath
 
               , initVerbosity :: Flag Verbosity

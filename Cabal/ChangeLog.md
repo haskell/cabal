@@ -434,7 +434,7 @@
   * Experimental support for emitting DWARF debug info.
   * Preliminary support for relocatable packages.
   * Allow cabal to be used inside cabal exec enviroments.
-  * hpc: support mutliple "ways" (e.g. profiling and vanilla).
+  * hpc: support multiple "ways" (e.g. profiling and vanilla).
   * Support GHCJS.
   * Improved command line documentation.
   * Add `-none` constraint syntax for version ranges (#2093).
