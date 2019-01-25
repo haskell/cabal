@@ -270,6 +270,7 @@ instance Semigroup SavedConfig where
         IT.homepage        = combine IT.homepage,
         IT.initHcPath      = combine IT.initHcPath,
         IT.initVerbosity   = combine IT.initVerbosity,
+        IT.initializeTestSuite = combine IT.initializeTestSuite,
         IT.language        = combine IT.language,
         IT.license         = combine IT.license,
         IT.mainIs          = combine IT.mainIs,
@@ -286,6 +287,7 @@ instance Semigroup SavedConfig where
         IT.simpleProject   = combine IT.simpleProject,
         IT.sourceDirs      = combineMonoid savedInitFlags IT.sourceDirs,
         IT.synopsis        = combine IT.synopsis,
+        IT.testDirs        = combineMonoid savedInitFlags IT.testDirs,
         IT.version         = combine IT.version
         }
         where

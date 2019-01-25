@@ -17,6 +17,7 @@
 	* init now generates valid `Main.lhs` files. (#5577)
 	* Init improvements: add flag '--application-dir', and creating
 	  a library create MyLib.hs. (#5740)
+	* Add support for generating test-suite via cabal init. (#5761)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)

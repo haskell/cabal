@@ -2313,6 +2313,18 @@ initOptions _ =
     (\v flags -> flags { IT.packageType = v })
     (noArg (Flag IT.LibraryAndExecutable))
 
+      , option [] ["tests"]
+        "Generate a test suite for the library."
+        IT.initializeTestSuite
+        (\v flags -> flags { IT.initializeTestSuite = v })
+        trueArg
+
+      , option [] ["test-dir"]
+        "Directory containing tests."
+        IT.testDirs (\v flags -> flags { IT.testDirs = v })
+        (reqArg' "DIR" (Just . (:[]))
+                       (fromMaybe []))
+
   , option [] ["simple"]
     "Create a simple project with sensible defaults."
     IT.simpleProject
