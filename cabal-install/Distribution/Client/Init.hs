@@ -457,7 +457,7 @@ getAppDir flags = do
              ?>> fmap (:[]) `fmap` guessAppDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "Application directory" ["app"] id))
+                      (promptListOptional' "Application directory" ["src-exe", "app"] id))
 
   return $ flags { applicationDirs = appDirs }
 
@@ -480,7 +480,7 @@ getSrcDir flags = do
              ?>> fmap (:[]) `fmap` guessSourceDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "Source directory" ["src"] id))
+                      (promptListOptional' "Source directory" ["src", "lib", "src-lib"] id))
 
   return $ flags { sourceDirs = srcDirs }
 
