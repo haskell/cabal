@@ -387,11 +387,11 @@ guessExtraSourceFiles flags = do
 getLibOrExec :: InitFlags -> IO InitFlags
 getLibOrExec flags = do
   pkgType <-     return (flagToMaybe $ packageType flags)
-           ?>> maybePrompt flags (either (const Library) id `fmap`
+           ?>> maybePrompt flags (either (const Executable) id `fmap`
                                    promptList "What does the package build"
-                                   [Library, Executable, LibraryAndExecutable]
+                                   [Executable, Library, LibraryAndExecutable]
                                    Nothing displayPackageType False)
-           ?>> return (Just Library)
+           ?>> return (Just Executable)
 
   -- If this package contains an executable, get the main file name.
   mainFile <- if pkgType == Just Library then return Nothing else
