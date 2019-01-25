@@ -45,6 +45,7 @@ import qualified Data.Traversable as T
 import Control.Monad
 import Text.PrettyPrint
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Distribution.Version
 import Distribution.Pretty
@@ -120,7 +121,11 @@ data IndefiniteComponent
         -- | The dependencies which need to be passed to the compiler
         -- to bring modules into scope.  These are 'OpenUnitId' because
         -- these may refer to partially instantiated libraries.
-        indefc_includes :: [ComponentInclude OpenUnitId ModuleRenaming]
+        indefc_includes :: [ComponentInclude OpenUnitId ModuleRenaming],
+        -- | Fully definite dependencies of this package.  We must
+        -- build this indefinite package after those dependencies,
+        -- in case someone wants to use it for TH.
+        indefc_inst_deps :: [ComponentInclude DefUnitId ModuleRenaming]
     }
 
 -- | Compute the dependencies of a 'ReadyComponent' that should
@@ -131,6 +136,9 @@ rc_depends rc = ordNub $
         Left indefc ->
             map (\ci -> (abstractUnitId $ ci_id ci, toMungedPackageId ci))
                 (indefc_includes indefc)
+              ++
+            map (\ci -> (unDefUnitId $ ci_id ci, toMungedPackageId ci))
+                (indefc_inst_deps indefc)
         Right instc ->
             map (\ci -> (unDefUnitId $ ci_id ci, toMungedPackageId ci))
                 (instc_includes instc)
@@ -337,11 +345,20 @@ toReadyComponents pid_map subst0 comps
     indefiniteComponent :: UnitId -> ComponentId -> InstM (Maybe ReadyComponent)
     indefiniteComponent uid cid
       | Just lc <- Map.lookup cid cmap = do
+            -- We're going to process includes, in case some of them
+            -- are fully definite even without any substitution.  We
+            -- want to build those too; see #5634.
+            inst_deps <- fmap catMaybes . forM (lc_includes lc) $ \ci ->
+                if Set.null (openUnitIdFreeHoles (ci_id ci))
+                    then do uid' <- substUnitId Map.empty (ci_id ci)
+                            return $ Just ci { ci_ann_id = fmap (const uid') (ci_ann_id ci) }
+                    else return Nothing
             exe_deps <- mapM (substExeDep Map.empty) (lc_exe_deps lc)
             let indefc = IndefiniteComponent {
                         indefc_requires = map fst (lc_insts lc),
                         indefc_provides = modShapeProvides (lc_shape lc),
-                        indefc_includes = lc_includes lc ++ lc_sig_includes lc
+                        indefc_includes = lc_includes lc ++ lc_sig_includes lc,
+                        indefc_inst_deps = inst_deps
                     }
             return $ Just ReadyComponent {
                     rc_ann_id       = (lc_ann_id lc) { ann_id = uid },
@@ -358,6 +375,7 @@ toReadyComponents pid_map subst0 comps
     ready_map = snd $ runInstM work Map.empty
 
     work
+        -- Top-level instantiation per subst0
         | not (Map.null subst0)
         , [lc] <- filter lc_public (Map.elems cmap)
         = do _ <- instantiateUnitId (lc_cid lc) subst0
