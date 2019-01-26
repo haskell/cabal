@@ -33,6 +33,9 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.IndexUtils.Timestamp
          ( IndexState )
 
+import Distribution.Client.CmdInstall.ClientInstallFlags
+         ( ClientInstallFlags(..) )
+
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.ConstraintSource
 
@@ -148,7 +151,8 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath,
+       projectConfigClientInstallFlags    :: ClientInstallFlags
      }
   deriving (Eq, Show, Generic)
 

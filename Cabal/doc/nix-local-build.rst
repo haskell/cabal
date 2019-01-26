@@ -557,6 +557,16 @@ repository, this command will build cabal-install HEAD and symlink the
 
     $ cabal new-install exe:cabal
 
+Where symlinking is not possible (eg. on Windows), ``--bindir-method`` and
+``--copy-bindir`` can be used instead:
+
+::
+
+    $ cabal new-install exe:cabal --bindir-method=copy --copy-bindir=~/bin
+
+Note that copied executables are not self-contained, since they might use
+data-files from the store.
+
 It is also possible to "install" libraries using the ``--lib`` flag. For 
 example, this command will build the latest Cabal library and install it:
 

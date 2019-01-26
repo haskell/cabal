@@ -111,7 +111,9 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags
+                  mempty -- ClientInstallFlags, not needed here
+                  haddockFlags
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

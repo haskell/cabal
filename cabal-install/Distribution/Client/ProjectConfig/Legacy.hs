@@ -31,6 +31,10 @@ import Distribution.Client.Types
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields )
 
+import Distribution.Client.CmdInstall.ClientInstallFlags
+         ( ClientInstallFlags(..), defaultClientInstallFlags
+         , clientInstallOptions )
+
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
@@ -131,7 +135,8 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyGlobalFlags       :: GlobalFlags,
        legacyConfigureShFlags  :: ConfigFlags,
        legacyConfigureExFlags  :: ConfigExFlags,
-       legacyInstallFlags      :: InstallFlags
+       legacyInstallFlags      :: InstallFlags,
+       legacyClientInstallFlags:: ClientInstallFlags
      } deriving Generic
 
 instance Monoid LegacySharedConfig where
@@ -155,14 +160,17 @@ instance Semigroup LegacySharedConfig where
 --
 commandLineFlagsToProjectConfig :: GlobalFlags
                                 -> ConfigFlags  -> ConfigExFlags
-                                -> InstallFlags -> HaddockFlags
+                                -> InstallFlags -> ClientInstallFlags
+                                -> HaddockFlags
                                 -> ProjectConfig
 commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
-                                installFlags haddockFlags =
+                                installFlags clientInstallFlags
+                                haddockFlags =
     mempty {
       projectConfigBuildOnly     = convertLegacyBuildOnlyFlags
                                      globalFlags configFlags
-                                     installFlags haddockFlags,
+                                     installFlags clientInstallFlags
+                                     haddockFlags,
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
                                      configExFlags installFlags,
@@ -209,6 +217,7 @@ convertLegacyGlobalConfig
     SavedConfig {
       savedGlobalFlags       = globalFlags,
       savedInstallFlags      = installFlags,
+      savedClientInstallFlags= clientInstallFlags,
       savedConfigureFlags    = configFlags,
       savedConfigureExFlags  = configExFlags,
       savedUserInstallDirs   = _,
@@ -227,6 +236,7 @@ convertLegacyGlobalConfig
     -- defaults in the various resolve functions in terms of the new types.
     configExFlags' = defaultConfigExFlags <> configExFlags
     installFlags'  = defaultInstallFlags  <> installFlags
+    clientInstallFlags'  = defaultClientInstallFlags  <> clientInstallFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
 
     configAllPackages   = convertLegacyPerPackageFlags
@@ -236,7 +246,8 @@ convertLegacyGlobalConfig
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
-                            installFlags' haddockFlags'
+                            installFlags' clientInstallFlags'
+                            haddockFlags'
 
 
 -- | Convert the project config from the legacy types to the 'ProjectConfig'
@@ -251,7 +262,8 @@ convertLegacyProjectConfig
     legacyPackagesRepo,
     legacyPackagesNamed,
     legacySharedConfig = LegacySharedConfig globalFlags configShFlags
-                                            configExFlags installSharedFlags,
+                                            configExFlags installSharedFlags
+                                            clientInstallFlags,
     legacyAllConfig,
     legacyLocalConfig  = LegacyPackageConfig configFlags installPerPkgFlags
                                              haddockFlags,
@@ -281,7 +293,8 @@ convertLegacyProjectConfig
                             configExFlags installSharedFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configShFlags
-                            installSharedFlags haddockFlags
+                            installSharedFlags clientInstallFlags
+                            haddockFlags
 
     perPackage (LegacyPackageConfig perPkgConfigFlags perPkgInstallFlags
                                     perPkgHaddockFlags) =
@@ -425,12 +438,15 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
 -- 'ProjectConfigBuildOnly' subset of the 'ProjectConfig'.
 --
 convertLegacyBuildOnlyFlags :: GlobalFlags -> ConfigFlags
-                            -> InstallFlags -> HaddockFlags
+                            -> InstallFlags -> ClientInstallFlags
+                            -> HaddockFlags
                             -> ProjectConfigBuildOnly
 convertLegacyBuildOnlyFlags globalFlags configFlags
-                              installFlags haddockFlags =
+                              installFlags clientInstallFlags
+                              haddockFlags =
     ProjectConfigBuildOnly{..}
   where
+    projectConfigClientInstallFlags = clientInstallFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
@@ -504,7 +520,8 @@ convertToLegacySharedConfig
       legacyGlobalFlags      = globalFlags,
       legacyConfigureShFlags = configFlags,
       legacyConfigureExFlags = configExFlags,
-      legacyInstallFlags     = installFlags
+      legacyInstallFlags     = installFlags,
+      legacyClientInstallFlags = projectConfigClientInstallFlags
     }
   where
     globalFlags = GlobalFlags {
@@ -923,6 +940,12 @@ legacySharedConfigFieldDescrs =
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)
+ ++
+  ( liftFields
+      legacyClientInstallFlags
+      (\flags conf -> conf { legacyClientInstallFlags = flags })
+  . commandOptionsToFields
+  ) (clientInstallOptions ParseArgs)
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO"
 

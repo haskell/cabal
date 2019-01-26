@@ -26,6 +26,8 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 
 import Distribution.Client.Types
+import Distribution.Client.CmdInstall.ClientInstallFlags
+import Distribution.Client.InstallSymlink
 import Distribution.Client.Dependency.Types
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.Targets
@@ -342,6 +344,21 @@ arbitraryGlobLikeStr = outerTerm
     braces s   = "{" ++ s ++ "}"
 
 
+instance Arbitrary OverwritePolicy where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary InstallMethod where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary ClientInstallFlags where
+    arbitrary =
+      ClientInstallFlags
+        <$> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+
 instance Arbitrary ProjectConfigBuildOnly where
     arbitrary =
       ProjectConfigBuildOnly
@@ -362,6 +379,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitrary
       where
         arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
@@ -381,7 +399,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigHttpTransport = x13
                                   , projectConfigIgnoreExpiry = x14
                                   , projectConfigCacheDir = x15
-                                  , projectConfigLogsDir = x16 } =
+                                  , projectConfigLogsDir = x16
+                                  , projectConfigClientInstallFlags = x17 } =
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
@@ -398,14 +417,17 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigHttpTransport = x13
                                , projectConfigIgnoreExpiry = x14'
                                , projectConfigCacheDir = x15
-                               , projectConfigLogsDir = x16 }
+                               , projectConfigLogsDir = x16
+                               , projectConfigClientInstallFlags = x17' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12',       x14'))
+         (x10', x11', x12',       x14'),
+         (            x17'            ))
           <- shrink
                ((x00, x01, x02, x03, x04),
                 (x05, x06, x07, x08, preShrink_NumJobs x09),
-                (x10, x11, x12,      x14))
+                (x10, x11, x12,      x14),
+                (          x17          ))
       ]
       where
         preShrink_NumJobs  = fmap (fmap Positive)

@@ -193,7 +193,9 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags
+                  installFlags
+                  mempty -- ClientInstallFlags, not needed here
+                  haddockFlags
     withOverrides env args program = program
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}
