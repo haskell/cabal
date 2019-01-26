@@ -1720,6 +1720,8 @@ data InstallFlags = InstallFlags {
     installLogFile          :: Flag PathTemplate,
     installBuildReports     :: Flag ReportLevel,
     installReportPlanningFailure :: Flag Bool,
+    -- Note: symlink-bindir is no longer used by v2-install and can be removed
+    -- when removing v1 commands
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
     installOneShot          :: Flag Bool,
