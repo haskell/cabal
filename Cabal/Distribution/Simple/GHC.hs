@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE CPP #-}
@@ -109,12 +110,12 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import Control.Monad (msum)
+import Control.Monad (msum, forM_)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath, removeFile, renameFile )
+         , canonicalizePath, removeFile, renameFile, getDirectoryContents )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
@@ -1820,7 +1821,7 @@ installLib    :: Verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   -- copy .hi files over:
   whenVanilla $ copyModuleFiles "hi"
   whenProf    $ copyModuleFiles "p_hi"
@@ -1829,7 +1830,10 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
   -- copy the built library files over:
   whenHasCode $ do
     whenVanilla $ do
-      sequence_ [ installOrdinary builtDir targetDir       (mkGenericStaticLibName (l ++ f))
+      sequence_ [ installOrdinary
+                    builtDir
+                    targetDir
+                    (mkGenericStaticLibName (l ++ f))
                 | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
                 , f <- "":extraLibFlavours (libBuildInfo lib)
                 ]
@@ -1837,12 +1841,41 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     whenProf $ do
       installOrdinary builtDir targetDir profileLibName
       whenGHCi $ installOrdinary builtDir targetDir ghciProfLibName
-    whenShared  $
-      sequence_ [ installShared builtDir dynlibTargetDir
-                    (mkGenericSharedLibName platform compiler_id (l ++ f))
-                | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
-                , f <- "":extraDynLibFlavours (libBuildInfo lib)
-                ]
+    whenShared $ if
+      -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
+      -- See ghc issue #15837 and Cabal PR #5855.
+      | specVersion pkg < mkVersion [2,5] -> do
+        sequence_ [ installShared builtDir dynlibTargetDir
+              (mkGenericSharedLibName platform compiler_id (l ++ f))
+          | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
+          , f <- "":extraDynLibFlavours (libBuildInfo lib)
+          ]
+      | otherwise -> do
+        sequence_ [ installShared
+                        builtDir
+                        dynlibTargetDir
+                        (mkGenericSharedLibName
+                          platform
+                          compiler_id
+                          (getHSLibraryName uid ++ f))
+                  | f <- "":extraDynLibFlavours (libBuildInfo lib)
+                  ]
+        sequence_ [ do
+                    files <- getDirectoryContents builtDir
+                    let l' = mkGenericSharedBundledLibName
+                              platform
+                              compiler_id
+                              l
+                    forM_ files $ \ file ->
+                      when (l' `isPrefixOf` file) $ do
+                        isFile <- doesFileExist (builtDir </> file)
+                        when isFile $ do
+                          installShared
+                            builtDir
+                            dynlibTargetDir
+                            file
+                  | l <- extraBundledLibs (libBuildInfo lib)
+                  ]
 
   where
     builtDir = componentBuildDir lbi clbi
