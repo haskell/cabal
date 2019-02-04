@@ -1,5 +1,6 @@
 name:               internal-preprocessor-test
 version:            0.1.0.0
+visibility:         public
 id:                 internal-preprocessor-test-0.1.0.0
 key:                internal-preprocessor-test-0.1.0.0
 license:            GPL-3
