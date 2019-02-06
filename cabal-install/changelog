@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 3.0.0.0 (current development version)
+	* Fix `sdist`'s output when sent to stdout. (#5874)
 	* Allow a list of dependencies to be provided for `repl --build-depends`. (#5845)
 	* Legacy commands are now only accessible with the `v1-` prefixes, and the `v2-`
 	  commands are the new default. Accordingly, the next version of Cabal will be
