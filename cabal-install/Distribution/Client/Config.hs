@@ -258,6 +258,7 @@ instance Semigroup SavedConfig where
           lastNonEmptyNL = lastNonEmptyNL' savedGlobalFlags
 
       combinedSavedInitFlags = IT.InitFlags {
+        IT.applicationDirs = combineMonoid savedInitFlags IT.applicationDirs,
         IT.author              = combine IT.author,
         IT.buildTools          = combineMonoid savedInitFlags IT.buildTools,
         IT.cabalVersion        = combine IT.cabalVersion,
@@ -805,7 +806,8 @@ commentSavedConfig = do
             IT.cabalVersion    = toFlag (mkVersion [1,10]),
             IT.language        = toFlag Haskell2010,
             IT.license         = toFlag BSD3,
-            IT.sourceDirs      = Nothing
+            IT.sourceDirs      = Nothing,
+            IT.applicationDirs = Nothing
             },
         savedInstallFlags      = defaultInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {

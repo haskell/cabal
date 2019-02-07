@@ -2368,8 +2368,14 @@ initOptions _ =
                                   ((Just . (:[])) `fmap` parse))
                       (maybe [] (fmap display)))
 
+  , option [] ["application-dir"]
+    "Directory containing package application executable."
+    IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
+    (reqArg' "DIR" (Just . (:[]))
+                   (fromMaybe []))
+
   , option [] ["source-dir", "sourcedir"]
-    "Directory containing package source."
+    "Directory containing package library source."
     IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
     (reqArg' "DIR" (Just . (:[]))
                    (fromMaybe []))

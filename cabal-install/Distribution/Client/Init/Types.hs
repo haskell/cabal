@@ -66,9 +66,10 @@ data InitFlags =
               , otherModules   :: Maybe [ModuleName]
               , otherExts      :: Maybe [Extension]
 
-              , dependencies :: Maybe [P.Dependency]
-              , sourceDirs   :: Maybe [String]
-              , buildTools   :: Maybe [String]
+              , dependencies    :: Maybe [P.Dependency]
+              , applicationDirs :: Maybe [String]
+              , sourceDirs      :: Maybe [String]
+              , buildTools      :: Maybe [String]
 
               , initializeTestSuite :: Flag Bool
               , testDirs            :: Maybe [String]
@@ -85,6 +86,7 @@ data InitFlags =
   -- not Flag [foo].
 
 data BuildType = LibBuild | ExecBuild
+  deriving Eq
 
 -- The type of package to initialize.
 data PackageType = Library | Executable | LibraryAndExecutable

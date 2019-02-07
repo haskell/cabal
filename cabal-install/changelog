@@ -16,6 +16,8 @@
 	* v2-test now succeeds when there are no test suites. (#5435)
 	* Add '--lib', '--exe', and '--libandexe' shorthands to init. (#5759)
 	* init now generates valid `Main.lhs` files. (#5577)
+	* Init improvements: add flag '--application-dir', and when creating
+	  a library also create a MyLib.hs module. (#5740)
 	* Add support for generating test-suite via cabal init. (#5761)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018

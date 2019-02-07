@@ -56,6 +56,8 @@ import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
   ( ModuleName )  -- And for the Text instance
+import qualified Distribution.ModuleName as ModuleName
+  ( fromString, toFilePath )
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
@@ -130,6 +132,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
   writeSetupFile initFlags'
   writeChangeLog initFlags'
   createDirectories (sourceDirs initFlags')
+  createLibHs initFlags'
+  createDirectories (applicationDirs initFlags')
   createMainHs initFlags'
   -- If a test suite was requested and this is not an executable-only
   -- package, then create the "test" directory.
@@ -159,6 +163,7 @@ extendFlags pkgIx sourcePkgDb =
   >=> getSynopsis
   >=> getCategory
   >=> getExtraSourceFiles
+  >=> getAppDir
   >=> getSrcDir
   >=> getGenTests
   >=> getTestDir
@@ -474,14 +479,47 @@ getGenComments flags = do
   where
     promptMsg = "Add informative comments to each field in the cabal file (y/n)"
 
--- | Ask for the source root directory.
+-- | Ask for the application root directory.
+getAppDir :: InitFlags -> IO InitFlags
+getAppDir flags = do
+  appDirs <- return (applicationDirs flags)
+             -- No application dir if this is a 'Library'.
+             ?>> if (packageType flags) == Flag Library then return (Just []) else return Nothing
+             ?>> fmap (:[]) `fmap` guessAppDir flags
+             ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
+                      flags
+                      (promptListOptional'
+                       ("Application " ++ mainFile ++ "directory")
+                       ["src-exe", "app"] id))
+
+  return $ flags { applicationDirs = appDirs }
+
+  where
+    mainFile = case mainIs flags of
+      Flag mainPath -> "(" ++ mainPath ++ ") "
+      _             -> ""
+
+-- | Try to guess app directory. Could try harder; for the
+--   moment just looks to see whether there is a directory called 'app'.
+guessAppDir :: InitFlags -> IO (Maybe String)
+guessAppDir flags = do
+  dir      <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
+  appIsDir <- doesDirectoryExist (dir </> "app")
+  return $ if appIsDir
+             then Just "app"
+             else Nothing
+
+-- | Ask for the source (library) root directory.
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
   srcDirs <- return (sourceDirs flags)
+             -- source dir if this is an 'Executable'.
+             ?>> if (packageType flags) == Flag Executable then return (Just []) else return Nothing
              ?>> fmap (:[]) `fmap` guessSourceDir flags
              ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
-                      (promptListOptional' "Source directory" ["src"] id))
+                      (promptListOptional' "Library source directory"
+                       ["src", "lib", "src-lib"] id))
 
   return $ flags { sourceDirs = srcDirs }
 
@@ -532,7 +570,31 @@ getModulesBuildToolsAndDeps pkgIx flags = do
   exts <-     return (otherExts flags)
           ?>> (return . Just . nub . concatMap extensions $ sourceFiles)
 
-  return $ flags { exposedModules = Just mods
+  -- If we're initializing a library and there were no modules discovered
+  -- then create an empty 'MyLib' module.
+  -- This gets a little tricky when 'sourceDirs' == 'applicationDirs' because
+  -- then the executable needs to set 'other-modules: MyLib' or else the build
+  -- fails.
+  let (finalModsList, otherMods) = case (packageType flags, mods) of
+
+        -- For an executable leave things as they are.
+        (Flag Executable, _) -> (mods, otherModules flags)
+
+        -- If a non-empty module list exists don't change anything.
+        (_, (_:_)) -> (mods, otherModules flags)
+
+        -- Library only: 'MyLib' in 'other-modules' only.
+        (Flag Library, _) -> ([myLibModule], Nothing)
+
+        -- For a 'LibraryAndExecutable' we need to have special handling.
+        -- If we don't have a module list (Nothing or empty), then create a Lib.
+        (_, []) ->
+          if sourceDirs flags == applicationDirs flags
+          then ([myLibModule], Just [myLibModule])
+          else ([myLibModule], Nothing)
+
+  return $ flags { exposedModules = Just finalModsList
+                 , otherModules   = otherMods
                  , buildTools     = tools
                  , dependencies   = deps
                  , otherExts      = exts
@@ -848,13 +910,43 @@ createDirectories mdirs = case mdirs of
   Just dirs -> forM_ dirs (createDirectoryIfMissing True)
   Nothing   -> return ()
 
+-- | Create MyLib.hs file, if its the only module in the liste.
+createLibHs :: InitFlags -> IO ()
+createLibHs flags = when ((exposedModules flags) == Just [myLibModule]) $ do
+  let modFilePath = ModuleName.toFilePath myLibModule ++ ".hs"
+  case sourceDirs flags of
+    Just (srcPath:_) -> writeLibHs flags (srcPath </> modFilePath)
+    _                -> writeLibHs flags modFilePath
+
+-- | Write a MyLib.hs file if it doesn't already exist.
+writeLibHs :: InitFlags -> FilePath -> IO ()
+writeLibHs flags libPath = do
+  dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
+  let libFullPath = dir </> libPath
+  exists <- doesFileExist libFullPath
+  unless exists $ do
+    message flags $ "Generating " ++ libPath ++ "..."
+    writeFileSafe flags libFullPath myLibHs
+
+myLibModule :: ModuleName
+myLibModule = ModuleName.fromString "MyLib"
+
+-- | Default MyLib.hs file.  Used when no Lib.hs exists.
+myLibHs :: String
+myLibHs = unlines
+  [ "module MyLib (someFunc) where"
+  , ""
+  , "someFunc :: IO ()"
+  , "someFunc = putStrLn \"someFunc\""
+  ]
+
 -- | Create Main.hs, but only if we are init'ing an executable and
 --   the mainIs flag has been provided.
 createMainHs :: InitFlags -> IO ()
 createMainHs flags =
   if hasMainHs flags then
-    case sourceDirs flags of
-      Just (srcPath:_) -> writeMainHs flags (srcPath </> mainFile)
+    case applicationDirs flags of
+      Just (appPath:_) -> writeMainHs flags (appPath </> mainFile)
       _ -> writeMainHs flags mainFile
   else return ()
   where
@@ -878,13 +970,26 @@ hasMainHs flags = case mainIs flags of
   _ -> False
 
 -- | Default Main.(l)hs file.  Used when no Main.(l)hs exists.
+--
+--   If we are initializing a new 'LibraryAndExecutable' then import 'MyLib'.
 mainHs :: InitFlags -> String
-mainHs flags = (unlines . map prependPrefix)
-  [ "module Main where"
-  , ""
-  , "main :: IO ()"
-  , "main = putStrLn \"Hello, Haskell!\""
-  ]
+mainHs flags = (unlines . map prependPrefix) $ case packageType flags of
+  Flag LibraryAndExecutable ->
+    [ "module Main where"
+    , ""
+    , "import qualified MyLib (someFunc)"
+    , ""
+    , "main :: IO ()"
+    , "main = do"
+    , "  putStrLn \"Hello, Haskell!\""
+    , "  MyLib.someFunc"
+    ]
+  _ ->
+    [ "module Main where"
+    , ""
+    , "main :: IO ()"
+    , "main = putStrLn \"Hello, Haskell!\""
+    ]
   where
     prependPrefix "" = ""
     prependPrefix line
@@ -893,7 +998,6 @@ mainHs flags = (unlines . map prependPrefix)
     isLiterate = case mainIs flags of
       Flag mainPath -> takeExtension mainPath == ".lhs"
       _             -> False
-
 
 testFile :: String
 testFile = "MyLibTest.hs"
@@ -1055,7 +1159,7 @@ generateCabalFile fileName c = trimTrailingWS $
 
    generateBuildInfo :: BuildType -> InitFlags -> Doc
    generateBuildInfo buildType c' = vcat
-     [ fieldS "other-modules" (listField (otherModules c'))
+     [ fieldS "other-modules" (listField otherMods)
               (Just $ case buildType of
                  LibBuild    -> "Modules included in this library but not exported."
                  ExecBuild -> "Modules included in this executable, other than Main.")
@@ -1065,11 +1169,13 @@ generateCabalFile fileName c = trimTrailingWS $
               (Just "LANGUAGE extensions used by modules in this package.")
               True
 
-     , fieldS "build-depends" (listField (dependencies c'))
+     , fieldS "build-depends" ((++ myLibDep) <$> listField (dependencies c'))
               (Just "Other library packages from which modules are imported.")
               True
 
-     , fieldS "hs-source-dirs" (listFieldS (sourceDirs c'))
+     , fieldS "hs-source-dirs" (listFieldS (case buildType of
+                                            LibBuild  -> sourceDirs c'
+                                            ExecBuild -> applicationDirs c'))
               (Just "Directories containing source files.")
               True
 
@@ -1081,6 +1187,19 @@ generateCabalFile fileName c = trimTrailingWS $
               (Just "Base language which the package is written in.")
               True
      ]
+     -- Hack: Can't construct a 'Dependency' which is just 'packageName'(?).
+     where
+       myLibDep = if exposedModules c' == Just [myLibModule] && buildType == ExecBuild
+                      then case packageName c' of
+                             Flag pkgName -> ", " ++ P.unPackageName pkgName
+                             _ -> ""
+                      else ""
+
+       -- Only include 'MyLib' in 'other-modules' of the executable.
+       otherModsFromFlag = otherModules c'
+       otherMods = if buildType == LibBuild && otherModsFromFlag == Just [myLibModule]
+                   then Nothing
+                   else otherModsFromFlag
 
    listField :: Text s => Maybe [s] -> Flag String
    listField = listFieldS . fmap (map display)
