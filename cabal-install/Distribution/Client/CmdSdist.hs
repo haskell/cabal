@@ -77,7 +77,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
 import Data.List
-    ( find, sortOn, nub, intercalate )
+    ( find, sortOn, nub )
 import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
@@ -213,15 +213,20 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
              RemoteTarballPackage {}               -> death
              RepoTarballPackage {}                 -> death
 
-    let write = if outputFile == "-"
-          then putStr . withOutputMarker verbosity . BSL.unpack
-          else BSL.writeFile outputFile
+    let -- Write String to stdout or file, using the default TextEncoding.
+        write
+          | outputFile == "-" = putStr . withOutputMarker verbosity
+          | otherwise = writeFile outputFile
+        -- Write raw ByteString to stdout or file as it is, without encoding.
+        writeLBS
+          | outputFile == "-" = BSL.putStr
+          | otherwise = BSL.writeFile outputFile
 
     case dir0 of
       Left tgz -> do
         case format of
           TarGzArchive -> do
-            write =<< BSL.readFile tgz
+            writeLBS =<< BSL.readFile tgz
             when (outputFile /= "-") $
               notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
           _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
@@ -239,7 +244,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
         case format of
             SourceList nulSep -> do
                 let prefix = makeRelative projectRootDir dir
-                write (BSL.pack . (++ [nulSep]) . intercalate [nulSep] . fmap ((prefix </>) . snd) $ files)
+                write $ concat [prefix </> i ++ [nulSep] | (_, i) <- files]
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
             TarGzArchive -> do
@@ -281,7 +286,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                     -- after the epoch is during 2001-09-09, so that does
                     -- nicely. See #5596.
                     setModTime entry = entry { Tar.entryTime = 1000000000 }
-                write . normalize . GZip.compress . Tar.write $ fmap setModTime entries
+                writeLBS . normalize . GZip.compress . Tar.write $ fmap setModTime entries
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
 
