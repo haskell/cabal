@@ -270,12 +270,12 @@ instance Semigroup SavedConfig where
         IT.initHcPath          = combine IT.initHcPath,
         IT.initVerbosity       = combine IT.initVerbosity,
         IT.initializeTestSuite = combine IT.initializeTestSuite,
+        IT.interactive         = combine IT.interactive,
         IT.language            = combine IT.language,
         IT.license             = combine IT.license,
         IT.mainIs              = combine IT.mainIs,
         IT.minimal             = combine IT.minimal,
         IT.noComments          = combine IT.noComments,
-        IT.nonInteractive      = combine IT.nonInteractive,
         IT.otherExts           = combineMonoid savedInitFlags IT.otherExts,
         IT.otherModules        = combineMonoid savedInitFlags IT.otherModules,
         IT.overwrite           = combine IT.overwrite,
@@ -801,7 +801,7 @@ commentSavedConfig = do
             globalRemoteRepos = toNubList [defaultRemoteRepo]
             },
         savedInitFlags       = mempty {
-            IT.nonInteractive  = toFlag False,
+            IT.interactive     = toFlag True,
             IT.cabalVersion    = toFlag (mkVersion [1,10]),
             IT.language        = toFlag Haskell2010,
             IT.license         = toFlag BSD3,

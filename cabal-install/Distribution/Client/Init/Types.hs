@@ -39,7 +39,7 @@ import GHC.Generics ( Generic )
 --   likely to want and/or that we are likely to be able to
 --   intelligently guess.
 data InitFlags =
-    InitFlags { nonInteractive :: Flag Bool
+    InitFlags { interactive    :: Flag Bool
               , quiet          :: Flag Bool
               , packageDir     :: Flag FilePath
               , noComments     :: Flag Bool

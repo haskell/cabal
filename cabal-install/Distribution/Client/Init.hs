@@ -201,7 +201,7 @@ getSimpleProject flags = do
                       (Just True))
   return $ case maybeToFlag simpleProj of
     Flag True ->
-      flags { nonInteractive = Flag True
+      flags { interactive = Flag False
             , simpleProject = Flag True
             , packageType = Flag LibraryAndExecutable
             , cabalVersion = Flag (mkVersion [2,4])
@@ -629,13 +629,13 @@ eligibleForTestSuite flags =
 --  Prompting/user interaction  -------------------------------------------
 ---------------------------------------------------------------------------
 
--- | Run a prompt or not based on the nonInteractive flag of the
+-- | Run a prompt or not based on the interactive flag of the
 --   InitFlags structure.
 maybePrompt :: InitFlags -> IO t -> IO (Maybe t)
 maybePrompt flags p =
-  case nonInteractive flags of
-    Flag True -> return Nothing
-    _         -> Just `fmap` p
+  case interactive flags of
+    Flag False -> return Nothing
+    _          -> Just `fmap` p
 
 -- | Create a prompt with optional default value that returns a
 --   String.
