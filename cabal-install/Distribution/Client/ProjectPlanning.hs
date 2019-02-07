@@ -1819,6 +1819,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
         elabStaticLib     = perPkgOptionFlag pkgid False packageConfigStaticLib
         elabDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
+        elabFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
         elabGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
         elabProfExe       = perPkgOptionFlag pkgid False packageConfigProf
@@ -3272,6 +3273,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configStaticLib           = toFlag elabStaticLib
 
     configDynExe              = toFlag elabDynExe
+    configFullyStaticExe      = toFlag elabFullyStaticExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty
     configProfLib             = toFlag elabProfLib
@@ -3625,6 +3627,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashVanillaLib          = elabVanillaLib,
       pkgHashSharedLib           = elabSharedLib,
       pkgHashDynExe              = elabDynExe,
+      pkgHashFullyStaticExe      = elabFullyStaticExe,
       pkgHashGHCiLib             = elabGHCiLib,
       pkgHashProfLib             = elabProfLib,
       pkgHashProfExe             = elabProfExe,

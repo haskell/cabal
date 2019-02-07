@@ -544,6 +544,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> shortListOf 5 arbitraryShortToken
@@ -590,6 +591,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigSharedLib = x05
                          , packageConfigStaticLib = x42
                          , packageConfigDynExe = x06
+                         , packageConfigFullyStaticExe = x44
                          , packageConfigProf = x07
                          , packageConfigProfLib = x08
                          , packageConfigProfExe = x09
@@ -642,6 +644,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigSharedLib = x05'
                       , packageConfigStaticLib = x42'
                       , packageConfigDynExe = x06'
+                      , packageConfigFullyStaticExe = x44'
                       , packageConfigProf = x07'
                       , packageConfigProfLib = x08'
                       , packageConfigProfExe = x09'
@@ -687,7 +690,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestFailWhenNoTestSuites = x48'
                       , packageConfigTestTestOptions = x49' }
       |  (((x00', x01', x02', x03', x04'),
-          (x05', x42', x06', x07', x08', x09'),
+          (x05', x42', x06', x44', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
@@ -698,7 +701,7 @@ instance Arbitrary PackageConfig where
           (x44', x45', x46', x47', x48', x49')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
-                (x05, x42, x06, x07, x08, x09),
+                (x05, x42, x06, x44, x07, x08, x09),
                 (x10, x11, map NonEmpty x12, x13, x14),
                 (x15, map NonEmpty x16,
                   map NonEmpty x17,

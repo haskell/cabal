@@ -1544,6 +1544,19 @@ Static linking options
     This uses GHCs ``-staticlib`` flag, which is available for iOS and with
     GHC 8.4 and later for other platforms as well.
 
+.. cfg-field:: executable-static: boolean
+               --enable-executable-static
+               --disable-executable-static
+    :synopsis: Build fully static executables.
+
+
+    :default: False
+
+    Build fully static executables.
+    This link all dependent libraries into executables statically,
+    including libc.
+    This passes ``-static`` and ``-optl=-static`` to GHC.
+
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

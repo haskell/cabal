@@ -146,6 +146,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
         withStaticLib :: Bool,  -- ^Whether to build static versions of libs (with all other libs rolled in)
         withDynExe    :: Bool,  -- ^Whether to link executables dynamically
+        withFullyStaticExe :: Bool,  -- ^Whether to link executables fully statically
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withProfLibDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
         withProfExeDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
