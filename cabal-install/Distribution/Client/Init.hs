@@ -577,7 +577,7 @@ getModulesBuildToolsAndDeps pkgIx flags = do
   -- fails.
   let (finalModsList, otherMods) = case (packageType flags, mods) of
 
-        -- For an executables leave things as they are.
+        -- For an executable leave things as they are.
         (Flag Executable, _) -> (mods, otherModules flags)
 
         -- If a non-empty module list exists don't change anything.
