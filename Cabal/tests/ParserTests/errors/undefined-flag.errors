@@ -1,0 +1,2 @@
+VERSION: Just (mkVersion [1,10])
+undefined-flag.cabal:0:0: These flags are used without having been defined: development

@@ -116,6 +116,7 @@ errorTests = testGroup "errors"
     , errorTest "version-sets-2.cabal"
     , errorTest "version-sets-3.cabal"
     , errorTest "version-sets-4.cabal"
+    , errorTest "undefined-flag.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
