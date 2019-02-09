@@ -520,20 +520,18 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     flags_2_5_0 = flags_latest {
-      -- Cabal < 2.5 does not understand --dependency=pkg:component=cid
+      -- Cabal < 2.5.0 does not understand --dependency=pkg:component=cid
       -- (public sublibraries), so we convert it to the legacy
       -- --dependency=pkg_or_internal_compoent=cid
-        configDependencies =
-          let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
-                Just $ GivenComponent
+      configDependencies =
+        let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
+              Just $ GivenComponent
                        (unqualComponentNameToPackageName cn)
                        LMainLibName
                        cid
-              convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
-                Just $ GivenComponent pn LMainLibName cid
-          in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
-        -- Cabal < 2.5 doesn't know about '--enable/disable-executable-static'.
-      , configFullyStaticExe = NoFlag
+            convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
+              Just $ GivenComponent pn LMainLibName cid
+        in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
       }
 
     flags_2_1_0 = flags_2_5_0 {
@@ -562,6 +560,7 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
+    -- Cabal < 1.23 doesn't know about '--enable/disable-executable-static'.
     (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
     flags_1_23_0 = flags_1_25_0 { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
@@ -569,6 +568,7 @@ filterConfigureFlags flags cabalLibVersion
                                 , configProf          = NoFlag
                                 , configProfExe       = Flag tryExeProfiling
                                 , configProfLib       = Flag tryLibProfiling
+                                , configFullyStaticExe = NoFlag
                                 }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
