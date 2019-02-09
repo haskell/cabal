@@ -572,8 +572,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = PD.ldOptions libBi
-                                                ++ [ "-static" | withFullyStaticExe lbi ],
+                      ghcOptLinkOptions       = PD.ldOptions libBi,
                       ghcOptLinkLibs          = extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
                       ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
@@ -1255,8 +1254,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions       = PD.ldOptions bnfo
-                                                ++ [ "-static" | withFullyStaticExe lbi ],
+                      ghcOptLinkOptions       = PD.ldOptions bnfo,
                       ghcOptLinkLibs          = extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $

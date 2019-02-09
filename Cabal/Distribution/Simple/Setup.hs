@@ -218,8 +218,6 @@ data ConfigFlags = ConfigFlags {
     configStaticLib     :: Flag Bool,     -- ^Build static library
     configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the
                                           -- executables.
-    configFullyStaticExe :: Flag Bool,     -- ^Enable fully static linking of the
-                                          -- executables.
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the
                                           -- executables.
     configProf          :: Flag Bool,     -- ^Enable profiling in the library
@@ -302,7 +300,6 @@ instance Eq ConfigFlags where
     && equal configSharedLib
     && equal configStaticLib
     && equal configDynExe
-    && equal configFullyStaticExe
     && equal configProfExe
     && equal configProf
     && equal configProfDetail
@@ -357,7 +354,6 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configSharedLib    = NoFlag,
     configStaticLib    = NoFlag,
     configDynExe       = Flag False,
-    configFullyStaticExe = Flag False,
     configProfExe      = NoFlag,
     configProf         = NoFlag,
     configProfDetail   = NoFlag,
@@ -494,11 +490,6 @@ configureOptions showOrParseArgs =
       ,option "" ["executable-dynamic"]
          "Executable dynamic linking"
          configDynExe (\v flags -> flags { configDynExe = v })
-         (boolOpt [] [])
-
-      ,option "" ["executable-static"]
-         "Executable fully static linking"
-         configFullyStaticExe (\v flags -> flags { configFullyStaticExe = v })
          (boolOpt [] [])
 
       ,option "" ["profiling"]

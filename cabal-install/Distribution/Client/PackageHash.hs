@@ -194,7 +194,6 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashVanillaLib          :: Bool,
        pkgHashSharedLib           :: Bool,
        pkgHashDynExe              :: Bool,
-       pkgHashFullyStaticExe      :: Bool,
        pkgHashGHCiLib             :: Bool,
        pkgHashProfLib             :: Bool,
        pkgHashProfExe             :: Bool,
@@ -288,7 +287,6 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "vanilla-lib" True  display pkgHashVanillaLib
       , opt   "shared-lib"  False display pkgHashSharedLib
       , opt   "dynamic-exe" False display pkgHashDynExe
-      , opt   "fully-static-exe" False display pkgHashFullyStaticExe
       , opt   "ghci-lib"    False display pkgHashGHCiLib
       , opt   "prof-lib"    False display pkgHashProfLib
       , opt   "prof-exe"    False display pkgHashProfExe
