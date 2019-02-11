@@ -1781,7 +1781,7 @@ defaultInstallFlags = InstallFlags {
                                    </> "$arch-$os-$compiler" </> "index.html")
 
 defaultMaxBackjumps :: Int
-defaultMaxBackjumps = 2000
+defaultMaxBackjumps = 4000
 
 defaultSolver :: PreSolver
 defaultSolver = AlwaysModular

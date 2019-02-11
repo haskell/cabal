@@ -2050,13 +2050,13 @@ Most users generally won't need these.
                --max-backjumps=N
     :synopsis: Maximum number of solver backjumps.
 
-    :default: 2000
+    :default: 4000
 
     Maximum number of backjumps (backtracking multiple steps) allowed
     while solving. Set -1 to allow unlimited backtracking, and 0 to
     disable backtracking completely.
 
-    The command line variant of this field is ``--max-backjumps=2000``.
+    The command line variant of this field is ``--max-backjumps=4000``.
 
 .. cfg-field:: reorder-goals: boolean
                --reorder-goals
