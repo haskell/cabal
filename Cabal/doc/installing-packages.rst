@@ -482,8 +482,8 @@ and all options specified with :option:`--configure-option` are passed on.
    detect and warn in this situation, but it is not perfect.
 
 In Cabal 2.0, support for a single positional argument was added to
-``setup configure`` This makes Cabal configure a the specific component
-to be configured. Specified names can be qualified with ``lib:`` or
+``setup configure`` This makes Cabal configure the specific component to
+be configured. Specified names can be qualified with ``lib:`` or
 ``exe:`` in case just a name is ambiguous (as would be the case for a
 package named ``p`` which has a library and an executable named ``p``.)
 This has the following effects:
