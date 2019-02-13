@@ -262,7 +262,7 @@ Packages are also used for distribution: the idea is that a package can
 be created in one place and be moved to a different computer and be
 usable in that different environment. There are a surprising number of
 details that have to be got right for this to work, and a good package
-system helps to simply this process and make it reliable.
+system helps to simplify this process and make it reliable.
 
 Packages come in two main flavours: libraries of reusable code, and
 complete programs. Libraries present a code interface, an API, while
