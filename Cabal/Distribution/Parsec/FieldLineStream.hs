@@ -19,7 +19,7 @@ import Prelude ()
 import qualified Data.ByteString as BS
 import qualified Text.Parsec     as Parsec
 
--- | This is essentially a lazy bytestring, but chunks are glued with newline '\n'.
+-- | This is essentially a lazy bytestring, but chunks are glued with newline @\'\\n\'@.
 data FieldLineStream
     = FLSLast !ByteString
     | FLSCons {-# UNPACK #-} !ByteString FieldLineStream
