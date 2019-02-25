@@ -188,7 +188,7 @@ flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
 -- Library file names
 
 -- | Create a library name for a static library from a given name.
--- Prepends 'lib' and appends the static library extension ('.a').
+-- Prepends @lib@ and appends the static library extension (@.a@).
 mkGenericStaticLibName :: String -> String
 mkGenericStaticLibName lib = "lib" ++ lib <.> "a"
 
@@ -199,7 +199,7 @@ mkProfLibName :: UnitId -> String
 mkProfLibName lib =  mkGenericStaticLibName (getHSLibraryName lib ++ "_p")
 
 -- | Create a library name for a shared library from a given name.
--- Prepends 'lib' and appends the '-<compilerFlavour><compilerVersion>'
+-- Prepends @lib@ and appends the @-\<compilerFlavour\>\<compilerVersion\>@
 -- as well as the shared library extension.
 mkGenericSharedLibName :: Platform -> CompilerId -> String -> String
 mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib
@@ -207,8 +207,8 @@ mkGenericSharedLibName platform (CompilerId compilerFlavor compilerVersion) lib
   where comp = prettyShow compilerFlavor ++ prettyShow compilerVersion
 
 -- Implement proper name mangling for dynamical shared objects
--- libHS<packagename>-<compilerFlavour><compilerVersion>
--- e.g. libHSbase-2.1-ghc6.6.1.so
+-- @libHS\<packagename\>-\<compilerFlavour\>\<compilerVersion\>@
+-- e.g. @libHSbase-2.1-ghc6.6.1.so@
 mkSharedLibName :: Platform -> CompilerId -> UnitId -> String
 mkSharedLibName platform comp lib
   = mkGenericSharedLibName platform comp (getHSLibraryName lib)

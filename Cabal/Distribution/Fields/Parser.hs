@@ -161,42 +161,42 @@ inLexerMode (LexerMode mode) p =
 -- @
 -- CabalStyleFile ::= SecElems
 --
--- SecElems       ::= SecElem* '\n'?
--- SecElem        ::= '\n' SecElemLayout | SecElemBraces
+-- SecElems       ::= SecElem* '\\n'?
+-- SecElem        ::= '\\n' SecElemLayout | SecElemBraces
 -- SecElemLayout  ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
 -- SecElemBraces  ::= FieldInline | FieldBraces |                 SectionBraces
--- FieldLayout    ::= name ':' line? ('\n' line)*
--- FieldBraces    ::= name ':' '\n'? '{' content '}'
+-- FieldLayout    ::= name ':' line? ('\\n' line)*
+-- FieldBraces    ::= name ':' '\\n'? '{' content '}'
 -- FieldInline    ::= name ':' content
 -- SectionLayout  ::= name arg* SecElems
--- SectionBraces  ::= name arg* '\n'? '{' SecElems '}'
+-- SectionBraces  ::= name arg* '\\n'? '{' SecElems '}'
 -- @
 --
 -- and the same thing but left factored...
 --
 -- @
 -- SecElems              ::= SecElem*
--- SecElem               ::= '\n' name SecElemLayout
+-- SecElem               ::= '\\n' name SecElemLayout
 --                         |      name SecElemBraces
 -- SecElemLayout         ::= ':'   FieldLayoutOrBraces
 --                         | arg*  SectionLayoutOrBraces
--- FieldLayoutOrBraces   ::= '\n'? '{' content '}'
---                         | line? ('\n' line)*
--- SectionLayoutOrBraces ::= '\n'? '{' SecElems '\n'? '}'
+-- FieldLayoutOrBraces   ::= '\\n'? '{' content '}'
+--                         | line? ('\\n' line)*
+-- SectionLayoutOrBraces ::= '\\n'? '{' SecElems '\\n'? '}'
 --                         | SecElems
 -- SecElemBraces         ::= ':' FieldInlineOrBraces
---                         | arg* '\n'? '{' SecElems '\n'? '}'
--- FieldInlineOrBraces   ::= '\n'? '{' content '}'
+--                         | arg* '\\n'? '{' SecElems '\\n'? '}'
+-- FieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
 -- @
 --
 -- Note how we have several productions with the sequence:
 --
--- > '\n'? '{'
+-- > '\\n'? '{'
 --
 -- That is, an optional newline (and indent) followed by a @{@ token.
 -- In the @SectionLayoutOrBraces@ case you can see that this makes it
--- not fully left factored (because @SecElems@ can start with a @\n@).
+-- not fully left factored (because @SecElems@ can start with a @\\n@).
 -- Fully left factoring here would be ugly, and though we could use a
 -- lookahead of two tokens to resolve the alternatives, we can't
 -- conveniently use Parsec's 'try' here to get a lookahead of only two.
@@ -223,7 +223,7 @@ elements ilevel = many (element ilevel)
 -- layout style or braces style. For layout style then it must start on
 -- a line on its own (so that we know its indentation level).
 --
--- element ::= '\n' name elementInLayoutContext
+-- element ::= '\\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel =
@@ -251,7 +251,7 @@ elementInLayoutContext ilevel name =
 -- themselves use braces style, or inline style fields.
 --
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
---                             | arg* '\n'? '{' elements '\n'? '}'
+--                             | arg* '\\n'? '{' elements '\\n'? '}'
 elementInNonLayoutContext :: Name Position -> Parser (Field Position)
 elementInNonLayoutContext name =
       (do colon; fieldInlineOrBraces name)
@@ -264,8 +264,8 @@ elementInNonLayoutContext name =
 
 -- The body of a field, using either layout style or braces style.
 --
--- fieldLayoutOrBraces   ::= '\n'? '{' content '}'
---                         | line? ('\n' line)*
+-- fieldLayoutOrBraces   ::= '\\n'? '{' content '}'
+--                         | line? ('\\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
 fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
   where
@@ -283,7 +283,7 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
 
 -- The body of a section, using either layout style or braces style.
 --
--- sectionLayoutOrBraces ::= '\n'? '{' elements \n? '}'
+-- sectionLayoutOrBraces ::= '\\n'? '{' elements \\n? '}'
 --                         | elements
 sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
 sectionLayoutOrBraces ilevel =
@@ -296,7 +296,7 @@ sectionLayoutOrBraces ilevel =
 
 -- The body of a field, using either inline style or braces.
 --
--- fieldInlineOrBraces   ::= '\n'? '{' content '}'
+-- fieldInlineOrBraces   ::= '\\n'? '{' content '}'
 --                         | content
 fieldInlineOrBraces :: Name Position -> Parser (Field Position)
 fieldInlineOrBraces name =
