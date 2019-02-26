@@ -62,7 +62,9 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Path construction
     binDirectoryFor,
-    binDirectories
+    binDirectories,
+    storePackageInstallDirs,
+    storePackageInstallDirs'
   ) where
 
 import Prelude ()
@@ -3168,13 +3170,20 @@ storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs StoreDirLayout{ storePackageDirectory
-                                      , storeDirectory }
-                        compid ipkgid =
+storePackageInstallDirs storeDirLayout compid ipkgid =
+  storePackageInstallDirs' storeDirLayout compid $ newSimpleUnitId ipkgid
+
+storePackageInstallDirs' :: StoreDirLayout
+                         -> CompilerId
+                         -> UnitId
+                         -> InstallDirs.InstallDirs FilePath
+storePackageInstallDirs' StoreDirLayout{ storePackageDirectory
+                                       , storeDirectory }
+                         compid unitid =
     InstallDirs.InstallDirs {..}
   where
     store        = storeDirectory compid
-    prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
+    prefix       = storePackageDirectory compid unitid
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
