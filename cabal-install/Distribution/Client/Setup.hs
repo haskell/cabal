@@ -2207,7 +2207,7 @@ initCommand = CommandUI {
       ++ "will try to guess as much as possible and prompt you for "
       ++ "the rest. You can change init to always be interactive by "
       ++ "setting the interactive flag in your configuration file. "
-      ++ "Command-line arguments are provided for scripting purposes.\n"
+      ++ "Command-line arguments are provided for scripting purposes.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",
