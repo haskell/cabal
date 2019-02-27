@@ -105,7 +105,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
 
             -- Interpret the targets on the command line as test targets
             -- (as opposed to say build or haddock targets).
-            targets <- either (reportTargetProblems failWhenNoTestSuites verbosity) return
+            targets <- either (reportTargetProblems verbosity failWhenNoTestSuites) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -210,8 +210,8 @@ data TargetProblem =
    | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-reportTargetProblems :: Flag Bool -> Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems failWhenNoTestSuites verbosity problems =
+reportTargetProblems :: Verbosity -> Flag Bool -> [TargetProblem] -> IO a
+reportTargetProblems verbosity failWhenNoTestSuites problems =
   case (failWhenNoTestSuites, problems) of
     (Flag True, [TargetProblemNoTests _]) ->
       die' verbosity problemsMessage
