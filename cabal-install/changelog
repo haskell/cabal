@@ -27,6 +27,7 @@
 	  that make it possible to copy the executable instead of symlinking it
 	* --symlink-bindir no longer controls the symlinking directory of
 	  v2-install (installdir controls both symlinking and copying now)
+	* Default to non-interactive init.
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
