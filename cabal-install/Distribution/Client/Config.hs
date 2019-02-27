@@ -820,7 +820,7 @@ commentSavedConfig = do
             globalRemoteRepos = toNubList [defaultRemoteRepo]
             },
         savedInitFlags       = mempty {
-            IT.interactive     = toFlag True,
+            IT.interactive     = toFlag False,
             IT.cabalVersion    = toFlag (mkVersion [1,10]),
             IT.language        = toFlag Haskell2010,
             IT.license         = toFlag BSD3,
