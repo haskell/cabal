@@ -2211,7 +2211,7 @@ initOptions _ =
   [ option ['i'] ["interactive"]
     "interactive mode."
     IT.interactive (\v flags -> flags { IT.interactive = v })
-    (boolOpt' (['i'], ["interactive"]) (['n'], ["nonInteractive"]))
+    (boolOpt' (['i'], ["interactive"]) (['n'], ["non-interactive"]))
 
   , option ['q'] ["quiet"]
     "Do not generate log messages to stdout."
