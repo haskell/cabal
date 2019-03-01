@@ -420,8 +420,19 @@ instance Parsec VersionRange where
 
                 "==" -> do
                     P.spaces
-                    (wild, v) <- verOrWild
-                    pure $ (if wild then withinVersion else thisVersion) v
+                    (do (wild, v) <- verOrWild
+                        pure $ (if wild then withinVersion else thisVersion) v
+                     <|>
+                     (verSet' thisVersion =<< verSet))
+
+                "^>=" -> do
+                    P.spaces
+                    (do (wild, v) <- verOrWild
+                        when wild $ P.unexpected $
+                            "wild-card version after ^>= operator"
+                        majorBoundVersion' v
+                     <|>
+                     (verSet' majorBoundVersion =<< verSet))
 
                 _ -> do
                     P.spaces
@@ -431,7 +442,6 @@ instance Parsec VersionRange where
                     case op of
                         ">="  -> pure $ orLaterVersion v
                         "<"   -> pure $ earlierVersion v
-                        "^>=" -> majorBoundVersion' v
                         "<="  -> pure $ orEarlierVersion v
                         ">"   -> pure $ laterVersion v
                         _ -> fail $ "Unknown version operator " ++ show op
@@ -468,6 +478,31 @@ instance Parsec VersionRange where
             embed (MajorBoundVersionF u) = intersectVersionRanges
                 (orLaterVersion u) (earlierVersion (majorUpperBound u))
             embed vr = embedVersionRange vr
+
+        -- version set notation (e.g. "== { 0.0.1.0, 0.0.2.0, 0.1.0.0 }")
+        verSet' op vs = do
+            csv <- askCabalSpecVersion
+            if csv >= CabalSpecV3_0
+            then pure $ foldr1 unionVersionRanges (map op vs)
+            else fail $ unwords
+                [ "version set syntax used."
+                , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
+                , "Alternatively, if broader compatibility is important then use"
+                , "a series of single version constraints joined with the || operator:"
+                , prettyShow (foldr1 unionVersionRanges (map op vs))
+                ]
+
+        verSet :: CabalParsing m => m [Version]
+        verSet = do
+            _ <- P.char '{'
+            vs <- P.sepBy1 (P.spaces *> verPlain) (P.try (P.spaces *> P.char ','))
+            P.spaces
+            _ <- P.char '}'
+            pure vs
+
+        -- plain version without tags or wildcards
+        verPlain :: CabalParsing m => m Version
+        verPlain = mkVersion <$> P.sepBy1 P.integral (P.char '.')
 
         -- either wildcard or normal version
         verOrWild :: CabalParsing m => m (Bool, Version)

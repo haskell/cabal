@@ -1,5 +1,6 @@
 # 2.6.0.0 (current development version)
   * TODO
+  * `^>=` takes multiple parameters
   * 'check' reports warnings for various ghc-\*-options fields separately
     ([#5342](https://github.com/haskell/cabal/issues/5432)).
   * `KnownExtension`: added new extension `DerivingVia`.

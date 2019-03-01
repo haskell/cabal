@@ -2134,6 +2134,25 @@ system-dependent values for these fields.
        renaming in ``build-depends``; however, this support has since been
        removed and should not be used.
 
+    Starting with Cabal 3.0, a set notation for the ``==`` and ``^>=`` operator
+    is available. For instance,
+
+    ::
+
+        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+                     GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
+
+        build-depends: network ^>= 2.6.3.6 || ^>= 2.7.0.2 || ^>= 2.8.0.0 || ^>= 3.0.1.0
+
+    can be then written in a more convenient and concise form
+
+    ::
+
+        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+
+        build-depends: network ^>= { 2.6.3.6, 2.7.0.2, 2.8.0.0, 3.0.1.0 }
+
+
 .. pkg-field:: other-modules: identifier list
 
     A list of modules used by the component but not exposed to users.
