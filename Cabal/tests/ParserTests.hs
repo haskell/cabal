@@ -112,6 +112,10 @@ errorTests = testGroup "errors"
     , errorTest "spdx-2.cabal"
     , errorTest "spdx-3.cabal"
     , errorTest "removed-fields.cabal"
+    , errorTest "version-sets-1.cabal"
+    , errorTest "version-sets-2.cabal"
+    , errorTest "version-sets-3.cabal"
+    , errorTest "version-sets-4.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -159,6 +163,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "spdx-3.cabal"
     , regressionTest "hidden-main-lib.cabal"
     , regressionTest "jaeger-flamegraph.cabal"
+    , regressionTest "version-sets.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

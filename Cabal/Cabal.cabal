@@ -73,6 +73,14 @@ extra-source-files:
   tests/ParserTests/errors/spdx-2.errors
   tests/ParserTests/errors/spdx-3.cabal
   tests/ParserTests/errors/spdx-3.errors
+  tests/ParserTests/errors/version-sets-1.cabal
+  tests/ParserTests/errors/version-sets-1.errors
+  tests/ParserTests/errors/version-sets-2.cabal
+  tests/ParserTests/errors/version-sets-2.errors
+  tests/ParserTests/errors/version-sets-3.cabal
+  tests/ParserTests/errors/version-sets-3.errors
+  tests/ParserTests/errors/version-sets-4.cabal
+  tests/ParserTests/errors/version-sets-4.errors
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
@@ -172,6 +180,9 @@ extra-source-files:
   tests/ParserTests/regressions/th-lift-instances.cabal
   tests/ParserTests/regressions/th-lift-instances.expr
   tests/ParserTests/regressions/th-lift-instances.format
+  tests/ParserTests/regressions/version-sets.cabal
+  tests/ParserTests/regressions/version-sets.expr
+  tests/ParserTests/regressions/version-sets.format
   tests/ParserTests/regressions/wl-pprint-indef.cabal
   tests/ParserTests/regressions/wl-pprint-indef.expr
   tests/ParserTests/regressions/wl-pprint-indef.format

@@ -495,12 +495,15 @@ instance Parsec VersionRange where
         verSet :: CabalParsing m => m [Version]
         verSet = do
             _ <- P.char '{'
-            vs <- P.sepBy1 (P.spaces *> verPlain) (P.try (P.spaces *> P.char ','))
             P.spaces
+            vs <- P.sepBy1 (verPlain <* P.spaces) (P.char ',' *> P.spaces)
             _ <- P.char '}'
             pure vs
 
-        -- plain version without tags or wildcards
+        -- a plain version without tags or wildcards
+        -- note: this uses P.integral which allows redundant zeros.
+        --   This is not a problem because 'verPlain' is only used by
+        --   'verSet' which requires cabal > 3
         verPlain :: CabalParsing m => m Version
         verPlain = mkVersion <$> P.sepBy1 P.integral (P.char '.')
 
