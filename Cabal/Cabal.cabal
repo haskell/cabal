@@ -117,6 +117,9 @@ extra-source-files:
   tests/ParserTests/regressions/common2.cabal
   tests/ParserTests/regressions/common2.expr
   tests/ParserTests/regressions/common2.format
+  tests/ParserTests/regressions/common3.cabal
+  tests/ParserTests/regressions/common3.expr
+  tests/ParserTests/regressions/common3.format
   tests/ParserTests/regressions/cxx-options-with-optimization.cabal
   tests/ParserTests/regressions/cxx-options-with-optimization.check
   tests/ParserTests/regressions/elif.cabal
