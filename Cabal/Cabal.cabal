@@ -684,3 +684,25 @@ test-suite hackage-tests
   ghc-options: -Wall -rtsopts -threaded
   default-extensions: CPP
   default-language: Haskell2010
+
+test-suite rpmvercmp
+  type: exitcode-stdio-1.0
+  main-is: RPMVerCmp.hs
+
+  hs-source-dirs: tests
+  build-depends:
+    base,
+    Cabal,
+    bytestring
+
+  build-depends:
+    tasty >= 1.1.0.3 && < 1.2,
+    tasty-hunit,
+    tasty-quickcheck,
+    QuickCheck
+
+  c-sources: tests/cbits/rpmvercmp.c
+  cc-options: -Wall
+
+  ghc-options: -Wall
+  default-language: Haskell2010
