@@ -15,6 +15,7 @@ module Distribution.Parsec.Newtypes (
     VCat (..),
     FSep (..),
     NoCommaFSep (..),
+    Sep (..),
     -- ** Type
     List,
     -- * Version & License
