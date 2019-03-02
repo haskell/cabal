@@ -35,39 +35,41 @@ module Distribution.PackageDescription.Parsec (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad                                (guard)
-import Control.Monad.State.Strict                   (StateT, execStateT)
-import Control.Monad.Trans.Class                    (lift)
-import Data.List                                    (partition)
+import Control.Applicative                           (Const (..))
+import Control.Monad                                 (guard)
+import Control.Monad.State.Strict                    (StateT, execStateT)
+import Control.Monad.Trans.Class                     (lift)
+import Data.List                                     (partition)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar
-import Distribution.FieldGrammar.Parsec             (NamelessField (..))
-import Distribution.Fields.ConfVar                  (parseConditionConfVar)
-import Distribution.Fields.Field                    (FieldName, getName)
-import Distribution.Fields.LexerMonad               (LexWarning, toPWarnings)
+import Distribution.FieldGrammar.Parsec              (NamelessField (..))
+import Distribution.Fields.ConfVar                   (parseConditionConfVar)
+import Distribution.Fields.Field                     (FieldName, getName)
+import Distribution.Fields.LexerMonad                (LexWarning, toPWarnings)
 import Distribution.Fields.Parser
 import Distribution.Fields.ParseResult
 import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration (freeVars)
 import Distribution.PackageDescription.FieldGrammar
-import Distribution.PackageDescription.Quirks       (patchQuirks)
-import Distribution.Parsec                          (parsec, simpleParsec)
-import Distribution.Parsec.FieldLineStream          (fieldLineStreamFromBS)
-import Distribution.Parsec.Newtypes                 (CommaFSep, List, SpecVersion (..), Token)
-import Distribution.Parsec.Position                 (Position (..), zeroPos)
-import Distribution.Parsec.Warning                  (PWarnType (..))
-import Distribution.Pretty                          (prettyShow)
-import Distribution.Simple.Utils                    (fromUTF8BS)
+import Distribution.PackageDescription.Quirks        (patchQuirks)
+import Distribution.Parsec                           (parsec, simpleParsec)
+import Distribution.Parsec.FieldLineStream           (fieldLineStreamFromBS)
+import Distribution.Parsec.Newtypes                  (CommaFSep, List, SpecVersion (..), Token)
+import Distribution.Parsec.Position                  (Position (..), zeroPos)
+import Distribution.Parsec.Warning                   (PWarnType (..))
+import Distribution.Pretty                           (prettyShow)
+import Distribution.Simple.Utils                     (fromUTF8BS)
 import Distribution.Types.CondTree
-import Distribution.Types.Dependency                (Dependency)
+import Distribution.Types.Dependency                 (Dependency)
 import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibType            (knownForeignLibTypes)
-import Distribution.Types.GenericPackageDescription (emptyGenericPackageDescription)
-import Distribution.Types.LibraryVisibility         (LibraryVisibility (..))
-import Distribution.Types.PackageDescription        (specVersion')
-import Distribution.Types.UnqualComponentName       (UnqualComponentName, mkUnqualComponentName)
-import Distribution.Utils.Generic                   (breakMaybe, unfoldrM, validateUTF8)
-import Distribution.Verbosity                       (Verbosity)
+import Distribution.Types.ForeignLibType             (knownForeignLibTypes)
+import Distribution.Types.GenericPackageDescription  (emptyGenericPackageDescription)
+import Distribution.Types.LibraryVisibility          (LibraryVisibility (..))
+import Distribution.Types.PackageDescription         (specVersion')
+import Distribution.Types.UnqualComponentName        (UnqualComponentName, mkUnqualComponentName)
+import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
+import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version
        (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
        versionNumbers)
@@ -75,6 +77,7 @@ import Distribution.Version
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
 import qualified Data.Map.Strict                                   as Map
+import qualified Data.Set                                          as Set
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -192,8 +195,10 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
 
     -- Sections
     let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
+    gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
-    view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
+    checkForUndefinedFlags gpd1
+    return gpd1
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
@@ -661,6 +666,24 @@ onAllBranches p = go mempty
     goBranch :: a -> CondBranch v c a -> Bool
     goBranch _   (CondBranch _ _ Nothing) = False
     goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
+
+-------------------------------------------------------------------------------
+-- Flag check
+-------------------------------------------------------------------------------
+
+checkForUndefinedFlags :: GenericPackageDescription -> ParseResult ()
+checkForUndefinedFlags gpd = do
+    let definedFlags, usedFlags :: Set.Set FlagName
+        definedFlags = toSetOf (L.genPackageFlags . traverse . getting flagName) gpd
+        usedFlags    = getConst $ L.allCondTrees f gpd
+
+    -- Note: we can check for defined, but unused flags here too.
+    unless (usedFlags `Set.isSubsetOf` definedFlags) $ parseFailure zeroPos $
+        "These flags are used without having been defined: " ++
+        intercalate ", " [ unFlagName fn | fn <- Set.toList $ usedFlags `Set.difference` definedFlags ]
+  where
+    f :: CondTree ConfVar c a -> Const (Set.Set FlagName) (CondTree ConfVar c a)
+    f ct = Const (Set.fromList (freeVars ct))
 
 -------------------------------------------------------------------------------
 -- Old syntax
