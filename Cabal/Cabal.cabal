@@ -605,7 +605,7 @@ test-suite parser-tests
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.1 && <0.1
+      tree-diff      >= 0.0.2 && <0.1
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language
@@ -671,7 +671,7 @@ test-suite hackage-tests
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.1 && <0.1
+      tree-diff      >= 0.0.2 && <0.1
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language

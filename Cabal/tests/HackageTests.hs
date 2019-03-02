@@ -70,7 +70,8 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Options.Applicative                               as O
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff      (ansiWlEditExpr, ediff)
+import Data.TreeDiff        (ediff)
+import Data.TreeDiff.Pretty (ansiWlEditExprCompact)
 import Instances.TreeDiff ()
 #endif
 
@@ -238,7 +239,7 @@ roundtripTest testFieldsTransform fpath bs = do
     assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
-        print $ ansiWlEditExpr $ ediff x y
+        print $ ansiWlEditExprCompact $ ediff x y
 #else
         putStrLn "<<<<<<"
         print x
