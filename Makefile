@@ -67,6 +67,11 @@ gen-extra-source-files-cli :
 	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.pp $$(pwd)/cabal-install/cabal-install.cabal
 	$(MAKE) cabal-install-prod
 
+# ghcid
+
+ghcid-lib :
+	ghcid -c 'cabal new-repl Cabal'
+
 # doctests (relies on .ghc.environment files)
 
 doctest :
