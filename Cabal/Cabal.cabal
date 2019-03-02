@@ -57,6 +57,10 @@ extra-source-files:
   tests/ParserTests/errors/leading-comma-2c.errors
   tests/ParserTests/errors/leading-comma.cabal
   tests/ParserTests/errors/leading-comma.errors
+  tests/ParserTests/errors/mixin-1.cabal
+  tests/ParserTests/errors/mixin-1.errors
+  tests/ParserTests/errors/mixin-2.cabal
+  tests/ParserTests/errors/mixin-2.errors
   tests/ParserTests/errors/multiple-libs.cabal
   tests/ParserTests/errors/multiple-libs.errors
   tests/ParserTests/errors/noVersion.cabal
@@ -73,6 +77,8 @@ extra-source-files:
   tests/ParserTests/errors/spdx-2.errors
   tests/ParserTests/errors/spdx-3.cabal
   tests/ParserTests/errors/spdx-3.errors
+  tests/ParserTests/errors/undefined-flag.cabal
+  tests/ParserTests/errors/undefined-flag.errors
   tests/ParserTests/errors/version-sets-1.cabal
   tests/ParserTests/errors/version-sets-1.errors
   tests/ParserTests/errors/version-sets-2.cabal
@@ -81,8 +87,6 @@ extra-source-files:
   tests/ParserTests/errors/version-sets-3.errors
   tests/ParserTests/errors/version-sets-4.cabal
   tests/ParserTests/errors/version-sets-4.errors
-  tests/ParserTests/errors/undefined-flag.cabal
-  tests/ParserTests/errors/undefined-flag.errors
   tests/ParserTests/ipi/Includes2.cabal
   tests/ParserTests/ipi/Includes2.expr
   tests/ParserTests/ipi/Includes2.format
@@ -152,6 +156,15 @@ extra-source-files:
   tests/ParserTests/regressions/leading-comma.cabal
   tests/ParserTests/regressions/leading-comma.expr
   tests/ParserTests/regressions/leading-comma.format
+  tests/ParserTests/regressions/mixin-1.cabal
+  tests/ParserTests/regressions/mixin-1.expr
+  tests/ParserTests/regressions/mixin-1.format
+  tests/ParserTests/regressions/mixin-2.cabal
+  tests/ParserTests/regressions/mixin-2.expr
+  tests/ParserTests/regressions/mixin-2.format
+  tests/ParserTests/regressions/mixin-3.cabal
+  tests/ParserTests/regressions/mixin-3.expr
+  tests/ParserTests/regressions/mixin-3.format
   tests/ParserTests/regressions/multiple-libs-2.cabal
   tests/ParserTests/regressions/multiple-libs-2.check
   tests/ParserTests/regressions/multiple-libs-2.expr
@@ -592,7 +605,7 @@ test-suite parser-tests
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.1 && <0.1
+      tree-diff      >= 0.0.2 && <0.1
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language
@@ -658,7 +671,7 @@ test-suite hackage-tests
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.1 && <0.1
+      tree-diff      >= 0.0.2 && <0.1
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language

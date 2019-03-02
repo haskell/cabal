@@ -58,6 +58,8 @@ relative to the respective preceding *published* version.
 * New set-notation syntax for ``==`` and ``^>=`` operators, see
   :pkg-field:`build-depends` field documentation for examples.
 
+* Allow more whitespace in :pkg-field: `mixins` field
+
 ``cabal-version: 2.4``
 ----------------------
 

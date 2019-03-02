@@ -80,6 +80,8 @@ import qualified Data.Map.Strict                                   as Map
 import qualified Data.Set                                          as Set
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.Executable.Lens                as L
+import qualified Distribution.Types.ForeignLib.Lens                as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Text.Parsec                                       as P
@@ -292,7 +294,7 @@ goSections specVer = traverse_ process
         | name == "foreign-library" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name') fromBuildInfo' commonStanzas fields
+            flib  <- lift $ parseCondTree' (foreignLibFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
 
             let hasType ts = foreignLibType ts /= foreignLibType mempty
             unless (onAllBranches hasType flib) $ lift $ parseFailure pos $ concat
@@ -309,14 +311,14 @@ goSections specVer = traverse_ process
         | name == "executable" = do
             commonStanzas <- use stateCommonStanzas
             name' <- parseUnqualComponentName pos args
-            exe   <- lift $ parseCondTree' (executableFieldGrammar name') fromBuildInfo' commonStanzas fields
+            exe   <- lift $ parseCondTree' (executableFieldGrammar name') (fromBuildInfo' name') commonStanzas fields
             -- TODO check duplicate name here?
             stateGpd . L.condExecutables %= snoc (name', exe)
 
         | name == "test-suite" = do
             commonStanzas <- use stateCommonStanzas
             name'      <- parseUnqualComponentName pos args
-            testStanza <- lift $ parseCondTree' testSuiteFieldGrammar fromBuildInfo' commonStanzas fields
+            testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
             testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
 
             let hasType ts = testInterface ts /= testInterface mempty
@@ -334,7 +336,7 @@ goSections specVer = traverse_ process
         | name == "benchmark" = do
             commonStanzas <- use stateCommonStanzas
             name'       <- parseUnqualComponentName pos args
-            benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar fromBuildInfo' commonStanzas fields
+            benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
             bench       <- lift $ traverse (validateBenchmark pos) benchStanza
 
             let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
@@ -547,10 +549,13 @@ with new AST, this all need to be rewritten.
 type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
 
 -- | Create @a@ from 'BuildInfo'.
+-- This class is used to implement common stanza parsing.
 --
 -- Law: @view buildInfo . fromBuildInfo = id@
+--
+-- This takes name, as 'FieldGrammar's take names too.
 class L.HasBuildInfo a => FromBuildInfo a where
-    fromBuildInfo' :: BuildInfo -> a
+    fromBuildInfo' :: UnqualComponentName -> BuildInfo -> a
 
 libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
 libraryFromBuildInfo n bi = emptyLibrary
@@ -561,15 +566,15 @@ libraryFromBuildInfo n bi = emptyLibrary
     , libBuildInfo  = bi
     }
 
-instance FromBuildInfo BuildInfo  where fromBuildInfo' = id
-instance FromBuildInfo ForeignLib where fromBuildInfo' bi = set L.buildInfo bi emptyForeignLib
-instance FromBuildInfo Executable where fromBuildInfo' bi = set L.buildInfo bi emptyExecutable
+instance FromBuildInfo BuildInfo  where fromBuildInfo' _ = id
+instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibName n $ set L.buildInfo bi emptyForeignLib
+instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName        n $ set L.buildInfo bi emptyExecutable
 
 instance FromBuildInfo TestSuiteStanza where
-    fromBuildInfo' = TestSuiteStanza Nothing Nothing Nothing
+    fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi
 
 instance FromBuildInfo BenchmarkStanza where
-    fromBuildInfo' = BenchmarkStanza Nothing Nothing Nothing
+    fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
 
 parseCondTreeWithCommonStanzas
     :: forall a. L.HasBuildInfo a
