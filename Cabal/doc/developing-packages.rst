@@ -1104,7 +1104,23 @@ describe the package as a whole:
 .. pkg-field:: tested-with: compiler list
 
     A list of compilers and versions against which the package has been
-    tested (or at least built).
+    tested (or at least built). The value of this field is not used by Cabal
+    and is rather intended as extra metadata for use by third party
+    tooling, such as e.g. CI tooling.
+
+    Here's a typical usage example
+
+    ::
+
+        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+                     GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
+
+    which can (starting with Cabal 3.0) also be written using the more
+    concise set notation syntax
+
+    ::
+
+        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
 .. pkg-field:: data-files: filename list
 

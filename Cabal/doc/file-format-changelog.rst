@@ -55,6 +55,9 @@ relative to the respective preceding *published* version.
   name(s) must be of the form `lib<library-name>.<dyn-library-extension>*`
   instead of the old `libC<library-name>-ghc<ghc-flavour><ghc-version>.<dyn-library-extension>`
 
+* New set-notation syntax for ``==`` and ``^>=`` operators, see
+  :pkg-field:`build-depends` field documentation for examples.
+
 ``cabal-version: 2.4``
 ----------------------
 
