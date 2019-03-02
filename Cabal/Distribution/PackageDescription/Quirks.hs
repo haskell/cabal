@@ -152,6 +152,55 @@ patches = Map.fromList
          (Fingerprint 13690322768477779172 19704059263540994)
          (Fingerprint 11189374824645442376 8363528115442591078)
          (bsReplace "&&!" "&& !")
+    -- flag used, but not defined
+    , mk "name:                brainheck\nversion:             0.1.0.2\nsynopsis:            Brainh*ck interpreter in haskell\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\nhomepage:            https://gi"
+         (Fingerprint 6910727116443152200 15401634478524888973)
+         (Fingerprint 16551412117098094368 16260377389127603629)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 1\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 14320987921316832277 10031098243571536929)
+         (Fingerprint 7959395602414037224 13279941216182213050)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 2\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 3809078390223299128 10796026010775813741)
+         (Fingerprint 1127231189459220796 12088367524333209349)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 3\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 13860013038089410950 12479824176801390651)
+         (Fingerprint 4687484721703340391 8013395164515771785)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.1\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 16215911397419608203 15594928482155652475)
+         (Fingerprint 15120681510314491047 2666192399775157359)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.1\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 16593139224723441188 4052919014346212001)
+         (Fingerprint 3577381082410411593 11481899387780544641)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.2\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 9321301260802539374 1316392715016096607)
+         (Fingerprint 3784628652257760949 12662640594755291035)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.2\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 2546901804824433337 2059732715322561176)
+         (Fingerprint 8082068680348326500 615008613291421947)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.3\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 2282380737467965407 12457554753171662424)
+         (Fingerprint 17324757216926991616 17172911843227482125)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.3\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 12907988890480595481 11078473638628359710)
+         (Fingerprint 13246185333368731848 4663060731847518614)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                hw-prim-bits\nversion:             0.1.0.0\nsynopsis:            Primitive support for bit manipulation\ndescription:         Please see README.md\nhomepage:            https://github.com/githubuser/hw-prim-bits#readme\nlicense:            "
+         (Fingerprint 12386777729082870356 17414156731912743711)
+         (Fingerprint 3452290353395041602 14102887112483033720)
+         (bsReplace "flag(sse42)" "False")
+    , mk "name:                   hw-prim-bits\nversion:                0.1.0.1\nsynopsis:               Primitive support for bit manipulation\ndescription:            Please see README.md\nhomepage:               https://github.com/githubuser/hw-prim-bits#readme\nlicen"
+         (Fingerprint 6870520675313101180 14553457351296240636)
+         (Fingerprint 12481021059537696455 14711088786769892762)
+         (bsReplace "flag(sse42)" "False")
     ]
   where
     mk a b c d = ((a, b), (c, d))
