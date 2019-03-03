@@ -15,13 +15,13 @@ module Distribution.Types.Version (
 
     -- * Internal
     validVersion,
+    versionDigitParser,
     ) where
 
 import Data.Bits                   (shiftL, shiftR, (.&.), (.|.))
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
 
@@ -95,30 +95,28 @@ instance Pretty Version where
                                 (map Disp.int $ versionNumbers ver))
 
 instance Parsec Version where
-    parsec = do
-        digit <- digitParser <$> askCabalSpecVersion
-        mkVersion <$> P.sepBy1 digit (P.char '.') <* tags
+    parsec = mkVersion <$> P.sepBy1 versionDigitParser (P.char '.') <* tags
       where
-        digitParser v
-            | v >= CabalSpecV2_0 = P.integral
-            | otherwise          = (some d >>= toNumber) P.<?> "non-leading-zero integral"
-          where
-            toNumber :: CabalParsing m => [Int] -> m Int
-            toNumber [0] = return 0
-            toNumber xs@(0:_) = do
-                parsecWarning PWTVersionLeadingZeros "Version digit with leading zero. Use cabal-version: 2.0 or later to write such versions. For more information see https://github.com/haskell/cabal/issues/5092"
-                return $ foldl' (\a b -> a * 10 + b) 0 xs
-            toNumber xs = return $ foldl' (\a b -> a * 10 + b) 0 xs
-
-            d :: P.CharParsing m => m Int
-            d = f <$> P.satisfyRange '0' '9'
-            f c = ord c - ord '0'
-
         tags = do
             ts <- many $ P.char '-' *> some (P.satisfy isAlphaNum)
             case ts of
                 []      -> pure ()
                 (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
+-- | An integral without leading zeroes.
+--
+-- @since 3.0
+versionDigitParser :: CabalParsing m => m Int
+versionDigitParser = (some d >>= toNumber) P.<?> "version digit (integral without leading zeroes)"
+  where
+    toNumber :: CabalParsing m => [Int] -> m Int
+    toNumber [0]   = return 0
+    toNumber (0:_) = P.unexpected "Version digit with leading zero"
+    toNumber xs    = return $ foldl' (\a b -> a * 10 + b) 0 xs
+
+    d :: P.CharParsing m => m Int
+    d = f <$> P.satisfyRange '0' '9'
+    f c = ord c - ord '0'
 
 -- | Construct 'Version' from list of version number components.
 --

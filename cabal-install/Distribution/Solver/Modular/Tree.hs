@@ -31,6 +31,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Flag
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.PkgconfigVersionRange
 import Language.Haskell.Extension (Extension, Language)
 
 type Weight = Double
@@ -97,7 +98,7 @@ data POption = POption I (Maybe PackagePath)
 
 data FailReason = UnsupportedExtension Extension
                 | UnsupportedLanguage Language
-                | MissingPkgconfigPackage PkgconfigName VR
+                | MissingPkgconfigPackage PkgconfigName PkgconfigVersionRange
                 | NewPackageDoesNotMatchExistingConstraint ConflictingDep
                 | ConflictingConstraints ConflictingDep ConflictingDep
                 | NewPackageIsMissingRequiredComponent ExposedComponent (DependencyReason QPN)

@@ -60,6 +60,9 @@ relative to the respective preceding *published* version.
 
 * Allow more whitespace in :pkg-field:`mixins` field
 
+* Wildcards are disallowed in :pkg-field:`pkgconfig-depends`,
+  Yet the pkgconfig format is relaxed to accept e.g. versions like ``1.1.0h``.
+
 ``cabal-version: 2.4``
 ----------------------
 

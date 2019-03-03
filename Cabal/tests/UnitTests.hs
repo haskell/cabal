@@ -24,6 +24,7 @@ import qualified UnitTests.Distribution.Utils.Generic
 import qualified UnitTests.Distribution.Utils.NubList
 import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Version (versionTests)
+import qualified UnitTests.Distribution.PkgconfigVersion (pkgconfigVersionTests)
 import qualified UnitTests.Distribution.SPDX (spdxTests)
 import qualified UnitTests.Distribution.Types.GenericPackageDescription
 
@@ -59,6 +60,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Types.GenericPackageDescription.tests
     , testGroup "Distribution.Version"
         UnitTests.Distribution.Version.versionTests
+    , testGroup "Distribution.Types.PkgconfigVersion(Range)"
+        UnitTests.Distribution.PkgconfigVersion.pkgconfigVersionTests
     , testGroup "Distribution.SPDX"
         UnitTests.Distribution.SPDX.spdxTests
     ]

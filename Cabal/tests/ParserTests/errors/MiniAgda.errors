@@ -1,0 +1,4 @@
+VERSION: Just (mkVersion [1,22])
+MiniAgda.cabal:2:27: 
+unexpected Version digit with leading zero
+

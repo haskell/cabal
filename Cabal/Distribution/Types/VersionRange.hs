@@ -1,9 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFoldable     #-}
-{-# LANGUAGE DeriveFunctor      #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveTraversable  #-}
-{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE DeriveFoldable      #-}
+{-# LANGUAGE DeriveFunctor       #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DeriveTraversable   #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Types.VersionRange (
     -- * Version ranges
     VersionRange(..),
@@ -39,6 +40,7 @@ module Distribution.Types.VersionRange (
     wildcardUpperBound,
     majorUpperBound,
     isWildcardRange,
+    versionRangeParser,
     ) where
 
 import Distribution.Compat.Prelude
@@ -48,7 +50,7 @@ import Prelude ()
 import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
-import Text.PrettyPrint          ((<+>))
+import Text.PrettyPrint              ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList
@@ -392,7 +394,16 @@ instance Pretty VersionRange where
                    | otherwise = id
 
 instance Parsec VersionRange where
-    parsec = expr
+    parsec = versionRangeParser versionDigitParser
+
+-- | 'VersionRange' parser parametrised by version digit parser
+--
+-- - 'versionDigitParser' is used for all 'VersionRange'
+-- - 'P.integral' is used for backward-compat @pkgconfig-depends@ versions, 'PkgConfigVersionRange'.
+--
+-- @since 3.0
+versionRangeParser :: forall m. CabalParsing m => m Int -> m VersionRange
+versionRangeParser digitParser = expr
       where
         expr   = do P.spaces
                     t <- term
@@ -501,16 +512,13 @@ instance Parsec VersionRange where
             pure vs
 
         -- a plain version without tags or wildcards
-        -- note: this uses P.integral which allows redundant zeros.
-        --   This is not a problem because 'verPlain' is only used by
-        --   'verSet' which requires cabal > 3
         verPlain :: CabalParsing m => m Version
-        verPlain = mkVersion <$> P.sepBy1 P.integral (P.char '.')
+        verPlain = mkVersion <$> P.sepBy1 digitParser (P.char '.')
 
         -- either wildcard or normal version
         verOrWild :: CabalParsing m => m (Bool, Version)
         verOrWild = do
-            x <- P.integral
+            x <- digitParser
             verLoop (DList.singleton x)
 
         -- trailing: wildcard (.y.*) or normal version (optional tags) (.y.z-tag)
@@ -520,7 +528,7 @@ instance Parsec VersionRange where
         verLoop' :: CabalParsing m => DList.DList Int -> m (Bool, Version)
         verLoop' acc = do
             _ <- P.char '.'
-            let digit = P.integral >>= verLoop . DList.snoc acc
+            let digit = digitParser >>= verLoop . DList.snoc acc
             let wild  = (True, mkVersion (DList.toList acc)) <$ P.char '*'
             digit <|> wild
 

@@ -37,6 +37,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
+import Distribution.Types.PkgconfigVersionRange
 
 #ifdef DEBUG_CONFLICT_SETS
 import GHC.Stack (CallStack)
@@ -96,7 +97,7 @@ import GHC.Stack (CallStack)
 data ValidateState = VS {
   supportedExt        :: Extension -> Bool,
   supportedLang       :: Language  -> Bool,
-  presentPkgs         :: PkgconfigName -> VR  -> Bool,
+  presentPkgs         :: PkgconfigName -> PkgconfigVersionRange  -> Bool,
   index               :: Index,
 
   -- Saved, scoped, dependencies. Every time 'validate' makes a package choice,
@@ -382,7 +383,7 @@ extractNewDeps v b fa sa = go
 -- or the successfully extended assignment.
 extend :: (Extension -> Bool)            -- ^ is a given extension supported
        -> (Language  -> Bool)            -- ^ is a given language supported
-       -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
+       -> (PkgconfigName -> PkgconfigVersionRange -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> [LDep QPN]
        -> PPreAssignment
        -> Either Conflict PPreAssignment

@@ -7,9 +7,8 @@ module Distribution.Types.PkgconfigDependency
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Version (VersionRange, anyVersion)
-
 import Distribution.Types.PkgconfigName
+import Distribution.Types.PkgconfigVersionRange
 
 import Distribution.Parsec
 import Distribution.Pretty
@@ -22,7 +21,7 @@ import           Text.PrettyPrint           ((<+>))
 -- @since 2.0.0.2
 data PkgconfigDependency = PkgconfigDependency
                            PkgconfigName
-                           VersionRange
+                           PkgconfigVersionRange
                          deriving (Generic, Read, Show, Eq, Typeable, Data)
 
 instance Binary PkgconfigDependency
@@ -36,5 +35,5 @@ instance Parsec PkgconfigDependency where
     parsec = do
         name <- parsec
         P.spaces
-        verRange <- parsec <|> pure anyVersion
+        verRange <- parsec <|> pure anyPkgconfigVersion
         pure $ PkgconfigDependency name verRange
