@@ -13,6 +13,7 @@ CABALINSTALLTESTS=true
 CABALSUITETESTS=true
 CABALONLY=false
 DEPSONLY=false
+VERBOSE=false
 
 # Help
 #######################################################################
@@ -21,7 +22,7 @@ show_usage() {
 cat <<EOF
 ./validate.sh - build & test
 
-Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d ]
+Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -v ]
   A script which runs all the tests.
 
 Available options:
@@ -34,6 +35,7 @@ Available options:
   -x CABAL       With cabal-install
   -y CABALPLAN   With cabal-plan
   -d             Build dependencies only
+  -v             Verbose
 EOF
 exit 0
 }
@@ -56,7 +58,11 @@ timed() {
     echo "$BLUE>>> $PRETTYCMD $RESET"
     start_time=$(date +%s)
 
-    "$@" > "$OUTPUT" 2>&1
+    if $VERBOSE; then
+        "$@" 2>&1 | tee "$OUTPUT"
+    else
+        "$@" > "$OUTPUT" 2>&1
+    fi
     # echo "MOCK" > "$OUTPUT"
     RET=$?
 
@@ -67,15 +73,17 @@ timed() {
     if [ $RET -eq 0 ]; then
         echo "$GREEN<<< $PRETTYCMD $RESET ($duration/$tduration sec)"
 
-        # if output is relatively short, show everything
-        if [ "$(wc -l < "$OUTPUT")" -le 50 ]; then
-            cat "$OUTPUT"
-        else
-            echo "..."
-            tail -n 20 "$OUTPUT"
-        fi
+        if ! $VERBOSE; then
+            # if output is relatively short, show everything
+            if [ "$(wc -l < "$OUTPUT")" -le 50 ]; then
+                cat "$OUTPUT"
+            else
+                echo "..."
+                tail -n 20 "$OUTPUT"
+            fi
 
-        rm -f "$OUTPUT"
+            rm -f "$OUTPUT"
+        fi
 
         # bottom-margin
         echo ""
@@ -99,7 +107,7 @@ footer() {
 # getopt
 #######################################################################
 
-while getopts 'j:lCcsw:x:y:d' flag; do
+while getopts 'j:lCcsw:x:y:dv' flag; do
     case $flag in
         j) JOBS="$OPTARG"
             ;;
@@ -119,6 +127,8 @@ while getopts 'j:lCcsw:x:y:d' flag; do
             ;;
         d) DEPSONLY=true
             ;;
+        v) VERBOSE=true
+            ;;
         ?) show_usage
             ;;
     esac
@@ -137,7 +147,7 @@ TESTSUITEJOBS="-j$JOBS"
 JOBS="-j$JOBS"
 
 # assume compiler is GHC
-RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)/runghc\1/')
+RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
 echo "$CYAN=== validate.sh ======================================== $(date +%T) === $RESET"
 
@@ -152,6 +162,7 @@ cabal-install tests: $CABALINSTALLTESTS
 cabal-testsuite:     $CABALSUITETESTS
 library only:        $CABALONLY
 dependencies only:   $DEPSONLY
+verbose:             $VERBOSE
 
 EOF
 
@@ -259,7 +270,7 @@ timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks || exit
 
 echo "$CYAN=== cabal-testsuite: Cabal test ======================== $(date +%T) === $RESET"
 
-CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 
 fi # CABALSUITETESTS (Cabal)
@@ -298,7 +309,7 @@ CMD="$($CABALPLAN list-bin cabal-install:test:memory-usage-tests) -j1 --hide-suc
 (cd cabal-install && timed $CMD) || exit 1
 
 # This test-suite doesn't like concurrency
-CMD="$($CABALPLAN list-bin cabal-install:test:integration-tests2) -j1 --hide-successes"
+CMD="$($CABALPLAN list-bin cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
 (cd cabal-install && timed $CMD) || exit 1
 
 fi # CABALINSTALLTESTS
