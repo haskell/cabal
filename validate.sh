@@ -22,7 +22,7 @@ Params (with defaults)
     CABALTESTS=true          Run Cabal tests
     CABALINSTALLTESTS=true   Run cabal-install tests
     CABALSUITETESTS=true     Run cabal-testsuite
-    CABAL_LIB_ONLY=YES       Validate only Cabal-the-library
+    CABAL_LIB_ONLY=true      Validate only Cabal-the-library
 EOF
 exit 0
 fi
@@ -44,6 +44,7 @@ TESTSUITEJOBS=${TESTSUITEJOBS--j3}
 CABALTESTS=${CABALTESTS-true}
 CABALINSTALLTESTS=${CABALINSTALLTESTS-true}
 CABALSUITETESTS=${CABALSUITETESTS-true}
+CABAL_LIB_ONLY=${CABAL_LIB_ONLY-false}
 
 CABAL_VERSION="2.5.0.0"
 if [ "$(uname)" = "Linux" ]; then
@@ -52,7 +53,7 @@ else
     ARCH="x86_64-osx"
 fi
 
-if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+if $CABAL_LIB_ONLY; then
 	PROJECTFILE=cabal.project.validate.libonly
 else
 	PROJECTFILE=cabal.project.validate
@@ -127,17 +128,16 @@ timed $HC --version
 timed cabal --version
 timed cabal-plan --version
 
+if ! $CABAL_LIB_ONLY; then
+	timed make cabal-install-dev
+fi
+
 
 echo "$CYAN=== Cabal: build ======================================= $(date +%T) === $RESET"
 
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dry-run || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit 1
-
-# Environment files interfere with legacy Custom setup builds in sandbox
-# https://github.com/haskell/cabal/issues/4642
-rm -rf .ghc.environment.*
-
 
 if $CABALTESTS; then
 echo "$CYAN=== Cabal: test ======================================== $(date +%T) === $RESET"
@@ -180,10 +180,11 @@ fi # CABALSUITETESTS (Cabal)
 
 
 # If testing only library, stop here
-if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+if $CABAL_LIB_ONLY; then
 	footer
 	exit
 fi
+
 
 
 echo "$CYAN=== cabal-install: build =============================== $(date +%T) === $RESET"
