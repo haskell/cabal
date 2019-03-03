@@ -28,11 +28,9 @@ module Distribution.Solver.Modular.ConflictSet (
   , singleton
   , size
   , member
-  , filter
   , fromList
   ) where
 
-import Prelude hiding (filter)
 import Data.List (intercalate, sortBy)
 import Data.Map (Map)
 import Data.Set (Set)
@@ -177,18 +175,6 @@ size = S.size . conflictSetToSet
 
 member :: Var QPN -> ConflictSet -> Bool
 member var = S.member var . conflictSetToSet
-
-filter ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  (Var QPN -> Bool) -> ConflictSet -> ConflictSet
-filter p cs = CS {
-      conflictSetToSet = S.filter p (conflictSetToSet cs)
-#ifdef DEBUG_CONFLICT_SETS
-    , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
-#endif
-    }
 
 fromList ::
 #ifdef DEBUG_CONFLICT_SETS
