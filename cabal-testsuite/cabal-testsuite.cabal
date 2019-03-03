@@ -1,5 +1,5 @@
 name:          cabal-testsuite
-version:       2.5.0.0
+version:       3.0.0.0
 copyright:     2003-2019, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -64,7 +64,7 @@ executable cabal-tests
   build-depends:
     async,
     base,
-    Cabal == 2.5.0.0,
+    Cabal == 3.0.0.0,
     clock,
     filepath,
     process,
@@ -81,5 +81,5 @@ custom-setup
   -- lib:Cabal dependency, and some stable lib:Cabal version for its
   -- custom-setup's one (due to 'setupMaxCabalVersionConstraint' in
   -- 'D.C.ProjectPlanning').
-  setup-depends: Cabal == 2.5.0.0,
+  setup-depends: Cabal == 3.0.0.0,
                  base
