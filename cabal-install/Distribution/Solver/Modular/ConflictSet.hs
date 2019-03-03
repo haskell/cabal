@@ -47,11 +47,8 @@ import Distribution.Solver.Modular.Var
 import Distribution.Solver.Types.PackagePath
 
 -- | The set of variables involved in a solver conflict
---
--- Since these variables should be preprocessed in some way, this type is
--- kept abstract.
 data ConflictSet = CS {
-    -- | The set of variables involved on the conflict
+    -- | The set of variables involved in the conflict
     conflictSetToSet :: !(Set (Var QPN))
 
 #ifdef DEBUG_CONFLICT_SETS
