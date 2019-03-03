@@ -72,6 +72,9 @@ gen-extra-source-files-cli :
 ghcid-lib :
 	ghcid -c 'cabal new-repl Cabal'
 
+ghcid-cli :
+	ghcid -c 'cabal new-repl cabal-install'
+
 # doctests (relies on .ghc.environment files)
 
 doctest :
