@@ -1004,7 +1004,7 @@ legacyPackageConfigFieldDescrs =
       [ "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
       , "library-vanilla", "library-profiling"
-      , "shared", "static", "executable-dynamic"
+      , "shared", "static", "executable-dynamic", "executable-static"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
       , "library-for-ghci", "split-objs", "split-sections"
