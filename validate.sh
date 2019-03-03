@@ -59,7 +59,7 @@ timed() {
     start_time=$(date +%s)
 
     if $VERBOSE; then
-        "$@" 2>&1 | tee "$OUTPUT"
+        "$@" 2>&1
     else
         "$@" > "$OUTPUT" 2>&1
     fi
@@ -71,8 +71,6 @@ timed() {
     tduration=$((end_time - JOB_START_TIME))
 
     if [ $RET -eq 0 ]; then
-        echo "$GREEN<<< $PRETTYCMD $RESET ($duration/$tduration sec)"
-
         if ! $VERBOSE; then
             # if output is relatively short, show everything
             if [ "$(wc -l < "$OUTPUT")" -le 50 ]; then
@@ -85,11 +83,16 @@ timed() {
             rm -f "$OUTPUT"
         fi
 
+        echo "$GREEN<<< $PRETTYCMD $RESET ($duration/$tduration sec)"
+
         # bottom-margin
         echo ""
     else
+        if ! $VERBOSE; then
+            cat "$OUTPUT"
+        fi
+
         echo "$RED<<< $PRETTYCMD $RESET ($duration/$tduration sec, $RET)"
-        cat "$OUTPUT"
         echo "$RED<<< $* $RESET ($duration/$tduration sec, $RET)"
         rm -f "$OUTPUT"
         exit 1
