@@ -18,6 +18,9 @@
       supports fully static linking;
       [`glibc` has some issues](https://sourceware.org/glibc/wiki/FAQ#Even_statically_linked_programs_need_some_shared_libraries_which_is_not_acceptable_for_me.__What_can_I_do.3F)
       with fully static linking.
+  * Fix corrupted config file header for non-ASCII package names
+    ([2557](https://github.com/haskell/cabal/issues/2557)).
+  * Extend `Distribution.Simple.Utils.rewriteFileEx` from ASCII to UTF-8 encoding.
 
 ----
 

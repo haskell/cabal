@@ -205,7 +205,7 @@ import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Typeable
     ( cast )
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.ByteString.Lazy as BS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -1401,19 +1401,22 @@ rewriteFile = rewriteFileEx normal
 -- the same as the existing content then leave the file as is so that we do not
 -- update the file's modification time.
 --
--- NB: the file is assumed to be ASCII-encoded.
+-- NB: Before Cabal-3.0 the file content was assumed to be
+--     ASCII-representable. Since Cabal-3.0 the file is assumed to be
+--     UTF-8 encoded.
 rewriteFileEx :: Verbosity -> FilePath -> String -> IO ()
 rewriteFileEx verbosity path newContent =
   flip catchIO mightNotExist $ do
-    existingContent <- annotateIO verbosity $ readFile path
-    _ <- evaluate (length existingContent)
-    unless (existingContent == newContent) $
+    existingContent <- annotateIO verbosity $ BS.readFile path
+    _ <- evaluate (BS.length existingContent)
+    unless (existingContent == newContent') $
       annotateIO verbosity $
-        writeFileAtomic path (BS.Char8.pack newContent)
+        writeFileAtomic path newContent'
   where
+    newContent' = toUTF8LBS newContent
+
     mightNotExist e | isDoesNotExistError e
-                    = annotateIO verbosity $ writeFileAtomic path
-                        (BS.Char8.pack newContent)
+                    = annotateIO verbosity $ writeFileAtomic path newContent'
                     | otherwise
                     = ioError e
 
