@@ -1350,7 +1350,7 @@ testSetupScriptStyles config reportSubCase = do
        && compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [7,10]) $ do
 
     (plan1, res1) <- executePlan plan0
-    (pkg1,  _)    <- expectPackageInstalled plan1 res1 pkgidA
+    pkg1          <- expectPackageInstalled plan1 res1 pkgidA
     elabSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
     hasDefaultSetupDeps pkg1 @?= Just False
     marker1 <- readFile (basedir </> testdir1 </> "marker")
@@ -1361,7 +1361,7 @@ testSetupScriptStyles config reportSubCase = do
     when (compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [8,2]) $ do
       reportSubCase (show SetupCustomImplicitDeps)
       (plan2, res2) <- executePlan =<< planProject testdir2 config
-      (pkg2,  _)    <- expectPackageInstalled plan2 res2 pkgidA
+      pkg2          <- expectPackageInstalled plan2 res2 pkgidA
       elabSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
       hasDefaultSetupDeps pkg2 @?= Just True
       marker2 <- readFile (basedir </> testdir2 </> "marker")
@@ -1370,7 +1370,7 @@ testSetupScriptStyles config reportSubCase = do
 
     reportSubCase (show SetupNonCustomInternalLib)
     (plan3, res3) <- executePlan =<< planProject testdir3 config
-    (pkg3,  _)    <- expectPackageInstalled plan3 res3 pkgidA
+    pkg3          <- expectPackageInstalled plan3 res3 pkgidA
     elabSetupScriptStyle pkg3 @?= SetupNonCustomInternalLib
 {-
     --TODO: the SetupNonCustomExternalLib case is hard to test since it
@@ -1380,7 +1380,7 @@ testSetupScriptStyles config reportSubCase = do
     -- default Setup.hs.
     reportSubCase (show SetupNonCustomExternalLib)
     (plan4, res4) <- executePlan =<< planProject testdir4 config
-    (pkg4,  _)    <- expectPackageInstalled plan4 res4 pkgidA
+    pkg4          <- expectPackageInstalled plan4 res4 pkgidA
     pkgSetupScriptStyle pkg4 @?= SetupNonCustomExternalLib
 -}
   where
@@ -1657,12 +1657,16 @@ expectPackageConfigured plan buildOutcomes pkgid = do
       (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
 
 expectPackageInstalled :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
-                       -> IO (ElaboratedConfiguredPackage, BuildResult)
+                       -> IO ElaboratedConfiguredPackage
 expectPackageInstalled plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
     case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
-      (InstallPlan.Configured pkg, Just (Right result))
-                       -> return (pkg, result)
+      (InstallPlan.Configured pkg, Just (Right _result)) -- result isn't used by any test
+                       -> return pkg
+      -- package can be installed in the global .store!
+      -- (when installing from tarball!)
+      (InstallPlan.Installed pkg, Nothing)
+                       -> return pkg
       (_, buildResult) -> unexpectedBuildResult "Installed" planpkg buildResult
 
 expectPackageFailed :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
@@ -1686,7 +1690,8 @@ unexpectedBuildResult expected planpkg buildResult =
       (Nothing, InstallPlan.Configured{})        -> "Configured"
       (Just (Right _), InstallPlan.Configured{}) -> "Installed"
       (Just (Left  _), InstallPlan.Configured{}) -> "Failed"
-      _                                          -> "Impossible!"
+      (Nothing, InstallPlan.Installed{})         -> "Installed globally"
+      _                                          -> "Impossible! " ++ show buildResult ++ show planpkg
 
 expectPlanPackage :: ElaboratedInstallPlan -> PackageId
                   -> IO ElaboratedPlanPackage
