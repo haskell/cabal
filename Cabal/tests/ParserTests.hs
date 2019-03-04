@@ -120,6 +120,9 @@ errorTests = testGroup "errors"
     , errorTest "undefined-flag.cabal"
     , errorTest "mixin-1.cabal"
     , errorTest "mixin-2.cabal"
+    , errorTest "libpq1.cabal"
+    , errorTest "libpq2.cabal"
+    , errorTest "MiniAgda.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -172,6 +175,8 @@ regressionTests = testGroup "regressions"
     , regressionTest "mixin-1.cabal"
     , regressionTest "mixin-2.cabal"
     , regressionTest "mixin-3.cabal"
+    , regressionTest "libpq1.cabal"
+    , regressionTest "libpq2.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

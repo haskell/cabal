@@ -52,6 +52,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
 
 {-------------------------------------------------------------------------------
@@ -117,7 +118,7 @@ data LDep qpn = LDep (DependencyReason qpn) (Dep qpn)
 data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
-             | Pkg PkgconfigName VR       -- ^ dependency on a pkg-config package
+             | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
   deriving Functor
 
 -- | An exposed component within a package. This type is used to represent

@@ -201,6 +201,46 @@ patches = Map.fromList
          (Fingerprint 6870520675313101180 14553457351296240636)
          (Fingerprint 12481021059537696455 14711088786769892762)
          (bsReplace "flag(sse42)" "False")
+    -- leading zeros in version digits
+    -- https://github.com/haskell-infra/hackage-trustees/issues/128
+    -- https://github.com/haskell/cabal/issues/5092
+    -- https://github.com/haskell/cabal/issues/5138
+    , mk "name:            Sit\nversion:         0.2017.02.26\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Anonymous\nmaintainer:      Anonymous\nhomepage:        NONE\ncategory:        Dependent"
+         (Fingerprint 8458530898096910998 3228538743646501413)
+         (Fingerprint 14470502514907936793 17514354054641875371)
+         (bsReplace "0.2017.02.26" "0.2017.2.26")
+    , mk "name:            Sit\nversion:         0.2017.05.01\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel <andreas.abel@gu.se>\nmaintainer:      Andreas Abel <andreas.abel@gu.se>\n"
+         (Fingerprint 1450130849535097473 11742099607098860444)
+         (Fingerprint 16679762943850814021 4253724355613883542)
+         (bsReplace "0.2017.05.01" "0.2017.5.1")
+    , mk "name:            Sit\nversion:         0.2017.05.02\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel <andreas.abel@gu.se>\nmaintainer:      Andreas Abel <andreas.abel@gu.se>\n"
+         (Fingerprint 297248532398492441 17322625167861324800)
+         (Fingerprint 634812045126693280 1755581866539318862)
+         (bsReplace "0.2017.05.02" "0.2017.5.2")
+    , mk "name:            Sit\nversion:         0.2017.5.02\nx-revision: 1\n-- x-revision:1 see https://github.com/haskell-infra/hackage-trustees/issues/128\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor: "
+         (Fingerprint 3697869560530373941 3942982281026987312)
+         (Fingerprint 14344526114710295386 16386400353475114712)
+         (bsReplace "0.2017.5.02" "0.2017.5.2")
+    , mk "name:            MiniAgda\nversion:         0.2017.02.18\nbuild-type:      Simple\ncabal-version:   >= 1.22\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel and Karl Mehltretter\nmaintainer:      Andreas Abel <andreas.abel@i"
+         (Fingerprint 17167128953451088679 4300350537748753465)
+         (Fingerprint 12402236925293025673 7715084875284020606)
+         (bsReplace "0.2017.02.18" "0.2017.2.18")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.0.0\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 11256076039027887363 6867903407496243216)
+         (Fingerprint 12159816716813155434 5278015399212299853)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\r\n  2.0\r\nname:\r\n  fast-downward\r\nversion:\r\n  0.1.0.0\r\nx-revision: \r\n  1\r\nbuild-type:\r\n  Simple\r\nsynopsis:\r\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\r\ndescription:\r\n  @fast-downward@ is a library for mode"
+         (Fingerprint 9216193973149680231 893446343655828508)
+         (Fingerprint 10020169545407746427 1828336750379510675)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.0.1\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 9899886602574848632 5980433644983783334)
+         (Fingerprint 12007469255857289958 8321466548645225439)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.1.0\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 12694656661460787751 1902242956706735615)
+         (Fingerprint 15433152131513403849 2284712791516353264)
+         (bsReplace "1.2.03.0" "1.2.3.0")
     ]
   where
     mk a b c d = ((a, b), (c, d))

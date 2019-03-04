@@ -57,6 +57,8 @@ import qualified Distribution.Types.ExeDependency       as C
 import qualified Distribution.Types.ForeignLib          as C
 import qualified Distribution.Types.LegacyExeDependency as C
 import qualified Distribution.Types.PkgconfigDependency as C
+import qualified Distribution.Types.PkgconfigVersion    as C
+import qualified Distribution.Types.PkgconfigVersionRange as C
 import qualified Distribution.Types.UnqualComponentName as C
 import qualified Distribution.Types.CondTree            as C
 import qualified Distribution.PackageDescription        as C
@@ -534,7 +536,7 @@ exAvSrcPkg ex =
                 , C.pkgconfigDepends = [ C.PkgconfigDependency n' v'
                                        | (n,v) <- pcpkgs
                                        , let n' = C.mkPkgconfigName n
-                                       , let v' = C.thisVersion (mkSimpleVersion v) ]
+                                       , let v' = C.PcThisVersion (mkSimplePkgconfigVersion v) ]
               }
       in C.CondNode {
              C.condTreeData        = bi -- Necessary for language extensions
@@ -587,6 +589,9 @@ exAvSrcPkg ex =
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n, 0, 0]
+
+mkSimplePkgconfigVersion :: ExamplePkgVersion -> C.PkgconfigVersion
+mkSimplePkgconfigVersion = C.versionToPkgconfigVersion . mkSimpleVersion
 
 mkVersionRange :: ExamplePkgVersion -> ExamplePkgVersion -> C.VersionRange
 mkVersionRange v1 v2 =

@@ -81,6 +81,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
+import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.LibraryName
 import Distribution.Types.ComponentRequestedSpec
@@ -1559,8 +1560,8 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
                  `catchExit` (\_ -> die' verbosity notFound)
       case simpleParsec version of
         Nothing -> die' verbosity "parsing output of pkg-config --modversion failed"
-        Just v | not (withinRange v range) -> die' verbosity (badVersion v)
-               | otherwise                 -> info verbosity (depSatisfied v)
+        Just v | not (withinPkgconfigVersionRange v range) -> die' verbosity (badVersion v)
+               | otherwise                                 -> info verbosity (depSatisfied v)
       where
         notFound     = "The pkg-config package '" ++ pkg ++ "'"
                     ++ versionRequirement
@@ -1573,8 +1574,8 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
                       ++ ": using version " ++ prettyShow v
 
         versionRequirement
-          | isAnyVersion range = ""
-          | otherwise          = " version " ++ prettyShow range
+          | isAnyPkgconfigVersion range = ""
+          | otherwise                   = " version " ++ prettyShow range
 
         pkg = unPkgconfigName pkgn
 

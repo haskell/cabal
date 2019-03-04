@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [1,8])
+libpq1.cabal:66:37: 
+unexpected 'h'
+expecting ".", "-", white space, "&&", "||", comma or end of input
+
