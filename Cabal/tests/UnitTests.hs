@@ -30,6 +30,7 @@ import qualified UnitTests.Distribution.Types.GenericPackageDescription
 tests :: Int -> TestTree
 tests mtimeChangeCalibrated =
   askOption $ \(OptionMtimeChangeDelay mtimeChangeProvided) ->
+  askOption $ \(GhcPath ghcPath) ->
   let mtimeChange = if mtimeChangeProvided /= 0
                     then mtimeChangeProvided
                     else mtimeChangeCalibrated
@@ -45,8 +46,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Simple.Glob.tests
     , testGroup "Distribution.Simple.Program.Internal"
         UnitTests.Distribution.Simple.Program.Internal.tests
-    , testGroup "Distribution.Simple.Utils"
-        UnitTests.Distribution.Simple.Utils.tests
+    , testGroup "Distribution.Simple.Utils" $
+        UnitTests.Distribution.Simple.Utils.tests ghcPath
     , testGroup "Distribution.Utils.Generic"
         UnitTests.Distribution.Utils.Generic.tests
     , testGroup "Distribution.Utils.NubList"
@@ -66,6 +67,7 @@ tests mtimeChangeCalibrated =
 extraOptions :: [OptionDescription]
 extraOptions =
   [ Option (Proxy :: Proxy OptionMtimeChangeDelay)
+  , Option (Proxy :: Proxy GhcPath)
   ]
 
 newtype OptionMtimeChangeDelay = OptionMtimeChangeDelay Int
@@ -77,6 +79,15 @@ instance IsOption OptionMtimeChangeDelay where
   optionName     = return "mtime-change-delay"
   optionHelp     = return $ "How long to wait before attempting to detect"
                    ++ "file modification, in microseconds"
+
+newtype GhcPath = GhcPath FilePath
+  deriving Typeable
+
+instance IsOption GhcPath where
+  defaultValue = GhcPath "ghc"
+  optionName   = return "with-ghc"
+  optionHelp   = return "The ghc compiler to use"
+  parseValue   = Just . GhcPath
 
 main :: IO ()
 main = do

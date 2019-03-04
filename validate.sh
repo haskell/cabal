@@ -247,7 +247,7 @@ timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run |
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks || exit 1
 
-CMD="$($CABALPLAN list-bin Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLAN list-bin Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
 (cd Cabal && timed $CMD) || exit 1
 
 CMD="$($CABALPLAN list-bin Cabal:test:check-tests) $TESTSUITEJOBS --hide-successes"
