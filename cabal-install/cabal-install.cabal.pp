@@ -263,7 +263,7 @@ License:            BSD3
 License-File:       LICENSE
 Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
-Copyright:          2003-2018, Cabal Development Team
+Copyright:          2003-2019, Cabal Development Team
 Category:           Distribution
 %if CABAL_FLAG_LIB
 Build-type:         Simple
