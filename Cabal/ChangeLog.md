@@ -1,14 +1,14 @@
 # 3.0.0.0 (current development version)
   * TODO
-  * Introduce set notation for `^>=` and `==` operators.
+  * Introduce set notation for `^>=` and `==` operators
+    ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
     ([#5342](https://github.com/haskell/cabal/issues/5432)).
   * `KnownExtension`: added new extension `DerivingVia`.
-  * `KnownExtension`: added new extension `DerivingVia`
   * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
-  * Add a `LibraryVisibility` field to `InstalledPackageInfo`
+  * Add a `LibraryVisibility` field to `InstalledPackageInfo`.
   * Static linking
     * Add `--enable-executable-static` flag for building fully
       static executables (GHC's normal "statish" linking links
