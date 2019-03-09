@@ -577,11 +577,11 @@ installExes :: Verbosity
 installExes verbosity baseCtx buildCtx platform compiler
             clientInstallFlags = do
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
-  let mkPkgBinDir :: UnitId -> FilePath
-      mkPkgBinDir = InstallDirs.bindir .
-                    storePackageInstallDirs'
-                      storeDirLayout
-                      (compilerId compiler)
+  let mkUnitBinDir :: UnitId -> FilePath
+      mkUnitBinDir = InstallDirs.bindir .
+                     storePackageInstallDirs'
+                       storeDirLayout
+                       (compilerId compiler)
       mkExeName :: UnqualComponentName -> FilePath
       mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
       installdirUnknown =
@@ -592,10 +592,10 @@ installExes verbosity baseCtx buildCtx platform compiler
   createDirectoryIfMissingVerbose verbosity False installdir
   warnIfNoExes verbosity buildCtx
   let
-    doInstall = installPackageExes
+    doInstall = installUnitExes
                   verbosity
                   overwritePolicy
-                  mkPkgBinDir mkExeName
+                  mkUnitBinDir mkExeName
                   installdir installMethod
     in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
   where
@@ -687,22 +687,21 @@ disableTestsBenchsByDefault configFlags =
               , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
 -- | Symlink/copy every exe from a package from the store to a given location
--- TODO s/Package/Unit/ s/pkg/unit/
-installPackageExes :: Verbosity
-                   -> OverwritePolicy -- ^ Whether to overwrite existing files
-                   -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
-                                           -- store directory
-                   -> (UnqualComponentName -> FilePath) -- ^ A function to get
-                                                        -- ^ an exe's filename
-                   -> FilePath
-                   -> InstallMethod
-                   -> ( UnitId
-                       , [(ComponentTarget, [TargetSelector])] )
-                   -> IO ()
-installPackageExes verbosity overwritePolicy
-                   mkSourceBinDir mkExeName
-                   installdir installMethod
-                   (pkg, components) =
+installUnitExes :: Verbosity
+                -> OverwritePolicy -- ^ Whether to overwrite existing files
+                -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
+                                        -- store directory
+                -> (UnqualComponentName -> FilePath) -- ^ A function to get
+                                                     -- ^ an exe's filename
+                -> FilePath
+                -> InstallMethod
+                -> ( UnitId
+                    , [(ComponentTarget, [TargetSelector])] )
+                -> IO ()
+installUnitExes verbosity overwritePolicy
+                mkSourceBinDir mkExeName
+                installdir installMethod
+                (unit, components) =
   traverse_ installAndWarn exes
   where
     exes = catMaybes $ (exeMaybe . fst) <$> components
@@ -711,7 +710,7 @@ installPackageExes verbosity overwritePolicy
     installAndWarn exe = do
       success <- installBuiltExe
                    verbosity overwritePolicy
-                   (mkSourceBinDir pkg) (mkExeName exe)
+                   (mkSourceBinDir unit) (mkExeName exe)
                    installdir installMethod
       let errorMessage = case overwritePolicy of
                   NeverOverwrite ->
