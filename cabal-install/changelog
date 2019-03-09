@@ -20,6 +20,12 @@
 	  a library also create a MyLib.hs module. (#5740)
 	* Add support for generating test-suite via cabal init. (#5761)
 	* Increase `max-backjumps` default from 2000 to 4000.
+	* Make v2-install/new-install-specific flags configurable in
+	  ~/.cabal/config
+	* Add --installdir and --install-method=copy flags to v2-install
+	  that make it possible to copy the executable instead of symlinking it
+	* --symlink-bindir no longer controls the symlinking directory of
+	  v2-install (installdir controls both symlinking and copying now)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
