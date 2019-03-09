@@ -1,7 +1,8 @@
+cabal-version: 2.2
 name:          cabal-testsuite
-version:       2.5.0.0
+version:       3.0.0.0
 copyright:     2003-2019, Cabal Development Team (see AUTHORS file)
-license:       BSD3
+license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
 maintainer:    cabal-devel@haskell.org
@@ -11,7 +12,6 @@ synopsis:      Test suite for Cabal and cabal-install
 description:
   This package defines a shared test suite for Cabal and cabal-install.
 category:       Distribution
-cabal-version:  >=1.10
 build-type:     Custom
 
 extra-source-files:
@@ -22,7 +22,19 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   cabal-testsuite
 
+common shared
+  default-language: Haskell2010
+
+  build-depends:
+    , base >= 4.6 && <4.13
+    -- this needs to match the in-tree lib:Cabal version
+    , Cabal == 3.0.0.0
+
+  ghc-options: -Wall -fwarn-tabs
+
 library
+  import: shared
+
   exposed-modules:
     Test.Cabal.Workdir
     Test.Cabal.Script
@@ -32,54 +44,63 @@ library
     Test.Cabal.Server
     Test.Cabal.Monad
     Test.Cabal.CheckArMetadata
+
+  other-modules:
+    Test.Cabal.ScriptEnv0
+  autogen-modules:
+    Test.Cabal.ScriptEnv0
+
   build-depends:
-    aeson ==1.4.*,
-    attoparsec,
-    async,
-    base,
-    bytestring,
-    transformers,
-    optparse-applicative >=0.14 && <0.15,
-    process,
-    directory,
-    filepath,
-    regex-compat-tdfa,
-    regex-tdfa,
-    temporary,
-    text,
-    cryptohash-sha256,
-    base16-bytestring,
-    Cabal >= 2.3
-  ghc-options: -Wall -fwarn-tabs
+    , aeson                 ^>= 1.4.2.0
+    , async                 ^>= 2.2.1
+    , attoparsec            ^>= 0.13.2.2
+    , base16-bytestring     ^>= 0.1.1.6
+    , bytestring            ^>= 0.10.0.2
+    , containers            ^>= 0.5.0.0 || ^>= 0.6.0.1
+    , cryptohash-sha256     ^>= 0.11.101.0
+    , directory             ^>= 1.2.0.1 || ^>= 1.3.0.0
+    , exceptions            ^>= 0.10.0
+    , filepath              ^>= 1.3.0.1 || ^>= 1.4.0.0
+    , optparse-applicative  ^>= 0.14.3.0
+    , process               ^>= 1.1.0.2 || ^>= 1.2.0.0 || ^>= 1.4.2.0 || ^>= 1.6.1.0
+    , regex-compat-tdfa     ^>= 0.95.1.4
+    , regex-tdfa            ^>= 1.2.3.1
+    , temporary             ^>= 1.3
+    , text                  ^>= 1.2.3.1
+    , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0
+
   if !os(windows)
-    build-depends: unix, exceptions
+    build-depends:
+      , unix                ^>= 2.6.0.0 || ^>= 2.7.0.0
   else
-    build-depends: Win32
-  default-language: Haskell2010
+    build-depends:
+      , Win32
 
 executable cabal-tests
+  import: shared
   main-is: cabal-tests.hs
   hs-source-dirs: main
-  ghc-options: -threaded -Wall -fwarn-tabs
+  ghc-options: -threaded
   build-depends:
-    async,
-    base,
-    Cabal == 2.5.0.0,
-    clock,
-    filepath,
-    process,
-    optparse-applicative,
-    cabal-testsuite,
-    transformers,
-    exceptions
-  default-language: Haskell2010
+    , cabal-testsuite
+    -- cosntraints inherited via lib:cabal-testsuite component
+    , async
+    , exceptions
+    , filepath
+    , optparse-applicative
+    , process
+    , transformers
+    -- dependencies specific to exe:cabal-tests
+    , clock                 ^>= 0.7.2
+
+  build-tool-depends: cabal-testsuite:setup
+
+-- this executable is needed by lib:cabal-testsuite
+executable setup
+  import: shared
+  main-is: Setup.simple.hs
 
 custom-setup
-  -- It's important that we pick the exact same version of lib:Cabal
-  -- both here and for cabal-tests itself. Without this constraint,
-  -- the solver would pick the in-tree Cabal for cabal-tests's
-  -- lib:Cabal dependency, and some stable lib:Cabal version for its
-  -- custom-setup's one (due to 'setupMaxCabalVersionConstraint' in
-  -- 'D.C.ProjectPlanning').
-  setup-depends: Cabal == 2.5.0.0,
-                 base
+  -- we only depend on even stable releases of lib:Cabal
+  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.*,
+                 base, filepath, directory

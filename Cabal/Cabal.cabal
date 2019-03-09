@@ -1,5 +1,6 @@
+cabal-version: >=1.10
 name:          Cabal
-version:       2.5.0.0
+version:       3.0.0.0
 copyright:     2003-2019, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -16,7 +17,6 @@ description:
   The Haskell Cabal is part of a larger infrastructure for distributing,
   organizing, and cataloging Haskell libraries and tools.
 category:       Distribution
-cabal-version:  >=1.10
 build-type:     Simple
 -- If we use a new Cabal feature, this needs to be changed to Custom so
 -- we can bootstrap.

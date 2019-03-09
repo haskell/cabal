@@ -1,4 +1,4 @@
-# 2.6.0.0 (current development version)
+# 3.0.0.0 (current development version)
   * TODO
   * Introduce set notation for `^>=` and `==` operators.
   * 'check' reports warnings for various ghc-\*-options fields separately
