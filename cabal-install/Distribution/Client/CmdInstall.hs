@@ -28,7 +28,7 @@ import Distribution.Client.CmdSdist
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
          , configureExOptions, haddockOptions, installOptions, testOptions
-         , liftOptions )
+         , configureOptions, liftOptions )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.Types
@@ -79,7 +79,7 @@ import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
          ( Flag(..), HaddockFlags, TestFlags, fromFlagOrDefault, flagToMaybe
-         , trueArg, configureOptions, flagToList, toFlag )
+         , trueArg, flagToList, toFlag )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.ReadE

@@ -18,7 +18,7 @@
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), defaultGlobalFlags
     , RepoContext(..), withRepoContext
-    , configureCommand, ConfigFlags(..), filterConfigureFlags
+    , configureCommand, ConfigFlags(..), configureOptions, filterConfigureFlags
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
