@@ -25,7 +25,7 @@ module Distribution.Client.Setup
     , replCommand, testCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
-    , filterHaddockArgs, filterHaddockFlags
+    , filterHaddockArgs, filterHaddockFlags, haddockOptions
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
