@@ -18,14 +18,14 @@
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), defaultGlobalFlags
     , RepoContext(..), withRepoContext
-    , configureCommand, ConfigFlags(..), filterConfigureFlags
+    , configureCommand, ConfigFlags(..), configureOptions, filterConfigureFlags
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
-    , filterHaddockArgs, filterHaddockFlags
+    , filterHaddockArgs, filterHaddockFlags, haddockOptions
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
