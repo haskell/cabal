@@ -144,7 +144,7 @@ runCommand = Client.installCommand {
 
      ++ cmdCommonHelpTextNewBuildBeta
   }
- 
+
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
 -- or a benchmark. This is particularly useful for passing arguments to
@@ -159,11 +159,11 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tempDir <- createTempDirectory globalTmp "cabal-repl."
-  
+
     let
-      with = 
+      with =
         establishProjectBaseContext verbosity cliConfig
-      without config = 
+      without config =
         establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir []
 
     baseCtx <- withProjectOrGlobalConfig verbosity globalConfigFlag with without
@@ -174,7 +174,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
         if exists
           then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
           else reportTargetSelectorProblems verbosity err
-        
+
     (baseCtx', targetSelectors) <-
       readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
         >>= \case
@@ -186,7 +186,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
             | TargetString1 script <- t   -> scriptOrError script err
           Left err   -> reportTargetSelectorProblems verbosity err
           Right sels -> return (baseCtx, sels)
-    
+
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
 
@@ -289,7 +289,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                             (distDirLayout baseCtx)
                             elaboratedPlan
       }
-    
+
     handleDoesNotExist () (removeDirectoryRecursive tempDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -384,7 +384,7 @@ handleScriptCase :: Verbosity
                  -> IO (ProjectBaseContext, [TargetSelector])
 handleScriptCase verbosity baseCtx tempDir scriptContents = do
   (executable, contents') <- readScriptBlockFromScript verbosity scriptContents
-  
+
   -- We need to create a dummy package that lives in our dummy project.
   let
     sourcePackage = SourcePackage
@@ -399,8 +399,8 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
       }
     executable' = executable
       { modulePath = "Main.hs"
-      , buildInfo = binfo 
-        { defaultLanguage = 
+      , buildInfo = binfo
+        { defaultLanguage =
           case defaultLanguage of
             just@(Just _) -> just
             Nothing       -> Just Haskell2010
@@ -418,7 +418,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
   BS.writeFile (tempDir </> "Main.hs") contents'
 
   let
-    baseCtx' = baseCtx 
+    baseCtx' = baseCtx
       { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage] }
     targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
 
