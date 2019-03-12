@@ -541,7 +541,7 @@ cabal new-install
 -----------------
 
 ``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and
-symlinks their executables in ``symlink-bindir`` (usually ``~/.cabal/bin``).
+symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
@@ -558,6 +558,16 @@ repository, this command will build cabal-install HEAD and symlink the
 ::
 
     $ cabal new-install exe:cabal
+
+Where symlinking is not possible (eg. on Windows), ``--install-method=copy``
+can be used:
+
+::
+
+    $ cabal new-install exe:cabal --install-method=copy --installdir=~/bin
+
+Note that copied executables are not self-contained, since they might use
+data-files from the store.
 
 It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:

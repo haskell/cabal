@@ -540,7 +540,7 @@ then
     echo "By default cabal will install programs to $HOME/.cabal/bin"
     echo "If you do not want to add this directory to your PATH then you can"
     echo "change the setting in the config file, for example you could use:"
-    echo "symlink-bindir: $HOME/bin"
+    echo "installdir: $HOME/bin"
 else
     echo "Sorry, something went wrong."
     echo "The 'cabal' executable was not successfully installed into"

@@ -65,6 +65,9 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo, readRepo )
+import Distribution.Client.CmdInstall.ClientInstallFlags
+         ( ClientInstallFlags(..), defaultClientInstallFlags
+         , clientInstallOptions )
 import Distribution.Utils.NubList
          ( NubList, fromNubList, toNubList, overNubList )
 
@@ -158,6 +161,7 @@ data SavedConfig = SavedConfig {
     savedGlobalFlags       :: GlobalFlags,
     savedInitFlags         :: IT.InitFlags,
     savedInstallFlags      :: InstallFlags,
+    savedClientInstallFlags :: ClientInstallFlags,
     savedConfigureFlags    :: ConfigFlags,
     savedConfigureExFlags  :: ConfigExFlags,
     savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
@@ -177,6 +181,7 @@ instance Semigroup SavedConfig where
     savedGlobalFlags       = combinedSavedGlobalFlags,
     savedInitFlags         = combinedSavedInitFlags,
     savedInstallFlags      = combinedSavedInstallFlags,
+    savedClientInstallFlags = combinedSavedClientInstallFlags,
     savedConfigureFlags    = combinedSavedConfigureFlags,
     savedConfigureExFlags  = combinedSavedConfigureExFlags,
     savedUserInstallDirs   = combinedSavedUserInstallDirs,
@@ -331,6 +336,16 @@ instance Semigroup SavedConfig where
         where
           combine        = combine'        savedInstallFlags
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
+
+      combinedSavedClientInstallFlags = ClientInstallFlags {
+        cinstInstallLibs = combine cinstInstallLibs,
+        cinstEnvironmentPath = combine cinstEnvironmentPath,
+        cinstOverwritePolicy = combine cinstOverwritePolicy,
+        cinstInstallMethod = combine cinstInstallMethod,
+        cinstInstalldir = combine cinstInstalldir
+        }
+        where
+          combine        = combine'        savedClientInstallFlags
 
       combinedSavedConfigureFlags = ConfigFlags {
         configArgs                = lastNonEmpty configArgs,
@@ -532,11 +547,11 @@ baseSavedConfig = do
 --
 initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
-  cacheDir   <- defaultCacheDir
-  logsDir    <- defaultLogsDir
-  worldFile  <- defaultWorldFile
-  extraPath  <- defaultExtraPath
-  symlinkPath <- defaultSymlinkPath
+  cacheDir    <- defaultCacheDir
+  logsDir     <- defaultLogsDir
+  worldFile   <- defaultWorldFile
+  extraPath   <- defaultExtraPath
+  installPath <- defaultInstallPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
@@ -549,8 +564,10 @@ initialSavedConfig = do
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
-      installNumJobs     = toFlag Nothing,
-      installSymlinkBinDir = toFlag symlinkPath
+      installNumJobs     = toFlag Nothing
+    },
+    savedClientInstallFlags = mempty {
+      cinstInstalldir = toFlag installPath
     }
   }
 
@@ -590,8 +607,8 @@ defaultExtraPath = do
   dir <- getCabalDir
   return [dir </> "bin"]
 
-defaultSymlinkPath :: IO FilePath
-defaultSymlinkPath = do
+defaultInstallPath :: IO FilePath
+defaultInstallPath = do
   dir <- getCabalDir
   return (dir </> "bin")
 
@@ -811,6 +828,7 @@ commentSavedConfig = do
             IT.applicationDirs = Nothing
             },
         savedInstallFlags      = defaultInstallFlags,
+        savedClientInstallFlags= defaultClientInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {
             configAllowNewer     = Just (AllowNewer mempty),
             configAllowOlder     = Just (AllowOlder mempty)
@@ -933,6 +951,10 @@ configFieldDescriptions src =
        (installOptions ParseArgs)
        ["dry-run", "only", "only-dependencies", "dependencies-only"] []
 
+  ++ toSavedConfig liftClientInstallFlag
+       (clientInstallOptions ParseArgs)
+       [] []
+
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
        ["verbose", "check", "documentation", "publish"] []
@@ -1039,6 +1061,10 @@ liftConfigExFlag = liftField
 liftInstallFlag :: FieldDescr InstallFlags -> FieldDescr SavedConfig
 liftInstallFlag = liftField
   savedInstallFlags (\flags conf -> conf { savedInstallFlags = flags })
+
+liftClientInstallFlag :: FieldDescr ClientInstallFlags -> FieldDescr SavedConfig
+liftClientInstallFlag = liftField
+  savedClientInstallFlags (\flags conf -> conf { savedClientInstallFlags = flags })
 
 liftUploadFlag :: FieldDescr UploadFlags -> FieldDescr SavedConfig
 liftUploadFlag = liftField

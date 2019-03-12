@@ -129,7 +129,9 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags haddockFlags testFlags
+                  installFlags
+                  mempty -- ClientInstallFlags, not needed here
+                  haddockFlags testFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

@@ -20,10 +20,14 @@ module Distribution.Client.CmdInstall (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Directory
+         ( doesPathExist )
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
+
+import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
@@ -47,11 +51,13 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigDistDir, projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath )
+         , modifyProgramSearchPath, ProgramDb )
+import Distribution.Simple.BuildPaths
+         ( exeExtension )
 import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
-         ( getCabalDir )
+         ( getCabalDir, loadConfig, SavedConfig(..) )
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Solver.Types.PackageIndex
          ( lookupPackageName, searchByName )
@@ -68,38 +74,40 @@ import Distribution.Client.IndexUtils
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
          , resolveBuildTimeSettings, withProjectOrGlobalConfig )
+import Distribution.Client.ProjectPlanning
+         ( storePackageInstallDirs' )
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Client.DistDirLayout
          ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
          , ProjectRoot(ProjectRootImplicit)
-         , storePackageDirectory, cabalStoreDirLayout
+         , cabalStoreDirLayout
          , CabalDirLayout(..), StoreDirLayout(..) )
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, TestFlags, fromFlagOrDefault, flagToMaybe
-         , trueArg, flagToList, toFlag )
+         ( Flag(..), HaddockFlags, TestFlags, fromFlagOrDefault, flagToMaybe )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
-import Distribution.ReadE
-         ( ReadE(..), succeedReadE )
 import Distribution.Simple.Command
-         ( CommandUI(..), ShowOrParseArgs(..), OptionField(..)
-         , option, usageAlternatives, reqArg )
+         ( CommandUI(..), OptionField(..), usageAlternatives )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
-         ( Compiler(..), CompilerId(..), CompilerFlavor(..) )
+         ( Compiler(..), CompilerId(..), CompilerFlavor(..)
+         , PackageDBStack )
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
+import Distribution.System
+         ( Platform )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName )
+         ( UnqualComponentName, unUnqualComponentName, mkUnqualComponentName )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -127,52 +135,14 @@ import Distribution.Utils.NubList
          ( fromNubList )
 import System.Directory
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
-         , getTemporaryDirectory, makeAbsolute, doesDirectoryExist )
+         , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
+         , removeFile, removeDirectory, copyFile )
 import System.FilePath
-         ( (</>), takeDirectory, takeBaseName )
+         ( (</>), (<.>), takeDirectory, takeBaseName )
 
-data NewInstallFlags = NewInstallFlags
-  { ninstInstallLibs :: Flag Bool
-  , ninstEnvironmentPath :: Flag FilePath
-  , ninstOverwritePolicy :: Flag OverwritePolicy
-  }
-
-defaultNewInstallFlags :: NewInstallFlags
-defaultNewInstallFlags = NewInstallFlags
-  { ninstInstallLibs = toFlag False
-  , ninstEnvironmentPath = mempty
-  , ninstOverwritePolicy = toFlag NeverOverwrite
-  }
-
-newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
-newInstallOptions _ =
-  [ option [] ["lib"]
-    "Install libraries rather than executables from the target package."
-    ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
-    trueArg
-  , option [] ["package-env", "env"]
-    "Set the environment file that may be modified."
-    ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
-    (reqArg "ENV" (succeedReadE Flag) flagToList)
-  , option [] ["overwrite-policy"]
-    "How to handle already existing symlinks."
-    ninstOverwritePolicy (\v flags -> flags { ninstOverwritePolicy = v })
-    $ reqArg
-        "always|never"
-        readOverwritePolicyFlag
-        showOverwritePolicyFlag
-  ]
-  where
-    readOverwritePolicyFlag = ReadE $ \case
-      "always" -> Right $ Flag AlwaysOverwrite
-      "never"  -> Right $ Flag NeverOverwrite
-      policy   -> Left  $ "'" <> policy <> "' isn't a valid overwrite policy"
-    showOverwritePolicyFlag (Flag AlwaysOverwrite) = ["always"]
-    showOverwritePolicyFlag (Flag NeverOverwrite)  = ["never"]
-    showOverwritePolicyFlag NoFlag                 = []
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                            , HaddockFlags, TestFlags, NewInstallFlags
+                            , HaddockFlags, TestFlags, ClientInstallFlags
                             )
 installCommand = CommandUI
   { commandName         = "v2-install"
@@ -181,8 +151,8 @@ installCommand = CommandUI
                           "v2-install" [ "[TARGETS] [FLAGS]" ]
   , commandDescription  = Just $ \_ -> wrapText $
     "Installs one or more packages. This is done by installing them "
-    ++ "in the store and symlinking the executables in the directory "
-    ++ "specified by the --symlink-bindir flag (`~/.cabal/bin/` by default). "
+    ++ "in the store and symlinking/copying the executables in the directory "
+    ++ "specified by the --installdir flag (`~/.cabal/bin/` by default). "
     ++ "If you want the installed executables to be available globally, "
     ++ "make sure that the PATH environment variable contains that directory. "
     ++ "\n\n"
@@ -210,9 +180,10 @@ installCommand = CommandUI
                  . optionName) $ configureOptions showOrParseArgs)
      ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
      ++ liftOptions get3 set3
-        -- hide "target-package-db" flag from the
+        -- hide "target-package-db" and "symlink-bindir" flags from the
         -- install options.
-        (filter ((`notElem` ["target-package-db"])
+        -- "symlink-bindir" is obsoleted by "installdir" in ClientInstallFlags
+        (filter ((`notElem` ["target-package-db", "symlink-bindir"])
                  . optionName) $
                                installOptions showOrParseArgs)
        ++ liftOptions get4 set4
@@ -222,8 +193,8 @@ installCommand = CommandUI
                   . optionName) $
                                 haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (testOptions showOrParseArgs)
-     ++ liftOptions get6 set6 (newInstallOptions showOrParseArgs)
-  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, defaultNewInstallFlags)
+     ++ liftOptions get6 set6 (clientInstallOptions showOrParseArgs)
+  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, defaultClientInstallFlags)
   }
   where
     get1 (a,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f) = (a,b,c,d,e,f)
@@ -240,7 +211,7 @@ installCommand = CommandUI
 --   install command, except that now conflicts between separate runs of the
 --   command are impossible thanks to the store.
 --   Exes are installed in the store like a normal dependency, then they are
---   symlinked uin the directory specified by --symlink-bindir.
+--   symlinked/copied in the directory specified by --installdir.
 --   To do this we need a dummy projectBaseContext containing the targets as
 --   estra packages and using a temporary dist directory.
 -- * libraries
@@ -251,9 +222,9 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, NewInstallFlags)
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ClientInstallFlags)
             -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, newInstallFlags)
+installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags')
             targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
@@ -264,6 +235,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
   when (configBenchmarks configFlags' == Flag True) $
     die' verbosity $ "--enable-benchmarks was specified, but benchmarks can't "
                   ++ "be enabled in a remote package"
+
+  -- We cannot use establishDummyProjectBaseContext to get these flags, since
+  -- it requires one of them as an argument. Normal establishProjectBaseContext
+  -- does not, and this is why this is done only for the install command
+  clientInstallFlags <- do
+    let configFileFlag = globalConfigFile globalFlags
+    savedConfig <- loadConfig verbosity configFileFlag
+    pure $ savedClientInstallFlags savedConfig `mappend` clientInstallFlags'
 
   let
     withProject = do
@@ -484,7 +463,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
       GhcEnvFilePackageId _ -> True
       _ -> False
 
-  envFile <- case flagToMaybe (ninstEnvironmentPath newInstallFlags) of
+  envFile <- case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
     Just spec
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
@@ -566,68 +545,101 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
+    -- Now that we built everything we can do the installation part.
+    -- First, figure out if / what parts we want to install:
     let
       dryRun = buildSettingDryRun $ buildSettings baseCtx
-      mkPkgBinDir = (</> "bin") .
-                    storePackageDirectory
-                       (cabalStoreDirLayout $ cabalDirLayout baseCtx)
-                       compilerId
-      installLibs = fromFlagOrDefault False (ninstInstallLibs newInstallFlags)
+      installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
 
-    when (not installLibs && not dryRun) $ do
-      -- If there are exes, symlink them
-      let symlinkBindirUnknown =
-            "symlink-bindir is not defined. Set it in your cabal config file "
-            ++ "or use --symlink-bindir=<path>"
-      symlinkBindir <- fromFlagOrDefault (die' verbosity symlinkBindirUnknown)
-                    $ fmap makeAbsolute
-                    $ projectConfigSymlinkBinDir
-                    $ projectConfigBuildOnly
-                    $ projectConfig $ baseCtx
-      createDirectoryIfMissingVerbose verbosity False symlinkBindir
-      warnIfNoExes verbosity buildCtx
-      let
-        doSymlink = symlinkBuiltPackage
-                      verbosity
-                      overwritePolicy
-                      mkPkgBinDir symlinkBindir
-        in traverse_ doSymlink $ Map.toList $ targetsMap buildCtx
-
-    when (installLibs && not dryRun) $
-      if supportsPkgEnvFiles
-        then do
-          -- Why do we get it again? If we updated a globalPackage then we need
-          -- the new version.
-          installedIndex' <- getInstalledPackages verbosity compiler packageDbs progDb'
-          let
-            getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst))
-                      . PI.lookupPackageName installedIndex'
-            globalLatest = concat (getLatest <$> globalPackages)
-
-            baseEntries =
-              GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-            globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
-            pkgEntries = ordNub $
-                  globalEntries
-              ++ envEntries'
-              ++ entriesForLibraryComponents (targetsMap buildCtx)
-            contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
-          createDirectoryIfMissing True (takeDirectory envFile)
-          writeFileAtomic envFile (BS.pack contents')
-        else
-          warn verbosity $
-              "The current compiler doesn't support safely installing libraries, "
-            ++ "so only executables will be available. (Library installation is "
-            ++ "supported on GHC 8.0+ only)"
+    -- Then, install!
+    when (not dryRun) $
+      if installLibs
+      then installLibraries verbosity buildCtx compiler packageDbs progDb envFile envEntries'
+      else installExes verbosity baseCtx buildCtx platform compiler clientInstallFlags
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags' configExFlags
-                  installFlags haddockFlags testFlags
+                  installFlags clientInstallFlags'
+                  haddockFlags testFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+
+-- | Install any built exe by symlinking/copying it
+-- we don't use BuildOutcomes because we also need the component names
+installExes :: Verbosity
+            -> ProjectBaseContext
+            -> ProjectBuildContext
+            -> Platform
+            -> Compiler
+            -> ClientInstallFlags
+            -> IO ()
+installExes verbosity baseCtx buildCtx platform compiler
+            clientInstallFlags = do
+  let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
+  let mkUnitBinDir :: UnitId -> FilePath
+      mkUnitBinDir = InstallDirs.bindir .
+                     storePackageInstallDirs'
+                       storeDirLayout
+                       (compilerId compiler)
+      mkExeName :: UnqualComponentName -> FilePath
+      mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
+      installdirUnknown =
+        "installdir is not defined. Set it in your cabal config file "
+        ++ "or use --installdir=<path>"
+  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown)
+              $ pure <$> cinstInstalldir clientInstallFlags
+  createDirectoryIfMissingVerbose verbosity False installdir
+  warnIfNoExes verbosity buildCtx
+  let
+    doInstall = installUnitExes
+                  verbosity
+                  overwritePolicy
+                  mkUnitBinDir mkExeName
+                  installdir installMethod
+    in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
+  where
     overwritePolicy = fromFlagOrDefault NeverOverwrite
-                        $ ninstOverwritePolicy newInstallFlags
+                        $ cinstOverwritePolicy clientInstallFlags
+    installMethod    = fromFlagOrDefault InstallMethodSymlink
+                        $ cinstInstallMethod clientInstallFlags
+
+-- | Install any built library by adding it to the default ghc environment
+installLibraries :: Verbosity
+                 -> ProjectBuildContext
+                 -> Compiler
+                 -> PackageDBStack
+                 -> ProgramDb
+                 -> FilePath -- ^ Environment file
+                 -> [GhcEnvironmentFileEntry]
+                 -> IO ()
+installLibraries verbosity buildCtx compiler
+                 packageDbs programDb envFile envEntries = do
+  -- Why do we get it again? If we updated a globalPackage then we need
+  -- the new version.
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs programDb
+  if supportsPkgEnvFiles $ getImplInfo compiler
+    then do
+      let
+        getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst))
+                  . PI.lookupPackageName installedIndex
+        globalLatest = concat (getLatest <$> globalPackages)
+
+        baseEntries =
+          GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
+        globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
+        pkgEntries = ordNub $
+              globalEntries
+          ++ envEntries
+          ++ entriesForLibraryComponents (targetsMap buildCtx)
+        contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
+      createDirectoryIfMissing True (takeDirectory envFile)
+      writeFileAtomic envFile (BS.pack contents')
+    else
+      warn verbosity $
+          "The current compiler doesn't support safely installing libraries, "
+        ++ "so only executables will be available. (Library installation is "
+        ++ "supported on GHC 8.0+ only)"
 
 warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
@@ -674,49 +686,79 @@ disableTestsBenchsByDefault configFlags =
   configFlags { configTests = Flag False <> configTests configFlags
               , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
--- | Symlink every exe from a package from the store to a given location
-symlinkBuiltPackage :: Verbosity
-                    -> OverwritePolicy -- ^ Whether to overwrite existing files
-                    -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
-                                            -- store directory
-                    -> FilePath -- ^ Where to put the symlink
-                    -> ( UnitId
-                        , [(ComponentTarget, [TargetSelector])] )
-                     -> IO ()
-symlinkBuiltPackage verbosity overwritePolicy
-                    mkSourceBinDir destDir
-                    (pkg, components) =
-  traverse_ symlinkAndWarn exes
+-- | Symlink/copy every exe from a package from the store to a given location
+installUnitExes :: Verbosity
+                -> OverwritePolicy -- ^ Whether to overwrite existing files
+                -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
+                                        -- store directory
+                -> (UnqualComponentName -> FilePath) -- ^ A function to get
+                                                     -- ^ an exe's filename
+                -> FilePath
+                -> InstallMethod
+                -> ( UnitId
+                    , [(ComponentTarget, [TargetSelector])] )
+                -> IO ()
+installUnitExes verbosity overwritePolicy
+                mkSourceBinDir mkExeName
+                installdir installMethod
+                (unit, components) =
+  traverse_ installAndWarn exes
   where
     exes = catMaybes $ (exeMaybe . fst) <$> components
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
     exeMaybe _ = Nothing
-    symlinkAndWarn exe = do
-      success <- symlinkBuiltExe
+    installAndWarn exe = do
+      success <- installBuiltExe
                    verbosity overwritePolicy
-                   (mkSourceBinDir pkg) destDir exe
+                   (mkSourceBinDir unit) (mkExeName exe)
+                   installdir installMethod
       let errorMessage = case overwritePolicy of
                   NeverOverwrite ->
-                    "Path '" <> (destDir </> prettyShow exe) <> "' already exists. "
+                    "Path '" <> (installdir </> prettyShow exe) <> "' already exists. "
                     <> "Use --overwrite-policy=always to overwrite."
                   -- This shouldn't even be possible, but we keep it in case
-                  -- symlinking logic changes
-                  AlwaysOverwrite -> "Symlinking '" <> prettyShow exe <> "' failed."
+                  -- symlinking/copying logic changes
+                  AlwaysOverwrite -> case installMethod of
+                                       InstallMethodSymlink -> "Symlinking"
+                                       InstallMethodCopy    -> "Copying"
+                                  <> " '" <> prettyShow exe <> "' failed."
       unless success $ die' verbosity errorMessage
 
--- | Symlink a specific exe.
-symlinkBuiltExe :: Verbosity -> OverwritePolicy
-                -> FilePath -> FilePath
-                -> UnqualComponentName
-                -> IO Bool
-symlinkBuiltExe verbosity overwritePolicy sourceDir destDir exe = do
-  notice verbosity $ "Symlinking '" <> prettyShow exe <> "'"
+-- | Install a specific exe.
+installBuiltExe :: Verbosity -> OverwritePolicy
+                -> FilePath -- ^ The directory where the built exe is located
+                -> FilePath -- ^ The exe's filename
+                -> FilePath -- ^ the directory where it should be installed
+                -> InstallMethod
+                -> IO Bool -- ^ Whether the installation was successful
+installBuiltExe verbosity overwritePolicy
+                sourceDir exeName
+                installdir InstallMethodSymlink = do
+  notice verbosity $ "Symlinking '" <> exeName <> "'"
   symlinkBinary
     overwritePolicy
-    destDir
+    installdir
     sourceDir
-    exe
-    $ unUnqualComponentName exe
+    (mkUnqualComponentName exeName)
+    exeName
+installBuiltExe verbosity overwritePolicy
+                sourceDir exeName
+                installdir InstallMethodCopy = do
+  notice verbosity $ "Copying '" <> exeName <> "'"
+  exists <- doesPathExist destination
+  case (exists, overwritePolicy) of
+    (True , NeverOverwrite ) -> pure False
+    (True , AlwaysOverwrite) -> remove >> copy
+    (False, _              ) -> copy
+  where
+    source = sourceDir </> exeName
+    destination = installdir </> exeName
+    remove = do
+      isDir <- doesDirectoryExist destination
+      if isDir
+      then removeDirectory destination
+      else removeFile      destination
+    copy = copyFile source destination >> pure True
 
 -- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
