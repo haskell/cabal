@@ -11,6 +11,11 @@ branches:
     - "1.20"
     - "1.18"
 
+
+# Do not build feature branch with open Pull Requests
+# prevents PR double builds as branch
+skip_branch_with_pr: true
+
 install:
   # Using '-y' and 'refreshenv' as a workaround to:
   # https://github.com/haskell/cabal/issues/3687
@@ -20,7 +25,7 @@ install:
   - refreshenv
   # See http://help.appveyor.com/discussions/problems/6312-curl-command-not-found#comment_42195491
   # NB: Do this after refreshenv, otherwise it will be clobbered!
-  - set PATH=%APPDATA%\cabal\bin;C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;C:\msys64\usr\bin;%PATH%
+  - set PATH=C:\Program Files\Git\cmd;C:\Program Files\Git\mingw64\bin;%PATH%
   - cabal --version
   - cabal %CABOPTS% update
   - cabal %CABOPTS% v1-install happy alex
