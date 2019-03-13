@@ -57,6 +57,9 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo, readRepo )
+import Distribution.Client.CmdInstall.ClientInstallFlags
+         ( ClientInstallFlags(..), defaultClientInstallFlags
+         , clientInstallOptions )
 import Distribution.Utils.NubList
          ( NubList, fromNubList, toNubList, overNubList )
 
@@ -145,6 +148,7 @@ import GHC.Generics ( Generic )
 data SavedConfig = SavedConfig {
     savedGlobalFlags       :: GlobalFlags,
     savedInstallFlags      :: InstallFlags,
+    savedClientInstallFlags :: ClientInstallFlags,
     savedConfigureFlags    :: ConfigFlags,
     savedConfigureExFlags  :: ConfigExFlags,
     savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
@@ -162,6 +166,7 @@ instance Semigroup SavedConfig where
   a <> b = SavedConfig {
     savedGlobalFlags       = combinedSavedGlobalFlags,
     savedInstallFlags      = combinedSavedInstallFlags,
+    savedClientInstallFlags = combinedSavedClientInstallFlags,
     savedConfigureFlags    = combinedSavedConfigureFlags,
     savedConfigureExFlags  = combinedSavedConfigureExFlags,
     savedUserInstallDirs   = combinedSavedUserInstallDirs,
@@ -277,6 +282,16 @@ instance Semigroup SavedConfig where
         where
           combine        = combine'        savedInstallFlags
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
+
+      combinedSavedClientInstallFlags = ClientInstallFlags {
+        cinstInstallLibs = combine cinstInstallLibs,
+        cinstEnvironmentPath = combine cinstEnvironmentPath,
+        cinstOverwritePolicy = combine cinstOverwritePolicy,
+        cinstInstallMethod = combine cinstInstallMethod,
+        cinstCopydir = combine cinstCopydir
+        }
+        where
+          combine        = combine'        savedClientInstallFlags
 
       combinedSavedConfigureFlags = ConfigFlags {
         configArgs                = lastNonEmpty configArgs,
@@ -482,6 +497,9 @@ initialSavedConfig = do
       installBuildReports= toFlag AnonymousReports,
       installNumJobs     = toFlag Nothing,
       installSymlinkBinDir = toFlag symlinkPath
+    },
+    savedClientInstallFlags = mempty {
+      cinstCopydir = toFlag symlinkPath
     }
   }
 
@@ -734,6 +752,7 @@ commentSavedConfig = do
             globalRemoteRepos = toNubList [defaultRemoteRepo]
             },
         savedInstallFlags      = defaultInstallFlags,
+        savedClientInstallFlags= defaultClientInstallFlags,
         savedConfigureExFlags  = defaultConfigExFlags {
             configAllowNewer     = Just (AllowNewer mempty),
             configAllowOlder     = Just (AllowOlder mempty)
@@ -856,6 +875,10 @@ configFieldDescriptions src =
        (installOptions ParseArgs)
        ["dry-run", "only", "only-dependencies", "dependencies-only"] []
 
+  ++ toSavedConfig liftClientInstallFlag
+       (clientInstallOptions ParseArgs)
+       [] []
+
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
        ["verbose", "check", "documentation", "publish"] []
@@ -962,6 +985,10 @@ liftConfigExFlag = liftField
 liftInstallFlag :: FieldDescr InstallFlags -> FieldDescr SavedConfig
 liftInstallFlag = liftField
   savedInstallFlags (\flags conf -> conf { savedInstallFlags = flags })
+
+liftClientInstallFlag :: FieldDescr ClientInstallFlags -> FieldDescr SavedConfig
+liftClientInstallFlag = liftField
+  savedClientInstallFlags (\flags conf -> conf { savedClientInstallFlags = flags })
 
 liftUploadFlag :: FieldDescr UploadFlags -> FieldDescr SavedConfig
 liftUploadFlag = liftField

@@ -9,6 +9,10 @@
 	* Fix Shebang detection heuristics and properly support passing
 	  through program arguments to Shebang cabal scripts (#5600)
 	* Fix misplaced creation of `dist/` folders in CWD (#3699)
+	* Make v2-install/new-install-specific flags configurable in
+	  ~/.cabal/config
+	* Add --copy-bindir and --bindir-method=copy flags to v2-install
+	  that copy the executable instead of symlinking it
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
