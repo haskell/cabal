@@ -1,10 +1,13 @@
+cabal-version:       2.0
 name:                bkpcabal01
 version:             0.1.0.0
+description:         This test also exists in GHC's test-suite under the same name
+                     and was ported over to cabal's testsuite as it exposed a
+                     regression (see #5929)
 license:             BSD3
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
-cabal-version:       >=1.25
 
 library impl
   exposed-modules: H, I
