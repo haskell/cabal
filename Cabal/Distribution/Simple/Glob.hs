@@ -210,9 +210,16 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
 -- | This will 'die'' when the glob matches no files, or if the glob
 -- refers to a missing directory, or if the glob fails to parse.
 --
--- The returned values do not include the supplied @dir@ prefix, which
--- must itself be a valid directory (hence, it can't be the empty
--- string).
+-- The 'Version' argument must be the spec version of the package
+-- description being processed, as globs behave slightly differently
+-- in different spec versions.
+--
+-- The first 'FilePath' argument is the directory that the glob is
+-- relative to. It must be a valid directory (and hence it can't be
+-- the empty string). The returned values will not include this
+-- prefix.
+--
+-- The second 'FilePath' is the glob itself.
 matchDirFileGlob :: Verbosity -> Version -> FilePath -> FilePath -> IO [FilePath]
 matchDirFileGlob verbosity version dir filepath = case parseFileGlob version filepath of
   Left err -> die' verbosity $ explainGlobSyntaxError filepath err
@@ -234,9 +241,13 @@ matchDirFileGlob verbosity version dir filepath = case parseFileGlob version fil
 
 -- | Match files against a pre-parsed glob, starting in a directory.
 --
--- The returned values do not include the supplied @dir@ prefix, which
--- must itself be a valid directory (hence, it can't be the empty
--- string).
+-- The 'Version' argument must be the spec version of the package
+-- description being processed, as globs behave slightly differently
+-- in different spec versions.
+--
+-- The 'FilePath' argument is the directory that the glob is relative
+-- to. It must be a valid directory (and hence it can't be the empty
+-- string). The returned values will not include this prefix.
 runDirFileGlob :: Verbosity -> FilePath -> Glob -> IO [GlobResult FilePath]
 runDirFileGlob verbosity rawDir pat = do
   -- The default data-dir is null. Our callers -should- be
