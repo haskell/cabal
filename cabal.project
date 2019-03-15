@@ -20,8 +20,13 @@ program-options
   --
   -- as a workaround we specify it for each package individually:
 package Cabal
-  ghc-options: -fno-ignore-asserts
+  ghc-options: -fno-ignore-asserts -j4 +RTS -A32m -RTS
+  optimization: 0
 package cabal-testsuite
-  ghc-options: -fno-ignore-asserts
+  ghc-options: -fno-ignore-asserts +RTS -A32m -RTS
 package cabal-install
-  ghc-options: -fno-ignore-asserts
+  ghc-options: -fno-ignore-asserts -j4 +RTS -A32m -RTS
+  optimization: 0
+package hackage-security
+  ghc-options: +RTS -A32m -RTS
+  optimization: 0

@@ -648,8 +648,8 @@ data ElaboratedComponent
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [(ConfiguredId, FilePath)],
-    -- | The UnitIds of the librarys (identifying elaborated packages/
-    -- components) which must be built before this project.  This
+    -- | The UnitIds of the libraries (identifying elaborated packages/
+    -- components) that must be built before this project.  This
     -- is used purely for ordering purposes.  It can contain both
     -- references to definite and indefinite packages; an indefinite
     -- UnitId indicates that we must typecheck that indefinite package
