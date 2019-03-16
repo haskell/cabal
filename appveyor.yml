@@ -23,7 +23,7 @@ install:
   - choco install -y ghc --version 8.0.2 --ignore-dependencies
   - choco install -y cabal-head -pre
   - refreshenv
-  - set
+  - set PATH
   - cabal --version
   - cabal %CABOPTS% update
   - cabal %CABOPTS% v1-install happy alex
