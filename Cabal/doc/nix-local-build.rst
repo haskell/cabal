@@ -416,7 +416,7 @@ of the ``vector`` package matching that specification exposed.
     $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
 
 Both of these commands do the same thing as the above, but only exposes ``base``,
-``vector``, and the``vector`` package's transitive dependencies even if the user
+``vector``, and the ``vector`` package's transitive dependencies even if the user
 is in a project context.
 
 ::
