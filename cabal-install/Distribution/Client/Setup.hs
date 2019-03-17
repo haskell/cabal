@@ -505,6 +505,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,19,2] = flags_1_19_2
   | cabalLibVersion < mkVersion [1,21,1] = flags_1_21_1
   | cabalLibVersion < mkVersion [1,22,0] = flags_1_22_0
+  | cabalLibVersion < mkVersion [1,22,1] = flags_1_22_1
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
@@ -569,6 +570,12 @@ filterConfigureFlags flags cabalLibVersion
                                 , configProf          = NoFlag
                                 , configProfExe       = Flag tryExeProfiling
                                 , configProfLib       = Flag tryLibProfiling
+                                }
+
+    -- Cabal == 1.22.0.* had a discontinuity (see #5946 or e9a8d48a3adce34d)
+    -- due to temporary amnesia of the --*-executable-profiling flags
+    flags_1_22_1 = flags_1_23_0 { configDebugInfo = NoFlag
+                                , configProfExe   = NoFlag
                                 }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
