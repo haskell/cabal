@@ -69,7 +69,6 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.ShowBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Configure
