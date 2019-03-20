@@ -587,14 +587,14 @@ This command will modify the environment file in the current directory:
 
     $ cabal new-install --lib Cabal --package-env .
 
-This command will modify the enviroment file in the ``~/foo`` directory:
+This command will modify the environment file in the ``~/foo`` directory:
 
 ::
 
     $ cabal new-install --lib Cabal --package-env foo/
 
 Do note that the results of the previous two commands will be overwritten by
-the use of other new-style commands, so it is not reccomended to use them inside
+the use of other new-style commands, so it is not recommended to use them inside
 a project directory.
 
 This command will modify the environment in the "local.env" file in the
@@ -1943,11 +1943,11 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
-.. cfg-field:: write-ghc-environment-files: always, never, or ghc-8.4.4+
-               --write-ghc-enviroment-files=policy
-    :synopsis: Whether a ``.ghc.enviroment`` should be created after a successful build.
+.. cfg-field:: write-ghc-environment-files: always, never, or ghc8.4.4+
+               --write-ghc-environment-files=policy
+    :synopsis: Whether a ``.ghc.environment`` should be created after a successful build.
 
-    :default: ``ghc-8.4.4+``
+    :default: ``ghc8.4.4+``
 
     Whether a `GHC package environment file <https://downloads.haskell.org/~ghc/master/users-guide/packages.html#package-environments>`_
     should be created after a successful build.
