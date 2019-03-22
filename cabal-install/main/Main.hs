@@ -585,7 +585,7 @@ installAction
     -- TODO: It'd be nice if 'cabal install' picked up the '-w' flag passed to
     -- 'configure' when run inside a sandbox.  Right now, running
     --
-    -- $ cabal sandbox init && cabal configure -w /path/to/ghc
+    -- \$ cabal sandbox init && cabal configure -w /path/to/ghc
     --   && cabal build && cabal install
     --
     -- performs the compilation twice unless you also pass -w to 'install'.
