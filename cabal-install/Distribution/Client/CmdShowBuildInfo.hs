@@ -1,4 +1,4 @@
--- | cabal-install CLI command: build
+-- | cabal-install CLI command: new-show-build-info
 --
 module Distribution.Client.CmdShowBuildInfo (
     -- * The @show-build-info@ CLI and action

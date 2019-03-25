@@ -485,7 +485,7 @@ buildActionForCommand commandUI verbosity (buildFlags, buildExFlags) extraArgs g
         configureAction verbosity distPref useSandbox noAddSource 
         (buildNumJobs buildFlags) mempty [] globalFlags config
         
-    nixShell verbosity distPref globalFlags config $ do
+    nixShell verbosity distPref globalFlags config $
       maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand 
         commandUI verbosity config' distPref buildFlags extraArgs
 
@@ -504,12 +504,7 @@ buildForCommand :: CommandUI BuildFlags
                 -> [String]
                 -> IO ()
 buildForCommand command verbosity config distPref buildFlags extraArgs =
-  setupWrapper verbosity
-               setupOptions
-               Nothing
-               command
-               mkBuildFlags
-               (const extraArgs)
+  setupWrapper verbosity setupOptions Nothing command mkBuildFlags (const extraArgs)
  where
   setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
@@ -558,8 +553,8 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
       -- be done to support sandboxes.
       _ <-
         reconfigure configureAction
-        verbosity distPref useSandbox noAddSource NoFlag
-        mempty [] globalFlags config
+          verbosity distPref useSandbox noAddSource NoFlag
+          mempty [] globalFlags config
       let progDb = defaultProgramDb
           setupOptions = defaultSetupScriptOptions
             { useCabalVersion = orLaterVersion $ mkVersion [1,18,0]
