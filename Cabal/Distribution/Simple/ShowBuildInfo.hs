@@ -69,6 +69,7 @@ import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Simple.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
+import Distribution.Pretty
 
 -- | Construct a JSON document describing the build information for a package
 mkBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -89,7 +90,7 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
       ]
 
     mkCompilerInfo = JsonObject
-      [ "flavour" .= JsonString (show $ compilerFlavor $ compiler lbi)
+      [ "flavour" .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
       , "compiler_id" .= JsonString (showCompilerId $ compiler lbi)
       , "path" .= path
       ]
@@ -99,7 +100,7 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
 
     mkComponentInfo (name, clbi) = JsonObject
       [ "type" .= JsonString compType
-      , "name" .= JsonString (show name)
+      , "name" .= JsonString (prettyShow name)
       , "compiler_args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
       , "modules" .= JsonArray (map (JsonString . display) modules)
       , "source_files" .= JsonArray (map JsonString source_files)
