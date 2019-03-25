@@ -1,7 +1,7 @@
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdShowBuildInfo (
-    -- * The @build@ CLI and action
+    -- * The @show-build-info@ CLI and action
     showBuildInfoCommand,
     showBuildInfoAction
   ) where
@@ -74,7 +74,7 @@ showBuildInfoCommand = Client.installCommand {
    }
 
 
--- | The @build@ command does a lot. It brings the install plan up to date,
+-- | The @show-build-info@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
 -- then executes the plan.
 --
@@ -219,7 +219,7 @@ selectPackageTargets targetSelector targets
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be
 -- selected.
 --
--- For the @build@ command we just need the basic checks on being buildable etc.
+-- For the @show-build-info@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
@@ -229,7 +229,7 @@ selectComponentTarget subtarget =
 
 
 -- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
+-- 'TargetSelector' against 'AvailableTarget's for the @show-build-info@ command.
 --
 data TargetProblem =
      TargetProblemCommon       TargetProblemCommon

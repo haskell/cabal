@@ -56,8 +56,6 @@ module Distribution.Client.Setup
     , doctestCommand
     , copyCommand
     , registerCommand
-
-    --ghc-mod support commands
     , showBuildInfoCommand
     , writeAutogenFilesCommand, WriteAutogenFilesFlags(..)
     , parsePackageArgs
@@ -3012,7 +3010,7 @@ relevantConfigValuesText vs =
 
 
 -- ------------------------------------------------------------
--- * Commands to support ghc-mod
+-- * Commands to support show-build-info
 -- ------------------------------------------------------------
 
 showBuildInfoCommand :: CommandUI (BuildFlags, BuildExFlags)

@@ -307,7 +307,6 @@ mainWorker args = do
       , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
-      -- ghc-mod supporting commands
       , hiddenCmd CmdShowBuildInfo.showBuildInfoCommand
                     CmdShowBuildInfo.showBuildInfoAction
       , hiddenCmd CmdWriteAutogenFiles.writeAutogenFilesCommand
@@ -482,23 +481,13 @@ buildActionForCommand commandUI verbosity (buildFlags, buildExFlags) extraArgs g
     distPref             <- findSavedDistPref config (buildDistPref buildFlags)
     -- Calls 'configureAction' to do the real work, so nothing special has to be
     -- done to support sandboxes.
-    config'              <- reconfigure configureAction
-                                        verbosity
-                                        distPref
-                                        useSandbox
-                                        noAddSource
-                                        (buildNumJobs buildFlags)
-                                        mempty
-                                        []
-                                        globalFlags
-                                        config
+    config'              <- reconfigure 
+        configureAction verbosity distPref useSandbox noAddSource 
+        (buildNumJobs buildFlags) mempty [] globalFlags config
+        
     nixShell verbosity distPref globalFlags config $ do
-      maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand commandUI
-                                                                   verbosity
-                                                                   config'
-                                                                   distPref
-                                                                   buildFlags
-                                                                   extraArgs
+      maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand 
+        commandUI verbosity config' distPref buildFlags extraArgs
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
@@ -506,6 +495,7 @@ buildActionForCommand commandUI verbosity (buildFlags, buildExFlags) extraArgs g
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
 build = buildForCommand (Cabal.buildCommand defaultProgramDb)
 
+-- | Helper function
 buildForCommand :: CommandUI BuildFlags
                 -> Verbosity
                 -> SavedConfig
@@ -1295,7 +1285,7 @@ manpageAction commands flagVerbosity extraArgs _ = do
                  else pname
   putStrLn $ manpage cabalCmd commands
 
---Further commands to support ghc-mod usage
+--Further commands to support show-build-info usage
 writeAutogenFilesAction :: WriteAutogenFilesFlags -> [String] -> Action
 writeAutogenFilesAction flags _ globalFlags = do
   let verbosity = fromFlag (wafVerbosity flags)

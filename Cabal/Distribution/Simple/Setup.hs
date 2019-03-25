@@ -2210,7 +2210,7 @@ optionNumJobs get set =
 
 
 -- ------------------------------------------------------------
--- * ghc-mod support flags
+-- * show-build-info command flags
 -- ------------------------------------------------------------
 
 showBuildInfoCommand :: ProgramDb -> CommandUI BuildFlags
