@@ -521,7 +521,7 @@ install_pkg "cabal-install"
 # legit cabal sandbox. This works because 'cabal sandbox init' will
 # reuse the already existing package database and other files if they
 # are in the expected locations.
-[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal sandbox init --sandbox $SANDBOX
+[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal v1-sandbox init --sandbox $SANDBOX
 
 echo
 echo "==========================================="
