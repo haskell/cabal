@@ -91,9 +91,10 @@ instance Parsec ModuleRenaming where
         then moduleRenamingParsec parensLax    lexemeParsec
         else moduleRenamingParsec parensStrict parsec
       where
-        -- For cabal spec versions < 3.0 white spaces were not skipped after the '('
-        -- and ')' tokens in the mixin field. This parser checks the cabal file version
-        -- and does the correct skipping of spaces.
+        -- For cabal spec versions < 3.0 white spaces were not skipped
+        -- after the '(' and ')' tokens in the mixin field. This
+        -- parser checks the cabal file version and does the correct
+        -- skipping of spaces.
         parensLax    p = P.between (P.char '(' >> P.spaces)   (P.char ')' >> P.spaces)   p
         parensStrict p = P.between (P.char '(' >> warnSpaces) (P.char ')') p
 

@@ -93,7 +93,8 @@ cc_name = ann_cname . cc_ann_id
 dispConfiguredComponent :: ConfiguredComponent -> Doc
 dispConfiguredComponent cc =
     hang (text "component" <+> pretty (cc_cid cc)) 4
-         (vcat [ hsep $ [ text "include", pretty (ci_id incl), pretty (ci_renaming incl) ]
+         (vcat [ hsep $ [ text "include"
+                        , pretty (ci_id incl), pretty (ci_renaming incl) ]
                | incl <- cc_includes cc
                ])
 
@@ -115,9 +116,9 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
         aid <- case Map.lookup keys deps_map of
                 Nothing ->
                     dieProgress $
-                        text "Mix-in refers to non-existent package" <+>
-                        quotes (pretty name) $$
-                        text "(did you forget to add the package to build-depends?)"
+                    text "Mix-in refers to non-existent package" <+>
+                    quotes (pretty name) $$
+                    text "(did you forget to add the package to build-depends?)"
                 Just r  -> return r
         return ComponentInclude {
                 ci_ann_id   = aid,
@@ -166,7 +167,8 @@ toConfiguredComponent
 toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
     lib_deps <-
         if newPackageDepsBehaviour pkg_descr
-            then fmap concat $ forM (targetBuildDepends bi) $ \(Dependency name _ sublibs) -> do
+            then fmap concat $ forM (targetBuildDepends bi) $
+                 \(Dependency name _ sublibs) -> do
                     -- The package name still needs fixing in case of legacy
                     -- sublibrary dependency syntax
                     let (pn, _) = fixFakePkgName pkg_descr name
@@ -179,7 +181,8 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                     -- Return all library components
                     forM (Set.toList sublibs) $ \lib ->
                         let comp = CLibName lib in
-                        case Map.lookup (CLibName $ LSubLibName $ packageNameToUnqualComponentName name) pkg
+                        case Map.lookup (CLibName $ LSubLibName $
+                                         packageNameToUnqualComponentName name) pkg
                          <|> Map.lookup comp pkg
                         of
                             Nothing ->
@@ -244,8 +247,8 @@ toConfiguredComponent' use_external_internal_deps flags
                 else cc
   where
     -- TODO: pass component names to it too!
-    this_cid = computeComponentId deterministic ipid_flag cid_flag (package pkg_descr)
-                (componentName component) (Just (deps, flags))
+    this_cid = computeComponentId deterministic ipid_flag cid_flag
+                (package pkg_descr) (componentName component) (Just (deps, flags))
     deps = [ ann_id aid | m <- Map.elems dep_map
                         , aid <- Map.elems m ]
 
@@ -314,5 +317,6 @@ fixFakePkgName pkg_descr pn =
   then (packageName pkg_descr, CLibName (LSubLibName subLibName))
   else (pn,                    CLibName LMainLibName            )
   where
-    subLibName = packageNameToUnqualComponentName pn
-    internalLibraries = mapMaybe (libraryNameString . libName) (allLibraries pkg_descr)
+    subLibName        = packageNameToUnqualComponentName pn
+    internalLibraries = mapMaybe (libraryNameString . libName)
+                        (allLibraries pkg_descr)
