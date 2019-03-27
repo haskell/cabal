@@ -46,30 +46,16 @@ showBuildInfoCommand = Client.installCommand {
   commandSynopsis     = "Show project build information",
   commandUsage        = usageAlternatives "new-show-build-info" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
-        "Build one or more targets from within the project. The available "
-     ++ "targets are the packages in the project as well as individual "
-     ++ "components within those packages, including libraries, executables, "
-     ++ "test-suites or benchmarks. Targets can be specified by name or "
-     ++ "location. If no target is specified then the default is to build "
-     ++ "the package in the current directory.\n\n"
-
-     ++ "Dependencies are built or rebuilt as necessary. Additional "
-     ++ "configuration flags can be specified on the command line and these "
-     ++ "extend the project configuration from the 'cabal.project', "
-     ++ "'cabal.project.local' and other files.",
+        "Provides detailed json output for the given package.\n"
+     ++ "Contains information about the different build components and compiler flags.\n",
   commandNotes        = Just $ \pname ->
         "Examples:\n"
-     ++ "  " ++ pname ++ " new-build\n"
-     ++ "    Build the package in the current directory or all packages in the project\n"
-     ++ "  " ++ pname ++ " new-build pkgname\n"
-     ++ "    Build the package named pkgname in the project\n"
-     ++ "  " ++ pname ++ " new-build ./pkgfoo\n"
-     ++ "    Build the package in the ./pkgfoo directory\n"
-     ++ "  " ++ pname ++ " new-build cname\n"
-     ++ "    Build the component named cname module Distribution.Client.InstallPlanin the project\n"
-     ++ "  " ++ pname ++ " new-build cname --module Distribution.Client.InstallPlanenable-profiling\n"
-     ++ "    Build the component in profilingmodule Distribution.Client.InstallPlan mode (including dependencies as needed)\n\n"
-
+     ++ "  " ++ pname ++ " new-show-build-info\n"
+     ++ "    Shows build information about the current package\n"
+     ++ "  " ++ pname ++ " new-show-build-info .\n"
+     ++ "    Shows build information about the current package\n"
+     ++ "  " ++ pname ++ " new-show-build-info ./pkgname \n"
+     ++ "    Shows build information about the package located in './pkgname'\n"
      ++ cmdCommonHelpTextNewBuildBeta
    }
 
