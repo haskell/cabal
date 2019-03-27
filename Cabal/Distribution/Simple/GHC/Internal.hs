@@ -603,7 +603,9 @@ renderGhcEnvironmentFile =
 renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
 renderGhcEnvironmentFileEntry entry = case entry of
     GhcEnvFileComment   comment   -> format comment
-      where format = intercalate "\n" . map ("-- " ++) . lines
+      where format = intercalate "\n" . map ("--" <+>) . lines
+            pref <+> ""  = pref
+            pref <+> str = pref ++ " " ++ str
     GhcEnvFilePackageId pkgid     -> "package-id " ++ prettyShow pkgid
     GhcEnvFilePackageDb pkgdb     ->
       case pkgdb of
