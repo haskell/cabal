@@ -65,16 +65,10 @@ data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
     vFlags :: Set VerbosityFlag,
     vQuiet :: Bool
-  } deriving (Generic)
+  } deriving (Generic, Show, Read)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
 mkVerbosity l = Verbosity { vLevel = l, vFlags = Set.empty, vQuiet = False }
-
-instance Show Verbosity where
-    showsPrec n = showsPrec n . vLevel
-
-instance Read Verbosity where
-    readsPrec n s = map (\(x,y) -> (mkVerbosity x,y)) (readsPrec n s)
 
 instance Eq Verbosity where
     x == y = vLevel x == vLevel y
@@ -152,6 +146,25 @@ intToVerbosity 2 = Just (mkVerbosity Verbose)
 intToVerbosity 3 = Just (mkVerbosity Deafening)
 intToVerbosity _ = Nothing
 
+-- | Parser verbosity
+--
+-- >>> explicitEitherParsec parsecVerbosity "normal"
+-- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [], vQuiet = False}))
+--
+-- >>> explicitEitherParsec parsecVerbosity "normal+nowrap  "
+-- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap], vQuiet = False}))
+--
+-- >>> explicitEitherParsec parsecVerbosity "normal+nowrap +markoutput"
+-- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+--
+-- >>> explicitEitherParsec parsecVerbosity "normal +nowrap +markoutput"
+-- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+--
+-- >>> explicitEitherParsec parsecVerbosity "normal+nowrap+markoutput"
+-- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+--
+-- /Note:/ this parser will eat trailing spaces.
+--
 parsecVerbosity :: CabalParsing m => m (Either Int Verbosity)
 parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
   where
@@ -159,7 +172,7 @@ parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
     parseStringVerbosity = fmap Right $ do
         level <- parseVerbosityLevel
         _ <- P.spaces
-        extras <- P.sepBy parseExtra P.skipSpaces1
+        extras <- many (parseExtra <* P.spaces)
         return (foldr (.) id extras (mkVerbosity level))
     parseVerbosityLevel = P.choice
         [ P.string "silent" >> return Silent
