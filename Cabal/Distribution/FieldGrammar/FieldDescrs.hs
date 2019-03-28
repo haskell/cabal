@@ -10,15 +10,17 @@ module Distribution.FieldGrammar.FieldDescrs (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Lens    (aview, cloneLens)
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
-import Distribution.Pretty         (pretty)
+import Distribution.Pretty         (pretty, showFreeText)
 
-import qualified Data.Map                  as Map
-import qualified Distribution.Fields.Field as P
-import qualified Distribution.Parsec       as P
-import qualified Text.PrettyPrint          as Disp
+import qualified Data.Map                        as Map
+import qualified Distribution.Compat.CharParsing as C
+import qualified Distribution.Fields.Field       as P
+import qualified Distribution.Parsec             as P
+import qualified Text.PrettyPrint                as Disp
 
 -- strict pair
 data SP s = SP
@@ -74,6 +76,14 @@ instance FieldGrammar FieldDescrs where
         f s = pretty (pack' _pack (aview l s))
         g s = cloneLens l (const (unpack' _pack <$> P.parsec)) s
 
+    freeTextField fn l = singletonF fn f g where
+        f s = maybe mempty showFreeText (aview l s)
+        g s = cloneLens l (const (Just <$> parsecFreeText)) s
+
+    freeTextFieldDef fn l = singletonF fn f g where
+        f s = showFreeText (aview l s)
+        g s = cloneLens l (const parsecFreeText) s
+
     monoidalFieldAla fn _pack l = singletonF fn f g where
         f s = pretty (pack' _pack (aview l s))
         g s = cloneLens l (\x -> mappend x . unpack' _pack <$> P.parsec) s
@@ -84,3 +94,20 @@ instance FieldGrammar FieldDescrs where
     removedIn _ _ x        = x
     availableSince _ _     = id
     hiddenField _          = F mempty
+
+parsecFreeText :: P.CabalParsing m => m String
+parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar
+  where
+    -- Example package with dot lines
+    -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
+    dropDotLines "." = "."
+    dropDotLines x = intercalate "\n" . map dotToEmpty . lines $ x
+
+    dotToEmpty x | trim' x == "." = ""
+    dotToEmpty x                  = trim x
+
+    trim' :: String -> String
+    trim' = dropWhileEnd (`elem` (" \t" :: String))
+
+    trim :: String -> String
+    trim = dropWhile isSpace . dropWhileEnd isSpace

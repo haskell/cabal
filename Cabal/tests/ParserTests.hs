@@ -177,6 +177,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "mixin-3.cabal"
     , regressionTest "libpq1.cabal"
     , regressionTest "libpq2.cabal"
+    , regressionTest "indentation.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

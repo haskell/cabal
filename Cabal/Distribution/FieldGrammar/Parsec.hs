@@ -205,6 +205,34 @@ instance FieldGrammar ParsecFieldGrammar where
             | null fls  = pure def
             | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
 
+    freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
+        parser v fields = case Map.lookup fn fields of
+            Nothing  -> pure Nothing
+            Just []  -> pure Nothing
+            Just [x] -> parseOne v x
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
+
+        -- TODO: check if this `pos` is the position of field name.
+        parseOne _v (MkNamelessField _pos fls)
+            | null fls  = pure Nothing
+            | otherwise = pure (Just (fieldlinesToFreeText fls))
+
+    freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
+        parser v fields = case Map.lookup fn fields of
+            Nothing  -> pure ""
+            Just []  -> pure ""
+            Just [x] -> parseOne v x
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
+
+        -- TODO: check if this `pos` is the position of field name.
+        parseOne _v (MkNamelessField _pos fls)
+            | null fls  = pure ""
+            | otherwise = pure (fieldlinesToFreeText fls)
+
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
@@ -318,6 +346,21 @@ runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+
+-- Example package with dot lines
+-- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
+fieldlinesToFreeText :: [FieldLine ann] -> String
+fieldlinesToFreeText [FieldLine _ "."] = "."
+fieldlinesToFreeText fls               = intercalate "\n" (map go fls)
+  where
+    go (FieldLine _ bs)
+        | s == "." = ""
+        | otherwise = s
+      where
+        s = trim (fromUTF8BS bs)
+
+        trim :: String -> String
+        trim = dropWhile isSpace . dropWhileEnd isSpace
 
 fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
 fieldLinesToStream []                    = fieldLineStreamEnd
