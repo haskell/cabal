@@ -26,7 +26,6 @@ module Distribution.Parsec.Newtypes (
     Token (..),
     Token' (..),
     MQuoted (..),
-    FreeText (..),
     FilePathNT (..),
     ) where
 
@@ -35,7 +34,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.Functor.Identity         (Identity (..))
-import Data.List                     (dropWhileEnd)
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)
@@ -227,37 +225,6 @@ instance Parsec TestedWith where
 instance Pretty TestedWith where
     pretty x = case unpack x of
         (compiler, vr) -> pretty compiler <+> pretty vr
-
--- | This is /almost/ @'many' 'Distribution.Compat.P.anyChar'@, but it
---
--- * trims whitespace from ends of the lines,
---
--- * converts lines with only single dot into empty line.
---
-newtype FreeText = FreeText { getFreeText :: String }
-
-instance Newtype FreeText String where
-    pack = FreeText
-    unpack = getFreeText
-
-instance Parsec FreeText where
-    parsec = pack . dropDotLines <$ P.spaces <*> many P.anyChar
-      where
-        -- Example package with dot lines
-        -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
-        dropDotLines "." = "."
-        dropDotLines x = intercalate "\n" . map dotToEmpty . lines $ x
-        dotToEmpty x | trim' x == "." = ""
-        dotToEmpty x                  = trim x
-
-        trim' :: String -> String
-        trim' = dropWhileEnd (`elem` (" \t" :: String))
-
-        trim :: String -> String
-        trim = dropWhile isSpace . dropWhileEnd isSpace
-
-instance Pretty FreeText where
-    pretty = showFreeText . unpack
 
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT { getFilePathNT :: String }

@@ -63,6 +63,24 @@ class FieldGrammar g where
         -> a           -- ^ default value
         -> g s a
 
+    --  | Free text field is essentially 'optionalFieldDefAla` with @""@
+    --  as the default and "accept everything" parser.
+    --
+    -- @since 3.0.0.0
+    freeTextField
+        :: FieldName
+        -> ALens' s (Maybe String) -- ^ lens into the field
+        -> g s (Maybe String)
+
+    --  | Free text field is essentially 'optionalFieldDefAla` with @""@
+    --  as the default and "accept everything" parser.
+    --
+    -- @since 3.0.0.0
+    freeTextFieldDef
+        :: FieldName
+        -> ALens' s String -- ^ lens into the field
+        -> g s String
+
     -- | Monoidal field.
     --
     -- Values are combined with 'mappend'.

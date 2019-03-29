@@ -47,7 +47,7 @@ instance Monad m => Parsec.Stream FieldLineStream m Char where
         Nothing -> Just ('\n', s)
         Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSCons bs'' s) s)
 
--- Bssed on implementation 'decodeStringUtf8'
+-- Based on implementation 'decodeStringUtf8'
 unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)
 unconsChar c0 bs0 f next
     | c0 <= 0x7F = (chr (fromIntegral c0), f bs0)

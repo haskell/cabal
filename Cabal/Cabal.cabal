@@ -147,6 +147,9 @@ extra-source-files:
   tests/ParserTests/regressions/hidden-main-lib.cabal
   tests/ParserTests/regressions/hidden-main-lib.expr
   tests/ParserTests/regressions/hidden-main-lib.format
+  tests/ParserTests/regressions/indentation.cabal
+  tests/ParserTests/regressions/indentation.expr
+  tests/ParserTests/regressions/indentation.format
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format

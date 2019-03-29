@@ -9,7 +9,7 @@ import           Distribution.Compat.Newtype
 import           Distribution.Compat.Prelude
 import           Distribution.Fields.Field   (FieldName)
 import           Distribution.Fields.Pretty  (PrettyField (..))
-import           Distribution.Pretty         (Pretty (..))
+import           Distribution.Pretty         (Pretty (..), showFreeText)
 import           Distribution.Simple.Utils   (toUTF8BS)
 import           Prelude ()
 import           Text.PrettyPrint            (Doc)
@@ -59,6 +59,13 @@ instance FieldGrammar PrettyFieldGrammar where
             | otherwise = ppField fn (pretty (pack' _pack x))
           where
             x = aview l s
+
+    freeTextField fn l = PrettyFG pp where
+        pp s = maybe mempty (ppField fn . showFreeText) (aview l s)
+
+    -- it's ok to just show, as showFreeText of empty string is empty.
+    freeTextFieldDef fn l = PrettyFG pp where
+        pp s = ppField fn (showFreeText (aview l s))
 
     monoidalFieldAla fn _pack l = PrettyFG pp
       where

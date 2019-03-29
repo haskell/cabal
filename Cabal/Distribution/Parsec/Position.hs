@@ -5,6 +5,8 @@ module Distribution.Parsec.Position (
     retPos,
     showPos,
     zeroPos,
+    positionCol,
+    positionRow,
     ) where
 
 import Distribution.Compat.Prelude
@@ -32,3 +34,11 @@ showPos (Position row col) = show row ++ ":" ++ show col
 
 zeroPos :: Position
 zeroPos = Position 0 0
+
+-- | @since 3.0.0.0
+positionCol :: Position -> Int
+positionCol (Position _ c) = c
+
+-- | @since 3.0.0.0
+positionRow :: Position -> Int
+positionRow (Position r _) = r

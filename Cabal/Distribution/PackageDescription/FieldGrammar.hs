@@ -76,18 +76,18 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
-    <*> optionalFieldDefAla "copyright"     FreeText                   L.copyright ""
-    <*> optionalFieldDefAla "maintainer"    FreeText                   L.maintainer ""
-    <*> optionalFieldDefAla "author"        FreeText                   L.author ""
-    <*> optionalFieldDefAla "stability"     FreeText                   L.stability ""
+    <*> freeTextFieldDef    "copyright"                                L.copyright
+    <*> freeTextFieldDef    "maintainer"                               L.maintainer
+    <*> freeTextFieldDef    "author"                                   L.author
+    <*> freeTextFieldDef    "stability"                                L.stability
     <*> monoidalFieldAla    "tested-with"   (alaList' FSep TestedWith) L.testedWith
-    <*> optionalFieldDefAla "homepage"      FreeText                   L.homepage ""
-    <*> optionalFieldDefAla "package-url"   FreeText                   L.pkgUrl ""
-    <*> optionalFieldDefAla "bug-reports"   FreeText                   L.bugReports ""
+    <*> freeTextFieldDef    "homepage"                                 L.homepage
+    <*> freeTextFieldDef    "package-url"                              L.pkgUrl
+    <*> freeTextFieldDef    "bug-reports"                              L.bugReports
     <*> pure [] -- source-repos are stanza
-    <*> optionalFieldDefAla "synopsis"      FreeText                   L.synopsis ""
-    <*> optionalFieldDefAla "description"   FreeText                   L.description ""
-    <*> optionalFieldDefAla "category"      FreeText                   L.category ""
+    <*> freeTextFieldDef    "synopsis"                                 L.synopsis
+    <*> freeTextFieldDef    "description"                              L.description
+    <*> freeTextFieldDef    "category"                                 L.category
     <*> prefixedFields      "x-"                                       L.customFieldsPD
     <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup
@@ -503,7 +503,7 @@ flagFieldGrammar
     :: (FieldGrammar g, Applicative (g Flag))
     =>  FlagName -> g Flag Flag
 flagFieldGrammar name = MkFlag name
-    <$> optionalFieldDefAla "description" FreeText L.flagDescription ""
+    <$> freeTextFieldDef    "description"          L.flagDescription
     <*> booleanFieldDef     "default"              L.flagDefault     True
     <*> booleanFieldDef     "manual"               L.flagManual      False
 {-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' Flag #-}
@@ -518,7 +518,7 @@ sourceRepoFieldGrammar
     => RepoKind -> g SourceRepo SourceRepo
 sourceRepoFieldGrammar kind = SourceRepo kind
     <$> optionalField    "type"                L.repoType
-    <*> optionalFieldAla "location" FreeText   L.repoLocation
+    <*> freeTextField    "location"            L.repoLocation
     <*> optionalFieldAla "module"   Token      L.repoModule
     <*> optionalFieldAla "branch"   Token      L.repoBranch
     <*> optionalFieldAla "tag"      Token      L.repoTag
