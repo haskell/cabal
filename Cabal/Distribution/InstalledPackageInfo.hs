@@ -128,7 +128,7 @@ showInstalledPackageInfo ipi =
 
 -- | The variant of 'showInstalledPackageInfo' which outputs @pkgroot@ field too.
 showFullInstalledPackageInfo :: InstalledPackageInfo -> String
-showFullInstalledPackageInfo = P.showFields . prettyFieldGrammar ipiFieldGrammar
+showFullInstalledPackageInfo = P.showFields (const []) . prettyFieldGrammar ipiFieldGrammar
 
 -- |
 --

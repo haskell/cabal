@@ -18,7 +18,7 @@ import qualified Text.PrettyPrint            as PP
 import Distribution.FieldGrammar.Class
 
 newtype PrettyFieldGrammar s a = PrettyFG
-    { fieldGrammarPretty :: s -> [PrettyField]
+    { fieldGrammarPretty :: s -> [PrettyField ()]
     }
   deriving (Functor)
 
@@ -29,7 +29,7 @@ instance Applicative (PrettyFieldGrammar s) where
 -- | We can use 'PrettyFieldGrammar' to pp print the @s@.
 --
 -- /Note:/ there is not trailing @($+$ text "")@.
-prettyFieldGrammar :: PrettyFieldGrammar s a -> s -> [PrettyField]
+prettyFieldGrammar :: PrettyFieldGrammar s a -> s -> [PrettyField ()]
 prettyFieldGrammar = fieldGrammarPretty
 
 instance FieldGrammar PrettyFieldGrammar where
@@ -76,7 +76,7 @@ instance FieldGrammar PrettyFieldGrammar where
         pp xs =
             -- always print the field, even its Doc is empty.
             -- i.e. don't use ppField
-            [ PrettyField (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
+            [ PrettyField () (toUTF8BS n) $ PP.vcat $ map PP.text $ lines s
             | (n, s) <- xs
             -- fnPfx `isPrefixOf` n
             ]
@@ -90,7 +90,7 @@ instance FieldGrammar PrettyFieldGrammar where
     availableSince _ _     = id
     hiddenField _          = PrettyFG (\_ -> mempty)
 
-ppField :: FieldName -> Doc -> [PrettyField]
+ppField :: FieldName -> Doc -> [PrettyField ()]
 ppField name fielddoc
     | PP.isEmpty fielddoc = []
-    | otherwise        = [ PrettyField name fielddoc ]
+    | otherwise        = [ PrettyField () name fielddoc ]

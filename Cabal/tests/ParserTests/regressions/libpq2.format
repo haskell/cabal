@@ -6,11 +6,13 @@ license-file:       LICENSE
 copyright:
     (c) 2010 Grant Monroe
     (c) 2011 Leon P Smith
+
 maintainer:         Oleg Grenrus <oleg.grenrus@iki.fi>
 author:             Grant Monroe, Leon P Smith, Joey Adams
 tested-with:
     ghc ==7.0.4 ghc ==7.2.2 ghc ==7.4.2 ghc ==7.6.3 ghc ==7.8.4
     ghc ==7.10.3 ghc ==8.0.2 ghc ==8.2.2 ghc ==8.4.3 ghc ==8.6.1
+
 homepage:           https://github.com/phadej/postgresql-libpq
 synopsis:           low-level binding to libpq
 description:
@@ -20,6 +22,7 @@ description:
     programs to pass queries to the PostgreSQL
     backend server and to receive the results of
     these queries.
+
 category:           Database
 build-type:         Custom
 extra-source-files:
@@ -39,6 +42,7 @@ library
     exposed-modules:
         Database.PostgreSQL.LibPQ
         Database.PostgreSQL.LibPQ.Internal
+
     build-tool-depends: hsc2hs:hsc2hs -any
     c-sources:          cbits/noticehandlers.c
     hs-source-dirs:     src

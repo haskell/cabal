@@ -9,4 +9,5 @@ executable str-example
         base -any,
         str-string -any,
         str-bytestring -any
+
     mixins:         str hiding (Foo)

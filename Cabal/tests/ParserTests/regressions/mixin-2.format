@@ -9,6 +9,7 @@ executable str-example
         base -any,
         str-string -any,
         str-bytestring -any
+
     mixins:
         str-string (Str as Str.String),
         str-bytestring (Str as Str.ByteString)
