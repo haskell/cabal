@@ -3,8 +3,11 @@ name:          indentation
 version:       0
 description:
     * foo
-    * foo-bar
-    * foo-baz
+
+        * foo-bar
+
+        * foo-baz
+
     .
     .
     .

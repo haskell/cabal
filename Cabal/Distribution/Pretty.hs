@@ -7,6 +7,7 @@ module Distribution.Pretty (
     showFilePath,
     showToken,
     showFreeText,
+    showFreeTextV3,
     -- * Deprecated
     Separator,
     ) where
@@ -82,6 +83,14 @@ showToken str
 showFreeText :: String -> PP.Doc
 showFreeText "" = mempty
 showFreeText s  = PP.vcat [ PP.text (if null l then "." else l) | l <- lines_ s ]
+
+-- | Pretty-print free-format text.
+-- Since @cabal-version: 3.0@ we don't replace blank lines with dots.
+--
+-- @since 3.0.0.0
+showFreeTextV3 :: String -> PP.Doc
+showFreeTextV3 "" = mempty
+showFreeTextV3 s  = PP.vcat [ PP.text l | l <- lines_ s ]
 
 -- | 'lines_' breaks a string up into a list of strings at newline
 -- characters.  The resulting strings do not contain newlines.
