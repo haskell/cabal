@@ -96,7 +96,7 @@ writeAutogenFilesAction (configFlags, configExFlags, installFlags, haddockFlags,
       verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
       cliConfig = commandLineFlagsToProjectConfig
                     globalFlags configFlags configExFlags
-                    installFlags defaultClientInstallFlags
+                    installFlags mempty -- Not needed here
                     haddockFlags
                     testFlags
       configured ctx = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanToExecute ctx)]

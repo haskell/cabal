@@ -106,7 +106,7 @@ showBuildInfoAction (configFlags, configExFlags, installFlags, haddockFlags, tes
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags defaultClientInstallFlags
+                  installFlags mempty -- Not needed here
                   haddockFlags
                   testFlags
 
