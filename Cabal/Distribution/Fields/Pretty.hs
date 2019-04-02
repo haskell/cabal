@@ -1,4 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 -- | Cabal-like file AST types: 'Field', 'Section' etc,
 --
 -- This (intermediate) data type is used for pretty-printing.
@@ -30,17 +33,18 @@ import qualified Distribution.Fields.Parser as P
 import qualified Data.ByteString  as BS
 import qualified Text.PrettyPrint as PP
 
-data PrettyField
-    = PrettyField FieldName PP.Doc
-    | PrettySection FieldName [PP.Doc] [PrettyField]
+data PrettyField ann
+    = PrettyField ann FieldName PP.Doc
+    | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
+  deriving (Functor, Foldable, Traversable)
 
 -- | Prettyprint a list of fields.
-showFields :: [PrettyField] -> String
-showFields = showFields' 4
+showFields :: (ann -> [String]) -> [PrettyField ann] -> String
+showFields rann = showFields' rann 4
 
 -- | 'showFields' with user specified indentation.
-showFields' :: Int -> [PrettyField] -> String
-showFields' n = unlines . renderFields indent where
+showFields' :: (ann -> [String]) -> Int -> [PrettyField ann] -> String
+showFields' rann n = unlines . renderFields (Opts rann indent) where
     -- few hardcoded, "unrolled"  variants.
     indent | n == 4    = indent4
            | n == 2    = indent2
@@ -54,46 +58,64 @@ showFields' n = unlines . renderFields indent where
     indent2 [] = []
     indent2 xs = ' ' : ' ' : xs
 
-renderFields :: (String -> String) -> [PrettyField] -> [String]
-renderFields indent fields = flattenBlocks $ map (renderField indent len) fields
+data Opts ann = Opts (ann -> [String]) (String -> String)
+
+renderFields :: Opts ann -> [PrettyField ann] -> [String]
+renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
   where
     len = maxNameLength 0 fields
 
-    maxNameLength !acc []                          = acc
-    maxNameLength !acc (PrettyField name _ : rest) = maxNameLength (max acc (BS.length name)) rest
-    maxNameLength !acc (PrettySection {}   : rest) = maxNameLength acc rest
+    maxNameLength !acc []                            = acc
+    maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
+    maxNameLength !acc (PrettySection {}   : rest)   = maxNameLength acc rest
 
 -- | Block of lines,
 -- Boolean parameter tells whether block should be surrounded by empty lines
-data Block = Block Bool [String]
+data Block = Block Margin Margin [String]
+
+data Margin = Margin | NoMargin
+  deriving Eq
+
+-- | Collapse margins, any margin = margin
+instance Semigroup Margin where
+    NoMargin <> NoMargin = NoMargin
+    _        <> _        = Margin
 
 flattenBlocks :: [Block] -> [String]
 flattenBlocks = go0 where
     go0 [] = []
-    go0 (Block surr strs : blocks) = strs ++ go surr blocks
+    go0 (Block _before after strs : blocks) = strs ++ go after blocks
 
     go _surr' [] = []
-    go  surr' (Block surr strs : blocks) = ins $ strs ++ go surr blocks where
-        ins | surr' || surr = ("" :)
-            | otherwise     = id
+    go  surr' (Block before after strs : blocks) = ins $ strs ++ go after blocks where
+        ins | surr' <> before == Margin = ("" :)
+            | otherwise                 = id
 
-renderField :: (String -> String) -> Int -> PrettyField -> Block
-renderField indent fw (PrettyField name doc) = Block False $ case lines narrow of
-    []           -> [ name' ++ ":" ]
-    [singleLine] | length singleLine < 60
-                 -> [ name' ++ ": " ++ replicate (fw - length name') ' ' ++ narrow ]
-    _            -> (name' ++ ":") : map indent (lines (PP.render doc))
+renderField :: Opts ann -> Int -> PrettyField ann -> Block
+renderField (Opts rann indent) fw (PrettyField ann name doc) =
+    Block before after $ comments ++ lines'
   where
+    comments = rann ann
+    before = if null comments then NoMargin else Margin
+
+    (lines', after) = case lines narrow of
+        []           -> ([ name' ++ ":" ], NoMargin)
+        [singleLine] | length singleLine < 60
+                     -> ([ name' ++ ": " ++ replicate (fw - length name') ' ' ++ narrow ], NoMargin)
+        _            -> ((name' ++ ":") : map indent (lines (PP.render doc)), Margin)
+
     name' = fromUTF8BS name
     narrow = PP.renderStyle narrowStyle doc
 
     narrowStyle :: PP.Style
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
-renderField indent _ (PrettySection name args fields) = Block True $
+renderField opts@(Opts rann indent) _ (PrettySection ann name args fields) = Block Margin Margin $
+    rann ann
+    ++ 
     [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
     ++
-    (map indent $ renderFields indent fields)
+    (map indent $ renderFields opts fields)
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
@@ -104,12 +126,12 @@ genericFromParsecFields
     => (FieldName -> [P.FieldLine ann] -> f PP.Doc)     -- ^ transform field contents
     -> (FieldName -> [P.SectionArg ann] -> f [PP.Doc])  -- ^ transform section arguments
     -> [P.Field ann]
-    -> f [PrettyField]
+    -> f [PrettyField ann]
 genericFromParsecFields f g = goMany where
     goMany = traverse go
 
-    go (P.Field (P.Name _ann name) fls)          = PrettyField name <$> f name fls
-    go (P.Section (P.Name _ann name) secargs fs) = PrettySection name <$> g name secargs <*> goMany fs
+    go (P.Field (P.Name ann name) fls)          = PrettyField ann name <$> f name fls
+    go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
 
 -- | Used in 'fromParsecFields'.
 prettyFieldLines :: FieldName -> [P.FieldLine ann] -> PP.Doc
@@ -126,7 +148,7 @@ prettySectionArgs _ = map $ \sa -> case sa of
     P.SecArgOther _ bs -> PP.text $ fromUTF8BS bs
 
 -- | Simple variant of 'genericFromParsecField'
-fromParsecFields :: [P.Field ann] -> [PrettyField]
+fromParsecFields :: [P.Field ann] -> [PrettyField ann]
 fromParsecFields = runIdentity . genericFromParsecFields
     (Identity .: prettyFieldLines)
     (Identity .: prettySectionArgs)

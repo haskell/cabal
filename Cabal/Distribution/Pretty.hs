@@ -11,14 +11,18 @@ module Distribution.Pretty (
     Separator,
     ) where
 
-import Prelude ()
+import Data.Functor.Identity         (Identity (..))
+import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
-import Data.Functor.Identity (Identity (..))
+import Prelude ()
 
 import qualified Text.PrettyPrint as PP
 
 class Pretty a where
     pretty :: a -> PP.Doc
+
+    prettyVersioned :: CabalSpecVersion -> a -> PP.Doc
+    prettyVersioned _ = pretty
 
 instance Pretty Bool where
     pretty = PP.text . show
@@ -30,7 +34,7 @@ instance Pretty a => Pretty (Identity a) where
     pretty = pretty . runIdentity
 
 prettyShow :: Pretty a => a -> String
-prettyShow = PP.renderStyle defaultStyle . pretty 
+prettyShow = PP.renderStyle defaultStyle . pretty
 
 -- | The default rendering style used in Cabal for console
 -- output. It has a fixed page width and adds line breaks

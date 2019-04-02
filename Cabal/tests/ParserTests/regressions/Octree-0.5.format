@@ -15,6 +15,7 @@ bug-reports:   mailto:mjgajda@googlemail.com
 synopsis:      Simple unbalanced Octree for storing data about 3D points
 description:
     Octree data structure is relatively shallow data structure for space partitioning.
+
 category:      Data
 build-type:    Simple
 

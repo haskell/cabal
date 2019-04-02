@@ -223,9 +223,9 @@ roundtripTest testFieldsTransform fpath bs = do
     when testFieldsTransform $
         if checkUTF8 bs
         then do
-            parsecFields <- assertRight $ Parsec.readFields$ snd $ patchQuirks bs
+            parsecFields <- assertRight $ Parsec.readFields $ snd $ patchQuirks bs
             let prettyFields = PP.fromParsecFields parsecFields
-            let bs'' = PP.showFields prettyFields
+            let bs'' = PP.showFields (return []) prettyFields
             z0 <- parse "3rd" (toUTF8BS bs'')
 
             -- note: we compare "raw" GPDs, on purpose; stricter equality
