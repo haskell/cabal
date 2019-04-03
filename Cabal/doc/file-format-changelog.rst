@@ -27,7 +27,7 @@ relative to the respective preceding *published* version.
   shared libraries. Mainly useful for GHC's RTS library.
 
 * License fields use identifiers from SPDX License List version
-  ``3.3 2018-10-24``
+  ``3.5 2019-04-02``
 
 * Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
   :pkg-field:`build-tools` fields.
