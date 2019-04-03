@@ -368,7 +368,10 @@ fieldlinesToFreeText3 _   []               = ""
 fieldlinesToFreeText3 _   [FieldLine _ bs] = fromUTF8BS bs
 fieldlinesToFreeText3 pos (FieldLine pos1 bs1 : fls2@(FieldLine pos2 _ : _))
     -- if first line is on the same line with field name:
-    -- don't count indentation of the first line
+    -- the indentation level is either
+    -- 1. the indentation of left most line in rest fields
+    -- 2. the indentation of the first line
+    -- whichever is leftmost
     | positionRow pos == positionRow pos1 = concat
         $ fromUTF8BS bs1
         : mealy (mk mcol1) pos1 fls2
@@ -380,7 +383,7 @@ fieldlinesToFreeText3 pos (FieldLine pos1 bs1 : fls2@(FieldLine pos2 _ : _))
         : mealy (mk mcol2) pos1 fls2
 
   where
-    mcol1 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (positionCol pos2) fls2
+    mcol1 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (min (positionCol pos1) (positionCol pos2)) fls2
     mcol2 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (positionCol pos1) fls2
 
     mk :: Int -> Position -> FieldLine Position -> (Position, String)
