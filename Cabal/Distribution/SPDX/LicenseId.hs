@@ -43,8 +43,8 @@ data LicenseId
     | AFL_3_0 -- ^ @AFL-3.0@, Academic Free License v3.0
     | Afmparse -- ^ @Afmparse@, Afmparse License
     | AGPL_1_0 -- ^ @AGPL-1.0@, Affero General Public License v1.0, SPDX License List 3.0
-    | AGPL_1_0_only -- ^ @AGPL-1.0-only@, Affero General Public License v1.0 only, SPDX License List 3.2, SPDX License List 3.3
-    | AGPL_1_0_or_later -- ^ @AGPL-1.0-or-later@, Affero General Public License v1.0 or later, SPDX License List 3.2, SPDX License List 3.3
+    | AGPL_1_0_only -- ^ @AGPL-1.0-only@, Affero General Public License v1.0 only, SPDX License List 3.2, SPDX License List 3.5
+    | AGPL_1_0_or_later -- ^ @AGPL-1.0-or-later@, Affero General Public License v1.0 or later, SPDX License List 3.2, SPDX License List 3.5
     | AGPL_3_0_only -- ^ @AGPL-3.0-only@, GNU Affero General Public License v3.0 only
     | AGPL_3_0_or_later -- ^ @AGPL-3.0-or-later@, GNU Affero General Public License v3.0 or later
     | Aladdin -- ^ @Aladdin@, Aladdin Free Public License
@@ -133,12 +133,15 @@ data LicenseId
     | CECILL_2_1 -- ^ @CECILL-2.1@, CeCILL Free Software License Agreement v2.1
     | CECILL_B -- ^ @CECILL-B@, CeCILL-B Free Software License Agreement
     | CECILL_C -- ^ @CECILL-C@, CeCILL-C Free Software License Agreement
+    | CERN_OHL_1_1 -- ^ @CERN-OHL-1.1@, CERN Open Hardware License v1.1, SPDX License List 3.5
+    | CERN_OHL_1_2 -- ^ @CERN-OHL-1.2@, CERN Open Hardware Licence v1.2, SPDX License List 3.5
     | ClArtistic -- ^ @ClArtistic@, Clarified Artistic License
     | CNRI_Jython -- ^ @CNRI-Jython@, CNRI Jython License
     | CNRI_Python_GPL_Compatible -- ^ @CNRI-Python-GPL-Compatible@, CNRI Python Open Source GPL Compatible License Agreement
     | CNRI_Python -- ^ @CNRI-Python@, CNRI Python License
     | Condor_1_1 -- ^ @Condor-1.1@, Condor Public License v1.1
-    | Copyleft_next_0_3_1 -- ^ @copyleft-next-0.3.1@, copyleft-next 0.3.1, SPDX License List 3.3
+    | Copyleft_next_0_3_0 -- ^ @copyleft-next-0.3.0@, copyleft-next 0.3.0, SPDX License List 3.5
+    | Copyleft_next_0_3_1 -- ^ @copyleft-next-0.3.1@, copyleft-next 0.3.1, SPDX License List 3.5
     | CPAL_1_0 -- ^ @CPAL-1.0@, Common Public Attribution License 1.0
     | CPL_1_0 -- ^ @CPL-1.0@, Common Public License 1.0
     | CPOL_1_02 -- ^ @CPOL-1.02@, Code Project Open License 1.02
@@ -193,6 +196,7 @@ data LicenseId
     | GPL_3_0_or_later -- ^ @GPL-3.0-or-later@, GNU General Public License v3.0 or later
     | GSOAP_1_3b -- ^ @gSOAP-1.3b@, gSOAP Public License v1.3b
     | HaskellReport -- ^ @HaskellReport@, Haskell Language Report License
+    | HPND_sell_variant -- ^ @HPND-sell-variant@, Historical Permission Notice and Disclaimer - sell variant, SPDX License List 3.5
     | HPND -- ^ @HPND@, Historical Permission Notice and Disclaimer
     | IBM_pibs -- ^ @IBM-pibs@, IBM PowerPC Initialization and Boot Software
     | ICU -- ^ @ICU@, ICU License
@@ -208,6 +212,7 @@ data LicenseId
     | IPL_1_0 -- ^ @IPL-1.0@, IBM Public License v1.0
     | ISC -- ^ @ISC@, ISC License
     | JasPer_2_0 -- ^ @JasPer-2.0@, JasPer License
+    | JPNIC -- ^ @JPNIC@, Japan Network Information Center License, SPDX License List 3.5
     | JSON -- ^ @JSON@, JSON License
     | LAL_1_2 -- ^ @LAL-1.2@, Licence Art Libre 1.2
     | LAL_1_3 -- ^ @LAL-1.3@, Licence Art Libre 1.3
@@ -220,12 +225,13 @@ data LicenseId
     | LGPL_3_0_only -- ^ @LGPL-3.0-only@, GNU Lesser General Public License v3.0 only
     | LGPL_3_0_or_later -- ^ @LGPL-3.0-or-later@, GNU Lesser General Public License v3.0 or later
     | LGPLLR -- ^ @LGPLLR@, Lesser General Public License For Linguistic Resources
+    | Libpng_2_0 -- ^ @libpng-2.0@, PNG Reference Library version 2, SPDX License List 3.5
     | Libpng -- ^ @Libpng@, libpng License
     | Libtiff -- ^ @libtiff@, libtiff License
     | LiLiQ_P_1_1 -- ^ @LiLiQ-P-1.1@, Licence Libre du Québec – Permissive version 1.1
     | LiLiQ_R_1_1 -- ^ @LiLiQ-R-1.1@, Licence Libre du Québec – Réciprocité version 1.1
     | LiLiQ_Rplus_1_1 -- ^ @LiLiQ-Rplus-1.1@, Licence Libre du Québec – Réciprocité forte version 1.1
-    | Linux_OpenIB -- ^ @Linux-OpenIB@, Linux Kernel Variant of OpenIB.org license, SPDX License List 3.2, SPDX License List 3.3
+    | Linux_OpenIB -- ^ @Linux-OpenIB@, Linux Kernel Variant of OpenIB.org license, SPDX License List 3.2, SPDX License List 3.5
     | LPL_1_02 -- ^ @LPL-1.02@, Lucent Public License v1.02
     | LPL_1_0 -- ^ @LPL-1.0@, Lucent Public License Version 1.0
     | LPPL_1_0 -- ^ @LPPL-1.0@, LaTeX Project Public License v1.0
@@ -235,7 +241,7 @@ data LicenseId
     | LPPL_1_3c -- ^ @LPPL-1.3c@, LaTeX Project Public License v1.3c
     | MakeIndex -- ^ @MakeIndex@, MakeIndex License
     | MirOS -- ^ @MirOS@, MirOS License
-    | MIT_0 -- ^ @MIT-0@, MIT No Attribution, SPDX License List 3.2, SPDX License List 3.3
+    | MIT_0 -- ^ @MIT-0@, MIT No Attribution, SPDX License List 3.2, SPDX License List 3.5
     | MIT_advertising -- ^ @MIT-advertising@, Enlightenment License (e16)
     | MIT_CMU -- ^ @MIT-CMU@, CMU License
     | MIT_enna -- ^ @MIT-enna@, enna License
@@ -274,12 +280,12 @@ data LicenseId
     | OCCT_PL -- ^ @OCCT-PL@, Open CASCADE Technology Public License
     | OCLC_2_0 -- ^ @OCLC-2.0@, OCLC Research Public License 2.0
     | ODbL_1_0 -- ^ @ODbL-1.0@, ODC Open Database License v1.0
-    | ODC_By_1_0 -- ^ @ODC-By-1.0@, Open Data Commons Attribution License v1.0, SPDX License List 3.2, SPDX License List 3.3
+    | ODC_By_1_0 -- ^ @ODC-By-1.0@, Open Data Commons Attribution License v1.0, SPDX License List 3.2, SPDX License List 3.5
     | OFL_1_0 -- ^ @OFL-1.0@, SIL Open Font License 1.0
     | OFL_1_1 -- ^ @OFL-1.1@, SIL Open Font License 1.1
-    | OGL_UK_1_0 -- ^ @OGL-UK-1.0@, Open Government Licence v1.0, SPDX License List 3.3
-    | OGL_UK_2_0 -- ^ @OGL-UK-2.0@, Open Government Licence v2.0, SPDX License List 3.3
-    | OGL_UK_3_0 -- ^ @OGL-UK-3.0@, Open Government Licence v3.0, SPDX License List 3.3
+    | OGL_UK_1_0 -- ^ @OGL-UK-1.0@, Open Government Licence v1.0, SPDX License List 3.5
+    | OGL_UK_2_0 -- ^ @OGL-UK-2.0@, Open Government Licence v2.0, SPDX License List 3.5
+    | OGL_UK_3_0 -- ^ @OGL-UK-3.0@, Open Government Licence v3.0, SPDX License List 3.5
     | OGTSL -- ^ @OGTSL@, Open Group Test Suite License
     | OLDAP_1_1 -- ^ @OLDAP-1.1@, Open LDAP Public License v1.1
     | OLDAP_1_2 -- ^ @OLDAP-1.2@, Open LDAP Public License v1.2
@@ -327,7 +333,7 @@ data LicenseId
     | SAX_PD -- ^ @SAX-PD@, Sax Public Domain Notice
     | Saxpath -- ^ @Saxpath@, Saxpath License
     | SCEA -- ^ @SCEA@, SCEA Shared Source License
-    | Sendmail_8_23 -- ^ @Sendmail-8.23@, Sendmail License 8.23, SPDX License List 3.3
+    | Sendmail_8_23 -- ^ @Sendmail-8.23@, Sendmail License 8.23, SPDX License List 3.5
     | Sendmail -- ^ @Sendmail@, Sendmail License
     | SGI_B_1_0 -- ^ @SGI-B-1.0@, SGI Free Software License B v1.0
     | SGI_B_1_1 -- ^ @SGI-B-1.1@, SGI Free Software License B v1.1
@@ -345,13 +351,14 @@ data LicenseId
     | SPL_1_0 -- ^ @SPL-1.0@, Sun Public License v1.0
     | SugarCRM_1_1_3 -- ^ @SugarCRM-1.1.3@, SugarCRM Public License v1.1.3
     | SWL -- ^ @SWL@, Scheme Widget Library (SWL) Software License Agreement
+    | TAPR_OHL_1_0 -- ^ @TAPR-OHL-1.0@, TAPR Open Hardware License v1.0, SPDX License List 3.5
     | TCL -- ^ @TCL@, TCL/TK License
     | TCP_wrappers -- ^ @TCP-wrappers@, TCP Wrappers License
     | TMate -- ^ @TMate@, TMate Open Source License
     | TORQUE_1_1 -- ^ @TORQUE-1.1@, TORQUE v2.5+ Software License v1.1
     | TOSL -- ^ @TOSL@, Trusster Open Source License
-    | TU_Berlin_1_0 -- ^ @TU-Berlin-1.0@, Technische Universitaet Berlin License 1.0, SPDX License List 3.2, SPDX License List 3.3
-    | TU_Berlin_2_0 -- ^ @TU-Berlin-2.0@, Technische Universitaet Berlin License 2.0, SPDX License List 3.2, SPDX License List 3.3
+    | TU_Berlin_1_0 -- ^ @TU-Berlin-1.0@, Technische Universitaet Berlin License 1.0, SPDX License List 3.2, SPDX License List 3.5
+    | TU_Berlin_2_0 -- ^ @TU-Berlin-2.0@, Technische Universitaet Berlin License 2.0, SPDX License List 3.2, SPDX License List 3.5
     | Unicode_DFS_2015 -- ^ @Unicode-DFS-2015@, Unicode License Agreement - Data Files and Software (2015)
     | Unicode_DFS_2016 -- ^ @Unicode-DFS-2016@, Unicode License Agreement - Data Files and Software (2016)
     | Unicode_TOU -- ^ @Unicode-TOU@, Unicode Terms of Use
@@ -557,11 +564,14 @@ licenseId CECILL_2_0 = "CECILL-2.0"
 licenseId CECILL_2_1 = "CECILL-2.1"
 licenseId CECILL_B = "CECILL-B"
 licenseId CECILL_C = "CECILL-C"
+licenseId CERN_OHL_1_1 = "CERN-OHL-1.1"
+licenseId CERN_OHL_1_2 = "CERN-OHL-1.2"
 licenseId ClArtistic = "ClArtistic"
 licenseId CNRI_Jython = "CNRI-Jython"
 licenseId CNRI_Python_GPL_Compatible = "CNRI-Python-GPL-Compatible"
 licenseId CNRI_Python = "CNRI-Python"
 licenseId Condor_1_1 = "Condor-1.1"
+licenseId Copyleft_next_0_3_0 = "copyleft-next-0.3.0"
 licenseId Copyleft_next_0_3_1 = "copyleft-next-0.3.1"
 licenseId CPAL_1_0 = "CPAL-1.0"
 licenseId CPL_1_0 = "CPL-1.0"
@@ -617,6 +627,7 @@ licenseId GPL_3_0_only = "GPL-3.0-only"
 licenseId GPL_3_0_or_later = "GPL-3.0-or-later"
 licenseId GSOAP_1_3b = "gSOAP-1.3b"
 licenseId HaskellReport = "HaskellReport"
+licenseId HPND_sell_variant = "HPND-sell-variant"
 licenseId HPND = "HPND"
 licenseId IBM_pibs = "IBM-pibs"
 licenseId ICU = "ICU"
@@ -632,6 +643,7 @@ licenseId IPA = "IPA"
 licenseId IPL_1_0 = "IPL-1.0"
 licenseId ISC = "ISC"
 licenseId JasPer_2_0 = "JasPer-2.0"
+licenseId JPNIC = "JPNIC"
 licenseId JSON = "JSON"
 licenseId LAL_1_2 = "LAL-1.2"
 licenseId LAL_1_3 = "LAL-1.3"
@@ -644,6 +656,7 @@ licenseId LGPL_2_1_or_later = "LGPL-2.1-or-later"
 licenseId LGPL_3_0_only = "LGPL-3.0-only"
 licenseId LGPL_3_0_or_later = "LGPL-3.0-or-later"
 licenseId LGPLLR = "LGPLLR"
+licenseId Libpng_2_0 = "libpng-2.0"
 licenseId Libpng = "Libpng"
 licenseId Libtiff = "libtiff"
 licenseId LiLiQ_P_1_1 = "LiLiQ-P-1.1"
@@ -769,6 +782,7 @@ licenseId Spencer_99 = "Spencer-99"
 licenseId SPL_1_0 = "SPL-1.0"
 licenseId SugarCRM_1_1_3 = "SugarCRM-1.1.3"
 licenseId SWL = "SWL"
+licenseId TAPR_OHL_1_0 = "TAPR-OHL-1.0"
 licenseId TCL = "TCL"
 licenseId TCP_wrappers = "TCP-wrappers"
 licenseId TMate = "TMate"
@@ -914,11 +928,14 @@ licenseName CECILL_2_0 = "CeCILL Free Software License Agreement v2.0"
 licenseName CECILL_2_1 = "CeCILL Free Software License Agreement v2.1"
 licenseName CECILL_B = "CeCILL-B Free Software License Agreement"
 licenseName CECILL_C = "CeCILL-C Free Software License Agreement"
+licenseName CERN_OHL_1_1 = "CERN Open Hardware License v1.1"
+licenseName CERN_OHL_1_2 = "CERN Open Hardware Licence v1.2"
 licenseName ClArtistic = "Clarified Artistic License"
 licenseName CNRI_Jython = "CNRI Jython License"
 licenseName CNRI_Python_GPL_Compatible = "CNRI Python Open Source GPL Compatible License Agreement"
 licenseName CNRI_Python = "CNRI Python License"
 licenseName Condor_1_1 = "Condor Public License v1.1"
+licenseName Copyleft_next_0_3_0 = "copyleft-next 0.3.0"
 licenseName Copyleft_next_0_3_1 = "copyleft-next 0.3.1"
 licenseName CPAL_1_0 = "Common Public Attribution License 1.0"
 licenseName CPL_1_0 = "Common Public License 1.0"
@@ -974,6 +991,7 @@ licenseName GPL_3_0_only = "GNU General Public License v3.0 only"
 licenseName GPL_3_0_or_later = "GNU General Public License v3.0 or later"
 licenseName GSOAP_1_3b = "gSOAP Public License v1.3b"
 licenseName HaskellReport = "Haskell Language Report License"
+licenseName HPND_sell_variant = "Historical Permission Notice and Disclaimer - sell variant"
 licenseName HPND = "Historical Permission Notice and Disclaimer"
 licenseName IBM_pibs = "IBM PowerPC Initialization and Boot Software"
 licenseName ICU = "ICU License"
@@ -989,6 +1007,7 @@ licenseName IPA = "IPA Font License"
 licenseName IPL_1_0 = "IBM Public License v1.0"
 licenseName ISC = "ISC License"
 licenseName JasPer_2_0 = "JasPer License"
+licenseName JPNIC = "Japan Network Information Center License"
 licenseName JSON = "JSON License"
 licenseName LAL_1_2 = "Licence Art Libre 1.2"
 licenseName LAL_1_3 = "Licence Art Libre 1.3"
@@ -1001,6 +1020,7 @@ licenseName LGPL_2_1_or_later = "GNU Lesser General Public License v2.1 or later
 licenseName LGPL_3_0_only = "GNU Lesser General Public License v3.0 only"
 licenseName LGPL_3_0_or_later = "GNU Lesser General Public License v3.0 or later"
 licenseName LGPLLR = "Lesser General Public License For Linguistic Resources"
+licenseName Libpng_2_0 = "PNG Reference Library version 2"
 licenseName Libpng = "libpng License"
 licenseName Libtiff = "libtiff License"
 licenseName LiLiQ_P_1_1 = "Licence Libre du Qu\233bec \8211 Permissive version 1.1"
@@ -1126,6 +1146,7 @@ licenseName Spencer_99 = "Spencer License 99"
 licenseName SPL_1_0 = "Sun Public License v1.0"
 licenseName SugarCRM_1_1_3 = "SugarCRM Public License v1.1.3"
 licenseName SWL = "Scheme Widget Library (SWL) Software License Agreement"
+licenseName TAPR_OHL_1_0 = "TAPR Open Hardware License v1.0"
 licenseName TCL = "TCL/TK License"
 licenseName TCP_wrappers = "TCP Wrappers License"
 licenseName TMate = "TMate Open Source License"
@@ -1170,7 +1191,7 @@ licenseName ZPL_2_1 = "Zope Public License 2.1"
 --
 -- See <https://opensource.org/licenses/alphabetical>.
 licenseIsOsiApproved :: LicenseId -> Bool
-licenseIsOsiApproved NullBSD = False
+licenseIsOsiApproved NullBSD = True
 licenseIsOsiApproved AAL = True
 licenseIsOsiApproved Abstyles = False
 licenseIsOsiApproved Adobe_2006 = False
@@ -1273,11 +1294,14 @@ licenseIsOsiApproved CECILL_2_0 = False
 licenseIsOsiApproved CECILL_2_1 = True
 licenseIsOsiApproved CECILL_B = False
 licenseIsOsiApproved CECILL_C = False
+licenseIsOsiApproved CERN_OHL_1_1 = False
+licenseIsOsiApproved CERN_OHL_1_2 = False
 licenseIsOsiApproved ClArtistic = False
 licenseIsOsiApproved CNRI_Jython = False
 licenseIsOsiApproved CNRI_Python_GPL_Compatible = False
 licenseIsOsiApproved CNRI_Python = True
 licenseIsOsiApproved Condor_1_1 = False
+licenseIsOsiApproved Copyleft_next_0_3_0 = False
 licenseIsOsiApproved Copyleft_next_0_3_1 = False
 licenseIsOsiApproved CPAL_1_0 = True
 licenseIsOsiApproved CPL_1_0 = True
@@ -1333,6 +1357,7 @@ licenseIsOsiApproved GPL_3_0_only = True
 licenseIsOsiApproved GPL_3_0_or_later = True
 licenseIsOsiApproved GSOAP_1_3b = False
 licenseIsOsiApproved HaskellReport = False
+licenseIsOsiApproved HPND_sell_variant = False
 licenseIsOsiApproved HPND = True
 licenseIsOsiApproved IBM_pibs = False
 licenseIsOsiApproved ICU = False
@@ -1348,6 +1373,7 @@ licenseIsOsiApproved IPA = True
 licenseIsOsiApproved IPL_1_0 = True
 licenseIsOsiApproved ISC = True
 licenseIsOsiApproved JasPer_2_0 = False
+licenseIsOsiApproved JPNIC = False
 licenseIsOsiApproved JSON = False
 licenseIsOsiApproved LAL_1_2 = False
 licenseIsOsiApproved LAL_1_3 = False
@@ -1360,6 +1386,7 @@ licenseIsOsiApproved LGPL_2_1_or_later = True
 licenseIsOsiApproved LGPL_3_0_only = True
 licenseIsOsiApproved LGPL_3_0_or_later = True
 licenseIsOsiApproved LGPLLR = False
+licenseIsOsiApproved Libpng_2_0 = False
 licenseIsOsiApproved Libpng = False
 licenseIsOsiApproved Libtiff = False
 licenseIsOsiApproved LiLiQ_P_1_1 = True
@@ -1485,6 +1512,7 @@ licenseIsOsiApproved Spencer_99 = False
 licenseIsOsiApproved SPL_1_0 = True
 licenseIsOsiApproved SugarCRM_1_1_3 = False
 licenseIsOsiApproved SWL = False
+licenseIsOsiApproved TAPR_OHL_1_0 = False
 licenseIsOsiApproved TCL = False
 licenseIsOsiApproved TCP_wrappers = False
 licenseIsOsiApproved TMate = False
@@ -1544,10 +1572,16 @@ licenseIdList LicenseListVersion_3_2 =
     , TU_Berlin_2_0
     ]
     ++ bulkOfLicenses
-licenseIdList LicenseListVersion_3_3 =
+licenseIdList LicenseListVersion_3_5 =
     [ AGPL_1_0_only
     , AGPL_1_0_or_later
+    , CERN_OHL_1_1
+    , CERN_OHL_1_2
+    , Copyleft_next_0_3_0
     , Copyleft_next_0_3_1
+    , HPND_sell_variant
+    , JPNIC
+    , Libpng_2_0
     , Linux_OpenIB
     , MIT_0
     , ODC_By_1_0
@@ -1555,6 +1589,7 @@ licenseIdList LicenseListVersion_3_3 =
     , OGL_UK_2_0
     , OGL_UK_3_0
     , Sendmail_8_23
+    , TAPR_OHL_1_0
     , TU_Berlin_1_0
     , TU_Berlin_2_0
     ]
@@ -1564,7 +1599,7 @@ licenseIdList LicenseListVersion_3_3 =
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
 mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseId LicenseListVersion_3_3 s = Map.lookup s stringLookup_3_3
+mkLicenseId LicenseListVersion_3_5 s = Map.lookup s stringLookup_3_5
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -1574,9 +1609,9 @@ stringLookup_3_2 :: Map String LicenseId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_2
 
-stringLookup_3_3 :: Map String LicenseId
-stringLookup_3_3 = Map.fromList $ map (\i -> (licenseId i, i)) $
-    licenseIdList LicenseListVersion_3_2
+stringLookup_3_5 :: Map String LicenseId
+stringLookup_3_5 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_5
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]

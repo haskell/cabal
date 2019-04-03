@@ -119,10 +119,10 @@ shouldRejectProp = conjoin $
 -------------------------------------------------------------------------------
 
 instance Arbitrary LicenseId where
-    arbitrary = elements $ licenseIdList LicenseListVersion_3_2
+    arbitrary = elements $ licenseIdList LicenseListVersion_3_5
 
 instance Arbitrary LicenseExceptionId where
-    arbitrary = elements $ licenseExceptionIdList LicenseListVersion_3_2
+    arbitrary = elements $ licenseExceptionIdList LicenseListVersion_3_5
 
 instance Arbitrary LicenseRef where
     arbitrary = mkLicenseRef' <$> ids' <*> ids
