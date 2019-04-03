@@ -180,7 +180,6 @@ defaultMainHelper hooks args = topHandler $ do
         \fs as -> configureAction hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,showBuildInfoCommand progs `commandAddAction` showBuildInfoAction    hooks
-      ,writeAutogenFilesCommand progs `commandAddAction` writeAutogenFilesAction  hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -286,13 +285,6 @@ showBuildInfoAction hooks flags args = do
   showBuildInfo pkg_descr lbi' flags
 
   postBuild hooks args flags' pkg_descr lbi'
-
-writeAutogenFilesAction :: UserHooks -> WriteAutogenFilesFlags -> Args -> IO ()
-writeAutogenFilesAction hooks flags _ = do
-  distPref <- findDistPrefOrDefault (wafDistPref flags)
-  let verbosity = fromFlag $ wafVerbosity flags
-  lbi <- getBuildConfig hooks verbosity distPref
-  initialBuildSteps distPref (localPkgDescr lbi) lbi verbosity
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do

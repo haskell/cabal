@@ -2252,37 +2252,6 @@ showBuildInfoCommand progDb = CommandUI
       ++ buildOptions progDb showOrParseArgs
   }
 
-writeAutogenFilesCommand :: ProgramDb -> CommandUI WriteAutogenFilesFlags
-writeAutogenFilesCommand progDb = CommandUI
-  { commandName         = "write-autogen-files"
-  , commandSynopsis     = "Generate and write out the Paths_<pkg>.hs and cabal_macros.h files"
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " write-autogen-files      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " write-autogen-files foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progDb
-  , commandUsage        = usageAlternatives "write-autogen-files" $
-      [ "[FLAGS]" ]
-  , commandDefaultFlags = WriteAutogenFilesFlags NoFlag (toFlag normal)
-  , commandOptions      = \showOrParseArgs ->
-      [ optionVerbosity
-        wafVerbosity (\v flags -> flags { wafVerbosity = v })
-
-      , optionDistPref
-        wafDistPref (\d flags -> flags { wafDistPref = d }) showOrParseArgs
-      ]
-  }
-
-data WriteAutogenFilesFlags = WriteAutogenFilesFlags {
-  wafDistPref :: Flag FilePath,
-  wafVerbosity :: Flag Verbosity
-} deriving Show
 -- ------------------------------------------------------------
 -- * Other Utils
 -- ------------------------------------------------------------

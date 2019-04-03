@@ -25,7 +25,6 @@ module Distribution.Simple.Build (
     initialBuildSteps,
     createInternalPackageDB,
     componentInitialBuildSteps,
-    writeAutogenFiles,
   ) where
 
 import Prelude ()

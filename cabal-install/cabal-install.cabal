@@ -162,7 +162,6 @@ executable cabal
         Distribution.Client.CmdBuild
         Distribution.Client.CmdClean
         Distribution.Client.CmdShowBuildInfo
-        Distribution.Client.CmdWriteAutogenFiles
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdUpdate
         Distribution.Client.CmdErrorMessages
