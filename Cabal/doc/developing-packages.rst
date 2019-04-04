@@ -723,7 +723,7 @@ of field/value pairs, with a syntax roughly like mail message headers.
 -  Tabs are *not* allowed as indentation characters due to a missing
    standard interpretation of tab width.
 
--  To get a blank line in a field value, use an indented "``.``"
+-  Before Cabal 3.0, to get a blank line in a field value, use an indented "``.``"
 
 The syntax of the value depends on the field. Field types include:
 

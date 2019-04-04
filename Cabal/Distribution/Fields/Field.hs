@@ -11,6 +11,8 @@ module Distribution.Fields.Field (
     fieldAnn,
     fieldUniverse,
     FieldLine (..),
+    fieldLineAnn,
+    fieldLineBS,
     SectionArg (..),
     sectionArgAnn,
     -- * Name
@@ -59,6 +61,14 @@ fieldUniverse f@(Field _ _)      = [f]
 -- /Invariant:/ 'ByteString' has no newlines.
 data FieldLine ann  = FieldLine  !ann !ByteString
   deriving (Eq, Show, Functor, Foldable, Traversable)
+
+-- | @since 3.0.0.0
+fieldLineAnn :: FieldLine ann -> ann
+fieldLineAnn (FieldLine ann _) = ann
+
+-- | @since 3.0.0.0
+fieldLineBS :: FieldLine ann -> ByteString
+fieldLineBS (FieldLine _ bs) = bs
 
 -- | Section arguments, e.g. name of the library
 data SectionArg ann

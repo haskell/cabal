@@ -26,6 +26,9 @@ relative to the respective preceding *published* version.
   variants of dynamic flavours. It is :pkg-field:`extra-library-flavours` but for
   shared libraries. Mainly useful for GHC's RTS library.
 
+* Free text fields (e.g. :pkg-field:`description`) preserve empty lines
+  and indentation. In other words, you don't need to add dots for blank lines.
+
 * License fields use identifiers from SPDX License List version
   ``3.5 2019-04-02``
 
