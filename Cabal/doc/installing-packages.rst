@@ -1170,7 +1170,7 @@ Miscellaneous options
    (default) Link dependent Haskell libraries into executables statically.
    Non-Haskell (C) libraries are still linked dynamically, including libc,
    so the result is still not a fully static executable
-   unless :option:`--enable-executable-dynamic` is given.
+   unless :option:`--enable-executable-static` is given.
 
 .. option:: --enable-executable-static
 
