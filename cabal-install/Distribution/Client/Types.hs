@@ -597,8 +597,8 @@ instance Monoid AllowOlder where
 -- ------------------------------------------------------------
 
 -- | Whether 'v2-build' should write a .ghc.environment file after
--- success. Possible values: 'always', 'never', 'ghc8.4.4+' (the
--- default; GHC 8.4.4 is the earliest version that supports
+-- success. Possible values: 'always', 'never' (the default), 'ghc8.4.4+'
+-- (8.4.4 is the earliest version that supports
 -- '-package-env -').
 data WriteGhcEnvironmentFilesPolicy
   = AlwaysWriteGhcEnvironmentFiles

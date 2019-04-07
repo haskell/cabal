@@ -405,7 +405,7 @@ runProjectPostBuildPhase verbosity
           $ projectConfig
 
         shouldWriteGhcEnvironment =
-          case fromFlagOrDefault WriteGhcEnvironmentFilesOnlyForGhc844AndNewer
+          case fromFlagOrDefault NeverWriteGhcEnvironmentFiles
                writeGhcEnvFilesPolicy
           of
             AlwaysWriteGhcEnvironmentFiles                -> True
