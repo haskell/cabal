@@ -11,19 +11,19 @@ local builds with this command (configuring is not necessary):
 
 ::
 
-    $ cabal new-build
+    $ cabal v2-build
 
 To open a GHCi shell with this package, use this command:
 
 ::
 
-    $ cabal new-repl
+    $ cabal v2-repl
 
 To run an executable defined in this package, use this command:
 
 ::
 
-    $ cabal new-run <executable name> [executable args]
+    $ cabal v2-run <executable name> [executable args]
 
 Developing multiple packages
 ----------------------------
@@ -51,29 +51,29 @@ directory, run the command: (using cabal-install-2.0 or greater.)
 
 ::
 
-    $ cabal new-build
+    $ cabal v2-build
 
-To build a specific package, you can either run ``new-build`` from the
+To build a specific package, you can either run ``v2-build`` from the
 directory of the package in question:
 
 ::
 
     $ cd cabal-install
-    $ cabal new-build
+    $ cabal v2-build
 
 or you can pass the name of the package as an argument to
-``cabal new-build`` (this works in any subdirectory of the project):
+``cabal v2-build`` (this works in any subdirectory of the project):
 
 ::
 
-    $ cabal new-build cabal-install
+    $ cabal v2-build cabal-install
 
 You can also specify a specific component of the package to build. For
 example, to build a test suite named ``package-tests``, use the command:
 
 ::
 
-    $ cabal new-build package-tests
+    $ cabal v2-build package-tests
 
 Targets can be qualified with package names. So to request
 ``package-tests`` *from* the ``Cabal`` package, use
@@ -81,7 +81,7 @@ Targets can be qualified with package names. So to request
 
 Unlike sandboxes, there is no need to setup a sandbox or ``add-source``
 projects; just check in ``cabal.project`` to your repository and
-``new-build`` will just work.
+``v2-build`` will just work.
 
 Cookbook
 ========
@@ -94,14 +94,14 @@ line::
 
     profiling: True
 
-Now, ``cabal new-build`` will automatically build all libraries and
+Now, ``cabal v2-build`` will automatically build all libraries and
 executables with profiling.  You can fine-tune the profiling settings
 for each package using :cfg-field:`profiling-detail`::
 
     package p
         profiling-detail: toplevel-functions
 
-Alternately, you can call ``cabal new-build --enable-profiling`` to
+Alternately, you can call ``cabal v2-build --enable-profiling`` to
 temporarily build with profiling.
 
 How it works
@@ -144,13 +144,13 @@ built version.
 The global package store is ``~/.cabal/store`` (configurable via
 global `store-dir` option); if you need to clear your store for
 whatever reason (e.g., to reclaim disk space or because the global
-store is corrupted), deleting this directory is safe (``new-build``
+store is corrupted), deleting this directory is safe (``v2-build``
 will just rebuild everything it needs on its next invocation).
 
 This split motivates some of the UI choices for Nix-style local build
-commands. For example, flags passed to ``cabal new-build`` are only
+commands. For example, flags passed to ``cabal v2-build`` are only
 applied to *local* packages, so that adding a flag to
-``cabal new-build`` doesn't necessitate a rebuild of *every* transitive
+``cabal v2-build`` doesn't necessitate a rebuild of *every* transitive
 dependency in the global package store.
 
 In cabal-install 2.0 and above, Nix-style local builds also take advantage of a
@@ -165,10 +165,10 @@ are not currently built on a per-component basis.
 Where are my build products?
 ----------------------------
 
-A major deficiency in the current implementation of new-build is that
+A major deficiency in the current implementation of v2-build is that
 there is no programmatic way to access the location of build products.
 The location of the build products is intended to be an internal
-implementation detail of new-build, but we also understand that many
+implementation detail of v2-build, but we also understand that many
 unimplemented features can only be reasonably worked around by
 accessing build products directly.
 
@@ -216,7 +216,7 @@ the time it takes to execute a rebuild cycle. While the details of how
 ``cabal-install`` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for
 understanding the performance characteristics of invocations to
-``new-build``. The cached intermediate results are stored in
+``v2-build``. The cached intermediate results are stored in
 ``dist-newstyle/cache``; this folder can be safely deleted to clear the
 cache.
 
@@ -232,7 +232,7 @@ this folder (the most important two are first):
     already available in the store.)
 ``source-hashes`` (binary)
     The hashes of all local source files. When all local source files of
-    a local package are unchanged, ``cabal new-build`` will skip
+    a local package are unchanged, ``cabal v2-build`` will skip
     invoking ``setup build`` entirely (saving us from a possibly
     expensive call to ``ghc --make``). The full list of source files
     participating in compilation are determined using
@@ -276,24 +276,24 @@ Commands
 We now give an in-depth description of all the commands, describing the
 arguments and flags they accept.
 
-cabal new-configure
+cabal v2-configure
 -------------------
 
-``cabal new-configure`` takes a set of arguments and writes a
+``cabal v2-configure`` takes a set of arguments and writes a
 ``cabal.project.local`` file based on the flags passed to this command.
-``cabal new-configure FLAGS; cabal new-build`` is roughly equivalent to
-``cabal new-build FLAGS``, except that with ``new-configure`` the flags
-are persisted to all subsequent calls to ``new-build``.
+``cabal v2-configure FLAGS; cabal new-build`` is roughly equivalent to
+``cabal v2-build FLAGS``, except that with ``new-configure`` the flags
+are persisted to all subsequent calls to ``v2-build``.
 
-``cabal new-configure`` is intended to be a convenient way to write out
+``cabal v2-configure`` is intended to be a convenient way to write out
 a ``cabal.project.local`` for simple configurations; e.g.,
-``cabal new-configure -w ghc-7.8`` would ensure that all subsequent
-builds with ``cabal new-build`` are performed with the compiler
+``cabal v2-configure -w ghc-7.8`` would ensure that all subsequent
+builds with ``cabal v2-build`` are performed with the compiler
 ``ghc-7.8``. For more complex configuration, we recommend writing the
 ``cabal.project.local`` file directly (or placing it in
 ``cabal.project``!)
 
-``cabal new-configure`` inherits options from ``Cabal``. semantics:
+``cabal v2-configure`` inherits options from ``Cabal``. semantics:
 
 -  Any flag accepted by ``./Setup configure``.
 
@@ -314,10 +314,10 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
-cabal new-update
+cabal v2-update
 ----------------
 
-``cabal new-update`` updates the state of the package index. If the
+``cabal v2-update`` updates the state of the package index. If the
 project contains multiple remote package repositories it will update
 the index of all of them (e.g. when using overlays).
 
@@ -325,13 +325,13 @@ Some examples:
 
 ::
 
-    $ cabal new-update                  # update all remote repos
-    $ cabal new-update head.hackage     # update only head.hackage
+    $ cabal v2-update                  # update all remote repos
+    $ cabal v2-update head.hackage     # update only head.hackage
 
-cabal new-build
+cabal v2-build
 ---------------
 
-``cabal new-build`` takes a set of targets and builds them. It
+``cabal v2-build`` takes a set of targets and builds them. It
 automatically handles building and installing any dependencies of these
 targets.
 
@@ -368,30 +368,30 @@ Some example targets:
 
 ::
 
-    $ cabal new-build lib:foo-pkg       # build the library named foo-pkg
-    $ cabal new-build foo-pkg:foo-tests # build foo-tests in foo-pkg
+    $ cabal v2-build lib:foo-pkg       # build the library named foo-pkg
+    $ cabal v2-build foo-pkg:foo-tests # build foo-tests in foo-pkg
 
 (There is also syntax for specifying module and file targets, but it
 doesn't currently do anything.)
 
-Beyond a list of targets, ``cabal new-build`` accepts all the flags that
-``cabal new-configure`` takes. Most of these flags are only taken into
+Beyond a list of targets, ``cabal v2-build`` accepts all the flags that
+``cabal v2-configure`` takes. Most of these flags are only taken into
 consideration when building local packages; however, some flags may
 cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
 
-In addition ``cabal new-build`` accepts these flags:
+In addition ``cabal v2-build`` accepts these flags:
 
 - ``--only-configure``: When given we will forgoe performing a full build and
   abort after running the configure phase of each target package.
 
 
-cabal new-repl
+cabal v2-repl
 --------------
 
-``cabal new-repl TARGET`` loads all of the modules of the target into
-GHCi as interpreted bytecode. In addition to ``cabal new-build``'s flags,
+``cabal v2-repl TARGET`` loads all of the modules of the target into
+GHCi as interpreted bytecode. In addition to ``cabal v2-build``'s flags,
 it takes an additional ``--repl-options`` flag.
 
 To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
@@ -401,8 +401,8 @@ other repls). Instead, you should use the new ``--repl-options`` flag to
 specify these options to the invoked repl. (This flag also works on ``cabal
 repl`` and ``Setup repl`` on sufficiently new versions of Cabal.)
 
-Currently, it is not supported to pass multiple targets to ``new-repl``
-(``new-repl`` will just successively open a separate GHCi session for
+Currently, it is not supported to pass multiple targets to ``v2-repl``
+(``v2-repl`` will just successively open a separate GHCi session for
 each target.)
 
 It also provides a way to experiment with libraries without needing to download
@@ -413,7 +413,7 @@ of the ``vector`` package matching that specification exposed.
 
 ::
 
-    $ cabal new-repl --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal v2-repl --build-depends "vector >= 0.12 && < 0.13"
 
 Both of these commands do the same thing as the above, but only exposes ``base``,
 ``vector``, and the ``vector`` package's transitive dependencies even if the user
@@ -421,8 +421,8 @@ is in a project context.
 
 ::
 
-    $ cabal new-repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
-    $ cabal new-repl --project='' --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal v2-repl --ignore-project --build-depends "vector >= 0.12 && < 0.13"
+    $ cabal v2-repl --project='' --build-depends "vector >= 0.12 && < 0.13"
 
 This command would add ``vector``, but not (for example) ``primitive``, because
 it only includes the packages specified on the command line (and ``base``, which
@@ -430,17 +430,17 @@ cannot be excluded for technical reasons).
 
 ::
 
-    $ cabal new-repl --build-depends vector --no-transitive-deps
+    $ cabal v2-repl --build-depends vector --no-transitive-deps
 
-cabal new-run
+cabal v2-run
 -------------
 
-``cabal new-run [TARGET [ARGS]]`` runs the executable specified by the
+``cabal v2-run [TARGET [ARGS]]`` runs the executable specified by the
 target, which can be a component, a package or can be left blank, as
 long as it can uniquely identify an executable within the project.
 Tests and benchmarks are also treated as executables.
 
-See `the new-build section <#cabal-new-build>`__ for the target syntax.
+See `the v2-build section <#cabal-new-build>`__ for the target syntax.
 
 Except in the case of the empty target, the strings after it will be
 passed to the executable as arguments.
@@ -451,9 +451,9 @@ have to separate them with ``--``.
 
 ::
 
-    $ cabal new-run target -- -a -bcd --argument
+    $ cabal v2-run target -- -a -bcd --argument
 
-'new-run' also supports running script files that use a certain format. With
+'v2-run' also supports running script files that use a certain format. With
 a script that looks like:
 
 ::
@@ -473,13 +473,13 @@ interpreter, or through this command:
 
 ::
 
-    $ cabal new-run script.hs
-    $ cabal new-run script.hs -- --arg1 # args are passed like this
+    $ cabal v2-run script.hs
+    $ cabal v2-run script.hs -- --arg1 # args are passed like this
 
-cabal new-freeze
+cabal v2-freeze
 ----------------
 
-``cabal new-freeze`` writes out a **freeze file** which records all of
+``cabal v2-freeze`` writes out a **freeze file** which records all of
 the versions and flags which that are picked by the solver under the
 current index and flags.  Default name of this file is
 ``cabal.project.freeze`` but in combination with a
@@ -506,41 +506,41 @@ users see a consistent set of dependencies. For libraries, this is not
 recommended: users often need to build against different versions of
 libraries than what you developed against.
 
-cabal new-bench
+cabal v2-bench
 ---------------
 
-``cabal new-bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
+``cabal v2-bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
-cabal new-test
+cabal v2-test
 --------------
 
-``cabal new-test [TARGETS] [OPTIONS]`` runs the specified test suites
+``cabal v2-test [TARGETS] [OPTIONS]`` runs the specified test suites
 (all the test suites in the current package by default), first ensuring
 they are up to date.
 
-cabal new-haddock
+cabal v2-haddock
 -----------------
 
-``cabal new-haddock [FLAGS] [TARGET]`` builds Haddock documentation for
+``cabal v2-haddock [FLAGS] [TARGET]`` builds Haddock documentation for
 the specified packages within the project.
 
 If a target is not a library :cfg-field:`haddock-benchmarks`,
 :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
 :cfg-field:`haddock-tests` will be implied as necessary.
 
-cabal new-exec
+cabal v2-exec
 ---------------
 
-``cabal new-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
+``cabal v2-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
-cabal new-install
+cabal v2-install
 -----------------
 
-``cabal new-install [FLAGS] PACKAGES`` builds the specified packages and
+``cabal v2-install [FLAGS] PACKAGES`` builds the specified packages and
 symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
 
 For example this command will build the latest ``cabal-install`` and symlink
@@ -548,23 +548,23 @@ its ``cabal`` executable:
 
 ::
 
-    $ cabal new-install cabal-install
+    $ cabal v2-install cabal-install
 
-In addition, it's possible to use ``cabal new-install`` to install components
+In addition, it's possible to use ``cabal v2-install`` to install components
 of a local project. For example, with an up-to-date Git clone of the Cabal
 repository, this command will build cabal-install HEAD and symlink the
 ``cabal`` executable:
 
 ::
 
-    $ cabal new-install exe:cabal
+    $ cabal v2-install exe:cabal
 
 Where symlinking is not possible (eg. on Windows), ``--install-method=copy``
 can be used:
 
 ::
 
-    $ cabal new-install exe:cabal --install-method=copy --installdir=~/bin
+    $ cabal v2-install exe:cabal --install-method=copy --installdir=~/bin
 
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
@@ -574,27 +574,27 @@ example, this command will build the latest Cabal library and install it:
 
 ::
 
-    $ cabal new-install --lib Cabal
+    $ cabal v2-install --lib Cabal
 
 This works by managing GHC environments. By default, it is writing to the
 global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
-``new-install`` provides the ``--package-env`` flag to control which of
+``v2-install`` provides the ``--package-env`` flag to control which of
 these environments is modified.
 
 This command will modify the environment file in the current directory:
 
 ::
 
-    $ cabal new-install --lib Cabal --package-env .
+    $ cabal v2-install --lib Cabal --package-env .
 
 This command will modify the environment file in the ``~/foo`` directory:
 
 ::
 
-    $ cabal new-install --lib Cabal --package-env foo/
+    $ cabal v2-install --lib Cabal --package-env foo/
 
 Do note that the results of the previous two commands will be overwritten by
-the use of other new-style commands, so it is not recommended to use them inside
+the use of other v2-style commands, so it is not recommended to use them inside
 a project directory.
 
 This command will modify the environment in the "local.env" file in the
@@ -602,13 +602,13 @@ current directory:
 
 ::
 
-    $ cabal new-install --lib Cabal --package-env local.env
+    $ cabal v2-install --lib Cabal --package-env local.env
 
 This command will modify the ``myenv`` named global environment:
 
 ::
 
-    $ cabal new-install --lib Cabal --package-env myenv
+    $ cabal v2-install --lib Cabal --package-env myenv
 
 If you wish to create a named environment file in the current directory where
 the name does not contain an extension, you must reference it as ``./myenv``.
@@ -616,10 +616,10 @@ the name does not contain an extension, you must reference it as ``./myenv``.
 You can learn more about how to use these environments in `this section of the
 GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
-cabal new-clean
+cabal v2-clean
 ---------------
 
-``cabal new-clean [FLAGS]`` cleans up the temporary files and build artifacts
+``cabal v2-clean [FLAGS]`` cleans up the temporary files and build artifacts
 stored in the ``dist-newstyle`` folder.
 
 By default, it removes the entire folder, but it can also spare the configuration
@@ -627,14 +627,14 @@ and caches if the ``--save-config`` option is given, in which case it only remov
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
 
-cabal new-sdist
+cabal v2-sdist
 ---------------
 
-``cabal new-sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
+``cabal v2-sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
 and puts them into an archive format ready for upload to Hackage. These archives are stable
 and two archives of the same format built from the same source will hash to the same value.
 
-``cabal new-sdist`` takes the following flags:
+``cabal v2-sdist`` takes the following flags:
 
 - ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
   Output is to ``stdout`` by default. The file paths are relative to the project's root
@@ -647,9 +647,9 @@ and two archives of the same format built from the same source will hash to the 
 - ``-z``, ``--null``: Only used with ``--list-only``. Separates filenames with a NUL
   byte instead of newlines.
 
-``new-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
+``v2-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
 to fundamental core invariants (same source code should result in the same tarball, byte for
-byte) that must be satisfied for it to function correctly in the larger new-build ecosystem.
+byte) that must be satisfied for it to function correctly in the larger v2-build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
 
@@ -671,7 +671,7 @@ which live inside stanzas:
 
 In general, the accepted field names coincide with the accepted command
 line flags that ``cabal install`` and other commands take. For example,
-``cabal new-configure --enable-profiling`` will write out a project
+``cabal v2-configure --enable-profiling`` will write out a project
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
@@ -681,9 +681,9 @@ following sources (later entries override earlier ones):
 
 2. ``cabal.project`` (the project configuration)
 
-3. ``cabal.project.freeze`` (the output of ``cabal new-freeze``)
+3. ``cabal.project.freeze`` (the output of ``cabal v2-freeze``)
 
-4. ``cabal.project.local`` (the output of ``cabal new-configure``)
+4. ``cabal.project.local`` (the output of ``cabal v2-configure``)
 
 
 Specifying the local packages
@@ -759,7 +759,7 @@ directory layout::
     foo-helper/     # local package
     unix/           # vendored external package
 
-All of these options support globs. ``cabal new-build`` has its own glob
+All of these options support globs. ``cabal v2-build`` has its own glob
 format:
 
 -  Anywhere in a path, as many times as you like, you can specify an
@@ -949,7 +949,7 @@ The following settings control the behavior of the dependency solver:
     dependency solver runtime.
 
     One way to use :cfg-field:`preferences` is to take a known working set of
-    constraints (e.g., via ``cabal new-freeze``) and record them as
+    constraints (e.g., via ``cabal v2-freeze``) and record them as
     preferences. In this case, the solver will first attempt to use this
     configuration, and if this violates hard constraints, it will try to
     find the minimal number of upgrades to satisfy the hard constraints
@@ -1083,7 +1083,7 @@ The following settings control the behavior of the dependency solver:
       index-state: @1474739268
 
       -- ISO8601 UTC timestamp format example
-      -- This format is used by 'cabal new-configure'
+      -- This format is used by 'cabal v2-configure'
       -- for storing `--index-state` values.
       index-state: 2016-09-24T17:47:48Z
 
@@ -1176,7 +1176,7 @@ feature was added.
     The command line variant of this flag is ``--flags``. There is also
     a shortened form ``-ffoo -f-bar``.
 
-    A common mistake is to say ``cabal new-build -fhans``, where
+    A common mistake is to say ``cabal v2-build -fhans``, where
     ``hans`` is a flag for a transitive dependency that is not in the
     local package; in this case, the flag will be silently ignored. If
     ``haskell-tor`` is the package you want this flag to apply to, try
@@ -1201,7 +1201,7 @@ feature was added.
     ``ghc-pkg`` in the same directory as the ``ghc`` directory. If this
     heuristic does not work, set :cfg-field:`with-hc-pkg` explicitly.
 
-    For inplace packages, ``cabal new-build`` maintains a separate build
+    For inplace packages, ``cabal v2-build`` maintains a separate build
     directory for each version of GHC, so you can maintain multiple
     build trees for different versions of GHC without clobbering each
     other.
@@ -1633,7 +1633,7 @@ Profiling options
     Build libraries and executables with profiling enabled (for
     compilers that support profiling as a separate mode). It is only
     necessary to specify :cfg-field:`profiling` for the specific package you
-    want to profile; ``cabal new-build`` will ensure that all of its
+    want to profile; ``cabal v2-build`` will ensure that all of its
     transitive dependencies are built with profiling enabled.
 
     To enable profiling for only libraries or executables, see
