@@ -1475,7 +1475,7 @@ dependencies. The ``cabal outdated`` command is designed to help with
 that. It will print a list of packages for which there is a new
 version on Hackage that is outside the version bound specified in the
 ``build-depends`` field. The ``outdated`` command can also be
-configured to act on the freeze file (both old- and new-style) and
+configured to act on the freeze file (both old- and v2-style) and
 ignore major (or all) version bumps on Hackage for a subset of
 dependencies.
 
@@ -1486,14 +1486,14 @@ The following flags are supported by the ``outdated`` command:
     instead of the package description file (``$PACKAGENAME.cabal``).
     ``--v1-freeze-file`` is an alias for this flag starting in Cabal 2.4.
 ``--new-freeze-file``
-    Read dependency version bounds from the new-style freeze file
+    Read dependency version bounds from the v2-style freeze file
     (by default, ``cabal.project.freeze``) instead of the package
     description file. ``--v2-freeze-file`` is an alias for this flag
     starting in Cabal 2.4.
 ``--project-file`` *PROJECTFILE*
     :since: 2.4
 
-    Read dependendency version bounds from the new-style freeze file
+    Read dependendency version bounds from the v2-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
     instead of the package desctription file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
@@ -3268,7 +3268,7 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal new-build`` is being
+- a ``custom-setup`` section has been declared (or ``cabal v2-build`` is being
   used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
