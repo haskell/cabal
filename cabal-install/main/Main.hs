@@ -1220,7 +1220,7 @@ userConfigAction ucflags extraArgs globalFlags = do
 win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> Action
 win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
   let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
-  Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path -- TODO: eradicateNoParse
+  Win32SelfUpgrade.deleteOldExeFile verbosity (fromMaybe (error $ "panic! read pid=" ++ show pid) $ readMaybe pid) path -- TODO: eradicateNoParse
 win32SelfUpgradeAction _ _ _ = return ()
 
 -- | Used as an entry point when cabal-install needs to invoke itself

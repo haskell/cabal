@@ -123,7 +123,8 @@ runTest pkg_descr lbi clbi flags suite = do
                                  (unUnqualComponentName $ testSuiteName l) (testLogs l)
         -- Generate TestSuiteLog from executable exit code and a machine-
         -- readable test log
-        suiteLog <- fmap ((\l -> l { logFile = finalLogName l }) . read) -- TODO: eradicateNoParse
+        suiteLog <- fmap (\s -> (\l -> l { logFile = finalLogName l })
+                    . fromMaybe (error $ "panic! read @TestSuiteLog " ++ show s) $ readMaybe s) -- TODO: eradicateNoParse
                     $ readFile tempLog
 
         -- Write summary notice to log file indicating start of test suite
@@ -219,7 +220,7 @@ simpleTestStub m = unlines
 -- of detectable errors when Cabal is compiled.
 stubMain :: IO [Test] -> IO ()
 stubMain tests = do
-    (f, n) <- fmap read getContents -- TODO: eradicateNoParse
+    (f, n) <- fmap (\s -> fromMaybe (error $ "panic! read " ++ show s) $ readMaybe s) getContents -- TODO: eradicateNoParse
     dir <- getCurrentDirectory
     results <- (tests >>= stubRunTests) `CE.catch` errHandler
     setCurrentDirectory dir
