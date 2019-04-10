@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -57,7 +57,7 @@ module Distribution.Simple (
         defaultHookedPackageDesc
   ) where
 
-import Prelude ()
+import Prelude (mapM)
 import Control.Exception (try)
 import Distribution.Compat.Prelude
 
@@ -109,6 +109,10 @@ import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
 
+-- | Monadic version of concatMap
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = liftM concat (mapM f xs)
+
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
@@ -149,8 +153,9 @@ defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks { readDesc = return (Just pkg_descr) }
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
-defaultMainHelper hooks args = topHandler $
-  case commandsRun (globalCommand commands) commands args of
+defaultMainHelper hooks args = topHandler $ do
+  args' <- expandResponseFiles args
+  case commandsRun (globalCommand commands) commands args' of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
@@ -164,6 +169,14 @@ defaultMainHelper hooks args = topHandler $
         CommandReadyToGo action        -> action
 
   where
+    expandResponseFiles :: [String] -> IO [String]
+    expandResponseFiles = concatMapM expandResponseFile
+    expandResponseFile :: String -> IO [String]
+    expandResponseFile arg@('@':file) = doesFileExist file >>= \case
+      True -> concatMap words . lines <$> readFile file
+      False -> pure [arg]
+    expandResponseFile arg = pure [arg]
+
     printHelp help = getProgName >>= putStr . help
     printOptionsList = putStr . unlines
     printErrors errs = do
