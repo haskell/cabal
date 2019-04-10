@@ -98,7 +98,12 @@ runTest pkg_descr lbi clbi flags suite = do
                             return (addLibraryPath os paths shellEnv)
                     else return shellEnv
 
-    exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
+    exit <- case testWrapper flags of
+      Flag path -> rawSystemIOWithEnv verbosity path (cmd:opts) Nothing (Just shellEnv')
+                               -- these handles are automatically closed
+                               Nothing (Just wOut) (Just wErr)
+
+      NoFlag -> rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                -- these handles are automatically closed
                                Nothing (Just wOut) (Just wErr)
 

@@ -99,9 +99,14 @@ runTest pkg_descr lbi clbi flags suite = do
                     cpath <- canonicalizePath $ LBI.componentBuildDir lbi clbi
                     return (addLibraryPath os (cpath : paths) shellEnv)
                   else return shellEnv
-                createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
-                                     -- these handles are closed automatically
-                                     CreatePipe (UseHandle wOut) (UseHandle wOut)
+                case testWrapper flags of
+                  Flag path -> createProcessWithEnv verbosity path (cmd:opts) Nothing (Just shellEnv')
+                               -- these handles are closed automatically
+                               CreatePipe (UseHandle wOut) (UseHandle wOut)
+
+                  NoFlag -> createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
+                            -- these handles are closed automatically
+                            CreatePipe (UseHandle wOut) (UseHandle wOut)
 
         hPutStr wIn $ show (tempLog, PD.testName suite)
         hClose wIn
