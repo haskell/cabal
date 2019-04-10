@@ -656,8 +656,9 @@ instance Arbitrary PackageConfig where
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
                          , packageConfigTestKeepTix = x47
-                         , packageConfigTestFailWhenNoTestSuites = x48
-                         , packageConfigTestTestOptions = x49 } =
+                         , packageConfigTestWrapper = x48
+                         , packageConfigTestFailWhenNoTestSuites = x49
+                         , packageConfigTestTestOptions = x50 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -709,8 +710,9 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
                       , packageConfigTestKeepTix = x47'
-                      , packageConfigTestFailWhenNoTestSuites = x48'
-                      , packageConfigTestTestOptions = x49' }
+                      , packageConfigTestWrapper = x48'
+                      , packageConfigTestFailWhenNoTestSuites = x49'
+                      , packageConfigTestTestOptions = x50' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x50', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -720,7 +722,7 @@ instance Arbitrary PackageConfig where
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
-          (x44', x45', x46', x47', x48', x49')))
+          (x44', x45', x46', x47', x48', x49', x50')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
@@ -734,7 +736,7 @@ instance Arbitrary PackageConfig where
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48, x49)))
+                 (x44, x45, x46, x47, x48, x49, x50)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
