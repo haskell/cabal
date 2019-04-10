@@ -138,8 +138,53 @@ import System.Directory
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
-         ( (</>), (<.>), takeDirectory, takeBaseName )
+         ( (</>), takeDirectory, takeBaseName )
 
+data NewInstallFlags = NewInstallFlags
+  { ninstInstallLibs :: Flag Bool
+  , ninstEnvironmentPath :: Flag FilePath
+  , ninstOverwritePolicy :: Flag OverwritePolicy
+  , ninstIgnoreProject :: Flag Bool
+  }
+
+defaultNewInstallFlags :: NewInstallFlags
+defaultNewInstallFlags = NewInstallFlags
+  { ninstInstallLibs = toFlag False
+  , ninstEnvironmentPath = mempty
+  , ninstOverwritePolicy = toFlag NeverOverwrite
+  , ninstIgnoreProject = toFlag False
+  }
+
+newInstallOptions :: ShowOrParseArgs -> [OptionField NewInstallFlags]
+newInstallOptions _ =
+  [ option [] ["lib"]
+    "Install libraries rather than executables from the target package."
+    ninstInstallLibs (\v flags -> flags { ninstInstallLibs = v })
+    trueArg
+  , option [] ["package-env", "env"]
+    "Set the environment file that may be modified."
+    ninstEnvironmentPath (\pf flags -> flags { ninstEnvironmentPath = pf })
+    (reqArg "ENV" (succeedReadE Flag) flagToList)
+  , option [] ["overwrite-policy"]
+    "How to handle already existing symlinks."
+    ninstOverwritePolicy (\v flags -> flags { ninstOverwritePolicy = v })
+    $ reqArg
+        "always|never"
+        readOverwritePolicyFlag
+        showOverwritePolicyFlag
+  , option ['z'] ["ignore-project"]
+    "Only include explicitly specified packages (and 'base')."
+    ninstIgnoreProject (\p flags -> flags { ninstIgnoreProject = p })
+    trueArg
+  ]
+  where
+    readOverwritePolicyFlag = ReadE $ \case
+      "always" -> Right $ Flag AlwaysOverwrite
+      "never"  -> Right $ Flag NeverOverwrite
+      policy   -> Left  $ "'" <> policy <> "' isn't a valid overwrite policy"
+    showOverwritePolicyFlag (Flag AlwaysOverwrite) = ["always"]
+    showOverwritePolicyFlag (Flag NeverOverwrite)  = ["never"]
+    showOverwritePolicyFlag NoFlag                 = []
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, TestFlags, ClientInstallFlags
@@ -226,6 +271,10 @@ installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFl
             -> [String] -> GlobalFlags -> IO ()
 installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags')
             targetStrings globalFlags = do
+
+  let
+    ignoreProject = fromFlagOrDefault False (ninstIgnoreProject newInstallFlags)
+
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
   -- enabled.

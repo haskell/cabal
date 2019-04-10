@@ -215,7 +215,7 @@ replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags
 replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, replFlags, envFlags)
            targetStrings globalFlags = do
     let
-      ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
+      ignoreProject  = fromFlagOrDefault False (envIgnoreProject envFlags)
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
     
