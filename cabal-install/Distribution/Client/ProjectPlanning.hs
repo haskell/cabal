@@ -3440,6 +3440,7 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.
     , testHumanLog    = maybe mempty toFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix     = toFlag elabTestKeepTix
+    , testWrapper     = mempty
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions     = elabTestTestOptions
     }
