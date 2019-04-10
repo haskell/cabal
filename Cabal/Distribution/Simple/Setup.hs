@@ -1948,7 +1948,7 @@ testOptions' showOrParseArgs =
         "Run test through a wrapper."
         testWrapper (\v flags -> flags { testWrapper = v })
         (reqArg' "FILE" (toFlag :: FilePath -> Flag FilePath)
-            (pure . fromFlag :: Flag FilePath -> [FilePath]))
+            (flagToList :: Flag FilePath -> [FilePath]))
   , option [] ["fail-when-no-test-suites"]
         ("Exit with failure when no test suites are found.")
         testFailWhenNoTestSuites (\v flags -> flags { testFailWhenNoTestSuites = v})
