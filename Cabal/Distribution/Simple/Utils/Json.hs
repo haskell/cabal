@@ -1,3 +1,5 @@
+-- | Utility json lib for Cabal
+-- TODO: Remove it again.
 module Distribution.Simple.Utils.Json
     ( Json(..)
     , renderJson
