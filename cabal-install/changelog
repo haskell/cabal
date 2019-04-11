@@ -1,7 +1,6 @@
 -*-change-log-*-
 
 2.4.2.0 TBD
-	* '--write-ghc-environment-files' now defaults to 'never' (#4242)
 	* Fix `--with-compiler` failing to locate compiler on Windows
 	  without explicit `.exe` suffix
 	* Make parsing of cabal script metadata block more robust in
