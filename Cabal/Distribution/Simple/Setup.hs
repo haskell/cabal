@@ -45,9 +45,7 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  showBuildInfoCommand,
-  writeAutogenFilesCommand,
-  WriteAutogenFilesFlags(..),
+  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -2213,7 +2211,21 @@ optionNumJobs get set =
 -- * show-build-info command flags
 -- ------------------------------------------------------------
 
-showBuildInfoCommand :: ProgramDb -> CommandUI BuildFlags
+data ShowBuildInfoFlags = ShowBuildInfoFlags
+  { buildInfoBuildFlags :: BuildFlags
+  , buildInfoOutputFile :: Maybe FilePath
+  , buildInfoUnitIds :: Maybe [String]
+  } deriving Show
+
+defaultShowBuildFlags  :: ShowBuildInfoFlags
+defaultShowBuildFlags =
+    ShowBuildInfoFlags
+      { buildInfoBuildFlags = defaultBuildFlags
+      , buildInfoOutputFile = Nothing
+      , buildInfoUnitIds = Nothing
+      }
+
+showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
 showBuildInfoCommand progDb = CommandUI
   { commandName         = "show-build-info"
   , commandSynopsis     = "Emit details about how a package would be built."
@@ -2241,16 +2253,40 @@ showBuildInfoCommand progDb = CommandUI
       [ "[FLAGS]"
       , "COMPONENTS [FLAGS]"
       ]
-  , commandDefaultFlags = defaultBuildFlags
+  , commandDefaultFlags = defaultShowBuildFlags
   , commandOptions      = \showOrParseArgs ->
+      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
+      ++
+      [ option [] ["buildinfo-json-output"]
+                "Write the result to the given file instead of stdout"
+                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
+                (reqArg' "FILE" Just (maybe [] pure)),
+        option [] ["unit-ids-json"]
+                "Show build-info only for selected unit-id's."
+                buildInfoUnitIds (\pf flags -> flags { buildInfoUnitIds = pf })
+                (reqArg' "UNIT-ID" (Just . words) (fromMaybe [] ))
+      ]
+
+  }
+
+parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
+parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
+  map
+      (liftOption
+        buildInfoBuildFlags
+          (\bf flags -> flags { buildInfoBuildFlags = bf } )
+      )
+      buildFlags
+  where
+    buildFlags = buildOptions progDb showOrParseArgs
+      ++
       [ optionVerbosity
         buildVerbosity (\v flags -> flags { buildVerbosity = v })
 
       , optionDistPref
         buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
       ]
-      ++ buildOptions progDb showOrParseArgs
-  }
+      --
 
 -- ------------------------------------------------------------
 -- * Other Utils

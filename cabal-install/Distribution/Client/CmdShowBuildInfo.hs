@@ -11,12 +11,16 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault, TestFlags )
+         ( HaddockFlags, TestFlags 
+         , fromFlagOrDefault
+         )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), option, reqArg', usageAlternatives
+         )
 import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
@@ -38,10 +42,12 @@ import Distribution.Client.DistDirLayout (distBuildDirectory)
 import Distribution.Client.Types ( PackageLocation(..), GenericReadyPackage(..) )
 import Distribution.Client.JobControl (newLock, Lock)
 import Distribution.Simple.Configure (tryGetPersistBuildConfig)
+import qualified Distribution.Client.CmdInstall as CmdInstall
 import Data.List (find)
+import Data.Maybe (fromMaybe)
 
-showBuildInfoCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
-showBuildInfoCommand = Client.installCommand {
+showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
+showBuildInfoCommand = CmdInstall.installCommand {
   commandName         = "new-show-build-info",
   commandSynopsis     = "Show project build information",
   commandUsage        = usageAlternatives "new-show-build-info" [ "[TARGETS] [FLAGS]" ],
@@ -56,9 +62,35 @@ showBuildInfoCommand = Client.installCommand {
      ++ "    Shows build information about the current package\n"
      ++ "  " ++ pname ++ " new-show-build-info ./pkgname \n"
      ++ "    Shows build information about the package located in './pkgname'\n"
-     ++ cmdCommonHelpTextNewBuildBeta
+     ++ cmdCommonHelpTextNewBuildBeta,
+  commandOptions = \showOrParseArgs ->
+      Client.liftOptions buildInfoInstallCommandFlags (\pf flags -> flags { buildInfoInstallCommandFlags = pf }) (commandOptions CmdInstall.installCommand showOrParseArgs)
+      ++
+      [ option [] ["buildinfo-json-output"]
+              "Write the result to the given file instead of stdout"
+              buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
+              (reqArg' "FILE" Just (maybe [] pure)),
+        option [] ["unit-ids-json"]
+              "Show build-info only for selected unit-id's."
+              buildInfoUnitIds (\pf flags -> flags { buildInfoUnitIds = pf })
+              (reqArg' "UNIT-ID" (Just . words) (fromMaybe []))
+      ],
+  commandDefaultFlags = defaultShowBuildInfoFlags
+  
    }
 
+data ShowBuildInfoFlags = ShowBuildInfoFlags
+    { buildInfoInstallCommandFlags :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ClientInstallFlags)
+    , buildInfoOutputFile :: Maybe FilePath
+    , buildInfoUnitIds :: Maybe [String]
+    }
+
+defaultShowBuildInfoFlags :: ShowBuildInfoFlags
+defaultShowBuildInfoFlags = ShowBuildInfoFlags
+    { buildInfoInstallCommandFlags = (mempty, mempty, mempty, mempty, mempty, mempty)
+    , buildInfoOutputFile = Nothing
+    , buildInfoUnitIds = Nothing
+    }
 
 -- | The @show-build-info@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
@@ -67,11 +99,10 @@ showBuildInfoCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-showBuildInfoAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+showBuildInfoAction :: ShowBuildInfoFlags
             -> [String] -> GlobalFlags -> IO ()
-showBuildInfoAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags) fileOutput unitIds)
             targetStrings globalFlags = do
-
   baseCtx <- establishProjectBaseContext verbosity cliConfig
   let baseCtx' = baseCtx {
                     buildSettings = (buildSettings baseCtx) {
@@ -99,32 +130,36 @@ showBuildInfoAction (configFlags, configExFlags, installFlags, haddockFlags, tes
       return (elaboratedPlan, targets)
 
   scriptLock <- newLock
-  showTargets verbosity baseCtx' buildCtx scriptLock
+  showTargets fileOutput unitIds verbosity baseCtx' buildCtx scriptLock
   
   where
     -- Default to silent verbosity otherwise it will pollute our json output
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags configExFlags
-                  installFlags mempty -- Not needed here
+                  installFlags clientInstallFlags
                   haddockFlags
                   testFlags
 
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
-showTargets :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
-showTargets verbosity baseCtx buildCtx lock = do
-  putStr "["
-  mapM_ showSeparated (zip [0..] targets)
-  putStrLn "]"
+showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
+showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
+  case fileOutput of 
+    Nothing -> do 
+      putStr "["
+      mapM_ doShowInfo targets
+      putStrLn "]"
+    Just fp -> do 
+      writeFile fp "["
+      mapM_ doShowInfo targets
+      appendFile fp "]"
+
     where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
           targets = fst <$> (Map.toList . targetsMap $ buildCtx)
-          doShowInfo unitId = showInfo verbosity baseCtx buildCtx lock configured unitId
-          showSeparated (idx, unitId)
-              | idx == length targets - 1 = doShowInfo unitId
-              | otherwise = doShowInfo unitId >> putStrLn "," 
+          doShowInfo unitId = showInfo fileOutput unitIds verbosity baseCtx buildCtx lock configured unitId
 
-showInfo :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
-showInfo verbosity baseCtx buildCtx lock pkgs targetUnitId
+showInfo :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
+showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
   | Nothing <- mbPkg = die' verbosity $ "No unit " ++ show targetUnitId 
   | Just pkg <- mbPkg = do
     let shared = elaboratedShared buildCtx
@@ -155,15 +190,22 @@ showInfo verbosity baseCtx buildCtx lock pkgs targetUnitId
                   scriptOptions 
                   (Just $ elabPkgDescription pkg) 
                   (Cabal.configureCommand defaultProgramDb) 
-                  (const $ configureFlags)
+                  (const configureFlags)
                   (const configureArgs)
       Right _ -> pure ()
+    
     setupWrapper 
       verbosity 
       scriptOptions 
       (Just $ elabPkgDescription pkg) 
       (Cabal.showBuildInfoCommand defaultProgramDb) 
-      (const flags) 
+      (const (Cabal.ShowBuildInfoFlags 
+        { Cabal.buildInfoBuildFlags = flags
+        , Cabal.buildInfoOutputFile = fileOutput
+        , Cabal.buildInfoUnitIds = unitIds 
+        } 
+        )
+      ) 
       (const args)
     where mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
 

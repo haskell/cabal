@@ -8,7 +8,8 @@ module Distribution.Client.CmdBuild (
     -- * Internals exposed for testing
     TargetProblem(..),
     selectPackageTargets,
-    selectComponentTarget
+    selectComponentTarget,
+    reportTargetProblems
   ) where
 
 import Distribution.Client.ProjectOrchestration

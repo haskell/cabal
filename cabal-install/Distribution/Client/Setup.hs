@@ -56,7 +56,7 @@ module Distribution.Client.Setup
     , doctestCommand
     , copyCommand
     , registerCommand
-    , showBuildInfoCommand
+    --, showBuildInfoCommand
     , parsePackageArgs
     , liftOptions
     , yesNoOpt
@@ -3009,7 +3009,7 @@ relevantConfigValuesText vs =
 -- * Commands to support show-build-info
 -- ------------------------------------------------------------
 
-showBuildInfoCommand :: CommandUI (BuildFlags, BuildExFlags)
+showBuildInfoCommand :: CommandUI (Cabal.ShowBuildInfoFlags, BuildExFlags)
 showBuildInfoCommand = parent {
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
     commandOptions      =

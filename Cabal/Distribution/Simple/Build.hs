@@ -25,7 +25,7 @@ module Distribution.Simple.Build (
     initialBuildSteps,
     createInternalPackageDB,
     componentInitialBuildSteps,
-    writeAutogenFiles
+    writeAutogenFiles,
   ) where
 
 import Prelude ()
@@ -133,13 +133,13 @@ build pkg_descr lbi flags suffixes = do
 showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
   -> LocalBuildInfo      -- ^ Configuration information
   -> BuildFlags          -- ^ Flags that the user passed to build
-  -> IO ()
+  -> IO String
 showBuildInfo pkg_descr lbi flags = do
   let verbosity = fromFlag (buildVerbosity flags)
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
       doc = mkBuildInfo pkg_descr lbi flags targetsToBuild
-  putStrLn $ renderJson doc ""
+  return $ renderJson doc ""
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
