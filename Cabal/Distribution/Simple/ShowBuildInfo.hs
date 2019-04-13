@@ -102,6 +102,7 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
     mkComponentInfo (name, clbi) = JsonObject
       [ "type" .= JsonString compType
       , "name" .= JsonString (prettyShow name)
+      , "unit-id" .= JsonString (prettyShow $ componentUnitId clbi)
       , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
       , "modules" .= JsonArray (map (JsonString . display) modules)
       , "src-files" .= JsonArray (map JsonString sourceFiles)

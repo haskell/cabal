@@ -266,13 +266,12 @@ buildAction hooks flags args = do
                hooks flags' { buildArgs = args } args
 
 showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks a@(ShowBuildInfoFlags flags fileOutput _) args = do
-  print a
+showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput unitIds) args = do
   distPref <- findDistPrefOrDefault (buildDistPref flags)
   let verbosity = fromFlag $ buildVerbosity flags
   lbi <- getBuildConfig hooks verbosity distPref
   let flags' = flags { buildDistPref = toFlag distPref
-                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi) 
+                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
                      }
 
   progs <- reconfigurePrograms verbosity
@@ -286,9 +285,9 @@ showBuildInfoAction hooks a@(ShowBuildInfoFlags flags fileOutput _) args = do
       pkg_descr = updatePackageDescription pbi pkg_descr0
       -- TODO: Somehow don't ignore build hook?
   buildInfoString <- showBuildInfo pkg_descr lbi' flags
-  
-  maybe (putStrLn buildInfoString) (\fp -> appendFile fp buildInfoString) (fileOutput)
-  
+
+  maybe (putStrLn buildInfoString) (\fp -> appendFile fp buildInfoString) fileOutput
+
   postBuild hooks args flags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()

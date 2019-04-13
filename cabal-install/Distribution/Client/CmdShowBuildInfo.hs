@@ -15,7 +15,7 @@ import Distribution.Client.Setup
          )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags 
+         ( HaddockFlags, TestFlags
          , fromFlagOrDefault
          )
 import Distribution.Simple.Command
@@ -35,7 +35,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectPlanning (
   setupHsConfigureFlags, setupHsConfigureArgs,
-  setupHsBuildFlags, setupHsBuildArgs, 
+  setupHsBuildFlags, setupHsBuildArgs,
   setupHsScriptOptions
   )
 import Distribution.Client.DistDirLayout (distBuildDirectory)
@@ -76,7 +76,7 @@ showBuildInfoCommand = CmdInstall.installCommand {
               (reqArg' "UNIT-ID" (Just . words) (fromMaybe []))
       ],
   commandDefaultFlags = defaultShowBuildInfoFlags
-  
+
    }
 
 data ShowBuildInfoFlags = ShowBuildInfoFlags
@@ -99,16 +99,13 @@ defaultShowBuildInfoFlags = ShowBuildInfoFlags
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-showBuildInfoAction :: ShowBuildInfoFlags
-            -> [String] -> GlobalFlags -> IO ()
+showBuildInfoAction :: ShowBuildInfoFlags -> [String] -> GlobalFlags -> IO ()
 showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags) fileOutput unitIds)
-            targetStrings globalFlags = do
+  targetStrings globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig
-  let baseCtx' = baseCtx {
-                    buildSettings = (buildSettings baseCtx) {
-                      buildSettingDryRun = True
-                    }
-                  }
+  let baseCtx' = baseCtx
+        { buildSettings = (buildSettings baseCtx) { buildSettingDryRun = True }
+        }
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                   =<< readTargetSelectors (localPackages baseCtx') Nothing targetStrings
@@ -131,7 +128,6 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
 
   scriptLock <- newLock
   showTargets fileOutput unitIds verbosity baseCtx' buildCtx scriptLock
-  
   where
     -- Default to silent verbosity otherwise it will pollute our json output
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
@@ -144,12 +140,12 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
 showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
-  case fileOutput of 
-    Nothing -> do 
+  case fileOutput of
+    Nothing -> do
       putStr "["
       mapM_ doShowInfo targets
       putStrLn "]"
-    Just fp -> do 
+    Just fp -> do
       writeFile fp "["
       mapM_ doShowInfo targets
       appendFile fp "]"
@@ -160,7 +156,7 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
 
 showInfo :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
-  | Nothing <- mbPkg = die' verbosity $ "No unit " ++ show targetUnitId 
+  | Nothing <- mbPkg = die' verbosity $ "No unit " ++ show targetUnitId
   | Just pkg <- mbPkg = do
     let shared = elaboratedShared buildCtx
         install = elaboratedPlanOriginal buildCtx
@@ -171,41 +167,41 @@ showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
         srcDir = case (elabPkgSourceLocation pkg) of
           LocalUnpackedPackage fp -> fp
           _ -> ""
-        scriptOptions = setupHsScriptOptions 
-            (ReadyPackage pkg) 
-            install 
-            shared 
+        scriptOptions = setupHsScriptOptions
+            (ReadyPackage pkg)
+            install
+            shared
             dirLayout
-            srcDir 
-            buildDir 
-            False 
+            srcDir
+            buildDir
+            False
             lock
         configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
         configureArgs = setupHsConfigureArgs pkg
     --Configure the package if there's no existing config
     lbi <- tryGetPersistBuildConfig buildDir
     case lbi of
-      Left _ -> setupWrapper 
-                  verbosity 
-                  scriptOptions 
-                  (Just $ elabPkgDescription pkg) 
-                  (Cabal.configureCommand defaultProgramDb) 
+      Left _ -> setupWrapper
+                  verbosity
+                  scriptOptions
+                  (Just $ elabPkgDescription pkg)
+                  (Cabal.configureCommand defaultProgramDb)
                   (const configureFlags)
                   (const configureArgs)
       Right _ -> pure ()
-    
-    setupWrapper 
-      verbosity 
-      scriptOptions 
-      (Just $ elabPkgDescription pkg) 
-      (Cabal.showBuildInfoCommand defaultProgramDb) 
-      (const (Cabal.ShowBuildInfoFlags 
+
+    setupWrapper
+      verbosity
+      scriptOptions
+      (Just $ elabPkgDescription pkg)
+      (Cabal.showBuildInfoCommand defaultProgramDb)
+      (const (Cabal.ShowBuildInfoFlags
         { Cabal.buildInfoBuildFlags = flags
         , Cabal.buildInfoOutputFile = fileOutput
-        , Cabal.buildInfoUnitIds = unitIds 
-        } 
+        , Cabal.buildInfoUnitIds = unitIds
+        }
         )
-      ) 
+      )
       (const args)
     where mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
 
