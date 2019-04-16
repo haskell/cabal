@@ -242,11 +242,6 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         parseInt :: String -> Maybe Int
         parseInt = readMaybe . dropEq
 
-        readMaybe :: Read a => String -> Maybe a
-        readMaybe s = case reads s of
-            [(x, "")] -> Just x
-            _ -> Nothing
-
     dropEq :: String -> String
     dropEq ('=':s) = s
     dropEq s = s

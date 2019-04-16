@@ -13,10 +13,7 @@
 module Distribution.Client.Compat.Prelude
   ( module Distribution.Compat.Prelude.Internal
   , Prelude.IO
-  , readMaybe
   ) where
 
 import Prelude (IO)
 import Distribution.Compat.Prelude.Internal hiding (IO)
-import Text.Read
-         ( readMaybe )

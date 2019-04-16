@@ -24,7 +24,6 @@ import Test.QuickCheck.Utils
 
 import Data.Maybe (fromJust)
 import Data.Function (on)
-import Text.Read (readMaybe)
 
 versionTests :: [TestTree]
 versionTests =
