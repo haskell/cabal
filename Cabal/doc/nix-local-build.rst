@@ -1947,14 +1947,16 @@ Advanced global configuration options
                --write-ghc-environment-files=policy
     :synopsis: Whether a ``.ghc.environment`` should be created after a successful build.
 
-    :default: ``ghc8.4.4+``
+    :default: ``never``
 
     Whether a `GHC package environment file <https://downloads.haskell.org/~ghc/master/users-guide/packages.html#package-environments>`_
     should be created after a successful build.
 
-    Defaults to creating them only when compiling with GHC 8.4.4 and
-    older (GHC 8.4.4 `is the first version <https://ghc.haskell.org/trac/ghc/ticket/13753>`_ that supports the
-    ``-package-env -`` option that allows ignoring the package
+    Since Cabal 3.0, defaults to ``never``. Before that, defaulted to
+    creating them only when compiling with GHC 8.4.4 and older (GHC
+    8.4.4 `is the first version
+    <https://ghc.haskell.org/trac/ghc/ticket/13753>`_ that supports
+    the ``-package-env -`` option that allows ignoring the package
     environment files).
 
 

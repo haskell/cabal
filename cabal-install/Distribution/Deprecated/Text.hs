@@ -23,7 +23,7 @@ module Distribution.Deprecated.Text (
   ) where
 
 import Distribution.Client.Compat.Prelude
-import Prelude ()
+import Prelude (read)
 
 import           Distribution.Deprecated.ReadP ((<++))
 import qualified Distribution.Deprecated.ReadP as Parse
