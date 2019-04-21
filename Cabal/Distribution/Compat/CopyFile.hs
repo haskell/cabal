@@ -123,6 +123,8 @@ copyFile fromFPath toFPath =
 -- | Add the @"\\\\?\\"@ prefix if necessary or possible.  The path remains
 -- unchanged if the prefix is not added.  This function can sometimes be used
 -- to bypass the @MAX_PATH@ length restriction in Windows API calls.
+--
+-- See Note [Path normalization].
 toExtendedLengthPath :: FilePath -> FilePath
 toExtendedLengthPath path
   | isRelative path = path
@@ -142,6 +144,17 @@ toExtendedLengthPath path
 -- * paths starting with @\\\\?\\@ are preserved.
 --
 -- The goal is to preserve the meaning of paths better than 'normalise'.
+--
+-- Note [Path normalization]
+-- 'normalise' doesn't simplify path names but will convert / into \\
+-- this would normally not be a problem as once the path hits the RTS we would
+-- have simplified the path then.  However since we're calling the WIn32 API
+-- directly we have to do the simplification before the call.  Without this the
+-- path Z:// would become Z:\\\\ and when converted to a device path the path
+-- becomes \\?\Z:\\\\ which is an invalid path.
+--
+-- This is not a bug in normalise as it explicitly states that it won't simplify
+-- a FilePath.
 simplifyWindows :: FilePath -> FilePath
 simplifyWindows "" = ""
 simplifyWindows path =
