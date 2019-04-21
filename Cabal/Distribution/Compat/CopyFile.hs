@@ -51,7 +51,17 @@ import System.IO.Error
 import System.Directory
   ( doesFileExist )
 import System.FilePath
-  ( isRelative, normalise )
+  ( addTrailingPathSeparator
+  , hasTrailingPathSeparator
+  , isPathSeparator
+  , isRelative
+  , joinDrive
+  , joinPath
+  , pathSeparator
+  , pathSeparators
+  , splitDirectories
+  , splitDrive
+  )
 import System.IO
   ( IOMode(ReadMode), hFileSize
   , withBinaryFile )
@@ -117,12 +127,90 @@ toExtendedLengthPath :: FilePath -> FilePath
 toExtendedLengthPath path
   | isRelative path = path
   | otherwise =
-      case normalise path of
-        '\\' : '?'  : '?' : '\\' : _ -> path
-        '\\' : '\\' : '?' : '\\' : _ -> path
-        '\\' : '\\' : '.' : '\\' : _ -> path
-        '\\' : subpath@('\\' : _) -> "\\\\?\\UNC" <> subpath
-        normalisedPath -> "\\\\?\\" <> normalisedPath
+      case normalisedPath of
+        '\\' : '?'  : '?' : '\\' : _ -> normalisedPath
+        '\\' : '\\' : '?' : '\\' : _ -> normalisedPath
+        '\\' : '\\' : '.' : '\\' : _ -> normalisedPath
+        '\\' : subpath@('\\' : _)    -> "\\\\?\\UNC" <> subpath
+        _                            -> "\\\\?\\" <> normalisedPath
+    where normalisedPath = simplifyWindows path
+
+-- | Similar to 'normalise' but:
+--
+-- * empty paths stay empty,
+-- * parent dirs (@..@) are expanded, and
+-- * paths starting with @\\\\?\\@ are preserved.
+--
+-- The goal is to preserve the meaning of paths better than 'normalise'.
+simplifyWindows :: FilePath -> FilePath
+simplifyWindows "" = ""
+simplifyWindows path =
+  case drive' of
+    "\\\\?\\" -> drive' <> subpath
+    _ -> simplifiedPath
+  where
+    simplifiedPath = joinDrive drive' subpath'
+    (drive, subpath) = splitDrive path
+    drive' = upperDrive (normaliseTrailingSep (normalisePathSeps drive))
+    subpath' = appendSep . avoidEmpty . prependSep . joinPath .
+               stripPardirs . expandDots . skipSeps .
+               splitDirectories $ subpath
+
+    upperDrive d = case d of
+      c : ':' : s | isAlpha c && all isPathSeparator s -> toUpper c : ':' : s
+      _ -> d
+    skipSeps = filter (not . (`elem` (pure <$> pathSeparators)))
+    stripPardirs | pathIsAbsolute || subpathIsAbsolute = dropWhile (== "..")
+                 | otherwise = id
+    prependSep | subpathIsAbsolute = (pathSeparator :)
+               | otherwise = id
+    avoidEmpty | not pathIsAbsolute
+                 && (null drive || hasTrailingPathSep) -- prefer "C:" over "C:."
+                 = emptyToCurDir
+               | otherwise = id
+    appendSep p | hasTrailingPathSep
+                  && not (pathIsAbsolute && null p)
+                  = addTrailingPathSeparator p
+                | otherwise = p
+    pathIsAbsolute = not (isRelative path)
+    subpathIsAbsolute = any isPathSeparator (take 1 subpath)
+    hasTrailingPathSep = hasTrailingPathSeparator subpath
+
+-- | Given a list of path segments, expand @.@ and @..@.  The path segments
+-- must not contain path separators.
+expandDots :: [FilePath] -> [FilePath]
+expandDots = reverse . go []
+  where
+    go ys' xs' =
+      case xs' of
+        [] -> ys'
+        x : xs ->
+          case x of
+            "." -> go ys' xs
+            ".." ->
+              case ys' of
+                [] -> go (x : ys') xs
+                ".." : _ -> go (x : ys') xs
+                _ : ys -> go ys xs
+            _ -> go (x : ys') xs
+
+-- | Convert to the right kind of slashes.
+normalisePathSeps :: FilePath -> FilePath
+normalisePathSeps p = (\ c -> if isPathSeparator c then pathSeparator else c) <$> p
+
+-- | Remove redundant trailing slashes and pick the right kind of slash.
+normaliseTrailingSep :: FilePath -> FilePath
+normaliseTrailingSep path = do
+  let path' = reverse path
+  let (sep, path'') = span isPathSeparator path'
+  let addSep = if null sep then id else (pathSeparator :)
+  reverse (addSep path'')
+
+-- | Convert empty paths to the current directory, otherwise leave it
+-- unchanged.
+emptyToCurDir :: FilePath -> FilePath
+emptyToCurDir ""   = "."
+emptyToCurDir path = path
 #endif /* mingw32_HOST_OS */
 
 -- | Like `copyFile`, but does not touch the target if source and destination
