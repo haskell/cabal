@@ -39,6 +39,12 @@ data PrettyField ann
   deriving (Functor, Foldable, Traversable)
 
 -- | Prettyprint a list of fields.
+--
+-- Note: the first argument should return 'String's without newlines
+-- and properly prefixes (with @--@) to count as comments.
+-- This unsafety is left in place so one could generate empty lines
+-- between comment lines.
+--
 showFields :: (ann -> [String]) -> [PrettyField ann] -> String
 showFields rann = showFields' rann 4
 
