@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-deprecations #-}
 module UnitTests.Distribution.SPDX (spdxTests) where
 
@@ -11,10 +12,26 @@ import Distribution.Pretty (prettyShow)
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
+#if MIN_VERSION_binary(0,7,0)
+import qualified Data.Binary as Binary
+import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
+import qualified Data.ByteString.Lazy as LBS
+import GHC.Generics (to, from)
+#endif
+
 spdxTests :: [TestTree]
 spdxTests =
     [ testProperty "LicenseId roundtrip" licenseIdRoundtrip
+#if MIN_VERSION_binary(0,7,0)
+    , testProperty "LicenseId Binary.put" licenseIdBinaryPut
+    , testProperty "LicenseId Binary.get" licenseIdBinaryGet
+#endif
     , testProperty "LicenseExceptionId roundtrip" licenseExceptionIdRoundtrip
+#if MIN_VERSION_binary(0,7,0)
+    , testProperty "LicenseExceptionId Binary.put" licenseExceptionIdBinaryPut
+    , testProperty "LicenseExceptionId Binary.get" licenseExceptionIdBinaryGet
+#endif
     , testProperty "LicenseRef roundtrip" licenseRefRoundtrip
     , testProperty "SimpleLicenseExpression roundtrip" simpleLicenseExpressionRoundtrip
     , testProperty "LicenseExpression roundtrip" licenseExpressionRoundtrip
@@ -23,14 +40,60 @@ spdxTests =
     ]
 
 licenseIdRoundtrip :: LicenseId -> Property
-licenseIdRoundtrip x = 
+licenseIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
+
+#if MIN_VERSION_binary(0,7,0)
+licenseIdBinaryPut :: LicenseId -> Property
+licenseIdBinaryPut x =
+    Binary.runPut (Binary.put x)
+    ===
+    Binary.runPut (Binary.gput (from x))
+
+licenseIdBinaryGet :: Word8 -> Word8 -> Property
+licenseIdBinaryGet w0 w1 =
+    stripMsg id (Binary.runGetOrFail Binary.get bs)
+    ===
+    stripMsg to (Binary.runGetOrFail Binary.gget bs)
+  where
+    bs = LBS.pack [w0, w1]
+
+    stripMsg
+        :: (a -> LicenseId)
+        -> Either (x, y, String) (x, y, a)
+        -> Either (x, y) (x, y, LicenseId)
+    stripMsg _ (Left (x,y,_))  = Left (x,y)
+    stripMsg f (Right (x,y,t)) = Right (x,y,f t)
+#endif
 
 licenseExceptionIdRoundtrip :: LicenseExceptionId -> Property
 licenseExceptionIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
+
+#if MIN_VERSION_binary(0,7,0)
+licenseExceptionIdBinaryPut :: LicenseExceptionId -> Property
+licenseExceptionIdBinaryPut x =
+    Binary.runPut (Binary.put x)
+    ===
+    Binary.runPut (Binary.gput (from x))
+
+licenseExceptionIdBinaryGet :: Word8 -> Property
+licenseExceptionIdBinaryGet w0 =
+    stripMsg id (Binary.runGetOrFail Binary.get bs)
+    ===
+    stripMsg to (Binary.runGetOrFail Binary.gget bs)
+  where
+    bs = LBS.pack [w0]
+
+    stripMsg
+        :: (a -> LicenseExceptionId)
+        -> Either (x, y, String) (x, y, a)
+        -> Either (x, y) (x, y, LicenseExceptionId)
+    stripMsg _ (Left (x,y,_))  = Left (x,y)
+    stripMsg f (Right (x,y,t)) = Right (x,y,f t)
+#endif
 
 licenseRefRoundtrip :: LicenseRef -> Property
 licenseRefRoundtrip x =
@@ -38,12 +101,12 @@ licenseRefRoundtrip x =
     Right x === eitherParsec (prettyShow x)
 
 simpleLicenseExpressionRoundtrip :: SimpleLicenseExpression -> Property
-simpleLicenseExpressionRoundtrip x = 
+simpleLicenseExpressionRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
 
 licenseExpressionRoundtrip :: LicenseExpression -> Property
-licenseExpressionRoundtrip x = 
+licenseExpressionRoundtrip x =
     counterexample (prettyShow x) $
     Right (reassoc x) === eitherParsec (prettyShow x)
 
@@ -149,7 +212,7 @@ instance Arbitrary LicenseExpression where
                 ]
               where
                 m = n `div` 2
-                arbA = arb m 
+                arbA = arb m
                 arbB = arb (n - m)
 
     shrink (EAnd a b) = a : b : map (uncurry EAnd) (shrink (a, b))
