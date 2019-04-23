@@ -294,7 +294,7 @@ data ElaboratedConfiguredPackage
        elabTestHumanLog          :: Maybe PathTemplate,
        elabTestShowDetails       :: Maybe TestShowDetails,
        elabTestKeepTix           :: Bool,
-       elabTestWrapper           :: Maybe FilePath
+       elabTestWrapper           :: Maybe FilePath,
        elabTestFailWhenNoTestSuites :: Bool,
        elabTestTestOptions       :: [PathTemplate],
 

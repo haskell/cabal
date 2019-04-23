@@ -1884,7 +1884,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
         elabTestShowDetails     = perPkgOptionMaybe pkgid packageConfigTestShowDetails
         elabTestKeepTix         = perPkgOptionFlag pkgid False packageConfigTestKeepTix
-        elabTestWrapper         = perPkgOptionFlag pkgid False packageConfigTestWrapper
+        elabTestWrapper         = perPkgOptionMaybe pkgid packageConfigTestWrapper
         elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
         elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
 
