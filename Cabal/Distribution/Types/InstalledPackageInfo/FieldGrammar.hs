@@ -172,9 +172,7 @@ maybePackageName ipi = case sourceLibName ipi of
 
 newtype ExposedModules = ExposedModules { getExposedModules :: [ExposedModule] }
 
-instance Newtype ExposedModules [ExposedModule] where
-    pack   = ExposedModules
-    unpack = getExposedModules
+instance Newtype [ExposedModule] ExposedModules
 
 instance Parsec ExposedModules where
     parsec = ExposedModules <$> parsecOptCommaList parsec
@@ -185,9 +183,7 @@ instance Pretty ExposedModules where
 
 newtype CompatPackageKey = CompatPackageKey { getCompatPackageKey :: String }
 
-instance Newtype CompatPackageKey String where
-    pack = CompatPackageKey
-    unpack = getCompatPackageKey
+instance Newtype String CompatPackageKey
 
 instance Pretty CompatPackageKey where
     pretty = Disp.text . getCompatPackageKey
@@ -199,9 +195,7 @@ instance Parsec CompatPackageKey where
 
 newtype InstWith = InstWith { getInstWith :: [(ModuleName,OpenModule)] }
 
-instance Newtype InstWith [(ModuleName, OpenModule)] where
-    pack = InstWith
-    unpack = getInstWith
+instance Newtype  [(ModuleName, OpenModule)] InstWith
 
 instance Pretty InstWith where
     pretty = dispOpenModuleSubst . Map.fromList . getInstWith
@@ -213,15 +207,13 @@ instance Parsec InstWith where
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient { getSpecLicenseLenient :: Either SPDX.License License }
 
-instance Newtype SpecLicenseLenient (Either SPDX.License License) where
-    pack = SpecLicenseLenient
-    unpack = getSpecLicenseLenient
+instance Newtype (Either SPDX.License License) SpecLicenseLenient
 
 instance Parsec SpecLicenseLenient where
     parsec = fmap SpecLicenseLenient $ Left <$> P.try parsec <|> Right <$> parsec
 
 instance Pretty SpecLicenseLenient where
-    pretty = either pretty pretty . unpack
+    pretty = either pretty pretty . getSpecLicenseLenient
 
 -------------------------------------------------------------------------------
 -- Basic fields

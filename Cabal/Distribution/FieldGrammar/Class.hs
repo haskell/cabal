@@ -33,7 +33,7 @@ class FieldGrammar g where
 
     -- | Field which should be defined, exactly once.
     uniqueFieldAla
-        :: (Parsec b, Pretty b, Newtype b a)
+        :: (Parsec b, Pretty b, Newtype a b)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'Newtype' pack
         -> ALens' s a  -- ^ lens into the field
@@ -48,7 +48,7 @@ class FieldGrammar g where
 
     -- | Optional field.
     optionalFieldAla
-        :: (Parsec b, Pretty b, Newtype b a)
+        :: (Parsec b, Pretty b, Newtype a b)
         => FieldName          -- ^ field name
         -> (a -> b)           -- ^ 'pack'
         -> ALens' s (Maybe a) -- ^ lens into the field
@@ -56,7 +56,7 @@ class FieldGrammar g where
 
     -- | Optional field with default value.
     optionalFieldDefAla
-        :: (Parsec b, Pretty b, Newtype b a, Eq a)
+        :: (Parsec b, Pretty b, Newtype a b, Eq a)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'Newtype' pack
         -> ALens' s a  -- ^ @'Lens'' s a@: lens into the field
@@ -88,7 +88,7 @@ class FieldGrammar g where
     -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
     --
     monoidalFieldAla
-        :: (Parsec b, Pretty b, Monoid a, Newtype b a)
+        :: (Parsec b, Pretty b, Monoid a, Newtype a b)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'pack'
         -> ALens' s a  -- ^ lens into the field
