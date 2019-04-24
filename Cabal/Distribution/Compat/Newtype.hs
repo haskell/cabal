@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP                    #-}
+{-# LANGUAGE DefaultSignatures      #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 -- | Per Conor McBride, the 'Newtype' typeclass represents the packing and
@@ -14,31 +16,50 @@ module Distribution.Compat.Newtype (
 import Data.Functor.Identity (Identity (..))
 import Data.Monoid (Sum (..), Product (..), Endo (..))
 
+#if MIN_VERSION_base(4,7,0)
+import Data.Coerce (coerce, Coercible)
+#else
+import Unsafe.Coerce (unsafeCoerce)
+#endif
+
 -- | The @FunctionalDependencies@ version of 'Newtype' type-class.
 --
--- /Note:/ for actual newtypes the implementation can be
--- @pack = coerce; unpack = coerce@. We don't have default implementation,
--- because @Cabal@ have to support older than @base >= 4.7@ compilers.
--- Also, 'Newtype' could witness a non-structural isomorphism.
-class Newtype n o | n -> o where
+-- Since Cabal-3.0 class arguments are in a different order than in @newtype@ package.
+-- This change is to allow usage with @DeriveAnyClass@ (and @DerivingStrategies@, in GHC-8.2).
+-- Unfortunately one have to repeat inner type.
+--
+-- @
+-- newtype New = New Old
+--   deriving anyclass (Newtype Old)
+-- @
+--
+-- Another approach would be to use @TypeFamilies@ (and possibly
+-- compute inner type using "GHC.Generics"), but we think @FunctionalDependencies@
+-- version gives cleaner type signatures.
+--
+class Newtype o n | n -> o where
     pack   :: o -> n
+#if MIN_VERSION_base(4,7,0)
+    default pack :: Coercible o n => o -> n
+    pack = coerce
+#else
+    default pack :: o -> n
+    pack = unsafeCoerce
+#endif
+
     unpack :: n -> o
+#if MIN_VERSION_base(4,7,0)
+    default unpack :: Coercible n o => n -> o
+    unpack = coerce
+#else
+    default unpack :: n -> o
+    unpack = unsafeCoerce
+#endif
 
-instance Newtype (Identity a) a where
-    pack   = Identity
-    unpack = runIdentity
-
-instance Newtype (Sum a) a where
-    pack   = Sum
-    unpack = getSum
-
-instance Newtype (Product a) a where
-    pack   = Product
-    unpack = getProduct
-
-instance Newtype (Endo a) (a -> a) where
-    pack   = Endo
-    unpack = appEndo
+instance Newtype a (Identity a)
+instance Newtype a (Sum a)
+instance Newtype a (Product a)
+instance Newtype (a -> a) (Endo a)
 
 -- |
 --
@@ -49,7 +70,7 @@ instance Newtype (Endo a) (a -> a) where
 --
 -- >>> ala (Sum . (+1)) foldMap [1, 2, 3, 4 :: Int]
 -- 10
-ala :: (Newtype n o, Newtype n' o') => (o -> n) -> ((o -> n) -> b -> n') -> (b -> o')
+ala :: (Newtype o n, Newtype o' n') => (o -> n) -> ((o -> n) -> b -> n') -> (b -> o')
 ala pa hof = alaf pa hof id
 
 -- |
@@ -58,13 +79,13 @@ ala pa hof = alaf pa hof id
 -- 12
 --
 -- /Note:/ as with 'ala', the user supplied function for the newtype is /ignored/.
-alaf :: (Newtype n o, Newtype n' o') => (o -> n) -> ((a -> n) -> b -> n') -> (a -> o) -> (b -> o')
+alaf :: (Newtype o n, Newtype o' n') => (o -> n) -> ((a -> n) -> b -> n') -> (a -> o) -> (b -> o')
 alaf _ hof f = unpack . hof (pack . f)
 
 -- | Variant of 'pack', which takes a phantom type.
-pack' :: Newtype n o => (o -> n) -> o -> n
+pack' :: Newtype o n => (o -> n) -> o -> n
 pack' _ = pack
 
 -- | Variant of 'pack', which takes a phantom type.
-unpack' :: Newtype n o => (o -> n) -> n -> o
+unpack' :: Newtype o n => (o -> n) -> n -> o
 unpack' _ = unpack
