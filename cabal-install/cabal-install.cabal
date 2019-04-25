@@ -161,7 +161,6 @@ executable cabal
         Distribution.Client.CmdBench
         Distribution.Client.CmdBuild
         Distribution.Client.CmdClean
-        Distribution.Client.CmdShowBuildInfo
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdUpdate
         Distribution.Client.CmdErrorMessages
@@ -172,6 +171,7 @@ executable cabal
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
+        Distribution.Client.CmdShowBuildInfo
         Distribution.Client.CmdTest
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdSdist

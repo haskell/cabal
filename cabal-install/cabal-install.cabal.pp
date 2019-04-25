@@ -99,6 +99,7 @@ Version:            3.0.0.0
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
+        Distribution.Client.CmdShowBuildInfo
         Distribution.Client.CmdTest
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdSdist
