@@ -1719,6 +1719,12 @@ the package.
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
 
+.. option:: --test-wrapper=path
+
+   The wrapper script/application used to obtain exection arguments, set
+   the environment with them and then be responsible for running the
+   tests withing that environment.
+
 .. _setup-sdist:
 
 setup sdist
