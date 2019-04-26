@@ -22,6 +22,7 @@ module Distribution.Client.Setup
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , filterTestFlags, TestFlags
     , replCommand, testCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
@@ -828,6 +829,37 @@ instance Monoid BuildExFlags where
 
 instance Semigroup BuildExFlags where
   (<>) = gmappend
+
+-- ------------------------------------------------------------
+-- * Test flags
+-- ------------------------------------------------------------
+
+-- | Given some 'TestFlags' for the version of Cabal that
+-- cabal-install was built with, and a target older 'Version' of
+-- Cabal that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- Setup script.  Generally speaking, this just means filtering
+-- out flags that the old Cabal library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterTestFlags :: TestFlags -> Version -> TestFlags
+filterTestFlags flags cabalLibVersion
+  -- NB: we expect the latest version to be the most common case,
+  -- so test it first.
+  | cabalLibVersion >= mkVersion [3,0,0] = flags_latest
+  -- The naming convention is that flags_version gives flags with
+  -- all flags *introduced* in version eliminated.
+  -- It is NOT the latest version of Cabal library that
+  -- these flags work for; version of introduction is a more
+  -- natural metric.
+  | cabalLibVersion <  mkVersion [3,0,0] = flags_3_0_0
+  | otherwise = error "the impossible just happened" -- see first guard
+  where
+    flags_latest = flags
+    flags_3_0_0  = flags_latest {
+      -- Cabal < 3.0 doesn't know about --test-wrapper
+      Cabal.testWrapper = NoFlag
+      }
 
 -- ------------------------------------------------------------
 -- * Repl command
