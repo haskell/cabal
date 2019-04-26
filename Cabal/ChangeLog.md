@@ -4,7 +4,8 @@
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
     ([#5342](https://github.com/haskell/cabal/issues/5432)).
-  * `KnownExtension`: added new extension `DerivingVia`.
+  * `KnownExtension`: added new extensions `DerivingVia` and
+    `EmptyDataDeriving`.
   * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
