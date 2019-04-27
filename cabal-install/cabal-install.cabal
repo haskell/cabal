@@ -102,6 +102,11 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   cabal-install
 
+Flag static
+  description:  Build statically linked executable
+  default:      False
+  manual:       True
+
 Flag native-dns
   description:  Enable use of the [resolv](https://hackage.haskell.org/package/resolv) & [windns](https://hackage.haskell.org/package/windns) packages for performing DNS lookups
   default:      True
@@ -352,6 +357,9 @@ executable cabal
 
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
+
+    if flag(static)
+      ld-options: -static
 
     if flag(debug-conflict-sets)
       cpp-options: -DDEBUG_CONFLICT_SETS
