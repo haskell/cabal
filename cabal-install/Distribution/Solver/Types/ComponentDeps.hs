@@ -119,9 +119,9 @@ insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
 
 -- | Zip two 'ComponentDeps' together by 'Component', using 'mempty'
 -- as the neutral element when a 'Component' is present only in one.
-zip :: (Monoid a, Monoid b) => ComponentDeps a -> ComponentDeps b -> ComponentDeps (a, b)
-{- TODO/FIXME: Once we can expect containers>=0.5, switch to the more efficient version below:
-
+zip
+  :: (Monoid a, Monoid b)
+  => ComponentDeps a -> ComponentDeps b -> ComponentDeps (a, b)
 zip (ComponentDeps d1) (ComponentDeps d2) =
     ComponentDeps $
       Map.mergeWithKey
@@ -129,15 +129,6 @@ zip (ComponentDeps d1) (ComponentDeps d2) =
         (fmap (\a -> (a, mempty)))
         (fmap (\b -> (mempty, b)))
         d1 d2
-
--}
-zip (ComponentDeps d1) (ComponentDeps d2) =
-    ComponentDeps $
-      Map.unionWith
-        mappend
-        (Map.map (\a -> (a, mempty)) d1)
-        (Map.map (\b -> (mempty, b)) d2)
-
 
 -- | Keep only selected components (and their associated deps info).
 filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
