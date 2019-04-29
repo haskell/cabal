@@ -1721,9 +1721,10 @@ the package.
 
 .. option:: --test-wrapper=path
 
-   The wrapper script/application used to obtain exection arguments, set
-   the environment with them and then be responsible for running the
-   tests withing that environment.
+   The wrapper script/application used to setup and tear down the test
+   execution context. The text executable path and test arguments are
+   passed as arguments to the wrapper and it is expected that the wrapper
+   will return the test's return code, as well as a copy of stdout/stderr.
 
 .. _setup-sdist:
 
