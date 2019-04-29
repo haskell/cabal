@@ -79,7 +79,7 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..)
-         , TestFlags(..), filterTestFlags )
+         , filterTestFlags )
 import Distribution.Client.Config
          ( getCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
