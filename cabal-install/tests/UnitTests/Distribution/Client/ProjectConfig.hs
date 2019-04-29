@@ -597,7 +597,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
-        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> shortListOf 5 arbitrary
       where

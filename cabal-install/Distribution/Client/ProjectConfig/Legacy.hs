@@ -1092,7 +1092,8 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { testOptions = v })
       ]
   . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files", "fail-when-no-test-suites" ]
+      [ "log", "machine-log", "show-details", "keep-tix-files"
+      , "fail-when-no-test-suites", "test-wrapper" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 
