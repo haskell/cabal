@@ -27,6 +27,8 @@
 	  that make it possible to copy the executable instead of symlinking it
 	* --symlink-bindir no longer controls the symlinking directory of
 	  v2-install (installdir controls both symlinking and copying now)
+	* Add --test-wrapper that allows a prebuild script to set the test environment.
+	* Add filterTestFlags: filter test-wrapper for Cabal < 3.0.0.
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)

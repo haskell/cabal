@@ -65,7 +65,7 @@ import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup
                    ( filterConfigureFlags, filterHaddockArgs
-                   , filterHaddockFlags )
+                   , filterHaddockFlags, filterTestFlags )
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils
@@ -1370,7 +1370,8 @@ buildInplaceUnpackedPackage verbosity
     buildArgs     _  = setupHsBuildArgs  pkg
 
     testCommand      = Cabal.testCommand -- defaultProgramDb
-    testFlags    _   = setupHsTestFlags pkg pkgshared
+    testFlags      v = flip filterTestFlags v $
+                       setupHsTestFlags pkg pkgshared
                                          verbosity builddir
     testArgs      _  = setupHsTestArgs  pkg
 
