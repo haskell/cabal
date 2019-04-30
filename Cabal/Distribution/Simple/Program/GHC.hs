@@ -25,6 +25,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Backpack
+import Distribution.Compat.Semigroup (Last'(..))
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
@@ -44,7 +45,6 @@ import Language.Haskell.Extension
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All(..), Alt(..), Any(..), Endo(..))
-import Data.Semigroup (Last(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -264,16 +264,15 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         ]
 
     safeToFilterHoles :: Bool
-    safeToFilterHoles = getAll . checkGhcFlags $ All . fromLast . foldMap notDeferred
+    safeToFilterHoles = getAll . checkGhcFlags $ fromLast' . foldMap notDeferred
       where
-        fromLast :: Maybe (Last Bool) -> Bool
-        fromLast Nothing = True
-        fromLast (Just (Last b)) = b
-
-        notDeferred :: String -> Maybe (Last Bool)
-        notDeferred "-fdefer-typed-holes" = Just . Last $ False
-        notDeferred "-fno-defer-typed-holes" = Just . Last $ True
-        notDeferred _ = Nothing
+        fromLast' :: Last' All -> All
+        fromLast' = fromMaybe (All True) . getLast'
+ 
+        notDeferred :: String -> Last' All
+        notDeferred "-fdefer-typed-holes" = Last' . Just . All $ False
+        notDeferred "-fno-defer-typed-holes" = Last' . Just . All $ True
+        notDeferred _ = Last' Nothing
 
     isTypedHoleFlag :: String -> Any
     isTypedHoleFlag = mconcat
