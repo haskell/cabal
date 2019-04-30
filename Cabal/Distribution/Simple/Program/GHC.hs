@@ -268,7 +268,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       where
         fromLast' :: Last' All -> All
         fromLast' = fromMaybe (All True) . getLast'
- 
+
         notDeferred :: String -> Last' All
         notDeferred "-fdefer-typed-holes" = Last' . Just . All $ False
         notDeferred "-fno-defer-typed-holes" = Last' . Just . All $ True
