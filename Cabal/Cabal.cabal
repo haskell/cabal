@@ -309,6 +309,7 @@ library
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
+    Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack

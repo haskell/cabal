@@ -57,8 +57,9 @@ module Distribution.Simple (
         defaultHookedPackageDesc
   ) where
 
-import Prelude (mapM)
 import Control.Exception (try)
+
+import Prelude ()
 import Distribution.Compat.Prelude
 
 -- local
@@ -101,6 +102,7 @@ import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit                          (exitWith,ExitCode(..))
 import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
+import Distribution.Compat.ResponseFile (expandResponse)
 import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
@@ -108,10 +110,6 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
-
--- | Monadic version of concatMap
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-concatMapM f xs = liftM concat (mapM f xs)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -154,7 +152,7 @@ defaultMainWithHooksNoReadArgs hooks pkg_descr =
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $ do
-  args' <- expandResponseFiles args
+  args' <- expandResponse args
   case commandsRun (globalCommand commands) commands args' of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
@@ -169,14 +167,6 @@ defaultMainHelper hooks args = topHandler $ do
         CommandReadyToGo action        -> action
 
   where
-    expandResponseFiles :: [String] -> IO [String]
-    expandResponseFiles = concatMapM expandResponseFile
-    expandResponseFile :: String -> IO [String]
-    expandResponseFile arg@('@':file) = doesFileExist file >>= \case
-      True -> concatMap words . lines <$> readFile file
-      False -> pure [arg]
-    expandResponseFile arg = pure [arg]
-
     printHelp help = getProgName >>= putStr . help
     printOptionsList = putStr . unlines
     printErrors errs = do
