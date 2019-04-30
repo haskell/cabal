@@ -51,8 +51,6 @@ type Args = [String]
 -- break in future releases.
 data UserHooks = UserHooks {
 
-    -- | Used for @.\/setup test@
-    runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (),
     -- | Read the description file
     readDesc :: IO (Maybe GenericPackageDescription),
     -- | Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
@@ -107,13 +105,6 @@ data UserHooks = UserHooks {
     -- on the target, not on the build machine.
     postInst :: Args -> InstallFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
-    -- |Hook to run before sdist command.  Second arg indicates verbosity level.
-    preSDist  :: Args -> SDistFlags -> IO HookedBuildInfo,
-    -- |Over-ride this hook to get different behavior during sdist.
-    sDistHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> SDistFlags -> IO (),
-    -- |Hook to run after sdist command.  Second arg indicates verbosity level.
-    postSDist :: Args -> SDistFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
-
     -- |Hook to run before register command
     preReg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
     -- |Over-ride this hook to get different behavior during registration.
@@ -164,16 +155,10 @@ data UserHooks = UserHooks {
     postBench :: Args -> BenchmarkFlags -> PackageDescription -> LocalBuildInfo -> IO ()
   }
 
-{-# DEPRECATED runTests "Please use the new testing interface instead!" #-}
-{-# DEPRECATED preSDist  "SDist hooks violate the invariants of new-sdist. Use 'autogen-modules' and 'build-tool-depends' instead." #-}
-{-# DEPRECATED sDistHook "SDist hooks violate the invariants of new-sdist. Use 'autogen-modules' and 'build-tool-depends' instead." #-}
-{-# DEPRECATED postSDist "SDist hooks violate the invariants of new-sdist. Use 'autogen-modules' and 'build-tool-depends' instead." #-}
-
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks
 emptyUserHooks
   = UserHooks {
-      runTests  = ru,
       readDesc  = return Nothing,
       hookedPreProcessors = [],
       hookedPrograms      = [],
@@ -195,9 +180,6 @@ emptyUserHooks
       preInst   = rn,
       instHook  = ru,
       postInst  = ru,
-      preSDist  = rn,
-      sDistHook = ru,
-      postSDist = ru,
       preReg    = rn',
       regHook   = ru,
       postReg   = ru,

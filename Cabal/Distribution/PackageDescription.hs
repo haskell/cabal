@@ -17,7 +17,6 @@ module Distribution.PackageDescription (
         specVersion,
         buildType,
         license,
-        descCabalVersion,
         BuildType(..),
         knownBuildTypes,
         allLibraries,
@@ -35,7 +34,6 @@ module Distribution.PackageDescription (
         hasLibs,
         explicitLibModules,
         libModulesAutogen,
-        libModules,
 
         -- ** Executables
         Executable(..),

@@ -19,7 +19,6 @@ module Language.Haskell.Extension (
 
         Extension(..),
         KnownExtension(..),
-        knownExtensions,
         deprecatedExtensions,
         classifyExtension,
   ) where
@@ -828,11 +827,6 @@ data KnownExtension =
 instance Binary KnownExtension
 
 instance NFData KnownExtension where rnf = genericRnf
-
-{-# DEPRECATED knownExtensions
-   "KnownExtension is an instance of Enum and Bounded, use those instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-knownExtensions :: [KnownExtension]
-knownExtensions = [minBound..maxBound]
 
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.

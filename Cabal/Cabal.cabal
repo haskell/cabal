@@ -448,6 +448,7 @@ library
     Distribution.Types.TargetInfo
     Distribution.Types.Version
     Distribution.Types.VersionRange
+    Distribution.Types.VersionRange.Internal
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint

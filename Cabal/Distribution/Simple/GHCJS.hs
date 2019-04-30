@@ -559,7 +559,7 @@ buildOrReplExe mReplFlags verbosity numJobs _pkg_descr lbi
 
   -- build executables
 
-  srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
+  srcMainFile         <- findFileEx verbosity (exeDir : hsSourceDirs exeBi) modPath
   let isGhcjsDynamic      = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       buildRunner = case clbi of
@@ -746,7 +746,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     installSharedNative   = install True  False
 
     copyModuleFiles ext =
-      findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
+      findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)

@@ -19,7 +19,6 @@ module Distribution.ModuleName (
         components,
         toFilePath,
         main,
-        simple,
         -- * Internal
         validModuleComponent,
   ) where
@@ -65,10 +64,6 @@ validModuleComponent :: String -> Bool
 validModuleComponent []     = False
 validModuleComponent (c:cs) = isUpper c
                            && all validModuleChar cs
-
-{-# DEPRECATED simple "use ModuleName.fromString instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-simple :: String -> ModuleName
-simple str = ModuleName (stlFromStrings [str])
 
 -- | Construct a 'ModuleName' from a valid module name 'String'.
 --

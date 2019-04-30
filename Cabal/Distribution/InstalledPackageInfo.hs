@@ -26,7 +26,6 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
-        installedPackageId,
         installedComponentId,
         installedOpenUnitId,
         sourceComponentName,
@@ -50,7 +49,7 @@ import Distribution.CabalSpecVersion         (cabalSpecLatest)
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.ModuleName
-import Distribution.Package                  hiding (installedPackageId, installedUnitId)
+import Distribution.Package                  hiding (installedUnitId)
 import Distribution.Types.ComponentName
 import Distribution.Utils.Generic            (toUTF8BS)
 
@@ -82,15 +81,6 @@ installedOpenUnitId ipi
 -- an indefinite package, or the empty set if the package is definite.
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
 requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
-
-{-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
--- | Backwards compatibility with Cabal pre-1.24.
---
--- This type synonym is slightly awful because in cabal-install
--- we define an 'InstalledPackageId' but it's a ComponentId,
--- not a UnitId!
-installedPackageId :: InstalledPackageInfo -> UnitId
-installedPackageId = installedUnitId
 
 -- -----------------------------------------------------------------------------
 -- Munging
