@@ -161,11 +161,11 @@ setup'' prefix cmd args = do
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
     if testCabalInstallAsSetup env
-        then 
+        then
             -- `cabal` and `Setup` no longer have the same interface.
             -- A bit of fettling is required to hide this fact.
-            let 
-                legacyCmds = 
+            let
+                legacyCmds =
                     [ "build"
                     , "configure"
                     , "repl"

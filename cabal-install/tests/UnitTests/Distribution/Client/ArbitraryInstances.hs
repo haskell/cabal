@@ -123,7 +123,10 @@ instance Arbitrary PackageName where
         packageChars  = filter isAlphaNum ['\0'..'\127']
 
 instance Arbitrary Dependency where
-    arbitrary = Dependency <$> arbitrary <*> arbitrary <*> fmap getNonMEmpty arbitrary
+    arbitrary = Dependency
+                <$> arbitrary
+                <*> arbitrary
+                <*> fmap getNonMEmpty arbitrary
 
 instance Arbitrary PackageVersionConstraint where
     arbitrary = PackageVersionConstraint <$> arbitrary <*> arbitrary
@@ -133,7 +136,10 @@ instance Arbitrary UnqualComponentName where
     arbitrary = packageNameToUnqualComponentName <$> arbitrary
 
 instance Arbitrary LibraryName where
-    arbitrary = elements =<< sequenceA [LSubLibName <$> arbitrary, pure LMainLibName]
+    arbitrary =
+      elements
+      =<< sequenceA [ LSubLibName <$> arbitrary
+                    , pure LMainLibName ]
 
 instance Arbitrary OS where
     arbitrary = elements knownOSs
@@ -168,7 +174,9 @@ instance Arbitrary Verbosity where
 
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken
-    shrink t  = [ toPathTemplate s | s <- shrink (fromPathTemplate t), not (null s) ]
+    shrink t  = [ toPathTemplate s
+                | s <- shrink (fromPathTemplate t)
+                , not (null s) ]
 
 
 newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }
