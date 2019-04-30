@@ -43,7 +43,8 @@ import Language.Haskell.Extension
 
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
-import Data.Monoid (All(..), Any(..), Endo(..), First(..), Last(..))
+import Data.Monoid (All(..), Alt(..), Any(..), Endo(..))
+import Data.Semigroup (Last(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 
@@ -127,15 +128,15 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     flagArgumentFilter :: [String] -> [String] -> [String]
     flagArgumentFilter flags = go
       where
-        makeFilter :: String -> String -> First ([String] -> [String])
-        makeFilter flag arg = First $ filterRest <$> stripPrefix flag arg
+        makeFilter :: String -> String -> Alt Maybe ([String] -> [String])
+        makeFilter flag arg = Alt $ filterRest <$> stripPrefix flag arg
           where
             filterRest leftOver = case dropEq leftOver of
                 [] -> drop 1
                 _ -> id
 
         checkFilter :: String -> Maybe ([String] -> [String])
-        checkFilter = getFirst . mconcat (map makeFilter flags)
+        checkFilter = getAlt . foldMap makeFilter flags
 
         go :: [String] -> [String]
         go [] = []
@@ -263,15 +264,16 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
         ]
 
     safeToFilterHoles :: Bool
-    safeToFilterHoles = getAll . checkGhcFlags $ fromLast . foldMap notDeferred
+    safeToFilterHoles = getAll . checkGhcFlags $ All . fromLast . foldMap notDeferred
       where
-        fromLast :: Last All -> All
-        fromLast = fromMaybe (All True) . getLast
+        fromLast :: Maybe (Last Bool) -> Bool
+        fromLast Nothing = True
+        fromLast (Just (Last b)) = b
 
-        notDeferred :: String -> Last All
-        notDeferred "-fdefer-typed-holes" = Last . Just . All $ False
-        notDeferred "-fno-defer-typed-holes" = Last . Just . All $ True
-        notDeferred _ = Last Nothing
+        notDeferred :: String -> Maybe (Last Bool)
+        notDeferred "-fdefer-typed-holes" = Just . Last $ False
+        notDeferred "-fno-defer-typed-holes" = Just . Last $ True
+        notDeferred _ = Nothing
 
     isTypedHoleFlag :: String -> Any
     isTypedHoleFlag = mconcat
