@@ -20,6 +20,8 @@ import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
+import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -393,7 +395,15 @@ data LicenseId
     | ZPL_2_1 -- ^ @ZPL-2.1@, Zope Public License 2.1
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
-instance Binary LicenseId
+instance Binary LicenseId where
+    -- Word16 is encoded in big endianess
+    -- https://github.com/kolmodin/binary/blob/master/src/Data/Binary/Class.hs#L220-LL227
+    put = Binary.putWord16be . fromIntegral . fromEnum
+    get = do
+        i <- Binary.getWord16be
+        if i > fromIntegral (fromEnum (maxBound :: LicenseId))
+        then fail "Too large LicenseId tag"
+        else return (toEnum (fromIntegral i))
 
 instance Pretty LicenseId where
     pretty = Disp.text . licenseId

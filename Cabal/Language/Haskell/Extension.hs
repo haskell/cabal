@@ -818,6 +818,11 @@ data KnownExtension =
   -- | Have @*@ refer to @Type@.
   | StarIsType
 
+  -- | Liberalises deriving to provide instances for empty data types.
+  --
+  -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#deriving-instances-for-empty-data-types>
+  | EmptyDataDeriving
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension

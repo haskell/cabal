@@ -594,6 +594,7 @@ test-suite unit-tests
   build-depends:
     array,
     base,
+    binary,
     bytestring,
     containers,
     directory,

@@ -1884,6 +1884,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
         elabTestShowDetails     = perPkgOptionMaybe pkgid packageConfigTestShowDetails
         elabTestKeepTix         = perPkgOptionFlag pkgid False packageConfigTestKeepTix
+        elabTestWrapper         = perPkgOptionMaybe pkgid packageConfigTestWrapper
         elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
         elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
 
@@ -3440,6 +3441,7 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.
     , testHumanLog    = maybe mempty toFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix     = toFlag elabTestKeepTix
+    , testWrapper     = maybe mempty toFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions     = elabTestTestOptions
     }

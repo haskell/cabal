@@ -16,6 +16,8 @@ import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
+import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -29,7 +31,13 @@ data LicenseExceptionId
 {{{ licenseIds }}}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
-instance Binary LicenseExceptionId
+instance Binary LicenseExceptionId where
+    put = Binary.putWord8 . fromIntegral . fromEnum
+    get = do
+        i <- Binary.getWord8
+        if i > fromIntegral (fromEnum (maxBound :: LicenseExceptionId))
+        then fail "Too large LicenseExceptionId tag"
+        else return (toEnum (fromIntegral i))
 
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
