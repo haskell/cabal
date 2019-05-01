@@ -3229,6 +3229,11 @@ rely on dependencies being implicitly in scope.  Please refer
 `this article <https://www.well-typed.com/blog/2015/07/cabal-setup-deps/>`__
 for more details.
 
+As of Cabal library version 3.0, ``defaultMain*`` variants implement support
+for response files. Custom ``Setup.hs`` files that do not use one of these
+main functions are required to implement their own support, such as by using
+``GHC.ResponseFile.getArgsWithResponseFiles``.
+
 Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
