@@ -6,6 +6,7 @@
 
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
+-- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
 #if MIN_VERSION_base(4,12,0)
