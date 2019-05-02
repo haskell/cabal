@@ -1719,6 +1719,13 @@ the package.
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
 
+.. option:: --test-wrapper=path
+
+   The wrapper script/application used to setup and tear down the test
+   execution context. The text executable path and test arguments are
+   passed as arguments to the wrapper and it is expected that the wrapper
+   will return the test's return code, as well as a copy of stdout/stderr.
+
 .. _setup-sdist:
 
 setup sdist

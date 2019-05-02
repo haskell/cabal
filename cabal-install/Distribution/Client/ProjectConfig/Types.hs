@@ -291,6 +291,7 @@ data PackageConfig
        packageConfigTestMachineLog      :: Flag PathTemplate,
        packageConfigTestShowDetails     :: Flag TestShowDetails,
        packageConfigTestKeepTix         :: Flag Bool,
+       packageConfigTestWrapper         :: Flag FilePath,
        packageConfigTestFailWhenNoTestSuites :: Flag Bool,
        packageConfigTestTestOptions     :: [PathTemplate]
      }

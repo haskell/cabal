@@ -1864,6 +1864,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testWrapper     :: Flag FilePath,
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
@@ -1877,6 +1878,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testWrapper     = NoFlag,
     testFailWhenNoTestSuites = toFlag False,
     testOptions     = []
   }
@@ -1942,6 +1944,11 @@ testOptions' showOrParseArgs =
         "keep .tix files for HPC between test runs"
         testKeepTix (\v flags -> flags { testKeepTix = v})
         trueArg
+  , option [] ["test-wrapper"]
+        "Run test through a wrapper."
+        testWrapper (\v flags -> flags { testWrapper = v })
+        (reqArg' "FILE" (toFlag :: FilePath -> Flag FilePath)
+            (flagToList :: Flag FilePath -> [FilePath]))
   , option [] ["fail-when-no-test-suites"]
         ("Exit with failure when no test suites are found.")
         testFailWhenNoTestSuites (\v flags -> flags { testFailWhenNoTestSuites = v})
