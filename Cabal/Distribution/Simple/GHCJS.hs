@@ -409,7 +409,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       comp = compiler lbi
       ghcjsVersion = compilerVersion comp
       implInfo  = getImplInfo comp
-      platform@(Platform _hostArch hostOS) = hostPlatform lbi
+      platform@(Platform _hostArch _hostOS) = hostPlatform lbi
       has_code = not (componentIsIndefinite clbi)
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
@@ -1716,7 +1716,7 @@ installLib    :: Verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
   whenVanilla $ copyModuleFiles "js_hi"
   whenProf    $ copyModuleFiles "js_p_hi"
   whenShared  $ copyModuleFiles "js_dyn_hi"
@@ -1727,22 +1727,22 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   -- fixme do these make the correct lib names?
   whenHasCode $ do
     whenVanilla $ do
-      sequence_ [ installOrdinary builtDir targetDir       (toJSLibName $ mkGenericStaticLibName (l ++ f))
+      sequence_ [ installOrdinary builtDir' targetDir       (toJSLibName $ mkGenericStaticLibName (l ++ f))
                 | l <- getHSLibraryName (componentUnitId clbi):(extraBundledLibs (libBuildInfo lib))
                 , f <- "":extraLibFlavours (libBuildInfo lib)
                 ]
       -- whenGHCi $ installOrdinary builtDir targetDir (toJSLibName ghciLibName)
     whenProf $ do
-      installOrdinary builtDir targetDir (toJSLibName profileLibName)
+      installOrdinary builtDir' targetDir (toJSLibName profileLibName)
       -- whenGHCi $ installOrdinary builtDir targetDir (toJSLibName ghciProfLibName)
     whenShared  $
-      sequence_ [ installShared builtDir dynlibTargetDir
+      sequence_ [ installShared builtDir' dynlibTargetDir
                     (toJSLibName $ mkGenericSharedLibName platform compiler_id (l ++ f))
                 | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)
                 , f <- "":extraDynLibFlavours (libBuildInfo lib)
                 ]
   where
-    builtDir = componentBuildDir lbi clbi
+    builtDir' = componentBuildDir lbi clbi
 
     install isShared isJS srcDir dstDir name = do
       let src = srcDir </> name
@@ -1764,7 +1764,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     installSharedNative   = install True  False
 
     copyModuleFiles ext =
-      findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
+      findModuleFiles [builtDir'] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
