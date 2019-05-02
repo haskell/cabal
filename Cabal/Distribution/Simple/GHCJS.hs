@@ -180,10 +180,6 @@ guessHsc2hsFromGhcjsPath :: ConfiguredProgram -> Verbosity
                          -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessHsc2hsFromGhcjsPath = guessToolFromGhcjsPath hsc2hsProgram
 
-guessC2hsFromGhcjsPath :: ConfiguredProgram -> Verbosity
-                       -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
-guessC2hsFromGhcjsPath = guessToolFromGhcjsPath c2hsProgram
-
 guessHaddockFromGhcjsPath :: ConfiguredProgram -> Verbosity
                           -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessHaddockFromGhcjsPath = guessToolFromGhcjsPath haddockProgram
@@ -405,9 +401,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       -- whenGHCiLib = when (withGHCiLib lbi)
       forRepl = maybe False (const True) mReplFlags
       -- ifReplLib = when forRepl
-      replFlags = fromMaybe mempty mReplFlags
       comp = compiler lbi
-      ghcjsVersion = compilerVersion comp
       implInfo  = getImplInfo comp
       platform@(Platform _hostArch _hostOS) = hostPlatform lbi
       has_code = not (componentIsIndefinite clbi)
@@ -477,26 +471,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                     --  ghcOptObjSuffix   = toFlag "dyn_o",
                       ghcOptExtra       = hcSharedOptions GHC libBi,
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
-                    }
-      linkerOpts = mempty {
-                      ghcOptLinkOptions       = PD.ldOptions libBi,
-                      ghcOptLinkLibs          = extraLibs libBi,
-                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
-                      ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
-                      ghcOptLinkFrameworkDirs = toNubListR $ PD.extraFrameworkDirs libBi,
-                      ghcOptInputFiles     =
-                        toNubListR $ [libTargetDir </> x | x <- cObjs] ++ jsSrcs
-                   }
-      replOpts    = vanillaOpts {
-                      ghcOptExtra        = Internal.filterGhciFlags
-                                           (ghcOptExtra vanillaOpts)
-                                           <> replFlags,
-                      ghcOptNumJobs      = mempty
-                    }
-                    `mappend` linkerOpts
-                    `mappend` mempty {
-                      ghcOptMode         = toFlag GhcModeInteractive,
-                      ghcOptOptimisation = toFlag GhcNoOptimisation
                     }
 
       vanillaSharedOpts = vanillaOpts `mappend` mempty {
@@ -609,22 +583,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
   when has_code . when False {- fixme nativeToo -} . unless forRepl $ do
     info verbosity "Linking..."
-    let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
-                      (cSources libBi ++ cxxSources libBi)
-        cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
+    let cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
                       (cSources libBi ++ cxxSources libBi)
         compiler_id = compilerId (compiler lbi)
-        vanillaLibFilePath = libTargetDir </> mkLibName uid
-        profileLibFilePath = libTargetDir </> mkProfLibName uid
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
-        staticLibFilePath  = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
-        ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
-        ghciProfLibFilePath = libTargetDir </> Internal.mkGHCiProfLibName uid
-        libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
-        sharedLibInstallPath = libInstallPath </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+        sharedLibFilePath = libTargetDir </> mkSharedLibName (hostPlatform lbi) compiler_id uid
+        staticLibFilePath = libTargetDir </> mkStaticLibName (hostPlatform lbi) compiler_id uid
 
     let stubObjs = []
-        stubProfObjs = []
         stubSharedObjs = []
 
 {-
@@ -644,13 +609,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
       , x <- allLibModules lib clbi ]
 -}
-    hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
-                      libTargetDir objExtension True
-    hProfObjs <-
-      if withProfLib lbi
-              then Internal.getHaskellObjects implInfo lib lbi clbi
-                      libTargetDir ("p_" ++ objExtension) True
-              else return []
+    hObjs <- Internal.getHaskellObjects implInfo lib lbi clbi
+               libTargetDir objExtension True
     hSharedObjs <-
       if withSharedLib lbi
               then Internal.getHaskellObjects implInfo lib lbi clbi
@@ -664,10 +624,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                  hObjs
               ++ map (libTargetDir </>) cObjs
               ++ stubObjs
-          profObjectFiles =
-                 hProfObjs
-              ++ map (libTargetDir </>) cProfObjs
-              ++ stubProfObjs
           dynamicObjectFiles =
                  hSharedObjs
               ++ map (libTargetDir </>) cSharedObjs
@@ -1760,9 +1716,6 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     installOrdinary = install False True
     installShared   = install True  True
 
-    installOrdinaryNative = install False False
-    installSharedNative   = install True  False
-
     copyModuleFiles ext =
       findModuleFiles [builtDir'] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
@@ -1772,8 +1725,6 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     uid = componentUnitId clbi
     -- vanillaLibName = mkLibName              uid
     profileLibName = mkProfLibName          uid
-    ghciLibName    = Internal.mkGHCiLibName uid
-    ghciProfLibName = Internal.mkGHCiProfLibName uid
     -- sharedLibName  = (mkSharedLibName (hostPlatform lbi) compiler_id)  uid
 
     hasLib    = not $ null (allLibModules lib clbi)
@@ -1794,14 +1745,6 @@ adjustExts hiSuf objSuf opts =
     ghcOptHiSuffix  = toFlag hiSuf,
     ghcOptObjSuffix = toFlag objSuf
   }
-
-ghcjsProfOptions :: BuildInfo -> [String]
-ghcjsProfOptions bi =
-  hcProfOptions GHC bi `mappend` hcProfOptions GHCJS bi
-
-ghcjsSharedOptions :: BuildInfo -> [String]
-ghcjsSharedOptions bi =
-  hcSharedOptions GHC bi `mappend` hcSharedOptions GHCJS bi
 
 isDynamic :: Compiler -> Bool
 isDynamic = Internal.ghcLookupProperty "GHC Dynamic"
