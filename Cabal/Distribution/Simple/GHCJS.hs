@@ -58,10 +58,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Builtin (runghcProgram)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
-import qualified Distribution.Simple.Program.Ar    as Ar
-import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
@@ -76,7 +73,6 @@ import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
-import Language.Haskell.Extension
 
 import Control.Monad (msum)
 import Data.Char (isLower)
@@ -88,9 +84,6 @@ import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
 import qualified System.Info
-#ifndef mingw32_HOST_OS
-import System.Posix (createSymbolicLink)
-#endif /* mingw32_HOST_OS */
 
 -- -----------------------------------------------------------------------------
 -- Configuring
