@@ -353,6 +353,7 @@ library
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
+    Distribution.Simple.InstallDirs.Internal
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
@@ -457,6 +458,7 @@ library
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
     Distribution.Verbosity
+    Distribution.Verbosity.Internal
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary

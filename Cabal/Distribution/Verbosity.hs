@@ -57,6 +57,7 @@ import Distribution.ReadE
 import Data.List (elemIndex)
 import Data.Set (Set)
 import Distribution.Parsec
+import Distribution.Verbosity.Internal
 
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
@@ -85,11 +86,6 @@ instance Bounded Verbosity where
     maxBound = mkVerbosity maxBound
 
 instance Binary Verbosity
-
-data VerbosityLevel = Silent | Normal | Verbose | Deafening
-    deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
-
-instance Binary VerbosityLevel
 
 -- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity
@@ -220,16 +216,6 @@ showForCabal v
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
-
-data VerbosityFlag
-    = VCallStack
-    | VCallSite
-    | VNoWrap
-    | VMarkOutput
-    | VTimestamp
-    deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
-
-instance Binary VerbosityFlag
 
 -- | Turn on verbose call-site printing when we log.
 verboseCallSite :: Verbosity -> Verbosity
