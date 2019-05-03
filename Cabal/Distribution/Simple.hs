@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-
+{-# LANGUAGE LambdaCase #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -57,8 +57,9 @@ module Distribution.Simple (
         defaultHookedPackageDesc
   ) where
 
-import Prelude ()
 import Control.Exception (try)
+
+import Prelude ()
 import Distribution.Compat.Prelude
 
 -- local
@@ -101,6 +102,7 @@ import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit                          (exitWith,ExitCode(..))
 import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
+import Distribution.Compat.ResponseFile (expandResponse)
 import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
@@ -149,8 +151,9 @@ defaultMainWithHooksNoReadArgs hooks pkg_descr =
   defaultMainHelper hooks { readDesc = return (Just pkg_descr) }
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
-defaultMainHelper hooks args = topHandler $
-  case commandsRun (globalCommand commands) commands args of
+defaultMainHelper hooks args = topHandler $ do
+  args' <- expandResponse args
+  case commandsRun (globalCommand commands) commands args' of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs

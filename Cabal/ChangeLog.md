@@ -24,6 +24,7 @@
   * Extend `Distribution.Simple.Utils.rewriteFileEx` from ASCII to UTF-8 encoding.
   * Change the arguments of `Newtype` class to better suit @DeriveAnyClass@ usage,
     add default implementation in terms of `coerce` / `unsafeCoerce`.
+  * Implement support for response file arguments to defaultMain* and cabal-install.
 
 ----
 

@@ -183,6 +183,7 @@ import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
 
+import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
@@ -230,7 +231,7 @@ main' = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  getArgs >>= mainWorker
+  getArgs >>= expandResponse >>= mainWorker
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
