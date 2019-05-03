@@ -543,8 +543,8 @@ getBuildConfig hooks verbosity distPref = do
             -- Since the list of unconfigured programs is not serialized,
             -- restore it to the same value as normally used at the beginning
             -- of a configure run:
-            configPrograms_ = restoreProgramDb
-                               (builtinPrograms ++ hookedPrograms hooks)
+            configPrograms_ = fmap (restoreProgramDb
+                                      (builtinPrograms ++ hookedPrograms hooks))
                                `fmap` configPrograms_ cFlags,
 
             -- Use the current, not saved verbosity level:
