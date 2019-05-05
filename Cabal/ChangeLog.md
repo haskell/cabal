@@ -32,6 +32,8 @@
     add default implementation in terms of `coerce` / `unsafeCoerce`.
   * Implement support for response file arguments to defaultMain* and cabal-install.
   * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
+  * Implement `{cmm,asm}-{sources,options} buildinfo fields for
+    separate compilation of C-- and ASM source files (#6033).
 
 ----
 

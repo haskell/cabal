@@ -390,7 +390,9 @@ buildInfoFieldGrammar = BuildInfo
         -- I.e. we don't want trigger unknown field warning
     <*> monoidalFieldAla "cpp-options"          (alaList' NoCommaFSep Token') L.cppOptions
     <*> monoidalFieldAla "asm-options"          (alaList' NoCommaFSep Token') L.asmOptions
+        ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "cmm-options"          (alaList' NoCommaFSep Token') L.cmmOptions
+        ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "cc-options"           (alaList' NoCommaFSep Token') L.ccOptions
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
         ^^^ availableSince CabalSpecV2_2 []
@@ -399,7 +401,9 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
     <*> monoidalFieldAla "asm-sources"          (alaList' VCat FilePathNT)    L.asmSources
+        ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "cmm-sources"          (alaList' VCat FilePathNT)    L.cmmSources
+        ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "c-sources"            (alaList' VCat FilePathNT)    L.cSources
     <*> monoidalFieldAla "cxx-sources"          (alaList' VCat FilePathNT)    L.cxxSources
         ^^^ availableSince CabalSpecV2_2 []
