@@ -459,7 +459,8 @@ allSourcesBuildInfo verbosity bi pps modules = do
       in findFileWithExtension fileExts (hsSourceDirs bi) file
     | module_ <- modules ++ otherModules bi ]
 
-  return $ sources ++ catMaybes bootFiles ++ cSources bi ++ cxxSources bi ++ jsSources bi
+  return $ sources ++ catMaybes bootFiles ++ cSources bi ++ cxxSources bi ++
+           cmmSources bi ++ asmSources bi ++ jsSources bi
 
   where
     nonEmpty x _ [] = x
