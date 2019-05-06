@@ -103,7 +103,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
-import Distribution.Compat.Semigroup (Last' (..))
+import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 
 import Data.Function (on)
 
@@ -200,8 +200,8 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramDb directly and not via ConfigFlags
-    configPrograms_     :: Last' ProgramDb, -- ^All programs that
-                                            -- @cabal@ may run
+    configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
+                                                      -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -284,7 +284,8 @@ instance Binary ConfigFlags
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
-configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+configPrograms = fromMaybe (error "FIXME: remove configPrograms") . fmap getLast'
+               . getOption' . configPrograms_
 
 instance Eq ConfigFlags where
   (==) a b =
@@ -348,7 +349,7 @@ configAbsolutePaths f =
 defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progDb = emptyConfigFlags {
     configArgs         = [],
-    configPrograms_    = pure progDb,
+    configPrograms_    = Option' (Just (Last' progDb)),
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,

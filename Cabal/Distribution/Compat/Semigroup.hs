@@ -11,7 +11,10 @@ module Distribution.Compat.Semigroup
     , All(..)
     , Any(..)
 
+    , First'(..)
     , Last'(..)
+
+    , Option'(..)
 
     , gmappend
     , gmempty
@@ -19,7 +22,6 @@ module Distribution.Compat.Semigroup
 
 import Distribution.Compat.Binary (Binary)
 
-import Control.Applicative as App
 import GHC.Generics
 #if __GLASGOW_HASKELL__ >= 711
 -- Data.Semigroup is available since GHC 8.0/base-4.9
@@ -100,24 +102,36 @@ instance Ord k => Semigroup (Map k v) where
   (<>) = mappend
 #endif
 
--- | Cabal's own 'Data.Monoid.Last' copy to avoid requiring an orphan
--- 'Binary' instance.
---
--- Once the oldest `binary` version we support provides a 'Binary'
--- instance for 'Data.Monoid.Last' we can remove this one here.
---
--- NB: 'Data.Semigroup.Last' is defined differently and not a 'Monoid'
-newtype Last' a = Last' { getLast' :: Maybe a }
-                deriving (Eq, Ord, Read, Show, Binary,
-                          Functor, App.Applicative, Generic)
+-- | A copy of 'Data.Semigroup.First'.
+newtype First' a = First' { getFirst' :: a }
+  deriving (Eq, Ord, Show)
+
+instance Semigroup (First' a) where
+  a <> _ = a
+
+-- | A copy of 'Data.Semigroup.Last'.
+newtype Last' a = Last' { getLast' :: a }
+  deriving (Eq, Ord, Read, Show, Binary)
 
 instance Semigroup (Last' a) where
-    x <> Last' Nothing = x
-    _ <> x             = x
+  _ <> b = b
 
-instance Monoid (Last' a) where
-    mempty = Last' Nothing
-    mappend = (<>)
+instance Functor Last' where
+  fmap f (Last' x) = Last' (f x)
+
+-- | A wrapper around 'Maybe', providing the 'Semigroup' and 'Monoid' instances
+-- implemented for 'Maybe' since @base-4.11@.
+newtype Option' a = Option' { getOption' :: Maybe a }
+  deriving (Eq, Ord, Read, Show, Binary, Functor)
+
+instance Semigroup a => Semigroup (Option' a) where
+  Option' (Just a) <> Option' (Just b) = Option' (Just (a <> b))
+  Option' Nothing  <> b                = b
+  a                <> Option' Nothing  = a
+
+instance Semigroup a => Monoid (Option' a) where
+  mempty = Option' Nothing
+  mappend = (<>)
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
