@@ -45,7 +45,10 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
 
 import UnitTests.Distribution.Client.ArbitraryInstances
+import UnitTests.Distribution.Client.TreeDiffInstances ()
 
+import Data.TreeDiff.Class
+import Data.TreeDiff.QuickCheck
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -93,10 +96,10 @@ tests =
 -- Round trip: conversion to/from legacy types
 --
 
-roundtrip :: (Eq a, Show a) => (a -> b) -> (b -> a) -> a -> Property
+roundtrip :: (Eq a, ToExpr a) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
     let y = f x
-    in f_inv y === x -- no counterexample with y, as they not have Show
+    in f_inv y `ediffEq` x -- no counterexample with y, as they not have ToExpr
 
 roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
@@ -154,8 +157,8 @@ roundtrip_printparse config =
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk _ x -> x === config { projectConfigProvenance = mempty }
-      ParseFailed err           -> counterexample (show err) False
+      ParseOk _ x     -> x `ediffEq` config { projectConfigProvenance = mempty }
+      ParseFailed err -> counterexample (show err) False
 
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
@@ -260,12 +263,12 @@ prop_roundtrip_printparse_RelaxedDep rdep =
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
     counterexample (Text.display rdep) $
-    runReadP Text.parse (Text.display rdep) === Just rdep
+    runReadP Text.parse (Text.display rdep) `ediffEq` Just rdep
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    runReadP Text.parse rdep' === Just rdep
+    runReadP Text.parse rdep' `ediffEq` Just rdep
   where
     rdep' = go (Text.display rdep)
 

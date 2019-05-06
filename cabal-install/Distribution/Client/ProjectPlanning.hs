@@ -110,8 +110,7 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Solver.Types.Settings
 
 import           Distribution.ModuleName
-import           Distribution.Package hiding
-  (InstalledPackageId, installedPackageId)
+import           Distribution.Package
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.LibraryName

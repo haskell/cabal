@@ -21,7 +21,6 @@
 
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
-        externalPackageDeps,
         localComponentId,
         localUnitId,
         localCompatPackageKey,
@@ -43,15 +42,11 @@ module Distribution.Simple.LocalBuildInfo (
         pkgBuildableComponents,
         lookupComponent,
         getComponent,
-        getComponentLocalBuildInfo,
         allComponentsInBuildOrder,
-        componentsInBuildOrder,
         depLibraryPaths,
         allLibModules,
 
         withAllComponentsInBuildOrder,
-        withComponentsInBuildOrder,
-        withComponentsLBI,
         withLibLBI,
         withExeLBI,
         withBenchLBI,
@@ -95,7 +90,6 @@ import qualified Distribution.Compat.Graph as Graph
 
 import Data.List (stripPrefix)
 import System.FilePath
-import qualified Data.Map as Map
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
 
@@ -121,19 +115,6 @@ componentBuildDir lbi clbi
             CExeName s   -> unUnqualComponentName s
             CTestName s  -> unUnqualComponentName s
             CBenchName s -> unUnqualComponentName s
-
-{-# DEPRECATED getComponentLocalBuildInfo "This function is not well-defined, because a 'ComponentName' does not uniquely identify a 'ComponentLocalBuildInfo'.  If you have a 'TargetInfo', you should use 'targetCLBI' to get the 'ComponentLocalBuildInfo'.  Otherwise, use 'componentNameTargets' to get all possible 'ComponentLocalBuildInfo's.  This will be removed in Cabal 2.2." #-}
-getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
-getComponentLocalBuildInfo lbi cname =
-    case componentNameCLBIs lbi cname of
-      [clbi] -> clbi
-      [] ->
-          error $ "internal error: there is no configuration data "
-               ++ "for component " ++ show cname
-      clbis ->
-          error $ "internal error: the component name " ++ show cname
-               ++ "is ambiguous.  Refers to: "
-               ++ intercalate ", " (map (prettyShow . componentUnitId) clbis)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
@@ -182,12 +163,6 @@ enabledBenchLBIs pkg lbi =
     | target <- allTargetsInBuildOrder' pkg lbi
     , CBench bench <- [targetComponent target] ]
 
-{-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
-withComponentsLBI :: PackageDescription -> LocalBuildInfo
-                  -> (Component -> ComponentLocalBuildInfo -> IO ())
-                  -> IO ()
-withComponentsLBI = withAllComponentsInBuildOrder
-
 -- | Perform the action on each buildable 'Library' or 'Executable' (Component)
 -- in the PackageDescription, subject to the build order specified by the
 -- 'compBuildOrder' field of the given 'LocalBuildInfo'
@@ -198,36 +173,10 @@ withAllComponentsInBuildOrder pkg lbi f =
     withAllTargetsInBuildOrder' pkg lbi $ \target ->
         f (targetComponent target) (targetCLBI target)
 
-{-# DEPRECATED withComponentsInBuildOrder "You have got a 'TargetInfo' right? Use 'withNeededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
-withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
-                           -> [ComponentName]
-                           -> (Component -> ComponentLocalBuildInfo -> IO ())
-                           -> IO ()
-withComponentsInBuildOrder pkg lbi cnames f =
-    withNeededTargetsInBuildOrder' pkg lbi uids $ \target ->
-        f (targetComponent target) (targetCLBI target)
-  where uids = concatMap (componentNameToUnitIds lbi) cnames
-
 allComponentsInBuildOrder :: LocalBuildInfo
                           -> [ComponentLocalBuildInfo]
 allComponentsInBuildOrder lbi =
     Graph.topSort (componentGraph lbi)
-
--- | Private helper function for some of the deprecated implementations.
-componentNameToUnitIds :: LocalBuildInfo -> ComponentName -> [UnitId]
-componentNameToUnitIds lbi cname =
-    case Map.lookup cname (componentNameMap lbi) of
-        Just clbis -> map componentUnitId clbis
-        Nothing -> error $ "componentNameToUnitIds " ++ prettyShow cname
-
-{-# DEPRECATED componentsInBuildOrder "You've got 'TargetInfo' right? Use 'neededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
-componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]
-                       -> [ComponentLocalBuildInfo]
-componentsInBuildOrder lbi cnames
-    -- NB: use of localPkgDescr here is safe because we throw out the
-    -- result immediately afterwards
-    = map targetCLBI (neededTargetsInBuildOrder' (localPkgDescr lbi) lbi uids)
-  where uids = concatMap (componentNameToUnitIds lbi) cnames
 
 -- -----------------------------------------------------------------------------
 -- A random function that has no business in this module

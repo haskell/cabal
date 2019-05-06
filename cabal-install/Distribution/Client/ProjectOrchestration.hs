@@ -135,7 +135,6 @@ import           Distribution.Types.UnqualComponentName
 import           Distribution.Solver.Types.OptionalStanza
 
 import           Distribution.Package
-                   hiding (InstalledPackageId, installedPackageId)
 import           Distribution.PackageDescription
                    ( FlagAssignment, unFlagAssignment, showFlagValue
                    , diffFlagAssignment )

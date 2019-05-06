@@ -81,7 +81,6 @@ import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PkgconfigVersion
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
-                   hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)

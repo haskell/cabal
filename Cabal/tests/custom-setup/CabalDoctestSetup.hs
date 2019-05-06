@@ -94,10 +94,6 @@ import qualified Data.Foldable as F
        (for_)
 import qualified Data.Traversable as T
        (traverse)
-import qualified Distribution.ModuleName as ModuleName
-       (fromString)
-import Distribution.ModuleName
-       (ModuleName)
 import Distribution.Package
        (InstalledPackageId)
 import Distribution.Package
@@ -107,8 +103,10 @@ import Distribution.PackageDescription
        PackageDescription (), TestSuite (..))
 import Distribution.Simple
        (UserHooks (..), autoconfUserHooks, defaultMainWithHooks, simpleUserHooks)
+#if !MIN_VERSION_Cabal(1,25,0)
 import Distribution.Simple.BuildPaths
        (autogenModulesDir)
+#endif
 import Distribution.Simple.Compiler
        (PackageDB (..), showCompilerId)
 import Distribution.Simple.LocalBuildInfo
@@ -117,11 +115,11 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup
        (BuildFlags (buildDistPref, buildVerbosity), fromFlag)
 import Distribution.Simple.Utils
-       (createDirectoryIfMissingVerbose, findFile, rewriteFile)
+       (createDirectoryIfMissingVerbose)
 import Distribution.Text
        (display, simpleParse)
 import System.FilePath
-       ((</>), (<.>), dropExtension)
+       ((</>))
 
 import Data.IORef (newIORef, modifyIORef, readIORef)
 
@@ -134,6 +132,14 @@ import Distribution.Types.MungedPackageId
        (MungedPackageId)
 import Distribution.Types.UnqualComponentName
        (unUnqualComponentName)
+#endif
+
+#if MIN_VERSION_Cabal(3,0,0)
+import Distribution.Simple.Utils
+       (findFileEx)
+#else
+import Distribution.Simple.Utils
+       (findFile)
 #endif
 
 #if MIN_VERSION_Cabal(2,5,0)
@@ -156,6 +162,15 @@ makeAbsolute p | isAbsolute p = return p
     cwd <- getCurrentDirectory
     return $ cwd </> p
 #endif
+
+#if !MIN_VERSION_Cabal(3,0,0)
+findFileEx :: Verbosity
+           -> [FilePath]    -- ^search locations
+           -> FilePath      -- ^File Name
+           -> IO FilePath
+findFileEx _verbosity = findFile
+#endif
+
 
 -- | A default main with doctests:
 --
@@ -328,7 +343,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
            -- even though the main-is module is named Main, its filepath might
            -- actually be Something.hs. To account for this possibility, we simply
            -- pass the full path to the main-is module instead.
-           mainIsPath <- T.traverse (findFile iArgsNoPrefix) (compMainIs comp)
+           mainIsPath <- T.traverse (findFileEx verbosity iArgsNoPrefix) (compMainIs comp)
 
            let all_sources = map display module_sources
                              ++ additionalModules
@@ -356,7 +371,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
     getBuildDoctests withExeLBI (NameExe . executableName) (const [])     (Just . modulePath) buildInfo
 
     components <- readIORef componentsRef
-    F.for_ components $ \(Component name pkgs flags sources) -> do
+    F.for_ components $ \(Component name pkgs flags' sources) -> do
        let compSuffix          = nameToString name
            pkgs_comp           = "pkgs"           ++ compSuffix
            flags_comp          = "flags"          ++ compSuffix
@@ -369,7 +384,7 @@ generateBuildModule testSuiteName flags pkg lbi = do
          , pkgs_comp ++ " = " ++ show pkgs
          , ""
          , flags_comp ++ " :: [String]"
-         , flags_comp ++ " = " ++ show flags
+         , flags_comp ++ " = " ++ show flags'
          , ""
          , module_sources_comp ++ " :: [String]"
          , module_sources_comp ++ " = " ++ show sources

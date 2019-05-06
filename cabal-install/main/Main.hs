@@ -1047,7 +1047,7 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   path <- case extraArgs of
     [] -> do cwd <- getCurrentDirectory
-             tryFindPackageDesc cwd
+             tryFindPackageDesc verbosity cwd
     (p:_) -> return p
   pkgDesc <- readGenericPackageDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.

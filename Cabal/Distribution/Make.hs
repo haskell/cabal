@@ -60,7 +60,7 @@
 module Distribution.Make (
         module Distribution.Package,
         License(..), Version,
-        defaultMain, defaultMainArgs, defaultMainNoRead
+        defaultMain, defaultMainArgs
   ) where
 
 import Prelude ()
@@ -70,7 +70,6 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Exception
 import Distribution.Package
 import Distribution.Simple.Program
-import Distribution.PackageDescription
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
@@ -88,10 +87,6 @@ defaultMain = getArgs >>= defaultMainArgs
 
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs = defaultMainHelper
-
-{-# DEPRECATED defaultMainNoRead "it ignores its PackageDescription arg" #-}
-defaultMainNoRead :: PackageDescription -> IO ()
-defaultMainNoRead = const defaultMain
 
 defaultMainHelper :: [String] -> IO ()
 defaultMainHelper args =

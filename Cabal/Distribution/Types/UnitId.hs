@@ -11,7 +11,6 @@ module Distribution.Types.UnitId
   , newSimpleUnitId
   , mkLegacyUnitId
   , getHSLibraryName
-  , InstalledPackageId -- backwards compat
   ) where
 
 import Prelude ()
@@ -65,9 +64,6 @@ import Text.PrettyPrint (text)
 --
 newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
-
-{-# DEPRECATED InstalledPackageId "Use UnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-type InstalledPackageId = UnitId
 
 instance Binary UnitId
 
