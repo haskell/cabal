@@ -309,6 +309,7 @@ library
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
+    Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
@@ -352,6 +353,7 @@ library
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
+    Distribution.Simple.InstallDirs.Internal
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
@@ -447,6 +449,7 @@ library
     Distribution.Types.TargetInfo
     Distribution.Types.Version
     Distribution.Types.VersionRange
+    Distribution.Types.VersionRange.Internal
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
@@ -455,6 +458,7 @@ library
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
     Distribution.Verbosity
+    Distribution.Verbosity.Internal
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary

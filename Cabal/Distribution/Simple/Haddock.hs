@@ -32,12 +32,14 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
 import Distribution.Backpack.DescribeUnitId
+import Distribution.Backpack (OpenModule)
 import Distribution.Types.ForeignLib
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ExecutableScope
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
+import Distribution.Types.ExposedModule
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -64,6 +66,7 @@ import Distribution.Pretty
 import Distribution.Parsec (simpleParsec)
 import Distribution.Utils.NubList
 import Distribution.Version
+
 import Distribution.Verbosity
 import Language.Haskell.Extension
 
@@ -115,6 +118,8 @@ data HaddockArgs = HaddockArgs {
  -- ^ Additional flags to pass to GHC.
  argGhcLibDir :: Flag FilePath,
  -- ^ To find the correct GHC, required.
+ argReexports :: [OpenModule],
+ -- ^ Re-exported modules
  argTargets :: [FilePath]
  -- ^ Modules to process.
 } deriving Generic
@@ -409,10 +414,11 @@ mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
             else die' verbosity $ "Must have vanilla or shared libraries "
                        ++ "enabled in order to run haddock"
 
-    return ifaceArgs {
-      argGhcOptions  = opts,
-      argTargets     = inFiles
-    }
+    return ifaceArgs
+      { argGhcOptions  = opts
+      , argTargets     = inFiles
+      , argReexports   = getReexports clbi
+      }
 
 fromLibrary :: Verbosity
             -> FilePath
@@ -495,6 +501,11 @@ getInterfaces verbosity lbi clbi htmlTemplate = do
     return $ mempty {
                  argInterfaces = packageFlags
                }
+
+getReexports :: ComponentLocalBuildInfo -> [OpenModule]
+getReexports LibComponentLocalBuildInfo {componentExposedModules = mods } =
+    mapMaybe exposedReexport mods
+getReexports _ = []
 
 getGhcCppOpts :: Version
               -> BuildInfo
@@ -645,6 +656,12 @@ renderPureArgs version comp platform args = concat
 
     , maybe [] (\l -> ["-B"++l]) $
       flagToMaybe (argGhcLibDir args) -- error if Nothing?
+
+      -- https://github.com/haskell/haddock/pull/547
+    , [ "--reexport=" ++ prettyShow r
+      | r <- argReexports args
+      , isVersion 2 19
+      ]
 
     , argTargets $ args
     ]

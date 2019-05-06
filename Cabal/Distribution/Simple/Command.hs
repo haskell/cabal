@@ -520,7 +520,7 @@ noExtraFlags extraFlags =
 
 -- | Helper function for creating globalCommand description
 getNormalCommandDescriptions :: [Command action] -> [(String, String)]
-getNormalCommandDescriptions cmds = 
+getNormalCommandDescriptions cmds =
   [ (name, description)
   | Command name description _ NormalCommand <- cmds ]
 

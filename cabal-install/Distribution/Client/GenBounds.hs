@@ -51,7 +51,7 @@ import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Version
          ( Version, alterVersion
-         , LowerBound(..), UpperBound(..), VersionRange(..), asVersionIntervals
+         , LowerBound(..), UpperBound(..), VersionRange, asVersionIntervals
          , orLaterVersion, earlierVersion, intersectVersionRanges )
 import System.Directory
          ( getCurrentDirectory )
@@ -112,7 +112,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     let cinfo = compilerInfo comp
 
     cwd <- getCurrentDirectory
-    path <- tryFindPackageDesc cwd
+    path <- tryFindPackageDesc verbosity cwd
     gpd <- readGenericPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.

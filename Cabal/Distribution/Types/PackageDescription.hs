@@ -32,7 +32,6 @@ module Distribution.Types.PackageDescription (
     specVersion',
     license,
     license',
-    descCabalVersion,
     buildType,
     emptyPackageDescription,
     hasPublicLib,
@@ -189,18 +188,6 @@ license = license' . licenseRaw
 -- @since 2.2.0.0
 license' :: Either SPDX.License License -> SPDX.License
 license' = either id licenseToSPDX
-
--- | The range of versions of the Cabal tools that this package is intended to
--- work with.
---
--- This function is deprecated and should not be used for new purposes, only to
--- support old packages that rely on the old interpretation.
---
-descCabalVersion :: PackageDescription -> VersionRange
-descCabalVersion pkg = case specVersionRaw pkg of
-  Left  version      -> orLaterVersion version
-  Right versionRange -> versionRange
-{-# DEPRECATED descCabalVersion "Use specVersion instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
 
 -- | The effective @build-type@ after applying defaulting rules.
 --

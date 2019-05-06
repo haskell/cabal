@@ -447,6 +447,7 @@ executable cabal
         UnitTests.Distribution.Client.ArbitraryInstances
         UnitTests.Distribution.Client.FileMonitor
         UnitTests.Distribution.Client.Get
+        UnitTests.Distribution.Client.GenericInstances
         UnitTests.Distribution.Client.GZipUtils
         UnitTests.Distribution.Client.Glob
         UnitTests.Distribution.Client.IndexUtils.Timestamp
@@ -458,6 +459,7 @@ executable cabal
         UnitTests.Distribution.Client.Store
         UnitTests.Distribution.Client.Tar
         UnitTests.Distribution.Client.Targets
+        UnitTests.Distribution.Client.TreeDiffInstances
         UnitTests.Distribution.Client.UserConfig
         UnitTests.Distribution.Client.VCS
         UnitTests.Distribution.Solver.Modular.Builder
@@ -495,6 +497,7 @@ executable cabal
         tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
+        tree-diff,
         time,
         zlib
 %endif
@@ -517,12 +520,14 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Get
+    UnitTests.Distribution.Client.GenericInstances
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
+    UnitTests.Distribution.Client.TreeDiffInstances
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
     UnitTests.Distribution.Client.JobControl
@@ -553,12 +558,13 @@ Test-Suite unit-tests
         tar,
         time,
         zlib,
-        network-uri,
+        network-uri < 2.6.2.0,
         network,
         tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
+        tree-diff,
         QuickCheck >= 2.8.2
 
   ghc-options: -threaded

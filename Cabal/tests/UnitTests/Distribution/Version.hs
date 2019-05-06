@@ -9,6 +9,7 @@ import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
 import Distribution.Version
+import Distribution.Types.VersionRange.Internal
 import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
 
@@ -69,7 +70,6 @@ versionTests =
     , typProperty prop_invertVersionRange
     , typProperty prop_withinVersion
     , typProperty prop_foldVersionRange
-    , typProperty prop_foldVersionRange'
 
       -- the semantic query functions
   --, typProperty prop_isAnyVersion1       --FIXME: runs out of test cases
@@ -343,19 +343,6 @@ prop_foldVersionRange range =
     expandVR v = v
 
     upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
-
-prop_foldVersionRange' :: VersionRange -> Property
-prop_foldVersionRange' range =
-     normaliseVersionRange srange
-  === foldVersionRange' anyVersion thisVersion
-                       laterVersion earlierVersion
-                       orLaterVersion orEarlierVersion
-                       (\v _ -> withinVersion v)
-                       (\v _ -> majorBoundVersion v)
-                       unionVersionRanges intersectVersionRanges id
-                       srange
-  where
-    srange = stripParensVersionRange range
 
 prop_isAnyVersion1 :: VersionRange -> Version -> Property
 prop_isAnyVersion1 range version =
@@ -750,21 +737,24 @@ prop_parse_disp5 vr =
 displayRaw :: VersionRange -> String
 displayRaw =
    Disp.render
- . foldVersionRange'                         -- precedence:
-     -- All the same as the usual pretty printer, except for the parens
-     (          Disp.text "-any")
-     (\v     -> Disp.text "==" <<>> pretty v)
-     (\v     -> Disp.char '>'  <<>> pretty v)
-     (\v     -> Disp.char '<'  <<>> pretty v)
-     (\v     -> Disp.text ">=" <<>> pretty v)
-     (\v     -> Disp.text "<=" <<>> pretty v)
-     (\v _   -> Disp.text "==" <<>> dispWild v)
-     (\v _   -> Disp.text "^>=" <<>> pretty v)
-     (\r1 r2 -> r1 <+> Disp.text "||" <+> r2)
-     (\r1 r2 -> r1 <+> Disp.text "&&" <+> r2)
-     (\r     -> Disp.parens r) -- parens
-
+ . cataVersionRange alg . normaliseVersionRange
   where
+
+    -- precedence:
+    -- All the same as the usual pretty printer, except for the parens
+    alg AnyVersionF                     = Disp.text "-any"
+    alg (ThisVersionF v)                = Disp.text "==" <<>> pretty v
+    alg (LaterVersionF v)               = Disp.char '>'  <<>> pretty v
+    alg (EarlierVersionF v)             = Disp.char '<'  <<>> pretty v
+    alg (OrLaterVersionF v)             = Disp.text ">=" <<>> pretty v
+    alg (OrEarlierVersionF v)           = Disp.text "<=" <<>> pretty v
+    alg (WildcardVersionF v)            = Disp.text "==" <<>> dispWild v
+    alg (MajorBoundVersionF v)          = Disp.text "^>=" <<>> pretty v
+    alg (UnionVersionRangesF r1 r2)     = r1 <+> Disp.text "||" <+> r2
+    alg (IntersectVersionRangesF r1 r2) = r1 <+> Disp.text "&&" <+> r2
+    alg (VersionRangeParensF r)         = Disp.parens r -- parens
+
+
     dispWild v =
            Disp.hcat (Disp.punctuate (Disp.char '.')
                                      (map Disp.int (versionNumbers v)))

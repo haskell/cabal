@@ -45,7 +45,6 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  buildVerbose,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -59,7 +58,6 @@ module Distribution.Simple.Setup (
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions, testOptions',
   programDbOptions, programDbPaths',
-  programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
   replOptions,
   splitArgs,
@@ -1639,10 +1637,6 @@ data BuildFlags = BuildFlags {
   }
   deriving (Read, Show, Generic)
 
-{-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
-buildVerbose :: BuildFlags -> Verbosity
-buildVerbose = fromFlagOrDefault normal . buildVerbosity
-
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramPaths = mempty,
@@ -2076,19 +2070,14 @@ programDbPaths
 programDbPaths progDb showOrParseArgs get set =
   programDbPaths' ("with-" ++) progDb showOrParseArgs get set
 
-{-# DEPRECATED programConfigurationPaths' "Use programDbPaths' instead" #-}
-
 -- | Like 'programDbPaths', but allows to customise the option name.
-programDbPaths', programConfigurationPaths'
+programDbPaths'
   :: (String -> String)
   -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationPaths' = programDbPaths'
-
 programDbPaths' mkName progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -2127,19 +2116,15 @@ programDbOption progDb showOrParseArgs get set =
            (\progArgs -> concat [ args
                                 | (prog', args) <- progArgs, prog==prog' ]))
 
-{-# DEPRECATED programConfigurationOptions "Use programDbOptions instead" #-}
 
 -- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
-programDbOptions, programConfigurationOptions
+programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationOptions = programDbOptions
-
 programDbOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:

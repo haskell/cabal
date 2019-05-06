@@ -44,7 +44,6 @@ module Distribution.Simple.Configure
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
-  , configCompiler, configCompilerAux
   , configCompilerEx, configCompilerAuxEx
   , computeEffectiveProfiling
   , ccLdOptionsBuildInfo
@@ -1676,25 +1675,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die' verbosity "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
-
--- Ideally we would like to not have separate configCompiler* and
--- configCompiler*Ex sets of functions, but there are many custom setup scripts
--- in the wild that are using them, so the versions with old types are kept for
--- backwards compatibility. Platform was added to the return triple in 1.18.
-
-{-# DEPRECATED configCompiler
-    "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramDb -> Verbosity
-               -> IO (Compiler, ProgramDb)
-configCompiler mFlavor hcPath hcPkg progdb verbosity =
-  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg progdb verbosity
-
-{-# DEPRECATED configCompilerAux
-    "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
-configCompilerAux :: ConfigFlags
-                  -> IO (Compiler, ProgramDb)
-configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies

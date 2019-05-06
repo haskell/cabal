@@ -973,7 +973,7 @@ gbuildSources verbosity specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
+      main <- findFileEx verbosity (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 
@@ -1717,7 +1717,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     installShared   = install True  True
 
     copyModuleFiles ext =
-      findModuleFiles [builtDir'] [ext] (allLibModules lib clbi)
+      findModuleFilesEx verbosity [builtDir'] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)

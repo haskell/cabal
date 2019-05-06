@@ -72,8 +72,7 @@ import           Distribution.Client.Utils
                    ( ProgressPhase(..), progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
-import           Distribution.Package hiding
-                   (InstalledPackageId, installedPackageId)
+import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed

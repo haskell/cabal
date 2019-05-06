@@ -171,14 +171,15 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
        biSrcs  <- allSourcesBuildInfo verbosity exeBi pps []
-       mainSrc <- findMainExeFile exeBi pps mainPath
+       mainSrc <- findMainExeFile verbosity exeBi pps mainPath
        return (mainSrc:biSrcs)
 
     -- Foreign library sources
   , fmap concat
     . withAllFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
        biSrcs   <- allSourcesBuildInfo verbosity flibBi pps []
-       defFiles <- mapM (findModDefFile flibBi pps) (foreignLibModDefFile flib)
+       defFiles <- mapM (findModDefFile verbosity flibBi pps)
+         (foreignLibModDefFile flib)
        return (defFiles ++ biSrcs)
 
     -- Test suites sources.
@@ -188,12 +189,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo verbosity bi pps []
-           srcMainFile <- findMainExeFile bi pps mainPath
+           srcMainFile <- findMainExeFile verbosity bi pps mainPath
            return (srcMainFile:biSrcs)
          TestSuiteLibV09 _ m ->
            allSourcesBuildInfo verbosity bi pps [m]
-         TestSuiteUnsupported tp -> die' verbosity $ "Unsupported test suite type: "
-                                   ++ show tp
+         TestSuiteUnsupported tp ->
+           die' verbosity $ "Unsupported test suite type: " ++ show tp
 
     -- Benchmarks sources.
   , fmap concat
@@ -202,7 +203,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo verbosity bi pps []
-           srcMainFile <- findMainExeFile bi pps mainPath
+           srcMainFile <- findMainExeFile verbosity bi pps mainPath
            return (srcMainFile:biSrcs)
          BenchmarkUnsupported tp -> die' verbosity $ "Unsupported benchmark type: "
                                     ++ show tp
@@ -300,20 +301,22 @@ maybeCreateDefaultSetupScript targetDir = do
         "main = defaultMain"]
 
 -- | Find the main executable file.
-findMainExeFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
-findMainExeFile exeBi pps mainPath = do
+findMainExeFile
+  :: Verbosity -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainExeFile verbosity exeBi pps mainPath = do
   ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi)
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFile (hsSourceDirs exeBi) mainPath
+    Nothing -> findFileEx verbosity (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
 --
 -- TODO: I don't know if this is right
-findModDefFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
-findModDefFile flibBi _pps modDefPath =
-    findFile (".":hsSourceDirs flibBi) modDefPath
+findModDefFile
+  :: Verbosity -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findModDefFile verbosity flibBi _pps modDefPath =
+    findFileEx verbosity (".":hsSourceDirs flibBi) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
