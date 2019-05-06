@@ -864,25 +864,6 @@ filterTestFlags flags cabalLibVersion
       }
 
 -- ------------------------------------------------------------
--- * show-build-info command
--- ------------------------------------------------------------
-
-showBuildInfoCommand :: CommandUI (BuildFlags, BuildExFlags)
-showBuildInfoCommand = parent {
-    commandDefaultFlags = (commandDefaultFlags parent, mempty),
-    commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
-  }
-  where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
-    parent = Cabal.showBuildInfoCommand defaultProgramDb
-
--- ------------------------------------------------------------
 -- * Repl command
 -- ------------------------------------------------------------
 
