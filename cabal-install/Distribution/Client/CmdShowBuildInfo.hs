@@ -1,10 +1,12 @@
 -- | cabal-install CLI command: new-show-build-info
 --
-module Distribution.Client.CmdShowBuildInfo (
-    -- * The @show-build-info@ CLI and action
-    showBuildInfoCommand,
-    showBuildInfoAction
-  ) where
+module Distribution.Client.CmdShowBuildInfo where
+-- (
+--     -- * The @show-build-info@ CLI and action
+--     showBuildInfoCommand,
+--     showBuildInfoAction
+--   )
+
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
@@ -25,7 +27,8 @@ import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
          ( wrapText, die')
-import Distribution.Types.UnitId (UnitId)
+import Distribution.Types.UnitId (UnitId, mkUnitId)
+import Distribution.Deprecated.Text (display)
 
 import qualified Data.Map as Map
 import qualified Distribution.Simple.Setup as Cabal
@@ -141,9 +144,10 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
 showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
   case fileOutput of
+    -- TODO: replace with writeFileAtomic
     Nothing -> do
       putStr "["
-      mapM_ doShowInfo targets
+      unroll targets
       putStrLn "]"
     Just fp -> do
       writeFile fp "["
@@ -151,12 +155,17 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
       appendFile fp "]"
 
     where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
-          targets = fst <$> (Map.toList . targetsMap $ buildCtx)
+          targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
           doShowInfo unitId = showInfo fileOutput unitIds verbosity baseCtx buildCtx lock configured unitId
+
+          unroll :: [UnitId] -> IO ()
+          unroll [x] = doShowInfo x
+          unroll (x:xs) = doShowInfo x >> putStr "," >> unroll xs
+          unroll [] = return ()
 
 showInfo :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
-  | Nothing <- mbPkg = die' verbosity $ "No unit " ++ show targetUnitId
+  | Nothing <- mbPkg = die' verbosity $ "No unit " ++ display targetUnitId
   | Just pkg <- mbPkg = do
     let shared = elaboratedShared buildCtx
         install = elaboratedPlanOriginal buildCtx
@@ -198,18 +207,18 @@ showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
       (const (Cabal.ShowBuildInfoFlags
         { Cabal.buildInfoBuildFlags = flags
         , Cabal.buildInfoOutputFile = fileOutput
-        , Cabal.buildInfoUnitIds = unitIds
+        , Cabal.buildInfoUnitIds    = unitIds
         }
         )
       )
       (const args)
     where mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
 
--- | This defines what a 'TargetSelector' means for the @write-autogen-files@ command.
+-- | This defines what a 'TargetSelector' means for the @new-show-build-info@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @write-autogen-files@ command select all components except non-buildable and disabled
+-- For the @new-show-build-info@ command select all components except non-buildable and disabled
 -- tests\/benchmarks, fail if there are no such components
 --
 selectPackageTargets :: TargetSelector

@@ -2286,7 +2286,6 @@ parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
       , optionDistPref
         buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
       ]
-      --
 
 -- ------------------------------------------------------------
 -- * Other Utils
