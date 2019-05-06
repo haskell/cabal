@@ -308,6 +308,9 @@ data KnownExtension =
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XGeneralizedNewtypeDeriving>
   | GeneralizedNewtypeDeriving
 
+  -- Synonym for GeneralizedNewtypeDeriving added in GHC 8.6.1.
+  | GeneralisedNewtypeDeriving
+
   -- | Enable the \"Trex\" extensible records system.
   --
   -- * <http://haskell.org/hugs/pages/users_guide/hugs-only.html#TREX>
