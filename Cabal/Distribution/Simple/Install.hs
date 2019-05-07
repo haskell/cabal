@@ -194,6 +194,7 @@ copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
 
     case compilerFlavor (compiler lbi) of
       GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
+      GHCJS -> GHCJS.installFLib verbosity lbi flibPref buildPref pkg_descr flib
       _ -> die' verbosity $ "installing foreign lib with "
               ++ prettyShow (compilerFlavor (compiler lbi))
               ++ " is not implemented"
