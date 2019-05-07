@@ -226,12 +226,13 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- License file(s).
   , return (licenseFiles pkg_descr)
 
-    -- Install-include files.
+    -- Install-include files, without autogen-include files
   , fmap concat
     . withAllLib $ \ l -> do
-       let lbi = libBuildInfo l
+       let lbi   = libBuildInfo l
+           incls = filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
            relincdirs = "." : filter isRelative (includeDirs lbi)
-       traverse (fmap snd . findIncludeFile verbosity relincdirs) (installIncludes lbi)
+       traverse (fmap snd . findIncludeFile verbosity relincdirs) incls
 
     -- Setup script, if it exists.
   , fmap (maybe [] (\f -> [f])) $ findSetupFile ""

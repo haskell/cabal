@@ -23,6 +23,7 @@ GenericPackageDescription
                                                                                        libBuildInfo = BuildInfo
                                                                                                         {asmOptions = [],
                                                                                                          asmSources = [],
+                                                                                                         autogenIncludes = [],
                                                                                                          autogenModules = [],
                                                                                                          buildToolDepends = [],
                                                                                                          buildTools = [],
@@ -103,6 +104,7 @@ GenericPackageDescription
                                                                                        libBuildInfo = BuildInfo
                                                                                                         {asmOptions = [],
                                                                                                          asmSources = [],
+                                                                                                         autogenIncludes = [],
                                                                                                          autogenModules = [],
                                                                                                          buildToolDepends = [],
                                                                                                          buildTools = [],
@@ -183,6 +185,7 @@ GenericPackageDescription
                                                                                                                                                                                            libBuildInfo = BuildInfo
                                                                                                                                                                                                             {asmOptions = [],
                                                                                                                                                                                                              asmSources = [],
+                                                                                                                                                                                                             autogenIncludes = [],
                                                                                                                                                                                                              autogenModules = [],
                                                                                                                                                                                                              buildToolDepends = [],
                                                                                                                                                                                                              buildTools = [],
@@ -243,6 +246,7 @@ GenericPackageDescription
                                                                                                                                             libBuildInfo = BuildInfo
                                                                                                                                                              {asmOptions = [],
                                                                                                                                                               asmSources = [],
+                                                                                                                                                              autogenIncludes = [],
                                                                                                                                                               autogenModules = [],
                                                                                                                                                               buildToolDepends = [],
                                                                                                                                                               buildTools = [],
@@ -304,6 +308,7 @@ GenericPackageDescription
                                                                                                                                          libBuildInfo = BuildInfo
                                                                                                                                                           {asmOptions = [],
                                                                                                                                                            asmSources = [],
+                                                                                                                                                           autogenIncludes = [],
                                                                                                                                                            autogenModules = [],
                                                                                                                                                            buildToolDepends = [],
                                                                                                                                                            buildTools = [],
@@ -363,6 +368,7 @@ GenericPackageDescription
                                                                                           libBuildInfo = BuildInfo
                                                                                                            {asmOptions = [],
                                                                                                             asmSources = [],
+                                                                                                            autogenIncludes = [],
                                                                                                             autogenModules = [],
                                                                                                             buildToolDepends = [],
                                                                                                             buildTools = [],
@@ -424,6 +430,7 @@ GenericPackageDescription
                                                                                        libBuildInfo = BuildInfo
                                                                                                         {asmOptions = [],
                                                                                                          asmSources = [],
+                                                                                                         autogenIncludes = [],
                                                                                                          autogenModules = [],
                                                                                                          buildToolDepends = [],
                                                                                                          buildTools = [],
@@ -495,6 +502,7 @@ GenericPackageDescription
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
+                                                          autogenIncludes = [],
                                                           autogenModules = [],
                                                           buildToolDepends = [`ExeDependency (PackageName "hsc2hs") (UnqualComponentName "hsc2hs") AnyVersion`],
                                                           buildTools = [],
