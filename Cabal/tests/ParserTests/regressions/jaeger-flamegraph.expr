@@ -42,6 +42,7 @@ GenericPackageDescription
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
                                                             asmSources = [],
+                                                            autogenIncludes = [],
                                                             autogenModules = [],
                                                             buildToolDepends = [],
                                                             buildTools = [],
@@ -157,6 +158,7 @@ GenericPackageDescription
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
+                                                          autogenIncludes = [],
                                                           autogenModules = [],
                                                           buildToolDepends = [],
                                                           buildTools = [],
@@ -250,6 +252,7 @@ GenericPackageDescription
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
                                                                asmSources = [],
+                                                               autogenIncludes = [],
                                                                autogenModules = [],
                                                                buildToolDepends = [`ExeDependency (PackageName "tasty-discover") (UnqualComponentName "tasty-discover") (MajorBoundVersion (mkVersion [4,2,1]))`],
                                                                buildTools = [],

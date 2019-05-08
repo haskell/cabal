@@ -19,6 +19,7 @@ GenericPackageDescription
                                                                                        libBuildInfo = BuildInfo
                                                                                                         {asmOptions = [],
                                                                                                          asmSources = [],
+                                                                                                         autogenIncludes = [],
                                                                                                          autogenModules = [],
                                                                                                          buildToolDepends = [],
                                                                                                          buildTools = [],
@@ -82,6 +83,7 @@ GenericPackageDescription
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
+                                                          autogenIncludes = [],
                                                           autogenModules = [],
                                                           buildToolDepends = [],
                                                           buildTools = [],
