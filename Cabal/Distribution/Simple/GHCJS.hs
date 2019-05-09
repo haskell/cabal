@@ -475,8 +475,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       vanillaSharedOpts = vanillaOpts `mappend` mempty {
                       ghcOptDynLinkMode  = toFlag GhcStaticAndDynamic,
-                      ghcOptDynHiSuffix  = toFlag "dyn_js_hi",
-                      ghcOptDynObjSuffix = toFlag "dyn_js_o",
+                      ghcOptDynHiSuffix  = toFlag "js_dyn_hi",
+                      ghcOptDynObjSuffix = toFlag "js_dyn_o",
                       ghcOptHPCDir       = hpcdir Hpc.Dyn
                     }
 
@@ -1566,8 +1566,8 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
       sharedArgs = vanillaArgs `mappend` mempty {
                        ghcOptDynLinkMode = toFlag GhcDynamicOnly,
                        ghcOptFPic        = toFlag True,
-                       ghcOptHiSuffix    = toFlag "dyn_js_hi",
-                       ghcOptObjSuffix   = toFlag "dyn_js_o",
+                       ghcOptHiSuffix    = toFlag "js_dyn_hi",
+                       ghcOptObjSuffix   = toFlag "js_dyn_o",
                        ghcOptExtra       = hcSharedOptions GHC libBi
                    }
       profArgs   = vanillaArgs `mappend` mempty {
