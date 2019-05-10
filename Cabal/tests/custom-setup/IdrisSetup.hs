@@ -38,7 +38,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -w #-}
 module IdrisSetup (main) where
 
 #if !defined(MIN_VERSION_Cabal)
