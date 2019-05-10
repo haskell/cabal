@@ -153,7 +153,7 @@ data UnexpectedResponse = UnexpectedResponse URI Int
 
 instance Pretty UnexpectedResponse where
   pretty (UnexpectedResponse uri code) = "Unexpected response " ++ show code
-                                      ++ "for " ++ show uri
+                                      ++ " for " ++ show uri
 
 #if MIN_VERSION_base(4,8,0)
 deriving instance Show UnexpectedResponse
