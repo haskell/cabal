@@ -444,7 +444,7 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
-withProjectOrGlobalConfig :: Verbosity 
+withProjectOrGlobalConfig :: Verbosity
                           -> Flag FilePath
                           -> IO a
                           -> (ProjectConfig -> IO a)
@@ -455,9 +455,9 @@ withProjectOrGlobalConfig verbosity globalConfigFlag with without = do
   let
     res' = catch with
       $ \case
-        (BadPackageLocations prov locs) 
+        (BadPackageLocations prov locs)
           | prov == Set.singleton Implicit
-          , let 
+          , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
           , any isGlobErr locs ->
