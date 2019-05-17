@@ -1485,11 +1485,13 @@ The following flags are supported by the ``outdated`` command:
     Read dependency version bounds from the freeze file (``cabal.config``)
     instead of the package description file (``$PACKAGENAME.cabal``).
     ``--v1-freeze-file`` is an alias for this flag starting in Cabal 2.4.
-``--new-freeze-file``
+``--v2-freeze-file``
+    :since: 2.4
+
     Read dependency version bounds from the v2-style freeze file
     (by default, ``cabal.project.freeze``) instead of the package
-    description file. ``--v2-freeze-file`` is an alias for this flag
-    starting in Cabal 2.4.
+    description file. ``--new-freeze-file`` is an alias for this flag
+    that can be used with pre-2.4 ``cabal``.
 ``--project-file`` *PROJECTFILE*
     :since: 2.4
 
