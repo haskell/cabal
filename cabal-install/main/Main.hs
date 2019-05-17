@@ -231,7 +231,8 @@ main' = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  getArgs >>= expandResponse >>= mainWorker
+  (args0, args1) <- break (== "--") <$> getArgs
+  mainWorker =<< (++ args1) <$> expandResponse args0
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
