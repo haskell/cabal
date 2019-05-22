@@ -192,10 +192,18 @@ generate pkg_descr lbi clbi =
           bindir     = flat_bindir,
           libdir     = flat_libdir,
           dynlibdir  = flat_dynlibdir,
-          datadir    = flat_datadir,
           libexecdir = flat_libexecdir,
           sysconfdir = flat_sysconfdir
         } = absoluteComponentInstallDirs pkg_descr lbi cid NoCopyDest
+
+        -- The install command uses the non-component variant of the paths
+        -- as the datadir path in `Distribution.Simple.Install.copyPackage`,
+        -- so maintaining consistency here prevents problems with configuring
+        -- and building component.
+        InstallDirs {
+          datadir    = flat_datadir
+        } = absoluteInstallDirs pkg_descr lbi NoCopyDest
+
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
