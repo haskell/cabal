@@ -57,6 +57,7 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
+        absoluteInstallCommandDirs,
         absoluteComponentInstallDirs, prefixRelativeComponentInstallDirs,
         substPathTemplate,
   ) where
@@ -301,6 +302,34 @@ absoluteComponentInstallDirs pkg lbi uid copydest =
     copydest
     (hostPlatform lbi)
     (installDirTemplates lbi)
+
+absoluteInstallCommandDirs :: PackageDescription -> LocalBuildInfo
+                           -> UnitId
+                           -> CopyDest
+                           -> InstallDirs FilePath
+absoluteInstallCommandDirs pkg lbi uid copydest =
+  dirs {
+    -- Handle files which are not
+    -- per-component (data files and Haddock files.)
+    datadir    = datadir    dirs',
+    -- NB: The situation with Haddock is a bit delicate.  On the
+    -- one hand, the easiest to understand Haddock documentation
+    -- path is pkgname-0.1, which means it's per-package (not
+    -- per-component).  But this means that it's impossible to
+    -- install Haddock documentation for internal libraries.  We'll
+    -- keep this constraint for now; this means you can't use
+    -- Cabal to Haddock internal libraries.  This does not seem
+    -- like a big problem.
+    docdir     = docdir     dirs',
+    htmldir    = htmldir    dirs',
+    haddockdir = haddockdir dirs'
+    }
+  where
+    dirs  = absoluteComponentInstallDirs pkg lbi uid copydest
+    -- Notice use of 'absoluteInstallDirs' (not the
+    -- per-component variant).  This means for non-library
+    -- packages we'll just pick a nondescriptive foo-0.1
+    dirs' = absoluteInstallDirs pkg lbi copydest
 
 -- | Backwards compatibility function which computes the InstallDirs
 -- assuming that @$libname@ points to the public library (or some fake

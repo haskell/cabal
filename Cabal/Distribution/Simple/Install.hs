@@ -97,21 +97,10 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
       -- per-component (data files and Haddock files.)
       InstallDirs {
          datadir    = dataPref,
-         -- NB: The situation with Haddock is a bit delicate.  On the
-         -- one hand, the easiest to understand Haddock documentation
-         -- path is pkgname-0.1, which means it's per-package (not
-         -- per-component).  But this means that it's impossible to
-         -- install Haddock documentation for internal libraries.  We'll
-         -- keep this constraint for now; this means you can't use
-         -- Cabal to Haddock internal libraries.  This does not seem
-         -- like a big problem.
          docdir     = docPref,
          htmldir    = htmlPref,
-         haddockdir = interfacePref}
-             -- Notice use of 'absoluteInstallDirs' (not the
-             -- per-component variant).  This means for non-library
-             -- packages we'll just pick a nondescriptive foo-0.1
-             = absoluteInstallDirs pkg_descr lbi copydest
+         haddockdir = interfacePref
+      } = absoluteInstallCommandDirs pkg_descr lbi (localUnitId lbi) copydest
 
   -- Install (package-global) data files
   installDataFiles verbosity pkg_descr dataPref
@@ -161,7 +150,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
             libdir = libPref,
             dynlibdir = dynlibPref,
             includedir = incPref
-            } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+            } = absoluteInstallCommandDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
 
     case libName lib of
