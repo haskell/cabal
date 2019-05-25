@@ -37,7 +37,8 @@ classify ('#':s) = case tokens s of
                                   && length file >= 2
                                   && head file == '"'
                                   && last file == '"'
-                                -> Line (read line) (tail (init file)) -- TODO:eradicateNoParse
+                                -- this shouldn't fail as we tested for 'all isDigit'
+                                -> Line (fromMaybe (error $ "panic! read @Int " ++ show line) $ readMaybe line) (tail (init file)) -- TODO:eradicateNoParse
                      _          -> CPP s
   where tokens = unfoldr $ \str -> case lex str of
                                    (t@(_:_), str'):_ -> Just (t, str')

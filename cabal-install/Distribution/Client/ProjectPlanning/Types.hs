@@ -78,9 +78,9 @@ import           Distribution.Backpack.ModuleShape
 import           Distribution.Pretty
 import           Distribution.Verbosity
 import           Distribution.Types.ComponentRequestedSpec
+import           Distribution.Types.PkgconfigVersion
 import           Distribution.Types.PackageDescription (PackageDescription(..))
 import           Distribution.Package
-                   hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -248,6 +248,7 @@ data ElaboratedConfiguredPackage
        elabSharedLib            :: Bool,
        elabStaticLib            :: Bool,
        elabDynExe               :: Bool,
+       elabFullyStaticExe       :: Bool,
        elabGHCiLib              :: Bool,
        elabProfLib              :: Bool,
        elabProfExe              :: Bool,
@@ -292,6 +293,7 @@ data ElaboratedConfiguredPackage
        elabTestHumanLog          :: Maybe PathTemplate,
        elabTestShowDetails       :: Maybe TestShowDetails,
        elabTestKeepTix           :: Bool,
+       elabTestWrapper           :: Maybe FilePath,
        elabTestFailWhenNoTestSuites :: Bool,
        elabTestTestOptions       :: [PathTemplate],
 
@@ -572,7 +574,7 @@ elabSetupDependencies elab =
         -- they are, need to do this differently
         ElabComponent _ -> []
 
-elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe Version)]
+elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PkgconfigName, Maybe PkgconfigVersion)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
     = pkgPkgConfigDependencies pkg
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
@@ -642,10 +644,16 @@ data ElaboratedComponent
     -- internal executables).
     compExeDependencies :: [ConfiguredId],
     -- | The @pkg-config@ dependencies of the component
-    compPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
+    compPkgConfigDependencies :: [(PkgconfigName, Maybe PkgconfigVersion)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [(ConfiguredId, FilePath)],
+    -- | The UnitIds of the libraries (identifying elaborated packages/
+    -- components) that must be built before this project.  This
+    -- is used purely for ordering purposes.  It can contain both
+    -- references to definite and indefinite packages; an indefinite
+    -- UnitId indicates that we must typecheck that indefinite package
+    -- before we can build this one.
     compOrderLibDependencies :: [UnitId]
    }
   deriving (Eq, Show, Generic)
@@ -690,7 +698,7 @@ data ElaboratedPackage
        -- because Cabal library does not track per-component
        -- pkg-config depends; it always does them all at once.
        --
-       pkgPkgConfigDependencies :: [(PkgconfigName, Maybe Version)],
+       pkgPkgConfigDependencies :: [(PkgconfigName, Maybe PkgconfigVersion)],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.

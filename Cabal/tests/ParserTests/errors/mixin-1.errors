@@ -1,0 +1,4 @@
+VERSION: Just (mkVersion [2,4])
+mixin-1.cabal:13:41: 
+unexpected space after parenthesis, use cabal-version: 3.0 or higher
+

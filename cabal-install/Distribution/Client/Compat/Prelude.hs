@@ -3,7 +3,7 @@
 
 -- | This module does two things:
 --
--- * Acts as a compatiblity layer, like @base-compat@.
+-- * Acts as a compatibility layer, like @base-compat@.
 --
 -- * Provides commonly used imports.
 --
@@ -13,10 +13,7 @@
 module Distribution.Client.Compat.Prelude
   ( module Distribution.Compat.Prelude.Internal
   , Prelude.IO
-  , readMaybe
   ) where
 
 import Prelude (IO)
 import Distribution.Compat.Prelude.Internal hiding (IO)
-import Text.Read
-         ( readMaybe )

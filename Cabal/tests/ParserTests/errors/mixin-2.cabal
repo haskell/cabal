@@ -1,0 +1,14 @@
+cabal-version: 2.2
+name: mixin
+version: 0
+
+-- mixin field:
+-- in 2.2 we got leading/trailing commas
+-- in 2.2 we got lax space parsing
+--
+-- This should fail
+executable str-example
+  main-is:             Main.hs
+  build-depends:       base, str-string, str-bytestring
+  mixins:              str-string     hiding ( Foo )
+  hs-source-dirs:      str-example

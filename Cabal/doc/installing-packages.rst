@@ -15,6 +15,10 @@ explicitly ask ``cabal`` to create it for you using
 
     $ cabal user-config update
 
+You can change the location of the global configuration file by specifying
+either ``--config-file=FILE`` on the command line or by setting the
+``CABAL_CONFIG`` environment variable.
+
 Most of the options in this configuration file are also available as
 command line arguments, and the corresponding documentation can be used
 to lookup their meaning. The created configuration file only specifies
@@ -478,8 +482,8 @@ and all options specified with :option:`--configure-option` are passed on.
    detect and warn in this situation, but it is not perfect.
 
 In Cabal 2.0, support for a single positional argument was added to
-``setup configure`` This makes Cabal configure a the specific component
-to be configured. Specified names can be qualified with ``lib:`` or
+``setup configure`` This makes Cabal configure the specific component to
+be configured. Specified names can be qualified with ``lib:`` or
 ``exe:`` in case just a name is ambiguous (as would be the case for a
 package named ``p`` which has a library and an executable named ``p``.)
 This has the following effects:
@@ -1156,13 +1160,27 @@ Miscellaneous options
 
 .. option:: --enable-executable-dynamic
 
-    Link executables dynamically. The executable's library dependencies
-    should be built as shared objects. This implies :option:`--enable-shared`
+    Link dependent Haskell libraries into executables dynamically.
+    The executable's library dependencies must have been
+    built as shared objects. This implies :option:`--enable-shared`
     unless :option:`--disable-shared` is explicitly specified.
 
 .. option:: --disable-executable-dynamic
 
-   (default) Link executables statically.
+   (default) Link dependent Haskell libraries into executables statically.
+   Non-Haskell (C) libraries are still linked dynamically, including libc,
+   so the result is still not a fully static executable
+   unless :option:`--enable-executable-static` is given.
+
+.. option:: --enable-executable-static
+
+    Build fully static executables.
+    This link all dependent libraries into executables statically,
+    including libc.
+
+.. option:: --disable-executable-static
+
+   (default) Do not build fully static executables.
 
 .. option:: --configure-option=str
 
@@ -1700,6 +1718,13 @@ the package.
     give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
+
+.. option:: --test-wrapper=path
+
+   The wrapper script/application used to setup and tear down the test
+   execution context. The text executable path and test arguments are
+   passed as arguments to the wrapper and it is expected that the wrapper
+   will return the test's return code, as well as a copy of stdout/stderr.
 
 .. _setup-sdist:
 

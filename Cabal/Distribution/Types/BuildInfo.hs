@@ -94,6 +94,7 @@ data BuildInfo = BuildInfo {
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
+        autogenIncludes   :: [FilePath], -- ^ The .h files to be generated (e.g. by @autoconf@)
         installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: PerCompilerFlavor [String],
         profOptions       :: PerCompilerFlavor [String],
@@ -147,6 +148,7 @@ instance Monoid BuildInfo where
     extraLibDirs        = [],
     includeDirs         = [],
     includes            = [],
+    autogenIncludes     = [],
     installIncludes     = [],
     options             = mempty,
     profOptions         = mempty,
@@ -194,6 +196,7 @@ instance Semigroup BuildInfo where
     extraLibDirs        = combineNub extraLibDirs,
     includeDirs         = combineNub includeDirs,
     includes            = combineNub includes,
+    autogenIncludes     = combineNub autogenIncludes,
     installIncludes     = combineNub installIncludes,
     options             = combine    options,
     profOptions         = combine    profOptions,

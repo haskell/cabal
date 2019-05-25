@@ -45,7 +45,6 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  buildVerbose,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -59,7 +58,6 @@ module Distribution.Simple.Setup (
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions, testOptions',
   programDbOptions, programDbPaths',
-  programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
   replOptions,
   splitArgs,
@@ -105,7 +103,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
-import Distribution.Compat.Semigroup (Last' (..))
+import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 
 import Data.Function (on)
 
@@ -202,8 +200,8 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramDb directly and not via ConfigFlags
-    configPrograms_     :: Last' ProgramDb, -- ^All programs that
-                                            -- @cabal@ may run
+    configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
+                                                      -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -217,6 +215,8 @@ data ConfigFlags = ConfigFlags {
     configSharedLib     :: Flag Bool,     -- ^Build shared library
     configStaticLib     :: Flag Bool,     -- ^Build static library
     configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the
+                                          -- executables.
+    configFullyStaticExe :: Flag Bool,     -- ^Enable fully static linking of the
                                           -- executables.
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the
                                           -- executables.
@@ -284,7 +284,8 @@ instance Binary ConfigFlags
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
-configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+configPrograms = fromMaybe (error "FIXME: remove configPrograms") . fmap getLast'
+               . getOption' . configPrograms_
 
 instance Eq ConfigFlags where
   (==) a b =
@@ -300,6 +301,7 @@ instance Eq ConfigFlags where
     && equal configSharedLib
     && equal configStaticLib
     && equal configDynExe
+    && equal configFullyStaticExe
     && equal configProfExe
     && equal configProf
     && equal configProfDetail
@@ -347,13 +349,14 @@ configAbsolutePaths f =
 defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progDb = emptyConfigFlags {
     configArgs         = [],
-    configPrograms_    = pure progDb,
+    configPrograms_    = Option' (Just (Last' progDb)),
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
     configSharedLib    = NoFlag,
     configStaticLib    = NoFlag,
     configDynExe       = Flag False,
+    configFullyStaticExe = Flag False,
     configProfExe      = NoFlag,
     configProf         = NoFlag,
     configProfDetail   = NoFlag,
@@ -490,6 +493,11 @@ configureOptions showOrParseArgs =
       ,option "" ["executable-dynamic"]
          "Executable dynamic linking"
          configDynExe (\v flags -> flags { configDynExe = v })
+         (boolOpt [] [])
+
+      ,option "" ["executable-static"]
+         "Executable fully static linking"
+         configFullyStaticExe (\v flags -> flags { configFullyStaticExe = v })
          (boolOpt [] [])
 
       ,option "" ["profiling"]
@@ -1630,10 +1638,6 @@ data BuildFlags = BuildFlags {
   }
   deriving (Read, Show, Generic)
 
-{-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
-buildVerbose :: BuildFlags -> Verbosity
-buildVerbose = fromFlagOrDefault normal . buildVerbosity
-
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramPaths = mempty,
@@ -1855,6 +1859,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testWrapper     :: Flag FilePath,
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
@@ -1868,6 +1873,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testWrapper     = NoFlag,
     testFailWhenNoTestSuites = toFlag False,
     testOptions     = []
   }
@@ -1933,6 +1939,11 @@ testOptions' showOrParseArgs =
         "keep .tix files for HPC between test runs"
         testKeepTix (\v flags -> flags { testKeepTix = v})
         trueArg
+  , option [] ["test-wrapper"]
+        "Run test through a wrapper."
+        testWrapper (\v flags -> flags { testWrapper = v })
+        (reqArg' "FILE" (toFlag :: FilePath -> Flag FilePath)
+            (flagToList :: Flag FilePath -> [FilePath]))
   , option [] ["fail-when-no-test-suites"]
         ("Exit with failure when no test suites are found.")
         testFailWhenNoTestSuites (\v flags -> flags { testFailWhenNoTestSuites = v})
@@ -2060,19 +2071,14 @@ programDbPaths
 programDbPaths progDb showOrParseArgs get set =
   programDbPaths' ("with-" ++) progDb showOrParseArgs get set
 
-{-# DEPRECATED programConfigurationPaths' "Use programDbPaths' instead" #-}
-
 -- | Like 'programDbPaths', but allows to customise the option name.
-programDbPaths', programConfigurationPaths'
+programDbPaths'
   :: (String -> String)
   -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationPaths' = programDbPaths'
-
 programDbPaths' mkName progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -2111,19 +2117,15 @@ programDbOption progDb showOrParseArgs get set =
            (\progArgs -> concat [ args
                                 | (prog', args) <- progArgs, prog==prog' ]))
 
-{-# DEPRECATED programConfigurationOptions "Use programDbOptions instead" #-}
 
 -- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
-programDbOptions, programConfigurationOptions
+programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationOptions = programDbOptions
-
 programDbOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:

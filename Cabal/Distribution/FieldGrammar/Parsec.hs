@@ -84,6 +84,7 @@ import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
+import Distribution.Parsec.Position        (positionRow, positionCol)
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -205,6 +206,34 @@ instance FieldGrammar ParsecFieldGrammar where
             | null fls  = pure def
             | otherwise = unpack' _pack <$> runFieldParser pos parsec v fls
 
+    freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
+        parser v fields = case Map.lookup fn fields of
+            Nothing  -> pure Nothing
+            Just []  -> pure Nothing
+            Just [x] -> parseOne v x
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
+
+        parseOne v (MkNamelessField pos fls)
+            | null fls           = pure Nothing
+            | v >= CabalSpecV3_0 = pure (Just (fieldlinesToFreeText3 pos fls))
+            | otherwise          = pure (Just (fieldlinesToFreeText fls))
+
+    freeTextFieldDef fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
+        parser v fields = case Map.lookup fn fields of
+            Nothing  -> pure ""
+            Just []  -> pure ""
+            Just [x] -> parseOne v x
+            Just xs  -> do
+                warnMultipleSingularFields fn xs
+                last <$> traverse (parseOne v) xs
+
+        parseOne v (MkNamelessField pos fls)
+            | null fls           = pure ""
+            | v >= CabalSpecV3_0 = pure (fieldlinesToFreeText3 pos fls)
+            | otherwise          = pure (fieldlinesToFreeText fls)
+
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
@@ -318,6 +347,60 @@ runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
 fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+
+-- Example package with dot lines
+-- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
+fieldlinesToFreeText :: [FieldLine ann] -> String
+fieldlinesToFreeText [FieldLine _ "."] = "."
+fieldlinesToFreeText fls               = intercalate "\n" (map go fls)
+  where
+    go (FieldLine _ bs)
+        | s == "." = ""
+        | otherwise = s
+      where
+        s = trim (fromUTF8BS bs)
+
+        trim :: String -> String
+        trim = dropWhile isSpace . dropWhileEnd isSpace
+
+fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> String
+fieldlinesToFreeText3 _   []               = ""
+fieldlinesToFreeText3 _   [FieldLine _ bs] = fromUTF8BS bs
+fieldlinesToFreeText3 pos (FieldLine pos1 bs1 : fls2@(FieldLine pos2 _ : _))
+    -- if first line is on the same line with field name:
+    -- the indentation level is either
+    -- 1. the indentation of left most line in rest fields
+    -- 2. the indentation of the first line
+    -- whichever is leftmost
+    | positionRow pos == positionRow pos1 = concat
+        $ fromUTF8BS bs1
+        : mealy (mk mcol1) pos1 fls2
+
+    -- otherwise, also indent the first line
+    | otherwise = concat
+        $ replicate (positionCol pos1 - mcol2) ' '
+        : fromUTF8BS bs1
+        : mealy (mk mcol2) pos1 fls2
+
+  where
+    mcol1 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (min (positionCol pos1) (positionCol pos2)) fls2
+    mcol2 = foldl' (\a b -> min a $ positionCol $ fieldLineAnn b) (positionCol pos1) fls2
+
+    mk :: Int -> Position -> FieldLine Position -> (Position, String)
+    mk col p (FieldLine q bs) =
+        ( q
+        , replicate newlines '\n'
+          ++ replicate indent ' '
+          ++ fromUTF8BS bs
+        )
+      where
+        newlines = positionRow q - positionRow p
+        indent   = positionCol q - col
+
+mealy :: (s -> a -> (s, b)) -> s -> [a] -> [b]
+mealy f = go where
+    go _ [] = []
+    go s (x : xs) = let ~(s', y) = f s x in y : go s' xs
 
 fieldLinesToStream :: [FieldLine ann] -> FieldLineStream
 fieldLinesToStream []                    = fieldLineStreamEnd

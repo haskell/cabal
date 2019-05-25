@@ -13,6 +13,7 @@ description:
     This is a pretty printing library based on Wadler's paper "A Prettier
     Printer".  See the haddocks for full info.  This version allows the
     library user to declare overlapping instances of the 'Pretty' class.
+
 category:      Text
 build-type:    Simple
 

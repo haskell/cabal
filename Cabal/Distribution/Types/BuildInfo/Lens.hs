@@ -160,6 +160,10 @@ class HasBuildInfo a where
    includes = buildInfo . includes
    {-# INLINE includes #-}
 
+   autogenIncludes :: Lens' a [FilePath]
+   autogenIncludes = buildInfo . autogenIncludes
+   {-# INLINE autogenIncludes #-}
+
    installIncludes :: Lens' a [FilePath]
    installIncludes = buildInfo . installIncludes
    {-# INLINE installIncludes #-}
@@ -298,6 +302,9 @@ instance HasBuildInfo BuildInfo where
 
     includes f s = fmap (\x -> s { T.includes = x }) (f (T.includes s))
     {-# INLINE includes #-}
+
+    autogenIncludes f s = fmap (\x -> s { T.autogenIncludes = x }) (f (T.autogenIncludes s))
+    {-# INLINE autogenIncludes #-}
 
     installIncludes f s = fmap (\x -> s { T.installIncludes = x }) (f (T.installIncludes s))
     {-# INLINE installIncludes #-}

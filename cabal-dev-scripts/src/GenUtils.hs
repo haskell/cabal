@@ -24,14 +24,14 @@ import qualified Data.Text.Lazy      as TL
 data SPDXLicenseListVersion
     = SPDXLicenseListVersion_3_0
     | SPDXLicenseListVersion_3_2
-    | SPDXLicenseListVersion_3_3
+    | SPDXLicenseListVersion_3_5
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 allVers :: Set.Set SPDXLicenseListVersion
 allVers =  Set.fromList [minBound .. maxBound]
 
 prettyVer :: SPDXLicenseListVersion -> Text
-prettyVer SPDXLicenseListVersion_3_3 = "SPDX License List 3.3"
+prettyVer SPDXLicenseListVersion_3_5 = "SPDX License List 3.5"
 prettyVer SPDXLicenseListVersion_3_2 = "SPDX License List 3.2"
 prettyVer SPDXLicenseListVersion_3_0 = "SPDX License List 3.0"
 

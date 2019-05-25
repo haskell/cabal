@@ -48,8 +48,8 @@ withTempDirRemovedTest = do
   withTempDirectory normal tempDir "foo" $ \dirPath -> do
     removeDirectoryRecursive dirPath
 
-rawSystemStdInOutTextDecodingTest :: Assertion
-rawSystemStdInOutTextDecodingTest
+rawSystemStdInOutTextDecodingTest :: FilePath -> Assertion
+rawSystemStdInOutTextDecodingTest ghcPath
     -- We can only get this exception when the locale encoding is UTF-8
     -- so skip the test if it's not.
     | show localeEncoding /= "UTF-8" = return ()
@@ -67,7 +67,7 @@ rawSystemStdInOutTextDecodingTest
 
       -- Compile
       (IODataText resOutput, resErrors, resExitCode) <- rawSystemStdInOut normal
-         "ghc" ["-o", filenameExe, filenameHs]
+         ghcPath ["-o", filenameExe, filenameHs]
          Nothing Nothing Nothing
          IODataModeText
       print (resOutput, resErrors, resExitCode)
@@ -86,8 +86,8 @@ rawSystemStdInOutTextDecodingTest
 
 
 
-tests :: [TestTree]
-tests =
+tests :: FilePath -> [TestTree]
+tests ghcPath =
     [ testCase "withTempFile works as expected" $
       withTempFileTest
     , testCase "withTempFile can handle removed files" $
@@ -97,5 +97,5 @@ tests =
     , testCase "withTempDirectory can handle removed directories" $
       withTempDirRemovedTest
     , testCase "rawSystemStdInOut reports text decoding errors" $
-      rawSystemStdInOutTextDecodingTest
+      rawSystemStdInOutTextDecodingTest ghcPath
     ]

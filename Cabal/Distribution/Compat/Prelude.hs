@@ -15,7 +15,7 @@
 
 -- | This module does two things:
 --
--- * Acts as a compatiblity layer, like @base-compat@.
+-- * Acts as a compatibility layer, like @base-compat@.
 --
 -- * Provides commonly used imports.
 module Distribution.Compat.Prelude (
@@ -91,10 +91,15 @@ module Distribution.Compat.Prelude (
 
     -- * Text.PrettyPrint
     (<<>>),
+
+    -- * Text.Read
+    readMaybe,
     ) where
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
   ( IO, mapM, mapM_, sequence, null, length, foldr, any, all
+  -- partial functions
+  , read
 #if MINVER_base_411
   -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
   -- Hide this so we instead rely on Distribution.Compat.Semigroup.
@@ -140,6 +145,7 @@ import Data.Maybe
 import Data.String                   (IsString (..))
 import Data.Int
 import Data.Word
+import Text.Read                     (readMaybe)
 
 import qualified Text.PrettyPrint as Disp
 

@@ -66,9 +66,7 @@ import Text.PrettyPrint
 
 import qualified Data.Map                      as Map
 
-#if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
-#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -116,10 +114,8 @@ instance Monad ParseResult where
         fail = Fail.fail
 #endif
 
-#if MIN_VERSION_base(4,9,0)
 instance Fail.MonadFail ParseResult where
         fail = parseResultFail
-#endif
 
 parseResultFail :: String -> ParseResult a
 parseResultFail s = parseFail (FromString s Nothing)

@@ -17,7 +17,6 @@
 
 module Distribution.PackageDescription.Configuration (
     finalizePD,
-    finalizePackageDescription,
     flattenPackageDescription,
 
     -- Utils
@@ -491,20 +490,6 @@ finalizePD userflags enabled satisfyDep
                    in if null missingDeps
                       then DepOk
                       else MissingDeps missingDeps
-
-{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-finalizePackageDescription ::
-     FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
-                          -- available packages?  If this is unknown then use
-                          -- True.
-  -> Platform      -- ^ The 'Arch' and 'OS'
-  -> CompilerInfo  -- ^ Compiler information
-  -> [Dependency]  -- ^ Additional constraints
-  -> GenericPackageDescription
-  -> Either [Dependency]
-            (PackageDescription, FlagAssignment)
-finalizePackageDescription flags = finalizePD flags defaultComponentRequestedSpec
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])

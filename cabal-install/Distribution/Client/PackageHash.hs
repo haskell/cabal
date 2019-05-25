@@ -44,9 +44,10 @@ import Distribution.Simple.Compiler
          , ProfDetailLevel(..), showProfDetailLevel )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
+import Distribution.Pretty (prettyShow)
 import Distribution.Deprecated.Text
          ( display )
-import Distribution.Version
+import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
 import Distribution.Client.Types
          ( InstalledPackageId )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -176,7 +177,7 @@ data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
        pkgHashComponent     :: Maybe CD.Component,
        pkgHashSourceHash    :: PackageSourceHash,
-       pkgHashPkgConfigDeps :: Set (PkgconfigName, Maybe Version),
+       pkgHashPkgConfigDeps :: Set (PkgconfigName, Maybe PkgconfigVersion),
        pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
      }
@@ -194,6 +195,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashVanillaLib          :: Bool,
        pkgHashSharedLib           :: Bool,
        pkgHashDynExe              :: Bool,
+       pkgHashFullyStaticExe      :: Bool,
        pkgHashGHCiLib             :: Bool,
        pkgHashProfLib             :: Bool,
        pkgHashProfExe             :: Bool,
@@ -275,7 +277,7 @@ renderPackageHashInputs PackageHashInputs{
                             (intercalate ", " . map (\(pn, mb_v) -> display pn ++
                                                     case mb_v of
                                                         Nothing -> ""
-                                                        Just v -> " " ++ display v)
+                                                        Just v -> " " ++ prettyShow v)
                                               . Set.toList) pkgHashPkgConfigDeps
       , entry "deps"        (intercalate ", " . map display
                                               . Set.toList) pkgHashDirectDeps
@@ -287,6 +289,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "vanilla-lib" True  display pkgHashVanillaLib
       , opt   "shared-lib"  False display pkgHashSharedLib
       , opt   "dynamic-exe" False display pkgHashDynExe
+      , opt   "fully-static-exe" False display pkgHashFullyStaticExe
       , opt   "ghci-lib"    False display pkgHashGHCiLib
       , opt   "prof-lib"    False display pkgHashProfLib
       , opt   "prof-exe"    False display pkgHashProfExe

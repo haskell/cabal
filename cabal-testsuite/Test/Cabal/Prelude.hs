@@ -161,11 +161,11 @@ setup'' prefix cmd args = do
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
     if testCabalInstallAsSetup env
-        then 
+        then
             -- `cabal` and `Setup` no longer have the same interface.
             -- A bit of fettling is required to hide this fact.
-            let 
-                legacyCmds = 
+            let
+                legacyCmds =
                     [ "build"
                     , "configure"
                     , "repl"
@@ -188,7 +188,8 @@ setup'' prefix cmd args = do
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
             in runProgramM cabalProgram full_args'
         else do
-            pdfile <- liftIO $ tryFindPackageDesc (testCurrentDir env </> prefix)
+            pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env)
+                      (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Simple
                 then runM (testSetupPath env) full_args

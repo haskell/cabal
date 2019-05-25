@@ -66,8 +66,7 @@ import Distribution.System
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
-    ( getPersistBuildConfig, configCompilerEx )
-import Distribution.Types.LocalBuildInfo
+    ( configCompilerEx )
 import Distribution.Version
 import Distribution.Text
 import Distribution.Package
@@ -240,20 +239,19 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
         script_base = dropExtensions script_filename
     -- Canonicalize this so that it is stable across working directory changes
     script_dir <- canonicalizePath script_dir0
-    lbi <- getPersistBuildConfig dist_dir
     let verbosity = normal -- TODO: configurable
-    senv <- mkScriptEnv verbosity lbi
+    senv <- mkScriptEnv verbosity
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
                 ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
-                (withPrograms lbi)
+                (runnerProgramDb senv)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args
 
     -- Reconfigure GHC
     (comp, platform, program_db2) <- case argGhcPath cargs of
-        Nothing -> return (compiler lbi, hostPlatform lbi, program_db0)
+        Nothing -> return (runnerCompiler senv, runnerPlatform senv, program_db0)
         Just ghc_path -> do
             -- All the things that get updated paths from
             -- configCompilerEx.  The point is to make sure
@@ -274,7 +272,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
             -- we don't pay for things we don't need.  A bit difficult
             -- to do in the current design.
             configCompilerEx
-                (Just (compilerFlavor (compiler lbi)))
+                (Just (compilerFlavor (runnerCompiler senv)))
                 (Just ghc_path)
                 Nothing
                 program_db1
@@ -294,7 +292,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
 
     let db_stack =
             case argGhcPath (testCommonArgs args) of
-                Nothing -> withPackageDB lbi
+                Nothing -> runnerPackageDbStack senv -- NB: canonicalized
                 -- Can't use the build package db stack since they
                 -- are all for the wrong versions!  TODO: Make
                 -- this configurable
@@ -311,9 +309,9 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                     testVerbosity = verbosity,
                     testMtimeChangeDelay = Nothing,
                     testScriptEnv = senv,
-                    testSetupPath = dist_dir </> "setup" </> "setup",
+                    testSetupPath = dist_dir </> "build" </> "setup" </> "setup",
                     testSkipSetupTests =  argSkipSetupTests (testCommonArgs args),
-                    testHaveCabalShared = withSharedLib lbi,
+                    testHaveCabalShared = runnerWithSharedLib senv,
                     testEnvironment =
                         -- Try to avoid Unicode output
                         [ ("LC_ALL", Just "C")

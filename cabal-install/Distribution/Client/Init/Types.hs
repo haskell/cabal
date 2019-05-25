@@ -39,7 +39,7 @@ import GHC.Generics ( Generic )
 --   likely to want and/or that we are likely to be able to
 --   intelligently guess.
 data InitFlags =
-    InitFlags { nonInteractive :: Flag Bool
+    InitFlags { interactive    :: Flag Bool
               , quiet          :: Flag Bool
               , packageDir     :: Flag FilePath
               , noComments     :: Flag Bool
@@ -66,9 +66,13 @@ data InitFlags =
               , otherModules   :: Maybe [ModuleName]
               , otherExts      :: Maybe [Extension]
 
-              , dependencies :: Maybe [P.Dependency]
-              , sourceDirs   :: Maybe [String]
-              , buildTools   :: Maybe [String]
+              , dependencies    :: Maybe [P.Dependency]
+              , applicationDirs :: Maybe [String]
+              , sourceDirs      :: Maybe [String]
+              , buildTools      :: Maybe [String]
+
+              , initializeTestSuite :: Flag Bool
+              , testDirs            :: Maybe [String]
 
               , initHcPath    :: Flag FilePath
 
@@ -82,6 +86,7 @@ data InitFlags =
   -- not Flag [foo].
 
 data BuildType = LibBuild | ExecBuild
+  deriving Eq
 
 -- The type of package to initialize.
 data PackageType = Library | Executable | LibraryAndExecutable

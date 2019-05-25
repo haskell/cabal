@@ -28,6 +28,8 @@ import Distribution.Simple.Program.Db
 import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Client.Types
+import Distribution.Client.CmdInstall.ClientInstallFlags
+import Distribution.Client.InstallSymlink
 import Distribution.Client.Dependency.Types
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.Targets
@@ -43,7 +45,10 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
 
 import UnitTests.Distribution.Client.ArbitraryInstances
+import UnitTests.Distribution.Client.TreeDiffInstances ()
 
+import Data.TreeDiff.Class
+import Data.TreeDiff.QuickCheck
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -91,10 +96,10 @@ tests =
 -- Round trip: conversion to/from legacy types
 --
 
-roundtrip :: (Eq a, Show a) => (a -> b) -> (b -> a) -> a -> Property
+roundtrip :: (Eq a, ToExpr a) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
     let y = f x
-    in f_inv y === x -- no counterexample with y, as they not have Show
+    in f_inv y `ediffEq` x -- no counterexample with y, as they not have ToExpr
 
 roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
@@ -152,8 +157,8 @@ roundtrip_printparse config =
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk _ x -> x === config { projectConfigProvenance = mempty }
-      ParseFailed err           -> counterexample (show err) False
+      ParseOk _ x     -> x `ediffEq` config { projectConfigProvenance = mempty }
+      ParseFailed err -> counterexample (show err) False
 
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
@@ -258,12 +263,12 @@ prop_roundtrip_printparse_RelaxedDep rdep =
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
     counterexample (Text.display rdep) $
-    runReadP Text.parse (Text.display rdep) === Just rdep
+    runReadP Text.parse (Text.display rdep) `ediffEq` Just rdep
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    runReadP Text.parse rdep' === Just rdep
+    runReadP Text.parse rdep' `ediffEq` Just rdep
   where
     rdep' = go (Text.display rdep)
 
@@ -349,6 +354,21 @@ arbitraryGlobLikeStr = outerTerm
     braces s   = "{" ++ s ++ "}"
 
 
+instance Arbitrary OverwritePolicy where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary InstallMethod where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary ClientInstallFlags where
+    arbitrary =
+      ClientInstallFlags
+        <$> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+
 instance Arbitrary ProjectConfigBuildOnly where
     arbitrary =
       ProjectConfigBuildOnly
@@ -369,6 +389,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitrary
       where
         arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
@@ -388,7 +409,8 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigHttpTransport = x13
                                   , projectConfigIgnoreExpiry = x14
                                   , projectConfigCacheDir = x15
-                                  , projectConfigLogsDir = x16 } =
+                                  , projectConfigLogsDir = x16
+                                  , projectConfigClientInstallFlags = x17 } =
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
@@ -405,14 +427,17 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigHttpTransport = x13
                                , projectConfigIgnoreExpiry = x14'
                                , projectConfigCacheDir = x15
-                               , projectConfigLogsDir = x16 }
+                               , projectConfigLogsDir = x16
+                               , projectConfigClientInstallFlags = x17' }
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12',       x14'))
+         (x10', x11', x12',       x14'),
+         (            x17'            ))
           <- shrink
                ((x00, x01, x02, x03, x04),
                 (x05, x06, x07, x08, preShrink_NumJobs x09),
-                (x10, x11, x12,      x14))
+                (x10, x11, x12,      x14),
+                (          x17          ))
       ]
       where
         preShrink_NumJobs  = fmap (fmap Positive)
@@ -544,6 +569,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> shortListOf 5 arbitraryShortToken
@@ -574,6 +600,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> shortListOf 5 arbitrary
       where
@@ -590,6 +617,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigSharedLib = x05
                          , packageConfigStaticLib = x42
                          , packageConfigDynExe = x06
+                         , packageConfigFullyStaticExe = x50
                          , packageConfigProf = x07
                          , packageConfigProfLib = x08
                          , packageConfigProfExe = x09
@@ -632,8 +660,9 @@ instance Arbitrary PackageConfig where
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
                          , packageConfigTestKeepTix = x47
-                         , packageConfigTestFailWhenNoTestSuites = x48
-                         , packageConfigTestTestOptions = x49 } =
+                         , packageConfigTestWrapper = x48
+                         , packageConfigTestFailWhenNoTestSuites = x49
+                         , packageConfigTestTestOptions = x51 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -642,6 +671,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigSharedLib = x05'
                       , packageConfigStaticLib = x42'
                       , packageConfigDynExe = x06'
+                      , packageConfigFullyStaticExe = x50'
                       , packageConfigProf = x07'
                       , packageConfigProfLib = x08'
                       , packageConfigProfExe = x09'
@@ -684,10 +714,11 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
                       , packageConfigTestKeepTix = x47'
-                      , packageConfigTestFailWhenNoTestSuites = x48'
-                      , packageConfigTestTestOptions = x49' }
+                      , packageConfigTestWrapper = x48'
+                      , packageConfigTestFailWhenNoTestSuites = x49'
+                      , packageConfigTestTestOptions = x51' }
       |  (((x00', x01', x02', x03', x04'),
-          (x05', x42', x06', x07', x08', x09'),
+          (x05', x42', x06', x50', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
@@ -695,10 +726,10 @@ instance Arbitrary PackageConfig where
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
-          (x44', x45', x46', x47', x48', x49')))
+          (x44', x45', x46', x47', x48', x49', x51')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
-                (x05, x42, x06, x07, x08, x09),
+                (x05, x42, x06, x50, x07, x08, x09),
                 (x10, x11, map NonEmpty x12, x13, x14),
                 (x15, map NonEmpty x16,
                   map NonEmpty x17,
@@ -709,7 +740,7 @@ instance Arbitrary PackageConfig where
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48, x49)))
+                 (x44, x45, x46, x47, x48, x49, x51)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty

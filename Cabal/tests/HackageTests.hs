@@ -50,6 +50,7 @@ import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescriptio
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
+import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
 
@@ -70,7 +71,8 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Options.Applicative                               as O
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff      (ansiWlEditExpr, ediff)
+import Data.TreeDiff        (ediff)
+import Data.TreeDiff.Pretty (ansiWlEditExprCompact)
 import Instances.TreeDiff ()
 #endif
 
@@ -81,15 +83,23 @@ import Instances.TreeDiff ()
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    cabalDir  <- getAppUserDataDirectory "cabal"
-    cfg       <- B.readFile (cabalDir </> "config")
-    cfgFields <- either (fail . show) pure $ Parsec.readFields cfg
+    cabalDir   <- getAppUserDataDirectory "cabal"
+    configPath <- getCabalConfigPath cabalDir
+    cfg        <- B.readFile configPath
+    cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
     let repos        = reposFromConfig cfgFields
         repoCache    = case lookupInConfig "remote-repo-cache" cfgFields of
             []        -> cabalDir </> "packages"  -- Default
             (rrc : _) -> rrc                      -- User-specified
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
+  where
+    getCabalConfigPath cabalDir = do
+        mx <- lookupEnv "CABAL_CONFIG"
+        case mx of
+            Just x  -> return x
+            Nothing -> return (cabalDir </> "config")
+    
 
 parseIndex'
     :: (Monoid a, NFData a)
@@ -213,9 +223,9 @@ roundtripTest testFieldsTransform fpath bs = do
     when testFieldsTransform $
         if checkUTF8 bs
         then do
-            parsecFields <- assertRight $ Parsec.readFields$ snd $ patchQuirks bs
+            parsecFields <- assertRight $ Parsec.readFields $ snd $ patchQuirks bs
             let prettyFields = PP.fromParsecFields parsecFields
-            let bs'' = PP.showFields prettyFields
+            let bs'' = PP.showFields (return []) prettyFields
             z0 <- parse "3rd" (toUTF8BS bs'')
 
             -- note: we compare "raw" GPDs, on purpose; stricter equality
@@ -238,7 +248,7 @@ roundtripTest testFieldsTransform fpath bs = do
     assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
-        print $ ansiWlEditExpr $ ediff x y
+        print $ ansiWlEditExprCompact $ ediff x y
 #else
         putStrLn "<<<<<<"
         print x

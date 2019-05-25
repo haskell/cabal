@@ -19,7 +19,7 @@ import Prelude ()
 import qualified Data.ByteString as BS
 import qualified Text.Parsec     as Parsec
 
--- | This is essentially a lazy bytestring, but chunks are glued with newline '\n'.
+-- | This is essentially a lazy bytestring, but chunks are glued with newline @\'\\n\'@.
 data FieldLineStream
     = FLSLast !ByteString
     | FLSCons {-# UNPACK #-} !ByteString FieldLineStream
@@ -47,7 +47,7 @@ instance Monad m => Parsec.Stream FieldLineStream m Char where
         Nothing -> Just ('\n', s)
         Just (c, bs') -> Just (unconsChar c bs' (\bs'' -> FLSCons bs'' s) s)
 
--- Bssed on implementation 'decodeStringUtf8'
+-- Based on implementation 'decodeStringUtf8'
 unconsChar :: forall a. Word8 -> ByteString -> (ByteString -> a) -> a -> (Char, a)
 unconsChar c0 bs0 f next
     | c0 <= 0x7F = (chr (fromIntegral c0), f bs0)

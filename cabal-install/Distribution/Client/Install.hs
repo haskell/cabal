@@ -78,7 +78,8 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
-         , ConfigExFlags(..), InstallFlags(..) )
+         , ConfigExFlags(..), InstallFlags(..)
+         , filterTestFlags )
 import Distribution.Client.Config
          ( getCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
@@ -1490,7 +1491,7 @@ installUnpackedPackage verbosity installLock numJobs
     }
     testsEnabled = fromFlag (configTests configFlags)
                    && fromFlagOrDefault False (installRunTests installFlags)
-    testFlags' _ = testFlags {
+    testFlags' = filterTestFlags testFlags {
       Cabal.testDistPref = configDistPref configFlags
     }
     copyFlags _ = Cabal.emptyCopyFlags {

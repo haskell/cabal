@@ -18,14 +18,15 @@
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), defaultGlobalFlags
     , RepoContext(..), withRepoContext
-    , configureCommand, ConfigFlags(..), filterConfigureFlags
+    , configureCommand, ConfigFlags(..), configureOptions, filterConfigureFlags
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , filterTestFlags
     , replCommand, testCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
-    , filterHaddockArgs, filterHaddockFlags
+    , filterHaddockArgs, filterHaddockFlags, haddockOptions
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
@@ -490,7 +491,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,3,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [2,5,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -505,11 +506,12 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,19,2] = flags_1_19_2
   | cabalLibVersion < mkVersion [1,21,1] = flags_1_21_1
   | cabalLibVersion < mkVersion [1,22,0] = flags_1_22_0
+  | cabalLibVersion < mkVersion [1,22,1] = flags_1_22_1
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
   | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
-  | otherwise = flags_latest
+  | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
@@ -520,18 +522,20 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     flags_2_5_0 = flags_latest {
-      -- Cabal < 2.5.0 does not understand --dependency=pkg:component=cid
+      -- Cabal < 2.5 does not understand --dependency=pkg:component=cid
       -- (public sublibraries), so we convert it to the legacy
       -- --dependency=pkg_or_internal_compoent=cid
-      configDependencies =
-        let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
-              Just $ GivenComponent
+        configDependencies =
+          let convertToLegacyInternalDep (GivenComponent _ (LSubLibName cn) cid) =
+                Just $ GivenComponent
                        (unqualComponentNameToPackageName cn)
                        LMainLibName
                        cid
-            convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
-              Just $ GivenComponent pn LMainLibName cid
-        in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+              convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
+                Just $ GivenComponent pn LMainLibName cid
+          in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+        -- Cabal < 2.5 doesn't know about '--enable/disable-executable-static'.
+      , configFullyStaticExe = NoFlag
       }
 
     flags_2_1_0 = flags_2_5_0 {
@@ -567,6 +571,12 @@ filterConfigureFlags flags cabalLibVersion
                                 , configProf          = NoFlag
                                 , configProfExe       = Flag tryExeProfiling
                                 , configProfLib       = Flag tryLibProfiling
+                                }
+
+    -- Cabal == 1.22.0.* had a discontinuity (see #5946 or e9a8d48a3adce34d)
+    -- due to temporary amnesia of the --*-executable-profiling flags
+    flags_1_22_1 = flags_1_23_0 { configDebugInfo = NoFlag
+                                , configProfExe   = NoFlag
                                 }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
@@ -819,6 +829,37 @@ instance Monoid BuildExFlags where
 
 instance Semigroup BuildExFlags where
   (<>) = gmappend
+
+-- ------------------------------------------------------------
+-- * Test flags
+-- ------------------------------------------------------------
+
+-- | Given some 'TestFlags' for the version of Cabal that
+-- cabal-install was built with, and a target older 'Version' of
+-- Cabal that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- Setup script.  Generally speaking, this just means filtering
+-- out flags that the old Cabal library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
+filterTestFlags :: TestFlags -> Version -> TestFlags
+filterTestFlags flags cabalLibVersion
+  -- NB: we expect the latest version to be the most common case,
+  -- so test it first.
+  | cabalLibVersion >= mkVersion [3,0,0] = flags_latest
+  -- The naming convention is that flags_version gives flags with
+  -- all flags *introduced* in version eliminated.
+  -- It is NOT the latest version of Cabal library that
+  -- these flags work for; version of introduction is a more
+  -- natural metric.
+  | cabalLibVersion <  mkVersion [3,0,0] = flags_3_0_0
+  | otherwise = error "the impossible just happened" -- see first guard
+  where
+    flags_latest = flags
+    flags_3_0_0  = flags_latest {
+      -- Cabal < 3.0 doesn't know about --test-wrapper
+      Cabal.testWrapper = NoFlag
+      }
 
 -- ------------------------------------------------------------
 -- * Repl command
@@ -1224,7 +1265,7 @@ outdatedCommand = CommandUI {
      outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
      trueArg
 
-    ,option [] ["new-freeze-file", "v2-freeze-file"]
+    ,option [] ["v2-freeze-file", "new-freeze-file"]
      "Act on the new-style freeze file (default: cabal.project.freeze)"
      outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
      trueArg
@@ -1718,6 +1759,8 @@ data InstallFlags = InstallFlags {
     installLogFile          :: Flag PathTemplate,
     installBuildReports     :: Flag ReportLevel,
     installReportPlanningFailure :: Flag Bool,
+    -- Note: symlink-bindir is no longer used by v2-install and can be removed
+    -- when removing v1 commands
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
     installOneShot          :: Flag Bool,
@@ -1779,7 +1822,7 @@ defaultInstallFlags = InstallFlags {
                                    </> "$arch-$os-$compiler" </> "index.html")
 
 defaultMaxBackjumps :: Int
-defaultMaxBackjumps = 2000
+defaultMaxBackjumps = 4000
 
 defaultSolver :: PreSolver
 defaultSolver = AlwaysModular
@@ -1918,7 +1961,8 @@ testOptions showOrParseArgs
     | opt <- commandOptions Cabal.testCommand showOrParseArgs
     , let name = optionName opt
     , name `elem` ["log", "machine-log", "show-details", "keep-tix-files"
-                  ,"fail-when-no-test-suites", "test-options", "test-option"]
+                  ,"fail-when-no-test-suites", "test-options", "test-option"
+                  ,"test-wrapper"]
     ]
   where
     prefixTest name | "test-" `isPrefixOf` name = name
@@ -2206,10 +2250,10 @@ initCommand = CommandUI {
 
 initOptions :: ShowOrParseArgs -> [OptionField IT.InitFlags]
 initOptions _ =
-  [ option ['n'] ["non-interactive"]
-    "Non-interactive mode."
-    IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
-    trueArg
+  [ option ['i'] ["interactive"]
+    "interactive mode."
+    IT.interactive (\v flags -> flags { IT.interactive = v })
+    (boolOpt' (['i'], ["interactive"]) (['n'], ["non-interactive"]))
 
   , option ['q'] ["quiet"]
     "Do not generate log messages to stdout."
@@ -2313,6 +2357,18 @@ initOptions _ =
     (\v flags -> flags { IT.packageType = v })
     (noArg (Flag IT.LibraryAndExecutable))
 
+      , option [] ["tests"]
+        "Generate a test suite for the library."
+        IT.initializeTestSuite
+        (\v flags -> flags { IT.initializeTestSuite = v })
+        trueArg
+
+      , option [] ["test-dir"]
+        "Directory containing tests."
+        IT.testDirs (\v flags -> flags { IT.testDirs = v })
+        (reqArg' "DIR" (Just . (:[]))
+                       (fromMaybe []))
+
   , option [] ["simple"]
     "Create a simple project with sensible defaults."
     IT.simpleProject
@@ -2356,8 +2412,14 @@ initOptions _ =
                                   ((Just . (:[])) `fmap` parse))
                       (maybe [] (fmap display)))
 
+  , option [] ["application-dir"]
+    "Directory containing package application executable."
+    IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
+    (reqArg' "DIR" (Just . (:[]))
+                   (fromMaybe []))
+
   , option [] ["source-dir", "sourcedir"]
-    "Directory containing package source."
+    "Directory containing package library source."
     IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
     (reqArg' "DIR" (Just . (:[]))
                    (fromMaybe []))

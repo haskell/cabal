@@ -28,6 +28,7 @@ description:
     Alternatively, it can be used with the non-portable monad classes in
     the @mtl@ or @monads-tf@ packages, which automatically lift operations
     introduced by monad transformers through other transformers.
+
 category:             Control
 abi:                  e04579c0363c9229351d1a0b394bf2d5
 exposed:              True
@@ -43,11 +44,13 @@ exposed-modules:
     Control.Monad.Trans.State.Strict Control.Monad.Trans.Writer
     Control.Monad.Trans.Writer.Lazy Control.Monad.Trans.Writer.Strict
     Data.Functor.Constant Data.Functor.Reverse
+
 import-dirs:          /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0
 library-dirs:         /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0
 dynamic-library-dirs: /opt/ghc/8.2.2/lib/ghc-8.2.2/transformers-0.5.2.0
 data-dir:
     /opt/ghc/8.2.2/share/x86_64-linux-ghc-8.2.2/transformers-0.5.2.0
+
 hs-libraries:         HStransformers-0.5.2.0
 depends:              base-4.10.1.0
 abi-depends:          base-4.10.1.0=35a7f6be752ee4f7385cb5bf28677879
@@ -170,7 +173,9 @@ ld-options:
     -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm
     -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm
     -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm -lm
+
 haddock-interfaces:
     /opt/ghc/8.2.2/share/doc/ghc-8.2.2/html/libraries/transformers-0.5.2.0/transformers.haddock
+
 haddock-html:
     /opt/ghc/8.2.2/share/doc/ghc-8.2.2/html/libraries/transformers-0.5.2.0

@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 3.0.0.0 (current development version)
+	* '--write-ghc-environment-files' now defaults to 'never' (#4242)
+	* Fix `sdist`'s output when sent to stdout. (#5874)
 	* Allow a list of dependencies to be provided for `repl --build-depends`. (#5845)
 	* Legacy commands are now only accessible with the `v1-` prefixes, and the `v2-`
 	  commands are the new default. Accordingly, the next version of Cabal will be
@@ -14,6 +16,19 @@
 	  error message, but with an increase in run time. (#5647)
 	* v2-test now succeeds when there are no test suites. (#5435)
 	* Add '--lib', '--exe', and '--libandexe' shorthands to init. (#5759)
+	* init now generates valid `Main.lhs` files. (#5577)
+	* Init improvements: add flag '--application-dir', and when creating
+	  a library also create a MyLib.hs module. (#5740)
+	* Add support for generating test-suite via cabal init. (#5761)
+	* Increase `max-backjumps` default from 2000 to 4000.
+	* Make v2-install/new-install-specific flags configurable in
+	  ~/.cabal/config
+	* Add --installdir and --install-method=copy flags to v2-install
+	  that make it possible to copy the executable instead of symlinking it
+	* --symlink-bindir no longer controls the symlinking directory of
+	  v2-install (installdir controls both symlinking and copying now)
+	* Add --test-wrapper that allows a prebuild script to set the test environment.
+	* Add filterTestFlags: filter test-wrapper for Cabal < 3.0.0.
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)
@@ -26,9 +41,9 @@
 	* Register monolithic packages installed into the store due to a
 	  build-tool dependency if they also happen to contain a buildable
 	  public lib. (#5379,#5604)
-        * Fixed a Windows bug where cabal-install tried to copy files
-          after moving them (#5631).
-        * 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
+	* Fixed a Windows bug where cabal-install tried to copy files
+	  after moving them (#5631).
+	* 'cabal v2-repl' now works for indefinite (in the Backpack sense) components. (#5619)
 	* Set data dir environment variable for tarballs and remote repos (#5469)
 	* Fix monolithic inplace build tool PATH (#5633)
 	* 'cabal init' now supports '-w'/'--with-compiler' flag (#4936, #5654)

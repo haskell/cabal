@@ -19,7 +19,6 @@ module Language.Haskell.Extension (
 
         Extension(..),
         KnownExtension(..),
-        knownExtensions,
         deprecatedExtensions,
         classifyExtension,
   ) where
@@ -308,6 +307,9 @@ data KnownExtension =
   --
   -- * <https://www.haskell.org/ghc/docs/latest/html/users_guide/glasgow_exts.html#ghc-flag--XGeneralizedNewtypeDeriving>
   | GeneralizedNewtypeDeriving
+
+  -- Synonym for GeneralizedNewtypeDeriving added in GHC 8.6.1.
+  | GeneralisedNewtypeDeriving
 
   -- | Enable the \"Trex\" extensible records system.
   --
@@ -818,16 +820,16 @@ data KnownExtension =
   -- | Have @*@ refer to @Type@.
   | StarIsType
 
+  -- | Liberalises deriving to provide instances for empty data types.
+  --
+  -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#deriving-instances-for-empty-data-types>
+  | EmptyDataDeriving
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
 
 instance NFData KnownExtension where rnf = genericRnf
-
-{-# DEPRECATED knownExtensions
-   "KnownExtension is an instance of Enum and Bounded, use those instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-knownExtensions :: [KnownExtension]
-knownExtensions = [minBound..maxBound]
 
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.

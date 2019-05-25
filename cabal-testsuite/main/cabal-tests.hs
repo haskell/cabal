@@ -9,7 +9,6 @@ import Test.Cabal.Server
 import Test.Cabal.Monad
 
 import Distribution.Verbosity        (normal, verbose, Verbosity)
-import Distribution.Simple.Configure (getPersistBuildConfig)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
 
 import Options.Applicative
@@ -110,10 +109,8 @@ main = do
                   Nothing -> guessDistDir
     when (verbosity >= verbose) $
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
-    lbi <- getPersistBuildConfig dist_dir
-
     -- Get ready to go!
-    senv <- mkScriptEnv verbosity lbi
+    senv <- mkScriptEnv verbosity
     let runTest runner path
             = runner Nothing [] path $
                 ["--builddir", dist_dir, path] ++ renderCommonArgs (mainCommonArgs args)

@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
@@ -20,33 +20,27 @@ module Distribution.Solver.Types.PkgConfigDb
     , getPkgConfigDbDirs
     ) where
 
-import Prelude ()
 import Distribution.Solver.Compat.Prelude
+import Prelude ()
 
-import Control.Exception (IOException, handle)
-import qualified Data.Map as M
-import Data.Version (parseVersion)
-import Text.ParserCombinators.ReadP (readP_to_S)
-import System.FilePath (splitSearchPath)
+import           Control.Exception (IOException, handle)
+import qualified Data.Map          as M
+import           System.FilePath   (splitSearchPath)
 
-import Distribution.Package
-    ( PkgconfigName, mkPkgconfigName )
-import Distribution.Verbosity
-    ( Verbosity )
-import Distribution.Version
-    ( Version, mkVersion', VersionRange, withinRange )
-
-import Distribution.Compat.Environment
-    ( lookupEnv )
+import Distribution.Compat.Environment          (lookupEnv)
+import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
+import Distribution.Parsec
 import Distribution.Simple.Program
-    ( ProgramDb, pkgConfigProgram, getProgramOutput, requireProgram )
-import Distribution.Simple.Utils
-    ( info )
+       (ProgramDb, getProgramOutput, pkgConfigProgram, requireProgram)
+import Distribution.Simple.Utils                (info)
+import Distribution.Types.PkgconfigVersion
+import Distribution.Types.PkgconfigVersionRange
+import Distribution.Verbosity                   (Verbosity)
 
 -- | The list of packages installed in the system visible to
 -- @pkg-config@. This is an opaque datatype, to be constructed with
 -- `readPkgConfigDb` and queried with `pkgConfigPkgPresent`.
-data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe Version))
+data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
                  -- ^ If an entry is `Nothing`, this means that the
                  -- package seems to be present, but we don't know the
                  -- exact version (because parsing of the version
@@ -84,22 +78,17 @@ readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
 pkgConfigDbFromList pairs = (PkgConfigDb . M.fromList . map convert) pairs
     where
-      convert :: (String, String) -> (PkgconfigName, Maybe Version)
-      convert (n,vs) = (mkPkgconfigName n,
-                        case (reverse . readP_to_S parseVersion) vs of
-                          (v, "") : _ -> Just (mkVersion' v)
-                          _           -> Nothing -- Version not (fully)
-                                                 -- understood.
-                       )
+      convert :: (String, String) -> (PkgconfigName, Maybe PkgconfigVersion)
+      convert (n,vs) = (mkPkgconfigName n, simpleParsec vs)
 
 -- | Check whether a given package range is satisfiable in the given
 -- @pkg-config@ database.
-pkgConfigPkgIsPresent :: PkgConfigDb -> PkgconfigName -> VersionRange -> Bool
+pkgConfigPkgIsPresent :: PkgConfigDb -> PkgconfigName -> PkgconfigVersionRange -> Bool
 pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
     case M.lookup pn db of
       Nothing       -> False    -- Package not present in the DB.
       Just Nothing  -> True     -- Package present, but version unknown.
-      Just (Just v) -> withinRange v vr
+      Just (Just v) -> withinPkgconfigVersionRange v vr
 -- If we could not read the pkg-config database successfully we allow
 -- the check to succeed. The plan found by the solver may fail to be
 -- executed later on, but we have no grounds for rejecting the plan at
@@ -111,7 +100,7 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
 -- @Nothing@ indicates the package is not in the database, while
 -- @Just Nothing@ indicates that the package is in the database,
 -- but its version is not known.
-pkgConfigDbPkgVersion :: PkgConfigDb -> PkgconfigName -> Maybe (Maybe Version)
+pkgConfigDbPkgVersion :: PkgConfigDb -> PkgconfigName -> Maybe (Maybe PkgconfigVersion)
 pkgConfigDbPkgVersion (PkgConfigDb db) pn = M.lookup pn db
 -- NB: Since the solver allows solving to succeed if there is
 -- NoPkgConfigDb, we should report that we *guess* that there

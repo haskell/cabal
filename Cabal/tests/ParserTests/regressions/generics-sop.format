@@ -6,9 +6,11 @@ license-file:       LICENSE
 maintainer:         andres@well-typed.com
 author:
     Edsko de Vries <edsko@well-typed.com>, Andres Löh <andres@well-typed.com>
+
 tested-with:
     ghc ==7.8.4 ghc ==7.10.3 ghc ==8.0.1 ghc ==8.0.2 ghc ==8.2.1
     ghc ==8.3.*
+
 synopsis:           Generic Programming using True Sums of Products
 description:
     A library to support the definition of generic functions.
@@ -38,6 +40,7 @@ description:
     <http://www.andres-loeh.de/TrueSumsOfProducts True Sums of Products>.
     Workshop on Generic Programming (WGP) 2014.
     .
+
 category:           Generics
 build-type:         Custom
 extra-source-files: CHANGELOG.md
@@ -68,6 +71,7 @@ library
         Generics.SOP.NS
         Generics.SOP.Universe
         Generics.SOP.Sing
+
     hs-source-dirs:     src
     default-language:   Haskell2010
     default-extensions:
@@ -76,9 +80,11 @@ library
         FlexibleInstances FlexibleContexts DeriveFunctor DeriveFoldable
         DeriveTraversable DefaultSignatures KindSignatures DataKinds
         FunctionalDependencies
+
     other-extensions:
         OverloadedStrings PolyKinds UndecidableInstances TemplateHaskell
         DeriveGeneric StandaloneDeriving
+
     ghc-options:        -Wall
     build-depends:
         base >=4.7 && <5,

@@ -73,7 +73,7 @@ do not want to add this directory to your `$PATH`, you can change
 the setting in the config file; for example, you could use the
 following:
 
-    symlink-bindir: $HOME/bin
+    installdir: $HOME/bin
 
 
 Quick start on Windows systems

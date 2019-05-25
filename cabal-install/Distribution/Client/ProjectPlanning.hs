@@ -62,7 +62,9 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Path construction
     binDirectoryFor,
-    binDirectories
+    binDirectories,
+    storePackageInstallDirs,
+    storePackageInstallDirs'
   ) where
 
 import Prelude ()
@@ -108,8 +110,7 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Solver.Types.Settings
 
 import           Distribution.ModuleName
-import           Distribution.Package hiding
-  (InstalledPackageId, installedPackageId)
+import           Distribution.Package
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.LibraryName
@@ -1071,7 +1072,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- current and past compilers; in fact recent lib:Cabal versions
     -- will warn when they encounter a too new or unknown GHC compiler
     -- version (c.f. #415). To avoid running into unsupported
-    -- configurations we encode the compatiblity matrix as lower
+    -- configurations we encode the compatibility matrix as lower
     -- bounds on lib:Cabal here (effectively corresponding to the
     -- respective major Cabal version bundled with the respective GHC
     -- release).
@@ -1819,6 +1820,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
         elabStaticLib     = perPkgOptionFlag pkgid False packageConfigStaticLib
         elabDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
+        elabFullyStaticExe = perPkgOptionFlag pkgid False packageConfigFullyStaticExe
         elabGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
         elabProfExe       = perPkgOptionFlag pkgid False packageConfigProf
@@ -1881,6 +1883,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
         elabTestShowDetails     = perPkgOptionMaybe pkgid packageConfigTestShowDetails
         elabTestKeepTix         = perPkgOptionFlag pkgid False packageConfigTestKeepTix
+        elabTestWrapper         = perPkgOptionMaybe pkgid packageConfigTestWrapper
         elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
         elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
 
@@ -2228,6 +2231,41 @@ instantiateInstallPlan plan =
 
     indefiniteComponent :: UnitId -> ComponentId -> InstM ElaboratedPlanPackage
     indefiniteComponent _uid cid
+      -- Only need Configured; this phase happens before improvement, so
+      -- there shouldn't be any Installed packages here.
+      | Just (InstallPlan.Configured epkg) <- Map.lookup cid cmap
+      , ElabComponent elab_comp <- elabPkgOrComp epkg
+      = do -- We need to do a little more processing of the includes: some
+           -- of them are fully definite even without substitution.  We
+           -- want to build those too; see #5634.
+           --
+           -- This code mimics similar code in Distribution.Backpack.ReadyComponent;
+           -- however, unlike the conversion from LinkedComponent to
+           -- ReadyComponent, this transformation is done *without*
+           -- changing the type in question; and what we are simply
+           -- doing is enforcing tighter invariants on the data
+           -- structure in question.  The new invariant is that there
+           -- is no IndefFullUnitId in compLinkedLibDependencies that actually
+           -- has no holes.  We couldn't specify this invariant when
+           -- we initially created the ElaboratedPlanPackage because
+           -- we have no way of actually refiying the UnitId into a
+           -- DefiniteUnitId (that's what substUnitId does!)
+           new_deps <- forM (compLinkedLibDependencies elab_comp) $ \uid ->
+             if Set.null (openUnitIdFreeHoles uid)
+                then fmap DefiniteUnitId (substUnitId Map.empty uid)
+                else return uid
+           return $ InstallPlan.Configured epkg {
+            elabPkgOrComp = ElabComponent elab_comp {
+                compLinkedLibDependencies = new_deps,
+                -- I think this is right: any new definite unit ids we
+                -- minted in the phase above need to be built before us.
+                -- Add 'em in.  This doesn't remove any old dependencies
+                -- on the indefinite package; they're harmless.
+                compOrderLibDependencies =
+                    ordNub $ compOrderLibDependencies elab_comp ++
+                             [unDefUnitId d | DefiniteUnitId d <- new_deps]
+            }
+           }
       | Just planpkg <- Map.lookup cid cmap
       = return planpkg
       | otherwise = error ("indefiniteComponent: " ++ display cid)
@@ -3182,13 +3220,20 @@ storePackageInstallDirs :: StoreDirLayout
                         -> CompilerId
                         -> InstalledPackageId
                         -> InstallDirs.InstallDirs FilePath
-storePackageInstallDirs StoreDirLayout{ storePackageDirectory
-                                      , storeDirectory }
-                        compid ipkgid =
+storePackageInstallDirs storeDirLayout compid ipkgid =
+  storePackageInstallDirs' storeDirLayout compid $ newSimpleUnitId ipkgid
+
+storePackageInstallDirs' :: StoreDirLayout
+                         -> CompilerId
+                         -> UnitId
+                         -> InstallDirs.InstallDirs FilePath
+storePackageInstallDirs' StoreDirLayout{ storePackageDirectory
+                                       , storeDirectory }
+                         compid unitid =
     InstallDirs.InstallDirs {..}
   where
     store        = storeDirectory compid
-    prefix       = storePackageDirectory compid (newSimpleUnitId ipkgid)
+    prefix       = storePackageDirectory compid unitid
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
     libsubdir    = ""
@@ -3272,6 +3317,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configStaticLib           = toFlag elabStaticLib
 
     configDynExe              = toFlag elabDynExe
+    configFullyStaticExe      = toFlag elabFullyStaticExe
     configGHCiLib             = toFlag elabGHCiLib
     configProfExe             = mempty
     configProfLib             = toFlag elabProfLib
@@ -3394,6 +3440,7 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.
     , testHumanLog    = maybe mempty toFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix     = toFlag elabTestKeepTix
+    , testWrapper     = maybe mempty toFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions     = elabTestTestOptions
     }
@@ -3625,6 +3672,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashVanillaLib          = elabVanillaLib,
       pkgHashSharedLib           = elabSharedLib,
       pkgHashDynExe              = elabDynExe,
+      pkgHashFullyStaticExe      = elabFullyStaticExe,
       pkgHashGHCiLib             = elabGHCiLib,
       pkgHashProfLib             = elabProfLib,
       pkgHashProfExe             = elabProfExe,

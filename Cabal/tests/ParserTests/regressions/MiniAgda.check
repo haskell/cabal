@@ -1,1 +1,0 @@
-MiniAgda.cabal:2:27: Version digit with leading zero. Use cabal-version: 2.0 or later to write such versions. For more information see https://github.com/haskell/cabal/issues/5092

@@ -1,0 +1,17 @@
+cabal-version: 3.0
+name:          indentation
+version:       0
+description:
+    * foo
+
+        * foo-bar
+
+        * foo-baz
+
+    .
+    .
+    .
+    some dots
+
+library
+    default-language: Haskell2010

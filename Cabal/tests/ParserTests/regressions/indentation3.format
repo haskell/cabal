@@ -1,0 +1,12 @@
+cabal-version: 3.0
+name:          indentation
+version:       0
+description:
+    indent0
+
+      indent2
+    indent0
+      indent2
+
+library
+    default-language: Haskell2010

@@ -185,6 +185,27 @@ The last is just shorthand, for example ``base == 4.*`` means exactly
 the same thing as ``base >= 4 && < 5``. Please refer to the documentation
 on the :pkg-field:`build-depends` field for more information.
 
+Also, you can factor out shared ``build-depends`` (and other fields such
+as ``ghc-options``) into a ``common`` stanza which you can ``import`` in
+your libraries and executable sections. For example:
+
+::
+
+    common shared-properties
+      default-language: Haskell2010
+      build-depends:
+        base == 4.*
+      ghc-options:
+        -Wall
+
+    library
+      import: shared-properties
+      exposed-modules:
+        Proglet
+
+Note that the ``import`` **must** be the first thing in the stanza. For more
+information see the `Common stanzas`_ section.
+
 Building the package
 --------------------
 
@@ -241,7 +262,7 @@ Packages are also used for distribution: the idea is that a package can
 be created in one place and be moved to a different computer and be
 usable in that different environment. There are a surprising number of
 details that have to be got right for this to work, and a good package
-system helps to simply this process and make it reliable.
+system helps to simplify this process and make it reliable.
 
 Packages come in two main flavours: libraries of reusable code, and
 complete programs. Libraries present a code interface, an API, while
@@ -702,7 +723,7 @@ of field/value pairs, with a syntax roughly like mail message headers.
 -  Tabs are *not* allowed as indentation characters due to a missing
    standard interpretation of tab width.
 
--  To get a blank line in a field value, use an indented "``.``"
+-  Before Cabal 3.0, to get a blank line in a field value, use an indented "``.``"
 
 The syntax of the value depends on the field. Field types include:
 
@@ -1083,7 +1104,23 @@ describe the package as a whole:
 .. pkg-field:: tested-with: compiler list
 
     A list of compilers and versions against which the package has been
-    tested (or at least built).
+    tested (or at least built). The value of this field is not used by Cabal
+    and is rather intended as extra metadata for use by third party
+    tooling, such as e.g. CI tooling.
+
+    Here's a typical usage example
+
+    ::
+
+        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+                     GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
+
+    which can (starting with Cabal 3.0) also be written using the more
+    concise set notation syntax
+
+    ::
+
+        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
 .. pkg-field:: data-files: filename list
 
@@ -1438,7 +1475,7 @@ dependencies. The ``cabal outdated`` command is designed to help with
 that. It will print a list of packages for which there is a new
 version on Hackage that is outside the version bound specified in the
 ``build-depends`` field. The ``outdated`` command can also be
-configured to act on the freeze file (both old- and new-style) and
+configured to act on the freeze file (both old- and v2-style) and
 ignore major (or all) version bumps on Hackage for a subset of
 dependencies.
 
@@ -1448,15 +1485,17 @@ The following flags are supported by the ``outdated`` command:
     Read dependency version bounds from the freeze file (``cabal.config``)
     instead of the package description file (``$PACKAGENAME.cabal``).
     ``--v1-freeze-file`` is an alias for this flag starting in Cabal 2.4.
-``--new-freeze-file``
-    Read dependency version bounds from the new-style freeze file
+``--v2-freeze-file``
+    :since: 2.4
+
+    Read dependency version bounds from the v2-style freeze file
     (by default, ``cabal.project.freeze``) instead of the package
-    description file. ``--v2-freeze-file`` is an alias for this flag
-    starting in Cabal 2.4.
+    description file. ``--new-freeze-file`` is an alias for this flag
+    that can be used with pre-2.4 ``cabal``.
 ``--project-file`` *PROJECTFILE*
     :since: 2.4
 
-    Read dependendency version bounds from the new-style freeze file
+    Read dependendency version bounds from the v2-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
     instead of the package desctription file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
@@ -2113,6 +2152,25 @@ system-dependent values for these fields.
        renaming in ``build-depends``; however, this support has since been
        removed and should not be used.
 
+    Starting with Cabal 3.0, a set notation for the ``==`` and ``^>=`` operator
+    is available. For instance,
+
+    ::
+
+        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+                     GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
+
+        build-depends: network ^>= 2.6.3.6 || ^>= 2.7.0.2 || ^>= 2.8.0.0 || ^>= 3.0.1.0
+
+    can be then written in a more convenient and concise form
+
+    ::
+
+        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+
+        build-depends: network ^>= { 2.6.3.6, 2.7.0.2, 2.8.0.0, 3.0.1.0 }
+
+
 .. pkg-field:: other-modules: identifier list
 
     A list of modules used by the component but not exposed to users.
@@ -2259,7 +2317,7 @@ system-dependent values for these fields.
 
     .. _buildtoolsbc:
 
-    **Backward Compatiblity**
+    **Backward Compatibility**
 
     Although this field is deprecated in favor of :pkg-field:`build-tool-depends`, there are some situations where you may prefer to use :pkg-field:`build-tools` in cases (1) and (2), as it is supported by more versions of Cabal.
     In case (3), :pkg-field:`build-tool-depends` is better for backwards-compatibility, as it will be ignored by old versions of Cabal; if you add the executable to :pkg-field:`build-tools`, a setup script built against old Cabal will choke.
@@ -2453,6 +2511,15 @@ system-dependent values for these fields.
    directory (e.g. via a custom setup).  Libraries listed here will
    be included when ``copy``-ing packages and be listed in the
    ``hs-libraries`` of the package configuration in the package database.
+   Library names must either be prefixed with "HS" or "C" and corresponding
+   library file names must match:
+
+      - Libraries with name "HS<library-name>":
+         - `libHS<library-name>.a`
+         - `libHS<library-name>-ghc<ghc-flavour><ghc-version>.<dyn-library-extension>*`
+      - Libraries with name "C<library-name>":
+         - `libC<library-name>.a`
+         - `lib<library-name>.<dyn-library-extension>*`
 
 .. pkg-field:: extra-lib-dirs: directory list
 
@@ -3164,6 +3231,11 @@ rely on dependencies being implicitly in scope.  Please refer
 `this article <https://www.well-typed.com/blog/2015/07/cabal-setup-deps/>`__
 for more details.
 
+As of Cabal library version 3.0, ``defaultMain*`` variants implement support
+for response files. Custom ``Setup.hs`` files that do not use one of these
+main functions are required to implement their own support, such as by using
+``GHC.ResponseFile.getArgsWithResponseFiles``.
+
 Declaring a ``custom-setup`` stanza also enables the generation of
 ``MIN_VERSION_package_(A,B,C)`` CPP macros for the Setup component.
 
@@ -3203,7 +3275,7 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal new-build`` is being
+- a ``custom-setup`` section has been declared (or ``cabal v2-build`` is being
   used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
@@ -3256,8 +3328,8 @@ is to distinguish ``Cabal < 2.0`` from ``Cabal >= 2.0``.
 
 
 
-Autogenerated modules
----------------------
+Autogenerated modules and includes
+----------------------------------
 
 Modules that are built automatically at setup, created with a custom
 setup script, must appear on :pkg-field:`other-modules` for the library,
@@ -3301,6 +3373,13 @@ Right now :pkg-field:`executable:main-is` modules are not supported on
             MyExeHelperModule
         autogen-modules:
             MyExeHelperModule
+
+.. pkg-field:: autogen-includes: filename list
+   :since: 3.0
+
+   A list of header files from this package which are autogenerated
+   (e.g. by a ``configure`` script). Autogenerated header files are not
+   packaged by ``sdist`` command.
 
 Accessing data files from package code
 --------------------------------------

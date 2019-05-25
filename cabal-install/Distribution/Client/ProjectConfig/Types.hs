@@ -33,6 +33,9 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.IndexUtils.Timestamp
          ( IndexState )
 
+import Distribution.Client.CmdInstall.ClientInstallFlags
+         ( ClientInstallFlags(..) )
+
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.ConstraintSource
 
@@ -149,7 +152,8 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath,
+       projectConfigClientInstallFlags    :: ClientInstallFlags
      }
   deriving (Eq, Show, Generic)
 
@@ -242,6 +246,7 @@ data PackageConfig
        packageConfigSharedLib           :: Flag Bool,
        packageConfigStaticLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
+       packageConfigFullyStaticExe      :: Flag Bool,
        packageConfigProf                :: Flag Bool, --TODO: [code cleanup] sort out
        packageConfigProfLib             :: Flag Bool, --      this duplication
        packageConfigProfExe             :: Flag Bool, --      and consistency
@@ -286,6 +291,7 @@ data PackageConfig
        packageConfigTestMachineLog      :: Flag PathTemplate,
        packageConfigTestShowDetails     :: Flag TestShowDetails,
        packageConfigTestKeepTix         :: Flag Bool,
+       packageConfigTestWrapper         :: Flag FilePath,
        packageConfigTestFailWhenNoTestSuites :: Flag Bool,
        packageConfigTestTestOptions     :: [PathTemplate]
      }

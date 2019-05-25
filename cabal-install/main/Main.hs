@@ -183,6 +183,7 @@ import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
 
+import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
@@ -230,7 +231,8 @@ main' = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  getArgs >>= mainWorker
+  (args0, args1) <- break (== "--") <$> getArgs
+  mainWorker =<< (++ args1) <$> expandResponse args0
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
@@ -585,7 +587,7 @@ installAction
     -- TODO: It'd be nice if 'cabal install' picked up the '-w' flag passed to
     -- 'configure' when run inside a sandbox.  Right now, running
     --
-    -- $ cabal sandbox init && cabal configure -w /path/to/ghc
+    -- \$ cabal sandbox init && cabal configure -w /path/to/ghc
     --   && cabal build && cabal install
     --
     -- performs the compilation twice unless you also pass -w to 'install'.
@@ -1046,7 +1048,7 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   path <- case extraArgs of
     [] -> do cwd <- getCurrentDirectory
-             tryFindPackageDesc cwd
+             tryFindPackageDesc verbosity cwd
     (p:_) -> return p
   pkgDesc <- readGenericPackageDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.
@@ -1220,7 +1222,7 @@ userConfigAction ucflags extraArgs globalFlags = do
 win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> Action
 win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
   let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
-  Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path -- TODO: eradicateNoParse
+  Win32SelfUpgrade.deleteOldExeFile verbosity (fromMaybe (error $ "panic! read pid=" ++ show pid) $ readMaybe pid) path -- TODO: eradicateNoParse
 win32SelfUpgradeAction _ _ _ = return ()
 
 -- | Used as an entry point when cabal-install needs to invoke itself

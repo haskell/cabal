@@ -28,7 +28,6 @@ module Distribution.Package
   , Package(..), packageName, packageVersion
   , HasMungedPackageId(..), mungedName', mungedVersion'
   , HasUnitId(..)
-  , installedPackageId
   , PackageInstalled(..)
   ) where
 
@@ -86,11 +85,6 @@ instance HasMungedPackageId MungedPackageId where
 -- | Packages that have an installed unit ID
 class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
-
-{-# DEPRECATED installedPackageId "Use installedUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
--- | Compatibility wrapper for Cabal pre-1.24.
-installedPackageId :: HasUnitId pkg => pkg -> UnitId
-installedPackageId = installedUnitId
 
 -- | Class of installed packages.
 --

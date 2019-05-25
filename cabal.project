@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/ pretty-show-1.6.16/
+packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */

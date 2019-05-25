@@ -15,6 +15,7 @@ module Distribution.Parsec.Newtypes (
     VCat (..),
     FSep (..),
     NoCommaFSep (..),
+    Sep (..),
     -- ** Type
     List,
     -- * Version & License
@@ -25,7 +26,6 @@ module Distribution.Parsec.Newtypes (
     Token (..),
     Token' (..),
     MQuoted (..),
-    FreeText (..),
     FilePathNT (..),
     ) where
 
@@ -34,7 +34,6 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.Functor.Identity         (Identity (..))
-import Data.List                     (dropWhileEnd)
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)
@@ -96,7 +95,7 @@ instance Sep NoCommaFSep where
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
-newtype List sep b a = List { getList :: [a] }
+newtype List sep b a = List { _getList :: [a] }
 
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
 -- arguments to constraint the resulting type
@@ -114,22 +113,18 @@ alaList _ = List
 alaList' :: sep -> (a -> b) -> [a] -> List sep b a
 alaList' _ _ = List
 
-instance Newtype (List sep wrapper a) [a] where
-    pack = List
-    unpack = getList
+instance Newtype [a] (List sep wrapper a)
 
-instance (Newtype b a, Sep sep, Parsec b) => Parsec (List sep b a) where
+instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
     parsec   = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
 
-instance (Newtype b a, Sep sep, Pretty b) => Pretty (List sep b a) where
+instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (P :: P sep) . map (pretty . (pack :: a -> b)) . unpack
 
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }
 
-instance Newtype Token String where
-    pack = Token
-    unpack = getToken
+instance Newtype String Token
 
 instance Parsec Token where
     parsec = pack <$> parsecToken
@@ -140,9 +135,7 @@ instance Pretty Token where
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' { getToken' :: String }
 
-instance Newtype Token' String where
-    pack = Token'
-    unpack = getToken'
+instance Newtype String Token'
 
 instance Parsec Token' where
     parsec = pack <$> parsecToken'
@@ -153,9 +146,7 @@ instance Pretty Token' where
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted { getMQuoted :: a }
 
-instance Newtype (MQuoted a) a where
-    pack = MQuoted
-    unpack = getMQuoted
+instance Newtype a (MQuoted a)
 
 instance Parsec a => Parsec (MQuoted a) where
     parsec = pack <$> parsecMaybeQuoted parsec
@@ -174,9 +165,7 @@ instance Pretty a => Pretty (MQuoted a)  where
 --
 newtype SpecVersion = SpecVersion { getSpecVersion :: Either Version VersionRange }
 
-instance Newtype SpecVersion (Either Version VersionRange) where
-    pack = SpecVersion
-    unpack = getSpecVersion
+instance Newtype (Either Version VersionRange) SpecVersion
 
 instance Parsec SpecVersion where
     parsec = pack <$> parsecSpecVersion
@@ -199,9 +188,7 @@ specVersionFromRange versionRange = case asVersionIntervals versionRange of
 -- | SPDX License expression or legacy license
 newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }
 
-instance Newtype SpecLicense (Either SPDX.License License) where
-    pack = SpecLicense
-    unpack = getSpecLicense
+instance Newtype (Either SPDX.License License) SpecLicense
 
 instance Parsec SpecLicense where
     parsec = do
@@ -216,9 +203,7 @@ instance Pretty SpecLicense where
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }
 
-instance Newtype TestedWith (CompilerFlavor, VersionRange) where
-    pack = TestedWith
-    unpack = getTestedWith
+instance Newtype (CompilerFlavor, VersionRange) TestedWith
 
 instance Parsec TestedWith where
     parsec = pack <$> parsecTestedWith
@@ -227,43 +212,10 @@ instance Pretty TestedWith where
     pretty x = case unpack x of
         (compiler, vr) -> pretty compiler <+> pretty vr
 
--- | This is /almost/ @'many' 'Distribution.Compat.P.anyChar'@, but it
---
--- * trims whitespace from ends of the lines,
---
--- * converts lines with only single dot into empty line.
---
-newtype FreeText = FreeText { getFreeText :: String }
-
-instance Newtype FreeText String where
-    pack = FreeText
-    unpack = getFreeText
-
-instance Parsec FreeText where
-    parsec = pack . dropDotLines <$ P.spaces <*> many P.anyChar
-      where
-        -- Example package with dot lines
-        -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
-        dropDotLines "." = "."
-        dropDotLines x = intercalate "\n" . map dotToEmpty . lines $ x
-        dotToEmpty x | trim' x == "." = ""
-        dotToEmpty x                  = trim x
-
-        trim' :: String -> String
-        trim' = dropWhileEnd (`elem` (" \t" :: String))
-
-        trim :: String -> String
-        trim = dropWhile isSpace . dropWhileEnd isSpace
-
-instance Pretty FreeText where
-    pretty = showFreeText . unpack
-
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT { getFilePathNT :: String }
 
-instance Newtype FilePathNT String where
-    pack = FilePathNT
-    unpack = getFilePathNT
+instance Newtype String FilePathNT
 
 instance Parsec FilePathNT where
     parsec = pack <$> parsecToken

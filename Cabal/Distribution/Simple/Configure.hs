@@ -28,32 +28,31 @@
 -- the user, the amount of information displayed depending on the verbosity
 -- level.
 
-module Distribution.Simple.Configure (configure,
-                                      writePersistBuildConfig,
-                                      getConfigStateFile,
-                                      getPersistBuildConfig,
-                                      checkPersistBuildConfigOutdated,
-                                      tryGetPersistBuildConfig,
-                                      maybeGetPersistBuildConfig,
-                                      findDistPref, findDistPrefOrDefault,
-                                      getInternalPackages,
-                                      computeComponentId,
-                                      computeCompatPackageKey,
-                                      localBuildInfoFile,
-                                      getInstalledPackages,
-                                      getInstalledPackagesMonitorFiles,
-                                      getPackageDBContents,
-                                      configCompiler, configCompilerAux,
-                                      configCompilerEx, configCompilerAuxEx,
-                                      computeEffectiveProfiling,
-                                      ccLdOptionsBuildInfo,
-                                      checkForeignDeps,
-                                      interpretPackageDbFlags,
-                                      ConfigStateFileError(..),
-                                      tryGetConfigStateFile,
-                                      platformDefines,
-                                     )
-    where
+module Distribution.Simple.Configure
+  ( configure
+  , writePersistBuildConfig
+  , getConfigStateFile
+  , getPersistBuildConfig
+  , checkPersistBuildConfigOutdated
+  , tryGetPersistBuildConfig
+  , maybeGetPersistBuildConfig
+  , findDistPref, findDistPrefOrDefault
+  , getInternalPackages
+  , computeComponentId
+  , computeCompatPackageKey
+  , localBuildInfoFile
+  , getInstalledPackages
+  , getInstalledPackagesMonitorFiles
+  , getPackageDBContents
+  , configCompilerEx, configCompilerAuxEx
+  , computeEffectiveProfiling
+  , ccLdOptionsBuildInfo
+  , checkForeignDeps
+  , interpretPackageDbFlags
+  , ConfigStateFileError(..)
+  , tryGetConfigStateFile
+  , platformDefines,
+  ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
@@ -81,6 +80,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
+import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.LibraryName
 import Distribution.Types.ComponentRequestedSpec
@@ -275,7 +275,7 @@ parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId,
    "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
-          _ <- simpleParsec (BLC8.unpack pkgId) :: Maybe PackageIdentifier
+          _ <- simpleParsec (fromUTF8LBS pkgId) :: Maybe PackageIdentifier
           cabalId' <- simpleParsec (BLC8.unpack cabalId)
           compId' <- simpleParsec (BLC8.unpack compId)
           return (cabalId', compId')
@@ -286,7 +286,7 @@ showHeader :: PackageIdentifier -- ^ The processed package.
             -> ByteString
 showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
-    , BLC8.pack $ prettyShow pkgId
+    , toUTF8LBS $ prettyShow pkgId
     , "written", "by"
     , BLC8.pack $ prettyShow currentCabalId
     , "using"
@@ -352,7 +352,8 @@ configure (pkg_descr0, pbi) cfg = do
             _ | null (configArgs cfg) -> return Nothing
             [cname] -> return (Just cname)
             [] -> die' verbosity "No valid component targets found"
-            _ -> die' verbosity "Can only configure either single component or all of them"
+            _  -> die' verbosity
+                  "Can only configure either single component or all of them"
 
     let use_external_internal_deps = isJust mb_cname
     case mb_cname of
@@ -423,8 +424,15 @@ configure (pkg_descr0, pbi) cfg = do
     -- Some sanity checks related to enabling components.
     when (isJust mb_cname
           && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
-        die' verbosity $ "--enable-tests/--enable-benchmarks are incompatible with" ++
+        die' verbosity $
+              "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."
+
+    -- Some sanity checks related to dynamic/static linking.
+    when (fromFlag (configDynExe cfg) && fromFlag (configFullyStaticExe cfg)) $
+        die' verbosity $
+              "--enable-executable-dynamic and --enable-executable-static" ++
+              " are incompatible with each other."
 
     -- allConstraints:  The set of all 'Dependency's we have.  Used ONLY
     --                  to 'configureFinalizedPackage'.
@@ -539,7 +547,8 @@ configure (pkg_descr0, pbi) cfg = do
          ++ " requires the following languages which are not "
          ++ "supported by " ++ prettyShow (compilerId comp) ++ ": "
          ++ intercalate ", " (map prettyShow langs)
-    let extlist = nub $ concatMap allExtensions (enabledBuildInfos pkg_descr enabled)
+    let extlist = nub $ concatMap allExtensions
+                  (enabledBuildInfos pkg_descr enabled)
     let exts = unsupportedExtensions comp extlist
     when (not (null exts)) $
       die' verbosity $ "The package " ++ prettyShow (packageId pkg_descr0)
@@ -684,6 +693,8 @@ configure (pkg_descr0, pbi) cfg = do
             fromFlagOrDefault False $ configStaticLib cfg
 
         withDynExe_ = fromFlag $ configDynExe cfg
+
+        withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
@@ -723,6 +734,7 @@ configure (pkg_descr0, pbi) cfg = do
                 withSharedLib       = withSharedLib_,
                 withStaticLib       = withStaticLib_,
                 withDynExe          = withDynExe_,
+                withFullyStaticExe  = withFullyStaticExe_,
                 withProfLib         = False,
                 withProfLibDetail   = ProfDetailNone,
                 withProfExe         = False,
@@ -767,7 +779,8 @@ configure (pkg_descr0, pbi) cfg = do
                     ++ " will not work if you rely on the Path_* module "
                     ++ " or other hard coded paths.  Cabal does not yet "
                     ++ " support fully  relocatable builds! "
-                    ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909 #4097 #4291 #4872"
+                    ++ " See #462 #2302 #2994 #3305 #3473 #3586 #3909"
+                    ++ " #4097 #4291 #4872"
 
     info verbosity $ "Using " ++ prettyShow currentCabalId
                   ++ " compiled by " ++ prettyShow currentCompilerId
@@ -831,7 +844,8 @@ checkDeprecatedFlags verbosity cfg = do
 
 -- | Sanity check: if '--exact-configuration' was given, ensure that the
 -- complete flag assignment was specified on the command line.
-checkExactConfiguration :: Verbosity -> GenericPackageDescription -> ConfigFlags -> IO ()
+checkExactConfiguration
+  :: Verbosity -> GenericPackageDescription -> ConfigFlags -> IO ()
 checkExactConfiguration verbosity pkg_descr0 cfg =
     when (fromFlagOrDefault False (configExactConfiguration cfg)) $ do
       let cmdlineFlags = map fst (unFlagAssignment (configConfigurationsFlags cfg))
@@ -857,8 +871,8 @@ getInternalPackages pkg_descr0 =
     -- TODO: some day, executables will be fair game here too!
     let pkg_descr = flattenPackageDescription pkg_descr0
         f lib = case libName lib of
-                    LMainLibName   -> (packageName pkg_descr, Nothing)
-                    LSubLibName n' -> (unqualComponentNameToPackageName n', Just n')
+                  LMainLibName   -> (packageName pkg_descr, Nothing)
+                  LSubLibName n' -> (unqualComponentNameToPackageName n', Just n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function may
@@ -870,7 +884,8 @@ dependencySatisfiable
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
-    -> Map (PackageName, ComponentName) InstalledPackageInfo -- ^ required dependencies
+    -> Map (PackageName, ComponentName) InstalledPackageInfo
+       -- ^ required dependencies
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
@@ -894,7 +909,8 @@ dependencySatisfiable
           -- Backward compatibility for the old sublibrary syntax
           (sublibs == Set.singleton LMainLibName
             && Map.member
-                 (pn, CLibName $ LSubLibName $ packageNameToUnqualComponentName depName)
+                 (pn, CLibName $ LSubLibName $
+                      packageNameToUnqualComponentName depName)
                  requiredDepsMap)
 
           || all
@@ -1005,23 +1021,27 @@ configureFinalizedPackage verbosity cfg enabled
              }
 
 -- | Check for use of Cabal features which require compiler support
-checkCompilerProblems :: Verbosity -> Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
+checkCompilerProblems
+  :: Verbosity -> Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
 checkCompilerProblems verbosity comp pkg_descr enabled = do
     unless (renamingPackageFlagsSupported comp ||
-                all (all (isDefaultIncludeRenaming . mixinIncludeRenaming) . mixins)
+             all (all (isDefaultIncludeRenaming . mixinIncludeRenaming) . mixins)
                          (enabledBuildInfos pkg_descr enabled)) $
-        die' verbosity $ "Your compiler does not support thinning and renaming on "
+        die' verbosity $
+              "Your compiler does not support thinning and renaming on "
            ++ "package flags.  To use this feature you must use "
            ++ "GHC 7.9 or later."
 
     when (any (not.null.PD.reexportedModules) (PD.allLibraries pkg_descr)
           && not (reexportedModulesSupported comp)) $
-        die' verbosity $ "Your compiler does not support module re-exports. To use "
-           ++ "this feature you must use GHC 7.9 or later."
+        die' verbosity $
+             "Your compiler does not support module re-exports. To use "
+          ++ "this feature you must use GHC 7.9 or later."
 
     when (any (not.null.PD.signatures) (PD.allLibraries pkg_descr)
           && not (backpackSupported comp)) $
-        die' verbosity $ "Your compiler does not support Backpack. To use "
+        die' verbosity $
+               "Your compiler does not support Backpack. To use "
            ++ "this feature you must use GHC 8.1 or later."
 
 -- | Select dependencies for the package.
@@ -1228,10 +1248,12 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
   -- We want "build-depends: MyLibrary" always to match the internal library
   -- even if there is a newer installed library "MyLibrary-0.2".
   case Map.lookup dep_pkgname internalIndex of
-    Just cname -> if use_external_internal_deps
-                    then do_external (Just $ maybeToLibraryName cname) <$> Set.toList libs
-                    else do_internal
-    _          -> do_external Nothing <$> Set.toList libs
+    Just cname ->
+      if use_external_internal_deps
+      then do_external (Just $ maybeToLibraryName cname) <$> Set.toList libs
+      else do_internal
+    _          ->
+      do_external Nothing <$> Set.toList libs
   where
 
     -- It's an internal library, and we're not per-component build
@@ -1258,7 +1280,8 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
           pkgs -> Right $ head $ snd $ last pkgs
 
     -- It's an internal library, being looked up externally
-    do_external_internal :: LibraryName -> Either FailedDependency InstalledPackageInfo
+    do_external_internal
+      :: LibraryName -> Either FailedDependency InstalledPackageInfo
     do_external_internal ln =
         case PackageIndex.lookupInternalDependency installedIndex
                 (packageName pkgid) vr ln of
@@ -1392,11 +1415,12 @@ interpretPackageDbFlags userInstall specificDBs =
 -- But after finalising we then have to make sure we pick the right specific
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
-combinedConstraints :: [Dependency] ->
-                       [GivenComponent] ->
-                       InstalledPackageIndex ->
-                       Either String ([Dependency],
-                                      Map (PackageName, ComponentName) InstalledPackageInfo)
+combinedConstraints
+  :: [Dependency]
+  -> [GivenComponent]
+  -> InstalledPackageIndex
+  -> Either String ([Dependency],
+                     Map (PackageName, ComponentName) InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 
     when (not (null badComponentIds)) $
@@ -1439,14 +1463,15 @@ combinedConstraints constraints dependencies installedPackages = do
       | (pkgname, cname, cid, Nothing) <- dependenciesPkgInfo ]
 
     dispDependencies deps =
-      hsep [    text "--dependency="
+      hsep [      text "--dependency="
              <<>> quotes
                     (pretty pkgname
-                    <<>> case cname of CLibName LMainLibName -> ""
-                                       CLibName (LSubLibName n) -> ":" <<>> pretty n
-                                       _ -> ":" <<>> pretty cname
-                    <<>> char '='
-                    <<>> pretty cid)
+                     <<>> case cname of
+                            CLibName LMainLibName    -> ""
+                            CLibName (LSubLibName n) -> ":" <<>> pretty n
+                            _                        -> ":" <<>> pretty cname
+                     <<>> char '='
+                     <<>> pretty cid)
            | (pkgname, cname, cid) <- deps ]
 
 -- -----------------------------------------------------------------------------
@@ -1550,9 +1575,12 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
                  `catchIO`   (\_ -> die' verbosity notFound)
                  `catchExit` (\_ -> die' verbosity notFound)
       case simpleParsec version of
-        Nothing -> die' verbosity "parsing output of pkg-config --modversion failed"
-        Just v | not (withinRange v range) -> die' verbosity (badVersion v)
-               | otherwise                 -> info verbosity (depSatisfied v)
+        Nothing -> die' verbosity
+                   "parsing output of pkg-config --modversion failed"
+        Just v | not (withinPkgconfigVersionRange v range) ->
+                 die' verbosity (badVersion v)
+               | otherwise ->
+                 info verbosity (depSatisfied v)
       where
         notFound     = "The pkg-config package '" ++ pkg ++ "'"
                     ++ versionRequirement
@@ -1565,8 +1593,8 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
                       ++ ": using version " ++ prettyShow v
 
         versionRequirement
-          | isAnyVersion range = ""
-          | otherwise          = " version " ++ prettyShow range
+          | isAnyPkgconfigVersion range = ""
+          | otherwise                   = " version " ++ prettyShow range
 
         pkg = unPkgconfigName pkgn
 
@@ -1648,25 +1676,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     _    -> die' verbosity "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
--- Ideally we would like to not have separate configCompiler* and
--- configCompiler*Ex sets of functions, but there are many custom setup scripts
--- in the wild that are using them, so the versions with old types are kept for
--- backwards compatibility. Platform was added to the return triple in 1.18.
-
-{-# DEPRECATED configCompiler
-    "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramDb -> Verbosity
-               -> IO (Compiler, ProgramDb)
-configCompiler mFlavor hcPath hcPkg progdb verbosity =
-  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg progdb verbosity
-
-{-# DEPRECATED configCompilerAux
-    "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
-configCompilerAux :: ConfigFlags
-                  -> IO (Compiler, ProgramDb)
-configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
-
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies
 
@@ -1708,11 +1717,11 @@ checkForeignDeps pkg lbi verbosity =
           let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
               isHeader   = isSuffixOf ".h"
           genHeaders <- forM relIncDirs $ \dir ->
-            fmap (dir </>) . filter isHeader <$> listDirectory (buildDir lbi </> dir)
-                                                 `catchIO` (\_ -> return [])
+            fmap (dir </>) . filter isHeader <$>
+            listDirectory (buildDir lbi </> dir) `catchIO` (\_ -> return [])
           srcHeaders <- forM relIncDirs $ \dir ->
-            fmap (dir </>) . filter isHeader <$> listDirectory (baseDir lbi </> dir)
-                                                 `catchIO` (\_ -> return [])
+            fmap (dir </>) . filter isHeader <$>
+            listDirectory (baseDir lbi </> dir) `catchIO` (\_ -> return [])
           let commonHeaders = concat genHeaders `intersect` concat srcHeaders
           forM_ commonHeaders $ \hdr -> do
             warn verbosity $ "Duplicate header found in "
@@ -1756,11 +1765,14 @@ checkForeignDeps pkg lbi verbosity =
                      -- should NOT be glomming everything together.)
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
                      -- `configure' may generate headers in the build directory
-                     ++ [ "-I" ++ buildDir lbi </> dir | dir <- ordNub (collectField PD.includeDirs)
-                                                       , not (isAbsolute dir)]
-                     -- we might also reference headers from the packages directory.
-                     ++ [ "-I" ++ baseDir lbi </> dir | dir <- ordNub (collectField PD.includeDirs)
-                                                      , not (isAbsolute dir)]
+                     ++ [ "-I" ++ buildDir lbi </> dir
+                        | dir <- ordNub (collectField PD.includeDirs)
+                        , not (isAbsolute dir)]
+                     -- we might also reference headers from the
+                     -- packages directory.
+                     ++ [ "-I" ++ baseDir lbi </> dir
+                        | dir <- ordNub (collectField PD.includeDirs)
+                        , not (isAbsolute dir)]
                      ++ [ "-I" ++ dir | dir <- ordNub (collectField PD.includeDirs)
                                       , isAbsolute dir]
                      ++ ["-I" ++ baseDir lbi]
@@ -1783,7 +1795,8 @@ checkForeignDeps pkg lbi verbosity =
                         | dep <- deps
                         , opt <- Installed.ccOptions dep ]
 
-        commonLdArgs  = [ "-L" ++ dir | dir <- ordNub (collectField PD.extraLibDirs) ]
+        commonLdArgs  = [ "-L" ++ dir
+                        | dir <- ordNub (collectField PD.extraLibDirs) ]
                      ++ collectField PD.ldOptions
                      ++ [ "-L" ++ dir
                         | dir <- ordNub [ dir
@@ -1836,7 +1849,8 @@ checkForeignDeps pkg lbi verbosity =
           ++ case libs of
                []    -> []
                [lib] -> ["* Missing (or bad) C library: " ++ lib]
-               _     -> ["* Missing (or bad) C libraries: " ++ intercalate ", " libs]
+               _     -> ["* Missing (or bad) C libraries: " ++
+                         intercalate ", " libs]
           ++ [if plural then messagePlural else messageSingular | missing]
           ++ case hdr of
                Just (Left  _) -> [ headerCppMessage ]
@@ -1998,8 +2012,7 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
 
     goGhcPlatform :: Platform -> Maybe String
     goGhcPlatform (Platform X86_64 OSX    ) = goGhcOsx     (foreignLibType flib)
-    goGhcPlatform (Platform I386   Linux  ) = goGhcLinux   (foreignLibType flib)
-    goGhcPlatform (Platform X86_64 Linux  ) = goGhcLinux   (foreignLibType flib)
+    goGhcPlatform (Platform _      Linux  ) = goGhcLinux   (foreignLibType flib)
     goGhcPlatform (Platform I386   Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform _ = unsupported [

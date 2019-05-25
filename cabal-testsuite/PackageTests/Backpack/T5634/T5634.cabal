@@ -1,0 +1,22 @@
+name: th-backpack-failure
+version: 1.0
+build-type: Simple
+cabal-version: >= 2.0
+
+library
+    build-depends: base, impl, sig-with-th
+    hs-source-dirs: .
+    mixins: sig-with-th requires (Sig as Impl)
+    signatures: Unused
+    exposed-modules: Go
+
+library sig-with-th
+    build-depends: base
+    hs-source-dirs: sig-with-th
+    signatures: Sig
+    exposed-modules: THFuns
+
+library impl
+    build-depends: base
+    hs-source-dirs: impl
+    exposed-modules: Impl
