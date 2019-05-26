@@ -305,6 +305,8 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
          ++ plural (listPlural targets') " is " " are "
          ++ "not available because the solver did not find a plan that "
          ++ "included the " ++ renderOptionalStanza Plural stanza
+         ++ ". Force the solver to enable this for all packages by adding the "
+         ++ "line 'tests: True' to the 'cabal.project.local' file."
         (TargetNotBuildable, _) ->
             renderListCommaAnd
               [ "the " ++ showComponentName availableTargetComponentName
