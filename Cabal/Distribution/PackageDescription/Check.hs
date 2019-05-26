@@ -1366,7 +1366,7 @@ checkCabalVersion pkg =
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
-           "From version 1.24 cabal supports specifiying explicit dependencies "
+           "From version 1.24 cabal supports specifying explicit dependencies "
         ++ "for Custom setup scripts. Consider using cabal-version >= 1.24 and "
         ++ "adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
