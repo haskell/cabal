@@ -1,21 +1,18 @@
 {-# LANGUAGE CPP #-}
-
-#if !MIN_VERSION_base(4,12,0)
 {-# LANGUAGE ScopedTypeVariables #-}
-#endif
 
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
+import Control.Exception
+import System.IO
+
 #if MIN_VERSION_base(4,12,0)
-import GHC.ResponseFile (expandResponse)
+import GHC.ResponseFile (unescapeArgs)
 #else
 
-import Control.Exception
-import System.Exit       (exitFailure)
-import System.IO
 import Data.Char         (isSpace)
 
 unescapeArgs :: String -> [String]
@@ -49,6 +46,8 @@ unescape args = reverse . map reverse $ go args NoneQ False [] []
         | '"'  == c              = go cs DblQ  False a     as
         | otherwise              = go cs NoneQ False (c:a) as
 
+#endif
+
 expandResponse :: [String] -> IO [String]
 expandResponse = fmap concat . mapM expand
   where
@@ -57,8 +56,6 @@ expandResponse = fmap concat . mapM expand
     expand x = return [x]
 
     readFileExc f =
-      readFile f `catch` \(e :: IOException) -> do
-        hPutStrLn stderr $ "Error while expanding response file: " ++ show e
-        exitFailure
-
-#endif
+      readFile f `catch` \(_e :: IOException) -> do
+        hPutStrLn stderr $ "Response file `@" ++ f ++ "` does not exist, assuming literal argument."
+        return ('@':f)
