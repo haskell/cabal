@@ -44,7 +44,7 @@ files created by older versions of ``cabal``.
 Repository specification
 ------------------------
 
-An important part of the configuration if the specification of the
+An important part of the configuration is the specification of the
 repository. When ``cabal`` creates a default config file, it configures
 the repository to be the central Hackage server:
 
