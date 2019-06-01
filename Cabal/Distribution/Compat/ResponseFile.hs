@@ -1,13 +1,11 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
-import Control.Exception
-import System.IO
+import System.IO.Error
 
 #if MIN_VERSION_base(4,12,0)
 import GHC.ResponseFile (unescapeArgs)
@@ -52,10 +50,5 @@ expandResponse :: [String] -> IO [String]
 expandResponse = fmap concat . mapM expand
   where
     expand :: String -> IO [String]
-    expand ('@':f) = readFileExc f >>= return . unescapeArgs
+    expand arg@('@':f) = unescapeArgs <$> readFile f `catchIOError` (const $ return arg)
     expand x = return [x]
-
-    readFileExc f =
-      readFile f `catch` \(_e :: IOException) -> do
-        hPutStrLn stderr $ "Response file `@" ++ f ++ "` does not exist, assuming literal argument."
-        return ('@':f)
