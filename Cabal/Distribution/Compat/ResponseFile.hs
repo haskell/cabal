@@ -1,21 +1,19 @@
 {-# LANGUAGE CPP #-}
 
-#if !MIN_VERSION_base(4,12,0)
-{-# LANGUAGE ScopedTypeVariables #-}
-#endif
-
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
+import System.Exit
+import System.FilePath
+import System.IO
+import System.IO.Error
+
 #if MIN_VERSION_base(4,12,0)
-import GHC.ResponseFile (expandResponse)
+import GHC.ResponseFile (unescapeArgs)
 #else
 
-import Control.Exception
-import System.Exit       (exitFailure)
-import System.IO
 import Data.Char         (isSpace)
 
 unescapeArgs :: String -> [String]
@@ -49,16 +47,21 @@ unescape args = reverse . map reverse $ go args NoneQ False [] []
         | '"'  == c              = go cs DblQ  False a     as
         | otherwise              = go cs NoneQ False (c:a) as
 
-expandResponse :: [String] -> IO [String]
-expandResponse = fmap concat . mapM expand
-  where
-    expand :: String -> IO [String]
-    expand ('@':f) = readFileExc f >>= return . unescapeArgs
-    expand x = return [x]
-
-    readFileExc f =
-      readFile f `catch` \(e :: IOException) -> do
-        hPutStrLn stderr $ "Error while expanding response file: " ++ show e
-        exitFailure
-
 #endif
+
+expandResponse :: [String] -> IO [String]
+expandResponse = go recursionLimit "."
+  where
+    recursionLimit = 100
+
+    go :: Int -> FilePath -> [String] -> IO [String]
+    go n dir
+      | n >= 0    = fmap concat . mapM (expand n dir)
+      | otherwise = const $ hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
+
+    expand :: Int -> FilePath -> String -> IO [String]
+    expand n dir arg@('@':f) = readRecursively n (dir </> f) `catchIOError` (const $ print "?" >> return [arg])
+    expand _n _dir x = return [x]
+
+    readRecursively :: Int -> FilePath -> IO [String]
+    readRecursively n f = go (n - 1) (takeDirectory f) =<< unescapeArgs <$> readFile f
