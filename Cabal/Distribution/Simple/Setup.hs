@@ -2214,7 +2214,6 @@ optionNumJobs get set =
 data ShowBuildInfoFlags = ShowBuildInfoFlags
   { buildInfoBuildFlags :: BuildFlags
   , buildInfoOutputFile :: Maybe FilePath
-  , buildInfoUnitIds :: Maybe [String]
   } deriving Show
 
 defaultShowBuildFlags  :: ShowBuildInfoFlags
@@ -2222,7 +2221,6 @@ defaultShowBuildFlags =
     ShowBuildInfoFlags
       { buildInfoBuildFlags = defaultBuildFlags
       , buildInfoOutputFile = Nothing
-      , buildInfoUnitIds = Nothing
       }
 
 showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
@@ -2260,11 +2258,7 @@ showBuildInfoCommand progDb = CommandUI
       [ option [] ["buildinfo-json-output"]
                 "Write the result to the given file instead of stdout"
                 buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
-                (reqArg' "FILE" Just (maybe [] pure)),
-        option [] ["unit-ids-json"]
-                "Show build-info only for selected unit-id's."
-                buildInfoUnitIds (\pf flags -> flags { buildInfoUnitIds = pf })
-                (reqArg' "UNIT-ID" (Just . words) (fromMaybe [] ))
+                (reqArg' "FILE" Just (maybe [] pure))
       ]
 
   }

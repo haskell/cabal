@@ -156,15 +156,15 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock =
 
     where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
           targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
-          doShowInfo unitId = showInfo fileOutput unitIds verbosity baseCtx buildCtx lock configured unitId
+          doShowInfo unitId = showInfo fileOutput verbosity baseCtx buildCtx lock configured unitId
 
           unroll :: (String -> IO ()) -> [UnitId] -> IO ()
           unroll _ [x] = doShowInfo x
           unroll printer (x:xs) = doShowInfo x >> printer "," >> unroll printer xs
           unroll _ [] = return ()
 
-showInfo :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
-showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
+showInfo :: Maybe FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
+showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
   | Nothing <- mbPkg = die' verbosity $ "No unit " ++ display targetUnitId
   | Just pkg <- mbPkg = do
     let shared = elaboratedShared buildCtx
@@ -207,7 +207,6 @@ showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId
       (const (Cabal.ShowBuildInfoFlags
         { Cabal.buildInfoBuildFlags = flags
         , Cabal.buildInfoOutputFile = fileOutput
-        , Cabal.buildInfoUnitIds    = unitIds
         }
         )
       )
