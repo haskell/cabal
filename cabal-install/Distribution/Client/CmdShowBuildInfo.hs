@@ -142,26 +142,26 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
 
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
-showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
+showTargets fileOutput unitIds verbosity baseCtx buildCtx lock =
   case fileOutput of
     -- TODO: replace with writeFileAtomic
     Nothing -> do
       putStr "["
-      unroll targets
+      unroll putStr targets
       putStrLn "]"
     Just fp -> do
       writeFile fp "["
-      mapM_ doShowInfo targets
+      unroll (appendFile fp) targets
       appendFile fp "]"
 
     where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
           targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
           doShowInfo unitId = showInfo fileOutput unitIds verbosity baseCtx buildCtx lock configured unitId
 
-          unroll :: [UnitId] -> IO ()
-          unroll [x] = doShowInfo x
-          unroll (x:xs) = doShowInfo x >> putStr "," >> unroll xs
-          unroll [] = return ()
+          unroll :: (String -> IO ()) -> [UnitId] -> IO ()
+          unroll _ [x] = doShowInfo x
+          unroll printer (x:xs) = doShowInfo x >> printer "," >> unroll printer xs
+          unroll _ [] = return ()
 
 showInfo :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput unitIds verbosity baseCtx buildCtx lock pkgs targetUnitId

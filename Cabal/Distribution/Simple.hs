@@ -266,7 +266,7 @@ buildAction hooks flags args = do
                hooks flags' { buildArgs = args } args
 
 showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput unitIds) args = do
+showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput _) args = do
   distPref <- findDistPrefOrDefault (buildDistPref flags)
   let verbosity = fromFlag $ buildVerbosity flags
   lbi <- getBuildConfig hooks verbosity distPref

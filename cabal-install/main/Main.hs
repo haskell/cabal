@@ -179,7 +179,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal, silent )
+         ( Verbosity, normal )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
@@ -478,12 +478,12 @@ buildActionForCommand commandUI verbosity (buildFlags, buildExFlags) extraArgs g
     distPref             <- findSavedDistPref config (buildDistPref buildFlags)
     -- Calls 'configureAction' to do the real work, so nothing special has to be
     -- done to support sandboxes.
-    config'              <- reconfigure 
-        configureAction verbosity distPref useSandbox noAddSource 
+    config'              <- reconfigure
+        configureAction verbosity distPref useSandbox noAddSource
         (buildNumJobs buildFlags) mempty [] globalFlags config
-        
+
     nixShell verbosity distPref globalFlags config $
-      maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand 
+      maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand
         commandUI verbosity config' distPref buildFlags extraArgs
 
 -- | Actually do the work of building the package. This is separate from
