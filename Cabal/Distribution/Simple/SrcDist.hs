@@ -52,6 +52,7 @@ import Distribution.Package
 import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
+import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Glob
 import Distribution.Simple.Utils
 import Distribution.Simple.Setup
@@ -78,7 +79,11 @@ sdist :: PackageDescription     -- ^information from the tarball
       -> (FilePath -> FilePath) -- ^build prefix (temp dir)
       -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg mb_lbi flags mkTmpDir pps =
+sdist pkg mb_lbi flags mkTmpDir pps = do
+
+  distPref <- findDistPrefOrDefault $ sDistDistPref flags
+  let targetPref   = distPref
+      tmpTargetDir = mkTmpDir distPref
 
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
@@ -122,10 +127,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
-
-    distPref     = fromFlag $ sDistDistPref flags
-    targetPref   = distPref
-    tmpTargetDir = mkTmpDir distPref
 
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
