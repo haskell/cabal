@@ -477,6 +477,7 @@ configure (pkg_descr0, pbi) cfg = do
                 (dependencySatisfiable
                     use_external_internal_deps
                     (fromFlagOrDefault False (configExactConfiguration cfg))
+                    (fromFlagOrDefault False (configAllowDependingOnPrivateLibs cfg))
                     (packageName pkg_descr0)
                     installedPackageSet
                     internalPackageSet
@@ -882,6 +883,7 @@ getInternalPackages pkg_descr0 =
 dependencySatisfiable
     :: Bool -- ^ use external internal deps?
     -> Bool -- ^ exact configuration?
+    -> Bool -- ^ allow depending on private libs?
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
@@ -890,7 +892,9 @@ dependencySatisfiable
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
-  exact_config pn installedPackageSet internalPackageSet requiredDepsMap
+  exact_config
+  allow_private_deps
+  pn installedPackageSet internalPackageSet requiredDepsMap
   (Dependency depName vr sublibs)
 
     | exact_config
@@ -951,6 +955,9 @@ dependencySatisfiable
     visible lib = maybe
                     False -- Does not even exist (wasn't in the depsMap)
                     (\ipi -> Installed.libVisibility ipi == LibraryVisibilityPublic
+                          -- If the override is enabled, the visibility does
+                          -- not matter (it's handled externally)
+                          || allow_private_deps
                           -- If it's a library of the same package then it's
                           -- always visible.
                           -- This is only triggered when passing a component

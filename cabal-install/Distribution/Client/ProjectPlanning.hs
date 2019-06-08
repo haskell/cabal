@@ -3390,6 +3390,9 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
     configUseResponseFiles    = mempty
+    -- TODO set to true when the solver can prevent private-library-deps by itself
+    -- (issue #6039)
+    configAllowDependingOnPrivateLibs = mempty
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]
