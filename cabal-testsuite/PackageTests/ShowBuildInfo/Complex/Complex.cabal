@@ -28,11 +28,13 @@ executable Complex
 test-suite unit-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
+  build-depends:       test-framework
   main-is:             Main.hs
 
 test-suite func-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
+  build-depends:       test-framework
   main-is:             Main.hs
 
 benchmark complex-benchmarks

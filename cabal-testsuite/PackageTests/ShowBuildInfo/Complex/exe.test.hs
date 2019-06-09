@@ -24,6 +24,7 @@ main = cabalTest $ do
         assertEqual "Component name" "exe:Complex" (componentName component)
         assertEqual "Component unit-id" "Complex-0.1.0.0-inplace-Complex" (componentUnitId component)
         assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
+        assertEqual "Component modules" ["Paths_complex"] (componentModules component)
         assertEqual "Component source files" ["Main.lhs"] (componentSrcFiles component)
         assertEqual "Component source directories" ["src"] (componentSrcDirs component)
     return ()

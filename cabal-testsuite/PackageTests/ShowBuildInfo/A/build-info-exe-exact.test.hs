@@ -24,6 +24,7 @@ main = cabalTest $ do
         assertEqual "Component name" "exe:A" (componentName component)
         assertEqual "Component unit-id" "A-0.1.0.0-inplace-A" (componentUnitId component)
         assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
+        assertEqual "Component modules" [] (componentModules component)
         assertEqual "Component source files" ["Main.hs"] (componentSrcFiles component)
         assertEqual "Component source directories" ["src"] (componentSrcDirs component)
     return ()
