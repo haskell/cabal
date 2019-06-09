@@ -26,7 +26,7 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
-         ( wrapText, die')
+         ( wrapText, die', withTempDirectory )
 import Distribution.Types.UnitId (UnitId, mkUnitId)
 import Distribution.Deprecated.Text (display)
 
@@ -46,8 +46,12 @@ import Distribution.Client.Types ( PackageLocation(..), GenericReadyPackage(..) 
 import Distribution.Client.JobControl (newLock, Lock)
 import Distribution.Simple.Configure (tryGetPersistBuildConfig)
 import qualified Distribution.Client.CmdInstall as CmdInstall
+
+import Control.Monad (mapM_)
 import Data.List (find)
 import Data.Maybe (fromMaybe)
+import System.Directory (getTemporaryDirectory)
+import System.FilePath ((</>))
 
 showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
 showBuildInfoCommand = CmdInstall.installCommand {
@@ -142,28 +146,48 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
 
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
-showTargets fileOutput unitIds verbosity baseCtx buildCtx lock =
-  case fileOutput of
-    -- TODO: replace with writeFileAtomic
-    Nothing -> do
-      putStr "["
-      unroll putStr targets
-      putStrLn "]"
-    Just fp -> do
-      writeFile fp "["
-      unroll (appendFile fp) targets
-      appendFile fp "]"
+showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
+  tempDir <- getTemporaryDirectory
+  withTempDirectory verbosity tempDir "show-build-info" $ \dir -> do
+    mapM_ (doShowInfo dir) targets
+    case fileOutput of
+      Nothing -> outputResult dir putStr targets
+      Just fp -> do
+        writeFile fp ""
+        outputResult dir (appendFile fp) targets
 
     where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
           targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
-          doShowInfo unitId = showInfo fileOutput verbosity baseCtx buildCtx lock configured unitId
+          doShowInfo :: FilePath -> UnitId -> IO ()
+          doShowInfo dir unitId =
+              showInfo
+                (dir </> unitIdToFilePath unitId)
+                verbosity
+                baseCtx
+                buildCtx
+                lock
+                configured
+                unitId
 
-          unroll :: (String -> IO ()) -> [UnitId] -> IO ()
-          unroll _ [x] = doShowInfo x
-          unroll printer (x:xs) = doShowInfo x >> printer "," >> unroll printer xs
-          unroll _ [] = return ()
+          outputResult :: FilePath -> (String -> IO ()) -> [UnitId] -> IO ()
+          outputResult dir printer units = do
+              let unroll [] = return ()
+                  unroll [x] = do
+                    content <- readFile (dir </> unitIdToFilePath x)
+                    printer content
+                  unroll (x:xs) = do
+                    content <- readFile (dir </> unitIdToFilePath x)
+                    printer content
+                    printer ","
+                    unroll xs
+              printer "["
+              unroll units
+              printer "]"
 
-showInfo :: Maybe FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
+          unitIdToFilePath :: UnitId -> FilePath
+          unitIdToFilePath unitId = "build-info-" ++ display unitId
+
+showInfo :: FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
   | Nothing <- mbPkg = die' verbosity $ "No unit " ++ display targetUnitId
   | Just pkg <- mbPkg = do
@@ -206,7 +230,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
       (Cabal.showBuildInfoCommand defaultProgramDb)
       (const (Cabal.ShowBuildInfoFlags
         { Cabal.buildInfoBuildFlags = flags
-        , Cabal.buildInfoOutputFile = fileOutput
+        , Cabal.buildInfoOutputFile = Just fileOutput
         }
         )
       )

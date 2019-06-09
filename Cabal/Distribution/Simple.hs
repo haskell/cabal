@@ -286,8 +286,9 @@ showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
       -- TODO: Somehow don't ignore build hook?
   buildInfoString <- showBuildInfo pkg_descr lbi' flags
 
-  -- TODO: writeFileAtomic?
-  maybe (putStr buildInfoString) (\fp -> appendFile fp buildInfoString) fileOutput
+  case fileOutput of
+    Nothing -> putStr buildInfoString
+    Just fp -> writeFile fp buildInfoString
 
   postBuild hooks args flags' pkg_descr lbi'
 
