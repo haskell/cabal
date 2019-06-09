@@ -6,10 +6,12 @@ import qualified Data.Text.Encoding as T
 import           Data.Aeson
 import           GHC.Generics
 
-main = cabalTest $ do
-    r <- cabal' "new-show-build-info" ["--buildinfo-json-output=unit.json", "--unit-ids-json=A-0.1.0.0-inplace A-0.1.0.0-inplace-A", "-v0"]
-    shouldExist "unit.json"
-    buildInfoEither <- liftIO $ eitherDecodeFileStrict "unit.json"
+main = cabalTest $ withSourceCopy $do
+    cwd <- fmap testCurrentDir getTestEnv
+    let fp = cwd </> "unit.json"
+    r <- cabal' "new-show-build-info" ["--buildinfo-json-output=" ++ fp, "--unit-ids-json=A-0.1.0.0-inplace A-0.1.0.0-inplace-A", "-v0"]
+    shouldExist fp
+    buildInfoEither <- liftIO $ eitherDecodeFileStrict fp
     case buildInfoEither of
       Left err -> fail $ "Could not parse build-info command" ++ err
       Right buildInfos -> do
