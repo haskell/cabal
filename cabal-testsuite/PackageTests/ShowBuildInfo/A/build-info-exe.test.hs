@@ -1,7 +1,6 @@
 import           Test.Cabal.Prelude
 
-main = cabalTest $
-  recordMode DoNotRecord $ do
+main = cabalTest $ do
     r <- cabal' "new-show-build-info" ["exe:A"]
     assertOutputContains "\"cabal-version\":\"3.0.0.0\""       r
     assertOutputContains "\"compiler\":{"                      r
