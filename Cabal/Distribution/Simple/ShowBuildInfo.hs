@@ -1,9 +1,9 @@
 -- |
 -- This module defines a simple JSON-based format for exporting basic
 -- information about a Cabal package and the compiler configuration Cabal
--- would use to build it. This can be produced with the 
+-- would use to build it. This can be produced with the
 -- @cabal new-show-build-info@ command.
--- 
+--
 --
 -- This format is intended for consumption by external tooling and should
 -- therefore be rather stable. Moreover, this allows tooling users to avoid
@@ -97,7 +97,15 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
       ]
       where
         path = maybe JsonNull (JsonString . programPath)
-               $ lookupProgram ghcProgram (withPrograms lbi)
+               $ (flavorToProgram . compilerFlavor $ compiler lbi)
+               >>= flip lookupProgram (withPrograms lbi)
+
+        flavorToProgram :: CompilerFlavor -> Maybe Program
+        flavorToProgram GHC = Just ghcProgram
+        flavorToProgram GHCJS = Just ghcjsProgram
+        flavorToProgram UHC = Just uhcProgram
+        flavorToProgram JHC = Just jhcProgram
+        flavorToProgram _ = Nothing
 
     mkComponentInfo (name, clbi) = JsonObject
       [ "type" .= JsonString compType
