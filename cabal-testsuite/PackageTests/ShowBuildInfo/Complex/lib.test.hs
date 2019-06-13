@@ -24,6 +24,21 @@ main = cabalTest $ do
         assertEqual "Component name" "lib" (componentName component)
         assertEqual "Component unit-id" "Complex-0.1.0.0-inplace" (componentUnitId component)
         assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
+        assertBool "Component ghc-options contains all specified in .cabal"
+                  (all
+                    (`elem` componentCompilerArgs component)
+                    [ "-threaded"
+                    , "-rtsopts"
+                    , "-with-rtsopts=-N"
+                    , "-Wall"
+                    ]
+                  )
+        assertBool "Component ghc-options does not contain -Wredundant-constraints"
+                  (all
+                    (`notElem` componentCompilerArgs component)
+                    [ "-Wredundant-constraints"
+                    ]
+                  )
         assertEqual "Component modules" ["Lib", "Paths_complex"] (componentModules component)
         assertEqual "Component source files" [] (componentSrcFiles component)
         assertEqual "Component source directories" ["src"] (componentSrcDirs component)
