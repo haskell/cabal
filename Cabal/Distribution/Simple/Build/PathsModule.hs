@@ -15,7 +15,7 @@
 -- at runtime. This code should probably be split off into another module.
 --
 module Distribution.Simple.Build.PathsModule (
-    generate, pkgPathEnvVar
+    generatePathsModule, pkgPathEnvVar
   ) where
 
 import Prelude ()
@@ -37,8 +37,8 @@ import System.FilePath ( pathSeparator )
 -- * Building Paths_<pkg>.hs
 -- ------------------------------------------------------------
 
-generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
-generate pkg_descr lbi clbi =
+generatePathsModule :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
+generatePathsModule pkg_descr lbi clbi =
    let pragmas =
             cpp_pragma
          ++ no_rebindable_syntax_pragma
