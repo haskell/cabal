@@ -52,8 +52,8 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
-import qualified Distribution.Simple.Build.Macros      as Build.Macros
-import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
+import Distribution.Simple.Build.Macros      (generateCabalMacrosHeader)
+import Distribution.Simple.Build.PathsModule (generatePathsModule)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import Distribution.Simple.Compiler hiding (Flag)
@@ -662,7 +662,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
-  rewriteFileEx verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+  rewriteFileEx verbosity pathsModulePath (generatePathsModule pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -684,4 +684,4 @@ writeAutogenFiles verbosity pkg lbi clbi = do
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFileEx verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)
+  rewriteFileEx verbosity cppHeaderPath (generateCabalMacrosHeader pkg lbi clbi)
