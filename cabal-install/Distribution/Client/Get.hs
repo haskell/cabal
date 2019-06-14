@@ -53,10 +53,11 @@ import Distribution.Solver.Types.SourcePackage
 import Control.Exception
          ( Exception(..), catch, throwIO )
 import Control.Monad
-         ( mapM, forM_, mapM_ )
+         ( mapM, forM_, mapM_, unless )
 import qualified Data.Map as Map
 import System.Directory
-         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
+         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
+         , listDirectory )
 import System.Exit
          ( ExitCode(..) )
 import System.FilePath
@@ -162,12 +163,16 @@ unpackPackage :: Verbosity -> FilePath -> PackageId
               -> PackageDescriptionOverride
               -> FilePath  -> IO ()
 unpackPackage verbosity prefix pkgid descOverride pkgPath = do
-    let pkgdirname = display pkgid
-        pkgdir     = prefix </> pkgdirname
-        pkgdir'    = addTrailingPathSeparator pkgdir
+    let pkgdirname               = display pkgid
+        pkgdir                   = prefix </> pkgdirname
+        pkgdir'                  = addTrailingPathSeparator pkgdir
+        emptyDirectory directory = null <$> listDirectory directory
     existsDir  <- doesDirectoryExist pkgdir
-    when existsDir $ die' verbosity $
-     "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
+    when existsDir $ do
+      isEmpty <- emptyDirectory pkgdir
+      unless isEmpty $
+        die' verbosity $
+        "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
     existsFile  <- doesFileExist pkgdir
     when existsFile $ die' verbosity $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
