@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE DeriveFoldable      #-}
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE DeriveTraversable   #-}
@@ -5,10 +6,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module GenUtils where
 
-import Control.Lens
-import Data.Char    (toUpper)
-import Data.Maybe   (fromMaybe)
-import Data.Text    (Text)
+import Data.Char  (toUpper)
+import Data.Maybe (fromMaybe)
+import Data.Text  (Text)
 
 import qualified Data.Algorithm.Diff as Diff
 import qualified Data.Map            as Map
@@ -40,7 +40,7 @@ prettyVer SPDXLicenseListVersion_3_0 = "SPDX License List 3.0"
 -------------------------------------------------------------------------------
 
 data PerV a = PerV a a a
-  deriving (Functor, Foldable, Traversable)
+  deriving (Show, Functor, Foldable, Traversable)
 
 -------------------------------------------------------------------------------
 -- Sorting
@@ -54,6 +54,15 @@ instance Ord OrdT where
         | a `T.isPrefixOf` b = GT
         | b `T.isPrefixOf` a = LT
         | otherwise          = compare a b
+
+-------------------------------------------------------------------------------
+-- imap
+-------------------------------------------------------------------------------
+
+imap :: (Int -> a -> b) -> [a] -> [b]
+imap f = go 0 where
+    go !_ []     = []
+    go  n (x:xs) = f n x : go (succ n) xs
 
 -------------------------------------------------------------------------------
 -- Commmons
@@ -106,20 +115,16 @@ textShow :: Text -> Text
 textShow = T.pack . show
 
 toConstructorName :: Text -> Text
-toConstructorName t = t
-    & each %~ f
-    & ix 0 %~ toUpper
-    & special
+toConstructorName "0BSD" = "NullBSD"
+toConstructorName "389-exception" = "DS389_exception"
+toConstructorName t = case T.uncons t of
+    Nothing      -> t
+    Just (c, cs) -> T.cons (toUpper c) (T.map f cs)
   where
     f '.' = '_'
     f '-' = '_'
     f '+' = '\''
     f c   = c
-
-    special :: Text -> Text
-    special "0BSD"          = "NullBSD"
-    special "389_exception" = "DS389_exception"
-    special u               = u
 
 mkList :: [Text] -> Text
 mkList []     = "    []"

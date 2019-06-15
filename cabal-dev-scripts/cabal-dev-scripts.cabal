@@ -1,58 +1,76 @@
-name:                cabal-dev-scripts
-version:             0
-synopsis:            Dev scripts for cabal development
-description:
-  This package provides a tools for Cabal development
-homepage:            http://www.haskell.org/cabal/
-license:             BSD3
-license-file:        LICENSE
-author:              Cabal Development Team <cabal-devel@haskell.org>
-category:            Distribution
-build-type:          Simple
-cabal-version:       >=2.0
+cabal-version: 2.2
+name:          cabal-dev-scripts
+version:       0
+synopsis:      Dev scripts for cabal development
+description:   This package provides a tools for Cabal development
+homepage:      http://www.haskell.org/cabal/
+license:       BSD-3-Clause
+license-file:  LICENSE
+author:        Cabal Development Team <cabal-devel@haskell.org>
+category:      Distribution
+build-type:    Simple
 
 executable gen-extra-source-files
-  default-language:    Haskell2010
-  main-is:             GenExtraSourceFiles.hs
-  hs-source-dirs:      src
+  default-language: Haskell2010
+  main-is:          GenExtraSourceFiles.hs
+  hs-source-dirs:   src
   build-depends:
-    base                 >=4.10    && <4.13,
-    Cabal                >=2.2     && <2.6,
-    bytestring,
-    directory,
-    filepath,
-    process
+    , base        >=4.10 && <4.13
+    , bytestring
+    , Cabal       >=2.2  && <2.6
+    , directory
+    , filepath
+    , process
+
+executable zinza
+  default-language: Haskell2010
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  main-is:          Zinza.hs
+  build-depends:
+    , base                  >=4.10     && <4.13
+    , containers
+    , optparse-applicative  >=0.13     && <0.15
+    , parsec                ^>=3.1.3.0
+    , semialign             ^>=1
+    , these                 ^>=1
+    , transformers
+    , unification-fd        ^>=0.10.0.1
 
 executable gen-spdx
-  default-language:    Haskell2010
-  main-is:             GenSPDX.hs
-  other-modules:       GenUtils
-  hs-source-dirs:      src
-  ghc-options:         -Wall
+  default-language: Haskell2010
+  main-is:          GenSPDX.hs
+  other-modules:
+    GenUtils
+    Template.LicenseId
+
+  autogen-modules:  Template.LicenseId
+  hs-source-dirs:   src
+  ghc-options:      -Wall
   build-depends:
-    base                 >=4.10    && <4.13,
-    aeson                >=1.4.0.0 && <1.5,
-    bytestring,
-    containers,
-    Diff                 >=0.3.4   && <0.4,
-    lens                 >=4.17    && <4.18,
-    microstache          >=1.0.1.1 && <1.1,
-    optparse-applicative >=0.13    && <0.15,
-    text
+    , aeson                 ^>=1.4.0.0
+    , base                  >=4.10    && <4.13
+    , bytestring
+    , containers
+    , Diff                  ^>=0.3.4
+    , optparse-applicative  >=0.13    && <0.15
+    , text
 
 executable gen-spdx-exc
-  default-language:    Haskell2010
-  main-is:             GenSPDXExc.hs
-  other-modules:       GenUtils
-  hs-source-dirs:      src
-  ghc-options:         -Wall
+  default-language: Haskell2010
+  main-is:          GenSPDXExc.hs
+  other-modules:
+    GenUtils
+    Template.LicenseExceptionId
+
+  autogen-modules:  Template.LicenseExceptionId
+  hs-source-dirs:   src
+  ghc-options:      -Wall
   build-depends:
-    base                 >=4.10    && <4.13,
-    aeson                >=1.4.0.0 && <1.5,
-    bytestring,
-    containers,
-    Diff                 >=0.3.4   && <0.4,
-    lens                 >=4.17    && <4.18,
-    microstache          >=1.0.1.1 && <1.1,
-    optparse-applicative >=0.13    && <0.15,
-    text
+    , aeson                 ^>=1.4.0.0
+    , base                  >=4.10    && <4.13
+    , bytestring
+    , containers
+    , Diff                  ^>=0.3.4
+    , optparse-applicative  >=0.13    && <0.15
+    , text

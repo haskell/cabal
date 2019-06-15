@@ -28,7 +28,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- | SPDX License identifier
 data LicenseExceptionId
-{{{ licenseIds }}}
+{{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
 instance Binary LicenseExceptionId where
@@ -58,15 +58,15 @@ instance NFData LicenseExceptionId where
 
 -- | License SPDX identifier, e.g. @"BSD-3-Clause"@.
 licenseExceptionId :: LicenseExceptionId -> String
-{{#licenses}}
-licenseExceptionId {{licenseCon}} = {{{licenseId}}}
-{{/licenses}}
+{% for l in licenses %}
+licenseExceptionId {{l.con}} = {{l.id}}
+{% endfor %}
 
 -- | License name, e.g. @"GNU General Public License v2.0 only"@
 licenseExceptionName :: LicenseExceptionId -> String
-{{#licenses}}
-licenseExceptionName {{licenseCon}} = {{{licenseName}}}
-{{/licenses}}
+{% for l in licenses %}
+licenseExceptionName {{l.con}} = {{l.name}}
+{% endfor %}
 
 -------------------------------------------------------------------------------
 -- Creation
@@ -74,13 +74,13 @@ licenseExceptionName {{licenseCon}} = {{{licenseName}}}
 
 licenseExceptionIdList :: LicenseListVersion -> [LicenseExceptionId]
 licenseExceptionIdList LicenseListVersion_3_0 =
-{{{licenseList_3_0}}}
+{{licenseList_3_0}}
     ++ bulkOfLicenses
 licenseExceptionIdList LicenseListVersion_3_2 =
-{{{licenseList_3_2}}}
+{{licenseList_3_2}}
     ++ bulkOfLicenses
 licenseExceptionIdList LicenseListVersion_3_5 =
-{{{licenseList_3_5}}}
+{{licenseList_3_5}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
@@ -104,4 +104,4 @@ stringLookup_3_5 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]
 bulkOfLicenses =
-{{{licenseList_all}}}
+{{licenseList_all}}

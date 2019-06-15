@@ -32,11 +32,17 @@ $(LEXER_HS) : boot/Lexer.x
 
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-$(SPDX_LICENSE_HS) : boot/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- boot/SPDX.LicenseId.template.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.5.json $(SPDX_LICENSE_HS)
+cabal-dev-scripts/src/Template/LicenseId.hs : boot/SPDX.LicenseId.template.hs
+	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta zinza -- $^ $@ --module-name Template.LicenseId
 
-$(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- boot/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.5.json $(SPDX_EXCEPTION_HS)
+cabal-dev-scripts/src/Template/LicenseExceptionId.hs : boot/SPDX.LicenseExceptionId.template.hs
+	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta zinza -- $^ $@ --module-name Template.LicenseExceptionId
+
+$(SPDX_LICENSE_HS) : cabal-dev-scripts/src/Template/LicenseId.hs  cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
+	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.5.json $(SPDX_LICENSE_HS)
+
+$(SPDX_EXCEPTION_HS) : cabal-dev-scripts/src/Template/LicenseExceptionId.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
+	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.5.json $(SPDX_EXCEPTION_HS)
 
 # cabal-install.cabal file generation
 
