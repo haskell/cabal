@@ -283,9 +283,9 @@ library
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
                  -Wnoncanonical-monadfail-instances
   else
-    -- at least one of lib:Cabal's dependency (`parsec`)
-    -- already depends on `fail` transitively
-    build-depends: fail == 4.9.*
+    -- at least one of lib:Cabal's dependency (i.e. `parsec`)
+    -- already depends on `fail` and `semigroups` transitively
+    build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
 
   exposed-modules:
     Distribution.Backpack

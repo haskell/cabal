@@ -25,6 +25,7 @@
   * Change the arguments of `Newtype` class to better suit @DeriveAnyClass@ usage,
     add default implementation in terms of `coerce` / `unsafeCoerce`.
   * Implement support for response file arguments to defaultMain* and cabal-install.
+  * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
 
 ----
 
