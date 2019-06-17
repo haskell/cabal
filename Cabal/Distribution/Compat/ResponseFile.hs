@@ -1,20 +1,21 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, RankNTypes, FlexibleContexts #-}
 
 -- Compatibility layer for GHC.ResponseFile
 -- Implementation from base 4.12.0 is used.
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
+import Prelude (mapM)
+import Distribution.Compat.Prelude
+
 import System.Exit
 import System.FilePath
-import System.IO
+import System.IO (hPutStrLn, stderr)
 import System.IO.Error
 
 #if MIN_VERSION_base(4,12,0)
 import GHC.ResponseFile (unescapeArgs)
 #else
-
-import Data.Char         (isSpace)
 
 unescapeArgs :: String -> [String]
 unescapeArgs = filter (not . null) . unescape
