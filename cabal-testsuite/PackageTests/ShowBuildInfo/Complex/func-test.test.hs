@@ -7,7 +7,7 @@ import           Data.Aeson
 import           GHC.Generics
 
 main = cabalTest $ withRepo "repo" $ do
-  r <- cabal' "new-show-build-info" ["--enable-tests", "lib:Complex", "-v0"]
+  r <- cabal' "new-show-build-info" ["--enable-tests", ":func-test", "-v0"]
   let buildInfoEither = eitherDecodeStrict (T.encodeUtf8 . T.pack $ resultOutput r) :: Either String [BuildInfo]
   case buildInfoEither of
     Left err -> fail $ "Could not parse build-info command" ++ err
@@ -21,7 +21,7 @@ main = cabalTest $ withRepo "repo" $ do
       assertEqual "Components, exactly one" 1 (length $ components buildInfo)
       let [component] = components buildInfo
       assertEqual "Component type" "test" (componentType component)
-      assertEqual "Component name" "test:unit" (componentName component)
+      assertEqual "Component name" "test:func" (componentName component)
       assertEqual "Component unit-id" "Complex-0.1.0.0-inplace" (componentUnitId component)
       assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
       assertEqual "Component modules" ["Lib", "Paths_complex"] (componentModules component)

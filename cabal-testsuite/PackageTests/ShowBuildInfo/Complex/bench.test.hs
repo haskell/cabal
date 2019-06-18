@@ -6,8 +6,8 @@ import qualified Data.Text.Encoding as T
 import           Data.Aeson
 import           GHC.Generics
 
-main = cabalTest $ do
-  r <- cabal' "new-show-build-info" ["exe:Complex", "-v0"]
+main = cabalTest $ withRepo "repo" $ do
+  r <- cabal' "new-show-build-info" ["--enable-benchmarks", "bench:complex-benchmarks", "-v0"]
   let buildInfoEither = eitherDecodeStrict (T.encodeUtf8 . T.pack $ resultOutput r) :: Either String [BuildInfo]
   case buildInfoEither of
     Left err -> fail $ "Could not parse build-info command" ++ err
@@ -20,8 +20,8 @@ main = cabalTest $ do
       assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
       assertEqual "Components, exactly one" 1 (length $ components buildInfo)
       let [component] = components buildInfo
-      assertEqual "Component type" "exe" (componentType component)
-      assertEqual "Component name" "exe:Complex" (componentName component)
+      assertEqual "Component type" "benchmark" (componentType component)
+      assertEqual "Component name" "bench:complex-brenchmarks" (componentName component)
       assertEqual "Component unit-id" "Complex-0.1.0.0-inplace-Complex" (componentUnitId component)
       assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
       assertBool "Component ghc-options contains all specified in .cabal"
