@@ -185,7 +185,7 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
               printer "]"
 
           unitIdToFilePath :: UnitId -> FilePath
-          unitIdToFilePath unitId = "build-info-" ++ display unitId
+          unitIdToFilePath unitId = "build-info-" ++ display unitId ++ ".json"
 
 showInfo :: FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
