@@ -24,7 +24,8 @@ module Distribution.Client.Get (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
-
+import Distribution.Compat.Directory
+         ( listDirectory )
 import Distribution.Package
          ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
@@ -56,8 +57,7 @@ import Control.Monad
          ( mapM, forM_, mapM_, unless )
 import qualified Data.Map as Map
 import System.Directory
-         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
-         , listDirectory )
+         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import System.Exit
          ( ExitCode(..) )
 import System.FilePath
@@ -172,7 +172,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
       isEmpty <- emptyDirectory pkgdir
       unless isEmpty $
         die' verbosity $
-        "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
+        "The directory \"" ++ pkgdir' ++ "\" already exists and is not empty, not unpacking."
     existsFile  <- doesFileExist pkgdir
     when existsFile $ die' verbosity $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
