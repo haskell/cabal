@@ -37,11 +37,14 @@ parseConditionConfVar args =
 
 type Parser = P.Parsec [SectionArg Position] ()
 
+sepByNonEmpty :: Parser a -> Parser sep -> Parser (NonEmpty a)
+sepByNonEmpty p sep = (,) <$> p <*> many (sep *> p)
+
 parser :: Parser (Condition ConfVar)
 parser = condOr
   where
-    condOr       = P.sepBy1 condAnd (oper "||") >>= return . foldl1 COr
-    condAnd      = P.sepBy1 cond    (oper "&&") >>= return . foldl1 CAnd
+    condOr       = sepByNonEmpty condAnd (oper "||") >>= return . foldl1 COr
+    condAnd      = sepByNonEmpty cond    (oper "&&") >>= return . foldl1 CAnd
     cond         = P.choice
          [ boolLiteral, parens condOr,  notCond, osCond, archCond, flagCond, implCond ]
 
@@ -63,8 +66,8 @@ parser = condOr
 
     versionRange = expr
       where
-        expr = foldl1 unionVersionRanges     <$> P.sepBy1 term   (oper "||")
-        term = foldl1 intersectVersionRanges <$> P.sepBy1 factor (oper "&&")
+        expr = foldl1 unionVersionRanges     <$> sepByNonEmpty term   (oper "||")
+        term = foldl1 intersectVersionRanges <$> sepByNonEmpty factor (oper "&&")
 
         factor = P.choice
             $ parens expr
@@ -121,3 +124,12 @@ parser = condOr
         bs <- identBS
         let fls = fieldLineStreamFromBS bs
         either (fail . show) pure (runParsecParser p "<fromParsec'>" fls)
+
+-------------------------------------------------------------------------------
+-- NonEmpty
+-------------------------------------------------------------------------------
+
+type NonEmpty a = (a, [a])
+
+foldl1 :: (a -> a -> a) -> NonEmpty a -> a
+foldl1 f ~(x, xs) = foldl f x xs

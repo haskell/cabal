@@ -116,6 +116,8 @@ import qualified Data.Tree  as Tree
 import Control.Monad
 import Distribution.Compat.Stack
 
+import qualified Prelude (foldr1)
+
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
 --
@@ -154,7 +156,7 @@ instance Monoid (PackageIndex IPI.InstalledPackageInfo) where
   mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
-  mconcat xs = foldr1 mappend xs
+  mconcat xs = Prelude.foldr1 mappend xs
 
 instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
   (<>) = merge

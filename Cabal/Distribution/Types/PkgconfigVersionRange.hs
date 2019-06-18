@@ -24,6 +24,9 @@ import qualified Data.ByteString.Char8           as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as PP
 
+-- NonEmpty
+import qualified Prelude (foldr1)
+
 -- | @since 3.0
 data PkgconfigVersionRange
   = PcAnyVersion
@@ -75,11 +78,11 @@ pkgconfigParser :: CabalParsing m => m PkgconfigVersionRange
 pkgconfigParser = P.spaces >> expr where
     -- every parser here eats trailing space
     expr = do
-        ts <- term `P.sepBy` (P.string "||" >> P.spaces)
+        ts <- term `P.sepByNonEmpty` (P.string "||" >> P.spaces)
         return $ foldr1 PcUnionVersionRanges ts
 
     term = do
-        fs <- factor `P.sepBy` (P.string "&&" >> P.spaces)
+        fs <- factor `P.sepByNonEmpty` (P.string "&&" >> P.spaces)
         return $ foldr1 PcIntersectVersionRanges fs
 
     factor = parens expr <|> prim
@@ -140,3 +143,12 @@ versionRangeToPkgconfigVersionRange = foldVersionRange
     (PcEarlierVersion . versionToPkgconfigVersion)
     PcUnionVersionRanges
     PcIntersectVersionRanges
+
+-------------------------------------------------------------------------------
+-- NonEmpty
+-------------------------------------------------------------------------------
+
+type NonEmpty a = (a, [a])
+
+foldr1 :: (a -> a -> a) -> NonEmpty a -> a
+foldr1 f ~(x, xs) = Prelude.foldr1 f (x : xs)
