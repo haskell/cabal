@@ -112,8 +112,8 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
 parseCondition :: CabalParsing m => m (Condition ConfVar)
 parseCondition = condOr
   where
-    condOr   = sepBy1 condAnd (oper "||") >>= return . foldl1 COr
-    condAnd  = sepBy1 cond (oper "&&")>>= return . foldl1 CAnd
+    condOr   = sepByNonEmpty condAnd (oper "||") >>= return . foldl1 COr
+    condAnd  = sepByNonEmpty cond (oper "&&")>>= return . foldl1 CAnd
     -- TODO: try?
     cond     = sp >> (boolLiteral <|> inparens condOr <|> notCond <|> osCond
                       <|> archCond <|> flagCond <|> implCond )
@@ -596,3 +596,12 @@ transformAllBuildDepends f =
   . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
   -- cannot be point-free as normal because of higher rank
   . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
+
+-------------------------------------------------------------------------------
+-- NonEmpty
+-------------------------------------------------------------------------------
+
+type NonEmpty a = (a, [a])
+
+foldl1 :: (a -> a -> a) -> NonEmpty a -> a
+foldl1 f ~(x, xs) = foldl f x xs

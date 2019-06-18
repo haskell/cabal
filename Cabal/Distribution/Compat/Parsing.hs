@@ -26,7 +26,7 @@ module Distribution.Compat.Parsing
   , many     -- from Control.Applicative
   , sepBy
   , sepBy1
-  -- , sepByNonEmpty
+  , sepByNonEmpty
   , sepEndBy1
   -- , sepEndByNonEmpty
   , sepEndBy
@@ -106,13 +106,11 @@ sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 -- toList <$> sepByNonEmpty p sep
 {-# INLINE sepBy1 #-}
 
-{-
 -- | @sepByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- by @sep@. Returns a non-empty list of values returned by @p@.
-sepByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
-sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
+sepByNonEmpty :: Alternative m => m a -> m sep -> m (a,[a])
+sepByNonEmpty p sep = (,) <$> p <*> many (sep *> p)
 {-# INLINE sepByNonEmpty #-}
--}
 
 -- | @sepEndBy1 p sep@ parses /one/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@. Returns a list of values
