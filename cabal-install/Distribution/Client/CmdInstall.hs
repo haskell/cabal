@@ -247,6 +247,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
   let
     installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
     targetFilter = if installLibs then Just LibKind else Just ExeKind
+    targetStrings' = if null targetStrings then ["."] else targetStrings
 
     withProject = do
       let verbosity' = lessVerbose verbosity
@@ -257,7 +258,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
       pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
 
       let
-        (targetStrings', packageIds) = partitionEithers . flip fmap targetStrings $
+        (targetStrings'', packageIds) = partitionEithers . flip fmap targetStrings' $
           \str -> case simpleParse str of
             Just (pkgId :: PackageId)
               | pkgVersion pkgId /= nullVersion -> Right pkgId
@@ -273,7 +274,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
         then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                        =<< readTargetSelectors (localPackages localBaseCtx) Nothing targetStrings'
+                        =<< readTargetSelectors (localPackages localBaseCtx) Nothing targetStrings''
 
           (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan _ -> do
             -- Split into known targets and hackage packages.
@@ -373,7 +374,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
         parsePkg pkgName
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
           | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
-      packageIds <- mapM parsePkg targetStrings
+      packageIds <- mapM parsePkg targetStrings'
 
       cabalDir <- getCabalDir
       let
@@ -399,7 +400,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                                             verbosity buildSettings
                                             (getSourcePackages verbosity)
 
-      for_ targetStrings $ \case
+      for_ targetStrings' $ \case
             name
               | null (lookupPackageName packageIndex (mkPackageName name))
               , xs@(_:_) <- searchByName packageIndex name ->
