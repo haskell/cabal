@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 3.0.0.0 (current development version)
+	* `v2-install` now has a default when called in a project (#5978, #6014, #6092)
 	* '--write-ghc-environment-files' now defaults to 'never' (#4242)
 	* Fix `sdist`'s output when sent to stdout. (#5874)
 	* Allow a list of dependencies to be provided for `repl --build-depends`. (#5845)
