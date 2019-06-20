@@ -596,12 +596,3 @@ transformAllBuildDepends f =
   . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
   -- cannot be point-free as normal because of higher rank
   . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
-
--------------------------------------------------------------------------------
--- NonEmpty
--------------------------------------------------------------------------------
-
-type NonEmpty a = (a, [a])
-
-foldl1 :: (a -> a -> a) -> NonEmpty a -> a
-foldl1 f ~(x, xs) = foldl f x xs

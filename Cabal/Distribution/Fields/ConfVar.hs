@@ -38,7 +38,7 @@ parseConditionConfVar args =
 type Parser = P.Parsec [SectionArg Position] ()
 
 sepByNonEmpty :: Parser a -> Parser sep -> Parser (NonEmpty a)
-sepByNonEmpty p sep = (,) <$> p <*> many (sep *> p)
+sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 
 parser :: Parser (Condition ConfVar)
 parser = condOr
@@ -124,12 +124,3 @@ parser = condOr
         bs <- identBS
         let fls = fieldLineStreamFromBS bs
         either (fail . show) pure (runParsecParser p "<fromParsec'>" fls)
-
--------------------------------------------------------------------------------
--- NonEmpty
--------------------------------------------------------------------------------
-
-type NonEmpty a = (a, [a])
-
-foldl1 :: (a -> a -> a) -> NonEmpty a -> a
-foldl1 f ~(x, xs) = foldl f x xs

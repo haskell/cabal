@@ -45,9 +45,6 @@ import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList
 import qualified Text.PrettyPrint                as Disp
 
--- NonEmpty
-import qualified Prelude (foldr1)
-
 data VersionRange
   = AnyVersion
   | ThisVersion            Version -- = version
@@ -365,13 +362,13 @@ versionRangeParser digitParser = expr
         verSet' op vs = do
             csv <- askCabalSpecVersion
             if csv >= CabalSpecV3_0
-            then pure $ foldr1 unionVersionRanges (neMap op vs)
+            then pure $ foldr1 unionVersionRanges (fmap op vs)
             else fail $ unwords
                 [ "version set syntax used."
                 , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
                 , "Alternatively, if broader compatibility is important then use"
                 , "a series of single version constraints joined with the || operator:"
-                , prettyShow (foldr1 unionVersionRanges (neMap op vs))
+                , prettyShow (foldr1 unionVersionRanges (fmap op vs))
                 ]
 
         verSet :: CabalParsing m => m (NonEmpty Version)
@@ -434,15 +431,3 @@ majorUpperBound = alterVersion $ \numbers -> case numbers of
     []        -> [0,1] -- should not happen
     [m1]      -> [m1,1] -- e.g. version '1'
     (m1:m2:_) -> [m1,m2+1]
-
--------------------------------------------------------------------------------
--- NonEmpty
--------------------------------------------------------------------------------
-
-type NonEmpty a = (a, [a])
-
-foldr1 :: (a -> a -> a) -> NonEmpty a -> a
-foldr1 f ~(x, xs) = Prelude.foldr1 f (x : xs)
-
-neMap :: (a -> b) -> NonEmpty a -> NonEmpty b
-neMap f ~(x, xs) = (f x, map f xs)

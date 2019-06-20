@@ -24,9 +24,6 @@ import qualified Data.ByteString.Char8           as BS8
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as PP
 
--- NonEmpty
-import qualified Prelude (foldr1)
-
 -- | @since 3.0
 data PkgconfigVersionRange
   = PcAnyVersion
@@ -143,12 +140,3 @@ versionRangeToPkgconfigVersionRange = foldVersionRange
     (PcEarlierVersion . versionToPkgconfigVersion)
     PcUnionVersionRanges
     PcIntersectVersionRanges
-
--------------------------------------------------------------------------------
--- NonEmpty
--------------------------------------------------------------------------------
-
-type NonEmpty a = (a, [a])
-
-foldr1 :: (a -> a -> a) -> NonEmpty a -> a
-foldr1 f ~(x, xs) = Prelude.foldr1 f (x : xs)
