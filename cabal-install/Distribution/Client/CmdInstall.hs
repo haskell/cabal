@@ -245,6 +245,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     pure $ savedClientInstallFlags savedConfig `mappend` clientInstallFlags'
 
   let
+    installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
+    targetFilter = if installLibs then Just LibKind else Just ExeKind
+
     withProject = do
       let verbosity' = lessVerbose verbosity
 
@@ -264,7 +267,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
             | pkgVersion == nullVersion -> NamedPackage pkgName []
             | otherwise ->
               NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
-        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+        packageTargets = flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
       if null targetStrings'
         then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
@@ -338,7 +341,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               local = sdistize <$> localPackages localBaseCtx
 
               gatherTargets :: UnitId -> TargetSelector
-              gatherTargets targetId = TargetPackageNamed pkgName Nothing
+              gatherTargets targetId = TargetPackageNamed pkgName targetFilter
                 where
                   Just targetUnit = Map.lookup targetId planMap
                   PackageIdentifier{..} = packageId targetUnit
@@ -348,7 +351,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
               hackagePkgs = flip NamedPackage [] <$> hackageNames
               hackageTargets :: [TargetSelector]
-              hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
+              hackageTargets = flip TargetPackageNamed targetFilter <$> hackageNames
 
             createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
@@ -549,7 +552,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     -- First, figure out if / what parts we want to install:
     let
       dryRun = buildSettingDryRun $ buildSettings baseCtx
-      installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
 
     -- Then, install!
     when (not dryRun) $
