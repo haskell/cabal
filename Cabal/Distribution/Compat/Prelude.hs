@@ -59,6 +59,9 @@ module Distribution.Compat.Prelude (
     sort, sortBy,
     nub, nubBy,
 
+    -- * Data.List.NonEmpty
+    NonEmpty((:|)), foldl1, foldr1,
+
     -- * Data.Foldable
     Foldable, foldMap, foldr,
     null, length,
@@ -123,6 +126,7 @@ import Data.Foldable                 (length, null)
 
 import Data.Foldable                 (Foldable (foldMap, foldr), find, foldl', for_, traverse_, any, all)
 import Data.Traversable              (Traversable (traverse, sequenceA), for)
+import qualified Data.Foldable
 
 import Control.Applicative           (Alternative (..))
 import Control.DeepSeq               (NFData (..))
@@ -142,6 +146,7 @@ import Data.Char
 import Data.List                     (intercalate, intersperse, isPrefixOf,
                                       isSuffixOf, nub, nubBy, sort, sortBy,
                                       unfoldr)
+import Data.List.NonEmpty            (NonEmpty((:|)))
 import Data.Maybe
 import Data.String                   (IsString (..))
 import Data.Int
@@ -215,3 +220,28 @@ instance (GNFData a, GNFData b) => GNFData (a :+: b) where
   grnf (L1 x) = grnf x
   grnf (R1 x) = grnf x
   {-# INLINEABLE grnf #-}
+
+
+-- TODO: if we want foldr1/foldl1 to work on more than NonEmpty, we
+-- can define a local typeclass 'Foldable1', e.g.
+--
+-- @
+-- class Foldable f => Foldable1 f
+--
+-- instance Foldable1 NonEmpty
+--
+-- foldr1 :: Foldable1 t => (a -> a -> a) -> t a -> a
+-- foldr1 = Data.Foldable.foldr1
+--
+-- foldl1 :: Foldable1 t => (a -> a -> a) -> t a -> a
+-- foldl1 = Data.Foldable.foldl1
+-- @
+--
+
+{-# INLINE foldr1 #-}
+foldr1 :: (a -> a -> a) -> NonEmpty a -> a
+foldr1 = Data.Foldable.foldr1
+
+{-# INLINE foldl1 #-}
+foldl1 :: (a -> a -> a) -> NonEmpty a -> a
+foldl1 = Data.Foldable.foldl1
