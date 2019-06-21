@@ -225,8 +225,8 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
                                           (elabPkgDescription pkg) buildType'
     when (cabalVersion < mkVersion [3, 0, 0,0])
       ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
-            <> "Found version: " <> display cabalVersion <> "\n"
-            <> "For component: " <> display targetUnitId
+            ++ "Found version: " ++ display cabalVersion ++ "\n"
+            ++ "For component: " ++ display targetUnitId
       )
     --Configure the package if there's no existing config
     lbi <- tryGetPersistBuildConfig buildDir
