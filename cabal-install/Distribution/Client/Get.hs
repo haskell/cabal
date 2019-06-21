@@ -54,7 +54,7 @@ import Distribution.Solver.Types.SourcePackage
 import Control.Exception
          ( Exception(..), catch, throwIO )
 import Control.Monad
-         ( mapM, forM_, mapM_, unless )
+         ( mapM, forM_, mapM_ )
 import qualified Data.Map as Map
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
