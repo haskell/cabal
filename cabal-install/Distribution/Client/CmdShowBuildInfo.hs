@@ -7,7 +7,8 @@ module Distribution.Client.CmdShowBuildInfo where
 --     showBuildInfoAction
 --   )
 
-
+import Distribution.Client.Compat.Prelude
+         ( when, find, fromMaybe )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdInstall.ClientInstallFlags
@@ -27,8 +28,14 @@ import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
          ( wrapText, die', withTempDirectory )
-import Distribution.Types.UnitId (UnitId, mkUnitId)
-import Distribution.Deprecated.Text (display)
+import Distribution.Types.UnitId
+         ( UnitId, mkUnitId )
+import Distribution.Types.Version
+         ( mkVersion )
+import Distribution.Types.PackageDescription
+         ( buildType )
+import Distribution.Deprecated.Text
+         ( display )
 
 import qualified Data.Map as Map
 import qualified Distribution.Simple.Setup as Cabal
@@ -47,9 +54,9 @@ import Distribution.Client.JobControl (newLock, Lock)
 import Distribution.Simple.Configure (tryGetPersistBuildConfig)
 import qualified Distribution.Client.CmdInstall as CmdInstall
 
-import Control.Monad (mapM_)
-import Data.List (find)
-import Data.Maybe (fromMaybe)
+import Control.Monad
+    ( mapM_ )
+
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 
@@ -195,6 +202,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
         install = elaboratedPlanOriginal buildCtx
         dirLayout = distDirLayout baseCtx
         buildDir = distBuildDirectory dirLayout (elabDistDirParams shared pkg)
+        buildType' = buildType (elabPkgDescription pkg)
         flags = setupHsBuildFlags pkg shared verbosity buildDir
         args = setupHsBuildArgs pkg
         srcDir = case (elabPkgSourceLocation pkg) of
@@ -211,6 +219,15 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
             lock
         configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
         configureArgs = setupHsConfigureArgs pkg
+
+    -- check cabal version is corrct
+    (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
+                                          (elabPkgDescription pkg) buildType'
+    when (cabalVersion < mkVersion [3, 0, 0,0])
+      ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
+            <> "Found version: " <> display cabalVersion <> "\n"
+            <> "For component: " <> display targetUnitId
+      )
     --Configure the package if there's no existing config
     lbi <- tryGetPersistBuildConfig buildDir
     case lbi of
@@ -235,7 +252,10 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
         )
       )
       (const args)
-    where mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
+    where
+      mbPkg :: Maybe ElaboratedConfiguredPackage
+      mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
+
 
 -- | This defines what a 'TargetSelector' means for the @new-show-build-info@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
