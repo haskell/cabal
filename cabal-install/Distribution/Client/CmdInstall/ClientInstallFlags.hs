@@ -47,8 +47,8 @@ defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags = ClientInstallFlags
   { cinstInstallLibs = toFlag False
   , cinstEnvironmentPath = mempty
-  , cinstOverwritePolicy = toFlag NeverOverwrite
-  , cinstInstallMethod = toFlag InstallMethodSymlink
+  , cinstOverwritePolicy = mempty
+  , cinstInstallMethod = mempty
   , cinstInstalldir = mempty
   }
 
