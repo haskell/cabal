@@ -2,6 +2,7 @@
 
 3.0.0.0 (current development version)
 	* `install-method` and `overwrite-policy` in `.cabal/config` now actually work. (#5942)
+	* `v2-install` now reports the error when a package fails to build. (#5641)
 	* `v2-install` now has a default when called in a project (#5978, #6014, #6092)
 	* '--write-ghc-environment-files' now defaults to 'never' (#4242)
 	* Fix `sdist`'s output when sent to stdout. (#5874)
