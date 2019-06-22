@@ -53,7 +53,7 @@ import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
          , modifyProgramSearchPath, ProgramDb )
 import Distribution.Simple.BuildPaths
-         ( exeExtension )
+         ( dllExtension, exeExtension )
 import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
@@ -107,7 +107,7 @@ import Distribution.System
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName, mkUnqualComponentName )
+         ( unUnqualComponentName, mkUnqualComponentName )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -251,8 +251,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     pure $ savedClientInstallFlags savedConfig `mappend` clientInstallFlags'
 
   let
-    installLibs    = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
-    targetFilter   = if installLibs then Just LibKind else Just ExeKind
+    installExes = fromFlagOrDefault True (cinstInstallLibs clientInstallFlags)
+    installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
+    installFLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
+  
+  unless (installExes || installLibs || installFLibs) $
+    die' verbosity "Nothing is being requested to be installed."
+  
+  let
+    targetFilter = foldr (\(e, f) s -> if e then if isJust s then Nothing else f else s) Nothing
+      [(installExes, Just ExeKind), (installLibs, Just LibKind), (installFLibs, Just FLibKind)]
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
     withProject = do
@@ -584,12 +592,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
       dryRun = buildSettingDryRun $ buildSettings baseCtx
 
     -- Then, install!
-    when (not dryRun) $
-      if installLibs
-      then installLibraries verbosity
-           buildCtx compiler packageDbs progDb envFile envEntries'
-      else installExes verbosity
-           baseCtx buildCtx platform compiler clientInstallFlags
+    when (not dryRun) $ do
+      when installLibs $
+        installLibraries verbosity buildCtx compiler packageDbs progDb envFile envEntries'
+      when (installExes || installFLibs) $
+        installArtifacts verbosity baseCtx buildCtx platform compiler clientInstallFlags
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -601,45 +608,62 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
 -- | Install any built exe by symlinking/copying it
 -- we don't use BuildOutcomes because we also need the component names
-installExes
-  :: Verbosity
-  -> ProjectBaseContext
-  -> ProjectBuildContext
-  -> Platform
-  -> Compiler
-  -> ClientInstallFlags
-  -> IO ()
-installExes verbosity baseCtx buildCtx platform compiler
-            clientInstallFlags = do
+installArtifacts :: Verbosity
+                 -> ProjectBaseContext
+                 -> ProjectBuildContext
+                 -> Platform
+                 -> Compiler
+                 -> ClientInstallFlags
+                 -> IO ()
+installArtifacts verbosity baseCtx buildCtx platform compiler
+                 clientInstallFlags = do
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
-
-      mkUnitBinDir :: UnitId -> FilePath
-      mkUnitBinDir =
-        InstallDirs.bindir .
-        storePackageInstallDirs' storeDirLayout (compilerId compiler)
-
-      mkExeName :: UnqualComponentName -> FilePath
-      mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
-      installdirUnknown =
+  let mkUnitBinDir :: UnitId -> FilePath
+      mkUnitBinDir = InstallDirs.bindir .
+                     storePackageInstallDirs'
+                       storeDirLayout
+                       (compilerId compiler)
+      mkDestName :: ComponentName -> FilePath
+      mkDestName (CExeName exe)  = unUnqualComponentName exe <.> exeExtension platform
+      -- This will be a problem we can fix once we support static foreign libs, I suppose.
+      mkDestName (CFLibName lib) = unUnqualComponentName lib <.> dllExtension platform
+      mkDestName _               = error 
+            "Tried to get path to something I don't know how to install. "
+         ++ "(We should have given up already!)"
+      installDirUnknown =
         "installdir is not defined. Set it in your cabal config file "
         ++ "or use --installdir=<path>"
+      libInstallDirUnknown =
+        "lib-installdir is not defined. Set it in your cabal config file "
+        ++ "or use --lib-installdir=<path>"
+  installDir <- fromFlagOrDefault (die' verbosity installDirUnknown)
+              $ pure <$> cinstInstallDir clientInstallFlags
+  libInstallDir <- fromFlagOrDefault (die' verbosity libInstallDirUnknown)
+                 $ pure <$> cinstFLibInstallDir clientInstallFlags
 
-  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown) $
-                pure <$> cinstInstalldir clientInstallFlags
-  createDirectoryIfMissingVerbose verbosity False installdir
-  warnIfNoExes verbosity buildCtx
+  createDirectoryIfMissingVerbose verbosity False installDir
+  createDirectoryIfMissingVerbose verbosity False libInstallDir
+  warnIfNoArtifacts verbosity buildCtx
+  
   let
-    doInstall = installUnitExes
+    doInstall = installUnitArtifacts
                   verbosity
                   overwritePolicy
-                  mkUnitBinDir mkExeName
-                  installdir installMethod
-    in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
+                  mkUnitBinDir mkDestName
+                  (installDir, libInstallDir)
+                  (installExes, installFLibs)
+                  installMethod
+    
+  traverse_ doInstall $ Map.toList $ targetsMap buildCtx
   where
-    overwritePolicy = fromFlagOrDefault NeverOverwrite $
-                      cinstOverwritePolicy clientInstallFlags
-    installMethod   = fromFlagOrDefault InstallMethodSymlink $
-                      cinstInstallMethod clientInstallFlags
+    installExes      = fromFlagOrDefault True 
+                        $ cinstInstallExes clientInstallFlags
+    installFLibs     = fromFlagOrDefault False 
+                        $ cinstInstallFLibs clientInstallFlags
+    overwritePolicy  = fromFlagOrDefault NeverOverwrite
+                        $ cinstOverwritePolicy clientInstallFlags
+    installMethod    = fromFlagOrDefault InstallMethodSymlink
+                        $ cinstInstallMethod clientInstallFlags
 
 -- | Install any built library by adding it to the default ghc environment
 installLibraries
@@ -679,22 +703,23 @@ installLibraries verbosity buildCtx compiler
         ++ "so only executables will be available. (Library installation is "
         ++ "supported on GHC 8.0+ only)"
 
-warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
-warnIfNoExes verbosity buildCtx =
-  when noExes $
-    warn verbosity $
-    "You asked to install executables, but there are no executables in "
-    <> plural (listPlural selectors) "target" "targets" <> ": "
-    <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
-    <> "Perhaps you want to use --lib to install libraries instead."
+warnIfNoArtifacts :: Verbosity -> ProjectBuildContext -> IO ()
+warnIfNoArtifacts verbosity buildCtx =
+  when noComps $
+    warn verbosity $ "You asked to install binary artifacts, "
+                  <> "but there are no executables or foreign libraries in "
+                  <> plural (listPlural selectors) "target" "targets" <> ": "
+                  <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
+                  <> "Perhaps you want to use --lib "
+                  <> "to install libraries instead."
   where
     targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
-    selectors  = concatMap snd targets
-    noExes     = null $ catMaybes $ exeMaybe <$> components
-
-    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
-    exeMaybe _                                  = Nothing
+    selectors = concatMap snd targets
+    noComps = any hasComp components
+    hasComp (ComponentTarget (CExeName _) _)  = True
+    hasComp (ComponentTarget (CFLibName _) _) = True
+    hasComp _                                 = False
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
@@ -727,55 +752,70 @@ disableTestsBenchsByDefault configFlags =
   configFlags { configTests = Flag False <> configTests configFlags
               , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
--- | Symlink/copy every exe from a package from the store to a given location
-installUnitExes
-  :: Verbosity
-  -> OverwritePolicy -- ^ Whether to overwrite existing files
-  -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
-                          -- ^ store directory
-  -> (UnqualComponentName -> FilePath) -- ^ A function to get an
-                                       -- ^ exe's filename
-  -> FilePath
-  -> InstallMethod
-  -> ( UnitId
-     , [(ComponentTarget, [TargetSelector])] )
-  -> IO ()
-installUnitExes verbosity overwritePolicy
-                mkSourceBinDir mkExeName
-                installdir installMethod
-                (unit, components) =
-  traverse_ installAndWarn exes
+-- | Symlink/copy every installable artifact from a package from the store to a given location
+installUnitArtifacts :: Verbosity
+                     -> OverwritePolicy -- ^ Whether to overwrite existing files
+                     -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
+                                             -- store directory
+                     -> (ComponentName -> FilePath) -- ^ A function to get
+                                                    -- ^ an artifact's filename
+                     -> (FilePath, FilePath)
+                     -> (Bool, Bool)
+                     -> InstallMethod
+                     -> ( UnitId
+                         , [(ComponentTarget, [TargetSelector])] )
+                     -> IO ()
+installUnitArtifacts verbosity overwritePolicy
+                     mkSourceBinDir mkDestName
+                     (installDir, libInstallDir)
+                     (installExes, installFLibs)
+                     installMethod
+                     (unit, components) =
+  traverse_ installAndWarn components'
   where
-    exes = catMaybes $ (exeMaybe . fst) <$> components
-    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
-    exeMaybe _ = Nothing
-    installAndWarn exe = do
-      success <- installBuiltExe
+    components' = catMaybes $ (compMaybe . fst) <$> components
+    compMaybe (ComponentTarget exe@(CExeName _) _)
+      | installExes                                 = Just exe
+    compMaybe (ComponentTarget lib@(CFLibName _) _) 
+      | installFLibs                                = Just lib
+    compMaybe _                                     = Nothing
+
+    compPath (CExeName exe)  = installDir </> prettyShow exe 
+    compPath (CFLibName lib) = libInstallDir </> prettyShow lib
+    compPath _               = error 
+            "Tried to get path to something I don't know how to install. "
+         ++ "(We should have given up already!)"
+
+    installAndWarn comp = do
+      realInstallDir <- case comp of
+        CExeName _  -> return installDir
+        CFLibName _ -> return libInstallDir
+        _           -> die' verbosity ("Tried to install an uninstallable component: " <> prettyShow comp)
+
+      success <- installBuiltArtifact
                    verbosity overwritePolicy
-                   (mkSourceBinDir unit) (mkExeName exe)
-                   installdir installMethod
+                   (mkSourceBinDir unit) (mkDestName comp)
+                   realInstallDir installMethod
       let errorMessage = case overwritePolicy of
-            NeverOverwrite ->
-              "Path '" <> (installdir </> prettyShow exe) <> "' already exists. "
-              <> "Use --overwrite-policy=always to overwrite."
-            -- This shouldn't even be possible, but we keep it in case
-            -- symlinking/copying logic changes
-            AlwaysOverwrite ->
-              case installMethod of
-                InstallMethodSymlink -> "Symlinking"
-                InstallMethodCopy    ->
-                  "Copying" <> " '" <> prettyShow exe <> "' failed."
+                  NeverOverwrite ->
+                    "Path '" <> compPath comp <> "' already exists. "
+                    <> "Use --overwrite-policy=always to overwrite."
+                  -- This shouldn't even be possible, but we keep it in case
+                  -- symlinking/copying logic changes
+                  AlwaysOverwrite -> case installMethod of
+                                       InstallMethodSymlink -> "Symlinking"
+                                       InstallMethodCopy    -> "Copying"
+                                  <> " '" <> prettyShow comp <> "' failed."
       unless success $ die' verbosity errorMessage
 
 -- | Install a specific exe.
-installBuiltExe
-  :: Verbosity -> OverwritePolicy
-  -> FilePath -- ^ The directory where the built exe is located
-  -> FilePath -- ^ The exe's filename
-  -> FilePath -- ^ the directory where it should be installed
-  -> InstallMethod
-  -> IO Bool -- ^ Whether the installation was successful
-installBuiltExe verbosity overwritePolicy
+installBuiltArtifact :: Verbosity -> OverwritePolicy
+                     -> FilePath -- ^ The directory where the built artifact is located
+                     -> FilePath -- ^ The artifact's filename
+                     -> FilePath -- ^ the directory where it should be installed
+                     -> InstallMethod
+                     -> IO Bool -- ^ Whether the installation was successful
+installBuiltArtifact verbosity overwritePolicy
                 sourceDir exeName
                 installdir InstallMethodSymlink = do
   notice verbosity $ "Symlinking '" <> exeName <> "'"
@@ -785,7 +825,7 @@ installBuiltExe verbosity overwritePolicy
     sourceDir
     (mkUnqualComponentName exeName)
     exeName
-installBuiltExe verbosity overwritePolicy
+installBuiltArtifact verbosity overwritePolicy
                 sourceDir exeName
                 installdir InstallMethodCopy = do
   notice verbosity $ "Copying '" <> exeName <> "'"

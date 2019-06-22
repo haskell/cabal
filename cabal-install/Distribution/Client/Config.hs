@@ -338,11 +338,14 @@ instance Semigroup SavedConfig where
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
 
       combinedSavedClientInstallFlags = ClientInstallFlags {
+        cinstInstallExes = combine cinstInstallExes,
         cinstInstallLibs = combine cinstInstallLibs,
+        cinstInstallFLibs = combine cinstInstallFLibs,
         cinstEnvironmentPath = combine cinstEnvironmentPath,
         cinstOverwritePolicy = combine cinstOverwritePolicy,
         cinstInstallMethod = combine cinstInstallMethod,
-        cinstInstalldir = combine cinstInstalldir
+        cinstInstallDir = combine cinstInstallDir,
+        cinstFLibInstallDir = combine cinstFLibInstallDir
         }
         where
           combine        = combine'        savedClientInstallFlags
@@ -549,11 +552,12 @@ baseSavedConfig = do
 --
 initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
-  cacheDir    <- defaultCacheDir
-  logsDir     <- defaultLogsDir
-  worldFile   <- defaultWorldFile
-  extraPath   <- defaultExtraPath
-  installPath <- defaultInstallPath
+  cacheDir        <- defaultCacheDir
+  logsDir         <- defaultLogsDir
+  worldFile       <- defaultWorldFile
+  extraPath       <- defaultExtraPath
+  installPath     <- defaultInstallPath
+  flibInstallPath <- defaultFLibInstallPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
@@ -569,7 +573,8 @@ initialSavedConfig = do
       installNumJobs     = toFlag Nothing
     },
     savedClientInstallFlags = mempty {
-      cinstInstalldir = toFlag installPath
+      cinstInstallDir     = toFlag installPath,
+      cinstFLibInstallDir = toFlag flibInstallPath 
     }
   }
 
@@ -613,6 +618,11 @@ defaultInstallPath :: IO FilePath
 defaultInstallPath = do
   dir <- getCabalDir
   return (dir </> "bin")
+
+defaultFLibInstallPath :: IO FilePath
+defaultFLibInstallPath = do
+  dir <- getCabalDir
+  return (dir </> "lib")
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
