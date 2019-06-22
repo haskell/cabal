@@ -89,7 +89,7 @@ testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags
 testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
            targetStrings globalFlags = do
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig
+    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) (Just TestKind) targetStrings

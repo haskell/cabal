@@ -31,6 +31,7 @@ import qualified Distribution.Client.Setup as Client
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
   , runProjectPreBuildPhase
+  , CurrentCommand(..)
   , establishProjectBaseContext
   , distDirLayout
   , commandLineFlagsToProjectConfig
@@ -125,7 +126,7 @@ execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags
 execAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
            extraArgs globalFlags = do
 
-  baseCtx <- establishProjectBaseContext verbosity cliConfig
+  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   -- To set up the environment, we'd like to select the libraries in our
   -- dependency tree that we've already built. So first we set up an install

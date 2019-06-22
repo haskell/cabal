@@ -84,7 +84,7 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags, testFla
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig
+    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     -- Write out the @cabal.project.local@ so it gets picked up by the
     -- planning phase. If old config exists, then print the contents

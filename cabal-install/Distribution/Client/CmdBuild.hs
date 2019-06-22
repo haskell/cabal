@@ -116,7 +116,7 @@ buildAction
             | onlyConfigure = TargetActionConfigure
             | otherwise = TargetActionBuild
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig
+    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <-
       either (reportTargetSelectorProblems verbosity) return
