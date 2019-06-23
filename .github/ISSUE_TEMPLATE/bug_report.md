@@ -17,7 +17,7 @@ Steps to reproduce the behavior:
 $ cabal v2-build ...
 ```
 
-Please use versions prefixed commands (e.g. `v2-build` or `v1-build`) to avoid ambiguity.
+Please use version-prefixed commands (e.g. `v2-build` or `v1-build`) to avoid ambiguity.
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
