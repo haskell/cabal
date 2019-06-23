@@ -7,7 +7,7 @@ import           Data.Aeson
 import           GHC.Generics
 
 main = cabalTest $ withRepo "repo" $ do
-  r <- cabal' "new-show-build-info" ["--enable-tests", ":unit-test", "-v0"]
+  r <- cabal' "new-show-build-info" ["--enable-tests", "test:unit-test", "-v0"]
   let buildInfoEither = eitherDecodeStrict (T.encodeUtf8 . T.pack $ resultOutput r) :: Either String [BuildInfo]
   case buildInfoEither of
     Left err -> fail $ "Could not parse build-info command" ++ err
