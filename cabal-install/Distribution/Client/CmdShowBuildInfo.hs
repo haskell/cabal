@@ -192,67 +192,67 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
           unitIdToFilePath unitId = "build-info-" ++ display unitId ++ ".json"
 
 showInfo :: FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
-showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId
-  | Nothing <- mbPkg = die' verbosity $ "No unit " ++ display targetUnitId
-  | Just pkg <- mbPkg = do
-    let shared = elaboratedShared buildCtx
-        install = elaboratedPlanOriginal buildCtx
-        dirLayout = distDirLayout baseCtx
-        buildDir = distBuildDirectory dirLayout (elabDistDirParams shared pkg)
-        buildType' = buildType (elabPkgDescription pkg)
-        flags = setupHsBuildFlags pkg shared verbosity buildDir
-        args = setupHsBuildArgs pkg
-        srcDir = case (elabPkgSourceLocation pkg) of
-          LocalUnpackedPackage fp -> fp
-          _ -> ""
-        scriptOptions = setupHsScriptOptions
-            (ReadyPackage pkg)
-            install
-            shared
-            dirLayout
-            srcDir
-            buildDir
-            False
-            lock
-        configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
-        configureArgs = setupHsConfigureArgs pkg
+showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
+  case mbPkg of
+    Nothing -> die' verbosity $ "No unit " ++ display targetUnitId
+    Just pkg -> do
+      let shared = elaboratedShared buildCtx
+          install = elaboratedPlanOriginal buildCtx
+          dirLayout = distDirLayout baseCtx
+          buildDir = distBuildDirectory dirLayout (elabDistDirParams shared pkg)
+          buildType' = buildType (elabPkgDescription pkg)
+          flags = setupHsBuildFlags pkg shared verbosity buildDir
+          args = setupHsBuildArgs pkg
+          srcDir = case (elabPkgSourceLocation pkg) of
+            LocalUnpackedPackage fp -> fp
+            _ -> ""
+          scriptOptions = setupHsScriptOptions
+              (ReadyPackage pkg)
+              install
+              shared
+              dirLayout
+              srcDir
+              buildDir
+              False
+              lock
+          configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
+          configureArgs = setupHsConfigureArgs pkg
 
-    -- check cabal version is corrct
-    (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
-                                          (elabPkgDescription pkg) buildType'
-    when (cabalVersion < mkVersion [3, 0, 0,0])
-      ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
-            ++ "Found version: " ++ display cabalVersion ++ "\n"
-            ++ "For component: " ++ display targetUnitId
-      )
-    --Configure the package if there's no existing config
-    lbi <- tryGetPersistBuildConfig buildDir
-    case lbi of
-      Left _ -> setupWrapper
-                  verbosity
-                  scriptOptions
-                  (Just $ elabPkgDescription pkg)
-                  (Cabal.configureCommand defaultProgramDb)
-                  (const configureFlags)
-                  (const configureArgs)
-      Right _ -> pure ()
-
-    setupWrapper
-      verbosity
-      scriptOptions
-      (Just $ elabPkgDescription pkg)
-      (Cabal.showBuildInfoCommand defaultProgramDb)
-      (const (Cabal.ShowBuildInfoFlags
-        { Cabal.buildInfoBuildFlags = flags
-        , Cabal.buildInfoOutputFile = Just fileOutput
-        }
+      -- check cabal version is corrct
+      (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
+                                            (elabPkgDescription pkg) buildType'
+      when (cabalVersion < mkVersion [3, 0, 0,0])
+        ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
+              ++ "Found version: " ++ display cabalVersion ++ "\n"
+              ++ "For component: " ++ display targetUnitId
         )
-      )
-      (const args)
+      --Configure the package if there's no existing config
+      lbi <- tryGetPersistBuildConfig buildDir
+      case lbi of
+        Left _ -> setupWrapper
+                    verbosity
+                    scriptOptions
+                    (Just $ elabPkgDescription pkg)
+                    (Cabal.configureCommand defaultProgramDb)
+                    (const configureFlags)
+                    (const configureArgs)
+        Right _ -> pure ()
+
+      setupWrapper
+        verbosity
+        scriptOptions
+        (Just $ elabPkgDescription pkg)
+        (Cabal.showBuildInfoCommand defaultProgramDb)
+        (const (Cabal.ShowBuildInfoFlags
+          { Cabal.buildInfoBuildFlags = flags
+          , Cabal.buildInfoOutputFile = Just fileOutput
+          }
+          )
+        )
+        (const args)
     where
       mbPkg :: Maybe ElaboratedConfiguredPackage
       mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
-
 
 -- | This defines what a 'TargetSelector' means for the @new-show-build-info@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
