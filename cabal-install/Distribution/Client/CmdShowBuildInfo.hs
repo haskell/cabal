@@ -54,9 +54,6 @@ import Distribution.Client.JobControl (newLock, Lock)
 import Distribution.Simple.Configure (tryGetPersistBuildConfig)
 import qualified Distribution.Client.CmdInstall as CmdInstall
 
-import Control.Monad
-    ( mapM_ )
-
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 
