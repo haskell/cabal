@@ -9,7 +9,13 @@
   * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
-  * Add a `LibraryVisibility` field to `InstalledPackageInfo`.
+  * Introduce multiple public libraries feature
+    ([#5526](https://github.com/haskell/cabal/pull/5526)).
+    * New build-depends syntax
+    * Add a set of library components to the `Dependency` datatype
+    * New `visibility` field in the `library` stanza
+    * New `LibraryVisibility` field in `InstalledPackageInfo`
+    * New syntax for the `--dependency` Cabal flag
   * Static linking
     * Add `--enable-executable-static` flag for building fully
       static executables (GHC's normal "statish" linking links
