@@ -1,5 +1,9 @@
-{-# LANGUAGE CPP, LambdaCase, NamedFieldPuns, RecordWildCards, ViewPatterns,
-             TupleSections #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE NamedFieldPuns  #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 -- | cabal-install CLI command: update
 --
@@ -9,7 +13,7 @@ module Distribution.Client.CmdUpdate (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude    
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Compat.Directory
          ( setModificationTime )

@@ -1,4 +1,9 @@
-{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
+{-# LANGUAGE BangPatterns       #-}
+{-# LANGUAGE CPP                #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE NamedFieldPuns     #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 -- | Handling project configuration.
 --
