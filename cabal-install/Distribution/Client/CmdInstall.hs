@@ -253,7 +253,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
       let verbosity' = lessVerbose verbosity
 
       -- First, we need to learn about what's available to be installed.
-      localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
+      localBaseCtx <- establishProjectBaseContext verbosity' cliConfig InstallCommand
       let localDistDirLayout = distDirLayout localBaseCtx
       pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
 
@@ -816,13 +816,16 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
+        
+        currentCommand = InstallCommand
 
     return ProjectBaseContext {
       distDirLayout,
       cabalDirLayout,
       projectConfig,
       localPackages,
-      buildSettings
+      buildSettings,
+      currentCommand
     }
   where
     mdistDirectory = flagToMaybe

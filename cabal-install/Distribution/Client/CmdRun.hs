@@ -162,7 +162,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
 
     let
       with =
-        establishProjectBaseContext verbosity cliConfig
+        establishProjectBaseContext verbosity cliConfig OtherCommand
       without config =
         establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir []
 

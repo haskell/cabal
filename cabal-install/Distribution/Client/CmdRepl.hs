@@ -337,7 +337,7 @@ data OriginalComponentInfo = OriginalComponentInfo
 
 withProject :: ProjectConfig -> Verbosity -> [String] -> IO (ProjectBaseContext, [TargetSelector], IO ())
 withProject cliConfig verbosity targetStrings = do
-  baseCtx <- establishProjectBaseContext verbosity cliConfig
+  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                  =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings

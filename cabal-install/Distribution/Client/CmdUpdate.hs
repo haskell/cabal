@@ -119,7 +119,7 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFla
 updateAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
              extraArgs globalFlags = do
   projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
-    (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
+    (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext verbosity

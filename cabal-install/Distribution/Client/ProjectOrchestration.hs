@@ -41,6 +41,7 @@
 --
 module Distribution.Client.ProjectOrchestration (
     -- * Discovery phase: what is in the project?
+    CurrentCommand(..),
     establishProjectBaseContext,
     ProjectBaseContext(..),
     BuildTimeSettings(..),
@@ -168,6 +169,11 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
 
 
+-- | Tracks what command is being executed, because we need to hide this somewhere
+-- for cases that need special handling (usually for error reporting).
+data CurrentCommand = InstallCommand | OtherCommand
+                    deriving (Show, Eq)
+
 -- | This holds the context of a project prior to solving: the content of the
 -- @cabal.project@ and all the local package @.cabal@ files.
 --
@@ -176,13 +182,15 @@ data ProjectBaseContext = ProjectBaseContext {
        cabalDirLayout :: CabalDirLayout,
        projectConfig  :: ProjectConfig,
        localPackages  :: [PackageSpecifier UnresolvedSourcePackage],
-       buildSettings  :: BuildTimeSettings
+       buildSettings  :: BuildTimeSettings,
+       currentCommand :: CurrentCommand
      }
 
 establishProjectBaseContext :: Verbosity
                             -> ProjectConfig
+                            -> CurrentCommand
                             -> IO ProjectBaseContext
-establishProjectBaseContext verbosity cliConfig = do
+establishProjectBaseContext verbosity cliConfig currentCommand = do
 
     cabalDir <- getCabalDir
     projectRoot <- either throwIO return =<<
@@ -218,7 +226,8 @@ establishProjectBaseContext verbosity cliConfig = do
       cabalDirLayout,
       projectConfig,
       localPackages,
-      buildSettings
+      buildSettings,
+      currentCommand
     }
   where
     mdistDirectory = Setup.flagToMaybe projectConfigDistDir
@@ -422,7 +431,7 @@ runProjectPostBuildPhase verbosity
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
-    dieOnBuildFailures verbosity elaboratedPlanToExecute buildOutcomes
+    dieOnBuildFailures verbosity currentCommand elaboratedPlanToExecute buildOutcomes 
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -971,9 +980,9 @@ printPlan verbosity
 
 -- | If there are build failures then report them and throw an exception.
 --
-dieOnBuildFailures :: Verbosity
+dieOnBuildFailures :: Verbosity -> CurrentCommand
                    -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
-dieOnBuildFailures verbosity plan buildOutcomes
+dieOnBuildFailures verbosity currentCommand plan buildOutcomes
   | null failures = return ()
 
   | isSimpleCase  = exitFailure
@@ -1060,6 +1069,7 @@ dieOnBuildFailures verbosity plan buildOutcomes
       , [pkg]              <- rootpkgs
       , installedUnitId pkg == pkgid
       , isFailureSelfExplanatory (buildFailureReason failure)
+      , currentCommand /= InstallCommand
       = True
       | otherwise
       = False
