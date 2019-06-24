@@ -1030,8 +1030,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     dieIfNotHaddockFailure
-      | all isHaddockFailure failuresClassification
-      , currentCommand /= HaddockCommand            = warn
+      | all isHaddockFailure failuresClassification = warn
       | otherwise                                   = die'
       where
         isHaddockFailure
