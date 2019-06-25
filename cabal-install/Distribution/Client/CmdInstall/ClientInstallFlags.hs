@@ -27,11 +27,11 @@ data InstallMethod = InstallMethodCopy
 instance Binary InstallMethod
 
 data ClientInstallFlags = ClientInstallFlags
-  { cinstInstallLibs :: Flag Bool
+  { cinstInstallLibs     :: Flag Bool
   , cinstEnvironmentPath :: Flag FilePath
   , cinstOverwritePolicy :: Flag OverwritePolicy
-  , cinstInstallMethod :: Flag InstallMethod
-  , cinstInstalldir :: Flag FilePath
+  , cinstInstallMethod   :: Flag InstallMethod
+  , cinstInstalldir      :: Flag FilePath
   } deriving (Eq, Show, Generic)
 
 instance Monoid ClientInstallFlags where
@@ -45,11 +45,11 @@ instance Binary ClientInstallFlags
 
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags = ClientInstallFlags
-  { cinstInstallLibs = toFlag False
+  { cinstInstallLibs     = toFlag False
   , cinstEnvironmentPath = mempty
   , cinstOverwritePolicy = mempty
-  , cinstInstallMethod = mempty
-  , cinstInstalldir = mempty
+  , cinstInstallMethod   = mempty
+  , cinstInstalldir      = mempty
   }
 
 clientInstallOptions :: ShowOrParseArgs -> [OptionField ClientInstallFlags]
@@ -103,4 +103,3 @@ showInstallMethodFlag :: Flag InstallMethod -> [String]
 showInstallMethodFlag (Flag InstallMethodCopy)    = ["copy"]
 showInstallMethodFlag (Flag InstallMethodSymlink) = ["symlink"]
 showInstallMethodFlag NoFlag                      = []
-

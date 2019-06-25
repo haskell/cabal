@@ -251,8 +251,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     pure $ savedClientInstallFlags savedConfig `mappend` clientInstallFlags'
 
   let
-    installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
-    targetFilter = if installLibs then Just LibKind else Just ExeKind
+    installLibs    = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
+    targetFilter   = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
     withProject = do
@@ -272,14 +272,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
           \str -> case simpleParse str of
             Just (pkgId :: PackageId)
               | pkgVersion pkgId /= nullVersion -> Right pkgId
-            _ -> Left str
+            _                                   -> Left str
         packageSpecifiers =
           flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise ->
-              NamedPackage pkgName
-              [PackagePropertyVersion (thisVersion pkgVersion)]
+            | otherwise                 -> NamedPackage pkgName
+                                           [PackagePropertyVersion
+                                            (thisVersion pkgVersion)]
         packageTargets =
           flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
@@ -302,10 +302,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                 elaboratedPlan
                 (Just pkgDb)
                 targetSelectors of
-              Right targets -> do
+              Right targets ->
                 -- Everything is a local dependency.
                 return (targets, [])
-              Left errs -> do
+              Left errs     -> do
                 -- Not everything is local.
                 let
                   (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
@@ -332,7 +332,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                       | name `elem` hackageNames -> False
                     TargetPackageNamed name _
                       | name `elem` hackageNames -> False
-                    _ -> True
+                    _                            -> True
 
                 -- This can't fail, because all of the errors are
                 -- removed (or we've given up).
@@ -439,9 +439,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
         packageSpecifiers = flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise ->
-              NamedPackage pkgName
-              [PackagePropertyVersion (thisVersion pkgVersion)]
+            | otherwise                 -> NamedPackage pkgName
+                                           [PackagePropertyVersion
+                                            (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
       return (packageSpecifiers, packageTargets, projectConfig)
 
@@ -499,7 +499,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec -> return (globalEnv spec)
-      | otherwise -> do
+      | otherwise                 -> do
         spec' <- makeAbsolute spec
         isDir <- doesDirectoryExist spec'
         if isDir
@@ -508,7 +508,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
           then return (localEnv spec')
           -- Otherwise, treat it like a literal file path.
           else return spec'
-    Nothing -> return (globalEnv "default")
+    Nothing                       -> return (globalEnv "default")
 
   envFileExists <- doesFileExist envFile
   envEntries <- filterEnvEntries <$> if
@@ -601,28 +601,31 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
 -- | Install any built exe by symlinking/copying it
 -- we don't use BuildOutcomes because we also need the component names
-installExes :: Verbosity
-            -> ProjectBaseContext
-            -> ProjectBuildContext
-            -> Platform
-            -> Compiler
-            -> ClientInstallFlags
-            -> IO ()
+installExes
+  :: Verbosity
+  -> ProjectBaseContext
+  -> ProjectBuildContext
+  -> Platform
+  -> Compiler
+  -> ClientInstallFlags
+  -> IO ()
 installExes verbosity baseCtx buildCtx platform compiler
             clientInstallFlags = do
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
-  let mkUnitBinDir :: UnitId -> FilePath
-      mkUnitBinDir = InstallDirs.bindir .
-                     storePackageInstallDirs'
-                       storeDirLayout
-                       (compilerId compiler)
+
+      mkUnitBinDir :: UnitId -> FilePath
+      mkUnitBinDir =
+        InstallDirs.bindir .
+        storePackageInstallDirs' storeDirLayout (compilerId compiler)
+
       mkExeName :: UnqualComponentName -> FilePath
       mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
       installdirUnknown =
         "installdir is not defined. Set it in your cabal config file "
         ++ "or use --installdir=<path>"
-  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown)
-              $ pure <$> cinstInstalldir clientInstallFlags
+
+  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown) $
+                pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
   warnIfNoExes verbosity buildCtx
   let
@@ -633,20 +636,21 @@ installExes verbosity baseCtx buildCtx platform compiler
                   installdir installMethod
     in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
   where
-    overwritePolicy = fromFlagOrDefault NeverOverwrite
-                        $ cinstOverwritePolicy clientInstallFlags
-    installMethod    = fromFlagOrDefault InstallMethodSymlink
-                        $ cinstInstallMethod clientInstallFlags
+    overwritePolicy = fromFlagOrDefault NeverOverwrite $
+                      cinstOverwritePolicy clientInstallFlags
+    installMethod   = fromFlagOrDefault InstallMethodSymlink $
+                      cinstInstallMethod clientInstallFlags
 
 -- | Install any built library by adding it to the default ghc environment
-installLibraries :: Verbosity
-                 -> ProjectBuildContext
-                 -> Compiler
-                 -> PackageDBStack
-                 -> ProgramDb
-                 -> FilePath -- ^ Environment file
-                 -> [GhcEnvironmentFileEntry]
-                 -> IO ()
+installLibraries
+  :: Verbosity
+  -> ProjectBuildContext
+  -> Compiler
+  -> PackageDBStack
+  -> ProgramDb
+  -> FilePath -- ^ Environment file
+  -> [GhcEnvironmentFileEntry]
+  -> IO ()
 installLibraries verbosity buildCtx compiler
                  packageDbs programDb envFile envEntries = do
   -- Why do we get it again? If we updated a globalPackage then we need
@@ -678,19 +682,19 @@ installLibraries verbosity buildCtx compiler
 warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
   when noExes $
-    warn verbosity $ "You asked to install executables, "
-                  <> "but there are no executables in "
-                  <> plural (listPlural selectors) "target" "targets" <> ": "
-                  <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
-                  <> "Perhaps you want to use --lib "
-                  <> "to install libraries instead."
+    warn verbosity $
+    "You asked to install executables, but there are no executables in "
+    <> plural (listPlural selectors) "target" "targets" <> ": "
+    <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
+    <> "Perhaps you want to use --lib to install libraries instead."
   where
-    targets = concat $ Map.elems $ targetsMap buildCtx
+    targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
-    selectors = concatMap snd targets
-    noExes = null $ catMaybes $ exeMaybe <$> components
+    selectors  = concatMap snd targets
+    noExes     = null $ catMaybes $ exeMaybe <$> components
+
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
-    exeMaybe _ = Nothing
+    exeMaybe _                                  = Nothing
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
