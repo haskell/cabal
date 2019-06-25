@@ -16,7 +16,7 @@
 -- @
 -- { "cabal-version": "1.23.0.0",
 --   "compiler": {
---     "flavor": "GHC",
+--     "flavour": "GHC",
 --     "compiler-id": "ghc-7.10.2",
 --     "path": "/usr/bin/ghc",
 --   },
