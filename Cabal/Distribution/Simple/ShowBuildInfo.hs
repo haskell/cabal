@@ -72,12 +72,14 @@ import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
 
--- | Construct a JSON document describing the build information for a package
-mkBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
-            -> LocalBuildInfo      -- ^ Configuration information
-            -> BuildFlags          -- ^ Flags that the user passed to build
-            -> [TargetInfo]
-            -> Json
+-- | Construct a JSON document describing the build information for a
+-- package.
+mkBuildInfo
+  :: PackageDescription  -- ^ Mostly information from the .cabal file
+  -> LocalBuildInfo      -- ^ Configuration information
+  -> BuildFlags          -- ^ Flags that the user passed to build
+  -> [TargetInfo]
+  -> Json
 mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
   where
     componentsToBuild = map (\target -> (componentLocalName $ targetCLBI target,targetCLBI target)) targetsToBuild
@@ -86,14 +88,14 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
 
     info = JsonObject
       [ "cabal-version" .= JsonString (display cabalVersion)
-      , "compiler" .= mkCompilerInfo
-      , "components" .= JsonArray (map mkComponentInfo componentsToBuild)
+      , "compiler"      .= mkCompilerInfo
+      , "components"    .= JsonArray (map mkComponentInfo componentsToBuild)
       ]
 
     mkCompilerInfo = JsonObject
-      [ "flavour" .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
+      [ "flavour"     .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
       , "compiler-id" .= JsonString (showCompilerId $ compiler lbi)
-      , "path" .= path
+      , "path"        .= path
       ]
       where
         path = maybe JsonNull (JsonString . programPath)
@@ -101,30 +103,30 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
                >>= flip lookupProgram (withPrograms lbi)
 
         flavorToProgram :: CompilerFlavor -> Maybe Program
-        flavorToProgram GHC = Just ghcProgram
+        flavorToProgram GHC   = Just ghcProgram
         flavorToProgram GHCJS = Just ghcjsProgram
-        flavorToProgram UHC = Just uhcProgram
-        flavorToProgram JHC = Just jhcProgram
-        flavorToProgram _ = Nothing
+        flavorToProgram UHC   = Just uhcProgram
+        flavorToProgram JHC   = Just jhcProgram
+        flavorToProgram _     = Nothing
 
     mkComponentInfo (name, clbi) = JsonObject
-      [ "type" .= JsonString compType
-      , "name" .= JsonString (prettyShow name)
-      , "unit-id" .= JsonString (prettyShow $ componentUnitId clbi)
+      [ "type"          .= JsonString compType
+      , "name"          .= JsonString (prettyShow name)
+      , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
       , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
-      , "modules" .= JsonArray (map (JsonString . display) modules)
-      , "src-files" .= JsonArray (map JsonString sourceFiles)
-      , "src-dirs" .= JsonArray (map JsonString $ hsSourceDirs bi)
+      , "modules"       .= JsonArray (map (JsonString . display) modules)
+      , "src-files"     .= JsonArray (map JsonString sourceFiles)
+      , "src-dirs"      .= JsonArray (map JsonString $ hsSourceDirs bi)
       ]
       where
         bi = componentBuildInfo comp
         Just comp = lookupComponent pkg_descr name
         compType = case comp of
-          CLib _     -> "lib"
-          CExe _     -> "exe"
-          CTest _    -> "test"
-          CBench _   -> "bench"
-          CFLib _    -> "flib"
+          CLib _   -> "lib"
+          CExe _   -> "exe"
+          CTest _  -> "test"
+          CBench _ -> "bench"
+          CFLib _  -> "flib"
         modules = case comp of
           CLib lib -> explicitLibModules lib
           CExe exe -> exeModules exe
@@ -136,10 +138,11 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
 
 -- | Get the command-line arguments that would be passed
 -- to the compiler to build the given component.
-getCompilerArgs :: BuildInfo
-                -> LocalBuildInfo
-                -> ComponentLocalBuildInfo
-                -> [String]
+getCompilerArgs
+  :: BuildInfo
+  -> LocalBuildInfo
+  -> ComponentLocalBuildInfo
+  -> [String]
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
       GHC   -> ghc
