@@ -160,10 +160,10 @@ import Network.URI
 -- 'PackageName'. This returns the configuration that applies to all local
 -- packages plus any package-specific configuration for this package.
 --
-lookupLocalPackageConfig :: (Semigroup a, Monoid a)
-                         => (PackageConfig -> a)
-                         -> ProjectConfig
-                         -> PackageName -> a
+lookupLocalPackageConfig
+  :: (Semigroup a, Monoid a)
+  => (PackageConfig -> a) -> ProjectConfig -> PackageName
+  -> a
 lookupLocalPackageConfig field ProjectConfig {
                            projectConfigLocalPackages,
                            projectConfigSpecificPackage
@@ -194,10 +194,10 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
 -- that doesn't have an http transport. And that avoids having to have access
 -- to the 'BuildTimeSettings'
 --
-projectConfigWithSolverRepoContext :: Verbosity
-                                   -> ProjectConfigShared
-                                   -> ProjectConfigBuildOnly
-                                   -> (RepoContext -> IO a) -> IO a
+projectConfigWithSolverRepoContext
+  :: Verbosity -> ProjectConfigShared -> ProjectConfigBuildOnly
+  -> (RepoContext -> IO a)
+  -> IO a
 projectConfigWithSolverRepoContext verbosity
                                    ProjectConfigShared{..}
                                    ProjectConfigBuildOnly{..} =
@@ -205,8 +205,10 @@ projectConfigWithSolverRepoContext verbosity
       verbosity
       (fromNubList projectConfigRemoteRepos)
       (fromNubList projectConfigLocalRepos)
-      (fromFlagOrDefault (error "projectConfigWithSolverRepoContext: projectConfigCacheDir")
-                         projectConfigCacheDir)
+      (fromFlagOrDefault
+                   (error
+                    "projectConfigWithSolverRepoContext: projectConfigCacheDir")
+                   projectConfigCacheDir)
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
       (fromNubList projectConfigProgPathExtra)
