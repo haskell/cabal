@@ -242,11 +242,11 @@ convertLegacyGlobalConfig
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
     -- defaults in the various resolve functions in terms of the new types.
-    configExFlags' = defaultConfigExFlags <> configExFlags
-    installFlags'  = defaultInstallFlags  <> installFlags
-    clientInstallFlags'  = defaultClientInstallFlags  <> clientInstallFlags
-    haddockFlags'  = defaultHaddockFlags  <> haddockFlags
-    testFlags'     = defaultTestFlags     <> testFlags
+    configExFlags'      = defaultConfigExFlags      <> configExFlags
+    installFlags'       = defaultInstallFlags       <> installFlags
+    clientInstallFlags' = defaultClientInstallFlags <> clientInstallFlags
+    haddockFlags'       = defaultHaddockFlags       <> haddockFlags
+    testFlags'          = defaultTestFlags          <> testFlags
 
     configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags' testFlags'
