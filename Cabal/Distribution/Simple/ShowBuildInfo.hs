@@ -82,7 +82,9 @@ mkBuildInfo
   -> Json
 mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
   where
-    componentsToBuild = map (\target -> (componentLocalName $ targetCLBI target,targetCLBI target)) targetsToBuild
+    targetToNameAndLBI target =
+      (componentLocalName $ targetCLBI target, targetCLBI target)
+    componentsToBuild = map targetToNameAndLBI targetsToBuild
     (.=) :: String -> Json -> (String, Json)
     k .= v = (k, v)
 
