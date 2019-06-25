@@ -83,6 +83,7 @@ import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -476,6 +477,7 @@ configure (pkg_descr0, pbi) cfg = do
                 (dependencySatisfiable
                     use_external_internal_deps
                     (fromFlagOrDefault False (configExactConfiguration cfg))
+                    (fromFlagOrDefault False (configAllowDependingOnPrivateLibs cfg))
                     (packageName pkg_descr0)
                     installedPackageSet
                     internalPackageSet
@@ -881,6 +883,7 @@ getInternalPackages pkg_descr0 =
 dependencySatisfiable
     :: Bool -- ^ use external internal deps?
     -> Bool -- ^ exact configuration?
+    -> Bool -- ^ allow depending on private libs?
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
@@ -889,7 +892,9 @@ dependencySatisfiable
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
-  exact_config pn installedPackageSet internalPackageSet requiredDepsMap
+  exact_config
+  allow_private_deps
+  pn installedPackageSet internalPackageSet requiredDepsMap
   (Dependency depName vr sublibs)
 
     | exact_config
@@ -913,12 +918,7 @@ dependencySatisfiable
                       packageNameToUnqualComponentName depName)
                  requiredDepsMap)
 
-          || all
-               (\lib ->
-                 (depName, CLibName lib)
-                 `Map.member`
-                 requiredDepsMap)
-               sublibs
+          || all visible sublibs
 
     | isInternalDep
     = if use_external_internal_deps
@@ -949,6 +949,23 @@ dependencySatisfiable
            -- Reinterpret the "package name" as an unqualified component
            -- name
            = LSubLibName $ packageNameToUnqualComponentName depName
+    -- Check whether a libray exists and is visible.
+    -- We don't disambiguate between dependency on non-existent or private
+    -- library yet, so we just return a bool and later report a generic error.
+    visible lib = maybe
+                    False -- Does not even exist (wasn't in the depsMap)
+                    (\ipi -> Installed.libVisibility ipi == LibraryVisibilityPublic
+                          -- If the override is enabled, the visibility does
+                          -- not matter (it's handled externally)
+                          || allow_private_deps
+                          -- If it's a library of the same package then it's
+                          -- always visible.
+                          -- This is only triggered when passing a component
+                          -- of the same package as --dependency, such as in:
+                          -- cabal-testsuite/PackageTests/ConfigureComponent/SubLib/setup-explicit.test.hs
+                          || pkgName (Installed.sourcePackageId ipi) == pn)
+                    maybeIPI
+      where maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering
@@ -981,7 +998,7 @@ configureFinalizedPackage verbosity cfg enabled
                    pkg_descr0
             of Right r -> return r
                Left missing ->
-                   die' verbosity $ "Encountered missing dependencies:\n"
+                   die' verbosity $ "Encountered missing or private dependencies:\n"
                      ++ (render . nest 4 . sep . punctuate comma
                                 . map (pretty . simplifyDependency)
                                 $ missing)

@@ -60,7 +60,7 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <$> monoidalFieldAla    "hugs-options"         (alaList' FSep Token)         unitedList
         --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
         ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
-    -- Very basic fields: name, version, package-name and lib-name
+    -- Very basic fields: name, version, package-name, lib-name and visibility
     <+> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields
     <+> optionalFieldDef    "id"                                                 L.installedUnitId (mkUnitId "")
@@ -102,7 +102,6 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
     <+> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
     <+> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
-    <+> optionalFieldDef    "visibility"                                         L.libVisibility LibraryVisibilityPrivate
   where
     mkInstalledPackageInfo _ Basic {..} = InstalledPackageInfo
         -- _basicPkgName is not used
@@ -110,6 +109,7 @@ ipiFieldGrammar = mkInstalledPackageInfo
         (PackageIdentifier pn _basicVersion)
         (combineLibraryName ln _basicLibName)
         (mkComponentId "") -- installedComponentId_, not in use
+        _basicLibVisibility
       where
         MungedPackageName pn ln = _basicName
 {-# SPECIALIZE ipiFieldGrammar :: FieldDescrs InstalledPackageInfo InstalledPackageInfo #-}
@@ -223,10 +223,11 @@ instance Pretty SpecLicenseLenient where
 -- in serialised textual representation
 -- to the actual 'InstalledPackageInfo' fields.
 data Basic = Basic
-    { _basicName    :: MungedPackageName
-    , _basicVersion :: Version
-    , _basicPkgName :: Maybe PackageName
-    , _basicLibName :: LibraryName
+    { _basicName          :: MungedPackageName
+    , _basicVersion       :: Version
+    , _basicPkgName       :: Maybe PackageName
+    , _basicLibName       :: LibraryName
+    , _basicLibVisibility :: LibraryVisibility
     }
 
 basic :: Lens' InstalledPackageInfo Basic
@@ -237,12 +238,14 @@ basic f ipi = g <$> f b
         (packageVersion ipi)
         (maybePackageName ipi)
         (sourceLibName ipi)
+        (libVisibility ipi)
 
-    g (Basic n v pn ln) = ipi
+    g (Basic n v pn ln lv) = ipi
         & setMungedPackageName n
         & L.sourcePackageId . L.pkgVersion .~ v
         & setMaybePackageName pn
         & L.sourceLibName .~ ln
+        & L.libVisibility .~ lv
 
 basicName :: Lens' Basic MungedPackageName
 basicName f b = (\x -> b { _basicName = x }) <$> f (_basicName b)
@@ -261,6 +264,11 @@ basicLibName f b = (\x -> b { _basicLibName = maybeToLibraryName x }) <$>
     f (libraryNameString (_basicLibName b))
 {-# INLINE basicLibName #-}
 
+basicLibVisibility :: Lens' Basic LibraryVisibility
+basicLibVisibility f b = (\x -> b { _basicLibVisibility = x }) <$>
+    f (_basicLibVisibility b)
+{-# INLINE basicLibVisibility #-}
+
 basicFieldGrammar
     :: (FieldGrammar g, Applicative (g Basic))
     => g Basic Basic
@@ -269,5 +277,21 @@ basicFieldGrammar = mkBasic
     <*> optionalFieldDefAla "version"       MQuoted  basicVersion nullVersion
     <*> optionalField       "package-name"           basicPkgName
     <*> optionalField       "lib-name"               basicLibName
+    <+> optionalFieldDef    "visibility"             basicLibVisibility LibraryVisibilityPrivate
   where
-    mkBasic n v pn ln = Basic n v pn (maybe LMainLibName LSubLibName ln)
+    mkBasic n v pn ln lv = Basic n v pn ln' lv'
+      where
+        ln' = maybe LMainLibName LSubLibName ln
+        -- Older GHCs (<8.8) always report installed libraries as private
+        -- because their ghc-pkg builds with an older Cabal.
+        -- So we always set LibraryVisibilityPublic for main (unnamed) libs.
+        -- This can be removed once we stop supporting GHC<8.8, at the
+        -- condition that we keep marking main libraries as public when
+        -- registering them.
+        lv' = if
+                let MungedPackageName _ mln = n in
+                -- We need to check both because on ghc<8.2 ln' will always
+                -- be LMainLibName
+                ln' == LMainLibName && mln == LMainLibName
+              then LibraryVisibilityPublic
+              else lv

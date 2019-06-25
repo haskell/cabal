@@ -274,9 +274,13 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configUseResponseFiles :: Flag Bool
+    configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
       -- as haddock, or or ld.
+    configAllowDependingOnPrivateLibs :: Flag Bool
+      -- ^ Allow depending on private sublibraries. This is used by external
+      -- tools (like cabal-install) so they can add multiple-public-libraries
+      -- compatibility to older ghcs by checking visibility externally.
   }
   deriving (Generic, Read, Show)
 
@@ -704,6 +708,13 @@ configureOptions showOrParseArgs =
          configUseResponseFiles
          (\v flags -> flags { configUseResponseFiles = v })
          (boolOpt' ([], ["disable-response-files"]) ([], []))
+
+      ,option "" ["allow-depending-on-private-libs"]
+         (  "Allow depending on private libraries. "
+         ++ "If set, the library visibility check MUST be done externally." )
+         configAllowDependingOnPrivateLibs
+         (\v flags -> flags { configAllowDependingOnPrivateLibs = v })
+         trueArg
       ]
   where
     liftInstallDirs =

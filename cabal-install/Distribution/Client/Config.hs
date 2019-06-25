@@ -413,7 +413,8 @@ instance Semigroup SavedConfig where
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
-        configUseResponseFiles    = combine configUseResponseFiles
+        configUseResponseFiles    = combine configUseResponseFiles,
+        configAllowDependingOnPrivateLibs = combine configAllowDependingOnPrivateLibs
         }
         where
           combine        = combine'        savedConfigureFlags

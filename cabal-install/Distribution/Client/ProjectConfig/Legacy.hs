@@ -687,7 +687,8 @@ convertToLegacyAllPackageConfig
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
-      configUseResponseFiles    = mempty
+      configUseResponseFiles    = mempty,
+      configAllowDependingOnPrivateLibs = mempty
     }
 
     haddockFlags = mempty {
@@ -757,7 +758,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
-      configUseResponseFiles    = mempty
+      configUseResponseFiles    = mempty,
+      configAllowDependingOnPrivateLibs = mempty
     }
 
     installFlags = mempty {

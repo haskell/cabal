@@ -41,6 +41,7 @@ data InstalledPackageInfo
         sourcePackageId   :: PackageId,
         sourceLibName     :: LibraryName,
         installedComponentId_ :: ComponentId,
+        libVisibility     :: LibraryVisibility,
         installedUnitId   :: UnitId,
         -- INVARIANT: if this package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.  If it is
@@ -87,8 +88,7 @@ data InstalledPackageInfo
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath],
-        pkgRoot           :: Maybe FilePath,
-        libVisibility     :: LibraryVisibility
+        pkgRoot           :: Maybe FilePath
     }
     deriving (Eq, Generic, Typeable, Read, Show)
 
