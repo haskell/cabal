@@ -375,6 +375,7 @@ library
     Distribution.Simple.Program.Types
     Distribution.Simple.Register
     Distribution.Simple.Setup
+    Distribution.Simple.ShowBuildInfo
     Distribution.Simple.SrcDist
     Distribution.Simple.Test
     Distribution.Simple.Test.ExeV10
@@ -534,6 +535,7 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
+    Distribution.Simple.Utils.Json
     Paths_Cabal
 
   if flag(bundled-binary-generic)
