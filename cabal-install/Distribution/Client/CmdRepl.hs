@@ -338,7 +338,9 @@ data OriginalComponentInfo = OriginalComponentInfo
   }
   deriving (Show)
 
-data ReplType = ProjectRepl | GlobalRepl FilePath
+-- | Tracks what type of GHCi instance we're creating.
+data ReplType = ProjectRepl 
+              | GlobalRepl FilePath -- ^ The 'FilePath' argument is the correct CWD.
               deriving (Show, Eq)
 
 withProject :: ProjectConfig -> Verbosity -> [String]
