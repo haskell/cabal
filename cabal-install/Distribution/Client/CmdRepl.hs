@@ -50,6 +50,10 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), liftOption, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
+import Distribution.Compiler
+         ( CompilerFlavor(GHC) )
+import Distribution.Simple.Compiler
+         ( compilerCompatVersion )
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
@@ -269,12 +273,6 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
                               targets
                               elaboratedPlan
           includeTransitive = fromFlagOrDefault True (envIncludeTransitive envFlags)
-          replFlags' = case originalComponent of 
-            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
-            Nothing  -> []
-          replFlags'' = case replType of
-            GlobalRepl scriptPath -> ("-ghci-script" ++ scriptPath) : replFlags'
-            _                     -> replFlags'
         
         pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared'
                                           elaboratedPlan'
@@ -291,6 +289,22 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
             , pkgsBuildStatus
             , targetsMap = targets
             }
+          
+          ElaboratedSharedConfig { pkgConfigCompiler = compiler } = elaboratedShared'
+          
+          -- First version of GHC where GHCi supported the flag we need.
+          -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
+          minGhciScriptVersion = mkVersion [7, 6]
+
+          replFlags' = case originalComponent of 
+            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
+            Nothing  -> []
+          replFlags'' = case replType of
+            GlobalRepl scriptPath 
+              | Just version <- compilerCompatVersion GHC compiler
+              , version >= minGhciScriptVersion -> ("-ghci-script" ++ scriptPath) : replFlags'
+            _                                   -> replFlags'
+
         return (buildCtx, replFlags'')
 
     let buildCtx' = buildCtx
@@ -340,7 +354,10 @@ data OriginalComponentInfo = OriginalComponentInfo
 
 -- | Tracks what type of GHCi instance we're creating.
 data ReplType = ProjectRepl 
-              | GlobalRepl FilePath -- ^ The 'FilePath' argument is the correct CWD.
+              | GlobalRepl FilePath -- ^ The 'FilePath' argument is path to a GHCi
+                                    --   script responsible for changing to the
+                                    --   correct directory. Only works on GHC geq
+                                    --   7.6, though. 🙁
               deriving (Show, Eq)
 
 withProject :: ProjectConfig -> Verbosity -> [String]
