@@ -164,7 +164,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
       with =
         establishProjectBaseContext verbosity cliConfig OtherCommand
       without config =
-        establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir []
+        establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir [] OtherCommand
 
     baseCtx <- withProjectOrGlobalConfig verbosity globalConfigFlag with without
 
