@@ -14,7 +14,7 @@ import Distribution.ReadE
 import Distribution.Simple.Command
          ( ShowOrParseArgs(..), OptionField(..), option, reqArg )
 import Distribution.Simple.Setup
-         ( Flag(..), trueArg, flagToList, toFlag )
+         ( Flag(..), boolOpt, boolOpt', flagToList, toFlag )
 
 import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..) )
@@ -27,11 +27,14 @@ data InstallMethod = InstallMethodCopy
 instance Binary InstallMethod
 
 data ClientInstallFlags = ClientInstallFlags
-  { cinstInstallLibs     :: Flag Bool
+  { cinstInstallExes :: Flag Bool
+  , cinstInstallLibs :: Flag Bool
+  , cinstInstallFLibs :: Flag Bool
   , cinstEnvironmentPath :: Flag FilePath
   , cinstOverwritePolicy :: Flag OverwritePolicy
-  , cinstInstallMethod   :: Flag InstallMethod
-  , cinstInstalldir      :: Flag FilePath
+  , cinstInstallMethod :: Flag InstallMethod
+  , cinstInstallDir :: Flag FilePath
+  , cinstFLibInstallDir :: Flag FilePath
   } deriving (Eq, Show, Generic)
 
 instance Monoid ClientInstallFlags where
@@ -45,19 +48,30 @@ instance Binary ClientInstallFlags
 
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags = ClientInstallFlags
-  { cinstInstallLibs     = toFlag False
+  { cinstInstallExes = toFlag True
+  , cinstInstallLibs = toFlag False
+  , cinstInstallFLibs = toFlag False
   , cinstEnvironmentPath = mempty
   , cinstOverwritePolicy = mempty
-  , cinstInstallMethod   = mempty
-  , cinstInstalldir      = mempty
+  , cinstInstallMethod = mempty
+  , cinstInstallDir = mempty
+  , cinstFLibInstallDir = mempty
   }
 
 clientInstallOptions :: ShowOrParseArgs -> [OptionField ClientInstallFlags]
 clientInstallOptions _ =
-  [ option [] ["lib"]
-    "Install libraries rather than executables from the target package."
+  [ option [] ["exes"]
+    "installing executables from the target package."
+    cinstInstallExes (\v flags -> flags { cinstInstallExes = v })
+    (boolOpt [] [])
+  , option [] ["libs"]
+    "installing libraries from the target package."
     cinstInstallLibs (\v flags -> flags { cinstInstallLibs = v })
-    trueArg
+    (boolOpt' ([], ["enable-libs", "lib"]) ([], ["disable-libs"]))
+  , option [] ["foreign-libs"]
+    "installing foreign libraries from the target package."
+    cinstInstallFLibs (\v flags -> flags { cinstInstallFLibs = v })
+    (boolOpt [] [])
   , option [] ["package-env", "env"]
     "Set the environment file that may be modified."
     cinstEnvironmentPath (\pf flags -> flags { cinstEnvironmentPath = pf })
@@ -77,8 +91,12 @@ clientInstallOptions _ =
         readInstallMethodFlag
         showInstallMethodFlag
   , option [] ["installdir"]
-    "Where to install (by symlinking or copying) the executables in."
-    cinstInstalldir (\v flags -> flags { cinstInstalldir = v })
+    "Where to install (by symlinking or copying) executables."
+    cinstInstallDir (\v flags -> flags { cinstInstallDir = v })
+    $ reqArg "DIR" (succeedReadE Flag) flagToList
+  , option [] ["lib-installdir"]
+    "Where to install (by symlinking or copying) foreign libraries."
+    cinstFLibInstallDir (\v flags -> flags { cinstFLibInstallDir = v })
     $ reqArg "DIR" (succeedReadE Flag) flagToList
   ]
 

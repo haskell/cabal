@@ -364,9 +364,12 @@ instance Arbitrary ClientInstallFlags where
     arbitrary =
       ClientInstallFlags
         <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
 
 instance Arbitrary ProjectConfigBuildOnly where
