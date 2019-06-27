@@ -706,6 +706,27 @@ configure (pkg_descr0, pbi) cfg = do
 
     setCoverageLBI <- configureCoverage verbosity cfg comp
 
+
+
+    -- Turn off library and executable stripping when `debug-info` is set
+    -- to anything other than zero.
+    let
+        strip_libexe s f =
+          let defaultStrip = fromFlagOrDefault True (f cfg)
+          in case fromFlag (configDebugInfo cfg) of
+                      NoDebugInfo -> return defaultStrip
+                      _ -> case f cfg of
+                             Flag True -> do
+                              warn verbosity $ "Setting debug-info implies "
+                                                ++ s ++ "-stripping: False"
+                              return False
+
+                             _ -> return False
+
+    strip_lib <- strip_libexe "library" configStripLibs
+    strip_exe <- strip_libexe "executable" configStripExes
+
+
     let reloc = fromFlagOrDefault False $ configRelocatable cfg
 
     let buildComponentsMap =
@@ -747,8 +768,8 @@ configure (pkg_descr0, pbi) cfg = do
                                       configGHCiLib cfg,
                 splitSections       = split_sections,
                 splitObjs           = split_objs,
-                stripExes           = fromFlag $ configStripExes cfg,
-                stripLibs           = fromFlag $ configStripLibs cfg,
+                stripExes           = strip_exe,
+                stripLibs           = strip_lib,
                 exeCoverage         = False,
                 libCoverage         = False,
                 withPackageDB       = packageDbs,

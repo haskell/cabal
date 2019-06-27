@@ -1424,7 +1424,8 @@ Object code options
     Not all Haskell implementations generate native binaries. For such
     implementations this option has no effect.
 
-    (TODO: Check what happens if you combine this with ``debug-info``.)
+    If ``debug-info`` is set explicitly then ``executable-stripping`` is set
+    to ``False`` as otherwise all the debug symbols will be stripped.
 
     The command line variant of this flag is
     ``--enable-executable-stripping`` and
@@ -1439,6 +1440,9 @@ Object code options
     When installing binary libraries, run the ``strip`` program on the
     binary, saving space on the file system. See also
     ``executable-stripping``.
+
+    If ``debug-info`` is set explicitly then ``library-stripping`` is set
+    to ``False`` as otherwise all the debug symbols will be stripped.
 
     The command line variant of this flag is
     ``--enable-library-stripping`` and ``--disable-library-stripping``.

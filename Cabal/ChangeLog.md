@@ -32,6 +32,8 @@
     add default implementation in terms of `coerce` / `unsafeCoerce`.
   * Implement support for response file arguments to defaultMain* and cabal-install.
   * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
+  * Setting `debug-info` now implies `library-stripping: False` and
+    `executable-stripping: False) ([#2702](https://github.com/haskell/cabal/issues/2702))
 
 ----
 
