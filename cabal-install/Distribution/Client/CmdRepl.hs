@@ -50,6 +50,10 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), liftOption, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
+import Distribution.Compiler
+         ( CompilerFlavor(GHC) )
+import Distribution.Simple.Compiler
+         ( compilerCompatVersion )
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
@@ -98,7 +102,7 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( getTemporaryDirectory, removeDirectoryRecursive )
+         ( getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
          ( (</>) )
 
@@ -219,7 +223,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
     
-    (baseCtx, targetSelectors, finalizer) <- if ignoreProject
+    (baseCtx, targetSelectors, finalizer, replType) <- if ignoreProject
       then do
         globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
         without globalConfig
@@ -256,7 +260,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
     -- In addition, to avoid a *third* trip through the solver, we are 
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, replFlags') <- withInstallPlan verbosity baseCtx' $ 
+    (buildCtx, replFlags'') <- withInstallPlan verbosity baseCtx' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx'
           
@@ -269,9 +273,6 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
                               targets
                               elaboratedPlan
           includeTransitive = fromFlagOrDefault True (envIncludeTransitive envFlags)
-          replFlags' = case originalComponent of 
-            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
-            Nothing  -> []
         
         pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared'
                                           elaboratedPlan'
@@ -288,11 +289,27 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, r
             , pkgsBuildStatus
             , targetsMap = targets
             }
-        return (buildCtx, replFlags')
+          
+          ElaboratedSharedConfig { pkgConfigCompiler = compiler } = elaboratedShared'
+          
+          -- First version of GHC where GHCi supported the flag we need.
+          -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
+          minGhciScriptVersion = mkVersion [7, 6]
+
+          replFlags' = case originalComponent of 
+            Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
+            Nothing  -> []
+          replFlags'' = case replType of
+            GlobalRepl scriptPath 
+              | Just version <- compilerCompatVersion GHC compiler
+              , version >= minGhciScriptVersion -> ("-ghci-script" ++ scriptPath) : replFlags'
+            _                                   -> replFlags'
+
+        return (buildCtx, replFlags'')
 
     let buildCtx' = buildCtx
           { elaboratedShared = (elaboratedShared buildCtx)
-                { pkgConfigReplOptions = replFlags ++ replFlags' }
+                { pkgConfigReplOptions = replFlags ++ replFlags'' }
           }
     printPlan verbosity baseCtx' buildCtx'
 
@@ -335,16 +352,26 @@ data OriginalComponentInfo = OriginalComponentInfo
   }
   deriving (Show)
 
-withProject :: ProjectConfig -> Verbosity -> [String] -> IO (ProjectBaseContext, [TargetSelector], IO ())
+-- | Tracks what type of GHCi instance we're creating.
+data ReplType = ProjectRepl 
+              | GlobalRepl FilePath -- ^ The 'FilePath' argument is path to a GHCi
+                                    --   script responsible for changing to the
+                                    --   correct directory. Only works on GHC geq
+                                    --   7.6, though. 🙁
+              deriving (Show, Eq)
+
+withProject :: ProjectConfig -> Verbosity -> [String]
+            -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
 withProject cliConfig verbosity targetStrings = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                  =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
 
-  return (baseCtx, targetSelectors, return ())
+  return (baseCtx, targetSelectors, return (), ProjectRepl)
 
-withoutProject :: ProjectConfig -> Verbosity -> [String]  -> IO (ProjectBaseContext, [TargetSelector], IO ())
+withoutProject :: ProjectConfig -> Verbosity -> [String]
+               -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
 withoutProject config verbosity extraArgs = do
   unless (null extraArgs) $
     die' verbosity $ "'repl' doesn't take any extra arguments when outside a project: " ++ unwords extraArgs
@@ -378,18 +405,23 @@ withoutProject config verbosity extraArgs = do
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
   
+  let ghciScriptPath = tempDir </> "setcwd.ghci"
+  cwd <- getCurrentDirectory
+  writeFile ghciScriptPath (":cd " ++ cwd)
+
   baseCtx <- 
     establishDummyProjectBaseContext
       verbosity
       config
       tempDir
       [SpecificSourcePackage sourcePackage]
+      OtherCommand
 
   let
     targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
     finalizer = handleDoesNotExist () (removeDirectoryRecursive tempDir)
 
-  return (baseCtx, targetSelectors, finalizer)
+  return (baseCtx, targetSelectors, finalizer, GlobalRepl ghciScriptPath)
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId

@@ -517,6 +517,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                  config
                  tmpDir
                  (envSpecs ++ specs)
+                 InstallCommand
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -785,9 +786,10 @@ establishDummyProjectBaseContext
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
+  -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
-
+establishDummyProjectBaseContext verbosity cliConfig tmpDir
+                                 localPackages currentCommand = do
     cabalDir <- getCabalDir
 
     -- Create the dist directories
@@ -816,8 +818,6 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
-        
-        currentCommand = InstallCommand
 
     return ProjectBaseContext {
       distDirLayout,
