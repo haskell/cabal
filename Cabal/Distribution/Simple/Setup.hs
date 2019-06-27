@@ -381,8 +381,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
 #endif
     configSplitSections = Flag False,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
-    configStripExes    = Flag True,
-    configStripLibs    = Flag True,
+    configStripExes    = NoFlag,
+    configStripLibs    = NoFlag,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
     configCoverage     = Flag False,

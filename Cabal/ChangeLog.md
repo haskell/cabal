@@ -34,6 +34,8 @@
   * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
   * Implement `{cmm,asm}-{sources,options} buildinfo fields for
     separate compilation of C-- and ASM source files (#6033).
+  * Setting `debug-info` now implies `library-stripping: False` and
+    `executable-stripping: False) ([#2702](https://github.com/haskell/cabal/issues/2702))
 
 ----
 
