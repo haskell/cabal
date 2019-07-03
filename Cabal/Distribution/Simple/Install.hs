@@ -223,17 +223,17 @@ copyComponent _ _ _ (CTest _) _ _ = return ()
 --
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
-  flip traverse_ (dataFiles pkg_descr) $ \ glob -> do
+  flip traverse_ (dataFiles pkg_descr) $ \ file -> do
     let srcDataDirRaw = dataDir pkg_descr
         srcDataDir = if null srcDataDirRaw
           then "."
           else srcDataDirRaw
-    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir glob
-    for_ files $ \ file' -> do
-      let src = srcDataDir </> file'
-          dst = destDataDir </> file'
-      createDirectoryIfMissingVerbose verbosity True (takeDirectory dst)
-      installOrdinaryFile verbosity src dst
+    files <- matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir file
+    let dir = takeDirectory file
+    createDirectoryIfMissingVerbose verbosity True (destDataDir </> dir)
+    sequence_ [ installOrdinaryFile verbosity (srcDataDir  </> file')
+                                              (destDataDir </> file')
+              | file' <- files ]
 
 -- | Install the files listed in install-includes for a library
 --
