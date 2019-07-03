@@ -35,6 +35,9 @@
     separate compilation of C-- and ASM source files (#6033).
   * Setting `debug-info` now implies `library-stripping: False` and
     `executable-stripping: False) ([#2702](https://github.com/haskell/cabal/issues/2702))
+  * `Setup.hs copy` and `install` now work in the presence of
+    `data-files` that use `**` syntax
+    ([#6125](https://github.com/haskell/cabal/issues/6125)).
 
 ----
 
