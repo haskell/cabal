@@ -1,6 +1,6 @@
 #! /usr/bin/env cabal
 {- cabal:
-build-depends: base ^>= 4.0
+build-depends: base >= 4.3 && <5
 -}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -8,4 +8,4 @@ build-depends: base ^>= 4.0
 import Prelude
 
 main :: IO ()
-main = return ()
+main = putStrLn "Hello World"
