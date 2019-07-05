@@ -1189,8 +1189,8 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         entries <- liftIO $ getDirectoryContents packageDir
         --TODO: wrap exceptions
         case filter (\e -> takeExtension e == ".cabal") entries of
-          []       -> liftIO $ throwIO NoCabalFileFound
-          (_:_:_)  -> liftIO $ throwIO MultipleCabalFilesFound
+          []       -> liftIO $ throwIO $ NoCabalFileFound packageDir
+          (_:_:_)  -> liftIO $ throwIO $ MultipleCabalFilesFound packageDir
           [cabalFileName] -> do
             monitorFiles [monitorFileHashed cabalFilePath]
             liftIO $ fmap (mkSpecificSourcePackage location)
@@ -1282,9 +1282,9 @@ readSourcePackageCabalFile verbosity pkgfilename content =
 -- | When looking for a package's @.cabal@ file we can find none, or several,
 -- both of which are failures.
 --
-data CabalFileSearchFailure =
-     NoCabalFileFound
-   | MultipleCabalFilesFound
+data CabalFileSearchFailure
+   = NoCabalFileFound FilePath
+   | MultipleCabalFilesFound FilePath
   deriving (Show, Typeable)
 
 instance Exception CabalFileSearchFailure
@@ -1298,7 +1298,7 @@ extractTarballPackageCabalFile :: FilePath -> IO (FilePath, BS.ByteString)
 extractTarballPackageCabalFile tarballFile =
     withBinaryFile tarballFile ReadMode $ \hnd -> do
       content <- LBS.hGetContents hnd
-      case extractTarballPackageCabalFilePure content of
+      case extractTarballPackageCabalFilePure tarballFile content of
         Left (Left  e) -> throwIO e
         Left (Right e) -> throwIO e
         Right (fileName, fileContent) ->
@@ -1307,11 +1307,12 @@ extractTarballPackageCabalFile tarballFile =
 
 -- | Scan through a tar file stream and collect the @.cabal@ file, or fail.
 --
-extractTarballPackageCabalFilePure :: LBS.ByteString
+extractTarballPackageCabalFilePure :: FilePath
+                                   -> LBS.ByteString
                                    -> Either (Either Tar.FormatError
                                                      CabalFileSearchFailure)
                                              (FilePath, LBS.ByteString)
-extractTarballPackageCabalFilePure =
+extractTarballPackageCabalFilePure tarballFile =
       check
     . accumEntryMap
     . Tar.filterEntries isCabalFile
@@ -1324,11 +1325,11 @@ extractTarballPackageCabalFilePure =
 
     check (Left (e, _m)) = Left (Left e)
     check (Right m) = case Map.elems m of
-        []     -> Left (Right NoCabalFileFound)
+        []     -> Left (Right $ NoCabalFileFound tarballFile)
         [file] -> case Tar.entryContent file of
           Tar.NormalFile content _ -> Right (Tar.entryPath file, content)
-          _                        -> Left (Right NoCabalFileFound)
-        _files -> Left (Right MultipleCabalFilesFound)
+          _                        -> Left (Right $ NoCabalFileFound tarballFile)
+        _files -> Left (Right $ MultipleCabalFilesFound tarballFile)
 
     isCabalFile e = case splitPath (Tar.entryPath e) of
       [     _dir, file] -> takeExtension file == ".cabal"
