@@ -104,7 +104,7 @@ import qualified Text.Parsec as P
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
 import System.FilePath
-         ( (</>), isValid, isPathSeparator )
+         ( (</>), isValid, isPathSeparator, takeExtension )
 
 
 runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
@@ -171,8 +171,10 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
     let
       scriptOrError script err = do
         exists <- doesFileExist script
+        let pol | takeExtension script == ".lhs" = LiterateHaskell
+                | otherwise                      = PlainHaskell
         if exists
-          then BS.readFile script >>= handleScriptCase verbosity baseCtx tempDir
+          then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tempDir
           else reportTargetSelectorProblems verbosity err
 
     (baseCtx', targetSelectors) <-
@@ -339,9 +341,9 @@ parseScriptBlock str =
 readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
-readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity str = do
-    str' <- case extractScriptBlock str of
+readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Executable, BS.ByteString)
+readScriptBlockFromScript verbosity pol str = do
+    str' <- case extractScriptBlock pol str of
               Left e -> die' verbosity $ "Failed extracting script block: " ++ e
               Right x -> return x
     when (BS.all isSpace str') $ warn verbosity "Empty script block"
@@ -356,39 +358,70 @@ readScriptBlockFromScript verbosity str = do
 --
 -- * @-}@
 --
+-- or for @.lhs@ files:
+--
+-- * @%cabal:@
+--
+-- * @%endcabal@
+--
 -- appearing alone on lines (while tolerating trailing whitespace).
 -- These tokens are not part of the 'Right' result.
 --
 -- In case of missing or unterminated blocks a 'Left'-error is
 -- returned.
-extractScriptBlock :: BS.ByteString -> Either String BS.ByteString
-extractScriptBlock str = goPre (BS.lines str)
+extractScriptBlock :: PlainOrLiterate -> BS.ByteString -> Either String BS.ByteString
+extractScriptBlock pol str = goPre (BS.lines str)
   where
-    isStartMarker = (== "{- cabal:") . stripTrailSpace
-    isEndMarker   = (== "-}") . stripTrailSpace
+    isStartMarker = (== startMarker) . stripTrailSpace
+    isEndMarker   = (== endMarker) . stripTrailSpace
     stripTrailSpace = fst . BS.spanEnd isSpace
 
     -- before start marker
     goPre ls = case dropWhile (not . isStartMarker) ls of
-                 [] -> Left "`{- cabal:` start marker not found"
+                 [] -> Left $ "`" ++ startMarker ++ "` start marker not found"
                  (_:ls') -> goBody [] ls'
 
-    goBody _ [] = Left "`-}` end marker not found"
+    goBody _ [] = Left $ "`" ++ endMarker ++ "` end marker not found"
     goBody acc (l:ls)
-      | isEndMarker l = Right $! BS.unlines $ reverse acc
+      | isEndMarker l = Right $! BS.unlines $ map postProcessLine $ reverse acc
       | otherwise     = goBody (l:acc) ls
 
+    startMarker, endMarker :: IsString a => a
+    startMarker = case pol of
+        PlainHaskell    -> fromString "{- cabal:"
+        LiterateHaskell -> fromString "%cabal:"
+    endMarker = case pol of
+        PlainHaskell    -> fromString "-}"
+        LiterateHaskell -> fromString "%endcabal"
 
-handleScriptCase :: Verbosity
-                 -> ProjectBaseContext
-                 -> FilePath
-                 -> BS.ByteString
-                 -> IO (ProjectBaseContext, [TargetSelector])
-handleScriptCase verbosity baseCtx tempDir scriptContents = do
-  (executable, contents') <- readScriptBlockFromScript verbosity scriptContents
+    -- strip leading % in LiterateHaskell format
+    postProcessLine bs = case pol of
+        PlainHaskell    -> bs
+        LiterateHaskell -> case BS.uncons bs of
+            Nothing         -> bs
+            Just ('%', bs') -> bs'
+            Just _          -> bs
+
+data PlainOrLiterate
+    = PlainHaskell
+    | LiterateHaskell
+
+handleScriptCase
+  :: Verbosity
+  -> PlainOrLiterate
+  -> ProjectBaseContext
+  -> FilePath
+  -> BS.ByteString
+  -> IO (ProjectBaseContext, [TargetSelector])
+handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
+  (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
 
   -- We need to create a dummy package that lives in our dummy project.
   let
+    mainName = case pol of
+      PlainHaskell    -> "Main.hs"
+      LiterateHaskell -> "Main.lhs"
+
     sourcePackage = SourcePackage
       { packageInfoId         = pkgId
       , SP.packageDescription = genericPackageDescription
@@ -400,7 +433,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
       , condExecutables        = [("script", CondNode executable' targetBuildDepends [])]
       }
     executable' = executable
-      { modulePath = "Main.hs"
+      { modulePath = mainName
       , buildInfo = binfo
         { defaultLanguage =
           case defaultLanguage of
@@ -417,7 +450,7 @@ handleScriptCase verbosity baseCtx tempDir scriptContents = do
     pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-  BS.writeFile (tempDir </> "Main.hs") contents'
+  BS.writeFile (tempDir </> mainName) contents'
 
   let
     baseCtx' = baseCtx
