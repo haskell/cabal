@@ -1,0 +1,4 @@
+name: script
+version: 1.0
+build-type: Simple
+cabal-version: >= 1.10
