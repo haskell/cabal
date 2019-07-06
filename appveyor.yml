@@ -3,6 +3,7 @@
 branches:
   only:
     - master
+    - "3.0"
     - "2.4"    
     - "2.2"
     - "2.0"
@@ -47,7 +48,7 @@ build_script:
   - cabal %CABOPTS% new-test Cabal
   - appveyor-retry cabal %CABOPTS% new-build exe:cabal exe:cabal-tests --only-dependencies
   - cabal %CABOPTS% new-build exe:cabal
-  - cabal %CABOPTS% new-run cabal-tests -- -j3 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.0.2\cabal-install-3.0.0.0\x\cabal\build\cabal\cabal.exe
+  - cabal %CABOPTS% new-run cabal-tests -- -j3 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.0.2\cabal-install-3.1.0.0\x\cabal\build\cabal\cabal.exe
   - appveyor-retry cabal %CABOPTS% new-build cabal-install:tests --only-dependencies
   - cd cabal-install
   - cabal %CABOPTS% new-run cabal-install:memory-usage-tests

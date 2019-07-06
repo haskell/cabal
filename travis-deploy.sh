@@ -8,7 +8,7 @@ deploy() {
     (cd cabal-website && git checkout --track -b gh-pages origin/gh-pages)
     rm -rf cabal-website/doc
     mkdir -p cabal-website/doc/html
-    mv dist-newstyle/build/`uname -m`-$TRAVIS_OS_NAME/ghc-$GHCVER/Cabal-3.0.0.0/doc/html/Cabal \
+    mv dist-newstyle/build/`uname -m`-$TRAVIS_OS_NAME/ghc-$GHCVER/Cabal-3.1.0.0/doc/html/Cabal \
        cabal-website/doc/html/Cabal
     (cd cabal-website && git add --all .)
     (cd cabal-website && \
