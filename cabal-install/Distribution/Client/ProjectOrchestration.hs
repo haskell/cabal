@@ -171,7 +171,7 @@ import           System.Posix.Signals (sigKILL, sigSEGV)
 
 -- | Tracks what command is being executed, because we need to hide this somewhere
 -- for cases that need special handling (usually for error reporting).
-data CurrentCommand = InstallCommand | OtherCommand
+data CurrentCommand = InstallCommand | HaddockCommand | OtherCommand
                     deriving (Show, Eq)
 
 -- | This holds the context of a project prior to solving: the content of the
@@ -431,7 +431,7 @@ runProjectPostBuildPhase verbosity
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
-    dieOnBuildFailures verbosity currentCommand elaboratedPlanToExecute buildOutcomes 
+    dieOnBuildFailures verbosity currentCommand elaboratedPlanToExecute buildOutcomes
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -1030,6 +1030,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       ]
 
     dieIfNotHaddockFailure
+      | currentCommand == HaddockCommand            = die'
       | all isHaddockFailure failuresClassification = warn
       | otherwise                                   = die'
       where
