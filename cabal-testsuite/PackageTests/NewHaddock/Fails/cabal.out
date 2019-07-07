@@ -1,0 +1,15 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - example-1.0 (lib) (first run)
+Configuring library for example-1.0..
+Preprocessing library for example-1.0..
+Building library for example-1.0..
+# cabal v2-haddock
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - example-1.0 (lib) (first run)
+Preprocessing library for example-1.0..
+Running Haddock on library for example-1.0..
+cabal: Failed to build documentation for example-1.0-inplace.
