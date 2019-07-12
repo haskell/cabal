@@ -57,7 +57,7 @@ module Distribution.Simple (
 
 import Control.Exception (try)
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Compat.Prelude
 
 -- local

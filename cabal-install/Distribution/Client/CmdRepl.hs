@@ -17,7 +17,7 @@ module Distribution.Client.CmdRepl (
     selectComponentTarget
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Compat.Lens

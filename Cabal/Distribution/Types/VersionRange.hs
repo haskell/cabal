@@ -39,7 +39,7 @@ module Distribution.Types.VersionRange (
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
-import Prelude ()
+import Prelude (last, init)
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --

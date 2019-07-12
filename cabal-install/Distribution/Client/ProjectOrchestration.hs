@@ -159,6 +159,8 @@ import           Distribution.Simple.Compiler
                    , OptimisationLevel(..))
 
 import qualified Data.Monoid as Mon
+import           Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Either
@@ -512,6 +514,7 @@ resolveTargets :: forall err.
 resolveTargets selectPackageTargets selectComponentTarget liftProblem
                installPlan mPkgDb =
       fmap mkTargetsMap
+    . either (Left . toList) Right
     . checkErrors
     . map (\ts -> (,) ts <$> checkTarget ts)
   where
@@ -609,12 +612,12 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
                            -> [AvailableTarget k]
                            -> Either err [k]
     selectComponentTargets subtarget =
-        either (Left . head) Right
+        either (Left . NonEmpty.head) Right
       . checkErrors
       . map (selectComponentTarget subtarget)
 
-    checkErrors :: [Either e a] -> Either [e] [a]
-    checkErrors = (\(es, xs) -> if null es then Right xs else Left es)
+    checkErrors :: [Either e a] -> Either (NonEmpty e) [a]
+    checkErrors = (\(es, xs) -> case es of { [] -> Right xs; (e:es') -> Left (e:|es') })
                 . partitionEithers
 
 

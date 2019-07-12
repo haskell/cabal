@@ -20,8 +20,9 @@ module Distribution.Client.Init.Heuristics (
     knownCategories,
 ) where
 
-import Prelude ()
+import Prelude (head, last)
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic (safeHead, safeTail)
 
 import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
@@ -132,7 +133,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         (files, dirs) <- liftM partitionEithers (mapM (tagIsDir dir) entries)
         let modules = catMaybes [ guessModuleName hierarchy file
                                 | file <- files
-                                , isUpper (head file) ]
+                                , maybe False isUpper (safeHead file) ]
         modules' <- mapM (findImportsAndExts projectRoot) modules
         recMods <- mapM (scanRecursive dir hierarchy) dirs
         return $ concat (modules' : recMods)
@@ -151,8 +152,8 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
                       $ intercalate "." . reverse $ (unqualModName : hierarchy)
         ext           = case takeExtension entry of '.':e -> e; e -> e
     scanRecursive parent hierarchy entry
-      | isUpper (head entry) = scan (parent </> entry) (entry : hierarchy)
-      | isLower (head entry) && not (ignoreDir entry) =
+      | maybe False isUpper (safeHead entry) = scan (parent </> entry) (entry : hierarchy)
+      | maybe False isLower (safeHead entry) && not (ignoreDir entry) =
           scanForModulesIn projectRoot $ foldl (</>) srcRoot (reverse (entry : hierarchy))
       | otherwise = return []
     ignoreDir ('.':_)  = True
@@ -358,7 +359,7 @@ nameAndMail str
   | otherwise  = (Flag $ trim nameOrEmail, Flag mail)
   where
     (nameOrEmail,erest) = break (== '<') str
-    (mail,_)            = break (== '>') (tail erest)
+    (mail,_)            = break (== '>') (safeTail erest)
 
 trim :: String -> String
 trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse

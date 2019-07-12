@@ -69,7 +69,7 @@ module Distribution.Simple.GHC (
         GhcImplInfo(..)
  ) where
 
-import Prelude ()
+import Prelude (head, tail)
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.Internal as Internal

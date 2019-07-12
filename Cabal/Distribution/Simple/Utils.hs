@@ -150,6 +150,7 @@ module Distribution.Simple.Utils (
         ordNub,
         ordNubBy,
         ordNubRight,
+        safeHead,
         safeTail,
         unintersperse,
         wrapText,

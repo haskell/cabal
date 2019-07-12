@@ -44,6 +44,7 @@ module Distribution.Client.Sandbox (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic(safeLast)
 
 import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
@@ -216,10 +217,10 @@ tryGetIndexFilePath verbosity config = tryGetIndexFilePath' verbosity (savedGlob
 tryGetIndexFilePath' :: Verbosity -> GlobalFlags -> IO FilePath
 tryGetIndexFilePath' verbosity globalFlags = do
   let paths = fromNubList $ globalLocalRepos globalFlags
-  case paths of
-    []  -> die' verbosity $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
+  case safeLast paths of
+    Nothing   -> die' verbosity $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found. " ++ checkConfiguration
-    _   -> return $ (last paths) </> Index.defaultIndexFileName
+    Just lp   -> return $ lp </> Index.defaultIndexFileName
   where
     checkConfiguration = "Please check your configuration ('"
                          ++ userPackageEnvironmentFile ++ "')."

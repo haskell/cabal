@@ -34,7 +34,7 @@ module Distribution.PackageDescription.Check (
   ) where
 
 import Distribution.Compat.Prelude
-import Prelude ()
+import Prelude (last, init)
 
 import Control.Monad                                 (mapM)
 import Data.List                                     (group)

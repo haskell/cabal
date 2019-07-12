@@ -96,7 +96,7 @@ import           Distribution.Utils.LogProgress
 
 import Data.List
          ( foldl', intercalate )
-import qualified Data.Foldable as Foldable (all)
+import qualified Data.Foldable as Foldable (all, toList)
 import Data.Maybe
          ( fromMaybe, mapMaybe )
 import qualified Distribution.Compat.Graph as Graph
@@ -278,7 +278,7 @@ showPlanGraph :: (Package ipkg, Package srcpkg,
                   IsUnit ipkg, IsUnit srcpkg)
               => Graph (GenericPlanPackage ipkg srcpkg) -> String
 showPlanGraph graph = renderStyle defaultStyle $
-    vcat (map dispPlanPackage (Graph.toList graph))
+    vcat (map dispPlanPackage (Foldable.toList graph))
   where dispPlanPackage p =
             hang (hsep [ text (showPlanPackageTag p)
                        , disp (packageId p)
@@ -309,7 +309,7 @@ toGraph = planGraph
 
 toList :: GenericInstallPlan ipkg srcpkg
        -> [GenericPlanPackage ipkg srcpkg]
-toList = Graph.toList . planGraph
+toList = Foldable.toList . planGraph
 
 toMap :: GenericInstallPlan ipkg srcpkg
       -> Map UnitId (GenericPlanPackage ipkg srcpkg)
@@ -929,7 +929,7 @@ problems graph =
      --TODO: consider re-enabling this one, see SolverInstallPlan
 -}
   ++ [ PackageStateInvalid pkg pkg'
-     | pkg <- Graph.toList graph
+     | pkg <- Foldable.toList graph
      , Just pkg' <- map (flip Graph.lookup graph)
                     (nodeNeighbors pkg)
      , not (stateDependencyRelation pkg pkg') ]

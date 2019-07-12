@@ -65,6 +65,7 @@ module Distribution.FieldGrammar.Parsec (
     )  where
 
 import Data.List                   (dropWhileEnd)
+import Data.List.NonEmpty          (NonEmpty(..))
 import Data.Ord                    (comparing)
 import Data.Set                    (Set)
 import Distribution.Compat.Newtype
@@ -72,11 +73,12 @@ import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)
 import Prelude ()
 
-import qualified Data.ByteString   as BS
-import qualified Data.Map.Strict   as Map
-import qualified Data.Set          as Set
-import qualified Text.Parsec       as P
-import qualified Text.Parsec.Error as P
+import qualified Data.ByteString    as BS
+import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map.Strict    as Map
+import qualified Data.Set           as Set
+import qualified Text.Parsec        as P
+import qualified Text.Parsec.Error  as P
 
 import Distribution.CabalSpecVersion
 import Distribution.FieldGrammar.Class
@@ -156,12 +158,12 @@ instance FieldGrammar ParsecFieldGrammar where
     uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
-            Nothing -> parseFatalFailure zeroPos $ show fn ++ " field missing"
-            Just [] -> parseFatalFailure zeroPos $ show fn ++ " field missing"
-            Just [x] -> parseOne v x
-            Just xs -> do
-                warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+            Nothing     -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+            Just []     -> parseFatalFailure zeroPos $ show fn ++ " field missing"
+            Just [x]    -> parseOne v x
+            Just (x:xs) -> do
+                warnMultipleSingularFields fn (x:xs)
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls) =
             unpack' _pack <$> runFieldParser pos parsec v fls
@@ -169,24 +171,24 @@ instance FieldGrammar ParsecFieldGrammar where
     booleanFieldDef fn _extract def = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
-            Nothing  -> pure def
-            Just []  -> pure def
-            Just [x] -> parseOne v x
-            Just xs  -> do
-                warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+            Nothing     -> pure def
+            Just []     -> pure def
+            Just [x]    -> parseOne v x
+            Just (x:xs) -> do
+                warnMultipleSingularFields fn (x:xs)
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls) = runFieldParser pos parsec v fls
 
     optionalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
-            Nothing  -> pure Nothing
-            Just []  -> pure Nothing
-            Just [x] -> parseOne v x
-            Just xs  -> do
-                warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+            Nothing     -> pure Nothing
+            Just []     -> pure Nothing
+            Just [x]    -> parseOne v x
+            Just (x:xs) -> do
+                warnMultipleSingularFields fn (x:xs)
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls)
             | null fls  = pure Nothing
@@ -195,12 +197,12 @@ instance FieldGrammar ParsecFieldGrammar where
     optionalFieldDefAla fn _pack _extract def = ParsecFG (Set.singleton fn) Set.empty parser
       where
         parser v fields = case Map.lookup fn fields of
-            Nothing  -> pure def
-            Just []  -> pure def
-            Just [x] -> parseOne v x
-            Just xs  -> do
-                warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+            Nothing     -> pure def
+            Just []     -> pure def
+            Just [x]    -> parseOne v x
+            Just (x:xs) -> do
+                warnMultipleSingularFields fn (x:xs)
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls)
             | null fls  = pure def
@@ -208,12 +210,12 @@ instance FieldGrammar ParsecFieldGrammar where
 
     freeTextField fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
         parser v fields = case Map.lookup fn fields of
-            Nothing  -> pure Nothing
-            Just []  -> pure Nothing
-            Just [x] -> parseOne v x
-            Just xs  -> do
+            Nothing     -> pure Nothing
+            Just []     -> pure Nothing
+            Just [x]    -> parseOne v x
+            Just (x:xs) -> do
                 warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls)
             | null fls           = pure Nothing
@@ -225,9 +227,9 @@ instance FieldGrammar ParsecFieldGrammar where
             Nothing  -> pure ""
             Just []  -> pure ""
             Just [x] -> parseOne v x
-            Just xs  -> do
+            Just (x:xs)  -> do
                 warnMultipleSingularFields fn xs
-                last <$> traverse (parseOne v) xs
+                NonEmpty.last <$> traverse (parseOne v) (x:|xs)
 
         parseOne v (MkNamelessField pos fls)
             | null fls           = pure ""

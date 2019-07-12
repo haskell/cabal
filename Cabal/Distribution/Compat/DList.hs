@@ -19,7 +19,7 @@ module Distribution.Compat.DList (
 ) where
 
 import Prelude ()
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (toList)
 
 -- | Difference list.
 newtype DList a = DList ([a] -> [a])

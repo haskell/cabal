@@ -67,7 +67,7 @@ import Distribution.Simple.Setup
          , configAbsolutePaths
          )
 
-import Prelude ()
+import Prelude (head, tail)
 import Distribution.Solver.Compat.Prelude hiding (get)
 
 import Distribution.Client.SetupWrapper

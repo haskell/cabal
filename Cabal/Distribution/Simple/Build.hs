@@ -28,7 +28,7 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
-import Prelude ()
+import Prelude (head, init)
 import Distribution.Compat.Prelude
 
 import Distribution.Types.ComponentLocalBuildInfo

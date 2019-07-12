@@ -31,6 +31,7 @@ module Distribution.Client.Install (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic(safeLast)
 
 import qualified Data.Map as Map
 import qualified Data.Set as S
@@ -698,11 +699,11 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
         Nothing -> ""
       where
         mLatestVersion :: Maybe Version
-        mLatestVersion = case SourcePackageIndex.lookupPackageName
-                                (packageIndex sourcePkgDb)
-                                (packageName pkg) of
-            [] -> Nothing
-            x -> Just $ packageVersion $ last x
+        mLatestVersion = fmap packageVersion $ 
+                         safeLast $ 
+                         SourcePackageIndex.lookupPackageName
+                           (packageIndex sourcePkgDb)
+                           (packageName pkg) 
 
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment =  mkFlagAssignment . map (\ f -> (flagName f, flagDefault f))

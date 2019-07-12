@@ -17,6 +17,7 @@ module Distribution.Simple.PreProcess.Unlit (unlit,plain) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.Generic (safeHead, safeTail, safeLast, safeInit)
 
 import Data.List (mapAccumL)
 
@@ -35,10 +36,10 @@ classify ('>':s) = BirdTrack s
 classify ('#':s) = case tokens s of
                      (line:file:_) | all isDigit line
                                   && length file >= 2
-                                  && head file == '"'
-                                  && last file == '"'
+                                  && safeHead file == Just '"'
+                                  && safeLast file == Just '"'
                                 -- this shouldn't fail as we tested for 'all isDigit'
-                                -> Line (fromMaybe (error $ "panic! read @Int " ++ show line) $ readMaybe line) (tail (init file)) -- TODO:eradicateNoParse
+                                -> Line (fromMaybe (error $ "panic! read @Int " ++ show line) $ readMaybe line) (safeTail (safeInit file)) -- TODO:eradicateNoParse
                      _          -> CPP s
   where tokens = unfoldr $ \str -> case lex str of
                                    (t@(_:_), str'):_ -> Just (t, str')

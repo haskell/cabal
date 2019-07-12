@@ -37,7 +37,7 @@ module Distribution.Simple.GHCJS (
         GhcImplInfo(..)
  ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -72,6 +72,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.Generic (safeTail)
 import Distribution.Utils.NubList
 
 import Control.Monad (msum)
@@ -939,7 +940,7 @@ decodeMainIsArg arg
     splitLongestPrefix :: String -> (Char -> Bool) -> (String,String)
     splitLongestPrefix str pred'
       | null r_pre = (str,           [])
-      | otherwise  = (reverse (tail r_pre), reverse r_suf)
+      | otherwise  = (reverse (safeTail r_pre), reverse r_suf)
                            -- 'tail' drops the char satisfying 'pred'
       where (r_suf, r_pre) = break pred' (reverse str)
 

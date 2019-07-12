@@ -112,6 +112,7 @@ import Data.Array ((!))
 import qualified Data.Array as Array
 import qualified Data.Graph as Graph
 import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Tree  as Tree
 import Control.Monad
 import Distribution.Compat.Stack
@@ -210,20 +211,20 @@ mkPackageIndex pids pnames = assert (invariant index) index
 -- ones.
 --
 fromList :: [IPI.InstalledPackageInfo] -> InstalledPackageIndex
-fromList pkgs = mkPackageIndex pids pnames
+fromList pkgs = mkPackageIndex pids ((fmap . fmap) toList pnames)
   where
     pids      = Map.fromList [ (installedUnitId pkg, pkg) | pkg <- pkgs ]
     pnames    =
       Map.fromList
-        [ (liftM2 (,) packageName IPI.sourceLibName (head pkgsN), pvers)
-        | pkgsN <- groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
+        [ (liftM2 (,) packageName IPI.sourceLibName (NonEmpty.head pkgsN), pvers)
+        | pkgsN <- NonEmpty.groupBy (equating  (liftM2 (,) packageName IPI.sourceLibName))
                  . sortBy  (comparing (liftM3 (,,) packageName IPI.sourceLibName packageVersion))
                  $ pkgs
         , let pvers =
                 Map.fromList
-                [ (packageVersion (head pkgsNV),
-                   nubBy (equating installedUnitId) (reverse pkgsNV))
-                | pkgsNV <- groupBy (equating packageVersion) pkgsN
+                [ (packageVersion (NonEmpty.head pkgsNV),
+                   NonEmpty.nubBy (equating installedUnitId) (NonEmpty.reverse pkgsNV))
+                | pkgsNV <- NonEmpty.groupBy (equating packageVersion) pkgsN
                 ]
         ]
 

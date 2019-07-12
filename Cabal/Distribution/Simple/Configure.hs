@@ -54,7 +54,7 @@ module Distribution.Simple.Configure
   , platformDefines,
   ) where
 
-import Prelude ()
+import Prelude (head, tail, last)
 import Distribution.Compat.Prelude
 
 import Distribution.Compiler

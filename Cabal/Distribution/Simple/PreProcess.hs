@@ -269,7 +269,7 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
             let (srcStem, ext) = splitExtension psrcRelFile
                 psrcFile = psrcLoc </> psrcRelFile
                 pp = fromMaybe (error "Distribution.Simple.PreProcess: Just expected")
-                               (lookup (tailNotNull ext) handlers)
+                               (lookup (safeTail ext) handlers)
             -- Preprocessing files for 'sdist' is different from preprocessing
             -- for 'build'.  When preprocessing for sdist we preprocess to
             -- avoid that the user has to have the preprocessors available.
@@ -296,8 +296,6 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
 
   where
     dirName = takeDirectory
-    tailNotNull [] = []
-    tailNotNull x  = tail x
 
     -- FIXME: This is a somewhat nasty hack. GHC requires that hs-boot files
     -- be in the same place as the hs files, so if we put the hs file in dist/

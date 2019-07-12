@@ -73,6 +73,7 @@ module Distribution.Simple.Compiler (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.Generic(safeLast)
 import Distribution.Pretty
 
 import Distribution.Compiler
@@ -197,8 +198,9 @@ type PackageDBStack = [PackageDB]
 -- the top of the stack.
 --
 registrationPackageDB :: PackageDBStack -> PackageDB
-registrationPackageDB []  = error "internal error: empty package db set"
-registrationPackageDB dbs = last dbs
+registrationPackageDB dbs  = case safeLast dbs of
+  Nothing -> error "internal error: empty package db set"
+  Just p  -> p
 
 -- | Make package paths absolute
 
