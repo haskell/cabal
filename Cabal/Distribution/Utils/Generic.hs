@@ -64,7 +64,10 @@ module Distribution.Utils.Generic (
         ordNub,
         ordNubBy,
         ordNubRight,
+        safeHead,
         safeTail,
+        safeLast,
+        safeInit,
         unintersperse,
         wrapText,
         wrapLine,
@@ -77,7 +80,7 @@ module Distribution.Utils.Generic (
         isRelativeOnAnyPlatform,
   ) where
 
-import Prelude ()
+import Prelude (head, tail, last, init)
 import Distribution.Compat.Prelude
 
 import Distribution.Utils.String
@@ -363,10 +366,25 @@ listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
   where
     bSet = Set.fromList b
 
+-- | A total variant of 'head'.
+safeHead :: [a] -> Maybe a
+safeHead [] = Nothing
+safeHead xs = Just (head xs)
+
 -- | A total variant of 'tail'.
 safeTail :: [a] -> [a]
-safeTail []     = []
-safeTail (_:xs) = xs
+safeTail [] = []
+safeTail xs = tail xs
+
+-- | A total variant of 'last'.
+safeLast :: [a] -> Maybe a
+safeLast [] = Nothing
+safeLast xs = Just (last xs)
+
+-- | A total variant of 'init'.
+safeInit :: [a] -> [a]
+safeInit [] = []
+safeInit xs = init xs
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y

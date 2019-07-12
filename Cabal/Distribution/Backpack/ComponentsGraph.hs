@@ -8,7 +8,7 @@ module Distribution.Backpack.ComponentsGraph (
     componentCycleMsg
 ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Compat.Prelude
 
 import Distribution.Package

@@ -28,10 +28,10 @@ module Distribution.Compat.Parsing
   , sepBy1
   , sepByNonEmpty
   , sepEndBy1
-  -- , sepEndByNonEmpty
+  , sepEndByNonEmpty
   , sepEndBy
   , endBy1
-  -- , endByNonEmpty
+  , endByNonEmpty
   , endBy
   , count
   , chainl
@@ -58,6 +58,7 @@ import Control.Monad.Trans.Reader (ReaderT (..))
 import Control.Monad.Trans.Identity (IdentityT (..))
 import Data.Foldable (asum)
 
+import qualified Data.List.NonEmpty as NE
 import qualified Text.Parsec as Parsec
 
 -- | @choice ps@ tries to apply the parsers in the list @ps@ in order,
@@ -102,8 +103,7 @@ sepBy p sep = sepBy1 p sep <|> pure []
 -- | @sepBy1 p sep@ parses /one/ or more occurrences of @p@, separated
 -- by @sep@. Returns a list of values returned by @p@.
 sepBy1 :: Alternative m => m a -> m sep -> m [a]
-sepBy1 p sep = (:) <$> p <*> many (sep *> p)
--- toList <$> sepByNonEmpty p sep
+sepBy1 p sep = toList <$> sepByNonEmpty p sep
 {-# INLINE sepBy1 #-}
 
 -- | @sepByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
@@ -116,16 +116,13 @@ sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 -- separated and optionally ended by @sep@. Returns a list of values
 -- returned by @p@.
 sepEndBy1 :: Alternative m => m a -> m sep -> m [a]
-sepEndBy1 p sep = (:) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
--- toList <$> sepEndByNonEmpty p sep
+sepEndBy1 p sep = toList <$> sepEndByNonEmpty p sep
 
-{-
 -- | @sepEndByNonEmpty p sep@ parses /one/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@. Returns a non-empty list of values
 -- returned by @p@.
 sepEndByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepEndByNonEmpty p sep = (:|) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
--}
 
 -- | @sepEndBy p sep@ parses /zero/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@, ie. haskell style
@@ -142,13 +139,11 @@ endBy1 :: Alternative m => m a -> m sep -> m [a]
 endBy1 p sep = some (p <* sep)
 {-# INLINE endBy1 #-}
 
-{-
 -- | @endByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- and ended by @sep@. Returns a non-empty list of values returned by @p@.
 endByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
-endByNonEmpty p sep = some1 (p <* sep)
+endByNonEmpty p sep = NE.some1 (p <* sep)
 {-# INLINE endByNonEmpty #-}
--}
 
 -- | @endBy p sep@ parses /zero/ or more occurrences of @p@, separated
 -- and ended by @sep@. Returns a list of values returned by @p@.

@@ -37,6 +37,8 @@ import Distribution.Version
 import System.Directory (getDirectoryContents, doesDirectoryExist, doesFileExist)
 import System.FilePath (joinPath, splitExtensions, splitDirectories, takeFileName, (</>), (<.>))
 
+import qualified Data.List.NonEmpty as NE
+
 -- Note throughout that we use splitDirectories, not splitPath. On
 -- Posix, this makes no difference, but, because Windows accepts both
 -- slash and backslash as its path separators, if we left in the
@@ -151,7 +153,7 @@ fileGlobMatchesSegments pat (seg : segs) = case pat of
     fileGlobMatchesSegments pat' segs
   GlobFinal final -> case final of
     FinalMatch Recursive multidot ext -> do
-      let (candidateBase, candidateExts) = splitExtensions (last $ seg:segs)
+      let (candidateBase, candidateExts) = splitExtensions (NE.last $ seg:|segs)
       guard (not (null candidateBase))
       checkExt multidot ext candidateExts
     FinalMatch NonRecursive multidot ext -> do

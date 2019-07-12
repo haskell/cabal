@@ -23,7 +23,7 @@ module Language.Haskell.Extension (
         classifyExtension,
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Compat.Prelude
 
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))

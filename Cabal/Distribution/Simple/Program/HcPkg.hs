@@ -42,8 +42,8 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude hiding (init)
+import Prelude (last)
+import Distribution.Compat.Prelude
 
 import Data.Either (partitionEithers)
 import qualified Data.List.NonEmpty as NE

@@ -3,7 +3,7 @@ module Distribution.Deprecated.ViewAsFieldDescr (
     ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
-import Prelude ()
+import Prelude (head)
 
 import Distribution.Parsec   (parsec)
 import Distribution.Pretty

@@ -268,7 +268,7 @@ parsecLeadingCommaList p = do
 parsecOptCommaList :: CabalParsing m => m a -> m [a]
 parsecOptCommaList p = P.sepBy (p <* P.spaces) (P.optional comma)
   where
-    comma = P.char ',' *>  P.spaces
+    comma = P.char ',' *> P.spaces
 
 -- | Like 'parsecOptCommaList' but
 --

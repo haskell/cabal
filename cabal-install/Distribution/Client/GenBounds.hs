@@ -17,6 +17,7 @@ module Distribution.Client.GenBounds (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic (safeLast)
 
 import Distribution.Client.Init
          ( incVersion )
@@ -59,9 +60,9 @@ import System.Directory
 -- | Does this version range have an upper bound?
 hasUpperBound :: VersionRange -> Bool
 hasUpperBound vr =
-    case asVersionIntervals vr of
-      [] -> False
-      is -> if snd (last is) == NoUpperBound then False else True
+    case safeLast (asVersionIntervals vr) of
+      Nothing -> False
+      Just l  -> if snd l == NoUpperBound then False else True
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

@@ -27,7 +27,7 @@ module Distribution.Simple.Program.Run (
     getEffectiveEnvironment,
   ) where
 
-import Prelude ()
+import Prelude (last, init)
 import Distribution.Compat.Prelude
 
 import Distribution.Simple.Program.Types

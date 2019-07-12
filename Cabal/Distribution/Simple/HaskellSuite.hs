@@ -3,7 +3,7 @@
 
 module Distribution.Simple.HaskellSuite where
 
-import Prelude ()
+import Prelude (last, init)
 import Distribution.Compat.Prelude
 
 import Data.Either (partitionEithers)

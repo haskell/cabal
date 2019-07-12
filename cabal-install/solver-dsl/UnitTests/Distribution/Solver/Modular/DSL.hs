@@ -37,7 +37,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , mkVersionRange
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Solver.Compat.Prelude
 
 -- base

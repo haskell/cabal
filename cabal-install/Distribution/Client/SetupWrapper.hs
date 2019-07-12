@@ -22,7 +22,7 @@ module Distribution.Client.SetupWrapper (
     defaultSetupScriptOptions,
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Client.Compat.Prelude
 
 import qualified Distribution.Make as Make

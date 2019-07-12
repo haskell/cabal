@@ -68,7 +68,7 @@ instance NFData MungedPackageName where rnf = genericRnf
 -- >>> prettyShow $ MungedPackageName "servant" LMainLibName
 -- "servant"
 --
--- >>> prettyShow $ MungedPackageName "servant" (LSubLibName "lackey") 
+-- >>> prettyShow $ MungedPackageName "servant" (LSubLibName "lackey")
 -- "z-servant-z-lackey"
 --
 instance Pretty MungedPackageName where
@@ -77,7 +77,7 @@ instance Pretty MungedPackageName where
     -- indefinite package for us.
     pretty = Disp.text . encodeCompatPackageName'
 
--- | 
+-- |
 --
 -- >>> simpleParsec "servant" :: Maybe MungedPackageName
 -- Just (MungedPackageName (PackageName "servant") LMainLibName)

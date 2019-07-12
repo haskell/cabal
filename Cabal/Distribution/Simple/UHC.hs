@@ -22,9 +22,8 @@ module Distribution.Simple.UHC (
     buildLib, buildExe, installLib, registerPackage, inplacePackageDbPath
   ) where
 
-import Prelude ()
+import Prelude (last)
 import Distribution.Compat.Prelude
-import Data.Foldable (toList)
 
 import Distribution.InstalledPackageInfo
 import Distribution.Package hiding (installedUnitId)
