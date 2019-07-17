@@ -177,7 +177,7 @@ timed $CABALPLAN --version
 #######################################################################
 
 # NOTE: This should match cabal-testsuite version
-CABAL_VERSION="3.0.0.0"
+CABAL_VERSION="3.1.0.0"
 
 if [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"

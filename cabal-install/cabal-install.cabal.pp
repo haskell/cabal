@@ -10,7 +10,7 @@ Cabal-Version:      >= 1.10
 -- To update this file, edit 'cabal-install.cabal.pp' and run
 -- 'make cabal-install-prod' in the project's root folder.
 Name:               cabal-install
-Version:            3.0.0.0
+Version:            3.1.0.0
 #
 # NOTE: when updating build-depends, don't forget to update version regexps in bootstrap.sh.
 #
@@ -22,7 +22,7 @@ Version:            3.0.0.0
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
-        Cabal      == 3.0.*,
+        Cabal      == 3.1.*,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.4.1.1  && < 1.5,
@@ -475,7 +475,7 @@ executable cabal
 
     cpp-options: -DMONOLITHIC
     build-depends:
-        Cabal      == 3.0.*,
+        Cabal      == 3.1.*,
         cabal-install-solver-dsl,
         QuickCheck >= 2.8.2,
         array,

@@ -1,4 +1,6 @@
-# 3.0.0.0 (current development version)
+# 3.1.0.0 (current development version)
+
+# 3.0.0.0 TBD
   * TODO
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).

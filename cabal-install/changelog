@@ -1,6 +1,8 @@
 -*-change-log-*-
 
-3.0.0.0 (current development version)
+3.1.0.0 (current development version)
+
+3.0.0.0 TBD
 	* `v2-repl` no longer changes directory to a randomized temporary folder
 	  when used outside of a project. (#5544)
 	* `install-method` and `overwrite-policy` in `.cabal/config` now actually work. (#5942)
