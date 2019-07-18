@@ -74,7 +74,7 @@ haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFl
 haddockAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                 targetStrings globalFlags = do
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+    baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
