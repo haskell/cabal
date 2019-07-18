@@ -413,9 +413,6 @@ data GhcOptions = GhcOptions {
   -- | Options to pass through to the C++ compiler.
   ghcOptCxxOptions     :: [String],
 
-  -- | Options to pass through to the Assembler.
-  ghcOptAsmOptions     :: [String],
-
   -- | Options to pass through to CPP; the @ghc -optP@ flag.
   ghcOptCppOptions    :: [String],
 
@@ -668,7 +665,6 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
   , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
-  , [ "-opta" ++ opt | opt <- ghcOptAsmOptions opts]
 
   -----------------
   -- Linker stuff
