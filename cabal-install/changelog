@@ -2,6 +2,9 @@
 
 3.1.0.0 (current development version)
 
+	* `v2-haddock` fails on `haddock` failures (#5977)
+	* `v2-run` works when given `File.lhs` literate file. (#6134)
+
 3.0.0.0 TBD
 	* `v2-repl` no longer changes directory to a randomized temporary folder
 	  when used outside of a project. (#5544)
