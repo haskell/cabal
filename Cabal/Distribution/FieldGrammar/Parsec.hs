@@ -266,7 +266,7 @@ instance FieldGrammar ParsecFieldGrammar where
                 for_ (Map.toList unknownFields) $ \(name, fields) ->
                     for_ fields $ \(MkNamelessField pos _) ->
                         parseWarning pos PWTUnknownField $
-                            "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
+                            "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ ". This field will be ignored."
 
                 pure def
 
