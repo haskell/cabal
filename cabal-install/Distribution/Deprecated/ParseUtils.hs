@@ -61,8 +61,8 @@ import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment)
 import Data.Tree        as Tree (Tree (..), flatten)
 import System.FilePath  (normalise)
 import Text.PrettyPrint
-       (Doc, Mode (..), colon, comma, fsep, hsep, isEmpty, mode, nest, punctuate, render,
-       renderStyle, sep, style, text, vcat, ($+$), (<+>))
+       (Doc, colon, comma, fsep, hsep, isEmpty, nest, punctuate, render,
+       sep, text, vcat, ($+$), (<+>))
 
 import qualified Data.Map                      as Map
 
