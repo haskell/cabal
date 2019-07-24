@@ -19,7 +19,7 @@ import Distribution.Deprecated.ParseUtils (FieldDescr (..), runE, syntaxError)
 viewAsFieldDescr :: OptionField a -> FieldDescr a
 viewAsFieldDescr (OptionField _n []) =
   error "Distribution.command.viewAsFieldDescr: unexpected"
-viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
+viewAsFieldDescr (OptionField n dd) = FieldDescr n ((:[]) . get) set
 
     where
       optDescr = head $ sortBy cmp dd
@@ -81,5 +81,3 @@ getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe
 
 getChoiceByLongFlag _ _ =
   error "Distribution.command.getChoiceByLongFlag: expected a choice option"
-
-

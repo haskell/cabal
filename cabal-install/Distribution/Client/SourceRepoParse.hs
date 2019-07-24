@@ -16,7 +16,7 @@ sourceRepoFieldDescrs =
   where
     toDescr (name, pretty, parse) = FieldDescr
         { fieldName = fromUTF8BS name
-        , fieldGet  = pretty
+        , fieldGet  = (:[]) . pretty
         , fieldSet  = \lineNo str x ->
               either (syntaxError lineNo) return
               $ explicitEitherParsec (parse x) str

@@ -50,6 +50,7 @@ import Distribution.Simple.Command
 
 import Control.Monad    ( foldM )
 import Text.PrettyPrint ( (<+>), ($+$) )
+import Data.Maybe       ( listToMaybe )
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
          ( (<>), Doc, text, colon, vcat, empty, isEmpty, nest )
@@ -157,9 +158,8 @@ parseFields fieldDescrs =
 -- that also optionally print default values for empty fields as comments.
 --
 ppFields :: [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
-ppFields fields def cur =
-    Disp.vcat [ ppField name (fmap getter def) (getter cur)
-              | FieldDescr name getter _ <- fields]
+ppFields fields def cur = Disp.vcat $
+   concatMap (\(FieldDescr name getter _) -> map (ppField name (listToMaybe . getter =<< def)) (getter cur)) fields
 
 ppField :: String -> (Maybe Disp.Doc) -> Disp.Doc -> Disp.Doc
 ppField name mdef cur
@@ -279,4 +279,3 @@ parseConfig fieldDescrs sectionDescrs empty str =
 --
 showConfig :: [FieldDescr a] -> [SectionDescr a] -> a -> Disp.Doc
 showConfig = ppFieldsAndSections
-

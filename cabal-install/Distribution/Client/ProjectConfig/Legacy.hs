@@ -23,7 +23,7 @@ module Distribution.Client.ProjectConfig.Legacy (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+import Distribution.Deprecated.ParseUtils (parseFlagAssignment, runP)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
@@ -914,7 +914,7 @@ legacySharedConfigFieldDescrs =
           showTokenQ parseTokenQ
           (fromNubList . globalLocalRepos)
           (\v conf -> conf { globalLocalRepos = toNubList v }),
-         newLineListField "extra-prog-path-shared-only"
+         multiListField "extra-prog-path-shared-only"
           showTokenQ parseTokenQ
           (fromNubList . globalProgPathExtra)
           (\v conf -> conf { globalProgPathExtra = toNubList v })
@@ -1000,23 +1000,23 @@ legacyPackageConfigFieldDescrs =
       legacyConfigureFlags
       (\flags conf -> conf { legacyConfigureFlags = flags })
   . addFields
-      [ newLineListField "extra-include-dirs"
+      [ multiListField "extra-include-dirs"
           showTokenQ parseTokenQ
           configExtraIncludeDirs
           (\v conf -> conf { configExtraIncludeDirs = v })
-      , newLineListField "extra-lib-dirs"
+      , multiListField "extra-lib-dirs"
           showTokenQ parseTokenQ
           configExtraLibDirs
           (\v conf -> conf { configExtraLibDirs = v })
-      , newLineListField "extra-framework-dirs"
+      , multiListField "extra-framework-dirs"
           showTokenQ parseTokenQ
           configExtraFrameworkDirs
           (\v conf -> conf { configExtraFrameworkDirs = v })
-      , newLineListField "extra-prog-path"
+      , multiListField "extra-prog-path"
           showTokenQ parseTokenQ
           (fromNubList . configProgramPathExtra)
           (\v conf -> conf { configProgramPathExtra = toNubList v })
-      , newLineListField "configure-options"
+      , multiListField "configure-options"
           showTokenQ parseTokenQ
           configConfigureArgs
           (\v conf -> conf { configConfigureArgs = v })
@@ -1088,7 +1088,7 @@ legacyPackageConfigFieldDescrs =
   . mapFieldNames
       prefixTest
   . addFields
-      [ newLineListField "test-options"
+      [ multiListField "test-options"
           (showTokenQ . fromPathTemplate) (fmap toPathTemplate parseTokenQ)
           testOptions
           (\v conf -> conf { testOptions = v })
@@ -1119,10 +1119,10 @@ legacyPackageConfigFieldDescrs =
       let name = "optimization" in
       FieldDescr name
         (\f -> case f of
-                 Flag NoOptimisation      -> Disp.text "False"
-                 Flag NormalOptimisation  -> Disp.text "True"
-                 Flag MaximumOptimisation -> Disp.text "2"
-                 _                        -> Disp.empty)
+                 Flag NoOptimisation      -> [Disp.text "False"]
+                 Flag NormalOptimisation  -> [Disp.text "True"]
+                 Flag MaximumOptimisation -> [Disp.text "2"]
+                 _                        -> [Disp.empty])
         (\line str _ -> case () of
          _ |  str == "False" -> ParseOk [] (Flag NoOptimisation)
            |  str == "True"  -> ParseOk [] (Flag NormalOptimisation)
@@ -1142,11 +1142,11 @@ legacyPackageConfigFieldDescrs =
       let name = "debug-info" in
       FieldDescr name
         (\f -> case f of
-                 Flag NoDebugInfo      -> Disp.text "False"
-                 Flag MinimalDebugInfo -> Disp.text "1"
-                 Flag NormalDebugInfo  -> Disp.text "True"
-                 Flag MaximalDebugInfo -> Disp.text "3"
-                 _                     -> Disp.empty)
+                 Flag NoDebugInfo      -> [Disp.text "False"]
+                 Flag MinimalDebugInfo -> [Disp.text "1"]
+                 Flag NormalDebugInfo  -> [Disp.text "True"]
+                 Flag MaximalDebugInfo -> [Disp.text "3"]
+                 _                     -> [Disp.empty])
         (\line str _ -> case () of
          _ |  str == "False" -> ParseOk [] (Flag NoDebugInfo)
            |  str == "True"  -> ParseOk [] (Flag NormalDebugInfo)
@@ -1401,6 +1401,16 @@ remoteRepoSectionDescr =
 newLineListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 newLineListField = listFieldWithSep Disp.sep
+
+multiListField :: String -> (a -> Doc) -> ReadP [a] a
+                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+multiListField name showF readF get' set =
+  liftField get' set' $
+    multiField (map showF) (parseOptCommaList readF)
+  where
+    set' xs b = set (get' b ++ xs) b
+    multiField showF' readF' =
+      FieldDescr name showF' (\line val _st -> runP line name readF' val)
 
 --TODO: [code cleanup] local copy purely so we can use the fixed version
 -- of parseOptCommaList below

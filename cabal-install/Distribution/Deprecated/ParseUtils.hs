@@ -26,7 +26,7 @@ module Distribution.Deprecated.ParseUtils (
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
         FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
-        showFields, showSingleNamedField, showSimpleSingleNamedField,
+        showFields,
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ,
@@ -177,7 +177,7 @@ warning s = ParseOk [PWarning s] ()
 data FieldDescr a
   = FieldDescr
       { fieldName     :: String
-      , fieldGet      :: a -> Doc
+      , fieldGet      :: a -> [Doc]
       , fieldSet      :: LineNo -> String -> a -> ParseResult a
         -- ^ @fieldSet n str x@ Parses the field value from the given input
         -- string @str@ and stores the result in @x@ if the parse was
@@ -186,7 +186,7 @@ data FieldDescr a
 
 field :: String -> (a -> Doc) -> ReadP a a -> FieldDescr a
 field name showF readF =
-  FieldDescr name showF (\line val _st -> runP line name readF val)
+  FieldDescr name ((:[]) . showF) (\line val _st -> runP line name readF val)
 
 -- Lift a field descriptor storing into an 'a' to a field descriptor storing
 -- into a 'b'.
@@ -263,7 +263,7 @@ optsField name flavor get set =
 --       liberally but not accept new parses. We cannot do that with ReadP
 --       because it does not support warnings. We need a new parser framework!
 boolField :: String -> (b -> Bool) -> (Bool -> b -> b) -> FieldDescr b
-boolField name get set = liftField get set (FieldDescr name showF readF)
+boolField name get set = liftField get set (FieldDescr name ((:[]) . showF) readF)
   where
     showF = text . show
     readF line str _
@@ -278,23 +278,11 @@ boolField name get set = liftField get set (FieldDescr name showF readF)
           "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
 ppFields :: [FieldDescr a] -> a -> Doc
-ppFields fields x =
-   vcat [ ppField name (getter x) | FieldDescr name getter _ <- fields ]
+ppFields fields x = vcat $
+   concatMap (\(FieldDescr name getter _) -> map (ppField name) (getter x)) fields
+
 showFields :: [FieldDescr a] -> a -> String
 showFields fields = render . ($+$ text "") . ppFields fields
-
-showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
-showSingleNamedField fields f =
-  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
-    []      -> Nothing
-    (get:_) -> Just (render . ppField f . get)
-
-showSimpleSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
-showSimpleSingleNamedField fields f =
-  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
-    []      -> Nothing
-    (get:_) -> Just (renderStyle myStyle . get)
- where myStyle = style { mode = LeftMode }
 
 parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
 parseFields fields initial str =

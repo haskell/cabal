@@ -890,10 +890,10 @@ configFieldDescriptions src =
         let name = "optimization" in
         FieldDescr name
           (\f -> case f of
-                   Flag NoOptimisation      -> Disp.text "False"
-                   Flag NormalOptimisation  -> Disp.text "True"
-                   Flag MaximumOptimisation -> Disp.text "2"
-                   _                        -> Disp.empty)
+                   Flag NoOptimisation      -> [Disp.text "False"]
+                   Flag NormalOptimisation  -> [Disp.text "True"]
+                   Flag MaximumOptimisation -> [Disp.text "2"]
+                   _                        -> [Disp.empty])
           (\line str _ -> case () of
            _ |  str == "False" -> ParseOk [] (Flag NoOptimisation)
              |  str == "True"  -> ParseOk [] (Flag NormalOptimisation)
@@ -912,11 +912,11 @@ configFieldDescriptions src =
         let name = "debug-info" in
         FieldDescr name
           (\f -> case f of
-                   Flag NoDebugInfo      -> Disp.text "False"
-                   Flag MinimalDebugInfo -> Disp.text "1"
-                   Flag NormalDebugInfo  -> Disp.text "True"
-                   Flag MaximalDebugInfo -> Disp.text "3"
-                   _                     -> Disp.empty)
+                   Flag NoDebugInfo      -> [Disp.text "False"]
+                   Flag MinimalDebugInfo -> [Disp.text "1"]
+                   Flag NormalDebugInfo  -> [Disp.text "True"]
+                   Flag MaximalDebugInfo -> [Disp.text "3"]
+                   _                     -> [Disp.empty])
           (\line str _ -> case () of
            _ |  str == "False" -> ParseOk [] (Flag NoDebugInfo)
              |  str == "True"  -> ParseOk [] (Flag NormalDebugInfo)
