@@ -1229,11 +1229,11 @@ mkSpecificSourcePackage location pkg =
 -- | Errors reported upon failing to parse a @.cabal@ file.
 --
 data CabalFileParseError = CabalFileParseError
-    FilePath        -- ^ @.cabal@ file path
-    BS.ByteString   -- ^ @.cabal@ file contents
-    [PError]        -- ^ errors
-    (Maybe Version) -- ^ We might discover the spec version the package needs
-    [PWarning]      -- ^ warnings
+    FilePath           -- ^ @.cabal@ file path
+    BS.ByteString      -- ^ @.cabal@ file contents
+    (NonEmpty PError)  -- ^ errors
+    (Maybe Version)    -- ^ We might discover the spec version the package needs
+    [PWarning]         -- ^ warnings
   deriving (Typeable)
 
 -- | Manual instance which skips file contentes

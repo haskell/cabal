@@ -16,7 +16,7 @@ import Distribution.Simple.Utils (fromUTF8BS)
 renderParseError
     :: FilePath
     -> BS.ByteString
-    -> [PError]
+    -> NonEmpty PError
     -> [PWarning]
     -> String
 renderParseError filepath contents errors warnings = unlines $

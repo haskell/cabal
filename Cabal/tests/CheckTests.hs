@@ -17,6 +17,7 @@ import System.FilePath                        (replaceExtension, (</>))
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.List.NonEmpty    as NE
 
 tests :: TestTree
 tests = checkTests
@@ -52,7 +53,7 @@ checkTest fp = cabalGoldenTest fp correct $ do
             -- D.PD.Check functionality.
             unlines (map (showPWarning fp) ws) ++
             unlines (map show (checkPackage gpd Nothing))
-        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) errs
+        Left (_, errs) -> unlines $ map (("ERROR: " ++) . showPError fp) $ NE.toList errs
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "check"

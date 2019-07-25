@@ -95,6 +95,7 @@ import           Distribution.Verbosity
 import           Distribution.Pretty
 import           Distribution.Compat.Graph (IsNode(..))
 
+import qualified Data.List.NonEmpty as NE
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
@@ -1444,7 +1445,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       (warns, ipkg) <-
         withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
         case Installed.parseInstalledPackageInfo pkgConfStr of
-          Left perrors -> pkgConfParseFailed $ unlines perrors
+          Left perrors -> pkgConfParseFailed $ unlines $ NE.toList perrors
           Right (warns, ipkg) -> return (warns, ipkg)
 
       unless (null warns) $
