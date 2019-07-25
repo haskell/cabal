@@ -763,14 +763,16 @@ instance Arbitrary TestShowDetails where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SourceRepo where
-    arbitrary = (SourceRepo RepoThis
+    arbitrary = (SourceRepo kind
                            <$> arbitrary
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary))
-                `suchThat` (/= emptySourceRepo RepoThis)
+                `suchThat` (/= emptySourceRepo kind)
+      where
+        kind = RepoKindUnknown "unused"
 
     shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
       [ repo

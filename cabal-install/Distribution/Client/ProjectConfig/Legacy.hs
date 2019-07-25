@@ -43,8 +43,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..)
          , dispFlagAssignment )
-import Distribution.Client.SourceRepoParse
-         ( sourceRepoFieldDescrs )
+import Distribution.PackageDescription.FieldGrammar (sourceRepoFieldGrammar)
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
@@ -812,6 +811,7 @@ parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig =
     parseConfig legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                legacyPackageConfigFGSectionDescrs
                 mempty
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
@@ -819,6 +819,7 @@ showLegacyProjectConfig config =
     Disp.render $
     showConfig  legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                legacyPackageConfigFGSectionDescrs
                 config
   $+$
     Disp.text ""
@@ -1166,10 +1167,14 @@ legacyPackageConfigFieldDescrs =
                     | otherwise = "test-" ++ name
 
 
+legacyPackageConfigFGSectionDescrs :: [FGSectionDescr LegacyProjectConfig]
+legacyPackageConfigFGSectionDescrs =
+    [ packageRepoSectionDescr
+    ]
+
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
 legacyPackageConfigSectionDescrs =
-    [ packageRepoSectionDescr
-    , packageSpecificOptionsSectionDescr
+    [ packageSpecificOptionsSectionDescr
     , liftSection
         legacyLocalConfig
         (\flags conf -> conf { legacyLocalConfig = flags })
@@ -1187,31 +1192,19 @@ legacyPackageConfigSectionDescrs =
         remoteRepoSectionDescr
     ]
 
-packageRepoSectionDescr :: SectionDescr LegacyProjectConfig
-packageRepoSectionDescr =
-    SectionDescr {
-      sectionName        = "source-repository-package",
-      sectionFields      = sourceRepoFieldDescrs,
-      sectionSubsections = [],
-      sectionGet         = map (\x->("", x))
-                         . legacyPackagesRepo,
-      sectionSet         =
+packageRepoSectionDescr :: FGSectionDescr LegacyProjectConfig
+packageRepoSectionDescr = FGSectionDescr
+  { fgSectionName        = "source-repository-package"
+  , fgSectionGrammar     = sourceRepoFieldGrammar (RepoKindUnknown "unused")
+  , fgSectionGet         = map (\x->("", x)) . legacyPackagesRepo
+  , fgSectionSet         =
         \lineno unused pkgrepo projconf -> do
           unless (null unused) $
             syntaxError lineno "the section 'source-repository-package' takes no arguments"
           return projconf {
             legacyPackagesRepo = legacyPackagesRepo projconf ++ [pkgrepo]
-          },
-      sectionEmpty       = SourceRepo {
-                             repoKind     = RepoThis, -- hopefully unused
-                             repoType     = Nothing,
-                             repoLocation = Nothing,
-                             repoModule   = Nothing,
-                             repoBranch   = Nothing,
-                             repoTag      = Nothing,
-                             repoSubdir   = Nothing
-                           }
-    }
+          }
+  }
 
 -- | The definitions of all the fields that can appear in the @package pkgfoo@
 -- and @package *@ sections of the @cabal.project@-format files.
