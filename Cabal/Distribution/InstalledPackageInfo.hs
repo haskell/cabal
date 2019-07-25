@@ -96,15 +96,15 @@ sourceComponentName = CLibName . sourceLibName
 -- /Note:/ errors array /may/ be empty, but the parse is still failed (it's a bug though)
 parseInstalledPackageInfo
     :: String
-    -> Either [String] ([String], InstalledPackageInfo)
+    -> Either (NonEmpty String) ([String], InstalledPackageInfo)
 parseInstalledPackageInfo s = case P.readFields (toUTF8BS s) of
-    Left err -> Left [show err]
+    Left err -> Left (show err :| [])
     Right fs -> case partitionFields fs of
         (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
             (ws, Right x) -> Right (ws', x) where
                 ws' = map (P.showPWarning "") ws
             (_,  Left (_, errs)) -> Left errs' where
-                errs' = map (P.showPError "") errs
+                errs' = fmap (P.showPError "") errs
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing

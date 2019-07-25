@@ -48,6 +48,7 @@ Version:            3.1.0.0
 
     if !impl(ghc >= 8.0)
         build-depends: fail        == 4.9.*
+        build-depends: semigroups  >= 0.18.3 && <0.20
 
     if flag(native-dns)
       if os(windows)
