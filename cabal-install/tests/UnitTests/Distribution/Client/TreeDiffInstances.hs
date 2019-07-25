@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.TreeDiffInstances () where
@@ -33,6 +34,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.InstallSymlink
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Targets
+import Distribution.Client.SourceRepo (SourceRepositoryPackage)
 import Distribution.Client.Types
 
 import UnitTests.Distribution.Client.GenericInstances ()
@@ -90,6 +92,7 @@ instance ToExpr RepoType
 instance ToExpr ReportLevel
 instance ToExpr ShortText
 instance ToExpr SourceRepo
+instance ToExpr (f FilePath) => ToExpr (SourceRepositoryPackage f)
 instance ToExpr StrongFlags
 instance ToExpr TestShowDetails
 instance ToExpr Timestamp

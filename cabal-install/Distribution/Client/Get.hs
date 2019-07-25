@@ -24,6 +24,7 @@ module Distribution.Client.Get (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
+import Data.Ord (comparing)
 import Distribution.Compat.Directory
          ( listDirectory )
 import Distribution.Package
@@ -38,6 +39,8 @@ import Distribution.Deprecated.Text (display)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )
+import Distribution.Types.SourceRepo (RepoKind (..))
+import Distribution.Client.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy, srpToProxy)
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..), RepoContext(..) )
@@ -114,7 +117,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
         kind = fromFlag . getSourceRepository $ getFlags
-        packageSourceRepos :: SourcePackage loc -> [SourceRepo]
+        packageSourceRepos :: SourcePackage loc -> [PD.SourceRepo]
         packageSourceRepos = PD.sourceRepos
                            . PD.packageDescription
                            . packageDescription
@@ -197,11 +200,11 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
 data ClonePackageException =
        ClonePackageNoSourceRepos       PackageId
      | ClonePackageNoSourceReposOfKind PackageId (Maybe RepoKind)
-     | ClonePackageNoRepoType          PackageId SourceRepo
-     | ClonePackageUnsupportedRepoType PackageId SourceRepo RepoType
-     | ClonePackageNoRepoLocation      PackageId SourceRepo
+     | ClonePackageNoRepoType          PackageId PD.SourceRepo
+     | ClonePackageUnsupportedRepoType PackageId SourceRepoProxy RepoType
+     | ClonePackageNoRepoLocation      PackageId PD.SourceRepo
      | ClonePackageDestinationExists   PackageId FilePath Bool
-     | ClonePackageFailedWithExitCode  PackageId SourceRepo String ExitCode
+     | ClonePackageFailedWithExitCode  PackageId SourceRepoProxy String ExitCode
   deriving (Show, Eq)
 
 instance Exception ClonePackageException where
@@ -237,7 +240,7 @@ instance Exception ClonePackageException where
   displayException (ClonePackageFailedWithExitCode
                       pkgid repo vcsprogname exitcode) =
        "Failed to fetch the source repository for package " ++ display pkgid
-    ++ maybe "" (", repository location " ++) (PD.repoLocation repo) ++ " ("
+    ++ ", repository location " ++ srpLocation repo ++ " ("
     ++ vcsprogname ++ " failed with " ++ show exitcode ++ ")."
 
 
@@ -248,7 +251,7 @@ instance Exception ClonePackageException where
 clonePackagesFromSourceRepo :: Verbosity
                             -> FilePath            -- ^ destination dir prefix
                             -> Maybe RepoKind      -- ^ preferred 'RepoKind'
-                            -> [(PackageId, [SourceRepo])]
+                            -> [(PackageId, [PD.SourceRepo])]
                                                    -- ^ the packages and their
                                                    -- available 'SourceRepo's
                             -> IO ()
@@ -268,14 +271,14 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
       [ cloneSourceRepo verbosity vcs' repo destDir
           `catch` \exitcode ->
            throwIO (ClonePackageFailedWithExitCode
-                      pkgid repo (programName (vcsProgram vcs)) exitcode)
+                      pkgid (srpToProxy repo) (programName (vcsProgram vcs)) exitcode)
       | (pkgid, repo, vcs, destDir) <- pkgrepos'
       , let Just vcs' = Map.lookup (vcsRepoType vcs) vcss
       ]
 
   where
-    preCloneChecks :: (PackageId, [SourceRepo])
-                   -> IO (PackageId, SourceRepo, VCS Program, FilePath)
+    preCloneChecks :: (PackageId, [PD.SourceRepo])
+                   -> IO (PackageId, SourceRepositoryPackage Maybe, VCS Program, FilePath)
     preCloneChecks (pkgid, repos) = do
       repo <- case selectPackageSourceRepo preferredRepoKind repos of
         Just repo            -> return repo
@@ -283,13 +286,13 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
         Nothing              -> throwIO (ClonePackageNoSourceReposOfKind
                                            pkgid preferredRepoKind)
 
-      vcs <- case validateSourceRepo repo of
-        Right (_, _, _, vcs) -> return vcs
+      (repo', vcs) <- case validatePDSourceRepo repo of
+        Right (repo', _, _, vcs) -> return (repo', vcs)
         Left SourceRepoRepoTypeUnspecified ->
           throwIO (ClonePackageNoRepoType pkgid repo)
 
-        Left (SourceRepoRepoTypeUnsupported repoType) ->
-          throwIO (ClonePackageUnsupportedRepoType pkgid repo repoType)
+        Left (SourceRepoRepoTypeUnsupported repo' repoType) ->
+          throwIO (ClonePackageUnsupportedRepoType pkgid repo' repoType)
 
         Left SourceRepoLocationUnspecified ->
           throwIO (ClonePackageNoRepoLocation pkgid repo)
@@ -300,5 +303,37 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
       when (destDirExists || destFileExists) $
         throwIO (ClonePackageDestinationExists pkgid destDir destDirExists)
 
-      return (pkgid, repo, vcs, destDir)
+      return (pkgid, repo', vcs, destDir)
 
+-------------------------------------------------------------------------------
+-- Selecting
+-------------------------------------------------------------------------------
+
+-- | Pick the 'SourceRepo' to use to get the package sources from.
+--
+-- Note that this does /not/ depend on what 'VCS' drivers we are able to
+-- successfully configure. It is based only on the 'SourceRepo's declared
+-- in the package, and optionally on a preferred 'RepoKind'.
+--
+selectPackageSourceRepo :: Maybe RepoKind
+                        -> [PD.SourceRepo]
+                        -> Maybe PD.SourceRepo
+selectPackageSourceRepo preferredRepoKind =
+    listToMaybe
+    -- Sort repositories by kind, from This to Head to Unknown. Repositories
+    -- with equivalent kinds are selected based on the order they appear in
+    -- the Cabal description file.
+  . sortBy (comparing thisFirst)
+    -- If the user has specified the repo kind, filter out the repositories
+    -- they're not interested in.
+  . filter (\repo -> maybe True (PD.repoKind repo ==) preferredRepoKind)
+  where
+    thisFirst :: PD.SourceRepo -> Int
+    thisFirst r = case PD.repoKind r of
+        RepoThis -> 0
+        RepoHead -> case PD.repoTag r of
+            -- If the type is 'head' but the author specified a tag, they
+            -- probably meant to create a 'this' repository but screwed up.
+            Just _  -> 0
+            Nothing -> 1
+        RepoKindUnknown _ -> 2

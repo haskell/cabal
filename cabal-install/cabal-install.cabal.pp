@@ -168,7 +168,7 @@ Version:            3.1.0.0
         Distribution.Client.SetupWrapper
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
-        Distribution.Client.SourceRepoParse
+        Distribution.Client.SourceRepo
         Distribution.Client.SrcDist
         Distribution.Client.Store
         Distribution.Client.Tar

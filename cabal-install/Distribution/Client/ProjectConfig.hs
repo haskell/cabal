@@ -100,7 +100,9 @@ import Distribution.Fields
          ( runParseResult, PError, PWarning, showPWarning)
 import Distribution.Pretty ()
 import Distribution.Types.SourceRepo
-         ( SourceRepo(..), RepoType(..), )
+         ( RepoType(..) )
+import Distribution.Client.SourceRepo
+         ( SourceRepoList, SourceRepositoryPackage (..), srpFanOut )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
 import Distribution.Simple.Program
@@ -139,6 +141,7 @@ import Data.Either
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
+import qualified Data.List.NonEmpty as NE
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Hashable as Hashable
@@ -647,7 +650,7 @@ data ProjectPackageLocation =
    | ProjectPackageLocalDirectory FilePath FilePath -- dir and .cabal file
    | ProjectPackageLocalTarball   FilePath
    | ProjectPackageRemoteTarball  URI
-   | ProjectPackageRemoteRepo     SourceRepo
+   | ProjectPackageRemoteRepo     SourceRepoList
    | ProjectPackageNamed          PackageVersionConstraint
   deriving Show
 
@@ -1108,7 +1111,7 @@ syncAndReadSourcePackagesRemoteRepos
   :: Verbosity
   -> DistDirLayout
   -> ProjectConfigShared
-  -> [SourceRepo]
+  -> [SourceRepoList]
   -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 syncAndReadSourcePackagesRemoteRepos verbosity
                                      DistDirLayout{distDownloadSrcDirectory}
@@ -1123,7 +1126,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
     -- All 'SourceRepo's grouped by referring to the "same" remote repo
     -- instance. So same location but can differ in commit/tag/branch/subdir.
     let reposByLocation :: Map (RepoType, String)
-                               [(SourceRepo, RepoType)]
+                               [(SourceRepoList, RepoType)]
         reposByLocation = Map.fromListWith (++)
                             [ ((rtype, rloc), [(repo, vcsRepoType vcs)])
                             | (repo, rloc, rtype, vcs) <- repos' ]
@@ -1143,7 +1146,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
             pathStem = distDownloadSrcDirectory
                    </> localFileNameForRemoteRepo primaryRepo
             monitor :: FileMonitor
-                         [SourceRepo]
+                         [SourceRepoList]
                          [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
             monitor  = newFileMonitor (pathStem <.> "cache")
       ]
@@ -1151,7 +1154,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
     syncRepoGroupAndReadSourcePackages
       :: VCS ConfiguredProgram
       -> FilePath
-      -> [SourceRepo]
+      -> [SourceRepoList]
       -> Rebuild [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
     syncRepoGroupAndReadSourcePackages vcs pathStem repoGroup = do
         liftIO $ createDirectoryIfMissingVerbose verbosity False
@@ -1168,24 +1171,33 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         sequence
           [ readPackageFromSourceRepo repoWithSubdir repoPath
           | (_, reposWithSubdir, repoPath) <- repoGroupWithPaths
-          , repoWithSubdir <- reposWithSubdir ]
+          , repoWithSubdir <- NE.toList reposWithSubdir ]
       where
         -- So to do both things above, we pair them up here.
+        repoGroupWithPaths
+          :: [(SourceRepositoryPackage Proxy, NonEmpty (SourceRepositoryPackage Maybe), FilePath)]
         repoGroupWithPaths =
           zipWith (\(x, y) z -> (x,y,z))
-                  (Map.toList
-                    (Map.fromListWith (++)
-                      [ (repo { repoSubdir = Nothing }, [repo])
-                      | repo <- repoGroup ]))
+                  (mapGroup
+                      [ (repo { srpSubdir = Proxy }, repo)
+                      | repo <- foldMap (NE.toList . srpFanOut) repoGroup
+                      ])
                   repoPaths
+
+        mapGroup :: Ord k => [(k, v)] -> [(k, NonEmpty v)]
+        mapGroup = Map.toList . Map.fromListWith (<>) . map (\(k, v) -> (k, pure v))
 
         -- The repos in a group are given distinct names by simple enumeration
         -- foo, foo-2, foo-3 etc
+        repoPaths :: [FilePath]
         repoPaths = pathStem
                   : [ pathStem ++ "-" ++ show (i :: Int) | i <- [2..] ]
 
+    readPackageFromSourceRepo
+        :: SourceRepositoryPackage Maybe -> FilePath
+        -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
     readPackageFromSourceRepo repo repoPath = do
-        let packageDir = maybe repoPath (repoPath </>) (repoSubdir repo)
+        let packageDir = maybe repoPath (repoPath </>) (srpSubdir repo)
         entries <- liftIO $ getDirectoryContents packageDir
         --TODO: wrap exceptions
         case filter (\e -> takeExtension e == ".cabal") entries of
@@ -1201,10 +1213,10 @@ syncAndReadSourcePackagesRemoteRepos verbosity
               location      = RemoteSourceRepoPackage repo packageDir
 
 
-    reportSourceRepoProblems :: [(SourceRepo, SourceRepoProblem)] -> Rebuild a
+    reportSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> Rebuild a
     reportSourceRepoProblems = liftIO . die' verbosity . renderSourceRepoProblems
 
-    renderSourceRepoProblems :: [(SourceRepo, SourceRepoProblem)] -> String
+    renderSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> String
     renderSourceRepoProblems = unlines . map show -- "TODO: the repo problems"
 
 
@@ -1357,10 +1369,9 @@ localFileNameForRemoteTarball uri =
 -- This is deterministic based on the source repo identity details, and
 -- intended to produce non-clashing file names for different repos.
 --
-localFileNameForRemoteRepo :: SourceRepo -> FilePath
-localFileNameForRemoteRepo SourceRepo{repoType, repoLocation, repoModule} =
-    maybe "" ((++ "-") . mangleName) repoLocation
- ++ showHex locationHash ""
+localFileNameForRemoteRepo :: SourceRepoList -> FilePath
+localFileNameForRemoteRepo SourceRepositoryPackage {srpType, srpLocation} =
+    mangleName srpLocation ++ "-" ++ showHex locationHash ""
   where
     mangleName = truncateString 10 . dropExtension
                . takeFileName . dropTrailingPathSeparator
@@ -1368,7 +1379,7 @@ localFileNameForRemoteRepo SourceRepo{repoType, repoLocation, repoModule} =
     -- just the parts that make up the "identity" of the repo
     locationHash :: Word
     locationHash =
-      fromIntegral (Hashable.hash (show repoType, repoLocation, repoModule))
+      fromIntegral (Hashable.hash (show srpType, srpLocation))
 
 
 -- | Truncate a string, with a visual indication that it is truncated.
