@@ -86,7 +86,7 @@ import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
          , PathTemplate, toPathTemplate )
 import Distribution.Deprecated.ParseUtils
-         ( FieldDescr(..), liftField
+         ( FieldDescr(..), liftField, runP
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
@@ -1097,7 +1097,7 @@ parseConfig src initial = \str -> do
         . nubBy ((==) `on` remoteRepoName)
         $ remoteRepoSections0
 
-  return config {
+  return . fixConfigMultilines $ config {
     savedGlobalFlags       = (savedGlobalFlags config) {
        globalRemoteRepos   = toNubList remoteRepoSections,
        -- the global extra prog path comes from the configure flag prog path
@@ -1122,6 +1122,28 @@ parseConfig src initial = \str -> do
     isKnownSection (ParseUtils.Section _ "program-locations" _ _)       = True
     isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
     isKnownSection _                                                    = False
+
+    -- attempt to split fields that can represent lists of paths into actual lists
+    -- on failure, leave the field untouched
+    splitMultiPath :: [String] -> [String]
+    splitMultiPath [s] = case runP 0 "" (parseOptCommaList parseTokenQ) s of
+            ParseOk _ res -> res
+            _ -> [s]
+    splitMultiPath xs = trace ( show xs) xs
+
+    -- This is a fixup, pending a full config parser rewrite, to ensure that
+    -- config fields which can be comma seperated lists actually parse as comma seperated lists
+    fixConfigMultilines conf = conf {
+         savedConfigureFlags =
+           let scf = savedConfigureFlags conf
+           in  scf {
+                     configProgramPathExtra = toNubList $ splitMultiPath (fromNubList $ configProgramPathExtra scf)
+                   , configExtraLibDirs = splitMultiPath (configExtraLibDirs scf)
+                   , configExtraFrameworkDirs = splitMultiPath (configExtraFrameworkDirs scf)
+                   , configExtraIncludeDirs = splitMultiPath (configExtraIncludeDirs scf)
+                   , configConfigureArgs = splitMultiPath (configConfigureArgs scf)
+               }
+      }
 
     parse = parseFields (configFieldDescriptions src
                       ++ deprecatedFieldDescriptions) initial
