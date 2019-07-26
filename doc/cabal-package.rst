@@ -13,7 +13,7 @@ Introduction
 ------------
 
 Every project needs a name, we'll call ours "proglet" and start by
-creating an empty directory to hold our code.
+creating an empty directory.
 
 .. highlight:: console
 
@@ -26,14 +26,35 @@ creating an empty directory to hold our code.
 Using ``cabal init``
 --------------------
 
-The ``cabal init`` command creates the necessary files for a Cabal
-package. It has an interactive mode which you can read more about below,
-but for now we're going to let it choose defaults for us.
+The ``cabal init`` command creates the necessary files for a Cabal package,
+it has both an ``--interactive`` (default) and ``--non-interactive``
+mode. The interactive mode will walk you through many of the package
+options and metadata, the non-interactive mode will simply pick reasonable
+defaults which is sufficient if you're just spinning up a small project to
+try something out.
+
+.. highlight:: console
 
 ::
 
     $ cabal init --non-interactive
     # You can also use -n which is the short version of --non-interactive
+
+If you want, you can also try out the interactive mode, for now chose
+"Executable" when asked what type of package you want to build.
+
+.. highlight:: console
+
+::
+
+    $ cabal init --interactive
+    ...
+    What does the package build:
+      1) Executable
+      2) Library
+      3) Library and Executable
+    Your choice?
+
 
 This will create the ``Main.hs`` Haskell file and a few others that are
 part of all Cabal packages. By default ``cabal init`` will create an
@@ -48,20 +69,32 @@ executable in the top level project directory.
 
 Check out the files created using the ``ls`` command.
 
+::
+
+   $ ls
+   CHANGELOG.md  Main.hs  proglet.cabal  Setup.hs
+
 
 Running the program
 -------------------
 
 Now that we have our Haskell code and the extra files that Cabal needs we
-can build and run our project. Since we have an executable we can use
-``cabal run`` which will build our executable (and re-build it if we've
-made any changes) and then run the binary.
+can build and run our project.
 
 ::
+
+   $ cabal build
+   Resolving dependencies...
+   ...
+   Linking /path/to/proglet ...
 
    $ cabal run
    <Stuff about resolving dependencies, build profile, compliling, linking>
    Hello, Haskell!
+
+Since we have an executable we can use ``cabal run`` which will build our
+executable (and re-build it if we've made any changes) and then run the
+binary.
 
 
 About the Cabal package structure
@@ -79,35 +112,9 @@ Cabal needs two extra files in the project's root directory:
 -  ``Setup.hs``: contains a few standardized lines of code, but can be
    customized if necessary.
 
-
-Running ``cabal init`` interactively
-------------------------------------
-
-You can also invoke ``cabal init`` interactively which walks you through
-many of the package options and metadata. 
-
-::
-
-    $ cabal init --interactive
-    Package name [default "proglet"]?
-    Package version [default "0.1"]?
-    ...
-
-One of the important questions is whether the package contains a library,
-an executable, or both. Libraries are collections of Haskell modules that
-can be re-used by other Haskell libraries and programs, while executables
-are standalone programs.
-
-::
-
-   What does the package build:
-     1) Executable
-     2) Library
-     3) Library and Executable
-   Your choice?
-
-For more complex packages (e.g. a library and multiple executables or test
-suites) the ``.cabal`` file can be edited afterwards.
+.. NOTE::
+   ``Setup.hs`` is optional if you're not using a custom setup, but ``cabal
+   init`` still creates it so we included it for completeness.
 
 
 Editing the .cabal file
@@ -121,10 +128,13 @@ you will find the :pkg-section:`executable` or :pkg-section:`library`
 section.
 
 You will see that the fields that have yet to be filled in are commented
-out. Cabal files use "``--``" Haskell-style comment syntax. (Note that
-comments are only allowed on lines on their own. Trailing comments on
-other lines are not allowed because they could be confused with program
-options.)
+out. Cabal files use "``--``" Haskell-style comment syntax.
+
+.. NOTE::
+   Comments are only allowed on lines on their own. Trailing comments on
+   other lines are not allowed because they could be confused with program
+   options.
+
 
 ::
 
