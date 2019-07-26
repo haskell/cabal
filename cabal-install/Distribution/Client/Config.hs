@@ -1129,7 +1129,7 @@ parseConfig src initial = \str -> do
     splitMultiPath [s] = case runP 0 "" (parseOptCommaList parseTokenQ) s of
             ParseOk _ res -> res
             _ -> [s]
-    splitMultiPath xs = trace ( show xs) xs
+    splitMultiPath xs = xs
 
     -- This is a fixup, pending a full config parser rewrite, to ensure that
     -- config fields which can be comma seperated lists actually parse as comma seperated lists
