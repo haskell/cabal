@@ -549,8 +549,8 @@ indexFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "tar"
 indexFile (SandboxIndex index)   = index
 
 cacheFile :: Index -> FilePath
-cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache"
-cacheFile (SandboxIndex index)   = index `replaceExtension` "cache"
+cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache-v2"
+cacheFile (SandboxIndex index)   = index `replaceExtension` "cache-v2"
 
 timestampFile :: Index -> FilePath
 timestampFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "timestamp"
