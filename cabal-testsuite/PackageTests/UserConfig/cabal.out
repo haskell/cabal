@@ -6,3 +6,9 @@ cabal: <ROOT>/cabal.dist/cabal-config already exists.
 Writing default configuration to <ROOT>/cabal.dist/cabal-config
 # cabal user-config
 Writing default configuration to <ROOT>/cabal.dist/cabal-config2
+# cabal user-config
+Renaming <ROOT>/cabal.dist/cabal-config to <ROOT>/cabal.dist/cabal-config.backup.
+Writing merged config to <ROOT>/cabal.dist/cabal-config.
+# cabal user-config
+Renaming <ROOT>/cabal.dist/cabal-config to <ROOT>/cabal.dist/cabal-config.backup.
+Writing merged config to <ROOT>/cabal.dist/cabal-config.
