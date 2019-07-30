@@ -3,6 +3,8 @@
 3.1.0.0 (current development version)
 
 3.0.0.0 TBD
+        * Parses comma-seperated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs, 
+	  and extra-include-dirs as actual lists. (#5420)
 	* `v2-repl` no longer changes directory to a randomized temporary folder
 	  when used outside of a project. (#5544)
 	* `install-method` and `overwrite-policy` in `.cabal/config` now actually work. (#5942)
