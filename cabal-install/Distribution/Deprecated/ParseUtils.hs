@@ -28,14 +28,14 @@ module Distribution.Deprecated.ParseUtils (
         FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
-        parseFilePathQ, parseTokenQ, parseTokenQ',
+        parseHaskellString, parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ,
         parseFlagAssignment,
         parseOptVersion, parsePackageName,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
-        commaListField, commaListFieldWithSep, commaNewLineListField,
+        commaListField, commaListFieldWithSep, commaNewLineListField, newLineListField,
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
@@ -58,13 +58,13 @@ import Distribution.Utils.Generic
 import Distribution.Version
 import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment)
 
-import Data.Tree        as Tree (Tree (..), flatten)
+import Data.Tree as Tree (Tree (..), flatten)
 import System.FilePath  (normalise)
 import Text.PrettyPrint
        (Doc, Mode (..), colon, comma, fsep, hsep, isEmpty, mode, nest, punctuate, render,
        renderStyle, sep, style, text, vcat, ($+$), (<+>))
-
-import qualified Data.Map                      as Map
+import qualified Text.Read as Read
+import qualified Data.Map  as Map
 
 import qualified Control.Monad.Fail as Fail
 
@@ -230,6 +230,12 @@ spaceListField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
     showF'    = fsep . map showF
+
+-- this is a different definition from listField, like
+-- commaNewLineListField it pretty prints on multiple lines
+newLineListField :: String -> (a -> Doc) -> ReadP [a] a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+newLineListField = listFieldWithSep sep
 
 listFieldWithSep :: Separator -> String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
@@ -622,8 +628,13 @@ parseOptVersion = parseMaybeQuoted ver
 -- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
 -- Hence the trick above to make 'lic' polymorphic.
 
+-- Different than the naive version. it turns out Read instance for String accepts
+-- the ['a', 'b'] syntax, which we do not want. In particular it messes
+-- up any token starting with [].
 parseHaskellString :: ReadP r String
-parseHaskellString = readS_to_P reads
+parseHaskellString =
+  readS_to_P $
+    Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
 
 parseTokenQ :: ReadP r String
 parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
@@ -645,9 +656,14 @@ parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
 parseCommaList = parseSepList (ReadP.char ',')
 
-parseOptCommaList :: ReadP r a -- ^The parser for the stuff between commas
-                  -> ReadP r [a]
-parseOptCommaList = parseSepList (optional (ReadP.char ','))
+-- This version avoid parse ambiguity for list element parsers
+-- that have multiple valid parses of prefixes.
+parseOptCommaList :: ReadP r a -> ReadP r [a]
+parseOptCommaList p = sepBy p localSep
+  where
+    -- The separator must not be empty or it introduces ambiguity
+    localSep = (skipSpaces >> char ',' >> skipSpaces)
+      +++ (satisfy isSpace >> skipSpaces)
 
 parseQuoted :: ReadP r a -> ReadP r a
 parseQuoted = between (ReadP.char '"') (ReadP.char '"')
