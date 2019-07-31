@@ -1,4 +1,4 @@
-# 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) July 2019
+# 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
