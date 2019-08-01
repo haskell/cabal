@@ -72,17 +72,17 @@ generate' lss template = M.renderMustacheW template $ object
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
     , "licenseList_3_2" .= mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
-    , "licenseList_3_5" .= mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_5 vers)
+    , "licenseList_3_6" .= mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
     ]
   where
-    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_5) = lss
+    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) = lss
 
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
         $ combine licenseId $ \ver -> case ver of
-            SPDXLicenseListVersion_3_5 -> filterDeprecated ls_3_5
+            SPDXLicenseListVersion_3_6 -> filterDeprecated ls_3_6
             SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
             SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
 

@@ -45,23 +45,25 @@ data LicenseExceptionId
     | GCC_exception_2_0 -- ^ @GCC-exception-2.0@, GCC Runtime Library exception 2.0
     | GCC_exception_3_1 -- ^ @GCC-exception-3.1@, GCC Runtime Library exception 3.1
     | Gnu_javamail_exception -- ^ @gnu-javamail-exception@, GNU JavaMail exception
-    | GPL_CC_1_0 -- ^ @GPL-CC-1.0@, GPL Cooperation Commitment 1.0, SPDX License List 3.5
+    | GPL_CC_1_0 -- ^ @GPL-CC-1.0@, GPL Cooperation Commitment 1.0, SPDX License List 3.6
     | I2p_gpl_java_exception -- ^ @i2p-gpl-java-exception@, i2p GPL+Java Exception
     | Libtool_exception -- ^ @Libtool-exception@, Libtool Exception
     | Linux_syscall_note -- ^ @Linux-syscall-note@, Linux Syscall Note
-    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2, SPDX License List 3.5
+    | LLVM_exception -- ^ @LLVM-exception@, LLVM Exception, SPDX License List 3.2, SPDX License List 3.6
     | LZMA_exception -- ^ @LZMA-exception@, LZMA exception
     | Mif_exception -- ^ @mif-exception@, Macros and Inline Functions Exception
     | Nokia_Qt_exception_1_1 -- ^ @Nokia-Qt-exception-1.1@, Nokia Qt LGPL exception 1.1, SPDX License List 3.0, SPDX License List 3.2
-    | OCaml_LGPL_linking_exception -- ^ @OCaml-LGPL-linking-exception@, OCaml LGPL Linking Exception, SPDX License List 3.5
+    | OCaml_LGPL_linking_exception -- ^ @OCaml-LGPL-linking-exception@, OCaml LGPL Linking Exception, SPDX License List 3.6
     | OCCT_exception_1_0 -- ^ @OCCT-exception-1.0@, Open CASCADE Exception 1.0
-    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2, SPDX License List 3.5
+    | OpenJDK_assembly_exception_1_0 -- ^ @OpenJDK-assembly-exception-1.0@, OpenJDK Assembly exception 1.0, SPDX License List 3.2, SPDX License List 3.6
     | Openvpn_openssl_exception -- ^ @openvpn-openssl-exception@, OpenVPN OpenSSL Exception
-    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2, SPDX License List 3.5
-    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2, SPDX License List 3.5
-    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2, SPDX License List 3.5
+    | PS_or_PDF_font_exception_20170817 -- ^ @PS-or-PDF-font-exception-20170817@, PS/PDF font exception (2017-08-17), SPDX License List 3.2, SPDX License List 3.6
+    | Qt_GPL_exception_1_0 -- ^ @Qt-GPL-exception-1.0@, Qt GPL exception 1.0, SPDX License List 3.2, SPDX License List 3.6
+    | Qt_LGPL_exception_1_1 -- ^ @Qt-LGPL-exception-1.1@, Qt LGPL exception 1.1, SPDX License List 3.2, SPDX License List 3.6
     | Qwt_exception_1_0 -- ^ @Qwt-exception-1.0@, Qwt exception 1.0
+    | Swift_exception -- ^ @Swift-exception@, Swift Exception, SPDX License List 3.6
     | U_boot_exception_2_0 -- ^ @u-boot-exception-2.0@, U-Boot exception 2.0
+    | Universal_FOSS_exception_1_0 -- ^ @Universal-FOSS-exception-1.0@, Universal FOSS Exception, Version 1.0, SPDX License List 3.6
     | WxWindows_exception_3_1 -- ^ @WxWindows-exception-3.1@, WxWindows Library Exception 3.1
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
@@ -124,7 +126,9 @@ licenseExceptionId PS_or_PDF_font_exception_20170817 = "PS-or-PDF-font-exception
 licenseExceptionId Qt_GPL_exception_1_0 = "Qt-GPL-exception-1.0"
 licenseExceptionId Qt_LGPL_exception_1_1 = "Qt-LGPL-exception-1.1"
 licenseExceptionId Qwt_exception_1_0 = "Qwt-exception-1.0"
+licenseExceptionId Swift_exception = "Swift-exception"
 licenseExceptionId U_boot_exception_2_0 = "u-boot-exception-2.0"
+licenseExceptionId Universal_FOSS_exception_1_0 = "Universal-FOSS-exception-1.0"
 licenseExceptionId WxWindows_exception_3_1 = "WxWindows-exception-3.1"
 
 -- | License name, e.g. @"GNU General Public License v2.0 only"@
@@ -161,7 +165,9 @@ licenseExceptionName PS_or_PDF_font_exception_20170817 = "PS/PDF font exception 
 licenseExceptionName Qt_GPL_exception_1_0 = "Qt GPL exception 1.0"
 licenseExceptionName Qt_LGPL_exception_1_1 = "Qt LGPL exception 1.1"
 licenseExceptionName Qwt_exception_1_0 = "Qwt exception 1.0"
+licenseExceptionName Swift_exception = "Swift Exception"
 licenseExceptionName U_boot_exception_2_0 = "U-Boot exception 2.0"
+licenseExceptionName Universal_FOSS_exception_1_0 = "Universal FOSS Exception, Version 1.0"
 licenseExceptionName WxWindows_exception_3_1 = "WxWindows Library Exception 3.1"
 
 -------------------------------------------------------------------------------
@@ -182,7 +188,7 @@ licenseExceptionIdList LicenseListVersion_3_2 =
     , Qt_LGPL_exception_1_1
     ]
     ++ bulkOfLicenses
-licenseExceptionIdList LicenseListVersion_3_5 =
+licenseExceptionIdList LicenseListVersion_3_6 =
     [ GPL_CC_1_0
     , LLVM_exception
     , OCaml_LGPL_linking_exception
@@ -190,6 +196,8 @@ licenseExceptionIdList LicenseListVersion_3_5 =
     , PS_or_PDF_font_exception_20170817
     , Qt_GPL_exception_1_0
     , Qt_LGPL_exception_1_1
+    , Swift_exception
+    , Universal_FOSS_exception_1_0
     ]
     ++ bulkOfLicenses
 
@@ -197,7 +205,7 @@ licenseExceptionIdList LicenseListVersion_3_5 =
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
 mkLicenseExceptionId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseExceptionId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseExceptionId LicenseListVersion_3_5 s = Map.lookup s stringLookup_3_5
+mkLicenseExceptionId LicenseListVersion_3_6 s = Map.lookup s stringLookup_3_6
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -207,9 +215,9 @@ stringLookup_3_2 :: Map String LicenseExceptionId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_2
 
-stringLookup_3_5 :: Map String LicenseExceptionId
-stringLookup_3_5 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
-    licenseExceptionIdList LicenseListVersion_3_5
+stringLookup_3_6 :: Map String LicenseExceptionId
+stringLookup_3_6 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_6
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]
