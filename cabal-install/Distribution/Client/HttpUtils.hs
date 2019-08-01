@@ -59,6 +59,7 @@ import System.IO.Error
 import Distribution.Simple.Program
          ( Program, simpleProgram, ConfiguredProgram, programPath
          , ProgramInvocation(..), programInvocation
+         , programOverrideArgs, programPostConf
          , ProgramSearchPathEntry(..)
          , getProgramInvocationOutput )
 import Distribution.Simple.Program.Db
@@ -252,6 +253,12 @@ supportedTransports :: [(String, Maybe Program, Bool,
 supportedTransports =
     [ let prog = simpleProgram "curl" in
       ( "curl", Just prog, True
+      , \db -> curlTransport <$> lookupProgram prog db )
+
+    , let prog = (simpleProgram "curl") { programPostConf = post }
+          args = ["-n"]
+          post = \_ p -> return p { programOverrideArgs = args } in
+      ( "curlnetrc", Just prog, True
       , \db -> curlTransport <$> lookupProgram prog db )
 
     , let prog = simpleProgram "wget" in
