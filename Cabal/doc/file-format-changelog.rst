@@ -30,7 +30,7 @@ relative to the respective preceding *published* version.
   and indentation. In other words, you don't need to add dots for blank lines.
 
 * License fields use identifiers from SPDX License List version
-  ``3.5 2019-04-02``
+  ``3.6 2019-07-10``
 
 * Remove deprecated ``hs-source-dir``, :pkg-field:`extensions` and
   :pkg-field:`build-tools` fields.
