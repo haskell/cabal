@@ -1,4 +1,4 @@
-multiple-libs-2.cabal:17:3: The field "visibility" is available only since the Cabal specification version 3.0.
+multiple-libs-2.cabal:17:3: The field "visibility" is available only since the Cabal specification version 3.0. This field will be ignored.
 cabal-version: 2.0
 name:          multiple-libs
 version:       0
