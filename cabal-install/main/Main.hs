@@ -37,6 +37,7 @@ import Distribution.Client.Setup
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
+         , RepoContext(..)
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
          , SDistFlags(..), sdistCommand
@@ -95,6 +96,7 @@ import qualified Distribution.Client.CmdClean     as CmdClean
 import qualified Distribution.Client.CmdSdist     as CmdSdist
 import           Distribution.Client.CmdLegacy
 
+
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
 import Distribution.Client.Update             (update)
@@ -136,7 +138,7 @@ import Distribution.Client.Sandbox.PackageEnvironment (setPackageDB)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Tar                (createTarGzFile)
-import Distribution.Client.Types              (Password (..))
+import Distribution.Client.Types              (Password (..), RemoteRepoName (..), isRepoRemote, remoteRepoName, maybeRepoRemote)
 import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -978,6 +980,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles     = extraArgs
+  let chosenRepo = flagToMaybe $ uploadRepoName uploadFlags'
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     die' verbosity "the 'upload' command expects at least one .tar.gz archive."
   checkTarFiles extraArgs
@@ -987,7 +990,9 @@ uploadAction uploadFlags extraArgs globalFlags = do
                         getProgramInvocationOutput verbosity
                         (simpleProgramInvocation xs xss)
        _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
+
   withRepoContext verbosity globalFlags' $ \repoContext -> do
+    filteredRepoContext <- chooseRepo verbosity repoContext (unRemoteRepoName <$> chosenRepo)
     if fromFlag (uploadDoc uploadFlags')
     then do
       when (length tarfiles > 1) $
@@ -995,14 +1000,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
              ++ "for one package at a time."
       tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
       Upload.uploadDoc verbosity
-                       repoContext
+                       filteredRepoContext
                        (flagToMaybe $ uploadUsername uploadFlags')
                        maybe_password
                        (fromFlag (uploadCandidate uploadFlags'))
                        tarfile
     else do
       Upload.upload verbosity
-                    repoContext
+                    filteredRepoContext
                     (flagToMaybe $ uploadUsername uploadFlags')
                     maybe_password
                     (fromFlag (uploadCandidate uploadFlags'))
@@ -1085,9 +1090,11 @@ reportAction reportFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
+  let chosenRepo = flagToMaybe $ reportRepoName reportFlags'
 
-  withRepoContext verbosity globalFlags' $ \repoContext ->
-   Upload.report verbosity repoContext
+  withRepoContext verbosity globalFlags' $ \repoContext -> do
+   filteredRepoContext <- chooseRepo verbosity repoContext (unRemoteRepoName <$> chosenRepo)
+   Upload.report verbosity filteredRepoContext
     (flagToMaybe $ reportUsername reportFlags')
     (flagToMaybe $ reportPassword reportFlags')
 
@@ -1248,3 +1255,18 @@ manpageAction commands flagVerbosity extraArgs _ = do
                  then dropExtension pname
                  else pname
   putStrLn $ manpage cabalCmd commands
+
+chooseRepo :: Verbosity -> RepoContext -> Maybe String -> IO RepoContext
+chooseRepo verbosity ctx mrepo = do
+  let rs = filter isRepoRemote (repoContextRepos ctx)
+
+  filtered <- case mrepo of
+    Just name -> case find (\r -> fromMaybe False $ (name == ) . remoteRepoName <$> maybeRepoRemote r) rs of
+      Just found -> return [found]
+      Nothing    -> die' verbosity $ "Cannot find chosen repository " <> name <> "."
+    Nothing   -> return rs
+
+  if length filtered > 1
+    then die' verbosity $
+      "Cannot determine a specific hackage repository. Please choose one with --repository-name."
+    else return $ ctx { repoContextRepos = filtered }

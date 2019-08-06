@@ -74,7 +74,7 @@ import Distribution.Deprecated.ReadP (readP_to_E)
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
-         , WriteGhcEnvironmentFilesPolicy(..)
+         , WriteGhcEnvironmentFilesPolicy(..), RemoteRepoName (..)
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
@@ -1473,14 +1473,16 @@ runCommand = CommandUI {
 data ReportFlags = ReportFlags {
     reportUsername  :: Flag Username,
     reportPassword  :: Flag Password,
-    reportVerbosity :: Flag Verbosity
+    reportVerbosity :: Flag Verbosity,
+    reportRepoName  :: Flag RemoteRepoName
   } deriving Generic
 
 defaultReportFlags :: ReportFlags
 defaultReportFlags = ReportFlags {
     reportUsername  = mempty,
     reportPassword  = mempty,
-    reportVerbosity = toFlag normal
+    reportVerbosity = toFlag normal,
+    reportRepoName  = mempty
   }
 
 reportCommand :: CommandUI ReportFlags
@@ -1506,6 +1508,11 @@ reportCommand = CommandUI {
         reportPassword (\v flags -> flags { reportPassword = v })
         (reqArg' "PASSWORD" (toFlag . Password)
                             (flagToList . fmap unPassword))
+
+      ,option ['R'] ["repository-name"]
+        "Hackage repository to upload to."
+        reportRepoName (\v flags -> flags { reportRepoName = v })
+        (reqArg' "REPO" (toFlag . RemoteRepoName) (flagToList . fmap unRemoteRepoName))
       ]
   }
 
@@ -2150,7 +2157,8 @@ data UploadFlags = UploadFlags {
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
-    uploadVerbosity   :: Flag Verbosity
+    uploadVerbosity   :: Flag Verbosity,
+    uploadRepoName    :: Flag RemoteRepoName
   } deriving Generic
 
 defaultUploadFlags :: UploadFlags
@@ -2160,7 +2168,8 @@ defaultUploadFlags = UploadFlags {
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
-    uploadVerbosity   = toFlag normal
+    uploadVerbosity   = toFlag normal,
+    uploadRepoName    = mempty
   }
 
 uploadCommand :: CommandUI UploadFlags
@@ -2207,6 +2216,11 @@ uploadCommand = CommandUI {
         "Command to get Hackage password."
         uploadPasswordCmd (\v flags -> flags { uploadPasswordCmd = v })
         (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
+
+      ,option ['R'] ["repository-name"]
+        "Hackage repository to upload to."
+        uploadRepoName (\v flags -> flags { uploadRepoName = v })
+        (reqArg' "REPO" (toFlag . RemoteRepoName) (flagToList . fmap unRemoteRepoName))
       ]
   }
 
