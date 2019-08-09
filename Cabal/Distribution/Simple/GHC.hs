@@ -577,7 +577,11 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       linkerOpts = mempty {
                       ghcOptLinkOptions       = PD.ldOptions libBi
                                                 ++ [ "-static"
-                                                   | withFullyStaticExe lbi ],
+                                                   | withFullyStaticExe lbi ]
+                                                -- Pass extra `ld-options` given
+                                                -- through to GHC's linker.
+                                                ++ maybe [] programOverrideArgs
+                                                     (lookupProgram ldProgram (withPrograms lbi)),
                       ghcOptLinkLibs          = extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
                       ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
@@ -1274,7 +1278,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       linkerOpts = mempty {
                       ghcOptLinkOptions       = PD.ldOptions bnfo
                                                 ++ [ "-static"
-                                                   | withFullyStaticExe lbi ],
+                                                   | withFullyStaticExe lbi ]
+                                                -- Pass extra `ld-options` given
+                                                -- through to GHC's linker.
+                                                ++ maybe [] programOverrideArgs
+                                                     (lookupProgram ldProgram (withPrograms lbi)),
                       ghcOptLinkLibs          = extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $

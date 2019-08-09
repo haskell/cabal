@@ -77,6 +77,8 @@
     `non`) and an optics to access the modules in a component
     of a `PackageDescription` by the `ComponentName`:
     `componentBuildInfo` and `componentModules`
+  * Linker `ld-options` are now passed to GHC as `-optl` options
+    ([#4925](https://github.com/haskell/cabal/pull/4925)).
   * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)
