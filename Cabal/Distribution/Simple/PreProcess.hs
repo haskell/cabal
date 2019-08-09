@@ -727,8 +727,9 @@ preprocessExtras verbosity comp lbi = case comp of
           pp $ buildDir lbi </> nm' </> nm' ++ "-tmp"
       TestSuiteLibV09 _ _ ->
           pp $ buildDir lbi </> stubName test </> stubName test ++ "-tmp"
-      TestSuiteUnsupported tt -> die' verbosity $ "No support for preprocessing test "
-                                    ++ "suite type " ++ prettyShow tt
+      TestSuiteUnsupported tt ->
+        die' verbosity $ "No support for preprocessing test suite type " ++
+                         prettyShow tt
   CBench bm -> do
     let nm' = unUnqualComponentName $ benchmarkName bm
     case benchmarkInterface bm of
