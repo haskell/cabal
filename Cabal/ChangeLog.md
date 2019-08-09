@@ -1,4 +1,7 @@
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
+  * The 3.0 migration guide gives advice on adapting Custom setup
+    scripts to backwards-incompatible changes in this release:
+    https://github.com/haskell/cabal/wiki/3.0-migration-guide.
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
