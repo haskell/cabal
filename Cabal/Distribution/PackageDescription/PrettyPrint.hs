@@ -126,17 +126,10 @@ ppCondTree2 v grammar = go
         thenDoc = go thenTree
 
     ppIf (CondBranch c thenTree (Just elseTree)) =
-          case (False, False) of
- --       case (isEmpty thenDoc, isEmpty elseDoc) of
-              (True,  True)  -> mempty
-              (False, True)  -> [ ppIfCondition c thenDoc ]
-              (True,  False) -> [ ppIfCondition (cNot c) elseDoc ]
-              (False, False) -> [ ppIfCondition c thenDoc
-                                , PrettySection () "else" [] elseDoc
-                                ]
-      where
-        thenDoc = go thenTree
-        elseDoc = go elseTree
+      -- See #6193
+      [ ppIfCondition c (go thenTree)
+      , PrettySection () "else" [] (go elseTree)
+      ]
 
 ppCondLibrary :: CabalSpecVersion -> Maybe (CondTree ConfVar [Dependency] Library) -> [PrettyField ()]
 ppCondLibrary _ Nothing = mempty
