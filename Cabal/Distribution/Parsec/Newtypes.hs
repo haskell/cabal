@@ -34,6 +34,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Data.Functor.Identity         (Identity (..))
+import Data.Proxy                    (Proxy (..))
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)
@@ -61,13 +62,10 @@ data FSep = FSep
 -- | Paragraph fill list without commas. Displayed with 'fsep'.
 data NoCommaFSep = NoCommaFSep
 
--- | Proxy, internal to this module.
-data P sep = P
-
 class    Sep sep  where
-    prettySep :: P sep -> [Doc] -> Doc
+    prettySep :: Proxy sep -> [Doc] -> Doc
 
-    parseSep :: CabalParsing m => P sep -> m a -> m [a]
+    parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
 
 instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
@@ -116,10 +114,10 @@ alaList' _ _ = List
 instance Newtype [a] (List sep wrapper a)
 
 instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
-    parsec   = pack . map (unpack :: b -> a) <$> parseSep (P :: P sep) parsec
+    parsec   = pack . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
-    pretty = prettySep (P :: P sep) . map (pretty . (pack :: a -> b)) . unpack
+    pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }

@@ -288,6 +288,10 @@ library
     -- already depends on `fail` and `semigroups` transitively
     build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
 
+  if !impl(ghc >= 7.8)
+    -- semigroups depends on tagged.
+    build-depends:  tagged >=0.8.6 && <0.9
+
   exposed-modules:
     Distribution.Backpack
     Distribution.Backpack.Configure
