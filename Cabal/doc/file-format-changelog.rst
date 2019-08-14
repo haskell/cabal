@@ -19,6 +19,11 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.2``
+----------------------
+
+* Nothing yet
+
 ``cabal-version: 3.0``
 ----------------------
 
