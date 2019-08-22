@@ -468,7 +468,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     hcPath   = flagToMaybe projectConfigHcPath
     hcPkg    = flagToMaybe projectConfigHcPkg
 
-    progDb =
+    -- ProgramDb with directly user specified paths
+    preProgDb =
         userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
       . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
       . modifyProgramSearchPath
@@ -476,9 +477,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               | dir <- fromNubList packageConfigProgramPathExtra ])
       $ defaultProgramDb
 
+  -- progDb is a program database with compiler tools configured properly
   (compiler@Compiler { compilerId =
-    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
-      configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
+    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb) <-
+      configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
   let
     globalEnv name =
@@ -527,7 +529,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb'
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let (envSpecs, envEntries') =
         environmentFileToSpecifiers installedIndex envEntries
