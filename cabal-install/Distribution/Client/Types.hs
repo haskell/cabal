@@ -74,8 +74,9 @@ import Control.Exception
 import qualified Text.PrettyPrint as Disp
 
 
-newtype Username = Username { unUsername :: String }
-newtype Password = Password { unPassword :: String }
+newtype Username       = Username { unUsername :: String }
+newtype Password       = Password { unPassword :: String }
+newtype RemoteRepoName = RemoteRepoName { unRemoteRepoName :: String }
 
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --

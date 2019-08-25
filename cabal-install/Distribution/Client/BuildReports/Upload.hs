@@ -33,7 +33,7 @@ import Distribution.Client.Setup
 type BuildReportId = URI
 type BuildLog = String
 
-uploadReports :: Verbosity -> RepoContext -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
+uploadReports :: Verbosity -> RepoContext -> Maybe (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
 uploadReports verbosity repoCtxt auth uri reports = do
   forM_ reports $ \(report, mbBuildLog) -> do
      buildId <- postBuildReport verbosity repoCtxt auth uri report
@@ -41,11 +41,11 @@ uploadReports verbosity repoCtxt auth uri reports = do
        Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog
        Nothing       -> return ()
 
-postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildReport -> IO BuildReportId
+postBuildReport :: Verbosity -> RepoContext -> Maybe (String, String) -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity repoCtxt auth uri buildReport = do
   let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
   transport <- repoContextGetTransport repoCtxt
-  res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
+  res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) auth
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
     _ -> die' verbosity "unrecognized response" -- give response
@@ -80,13 +80,13 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
 
 -- TODO force this to be a PUT?
 
-putBuildLog :: Verbosity -> RepoContext -> (String, String)
+putBuildLog :: Verbosity -> RepoContext -> Maybe (String, String)
             -> BuildReportId -> BuildLog
             -> IO ()
 putBuildLog verbosity repoCtxt auth reportId buildLog = do
   let fullURI = reportId {uriPath = uriPath reportId </> "log"}
   transport <- repoContextGetTransport repoCtxt
-  res <- postHttp transport verbosity fullURI buildLog (Just auth)
+  res <- postHttp transport verbosity fullURI buildLog auth
   case res of
     (200, _) -> return ()
     _ -> die' verbosity "unrecognized response" -- give response
