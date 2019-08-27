@@ -696,8 +696,8 @@ eligibleForTestSuite flags =
 maybePrompt :: InitFlags -> IO t -> IO (Maybe t)
 maybePrompt flags p =
   case interactive flags of
-    Flag False -> return Nothing
-    _          -> Just `fmap` p
+    Flag True -> Just `fmap` p
+    _         -> return Nothing
 
 -- | Create a prompt with optional default value that returns a
 --   String.
