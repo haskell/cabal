@@ -225,7 +225,8 @@ instance Semigroup SavedConfig where
         in case b' of [] -> a'
                       _  -> b'
 
-      lastNonMempty' :: (Eq a, Monoid a) => (SavedConfig -> flags) -> (flags -> a) -> a
+      lastNonMempty'
+        :: (Eq a, Monoid a) => (SavedConfig -> flags) -> (flags -> a) -> a
       lastNonMempty'   field subfield =
         let a' = subfield . field $ a
             b' = subfield . field $ b
@@ -414,7 +415,8 @@ instance Semigroup SavedConfig where
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
         configUseResponseFiles    = combine configUseResponseFiles,
-        configAllowDependingOnPrivateLibs = combine configAllowDependingOnPrivateLibs
+        configAllowDependingOnPrivateLibs =
+            combine configAllowDependingOnPrivateLibs
         }
         where
           combine        = combine'        savedConfigureFlags
@@ -429,8 +431,10 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configPreferences   = lastNonEmpty configPreferences,
         configSolver        = combine configSolver,
-        configAllowNewer    = combineMonoid savedConfigureExFlags configAllowNewer,
-        configAllowOlder    = combineMonoid savedConfigureExFlags configAllowOlder,
+        configAllowNewer    =
+            combineMonoid savedConfigureExFlags configAllowNewer,
+        configAllowOlder    =
+            combineMonoid savedConfigureExFlags configAllowOlder,
         configWriteGhcEnvironmentFilesPolicy
                             = combine configWriteGhcEnvironmentFilesPolicy
         }
@@ -724,7 +728,8 @@ loadRawConfig verbosity configFileFlag = do
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
-      notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
+      notice verbosity $
+        "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
       createDefaultConfigFile verbosity [] configFile
     Just (ParseOk ws conf) -> do
@@ -764,7 +769,8 @@ getConfigFilePathAndSource configFileFlag =
     getSource ((source,action): xs) =
                       action >>= maybe (getSource xs) (return . (,) source)
 
-readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
+readConfigFile
+  :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
   fmap (Just . parseConfig (ConstraintSourceMainConfig file) initial)
        (readFile file)
@@ -788,7 +794,8 @@ writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
   let tmpFile = file <.> "tmp"
   createDirectoryIfMissing True (takeDirectory file)
-  writeFile tmpFile $ explanation ++ showConfigWithComments comments vals ++ "\n"
+  writeFile tmpFile $
+    explanation ++ showConfigWithComments comments vals ++ "\n"
   renameFile tmpFile file
   where
     explanation = unlines
@@ -901,7 +908,8 @@ configFieldDescriptions src =
              |  str == "1"     -> ParseOk [] (Flag NormalOptimisation)
              |  str == "2"     -> ParseOk [] (Flag MaximumOptimisation)
              | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
-             | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalOptimisation)
+             | lstr == "true"  -> ParseOk [caseWarning]
+                                  (Flag NormalOptimisation)
              | otherwise       -> ParseFailed (NoParse name line)
              where
                lstr = lowercase str
@@ -937,16 +945,20 @@ configFieldDescriptions src =
   ++ toSavedConfig liftConfigExFlag
        (configureExOptions ParseArgs src)
        []
-       [let pkgs = (Just . AllowOlder . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
-            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
-        simpleField "allow-older"
-        (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
-        configAllowOlder (\v flags -> flags { configAllowOlder = v })
-       ,let pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
-            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
-        simpleField "allow-newer"
-        (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
-        configAllowNewer (\v flags -> flags { configAllowNewer = v })
+       [let pkgs            = (Just . AllowOlder . RelaxDepsSome)
+                              `fmap` parseOptCommaList Text.parse
+            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps)
+                               `fmap` Text.parse) Parse.<++ pkgs
+         in simpleField "allow-older"
+            (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
+            configAllowOlder (\v flags -> flags { configAllowOlder = v })
+       ,let pkgs            = (Just . AllowNewer . RelaxDepsSome)
+                              `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps)
+                               `fmap` Text.parse) Parse.<++ pkgs
+         in simpleField "allow-newer"
+            (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
+            configAllowNewer (\v flags -> flags { configAllowNewer = v })
        ]
 
   ++ toSavedConfig liftInstallFlag
@@ -1031,8 +1043,10 @@ deprecatedFieldDescriptions =
       (fromFlagOrDefault [] . uploadPasswordCmd)
                         (\d cfg -> cfg { uploadPasswordCmd = Flag d })
   ]
- ++ map (modifyFieldName ("user-"++)   . liftUserInstallDirs)   installDirsFields
- ++ map (modifyFieldName ("global-"++) . liftGlobalInstallDirs) installDirsFields
+ ++ map (modifyFieldName ("user-"++)   . liftUserInstallDirs)
+    installDirsFields
+ ++ map (modifyFieldName ("global-"++) . liftGlobalInstallDirs)
+    installDirsFields
   where
     optional = Parse.option mempty . fmap toFlag
     modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
@@ -1045,8 +1059,9 @@ liftUserInstallDirs = liftField
 
 liftGlobalInstallDirs :: FieldDescr (InstallDirs (Flag PathTemplate))
                       -> FieldDescr SavedConfig
-liftGlobalInstallDirs = liftField
-  savedGlobalInstallDirs (\flags conf -> conf { savedGlobalInstallDirs = flags })
+liftGlobalInstallDirs =
+  liftField savedGlobalInstallDirs
+  (\flags conf -> conf { savedGlobalInstallDirs = flags })
 
 liftGlobalFlag :: FieldDescr GlobalFlags -> FieldDescr SavedConfig
 liftGlobalFlag = liftField
@@ -1065,8 +1080,9 @@ liftInstallFlag = liftField
   savedInstallFlags (\flags conf -> conf { savedInstallFlags = flags })
 
 liftClientInstallFlag :: FieldDescr ClientInstallFlags -> FieldDescr SavedConfig
-liftClientInstallFlag = liftField
-  savedClientInstallFlags (\flags conf -> conf { savedClientInstallFlags = flags })
+liftClientInstallFlag =
+  liftField savedClientInstallFlags
+  (\flags conf -> conf { savedClientInstallFlags = flags })
 
 liftUploadFlag :: FieldDescr UploadFlags -> FieldDescr SavedConfig
 liftUploadFlag = liftField
@@ -1123,8 +1139,8 @@ parseConfig src initial = \str -> do
     isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
     isKnownSection _                                                    = False
 
-    -- attempt to split fields that can represent lists of paths into actual lists
-    -- on failure, leave the field untouched
+    -- Attempt to split fields that can represent lists of paths into
+    -- actual lists on failure, leave the field untouched.
     splitMultiPath :: [String] -> [String]
     splitMultiPath [s] = case runP 0 "" (parseOptCommaList parseTokenQ) s of
             ParseOk _ res -> res
@@ -1138,11 +1154,17 @@ parseConfig src initial = \str -> do
          savedConfigureFlags =
            let scf = savedConfigureFlags conf
            in  scf {
-                     configProgramPathExtra = toNubList $ splitMultiPath (fromNubList $ configProgramPathExtra scf)
-                   , configExtraLibDirs = splitMultiPath (configExtraLibDirs scf)
-                   , configExtraFrameworkDirs = splitMultiPath (configExtraFrameworkDirs scf)
-                   , configExtraIncludeDirs = splitMultiPath (configExtraIncludeDirs scf)
-                   , configConfigureArgs = splitMultiPath (configConfigureArgs scf)
+                     configProgramPathExtra   =
+                       toNubList $ splitMultiPath
+                       (fromNubList $ configProgramPathExtra scf)
+                   , configExtraLibDirs       = splitMultiPath
+                                                (configExtraLibDirs scf)
+                   , configExtraFrameworkDirs = splitMultiPath
+                                                (configExtraFrameworkDirs scf)
+                   , configExtraIncludeDirs   = splitMultiPath
+                                                (configExtraIncludeDirs scf)
+                   , configConfigureArgs      = splitMultiPath
+                                                (configConfigureArgs scf)
                }
       }
 
@@ -1221,8 +1243,9 @@ showConfigWithComments comment vals = Disp.render $
         [] -> Disp.text ""
         (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
   $+$ Disp.text ""
-  $+$ ppFields (skipSomeFields (configFieldDescriptions ConstraintSourceUnknown))
-               mcomment vals
+  $+$ ppFields
+      (skipSomeFields (configFieldDescriptions ConstraintSourceUnknown))
+      mcomment vals
   $+$ Disp.text ""
   $+$ ppSection "haddock" "" haddockFlagsFields
                 (fmap savedHaddockFlags mcomment) (savedHaddockFlags vals)
@@ -1264,19 +1287,19 @@ ppRemoteRepoSection def vals = ppSection "repository" (remoteRepoName vals)
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
-    [ simpleField "url"
-        (text . show)            (parseTokenQ >>= parseURI')
-        remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
-    , simpleField "secure"
-        showSecure               (Just `fmap` Text.parse)
-        remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
-    , listField "root-keys"
-        text                     parseTokenQ
-        remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
-    , simpleField "key-threshold"
-        showThreshold            Text.parse
-        remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
-    ]
+  [ simpleField "url"
+    (text . show)            (parseTokenQ >>= parseURI')
+    remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
+  , simpleField "secure"
+    showSecure               (Just `fmap` Text.parse)
+    remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
+  , listField "root-keys"
+    text                     parseTokenQ
+    remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
+  , simpleField "key-threshold"
+    showThreshold            Text.parse
+    remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
+  ]
   where
     parseURI' uriString =
       case parseURI uriString of
@@ -1313,12 +1336,13 @@ initFlagsFields = [ field
                   , name `notElem` exclusions ]
   where
     exclusions =
-      ["author", "email", "quiet", "no-comments", "minimal", "overwrite",
-       "package-dir", "packagedir", "package-name", "version", "homepage",
-        "synopsis", "category", "extra-source-file", "lib", "exe", "libandexe",
-        "simple", "main-is", "expose-module", "exposed-modules", "extension",
-        "dependency", "build-tool", "with-compiler",
-        "verbose"]
+      [ "author", "email", "quiet", "no-comments", "minimal", "overwrite",
+      , "package-dir", "packagedir", "package-name", "version", "homepage"
+      , "synopsis", "category", "extra-source-file", "lib", "exe", "libandexe"
+      , "simple", "main-is", "expose-module", "exposed-modules", "extension"
+      , "dependency", "build-tool", "with-compiler"
+      , "verbose"
+      ]
 
 -- | Fields for the 'program-locations' section.
 withProgramsFields :: [FieldDescr [(String, FilePath)]]
@@ -1335,16 +1359,17 @@ withProgramOptionsFields =
 
 parseExtraLines :: Verbosity -> [String] -> IO SavedConfig
 parseExtraLines verbosity extraLines =
-                case parseConfig (ConstraintSourceMainConfig "additional lines")
-                     mempty (unlines extraLines) of
-                  ParseFailed err ->
-                    let (line, msg) = locatedErrorMsg err
-                    in die' verbosity $
-                         "Error parsing additional config lines\n"
-                         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
-                  ParseOk [] r -> return r
-                  ParseOk ws _ -> die' verbosity $
-                         unlines (map (showPWarning "Error parsing additional config lines") ws)
+  case parseConfig (ConstraintSourceMainConfig "additional lines")
+       mempty (unlines extraLines) of
+    ParseFailed err ->
+      let (line, msg) = locatedErrorMsg err
+      in die' verbosity $
+         "Error parsing additional config lines\n"
+         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+    ParseOk [] r -> return r
+    ParseOk ws _ ->
+      die' verbosity $
+      unlines (map (showPWarning "Error parsing additional config lines") ws)
 
 -- | Get the differences (as a pseudo code diff) between the user's
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
@@ -1353,10 +1378,11 @@ userConfigDiff verbosity globalFlags extraLines = do
   userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
   extraConfig <- parseExtraLines verbosity extraLines
   testConfig <- initialSavedConfig
-  return $ reverse . foldl' createDiff [] . M.toList
-                $ M.unionWith combine
-                    (M.fromList . map justFst $ filterShow testConfig)
-                    (M.fromList . map justSnd $ filterShow (userConfig `mappend` extraConfig))
+  return $
+    reverse . foldl' createDiff [] . M.toList
+    $ M.unionWith combine
+      (M.fromList . map justFst $ filterShow testConfig)
+      (M.fromList . map justSnd $ filterShow (userConfig `mappend` extraConfig))
   where
     justFst (a, b) = (a, (Just b, Nothing))
     justSnd (a, b) = (a, (Nothing, Just b))
@@ -1405,4 +1431,5 @@ userConfigUpdate verbosity globalFlags extraLines = do
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
   notice verbosity $ "Writing merged config to " ++ cabalFile ++ "."
-  writeConfigFile cabalFile commentConf (newConfig `mappend` userConfig `mappend` extraConfig)
+  writeConfigFile cabalFile commentConf
+    (newConfig `mappend` userConfig `mappend` extraConfig)
