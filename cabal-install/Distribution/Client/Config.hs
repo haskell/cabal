@@ -1336,7 +1336,7 @@ initFlagsFields = [ field
                   , name `notElem` exclusions ]
   where
     exclusions =
-      [ "author", "email", "quiet", "no-comments", "minimal", "overwrite",
+      [ "author", "email", "quiet", "no-comments", "minimal", "overwrite"
       , "package-dir", "packagedir", "package-name", "version", "homepage"
       , "synopsis", "category", "extra-source-file", "lib", "exe", "libandexe"
       , "simple", "main-is", "expose-module", "exposed-modules", "extension"
