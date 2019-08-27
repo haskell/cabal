@@ -39,6 +39,7 @@
 	  that make it possible to copy the executable instead of symlinking it
 	* --symlink-bindir no longer controls the symlinking directory of
 	  v2-install (installdir controls both symlinking and copying now)
+	* Default to non-interactive init.
 	* Add --test-wrapper that allows a prebuild script to set the test environment.
 	* Add filterTestFlags: filter test-wrapper for Cabal < 3.0.0.
 	* Cabal now only builds the minimum of a package for `v2-install` (#5754, #6091)
