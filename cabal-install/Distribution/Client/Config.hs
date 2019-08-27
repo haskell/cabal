@@ -1131,8 +1131,9 @@ parseConfig src initial = \str -> do
             _ -> [s]
     splitMultiPath xs = xs
 
-    -- This is a fixup, pending a full config parser rewrite, to ensure that
-    -- config fields which can be comma seperated lists actually parse as comma seperated lists
+    -- This is a fixup, pending a full config parser rewrite, to
+    -- ensure that config fields which can be comma-separated lists
+    -- actually parse as comma-separated lists.
     fixConfigMultilines conf = conf {
          savedConfigureFlags =
            let scf = savedConfigureFlags conf

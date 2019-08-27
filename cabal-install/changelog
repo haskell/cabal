@@ -4,7 +4,7 @@
 	* TODO
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
-	* Parse comma-seperated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,
+	* Parse comma-separated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,
 	  and extra-include-dirs as actual lists. (#5420)
 	* `v2-haddock` fails on `haddock` failures (#5977)
 	* `v2-run` works when given `File.lhs` literate file. (#6134)
