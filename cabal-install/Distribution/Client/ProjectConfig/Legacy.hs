@@ -43,8 +43,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( SourceRepo(..), RepoKind(..)
          , dispFlagAssignment )
-import Distribution.Client.SourceRepoParse
-         ( sourceRepoFieldDescrs )
+import Distribution.PackageDescription.FieldGrammar (sourceRepoFieldGrammar)
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
@@ -73,16 +72,15 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Deprecated.Text
 import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Deprecated.ReadP
-         ( ReadP, (+++), (<++) )
-import qualified Text.Read as Read
+         ( ReadP, (+++) )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( Doc, ($+$) )
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils (field)
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..), warning
-         , simpleField, commaNewLineListField
-         , showToken )
+         , simpleField, commaNewLineListField, newLineListField, parseTokenQ
+         , parseHaskellString, showToken )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
@@ -242,11 +240,11 @@ convertLegacyGlobalConfig
   where
     --TODO: [code cleanup] eliminate use of default*Flags here and specify the
     -- defaults in the various resolve functions in terms of the new types.
-    configExFlags' = defaultConfigExFlags <> configExFlags
-    installFlags'  = defaultInstallFlags  <> installFlags
-    clientInstallFlags'  = defaultClientInstallFlags  <> clientInstallFlags
-    haddockFlags'  = defaultHaddockFlags  <> haddockFlags
-    testFlags'     = defaultTestFlags     <> testFlags
+    configExFlags'      = defaultConfigExFlags      <> configExFlags
+    installFlags'       = defaultInstallFlags       <> installFlags
+    clientInstallFlags' = defaultClientInstallFlags <> clientInstallFlags
+    haddockFlags'       = defaultHaddockFlags       <> haddockFlags
+    testFlags'          = defaultTestFlags          <> testFlags
 
     configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags' testFlags'
@@ -450,6 +448,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags testFlags =
       testMachineLog            = packageConfigTestMachineLog,
       testShowDetails           = packageConfigTestShowDetails,
       testKeepTix               = packageConfigTestKeepTix,
+      testWrapper               = packageConfigTestWrapper,
       testFailWhenNoTestSuites  = packageConfigTestFailWhenNoTestSuites,
       testOptions               = packageConfigTestTestOptions
     } = testFlags
@@ -686,7 +685,8 @@ convertToLegacyAllPackageConfig
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
-      configUseResponseFiles    = mempty
+      configUseResponseFiles    = mempty,
+      configAllowDependingOnPrivateLibs = mempty
     }
 
     haddockFlags = mempty {
@@ -756,7 +756,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
-      configUseResponseFiles    = mempty
+      configUseResponseFiles    = mempty,
+      configAllowDependingOnPrivateLibs = mempty
     }
 
     installFlags = mempty {
@@ -795,6 +796,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       testMachineLog  = packageConfigTestMachineLog,
       testShowDetails = packageConfigTestShowDetails,
       testKeepTix     = packageConfigTestKeepTix,
+      testWrapper     = packageConfigTestWrapper,
       testFailWhenNoTestSuites = packageConfigTestFailWhenNoTestSuites,
       testOptions     = packageConfigTestTestOptions
     }
@@ -808,6 +810,7 @@ parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig =
     parseConfig legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                legacyPackageConfigFGSectionDescrs
                 mempty
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
@@ -815,6 +818,7 @@ showLegacyProjectConfig config =
     Disp.render $
     showConfig  legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                legacyPackageConfigFGSectionDescrs
                 config
   $+$
     Disp.text ""
@@ -1090,7 +1094,8 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { testOptions = v })
       ]
   . filterFields
-      [ "log", "machine-log", "show-details", "keep-tix-files", "fail-when-no-test-suites" ]
+      [ "log", "machine-log", "show-details", "keep-tix-files"
+      , "fail-when-no-test-suites", "test-wrapper" ]
   . commandOptionsToFields
   ) (testOptions' ParseArgs)
 
@@ -1161,10 +1166,14 @@ legacyPackageConfigFieldDescrs =
                     | otherwise = "test-" ++ name
 
 
+legacyPackageConfigFGSectionDescrs :: [FGSectionDescr LegacyProjectConfig]
+legacyPackageConfigFGSectionDescrs =
+    [ packageRepoSectionDescr
+    ]
+
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
 legacyPackageConfigSectionDescrs =
-    [ packageRepoSectionDescr
-    , packageSpecificOptionsSectionDescr
+    [ packageSpecificOptionsSectionDescr
     , liftSection
         legacyLocalConfig
         (\flags conf -> conf { legacyLocalConfig = flags })
@@ -1182,31 +1191,19 @@ legacyPackageConfigSectionDescrs =
         remoteRepoSectionDescr
     ]
 
-packageRepoSectionDescr :: SectionDescr LegacyProjectConfig
-packageRepoSectionDescr =
-    SectionDescr {
-      sectionName        = "source-repository-package",
-      sectionFields      = sourceRepoFieldDescrs,
-      sectionSubsections = [],
-      sectionGet         = map (\x->("", x))
-                         . legacyPackagesRepo,
-      sectionSet         =
+packageRepoSectionDescr :: FGSectionDescr LegacyProjectConfig
+packageRepoSectionDescr = FGSectionDescr
+  { fgSectionName        = "source-repository-package"
+  , fgSectionGrammar     = sourceRepoFieldGrammar (RepoKindUnknown "unused")
+  , fgSectionGet         = map (\x->("", x)) . legacyPackagesRepo
+  , fgSectionSet         =
         \lineno unused pkgrepo projconf -> do
           unless (null unused) $
             syntaxError lineno "the section 'source-repository-package' takes no arguments"
           return projconf {
             legacyPackagesRepo = legacyPackagesRepo projconf ++ [pkgrepo]
-          },
-      sectionEmpty       = SourceRepo {
-                             repoKind     = RepoThis, -- hopefully unused
-                             repoType     = Nothing,
-                             repoLocation = Nothing,
-                             repoModule   = Nothing,
-                             repoBranch   = Nothing,
-                             repoTag      = Nothing,
-                             repoSubdir   = Nothing
-                           }
-    }
+          }
+  }
 
 -- | The definitions of all the fields that can appear in the @package pkgfoo@
 -- and @package *@ sections of the @cabal.project@-format files.
@@ -1388,26 +1385,6 @@ remoteRepoSectionDescr =
 -- Local field utils
 --
 
---TODO: [code cleanup] all these utils should move to Distribution.Deprecated.ParseUtils
--- either augmenting or replacing the ones there
-
---TODO: [code cleanup] this is a different definition from listField, like
--- commaNewLineListField it pretty prints on multiple lines
-newLineListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-newLineListField = listFieldWithSep Disp.sep
-
---TODO: [code cleanup] local copy purely so we can use the fixed version
--- of parseOptCommaList below
-listFieldWithSep :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-listFieldWithSep separator name showF readF get' set =
-  liftField get' set' $
-    ParseUtils.field name showF' (parseOptCommaList readF)
-  where
-    set' xs b = set (get' b ++ xs) b
-    showF'    = separator . map showF
-
 -- | Parser combinator for simple fields which uses the field type's
 -- 'Monoid' instance for combining multiple occurences of the field.
 monoidField :: Monoid a => String -> (a -> Doc) -> ReadP a a
@@ -1417,15 +1394,6 @@ monoidField name showF readF get' set =
   where
     set' xs b = set (get' b `mappend` xs) b
 
---TODO: [code cleanup] local redefinition that should replace the version in
--- D.ParseUtils. This version avoid parse ambiguity for list element parsers
--- that have multiple valid parses of prefixes.
-parseOptCommaList :: ReadP r a -> ReadP r [a]
-parseOptCommaList p = Parse.sepBy p sep
-  where
-    -- The separator must not be empty or it introduces ambiguity
-    sep = (Parse.skipSpaces >> Parse.char ',' >> Parse.skipSpaces)
-      +++ (Parse.satisfy isSpace >> Parse.skipSpaces)
 
 --TODO: [code cleanup] local redefinition that should replace the version in
 -- D.ParseUtils called showFilePath. This version escapes "." and "--" which
@@ -1436,19 +1404,6 @@ showTokenQ x@('-':'-':_) = Disp.text (show x)
 showTokenQ x@('.':[])    = Disp.text (show x)
 showTokenQ x             = showToken x
 
--- This is just a copy of parseTokenQ, using the fixed parseHaskellString
-parseTokenQ :: ReadP r String
-parseTokenQ = parseHaskellString
-          <++ Parse.munch1 (\x -> not (isSpace x) && x /= ',')
-
---TODO: [code cleanup] use this to replace the parseHaskellString in
--- Distribution.Deprecated.ParseUtils. It turns out Read instance for String accepts
--- the ['a', 'b'] syntax, which we do not want. In particular it messes
--- up any token starting with [].
-parseHaskellString :: ReadP r String
-parseHaskellString =
-  Parse.readS_to_P $
-    Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
 
 -- Handy util
 addFields :: [FieldDescr a]

@@ -183,6 +183,7 @@ import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
 
+import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
@@ -230,7 +231,8 @@ main' = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  getArgs >>= mainWorker
+  (args0, args1) <- break (== "--") <$> getArgs
+  mainWorker =<< (++ args1) <$> expandResponse args0
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
@@ -1046,7 +1048,7 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   path <- case extraArgs of
     [] -> do cwd <- getCurrentDirectory
-             tryFindPackageDesc cwd
+             tryFindPackageDesc verbosity cwd
     (p:_) -> return p
   pkgDesc <- readGenericPackageDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.

@@ -60,6 +60,7 @@ import Distribution.Version
 import Distribution.Simple.Utils
          ( lowercase, comparing )
 
+import qualified Prelude (foldr1)
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
@@ -85,7 +86,7 @@ instance Package pkg => Monoid (PackageIndex pkg) where
   mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
-  mconcat xs = foldr1 mappend xs
+  mconcat xs = Prelude.foldr1 mappend xs
 
 instance Binary pkg => Binary (PackageIndex pkg)
 

@@ -224,7 +224,7 @@ NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\.(0\.[2-9]|[1-9])"
                        # >= 2.6.0.2 && < 2.7
 NETWORK_VER="2.7.0.0"; NETWORK_VER_REGEXP="2\.[0-7]\."
                        # >= 2.0 && < 2.7
-CABAL_VER="3.0.0.0";   CABAL_VER_REGEXP="3\.0\.[0-9]"
+CABAL_VER="3.1.0.0";   CABAL_VER_REGEXP="3\.1\.[0-9]"
                        # >= 2.5 && < 2.6
 TRANS_VER="0.5.5.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
@@ -521,7 +521,7 @@ install_pkg "cabal-install"
 # legit cabal sandbox. This works because 'cabal sandbox init' will
 # reuse the already existing package database and other files if they
 # are in the expected locations.
-[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal sandbox init --sandbox $SANDBOX
+[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal v1-sandbox init --sandbox $SANDBOX
 
 echo
 echo "==========================================="

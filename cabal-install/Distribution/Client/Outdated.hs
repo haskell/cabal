@@ -149,7 +149,7 @@ depsFromNewFreezeFile verbosity mprojectFile = do
 depsFromPkgDesc :: Verbosity -> Compiler  -> Platform -> IO [Dependency]
 depsFromPkgDesc verbosity comp platform = do
   cwd  <- getCurrentDirectory
-  path <- tryFindPackageDesc cwd
+  path <- tryFindPackageDesc verbosity cwd
   gpd  <- readGenericPackageDescription verbosity path
   let cinfo = compilerInfo comp
       epd = finalizePD mempty (ComponentRequestedSpec True True)

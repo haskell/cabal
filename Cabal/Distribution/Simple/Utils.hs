@@ -25,9 +25,6 @@ module Distribution.Simple.Utils (
         cabalVersion,
 
         -- * logging and errors
-        -- Old style
-        die, dieWithLocation,
-        -- New style
         dieNoVerbosity,
         die', dieWithLocation',
         dieNoWrap,
@@ -55,7 +52,6 @@ module Distribution.Simple.Utils (
         createProcessWithEnv,
         maybeExit,
         xargs,
-        findProgramLocation,
         findProgramVersion,
 
         -- ** 'IOData' re-export
@@ -67,10 +63,8 @@ module Distribution.Simple.Utils (
         IODataMode(..),
 
         -- * copying files
-        smartCopySources,
         createDirectoryIfMissingVerbose,
         copyFileVerbose,
-        copyDirectoryRecursiveVerbose,
         copyFiles,
         copyFileTo,
 
@@ -96,13 +90,13 @@ module Distribution.Simple.Utils (
         exeExtensions,
 
         -- * finding files
-        findFile,
+        findFileEx,
         findFirstFile,
         findFileWithExtension,
         findFileWithExtension',
         findAllFilesWithExtension,
-        findModuleFile,
-        findModuleFiles,
+        findModuleFileEx,
+        findModuleFilesEx,
         getDirectoryContentsRecursive,
 
         -- * environment variables
@@ -123,13 +117,11 @@ module Distribution.Simple.Utils (
         defaultPackageDesc,
         findPackageDesc,
         tryFindPackageDesc,
-        defaultHookedPackageDesc,
         findHookedPackageDesc,
 
         -- * reading and writing files safely
         withFileContents,
         writeFileAtomic,
-        rewriteFile,
         rewriteFileEx,
 
         -- * Unicode
@@ -166,6 +158,11 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
+
+        -- * Deprecated functions
+        findFile,
+        findModuleFile,
+        findModuleFiles,
   ) where
 
 import Prelude ()
@@ -209,7 +206,7 @@ import qualified Data.ByteString.Lazy as BS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
-    , doesDirectoryExist, doesFileExist, removeFile, findExecutable
+    , doesDirectoryExist, doesFileExist, removeFile
     , getModificationTime, createDirectory, removeDirectoryRecursive )
 import System.Environment
     ( getProgName )
@@ -301,21 +298,6 @@ cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 --    in one of IOError's extra fields.  This is handled by
 --    'ioeSetVerbatim' and 'ioeGetVerbatim'.
 --
-
-{-# DEPRECATED dieWithLocation "Messages thrown with dieWithLocation can't be controlled with Verbosity; use dieWithLocation' instead" #-}
-dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
-dieWithLocation filename lineno msg =
-  ioError . setLocation lineno
-          . flip ioeSetFileName (normalise filename)
-          $ userError msg
-  where
-    setLocation Nothing  err = err
-    setLocation (Just n) err = ioeSetLocation err (show n)
-    _ = callStack -- TODO: Attach CallStack to exception
-
-{-# DEPRECATED die "Messages thrown with die can't be controlled with Verbosity; use die' instead, or dieNoVerbosity if Verbosity truly is not available" #-}
-die :: String -> IO a
-die = dieNoVerbosity
 
 dieNoVerbosity :: String -> IO a
 dieNoVerbosity msg
@@ -815,7 +797,7 @@ rawSystemStdout verbosity path args = withFrozenCallStack $ do
                                                   Nothing Nothing
                                                   Nothing IODataModeText
   when (exitCode /= ExitSuccess) $
-    die errors
+    die' verbosity errors
   return output
 
 -- | Run a command and return its output, errors and exit status. Optionally
@@ -893,20 +875,6 @@ rawSystemStdInOut verbosity path args mcwd menv input outputMode = withFrozenCal
       either (\e -> throwIO (ioeSetFileName e ("output of " ++ path)))
              return
 
-
-{-# DEPRECATED findProgramLocation
-    "No longer used within Cabal, try findProgramOnSearchPath" #-}
--- | Look for a program on the path.
-findProgramLocation :: Verbosity -> FilePath -> IO (Maybe FilePath)
-findProgramLocation verbosity prog = withFrozenCallStack $ do
-  debug verbosity $ "searching for " ++ prog ++ " in path."
-  res <- findExecutable prog
-  case res of
-      Nothing   -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
-      Just path -> debug verbosity ("found " ++ prog ++ " at "++ path)
-  return res
-
-
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we
 -- will look for the program on the path.
@@ -962,16 +930,24 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 ----------------
 -- Finding files
 
--- | Find a file by looking in a search path. The file path must match exactly.
---
+
+{-# DEPRECATED findFile "Use findFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
-findFile searchPath fileName =
+findFile = findFileEx normal
+
+-- | Find a file by looking in a search path. The file path must match exactly.
+--
+findFileEx :: Verbosity
+           -> [FilePath]    -- ^search locations
+           -> FilePath      -- ^File Name
+           -> IO FilePath
+findFileEx verbosity searchPath fileName =
   findFirstFile id
     [ path </> fileName
     | path <- nub searchPath]
-  >>= maybe (die $ fileName ++ " doesn't exist") return
+  >>= maybe (die' verbosity $ fileName ++ " doesn't exist") return
 
 -- | Find a file by looking in a search path with one of a list of possible
 -- file extensions. The file base name should be given and it will be tried
@@ -1021,34 +997,52 @@ findFirstFile file = findFirst
 findAllFiles :: (a -> FilePath) -> [a] -> NoCallStackIO [a]
 findAllFiles file = filterM (doesFileExist . file)
 
--- | Finds the files corresponding to a list of Haskell module names.
---
--- As 'findModuleFile' but for a list of module names.
---
+
+{-# DEPRECATED findModuleFiles "Use findModuleFilesEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
 findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
                 -> [String]     -- ^ search suffixes
                 -> [ModuleName] -- ^ modules
                 -> IO [(FilePath, FilePath)]
-findModuleFiles searchPath extensions moduleNames =
-  traverse (findModuleFile searchPath extensions) moduleNames
+findModuleFiles = findModuleFilesEx normal
+
+-- | Finds the files corresponding to a list of Haskell module names.
+--
+-- As 'findModuleFile' but for a list of module names.
+--
+findModuleFilesEx :: Verbosity
+                  -> [FilePath]   -- ^ build prefix (location of objects)
+                  -> [String]     -- ^ search suffixes
+                  -> [ModuleName] -- ^ modules
+                  -> IO [(FilePath, FilePath)]
+findModuleFilesEx verbosity searchPath extensions moduleNames =
+  traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
+
+{-# DEPRECATED findModuleFile "Use findModuleFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
+findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
+               -> [String]    -- ^ search suffixes
+               -> ModuleName  -- ^ module
+               -> IO (FilePath, FilePath)
+findModuleFile = findModuleFileEx normal
 
 -- | Find the file corresponding to a Haskell module name.
 --
 -- This is similar to 'findFileWithExtension'' but specialised to a module
 -- name. The function fails if the file corresponding to the module is missing.
 --
-findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
-               -> [String]    -- ^ search suffixes
-               -> ModuleName  -- ^ module
-               -> IO (FilePath, FilePath)
-findModuleFile searchPath extensions mod_name =
+findModuleFileEx :: Verbosity
+                 -> [FilePath]  -- ^ build prefix (location of objects)
+                 -> [String]    -- ^ search suffixes
+                 -> ModuleName  -- ^ module
+                 -> IO (FilePath, FilePath)
+findModuleFileEx verbosity searchPath extensions mod_name =
       maybe notFound return
   =<< findFileWithExtension' extensions searchPath
                              (ModuleName.toFilePath mod_name)
   where
-    notFound = die $ "Error: Could not find module: " ++ prettyShow mod_name
-                  ++ " with any suffix: " ++ show extensions
-                  ++ " in the search path: " ++ show searchPath
+    notFound = die' verbosity $
+      "Error: Could not find module: " ++ prettyShow mod_name
+      ++ " with any suffix: "          ++ show extensions
+      ++ " in the search path: "       ++ show searchPath
 
 -- | List all the files in a directory and all subdirectories.
 --
@@ -1312,25 +1306,6 @@ doesExecutableExist f = do
             return (executable perms)
     else return False
 
----------------------------------
--- Deprecated file copy functions
-
-{-# DEPRECATED smartCopySources
-      "Use findModuleFiles and copyFiles or installOrdinaryFiles" #-}
-smartCopySources :: Verbosity -> [FilePath] -> FilePath
-                 -> [ModuleName] -> [String] -> IO ()
-smartCopySources verbosity searchPath targetDir moduleNames extensions = withFrozenCallStack $
-      findModuleFiles searchPath extensions moduleNames
-  >>= copyFiles verbosity targetDir
-
-{-# DEPRECATED copyDirectoryRecursiveVerbose
-      "You probably want installDirectoryContents instead" #-}
-copyDirectoryRecursiveVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
-copyDirectoryRecursiveVerbose verbosity srcDir destDir = withFrozenCallStack $ do
-  info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
-  srcFiles <- getDirectoryContentsRecursive srcDir
-  copyFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
-
 ---------------------------
 -- Temporary files and dirs
 
@@ -1393,10 +1368,6 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 -----------------------------------
 -- Safely reading and writing files
 
-{-# DEPRECATED rewriteFile "Use rewriteFileEx so that Verbosity is respected" #-}
-rewriteFile :: FilePath -> String -> IO ()
-rewriteFile = rewriteFileEx normal
-
 -- | Write a file but only if it would have new content. If we would be writing
 -- the same as the existing content then leave the file as is so that we do not
 -- update the file's modification time.
@@ -1458,9 +1429,9 @@ exeExtensions = case buildOS of
 -- * Finding the description file
 -- ------------------------------------------------------------
 
--- |Package description file (/pkgname/@.cabal@)
+-- | Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: Verbosity -> IO FilePath
-defaultPackageDesc _verbosity = tryFindPackageDesc currentDir
+defaultPackageDesc verbosity = tryFindPackageDesc verbosity currentDir
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
@@ -1491,20 +1462,17 @@ findPackageDesc dir
                   ++ intercalate ", " l
 
 -- |Like 'findPackageDesc', but calls 'die' in case of error.
-tryFindPackageDesc :: FilePath -> IO FilePath
-tryFindPackageDesc dir = either die return =<< findPackageDesc dir
-
-{-# DEPRECATED defaultHookedPackageDesc "Use findHookedPackageDesc with the proper base directory instead" #-}
--- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
-defaultHookedPackageDesc :: IO (Maybe FilePath)
-defaultHookedPackageDesc = findHookedPackageDesc currentDir
+tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
+tryFindPackageDesc verbosity dir =
+  either (die' verbosity) return =<< findPackageDesc dir
 
 -- |Find auxiliary package information in the given directory.
 -- Looks for @.buildinfo@ files.
 findHookedPackageDesc
-    :: FilePath                 -- ^Directory to search
+    :: Verbosity
+    -> FilePath                 -- ^Directory to search
     -> IO (Maybe FilePath)      -- ^/dir/@\/@/pkgname/@.buildinfo@, if present
-findHookedPackageDesc dir = do
+findHookedPackageDesc verbosity dir = do
     files <- getDirectoryContents dir
     buildInfoFiles <- filterM doesFileExist
                         [ dir </> file
@@ -1512,9 +1480,9 @@ findHookedPackageDesc dir = do
                         , let (name, ext) = splitExtension file
                         , not (null name) && ext == buildInfoExt ]
     case buildInfoFiles of
-        [] -> return Nothing
+        []  -> return Nothing
         [f] -> return (Just f)
-        _ -> die ("Multiple files with extension " ++ buildInfoExt)
+        _   -> die' verbosity ("Multiple files with extension " ++ buildInfoExt)
 
 buildInfoExt  :: String
 buildInfoExt = ".buildinfo"

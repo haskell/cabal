@@ -48,6 +48,7 @@ import qualified Distribution.Types.PackageVersionConstraint as D
 import qualified Distribution.Types.SourceRepo               as D
 import qualified Distribution.Types.UnqualComponentName      as D
 import qualified Distribution.Version                        as D
+import qualified Distribution.Types.VersionRange.Internal    as D
 import qualified Language.Haskell.Extension                  as E
 
 -- | /Note:/ this class will soon be deprecated.

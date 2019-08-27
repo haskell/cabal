@@ -19,6 +19,8 @@ import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
+import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -32,7 +34,15 @@ data LicenseId
 {{{ licenseIds }}}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
-instance Binary LicenseId
+instance Binary LicenseId where
+    -- Word16 is encoded in big endianess
+    -- https://github.com/kolmodin/binary/blob/master/src/Data/Binary/Class.hs#L220-LL227
+    put = Binary.putWord16be . fromIntegral . fromEnum
+    get = do
+        i <- Binary.getWord16be
+        if i > fromIntegral (fromEnum (maxBound :: LicenseId))
+        then fail "Too large LicenseId tag"
+        else return (toEnum (fromIntegral i))
 
 instance Pretty LicenseId where
     pretty = Disp.text . licenseId
@@ -129,15 +139,15 @@ licenseIdList LicenseListVersion_3_0 =
 licenseIdList LicenseListVersion_3_2 =
 {{{licenseList_3_2}}}
     ++ bulkOfLicenses
-licenseIdList LicenseListVersion_3_5 =
-{{{licenseList_3_5}}}
+licenseIdList LicenseListVersion_3_6 =
+{{{licenseList_3_6}}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
 mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseId LicenseListVersion_3_5 s = Map.lookup s stringLookup_3_5
+mkLicenseId LicenseListVersion_3_6 s = Map.lookup s stringLookup_3_6
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -147,9 +157,9 @@ stringLookup_3_2 :: Map String LicenseId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_2
 
-stringLookup_3_5 :: Map String LicenseId
-stringLookup_3_5 = Map.fromList $ map (\i -> (licenseId i, i)) $
-    licenseIdList LicenseListVersion_3_5
+stringLookup_3_6 :: Map String LicenseId
+stringLookup_3_6 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_6
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]

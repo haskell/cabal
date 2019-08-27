@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-testsuite
-version:       3.0.0.0
+version:       3.1.0.0
 copyright:     2003-2019, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
@@ -28,7 +28,7 @@ common shared
   build-depends:
     , base >= 4.6 && <4.13
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal == 3.0.0.0
+    , Cabal == 3.1.0.0
 
   ghc-options: -Wall -fwarn-tabs
 
@@ -102,5 +102,5 @@ executable setup
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
-  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.*,
+  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.* || ==3.1.*,
                  base, filepath, directory

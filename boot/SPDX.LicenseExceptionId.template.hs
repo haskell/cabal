@@ -16,6 +16,8 @@ import Distribution.Parsec
 import Distribution.Utils.Generic (isAsciiAlphaNum)
 import Distribution.SPDX.LicenseListVersion
 
+import qualified Data.Binary.Get as Binary
+import qualified Data.Binary.Put as Binary
 import qualified Data.Map.Strict as Map
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -29,7 +31,13 @@ data LicenseExceptionId
 {{{ licenseIds }}}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
-instance Binary LicenseExceptionId
+instance Binary LicenseExceptionId where
+    put = Binary.putWord8 . fromIntegral . fromEnum
+    get = do
+        i <- Binary.getWord8
+        if i > fromIntegral (fromEnum (maxBound :: LicenseExceptionId))
+        then fail "Too large LicenseExceptionId tag"
+        else return (toEnum (fromIntegral i))
 
 instance Pretty LicenseExceptionId where
     pretty = Disp.text . licenseExceptionId
@@ -71,15 +79,15 @@ licenseExceptionIdList LicenseListVersion_3_0 =
 licenseExceptionIdList LicenseListVersion_3_2 =
 {{{licenseList_3_2}}}
     ++ bulkOfLicenses
-licenseExceptionIdList LicenseListVersion_3_5 =
-{{{licenseList_3_5}}}
+licenseExceptionIdList LicenseListVersion_3_6 =
+{{{licenseList_3_6}}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
 mkLicenseExceptionId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
 mkLicenseExceptionId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseExceptionId LicenseListVersion_3_5 s = Map.lookup s stringLookup_3_5
+mkLicenseExceptionId LicenseListVersion_3_6 s = Map.lookup s stringLookup_3_6
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -89,9 +97,9 @@ stringLookup_3_2 :: Map String LicenseExceptionId
 stringLookup_3_2 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_2
 
-stringLookup_3_5 :: Map String LicenseExceptionId
-stringLookup_3_5 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
-    licenseExceptionIdList LicenseListVersion_3_5
+stringLookup_3_6 :: Map String LicenseExceptionId
+stringLookup_3_6 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_6
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]

@@ -52,6 +52,7 @@ import Distribution.Package
 import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
+import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Glob
 import Distribution.Simple.Utils
 import Distribution.Simple.Setup
@@ -78,7 +79,11 @@ sdist :: PackageDescription     -- ^information from the tarball
       -> (FilePath -> FilePath) -- ^build prefix (temp dir)
       -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg mb_lbi flags mkTmpDir pps =
+sdist pkg mb_lbi flags mkTmpDir pps = do
+
+  distPref <- findDistPrefOrDefault $ sDistDistPref flags
+  let targetPref   = distPref
+      tmpTargetDir = mkTmpDir distPref
 
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
@@ -122,10 +127,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
-
-    distPref     = fromFlag $ sDistDistPref flags
-    targetPref   = distPref
-    tmpTargetDir = mkTmpDir distPref
 
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
@@ -171,14 +172,15 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
        biSrcs  <- allSourcesBuildInfo verbosity exeBi pps []
-       mainSrc <- findMainExeFile exeBi pps mainPath
+       mainSrc <- findMainExeFile verbosity exeBi pps mainPath
        return (mainSrc:biSrcs)
 
     -- Foreign library sources
   , fmap concat
     . withAllFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
        biSrcs   <- allSourcesBuildInfo verbosity flibBi pps []
-       defFiles <- mapM (findModDefFile flibBi pps) (foreignLibModDefFile flib)
+       defFiles <- mapM (findModDefFile verbosity flibBi pps)
+         (foreignLibModDefFile flib)
        return (defFiles ++ biSrcs)
 
     -- Test suites sources.
@@ -188,12 +190,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo verbosity bi pps []
-           srcMainFile <- findMainExeFile bi pps mainPath
+           srcMainFile <- findMainExeFile verbosity bi pps mainPath
            return (srcMainFile:biSrcs)
          TestSuiteLibV09 _ m ->
            allSourcesBuildInfo verbosity bi pps [m]
-         TestSuiteUnsupported tp -> die' verbosity $ "Unsupported test suite type: "
-                                   ++ show tp
+         TestSuiteUnsupported tp ->
+           die' verbosity $ "Unsupported test suite type: " ++ show tp
 
     -- Benchmarks sources.
   , fmap concat
@@ -202,7 +204,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo verbosity bi pps []
-           srcMainFile <- findMainExeFile bi pps mainPath
+           srcMainFile <- findMainExeFile verbosity bi pps mainPath
            return (srcMainFile:biSrcs)
          BenchmarkUnsupported tp -> die' verbosity $ "Unsupported benchmark type: "
                                     ++ show tp
@@ -225,12 +227,13 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- License file(s).
   , return (licenseFiles pkg_descr)
 
-    -- Install-include files.
+    -- Install-include files, without autogen-include files
   , fmap concat
     . withAllLib $ \ l -> do
-       let lbi = libBuildInfo l
+       let lbi   = libBuildInfo l
+           incls = filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
            relincdirs = "." : filter isRelative (includeDirs lbi)
-       traverse (fmap snd . findIncludeFile verbosity relincdirs) (installIncludes lbi)
+       traverse (fmap snd . findIncludeFile verbosity relincdirs) incls
 
     -- Setup script, if it exists.
   , fmap (maybe [] (\f -> [f])) $ findSetupFile ""
@@ -300,20 +303,22 @@ maybeCreateDefaultSetupScript targetDir = do
         "main = defaultMain"]
 
 -- | Find the main executable file.
-findMainExeFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
-findMainExeFile exeBi pps mainPath = do
+findMainExeFile
+  :: Verbosity -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainExeFile verbosity exeBi pps mainPath = do
   ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi)
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFile (hsSourceDirs exeBi) mainPath
+    Nothing -> findFileEx verbosity (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
 --
 -- TODO: I don't know if this is right
-findModDefFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
-findModDefFile flibBi _pps modDefPath =
-    findFile (".":hsSourceDirs flibBi) modDefPath
+findModDefFile
+  :: Verbosity -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findModDefFile verbosity flibBi _pps modDefPath =
+    findFileEx verbosity (".":hsSourceDirs flibBi) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if

@@ -248,3 +248,7 @@ API Documentation
 -----------------
 
 Auto-generated API documentation for the `master` branch of Cabal is automatically uploaded here: http://haskell.github.io/cabal-website/doc/html/Cabal/.
+
+## Issue triage [![Open Source Helpers](https://www.codetriage.com/haskell/cabal/badges/users.svg)](https://www.codetriage.com/haskell/cabal)
+
+You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to cabal on CodeTriage](https://www.codetriage.com/haskell/cabal).

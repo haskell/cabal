@@ -1,6 +1,18 @@
 -*-change-log-*-
 
-3.0.0.0 (current development version)
+3.1.0.0 (current development version)
+
+	* `v2-haddock` fails on `haddock` failures (#5977)
+	* `v2-run` works when given `File.lhs` literate file. (#6134)
+
+3.0.0.0 TBD
+        * Parses comma-seperated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs, 
+	  and extra-include-dirs as actual lists. (#5420)
+	* `v2-repl` no longer changes directory to a randomized temporary folder
+	  when used outside of a project. (#5544)
+	* `install-method` and `overwrite-policy` in `.cabal/config` now actually work. (#5942)
+	* `v2-install` now reports the error when a package fails to build. (#5641)
+	* `v2-install` now has a default when called in a project (#5978, #6014, #6092)
 	* '--write-ghc-environment-files' now defaults to 'never' (#4242)
 	* Fix `sdist`'s output when sent to stdout. (#5874)
 	* Allow a list of dependencies to be provided for `repl --build-depends`. (#5845)
@@ -28,6 +40,9 @@
 	* --symlink-bindir no longer controls the symlinking directory of
 	  v2-install (installdir controls both symlinking and copying now)
 	* Default to non-interactive init.
+	* Add --test-wrapper that allows a prebuild script to set the test environment.
+	* Add filterTestFlags: filter test-wrapper for Cabal < 3.0.0.
+	* Cabal now only builds the minimum of a package for `v2-install` (#5754, #6091)
 
 2.4.1.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> November 2018
 	* Add message to alert user to potential package casing errors. (#5635)

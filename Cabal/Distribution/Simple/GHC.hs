@@ -577,7 +577,11 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       linkerOpts = mempty {
                       ghcOptLinkOptions       = PD.ldOptions libBi
                                                 ++ [ "-static"
-                                                   | withFullyStaticExe lbi ],
+                                                   | withFullyStaticExe lbi ]
+                                                -- Pass extra `ld-options` given
+                                                -- through to GHC's linker.
+                                                ++ maybe [] programOverrideArgs
+                                                     (lookupProgram ldProgram (withPrograms lbi)),
                       ghcOptLinkLibs          = extraLibs libBi,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
                       ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
@@ -1117,7 +1121,7 @@ gbuildSources verbosity specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFile (tmpDir : hsSourceDirs bnfo) modPath
+      main <- findFileEx verbosity (tmpDir : hsSourceDirs bnfo) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 
@@ -1274,7 +1278,11 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       linkerOpts = mempty {
                       ghcOptLinkOptions       = PD.ldOptions bnfo
                                                 ++ [ "-static"
-                                                   | withFullyStaticExe lbi ],
+                                                   | withFullyStaticExe lbi ]
+                                                -- Pass extra `ld-options` given
+                                                -- through to GHC's linker.
+                                                ++ maybe [] programOverrideArgs
+                                                     (lookupProgram ldProgram (withPrograms lbi)),
                       ghcOptLinkLibs          = extraLibs bnfo,
                       ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $
@@ -1919,7 +1927,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     installShared   = install True
 
     copyModuleFiles ext =
-      findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
+      findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)

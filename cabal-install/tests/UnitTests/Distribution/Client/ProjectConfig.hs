@@ -45,7 +45,10 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
 
 import UnitTests.Distribution.Client.ArbitraryInstances
+import UnitTests.Distribution.Client.TreeDiffInstances ()
 
+import Data.TreeDiff.Class
+import Data.TreeDiff.QuickCheck
 import Test.Tasty
 import Test.Tasty.QuickCheck
 
@@ -93,10 +96,10 @@ tests =
 -- Round trip: conversion to/from legacy types
 --
 
-roundtrip :: (Eq a, Show a) => (a -> b) -> (b -> a) -> a -> Property
+roundtrip :: (Eq a, ToExpr a) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
     let y = f x
-    in f_inv y === x -- no counterexample with y, as they not have Show
+    in f_inv y `ediffEq` x -- no counterexample with y, as they not have ToExpr
 
 roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
@@ -154,8 +157,8 @@ roundtrip_printparse config =
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk _ x -> x === config { projectConfigProvenance = mempty }
-      ParseFailed err           -> counterexample (show err) False
+      ParseOk _ x     -> x `ediffEq` config { projectConfigProvenance = mempty }
+      ParseFailed err -> counterexample (show err) False
 
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
@@ -260,12 +263,12 @@ prop_roundtrip_printparse_RelaxedDep rdep =
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
     counterexample (Text.display rdep) $
-    runReadP Text.parse (Text.display rdep) === Just rdep
+    runReadP Text.parse (Text.display rdep) `ediffEq` Just rdep
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    runReadP Text.parse rdep' === Just rdep
+    runReadP Text.parse rdep' `ediffEq` Just rdep
   where
     rdep' = go (Text.display rdep)
 
@@ -597,6 +600,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> shortListOf 5 arbitrary
       where
@@ -656,8 +660,9 @@ instance Arbitrary PackageConfig where
                          , packageConfigTestMachineLog = x45
                          , packageConfigTestShowDetails = x46
                          , packageConfigTestKeepTix = x47
-                         , packageConfigTestFailWhenNoTestSuites = x48
-                         , packageConfigTestTestOptions = x49 } =
+                         , packageConfigTestWrapper = x48
+                         , packageConfigTestFailWhenNoTestSuites = x49
+                         , packageConfigTestTestOptions = x51 } =
       [ PackageConfig { packageConfigProgramPaths = postShrink_Paths x00'
                       , packageConfigProgramArgs = postShrink_Args x01'
                       , packageConfigProgramPathExtra = x02'
@@ -709,8 +714,9 @@ instance Arbitrary PackageConfig where
                       , packageConfigTestMachineLog = x45'
                       , packageConfigTestShowDetails = x46'
                       , packageConfigTestKeepTix = x47'
-                      , packageConfigTestFailWhenNoTestSuites = x48'
-                      , packageConfigTestTestOptions = x49' }
+                      , packageConfigTestWrapper = x48'
+                      , packageConfigTestFailWhenNoTestSuites = x49'
+                      , packageConfigTestTestOptions = x51' }
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x50', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -720,7 +726,7 @@ instance Arbitrary PackageConfig where
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
-          (x44', x45', x46', x47', x48', x49')))
+          (x44', x45', x46', x47', x48', x49', x51')))
           <- shrink
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
@@ -734,7 +740,7 @@ instance Arbitrary PackageConfig where
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
-                 (x44, x45, x46, x47, x48, x49)))
+                 (x44, x45, x46, x47, x48, x49, x51)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty
@@ -757,14 +763,16 @@ instance Arbitrary TestShowDetails where
     arbitrary = arbitraryBoundedEnum
 
 instance Arbitrary SourceRepo where
-    arbitrary = (SourceRepo RepoThis
+    arbitrary = (SourceRepo kind
                            <$> arbitrary
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary))
-                `suchThat` (/= emptySourceRepo RepoThis)
+                `suchThat` (/= emptySourceRepo kind)
+      where
+        kind = RepoKindUnknown "unused"
 
     shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
       [ repo

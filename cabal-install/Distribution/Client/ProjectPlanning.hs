@@ -110,8 +110,7 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Solver.Types.Settings
 
 import           Distribution.ModuleName
-import           Distribution.Package hiding
-  (InstalledPackageId, installedPackageId)
+import           Distribution.Package
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.LibraryName
@@ -1884,6 +1883,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
         elabTestShowDetails     = perPkgOptionMaybe pkgid packageConfigTestShowDetails
         elabTestKeepTix         = perPkgOptionFlag pkgid False packageConfigTestKeepTix
+        elabTestWrapper         = perPkgOptionMaybe pkgid packageConfigTestWrapper
         elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
         elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
 
@@ -3390,6 +3390,9 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
     configUseResponseFiles    = mempty
+    -- TODO set to true when the solver can prevent private-library-deps by itself
+    -- (issue #6039)
+    configAllowDependingOnPrivateLibs = mempty
 
 setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]
@@ -3440,6 +3443,7 @@ setupHsTestFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.
     , testHumanLog    = maybe mempty toFlag elabTestHumanLog
     , testShowDetails = maybe (Flag Cabal.Always) toFlag elabTestShowDetails
     , testKeepTix     = toFlag elabTestKeepTix
+    , testWrapper     = maybe mempty toFlag elabTestWrapper
     , testFailWhenNoTestSuites = toFlag elabTestFailWhenNoTestSuites
     , testOptions     = elabTestTestOptions
     }

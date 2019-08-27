@@ -1,6 +1,6 @@
 cabal-version: >=1.10
 name:          Cabal
-version:       3.0.0.0
+version:       3.1.0.0
 copyright:     2003-2019, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
@@ -282,10 +282,15 @@ library
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
                  -Wnoncanonical-monadfail-instances
-  else
-    -- at least one of lib:Cabal's dependency (`parsec`)
-    -- already depends on `fail` transitively
-    build-depends: fail == 4.9.*
+
+  if !impl(ghc >= 8.0)
+    -- at least one of lib:Cabal's dependency (i.e. `parsec`)
+    -- already depends on `fail` and `semigroups` transitively
+    build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
+
+  if !impl(ghc >= 7.8)
+    -- semigroups depends on tagged.
+    build-depends:  tagged >=0.8.6 && <0.9
 
   exposed-modules:
     Distribution.Backpack
@@ -309,6 +314,7 @@ library
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
+    Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
@@ -352,6 +358,7 @@ library
     Distribution.Simple.Hpc
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
+    Distribution.Simple.InstallDirs.Internal
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
@@ -373,6 +380,7 @@ library
     Distribution.Simple.Program.Types
     Distribution.Simple.Register
     Distribution.Simple.Setup
+    Distribution.Simple.ShowBuildInfo
     Distribution.Simple.SrcDist
     Distribution.Simple.Test
     Distribution.Simple.Test.ExeV10
@@ -447,6 +455,7 @@ library
     Distribution.Types.TargetInfo
     Distribution.Types.Version
     Distribution.Types.VersionRange
+    Distribution.Types.VersionRange.Internal
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
@@ -455,6 +464,7 @@ library
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
     Distribution.Verbosity
+    Distribution.Verbosity.Internal
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary
@@ -530,6 +540,7 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
+    Distribution.Simple.Utils.Json
     Paths_Cabal
 
   if flag(bundled-binary-generic)
@@ -593,6 +604,7 @@ test-suite unit-tests
   build-depends:
     array,
     base,
+    binary,
     bytestring,
     containers,
     directory,
@@ -629,6 +641,9 @@ test-suite parser-tests
   ghc-options: -Wall
   default-language: Haskell2010
 
+  if !impl(ghc >= 8.0)
+    build-depends:  semigroups
+
   if impl(ghc >= 7.8)
     build-depends:
       tree-diff      >= 0.0.2 && <0.1
@@ -653,6 +668,8 @@ test-suite check-tests
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
+  if !impl(ghc >= 8.0)
+    build-depends:  semigroups
 
 test-suite custom-setup-tests
   type: exitcode-stdio-1.0

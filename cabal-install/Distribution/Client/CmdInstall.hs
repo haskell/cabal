@@ -1,8 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns        #-}
 
 -- | cabal-install CLI command: build
 --
@@ -178,7 +178,8 @@ installCommand = CommandUI
         (filter ((`notElem` ["constraint", "dependency"
                             , "exact-configuration"])
                  . optionName) $ configureOptions showOrParseArgs)
-     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
+     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs
+                               ConstraintSourceCommandlineFlag)
      ++ liftOptions get3 set3
         -- hide "target-package-db" and "symlink-bindir" flags from the
         -- install options.
@@ -194,7 +195,8 @@ installCommand = CommandUI
                                 haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (testOptions showOrParseArgs)
      ++ liftOptions get6 set6 (clientInstallOptions showOrParseArgs)
-  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, defaultClientInstallFlags)
+  , commandDefaultFlags = ( mempty, mempty, mempty, mempty, mempty
+                          , defaultClientInstallFlags )
   }
   where
     get1 (a,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f) = (a,b,c,d,e,f)
@@ -222,10 +224,14 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ClientInstallFlags)
-            -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags')
-            targetStrings globalFlags = do
+installAction
+  :: ( ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags
+     , ClientInstallFlags)
+  -> [String] -> GlobalFlags
+  -> IO ()
+installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
+              , clientInstallFlags' )
+              targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
   -- enabled.
@@ -245,34 +251,48 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     pure $ savedClientInstallFlags savedConfig `mappend` clientInstallFlags'
 
   let
+    installLibs    = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
+    targetFilter   = if installLibs then Just LibKind else Just ExeKind
+    targetStrings' = if null targetStrings then ["."] else targetStrings
+
     withProject = do
       let verbosity' = lessVerbose verbosity
 
       -- First, we need to learn about what's available to be installed.
-      localBaseCtx <- establishProjectBaseContext verbosity' cliConfig
+      localBaseCtx <- establishProjectBaseContext verbosity'
+                      cliConfig InstallCommand
       let localDistDirLayout = distDirLayout localBaseCtx
-      pkgDb <- projectConfigWithBuilderRepoContext verbosity' (buildSettings localBaseCtx) (getSourcePackages verbosity)
+      pkgDb <- projectConfigWithBuilderRepoContext verbosity'
+               (buildSettings localBaseCtx) (getSourcePackages verbosity)
 
       let
-        (targetStrings', packageIds) = partitionEithers . flip fmap targetStrings $
+        (targetStrings'', packageIds) =
+          partitionEithers .
+          flip fmap targetStrings' $
           \str -> case simpleParse str of
             Just (pkgId :: PackageId)
               | pkgVersion pkgId /= nullVersion -> Right pkgId
-            _ -> Left str
-        packageSpecifiers = flip fmap packageIds $ \case
+            _                                   -> Left str
+        packageSpecifiers =
+          flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise ->
-              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
-        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+            | otherwise                 -> NamedPackage pkgName
+                                           [PackagePropertyVersion
+                                            (thisVersion pkgVersion)]
+        packageTargets =
+          flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
       if null targetStrings'
         then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
         else do
-          targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                        =<< readTargetSelectors (localPackages localBaseCtx) Nothing targetStrings'
+          targetSelectors <-
+            either (reportTargetSelectorProblems verbosity) return
+            =<< readTargetSelectors (localPackages localBaseCtx)
+                                    Nothing targetStrings''
 
-          (specs, selectors) <- withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan _ -> do
+          (specs, selectors) <-
+            withInstallPlan verbosity' localBaseCtx $ \elaboratedPlan _ -> do
             -- Split into known targets and hackage packages.
             (targets, hackageNames) <- case
               resolveTargets
@@ -282,10 +302,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                 elaboratedPlan
                 (Just pkgDb)
                 targetSelectors of
-              Right targets -> do
+              Right targets ->
                 -- Everything is a local dependency.
                 return (targets, [])
-              Left errs -> do
+              Left errs     -> do
                 -- Not everything is local.
                 let
                   (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
@@ -312,10 +332,13 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                       | name `elem` hackageNames -> False
                     TargetPackageNamed name _
                       | name `elem` hackageNames -> False
-                    _ -> True
+                    _                            -> True
 
-                -- This can't fail, because all of the errors are removed (or we've given up).
-                targets <- either (reportTargetProblems verbosity) return $ resolveTargets
+                -- This can't fail, because all of the errors are
+                -- removed (or we've given up).
+                targets <-
+                  either (reportTargetProblems verbosity) return $
+                  resolveTargets
                     selectPackageTargets
                     selectComponentTarget
                     TargetProblemCommon
@@ -329,7 +352,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               planMap = InstallPlan.toMap elaboratedPlan
               targetIds = Map.keys targets
 
-              sdistize (SpecificSourcePackage spkg@SourcePackage{..}) = SpecificSourcePackage spkg'
+              sdistize (SpecificSourcePackage spkg@SourcePackage{..}) =
+                SpecificSourcePackage spkg'
                 where
                   sdistPath = distSdistFile localDistDirLayout packageInfoId
                   spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
@@ -338,7 +362,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               local = sdistize <$> localPackages localBaseCtx
 
               gatherTargets :: UnitId -> TargetSelector
-              gatherTargets targetId = TargetPackageNamed pkgName Nothing
+              gatherTargets targetId = TargetPackageNamed pkgName targetFilter
                 where
                   Just targetUnit = Map.lookup targetId planMap
                   PackageIdentifier{..} = packageId targetUnit
@@ -347,8 +371,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
               hackagePkgs :: [PackageSpecifier UnresolvedSourcePackage]
               hackagePkgs = flip NamedPackage [] <$> hackageNames
+
               hackageTargets :: [TargetSelector]
-              hackageTargets = flip TargetPackageNamed Nothing <$> hackageNames
+              hackageTargets =
+                flip TargetPackageNamed targetFilter <$> hackageNames
 
             createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
@@ -363,14 +389,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               then return (hackagePkgs, hackageTargets)
               else return (local ++ hackagePkgs, targets' ++ hackageTargets)
 
-          return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
+          return ( specs ++ packageSpecifiers
+                 , selectors ++ packageTargets
+                 , projectConfig localBaseCtx )
 
     withoutProject globalConfig = do
       let
         parsePkg pkgName
           | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
           | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
-      packageIds <- mapM parsePkg targetStrings
+      packageIds <- mapM parsePkg targetStrings'
 
       cabalDir <- getCabalDir
       let
@@ -396,7 +424,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                                             verbosity buildSettings
                                             (getSourcePackages verbosity)
 
-      for_ targetStrings $ \case
+      for_ targetStrings' $ \case
             name
               | null (lookupPackageName packageIndex (mkPackageName name))
               , xs@(_:_) <- searchByName packageIndex name ->
@@ -411,13 +439,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
         packageSpecifiers = flip fmap packageIds $ \case
           PackageIdentifier{..}
             | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise ->
-              NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+            | otherwise                 -> NamedPackage pkgName
+                                           [PackagePropertyVersion
+                                            (thisVersion pkgVersion)]
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
       return (packageSpecifiers, packageTargets, projectConfig)
 
-  (specs, selectors, config) <- withProjectOrGlobalConfig verbosity globalConfigFlag
-                                  withProject withoutProject
+  (specs, selectors, config) <-
+    withProjectOrGlobalConfig verbosity globalConfigFlag
+                              withProject withoutProject
 
   home <- getHomeDirectory
   let
@@ -438,7 +468,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     hcPath   = flagToMaybe projectConfigHcPath
     hcPkg    = flagToMaybe projectConfigHcPkg
 
-    progDb =
+    -- ProgramDb with directly user specified paths
+    preProgDb =
         userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
       . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
       . modifyProgramSearchPath
@@ -446,29 +477,31 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
               | dir <- fromNubList packageConfigProgramPathExtra ])
       $ defaultProgramDb
 
+  -- progDb is a program database with compiler tools configured properly
   (compiler@Compiler { compilerId =
-    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb') <-
-      configCompilerEx hcFlavor hcPath hcPkg progDb verbosity
+    compilerId@(CompilerId compilerFlavor compilerVersion) }, platform, progDb) <-
+      configCompilerEx hcFlavor hcPath hcPkg preProgDb verbosity
 
   let
     globalEnv name =
       home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
            </> "environments" </> name
     localEnv dir =
-      dir </> ".ghc.environment." ++ ghcPlatformAndVersionString platform compilerVersion
+      dir </>
+      ".ghc.environment." <> ghcPlatformAndVersionString platform compilerVersion
 
     GhcImplInfo{ supportsPkgEnvFiles } = getImplInfo compiler
     -- Why? We know what the first part will be, we only care about the packages.
     filterEnvEntries = filter $ \case
       GhcEnvFilePackageId _ -> True
-      _ -> False
+      _                     -> False
 
   envFile <- case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
     Just spec
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec -> return (globalEnv spec)
-      | otherwise -> do
+      | otherwise                 -> do
         spec' <- makeAbsolute spec
         isDir <- doesDirectoryExist spec'
         if isDir
@@ -477,7 +510,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
           then return (localEnv spec')
           -- Otherwise, treat it like a literal file path.
           else return spec'
-    Nothing -> return (globalEnv "default")
+    Nothing                       -> return (globalEnv "default")
 
   envFileExists <- doesFileExist envFile
   envEntries <- filterEnvEntries <$> if
@@ -489,15 +522,17 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     else return []
 
   cabalDir  <- getCabalDir
-  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
+  mstoreDir <-
+    sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
   let
     mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb'
+  installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
-  let (envSpecs, envEntries') = environmentFileToSpecifiers installedIndex envEntries
+  let (envSpecs, envEntries') =
+        environmentFileToSpecifiers installedIndex envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -513,6 +548,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                  config
                  tmpDir
                  (envSpecs ++ specs)
+                 InstallCommand
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -549,13 +585,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     -- First, figure out if / what parts we want to install:
     let
       dryRun = buildSettingDryRun $ buildSettings baseCtx
-      installLibs = fromFlagOrDefault False (cinstInstallLibs clientInstallFlags)
 
     -- Then, install!
     when (not dryRun) $
       if installLibs
-      then installLibraries verbosity buildCtx compiler packageDbs progDb envFile envEntries'
-      else installExes verbosity baseCtx buildCtx platform compiler clientInstallFlags
+      then installLibraries verbosity
+           buildCtx compiler packageDbs progDb envFile envEntries'
+      else installExes verbosity
+           baseCtx buildCtx platform compiler clientInstallFlags
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -567,28 +604,31 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
 -- | Install any built exe by symlinking/copying it
 -- we don't use BuildOutcomes because we also need the component names
-installExes :: Verbosity
-            -> ProjectBaseContext
-            -> ProjectBuildContext
-            -> Platform
-            -> Compiler
-            -> ClientInstallFlags
-            -> IO ()
+installExes
+  :: Verbosity
+  -> ProjectBaseContext
+  -> ProjectBuildContext
+  -> Platform
+  -> Compiler
+  -> ClientInstallFlags
+  -> IO ()
 installExes verbosity baseCtx buildCtx platform compiler
             clientInstallFlags = do
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
-  let mkUnitBinDir :: UnitId -> FilePath
-      mkUnitBinDir = InstallDirs.bindir .
-                     storePackageInstallDirs'
-                       storeDirLayout
-                       (compilerId compiler)
+
+      mkUnitBinDir :: UnitId -> FilePath
+      mkUnitBinDir =
+        InstallDirs.bindir .
+        storePackageInstallDirs' storeDirLayout (compilerId compiler)
+
       mkExeName :: UnqualComponentName -> FilePath
       mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
       installdirUnknown =
         "installdir is not defined. Set it in your cabal config file "
         ++ "or use --installdir=<path>"
-  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown)
-              $ pure <$> cinstInstalldir clientInstallFlags
+
+  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown) $
+                pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
   warnIfNoExes verbosity buildCtx
   let
@@ -599,20 +639,21 @@ installExes verbosity baseCtx buildCtx platform compiler
                   installdir installMethod
     in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
   where
-    overwritePolicy = fromFlagOrDefault NeverOverwrite
-                        $ cinstOverwritePolicy clientInstallFlags
-    installMethod    = fromFlagOrDefault InstallMethodSymlink
-                        $ cinstInstallMethod clientInstallFlags
+    overwritePolicy = fromFlagOrDefault NeverOverwrite $
+                      cinstOverwritePolicy clientInstallFlags
+    installMethod   = fromFlagOrDefault InstallMethodSymlink $
+                      cinstInstallMethod clientInstallFlags
 
 -- | Install any built library by adding it to the default ghc environment
-installLibraries :: Verbosity
-                 -> ProjectBuildContext
-                 -> Compiler
-                 -> PackageDBStack
-                 -> ProgramDb
-                 -> FilePath -- ^ Environment file
-                 -> [GhcEnvironmentFileEntry]
-                 -> IO ()
+installLibraries
+  :: Verbosity
+  -> ProjectBuildContext
+  -> Compiler
+  -> PackageDBStack
+  -> ProgramDb
+  -> FilePath -- ^ Environment file
+  -> [GhcEnvironmentFileEntry]
+  -> IO ()
 installLibraries verbosity buildCtx compiler
                  packageDbs programDb envFile envEntries = do
   -- Why do we get it again? If we updated a globalPackage then we need
@@ -644,19 +685,19 @@ installLibraries verbosity buildCtx compiler
 warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
   when noExes $
-    warn verbosity $ "You asked to install executables, "
-                  <> "but there are no executables in "
-                  <> plural (listPlural selectors) "target" "targets" <> ": "
-                  <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
-                  <> "Perhaps you want to use --lib "
-                  <> "to install libraries instead."
+    warn verbosity $
+    "You asked to install executables, but there are no executables in "
+    <> plural (listPlural selectors) "target" "targets" <> ": "
+    <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
+    <> "Perhaps you want to use --lib to install libraries instead."
   where
-    targets = concat $ Map.elems $ targetsMap buildCtx
+    targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
-    selectors = concatMap snd targets
-    noExes = null $ catMaybes $ exeMaybe <$> components
+    selectors  = concatMap snd targets
+    noExes     = null $ catMaybes $ exeMaybe <$> components
+
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
-    exeMaybe _ = Nothing
+    exeMaybe _                                  = Nothing
 
 globalPackages :: [PackageName]
 globalPackages = mkPackageName <$>
@@ -667,13 +708,16 @@ globalPackages = mkPackageName <$>
   , "bin-package-db"
   ]
 
-environmentFileToSpecifiers :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
-                            -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
+environmentFileToSpecifiers
+  :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
+  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
 environmentFileToSpecifiers ipi = foldMap $ \case
     (GhcEnvFilePackageId unitId)
-        | Just InstalledPackageInfo{ sourcePackageId = PackageIdentifier{..}, installedUnitId }
+        | Just InstalledPackageInfo
+          { sourcePackageId = PackageIdentifier{..}, installedUnitId }
           <- PI.lookupUnitId ipi unitId
-        , let pkgSpec = NamedPackage pkgName [PackagePropertyVersion (thisVersion pkgVersion)]
+        , let pkgSpec = NamedPackage pkgName
+                        [PackagePropertyVersion (thisVersion pkgVersion)]
         -> if pkgName `elem` globalPackages
           then ([pkgSpec], [])
           else ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
@@ -687,17 +731,18 @@ disableTestsBenchsByDefault configFlags =
               , configBenchmarks = Flag False <> configBenchmarks configFlags }
 
 -- | Symlink/copy every exe from a package from the store to a given location
-installUnitExes :: Verbosity
-                -> OverwritePolicy -- ^ Whether to overwrite existing files
-                -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
-                                        -- store directory
-                -> (UnqualComponentName -> FilePath) -- ^ A function to get
-                                                     -- ^ an exe's filename
-                -> FilePath
-                -> InstallMethod
-                -> ( UnitId
-                    , [(ComponentTarget, [TargetSelector])] )
-                -> IO ()
+installUnitExes
+  :: Verbosity
+  -> OverwritePolicy -- ^ Whether to overwrite existing files
+  -> (UnitId -> FilePath) -- ^ A function to get an UnitId's
+                          -- ^ store directory
+  -> (UnqualComponentName -> FilePath) -- ^ A function to get an
+                                       -- ^ exe's filename
+  -> FilePath
+  -> InstallMethod
+  -> ( UnitId
+     , [(ComponentTarget, [TargetSelector])] )
+  -> IO ()
 installUnitExes verbosity overwritePolicy
                 mkSourceBinDir mkExeName
                 installdir installMethod
@@ -713,24 +758,26 @@ installUnitExes verbosity overwritePolicy
                    (mkSourceBinDir unit) (mkExeName exe)
                    installdir installMethod
       let errorMessage = case overwritePolicy of
-                  NeverOverwrite ->
-                    "Path '" <> (installdir </> prettyShow exe) <> "' already exists. "
-                    <> "Use --overwrite-policy=always to overwrite."
-                  -- This shouldn't even be possible, but we keep it in case
-                  -- symlinking/copying logic changes
-                  AlwaysOverwrite -> case installMethod of
-                                       InstallMethodSymlink -> "Symlinking"
-                                       InstallMethodCopy    -> "Copying"
-                                  <> " '" <> prettyShow exe <> "' failed."
+            NeverOverwrite ->
+              "Path '" <> (installdir </> prettyShow exe) <> "' already exists. "
+              <> "Use --overwrite-policy=always to overwrite."
+            -- This shouldn't even be possible, but we keep it in case
+            -- symlinking/copying logic changes
+            AlwaysOverwrite ->
+              case installMethod of
+                InstallMethodSymlink -> "Symlinking"
+                InstallMethodCopy    ->
+                  "Copying" <> " '" <> prettyShow exe <> "' failed."
       unless success $ die' verbosity errorMessage
 
 -- | Install a specific exe.
-installBuiltExe :: Verbosity -> OverwritePolicy
-                -> FilePath -- ^ The directory where the built exe is located
-                -> FilePath -- ^ The exe's filename
-                -> FilePath -- ^ the directory where it should be installed
-                -> InstallMethod
-                -> IO Bool -- ^ Whether the installation was successful
+installBuiltExe
+  :: Verbosity -> OverwritePolicy
+  -> FilePath -- ^ The directory where the built exe is located
+  -> FilePath -- ^ The exe's filename
+  -> FilePath -- ^ the directory where it should be installed
+  -> InstallMethod
+  -> IO Bool -- ^ Whether the installation was successful
 installBuiltExe verbosity overwritePolicy
                 sourceDir exeName
                 installdir InstallMethodSymlink = do
@@ -768,7 +815,9 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
     hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _                                   = False
 
-    go :: UnitId -> [(ComponentTarget, [TargetSelector])] -> [GhcEnvironmentFileEntry]
+    go :: UnitId
+       -> [(ComponentTarget, [TargetSelector])]
+       -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise          = []
@@ -782,9 +831,10 @@ establishDummyProjectBaseContext
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
+  -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
-
+establishDummyProjectBaseContext verbosity cliConfig tmpDir
+                                 localPackages currentCommand = do
     cabalDir <- getCabalDir
 
     -- Create the dist directories
@@ -819,7 +869,8 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
       cabalDirLayout,
       projectConfig,
       localPackages,
-      buildSettings
+      buildSettings,
+      currentCommand
     }
   where
     mdistDirectory = flagToMaybe
@@ -837,8 +888,9 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir localPackages = do
 -- and disabled tests\/benchmarks, fail if there are no such
 -- components
 --
-selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+selectPackageTargets
+  :: TargetSelector
+  -> [AvailableTarget k] -> Either TargetProblem [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -870,8 +922,9 @@ selectPackageTargets targetSelector targets
 --
 -- For the @build@ command we just need the basic checks on being buildable etc.
 --
-selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+selectComponentTarget
+  :: SubComponentTarget
+  -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget subtarget =
     either (Left . TargetProblemCommon) Right
   . selectComponentTargetBasic subtarget

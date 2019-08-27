@@ -19,7 +19,7 @@
 --
 
 module Distribution.Simple.Build (
-    build, repl,
+    build, showBuildInfo, repl,
     startInterpreter,
 
     initialBuildSteps,
@@ -52,8 +52,8 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.PackageIndex as Index
 
-import qualified Distribution.Simple.Build.Macros      as Build.Macros
-import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
+import Distribution.Simple.Build.Macros      (generateCabalMacrosHeader)
+import Distribution.Simple.Build.PathsModule (generatePathsModule)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import Distribution.Simple.Compiler hiding (Flag)
@@ -69,11 +69,13 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import Distribution.Simple.ShowBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
+import Distribution.Simple.Utils.Json
 
 import Distribution.System
 import Distribution.Pretty
@@ -126,6 +128,18 @@ build pkg_descr lbi flags suffixes = do
  where
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
+
+
+showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
+  -> LocalBuildInfo      -- ^ Configuration information
+  -> BuildFlags          -- ^ Flags that the user passed to build
+  -> IO String
+showBuildInfo pkg_descr lbi flags = do
+  let verbosity = fromFlag (buildVerbosity flags)
+  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
+  let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
+      doc = mkBuildInfo pkg_descr lbi flags targetsToBuild
+  return $ renderJson doc ""
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -662,7 +676,7 @@ writeAutogenFiles verbosity pkg lbi clbi = do
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
-  rewriteFileEx verbosity pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+  rewriteFileEx verbosity pathsModulePath (generatePathsModule pkg lbi clbi)
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -684,4 +698,4 @@ writeAutogenFiles verbosity pkg lbi clbi = do
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFileEx verbosity cppHeaderPath (Build.Macros.generate pkg lbi clbi)
+  rewriteFileEx verbosity cppHeaderPath (generateCabalMacrosHeader pkg lbi clbi)

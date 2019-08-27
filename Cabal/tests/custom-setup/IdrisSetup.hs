@@ -38,7 +38,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+{-# OPTIONS_GHC -w #-}
 module IdrisSetup (main) where
 
 #if !defined(MIN_VERSION_Cabal)
@@ -60,7 +60,8 @@ import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile, notice, installOrdinaryFiles)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, notice, installOrdinaryFiles)
+import Distribution.Simple.Utils (rewriteFileEx)
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
@@ -177,7 +178,7 @@ generateVersionModule verbosity dir release = do
     putStrLn $ "Generating " ++ versionModulePath ++
              if release then " for release" else " for prerelease " ++ hash
     createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile versionModulePath (versionModuleContents hash)
+    rewriteFileEx verbosity versionModulePath (versionModuleContents hash)
 
   where versionModuleContents h = "module Version_idris where\n\n" ++
                                   "gitHash :: String\n" ++
@@ -191,7 +192,7 @@ generateTargetModule verbosity dir targetDir = do
     let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
     putStrLn $ "Generating " ++ targetModulePath
     createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile targetModulePath (versionModuleContents absPath targetDir)
+    rewriteFileEx verbosity targetModulePath (versionModuleContents absPath targetDir)
             where versionModuleContents absolute td = "module Target_idris where\n\n" ++
                                     "import System.FilePath\n" ++
                                     "import System.Environment\n" ++
@@ -217,7 +218,7 @@ generateToolchainModule verbosity srcDir toolDir = do
                                    "getToolchainDir = \"\""
     let toolPath = srcDir </> "Tools_idris" Px.<.> "hs"
     createDirectoryIfMissingVerbose verbosity True srcDir
-    rewriteFile toolPath (commonContent ++ toolContent)
+    rewriteFileEx verbosity toolPath (commonContent ++ toolContent)
 
 idrisConfigure _ flags pkgdesc local = do
     configureRTS
@@ -249,6 +250,7 @@ idrisConfigure _ flags pkgdesc local = do
       autogenComponentModulesDir lbi _ = autogenModulesDir lbi
 #endif
 
+#if !MIN_VERSION_Cabal(3,0,0)
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
@@ -277,6 +279,7 @@ idrisPostSDist args flags desc lbi = do
                               removeFile targetFile)
              (\e -> let e' = (e :: SomeException) in return ())
   postSDist simpleUserHooks args flags desc lbi
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Build
@@ -376,8 +379,10 @@ main = defaultMainWithHooks $ simpleUserHooks
    , postInst = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
+#if !MIN_VERSION_Cabal(3,0,0)
    , preSDist = idrisPreSDist
    , sDistHook = idrisSDist (sDistHook simpleUserHooks)
    , postSDist = idrisPostSDist
+#endif
    , testHook = idrisTestHook
    }

@@ -311,7 +311,7 @@ getSetup verbosity options mpkg = do
                , setupPackage = pkg
                }
   where
-    getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
+    getPkg = tryFindPackageDesc verbosity (fromMaybe "." (useWorkingDir options))
          >>= readGenericPackageDescription verbosity
          >>= return . packageDescription
 

@@ -92,11 +92,7 @@ module Distribution.Simple.PackageIndex (
   dependencyInconsistencies,
   dependencyCycles,
   dependencyGraph,
-  moduleNameIndex,
-
-  -- * Backwards compatibility
-  deleteInstalledPackageId,
-  lookupInstalledPackageId,
+  moduleNameIndex
   ) where
 
 import Prelude ()
@@ -119,6 +115,8 @@ import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
 import qualified Data.Tree  as Tree
 import Control.Monad
 import Distribution.Compat.Stack
+
+import qualified Prelude (foldr1)
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -158,7 +156,7 @@ instance Monoid (PackageIndex IPI.InstalledPackageInfo) where
   mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
-  mconcat xs = foldr1 mappend xs
+  mconcat xs = Prelude.foldr1 mappend xs
 
 instance Semigroup (PackageIndex IPI.InstalledPackageInfo) where
   (<>) = merge
@@ -302,12 +300,6 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
         (\xs -> if null xs then Nothing else Just xs)
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
--- | Backwards compatibility wrapper for Cabal pre-1.24.
-{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-deleteInstalledPackageId :: UnitId -> InstalledPackageIndex
-                         -> InstalledPackageIndex
-deleteInstalledPackageId = deleteUnitId
-
 -- | Removes all packages with this source 'PackageId' from the index.
 --
 deleteSourcePackageId :: PackageId -> InstalledPackageIndex
@@ -417,13 +409,6 @@ lookupComponentId :: PackageIndex a -> ComponentId
                   -> Maybe a
 lookupComponentId index cid =
     Map.lookup (newSimpleUnitId cid) (unitIdIndex index)
-
--- | Backwards compatibility for Cabal pre-1.24.
-{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead. This symbol will be removed in Cabal-3.0 (est. Mar 2019)." #-}
-lookupInstalledPackageId :: PackageIndex a -> UnitId
-                         -> Maybe a
-lookupInstalledPackageId = lookupUnitId
-
 
 -- | Does a lookup by source package id (name & version).
 --

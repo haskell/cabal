@@ -24,7 +24,8 @@ module Distribution.Client.Get (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
-
+import Distribution.Compat.Directory
+         ( listDirectory )
 import Distribution.Package
          ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
@@ -162,12 +163,16 @@ unpackPackage :: Verbosity -> FilePath -> PackageId
               -> PackageDescriptionOverride
               -> FilePath  -> IO ()
 unpackPackage verbosity prefix pkgid descOverride pkgPath = do
-    let pkgdirname = display pkgid
-        pkgdir     = prefix </> pkgdirname
-        pkgdir'    = addTrailingPathSeparator pkgdir
+    let pkgdirname               = display pkgid
+        pkgdir                   = prefix </> pkgdirname
+        pkgdir'                  = addTrailingPathSeparator pkgdir
+        emptyDirectory directory = null <$> listDirectory directory
     existsDir  <- doesDirectoryExist pkgdir
-    when existsDir $ die' verbosity $
-     "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
+    when existsDir $ do
+      isEmpty <- emptyDirectory pkgdir
+      unless isEmpty $
+        die' verbosity $
+        "The directory \"" ++ pkgdir' ++ "\" already exists and is not empty, not unpacking."
     existsFile  <- doesFileExist pkgdir
     when existsFile $ die' verbosity $
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."

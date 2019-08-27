@@ -32,6 +32,7 @@ module Distribution.Client.Install (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Control.Exception as Exception
@@ -78,7 +79,8 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
-         , ConfigExFlags(..), InstallFlags(..) )
+         , ConfigExFlags(..), InstallFlags(..)
+         , filterTestFlags )
 import Distribution.Client.Config
          ( getCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
@@ -1490,7 +1492,7 @@ installUnpackedPackage verbosity installLock numJobs
     }
     testsEnabled = fromFlag (configTests configFlags)
                    && fromFlagOrDefault False (installRunTests installFlags)
-    testFlags' _ = testFlags {
+    testFlags' = filterTestFlags testFlags {
       Cabal.testDistPref = configDistPref configFlags
     }
     copyFlags _ = Cabal.emptyCopyFlags {
@@ -1548,7 +1550,7 @@ installUnpackedPackage verbosity installLock numJobs
     readPkgConf pkgConfDir pkgConfFile =
       (withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfText ->
         case Installed.parseInstalledPackageInfo pkgConfText of
-          Left perrors    -> pkgConfParseFailed $ unlines perrors
+          Left perrors    -> pkgConfParseFailed $ unlines $ NE.toList perrors
           Right (warns, pkgConf) -> do
             unless (null warns) $
               warn verbosity $ unlines warns

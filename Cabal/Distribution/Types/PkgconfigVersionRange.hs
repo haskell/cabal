@@ -75,11 +75,11 @@ pkgconfigParser :: CabalParsing m => m PkgconfigVersionRange
 pkgconfigParser = P.spaces >> expr where
     -- every parser here eats trailing space
     expr = do
-        ts <- term `P.sepBy` (P.string "||" >> P.spaces)
+        ts <- term `P.sepByNonEmpty` (P.string "||" >> P.spaces)
         return $ foldr1 PcUnionVersionRanges ts
 
     term = do
-        fs <- factor `P.sepBy` (P.string "&&" >> P.spaces)
+        fs <- factor `P.sepByNonEmpty` (P.string "&&" >> P.spaces)
         return $ foldr1 PcIntersectVersionRanges fs
 
     factor = parens expr <|> prim

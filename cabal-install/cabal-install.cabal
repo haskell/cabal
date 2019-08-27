@@ -4,7 +4,7 @@ Cabal-Version:      >= 1.10
 -- To update this file, edit 'cabal-install.cabal.pp' and run
 -- 'make cabal-install-prod' in the project's root folder.
 Name:               cabal-install
-Version:            3.0.0.0
+Version:            3.1.0.0
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
@@ -312,7 +312,7 @@ executable cabal
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
-        Cabal      == 3.0.*,
+        Cabal      == 3.1.*,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.4.1.1  && < 1.5,
@@ -320,11 +320,11 @@ executable cabal
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
         filepath   >= 1.4.0.0  && < 1.5,
-        hashable   >= 1.0      && < 1.3,
+        hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 2.3,
         network-uri >= 2.6.0.2 && < 2.7,
-        network    >= 2.6      && < 3.1,
+        network    >= 2.6      && < 3.2,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.2.3.0  && < 1.7,
         random     >= 1        && < 1.2,
@@ -338,6 +338,7 @@ executable cabal
 
     if !impl(ghc >= 8.0)
         build-depends: fail        == 4.9.*
+        build-depends: semigroups  >= 0.18.3 && <0.20
 
     if flag(native-dns)
       if os(windows)

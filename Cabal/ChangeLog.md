@@ -1,14 +1,23 @@
-# 3.0.0.0 (current development version)
+# 3.1.0.0 (current development version)
+
+# 3.0.0.0 TBD
   * TODO
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
     ([#5342](https://github.com/haskell/cabal/issues/5432)).
-  * `KnownExtension`: added new extension `DerivingVia`.
+  * `KnownExtension`: added new extensions `DerivingVia` and
+    `EmptyDataDeriving`.
   * Add `extra-dynamic-library-flavours`, to specify extra dynamic library
     flavours to build and install from a .cabal file.
   * `autoconfUserHooks` now passes `--host=$HOST` when cross-compiling
-  * Add a `LibraryVisibility` field to `InstalledPackageInfo`.
+  * Introduce multiple public libraries feature
+    ([#5526](https://github.com/haskell/cabal/pull/5526)).
+    * New build-depends syntax
+    * Add a set of library components to the `Dependency` datatype
+    * New `visibility` field in the `library` stanza
+    * New `LibraryVisibility` field in `InstalledPackageInfo`
+    * New syntax for the `--dependency` Cabal flag
   * Static linking
     * Add `--enable-executable-static` flag for building fully
       static executables (GHC's normal "statish" linking links
@@ -21,6 +30,15 @@
   * Fix corrupted config file header for non-ASCII package names
     ([2557](https://github.com/haskell/cabal/issues/2557)).
   * Extend `Distribution.Simple.Utils.rewriteFileEx` from ASCII to UTF-8 encoding.
+  * Change the arguments of `Newtype` class to better suit @DeriveAnyClass@ usage,
+    add default implementation in terms of `coerce` / `unsafeCoerce`.
+  * Implement support for response file arguments to defaultMain* and cabal-install.
+  * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
+  * Setting `debug-info` now implies `library-stripping: False` and
+    `executable-stripping: False) ([#2702](https://github.com/haskell/cabal/issues/2702))
+  * `Setup.hs copy` and `install` now work in the presence of
+    `data-files` that use `**` syntax
+    ([#6125](https://github.com/haskell/cabal/issues/6125)).
 
 ----
 
@@ -59,6 +77,8 @@
     `non`) and an optics to access the modules in a component
     of a `PackageDescription` by the `ComponentName`:
     `componentBuildInfo` and `componentModules`
+  * Linker `ld-options` are now passed to GHC as `-optl` options
+    ([#4925](https://github.com/haskell/cabal/pull/4925)).
   * Add `readGhcEnvironmentFile` to parse GHC environment files.
   * Drop support for GHC 7.4, since it is out of our support window
     (and has been for over a year!)

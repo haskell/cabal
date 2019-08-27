@@ -102,6 +102,7 @@ import System.FilePath
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 
+import qualified Prelude (foldr1)
 
 -- ------------------------------------------------------------
 -- * Target selector terms
@@ -930,8 +931,8 @@ syntaxForms KnownTargets {
       , syntaxForm7MetaNamespacePackageKindComponentNamespaceFile   pinfo
       ]
   where
-    ambiguousAlternatives = foldr1 AmbiguousAlternatives
-    shadowingAlternatives = foldr1 ShadowingAlternatives
+    ambiguousAlternatives = Prelude.foldr1 AmbiguousAlternatives
+    shadowingAlternatives = Prelude.foldr1 ShadowingAlternatives
 
 
 -- | Syntax: "all" to select all packages in the project

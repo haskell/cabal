@@ -11,3 +11,7 @@ main = cabalTest $ do
     withEnv [("CABAL_CONFIG", Just conf2)] $ do
         cabal "user-config" ["init"]
         shouldExist conf2
+    cabalG ["--config-file", conf] "user-config" ["update", "-f", "-a", "extra-prog-path: foo", "-a", "extra-prog-path: bar"]
+    assertFileDoesContain conf "foo,bar"
+    cabalG ["--config-file", conf] "user-config" ["update", "-f", "-a", "extra-prog-path: foo, bar"]
+    assertFileDoesContain conf "foo,bar"

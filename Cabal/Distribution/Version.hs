@@ -22,11 +22,8 @@ module Distribution.Version (
   nullVersion,
   alterVersion,
 
-  -- ** Backwards compatibility
-  showVersion,
-
   -- * Version ranges
-  VersionRange(..),
+  VersionRange,
 
   -- ** Constructing
   anyVersion, noVersion,
@@ -38,7 +35,6 @@ module Distribution.Version (
   invertVersionRange,
   withinVersion,
   majorBoundVersion,
-  betweenVersionsInclusive,
 
   -- ** Inspection
   withinRange,
@@ -47,7 +43,6 @@ module Distribution.Version (
   isSpecificVersion,
   simplifyVersionRange,
   foldVersionRange,
-  foldVersionRange',
   normaliseVersionRange,
   stripParensVersionRange,
   hasUpperBound,
@@ -198,65 +193,3 @@ removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
 -- @(>= 0 && < 3) || (>= 4 && < 5)@.
 removeLowerBound :: VersionRange -> VersionRange
 removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
-
--------------------------------------------------------------------------------
--- Deprecated
--------------------------------------------------------------------------------
-
--- In practice this is not very useful because we normally use inclusive lower
--- bounds and exclusive upper bounds.
---
--- > withinRange v' (laterVersion v) = v' > v
---
-betweenVersionsInclusive :: Version -> Version -> VersionRange
-betweenVersionsInclusive v1 v2 =
-  intersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
-
-{-# DEPRECATED betweenVersionsInclusive
-    "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds" #-}
-
-
-
-
--- | An extended variant of 'foldVersionRange' that also provides a view of the
--- expression in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"==
--- v.*\"@ is presented explicitly rather than in terms of the other basic
--- syntax.
---
-foldVersionRange' :: a                         -- ^ @\"-any\"@ version
-                  -> (Version -> a)            -- ^ @\"== v\"@
-                  -> (Version -> a)            -- ^ @\"> v\"@
-                  -> (Version -> a)            -- ^ @\"< v\"@
-                  -> (Version -> a)            -- ^ @\">= v\"@
-                  -> (Version -> a)            -- ^ @\"<= v\"@
-                  -> (Version -> Version -> a) -- ^ @\"== v.*\"@ wildcard. The
-                                               -- function is passed the
-                                               -- inclusive lower bound and the
-                                               -- exclusive upper bounds of the
-                                               -- range defined by the wildcard.
-                  -> (Version -> Version -> a) -- ^ @\"^>= v\"@ major upper bound
-                                               -- The function is passed the
-                                               -- inclusive lower bound and the
-                                               -- exclusive major upper bounds
-                                               -- of the range defined by this
-                                               -- operator.
-                  -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
-                  -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
-                  -> (a -> a)                  -- ^ @\"(_)\"@ parentheses
-                  -> VersionRange -> a
-foldVersionRange' anyv this later earlier orLater orEarlier
-                  wildcard major union intersect parens =
-    cataVersionRange alg . normaliseVersionRange
-  where
-    alg AnyVersionF                     = anyv
-    alg (ThisVersionF v)                = this v
-    alg (LaterVersionF v)               = later v
-    alg (EarlierVersionF v)             = earlier v
-    alg (OrLaterVersionF v)             = orLater v
-    alg (OrEarlierVersionF v)           = orEarlier v
-    alg (WildcardVersionF v)            = wildcard v (wildcardUpperBound v)
-    alg (MajorBoundVersionF v)          = major v (majorUpperBound v)
-    alg (UnionVersionRangesF v1 v2)     = union v1 v2
-    alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
-    alg (VersionRangeParensF v)         = parens v
-{-# DEPRECATED foldVersionRange' "Use cataVersionRange & normaliseVersionRange for more principled folding" #-}

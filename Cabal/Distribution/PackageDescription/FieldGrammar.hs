@@ -427,6 +427,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
+    <*> monoidalFieldAla "autogen-includes"     (alaList' FSep FilePathNT)    L.autogenIncludes
+        ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "install-includes"     (alaList' FSep FilePathNT)    L.installIncludes
     <*> optionsFieldGrammar
     <*> profOptionsFieldGrammar

@@ -26,7 +26,6 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
-        installedPackageId,
         installedComponentId,
         installedOpenUnitId,
         sourceComponentName,
@@ -50,7 +49,7 @@ import Distribution.CabalSpecVersion         (cabalSpecLatest)
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.ModuleName
-import Distribution.Package                  hiding (installedPackageId, installedUnitId)
+import Distribution.Package                  hiding (installedUnitId)
 import Distribution.Types.ComponentName
 import Distribution.Utils.Generic            (toUTF8BS)
 
@@ -83,15 +82,6 @@ installedOpenUnitId ipi
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
 requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
 
-{-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
--- | Backwards compatibility with Cabal pre-1.24.
---
--- This type synonym is slightly awful because in cabal-install
--- we define an 'InstalledPackageId' but it's a ComponentId,
--- not a UnitId!
-installedPackageId :: InstalledPackageInfo -> UnitId
-installedPackageId = installedUnitId
-
 -- -----------------------------------------------------------------------------
 -- Munging
 
@@ -106,15 +96,15 @@ sourceComponentName = CLibName . sourceLibName
 -- /Note:/ errors array /may/ be empty, but the parse is still failed (it's a bug though)
 parseInstalledPackageInfo
     :: String
-    -> Either [String] ([String], InstalledPackageInfo)
+    -> Either (NonEmpty String) ([String], InstalledPackageInfo)
 parseInstalledPackageInfo s = case P.readFields (toUTF8BS s) of
-    Left err -> Left [show err]
+    Left err -> Left (show err :| [])
     Right fs -> case partitionFields fs of
         (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
             (ws, Right x) -> Right (ws', x) where
                 ws' = map (P.showPWarning "") ws
             (_,  Left (_, errs)) -> Left errs' where
-                errs' = map (P.showPError "") errs
+                errs' = fmap (P.showPError "") errs
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing

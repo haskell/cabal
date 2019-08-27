@@ -1,5 +1,6 @@
 name:                 transformers
 version:              0.5.2.0
+visibility:           public
 id:                   transformers-0.5.2.0
 key:                  transformers-0.5.2.0
 license:              BSD3

@@ -46,6 +46,7 @@ import Prelude ()
 import Distribution.Compat.Prelude hiding (init)
 
 import Data.Either (partitionEithers)
+import qualified Data.List.NonEmpty as NE
 
 import Distribution.InstalledPackageInfo
 import Distribution.Simple.Compiler
@@ -263,7 +264,7 @@ parsePackages :: String -> Either [InstalledPackageInfo] [String]
 parsePackages str =
     case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
         ([], ok)   -> Left [ setUnitId . maybe id mungePackagePaths (pkgRoot pkg) $ pkg | (_, pkg) <- ok ]
-        (msgss, _) -> Right (concat msgss)
+        (msgss, _) -> Right (foldMap NE.toList msgss)
 
 --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
 -- and converting back and forth with lines/unlines.

@@ -12,7 +12,7 @@ module Distribution.Client.CmdSdist
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
 import Distribution.Client.ProjectOrchestration
-    ( ProjectBaseContext(..), establishProjectBaseContext )
+    ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext )
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
@@ -155,7 +155,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     let distLayout = defaultDistDirLayout projectRoot mDistDirectory
     dir <- getCurrentDirectory
     projectConfig <- runRebuild dir $ readProjectConfig verbosity globalConfig distLayout
-    baseCtx <- establishProjectBaseContext verbosity projectConfig
+    baseCtx <- establishProjectBaseContext verbosity projectConfig OtherCommand
     let localPkgs = localPackages baseCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return

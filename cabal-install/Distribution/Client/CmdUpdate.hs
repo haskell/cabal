@@ -1,5 +1,9 @@
-{-# LANGUAGE CPP, LambdaCase, NamedFieldPuns, RecordWildCards, ViewPatterns,
-             TupleSections #-}
+{-# LANGUAGE CPP             #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE NamedFieldPuns  #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 -- | cabal-install CLI command: update
 --
@@ -9,7 +13,7 @@ module Distribution.Client.CmdUpdate (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude    
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
@@ -115,7 +119,7 @@ updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFla
 updateAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
              extraArgs globalFlags = do
   projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
-    (projectConfig <$> establishProjectBaseContext verbosity cliConfig)
+    (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)
 
   projectConfigWithSolverRepoContext verbosity

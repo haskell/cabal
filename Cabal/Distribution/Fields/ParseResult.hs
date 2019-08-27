@@ -50,13 +50,14 @@ emptyPRState = PRState [] [] Nothing
 -- | Destruct a 'ParseResult' into the emitted warnings and either
 -- a successful value or
 -- list of errors and possibly recovered a spec-version declaration.
-runParseResult :: ParseResult a -> ([PWarning], Either (Maybe Version, [PError]) a)
+runParseResult :: ParseResult a -> ([PWarning], Either (Maybe Version, NonEmpty PError) a)
 runParseResult pr = unPR pr emptyPRState failure success
   where
-    failure (PRState warns errs v)   = (warns, Left (v, errs))
-    success (PRState warns [] _)   x = (warns, Right x)
+    failure (PRState warns []         v)   = (warns, Left (v, PError zeroPos "panic" :| []))
+    failure (PRState warns (err:errs) v)   = (warns, Left (v, err :| errs)) where
+    success (PRState warns []         _)   x = (warns, Right x)
     -- If there are any errors, don't return the result
-    success (PRState warns errs v) _ = (warns, Left (v, errs))
+    success (PRState warns (err:errs) v) _ = (warns, Left (v, err :| errs))
 
 instance Functor ParseResult where
     fmap f (PR pr) = PR $ \ !s failure success ->

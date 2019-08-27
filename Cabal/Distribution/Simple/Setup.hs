@@ -45,7 +45,7 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  buildVerbose,
+  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
@@ -59,7 +59,6 @@ module Distribution.Simple.Setup (
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions, testOptions',
   programDbOptions, programDbPaths',
-  programConfigurationOptions, programConfigurationPaths',
   programFlagsDescription,
   replOptions,
   splitArgs,
@@ -105,7 +104,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
-import Distribution.Compat.Semigroup (Last' (..))
+import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 
 import Data.Function (on)
 
@@ -202,8 +201,8 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramDb directly and not via ConfigFlags
-    configPrograms_     :: Last' ProgramDb, -- ^All programs that
-                                            -- @cabal@ may run
+    configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
+                                                      -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -275,9 +274,13 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configUseResponseFiles :: Flag Bool
+    configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
       -- as haddock, or or ld.
+    configAllowDependingOnPrivateLibs :: Flag Bool
+      -- ^ Allow depending on private sublibraries. This is used by external
+      -- tools (like cabal-install) so they can add multiple-public-libraries
+      -- compatibility to older ghcs by checking visibility externally.
   }
   deriving (Generic, Read, Show)
 
@@ -286,7 +289,8 @@ instance Binary ConfigFlags
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
 configPrograms :: WithCallStack (ConfigFlags -> ProgramDb)
-configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+configPrograms = fromMaybe (error "FIXME: remove configPrograms") . fmap getLast'
+               . getOption' . configPrograms_
 
 instance Eq ConfigFlags where
   (==) a b =
@@ -350,7 +354,7 @@ configAbsolutePaths f =
 defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progDb = emptyConfigFlags {
     configArgs         = [],
-    configPrograms_    = pure progDb,
+    configPrograms_    = Option' (Just (Last' progDb)),
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
@@ -377,8 +381,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
 #endif
     configSplitSections = Flag False,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
-    configStripExes    = Flag True,
-    configStripLibs    = Flag True,
+    configStripExes    = NoFlag,
+    configStripLibs    = NoFlag,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
     configCoverage     = Flag False,
@@ -704,6 +708,13 @@ configureOptions showOrParseArgs =
          configUseResponseFiles
          (\v flags -> flags { configUseResponseFiles = v })
          (boolOpt' ([], ["disable-response-files"]) ([], []))
+
+      ,option "" ["allow-depending-on-private-libs"]
+         (  "Allow depending on private libraries. "
+         ++ "If set, the library visibility check MUST be done externally." )
+         configAllowDependingOnPrivateLibs
+         (\v flags -> flags { configAllowDependingOnPrivateLibs = v })
+         trueArg
       ]
   where
     liftInstallDirs =
@@ -1639,10 +1650,6 @@ data BuildFlags = BuildFlags {
   }
   deriving (Read, Show, Generic)
 
-{-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
-buildVerbose :: BuildFlags -> Verbosity
-buildVerbose = fromFlagOrDefault normal . buildVerbosity
-
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramPaths = mempty,
@@ -1864,6 +1871,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testWrapper     :: Flag FilePath,
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
@@ -1877,6 +1885,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testWrapper     = NoFlag,
     testFailWhenNoTestSuites = toFlag False,
     testOptions     = []
   }
@@ -1942,6 +1951,11 @@ testOptions' showOrParseArgs =
         "keep .tix files for HPC between test runs"
         testKeepTix (\v flags -> flags { testKeepTix = v})
         trueArg
+  , option [] ["test-wrapper"]
+        "Run test through a wrapper."
+        testWrapper (\v flags -> flags { testWrapper = v })
+        (reqArg' "FILE" (toFlag :: FilePath -> Flag FilePath)
+            (flagToList :: Flag FilePath -> [FilePath]))
   , option [] ["fail-when-no-test-suites"]
         ("Exit with failure when no test suites are found.")
         testFailWhenNoTestSuites (\v flags -> flags { testFailWhenNoTestSuites = v})
@@ -2069,19 +2083,14 @@ programDbPaths
 programDbPaths progDb showOrParseArgs get set =
   programDbPaths' ("with-" ++) progDb showOrParseArgs get set
 
-{-# DEPRECATED programConfigurationPaths' "Use programDbPaths' instead" #-}
-
 -- | Like 'programDbPaths', but allows to customise the option name.
-programDbPaths', programConfigurationPaths'
+programDbPaths'
   :: (String -> String)
   -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationPaths' = programDbPaths'
-
 programDbPaths' mkName progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -2120,19 +2129,15 @@ programDbOption progDb showOrParseArgs get set =
            (\progArgs -> concat [ args
                                 | (prog', args) <- progArgs, prog==prog' ]))
 
-{-# DEPRECATED programConfigurationOptions "Use programDbOptions instead" #-}
 
 -- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
-programDbOptions, programConfigurationOptions
+programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-
-programConfigurationOptions = programDbOptions
-
 programDbOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
@@ -2211,6 +2216,81 @@ optionNumJobs get set =
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
+
+
+-- ------------------------------------------------------------
+-- * show-build-info command flags
+-- ------------------------------------------------------------
+
+data ShowBuildInfoFlags = ShowBuildInfoFlags
+  { buildInfoBuildFlags :: BuildFlags
+  , buildInfoOutputFile :: Maybe FilePath
+  } deriving Show
+
+defaultShowBuildFlags  :: ShowBuildInfoFlags
+defaultShowBuildFlags =
+    ShowBuildInfoFlags
+      { buildInfoBuildFlags = defaultBuildFlags
+      , buildInfoOutputFile = Nothing
+      }
+
+showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
+showBuildInfoCommand progDb = CommandUI
+  { commandName         = "show-build-info"
+  , commandSynopsis     = "Emit details about how a package would be built."
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Components encompass executables, tests, and benchmarks.\n"
+      ++ "\n"
+      ++ "Affected by configuration options, see `configure`.\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " show-build-info      "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " show-build-info foo       "
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ programFlagsDescription progDb
+--TODO: re-enable once we have support for module/file targets
+--        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
+--        ++ "    A module\n"
+--        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
+--        ++ "    A file\n\n"
+--        ++ "If a target is ambiguous it can be qualified with the component "
+--        ++ "name, e.g.\n"
+--        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
+--        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
+  , commandUsage        = usageAlternatives "show-build-info" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
+  , commandDefaultFlags = defaultShowBuildFlags
+  , commandOptions      = \showOrParseArgs ->
+      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
+      ++
+      [ option [] ["buildinfo-json-output"]
+                "Write the result to the given file instead of stdout"
+                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
+                (reqArg' "FILE" Just (maybe [] pure))
+      ]
+
+  }
+
+parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
+parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
+  map
+      (liftOption
+        buildInfoBuildFlags
+          (\bf flags -> flags { buildInfoBuildFlags = bf } )
+      )
+      buildFlags
+  where
+    buildFlags = buildOptions progDb showOrParseArgs
+      ++
+      [ optionVerbosity
+        buildVerbosity (\v flags -> flags { buildVerbosity = v })
+
+      , optionDistPref
+        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
+      ]
 
 -- ------------------------------------------------------------
 -- * Other Utils

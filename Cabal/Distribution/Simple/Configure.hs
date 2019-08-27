@@ -44,7 +44,6 @@ module Distribution.Simple.Configure
   , getInstalledPackages
   , getInstalledPackagesMonitorFiles
   , getPackageDBContents
-  , configCompiler, configCompilerAux
   , configCompilerEx, configCompilerAuxEx
   , computeEffectiveProfiling
   , ccLdOptionsBuildInfo
@@ -84,6 +83,7 @@ import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -477,6 +477,7 @@ configure (pkg_descr0, pbi) cfg = do
                 (dependencySatisfiable
                     use_external_internal_deps
                     (fromFlagOrDefault False (configExactConfiguration cfg))
+                    (fromFlagOrDefault False (configAllowDependingOnPrivateLibs cfg))
                     (packageName pkg_descr0)
                     installedPackageSet
                     internalPackageSet
@@ -705,6 +706,27 @@ configure (pkg_descr0, pbi) cfg = do
 
     setCoverageLBI <- configureCoverage verbosity cfg comp
 
+
+
+    -- Turn off library and executable stripping when `debug-info` is set
+    -- to anything other than zero.
+    let
+        strip_libexe s f =
+          let defaultStrip = fromFlagOrDefault True (f cfg)
+          in case fromFlag (configDebugInfo cfg) of
+                      NoDebugInfo -> return defaultStrip
+                      _ -> case f cfg of
+                             Flag True -> do
+                              warn verbosity $ "Setting debug-info implies "
+                                                ++ s ++ "-stripping: False"
+                              return False
+
+                             _ -> return False
+
+    strip_lib <- strip_libexe "library" configStripLibs
+    strip_exe <- strip_libexe "executable" configStripExes
+
+
     let reloc = fromFlagOrDefault False $ configRelocatable cfg
 
     let buildComponentsMap =
@@ -746,8 +768,8 @@ configure (pkg_descr0, pbi) cfg = do
                                       configGHCiLib cfg,
                 splitSections       = split_sections,
                 splitObjs           = split_objs,
-                stripExes           = fromFlag $ configStripExes cfg,
-                stripLibs           = fromFlag $ configStripLibs cfg,
+                stripExes           = strip_exe,
+                stripLibs           = strip_lib,
                 exeCoverage         = False,
                 libCoverage         = False,
                 withPackageDB       = packageDbs,
@@ -882,6 +904,7 @@ getInternalPackages pkg_descr0 =
 dependencySatisfiable
     :: Bool -- ^ use external internal deps?
     -> Bool -- ^ exact configuration?
+    -> Bool -- ^ allow depending on private libs?
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
     -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
@@ -890,7 +913,9 @@ dependencySatisfiable
     -> (Dependency -> Bool)
 dependencySatisfiable
   use_external_internal_deps
-  exact_config pn installedPackageSet internalPackageSet requiredDepsMap
+  exact_config
+  allow_private_deps
+  pn installedPackageSet internalPackageSet requiredDepsMap
   (Dependency depName vr sublibs)
 
     | exact_config
@@ -914,12 +939,7 @@ dependencySatisfiable
                       packageNameToUnqualComponentName depName)
                  requiredDepsMap)
 
-          || all
-               (\lib ->
-                 (depName, CLibName lib)
-                 `Map.member`
-                 requiredDepsMap)
-               sublibs
+          || all visible sublibs
 
     | isInternalDep
     = if use_external_internal_deps
@@ -950,6 +970,23 @@ dependencySatisfiable
            -- Reinterpret the "package name" as an unqualified component
            -- name
            = LSubLibName $ packageNameToUnqualComponentName depName
+    -- Check whether a libray exists and is visible.
+    -- We don't disambiguate between dependency on non-existent or private
+    -- library yet, so we just return a bool and later report a generic error.
+    visible lib = maybe
+                    False -- Does not even exist (wasn't in the depsMap)
+                    (\ipi -> Installed.libVisibility ipi == LibraryVisibilityPublic
+                          -- If the override is enabled, the visibility does
+                          -- not matter (it's handled externally)
+                          || allow_private_deps
+                          -- If it's a library of the same package then it's
+                          -- always visible.
+                          -- This is only triggered when passing a component
+                          -- of the same package as --dependency, such as in:
+                          -- cabal-testsuite/PackageTests/ConfigureComponent/SubLib/setup-explicit.test.hs
+                          || pkgName (Installed.sourcePackageId ipi) == pn)
+                    maybeIPI
+      where maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePD' but there's a bit of other nattering
@@ -982,7 +1019,7 @@ configureFinalizedPackage verbosity cfg enabled
                    pkg_descr0
             of Right r -> return r
                Left missing ->
-                   die' verbosity $ "Encountered missing dependencies:\n"
+                   die' verbosity $ "Encountered missing or private dependencies:\n"
                      ++ (render . nest 4 . sep . punctuate comma
                                 . map (pretty . simplifyDependency)
                                 $ missing)
@@ -1676,25 +1713,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die' verbosity "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
-
--- Ideally we would like to not have separate configCompiler* and
--- configCompiler*Ex sets of functions, but there are many custom setup scripts
--- in the wild that are using them, so the versions with old types are kept for
--- backwards compatibility. Platform was added to the return triple in 1.18.
-
-{-# DEPRECATED configCompiler
-    "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramDb -> Verbosity
-               -> IO (Compiler, ProgramDb)
-configCompiler mFlavor hcPath hcPkg progdb verbosity =
-  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg progdb verbosity
-
-{-# DEPRECATED configCompilerAux
-    "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
-configCompilerAux :: ConfigFlags
-                  -> IO (Compiler, ProgramDb)
-configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies

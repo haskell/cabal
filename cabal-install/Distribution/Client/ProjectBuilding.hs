@@ -65,15 +65,14 @@ import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup
                    ( filterConfigureFlags, filterHaddockArgs
-                   , filterHaddockFlags )
+                   , filterHaddockFlags, filterTestFlags )
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils
                    ( ProgressPhase(..), progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
-import           Distribution.Package hiding
-                   (InstalledPackageId, installedPackageId)
+import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -96,6 +95,7 @@ import           Distribution.Verbosity
 import           Distribution.Pretty
 import           Distribution.Compat.Graph (IsNode(..))
 
+import qualified Data.List.NonEmpty as NE
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
@@ -1370,7 +1370,8 @@ buildInplaceUnpackedPackage verbosity
     buildArgs     _  = setupHsBuildArgs  pkg
 
     testCommand      = Cabal.testCommand -- defaultProgramDb
-    testFlags    _   = setupHsTestFlags pkg pkgshared
+    testFlags      v = flip filterTestFlags v $
+                       setupHsTestFlags pkg pkgshared
                                          verbosity builddir
     testArgs      _  = setupHsTestArgs  pkg
 
@@ -1444,7 +1445,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       (warns, ipkg) <-
         withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
         case Installed.parseInstalledPackageInfo pkgConfStr of
-          Left perrors -> pkgConfParseFailed $ unlines perrors
+          Left perrors -> pkgConfParseFailed $ unlines $ NE.toList perrors
           Right (warns, ipkg) -> return (warns, ipkg)
 
       unless (null warns) $

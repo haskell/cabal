@@ -500,7 +500,10 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     generalInstalledPackageInfo adjustRelativeIncludeDirs
                                 pkg abi_hash lib lbi clbi installDirs
   where
-    adjustRelativeIncludeDirs = map (inplaceDir </>)
+    adjustRelativeIncludeDirs = concatMap $ \d ->
+      [ inplaceDir </> d                    -- local include-dir
+      , inplaceDir </> libTargetDir </> d   -- autogen include-dir
+      ]
     libTargetDir = componentBuildDir lbi clbi
     installDirs =
       (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest) {

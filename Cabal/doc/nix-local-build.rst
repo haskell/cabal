@@ -1424,7 +1424,8 @@ Object code options
     Not all Haskell implementations generate native binaries. For such
     implementations this option has no effect.
 
-    (TODO: Check what happens if you combine this with ``debug-info``.)
+    If ``debug-info`` is set explicitly then ``executable-stripping`` is set
+    to ``False`` as otherwise all the debug symbols will be stripped.
 
     The command line variant of this flag is
     ``--enable-executable-stripping`` and
@@ -1439,6 +1440,9 @@ Object code options
     When installing binary libraries, run the ``strip`` program on the
     binary, saving space on the file system. See also
     ``executable-stripping``.
+
+    If ``debug-info`` is set explicitly then ``library-stripping`` is set
+    to ``False`` as otherwise all the debug symbols will be stripped.
 
     The command line variant of this flag is
     ``--enable-library-stripping`` and ``--disable-library-stripping``.
@@ -1825,6 +1829,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` command).
 
 .. cfg-field:: haddock-html-location: templated path
+               --html-location=TEMPLATE
     :synopsis: Haddock HTML templates location.
 
     Specify a template for the location of HTML documentation for
@@ -1835,14 +1840,18 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 
     ::
 
-        html-location: 'http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
+        html-location: http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html
+
+    The command line variant of this flag is ``--html-location`` (for
+    the ``haddock`` subcommand).
+
+    ::
+
+        --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
 
     Here the argument is quoted to prevent substitution by the shell. If
     this option is omitted, the location for each package is obtained
     using the package tool (e.g. ``ghc-pkg``).
-
-    The command line variant of this flag is ``--html-location`` (for
-    the ``haddock`` subcommand).
 
 .. cfg-field:: haddock-executables: boolean
     :synopsis: Generate documentation for executables.

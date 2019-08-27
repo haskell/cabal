@@ -1,0 +1,12 @@
+cabal-version: 3.0
+name: d
+version: 0.1.0.0
+
+-- See issue #6038
+library
+  default-language: Haskell2010
+
+library privatelib
+  visibility: private
+  default-language: Haskell2010
+

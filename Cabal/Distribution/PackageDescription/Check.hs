@@ -270,6 +270,12 @@ checkLibrary pkg lib =
            "An 'autogen-module' is neither on 'exposed-modules' or "
         ++ "'other-modules'."
 
+    -- check that all autogen-includes appear on includes or install-includes
+  , check
+      (not $ and $ map (flip elem (allExplicitIncludes lib)) (view L.autogenIncludes lib)) $
+      PackageBuildImpossible $
+           "An include in 'autogen-includes' is neither in 'includes' or "
+        ++ "'install-includes'."
   ]
 
   where
@@ -281,6 +287,9 @@ checkLibrary pkg lib =
     -- TODO: not sure if this check is always right in Backpack
     moduleDuplicates = dups (explicitLibModules lib ++
                              map moduleReexportName (reexportedModules lib))
+
+allExplicitIncludes :: L.HasBuildInfo a => a -> [FilePath]
+allExplicitIncludes x = view L.includes x ++ view L.installIncludes x
 
 checkExecutable :: PackageDescription -> Executable -> [PackageCheck]
 checkExecutable pkg exe =
@@ -315,6 +324,11 @@ checkExecutable pkg exe =
       PackageBuildImpossible $
            "On executable '" ++ prettyShow (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
+
+    -- check that all autogen-includes appear on includes
+  , check
+      (not $ and $ map (flip elem (view L.includes exe)) (view L.autogenIncludes exe)) $
+      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
   where
     moduleDuplicates = dups (exeModules exe)
@@ -355,13 +369,15 @@ checkTestSuite pkg test =
 
     -- check that all autogen-modules appear on other-modules
   , check
-      (not $ and $ map
-        (flip elem (testModules test))
-        (testModulesAutogen test)
-      ) $
+      (not $ and $ map (flip elem (testModules test)) (testModulesAutogen test)) $
       PackageBuildImpossible $
            "On test suite '" ++ prettyShow (testName test) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
+
+    -- check that all autogen-includes appear on includes
+  , check
+      (not $ and $ map (flip elem (view L.includes test)) (view L.autogenIncludes test)) $
+      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
   where
     moduleDuplicates = dups $ testModules test
@@ -404,13 +420,15 @@ checkBenchmark _pkg bm =
 
     -- check that all autogen-modules appear on other-modules
   , check
-      (not $ and $ map
-        (flip elem (benchmarkModules bm))
-        (benchmarkModulesAutogen bm)
-      ) $
+      (not $ and $ map (flip elem (benchmarkModules bm)) (benchmarkModulesAutogen bm)) $
       PackageBuildImpossible $
              "On benchmark '" ++ prettyShow (benchmarkName bm) ++ "' an 'autogen-module' is "
           ++ "not on 'other-modules'"
+
+    -- check that all autogen-includes appear on includes
+  , check
+      (not $ and $ map (flip elem (view L.includes bm)) (view L.autogenIncludes bm)) $
+      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
   where
     moduleDuplicates = dups $ benchmarkModules bm
@@ -1348,7 +1366,7 @@ checkCabalVersion pkg =
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
-           "From version 1.24 cabal supports specifiying explicit dependencies "
+           "From version 1.24 cabal supports specifying explicit dependencies "
         ++ "for Custom setup scripts. Consider using cabal-version >= 1.24 and "
         ++ "adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "

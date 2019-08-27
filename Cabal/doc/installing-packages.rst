@@ -44,7 +44,7 @@ files created by older versions of ``cabal``.
 Repository specification
 ------------------------
 
-An important part of the configuration if the specification of the
+An important part of the configuration is the specification of the
 repository. When ``cabal`` creates a default config file, it configures
 the repository to be the central Hackage server:
 
@@ -1718,6 +1718,13 @@ the package.
     give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
+
+.. option:: --test-wrapper=path
+
+   The wrapper script/application used to setup and tear down the test
+   execution context. The text executable path and test arguments are
+   passed as arguments to the wrapper and it is expected that the wrapper
+   will return the test's return code, as well as a copy of stdout/stderr.
 
 .. _setup-sdist:
 

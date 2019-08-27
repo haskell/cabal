@@ -1,4 +1,9 @@
-{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns, DeriveDataTypeable, LambdaCase #-}
+{-# LANGUAGE BangPatterns       #-}
+{-# LANGUAGE CPP                #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE NamedFieldPuns     #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 -- | Handling project configuration.
 --
@@ -155,10 +160,10 @@ import Network.URI
 -- 'PackageName'. This returns the configuration that applies to all local
 -- packages plus any package-specific configuration for this package.
 --
-lookupLocalPackageConfig :: (Semigroup a, Monoid a)
-                         => (PackageConfig -> a)
-                         -> ProjectConfig
-                         -> PackageName -> a
+lookupLocalPackageConfig
+  :: (Semigroup a, Monoid a)
+  => (PackageConfig -> a) -> ProjectConfig -> PackageName
+  -> a
 lookupLocalPackageConfig field ProjectConfig {
                            projectConfigLocalPackages,
                            projectConfigSpecificPackage
@@ -189,10 +194,10 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
 -- that doesn't have an http transport. And that avoids having to have access
 -- to the 'BuildTimeSettings'
 --
-projectConfigWithSolverRepoContext :: Verbosity
-                                   -> ProjectConfigShared
-                                   -> ProjectConfigBuildOnly
-                                   -> (RepoContext -> IO a) -> IO a
+projectConfigWithSolverRepoContext
+  :: Verbosity -> ProjectConfigShared -> ProjectConfigBuildOnly
+  -> (RepoContext -> IO a)
+  -> IO a
 projectConfigWithSolverRepoContext verbosity
                                    ProjectConfigShared{..}
                                    ProjectConfigBuildOnly{..} =
@@ -200,8 +205,10 @@ projectConfigWithSolverRepoContext verbosity
       verbosity
       (fromNubList projectConfigRemoteRepos)
       (fromNubList projectConfigLocalRepos)
-      (fromFlagOrDefault (error "projectConfigWithSolverRepoContext: projectConfigCacheDir")
-                         projectConfigCacheDir)
+      (fromFlagOrDefault
+                   (error
+                    "projectConfigWithSolverRepoContext: projectConfigCacheDir")
+                   projectConfigCacheDir)
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
       (fromNubList projectConfigProgPathExtra)
@@ -444,7 +451,7 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
-withProjectOrGlobalConfig :: Verbosity 
+withProjectOrGlobalConfig :: Verbosity
                           -> Flag FilePath
                           -> IO a
                           -> (ProjectConfig -> IO a)
@@ -455,9 +462,9 @@ withProjectOrGlobalConfig verbosity globalConfigFlag with without = do
   let
     res' = catch with
       $ \case
-        (BadPackageLocations prov locs) 
+        (BadPackageLocations prov locs)
           | prov == Set.singleton Implicit
-          , let 
+          , let
             isGlobErr (BadLocGlobEmptyMatch _) = True
             isGlobErr _ = False
           , any isGlobErr locs ->
@@ -1182,8 +1189,8 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         entries <- liftIO $ getDirectoryContents packageDir
         --TODO: wrap exceptions
         case filter (\e -> takeExtension e == ".cabal") entries of
-          []       -> liftIO $ throwIO NoCabalFileFound
-          (_:_:_)  -> liftIO $ throwIO MultipleCabalFilesFound
+          []       -> liftIO $ throwIO $ NoCabalFileFound packageDir
+          (_:_:_)  -> liftIO $ throwIO $ MultipleCabalFilesFound packageDir
           [cabalFileName] -> do
             monitorFiles [monitorFileHashed cabalFilePath]
             liftIO $ fmap (mkSpecificSourcePackage location)
@@ -1222,11 +1229,11 @@ mkSpecificSourcePackage location pkg =
 -- | Errors reported upon failing to parse a @.cabal@ file.
 --
 data CabalFileParseError = CabalFileParseError
-    FilePath        -- ^ @.cabal@ file path
-    BS.ByteString   -- ^ @.cabal@ file contents
-    [PError]        -- ^ errors
-    (Maybe Version) -- ^ We might discover the spec version the package needs
-    [PWarning]      -- ^ warnings
+    FilePath           -- ^ @.cabal@ file path
+    BS.ByteString      -- ^ @.cabal@ file contents
+    (NonEmpty PError)  -- ^ errors
+    (Maybe Version)    -- ^ We might discover the spec version the package needs
+    [PWarning]         -- ^ warnings
   deriving (Typeable)
 
 -- | Manual instance which skips file contentes
@@ -1275,9 +1282,9 @@ readSourcePackageCabalFile verbosity pkgfilename content =
 -- | When looking for a package's @.cabal@ file we can find none, or several,
 -- both of which are failures.
 --
-data CabalFileSearchFailure =
-     NoCabalFileFound
-   | MultipleCabalFilesFound
+data CabalFileSearchFailure
+   = NoCabalFileFound FilePath
+   | MultipleCabalFilesFound FilePath
   deriving (Show, Typeable)
 
 instance Exception CabalFileSearchFailure
@@ -1291,7 +1298,7 @@ extractTarballPackageCabalFile :: FilePath -> IO (FilePath, BS.ByteString)
 extractTarballPackageCabalFile tarballFile =
     withBinaryFile tarballFile ReadMode $ \hnd -> do
       content <- LBS.hGetContents hnd
-      case extractTarballPackageCabalFilePure content of
+      case extractTarballPackageCabalFilePure tarballFile content of
         Left (Left  e) -> throwIO e
         Left (Right e) -> throwIO e
         Right (fileName, fileContent) ->
@@ -1300,11 +1307,12 @@ extractTarballPackageCabalFile tarballFile =
 
 -- | Scan through a tar file stream and collect the @.cabal@ file, or fail.
 --
-extractTarballPackageCabalFilePure :: LBS.ByteString
+extractTarballPackageCabalFilePure :: FilePath
+                                   -> LBS.ByteString
                                    -> Either (Either Tar.FormatError
                                                      CabalFileSearchFailure)
                                              (FilePath, LBS.ByteString)
-extractTarballPackageCabalFilePure =
+extractTarballPackageCabalFilePure tarballFile =
       check
     . accumEntryMap
     . Tar.filterEntries isCabalFile
@@ -1317,11 +1325,11 @@ extractTarballPackageCabalFilePure =
 
     check (Left (e, _m)) = Left (Left e)
     check (Right m) = case Map.elems m of
-        []     -> Left (Right NoCabalFileFound)
+        []     -> Left (Right $ NoCabalFileFound tarballFile)
         [file] -> case Tar.entryContent file of
           Tar.NormalFile content _ -> Right (Tar.entryPath file, content)
-          _                        -> Left (Right NoCabalFileFound)
-        _files -> Left (Right MultipleCabalFilesFound)
+          _                        -> Left (Right $ NoCabalFileFound tarballFile)
+        _files -> Left (Right $ MultipleCabalFilesFound tarballFile)
 
     isCabalFile e = case splitPath (Tar.entryPath e) of
       [     _dir, file] -> takeExtension file == ".cabal"

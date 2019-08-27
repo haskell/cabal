@@ -9,6 +9,7 @@ import Distribution.Compat.Prelude
 import Data.Either (partitionEithers)
 
 import qualified Data.Map as Map (empty)
+import qualified Data.List.NonEmpty as NE
 
 import Distribution.Simple.Program
 import Distribution.Simple.Compiler as Compiler
@@ -139,7 +140,7 @@ getInstalledPackages verbosity packagedbs progdb =
     parsePackages str =
         case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
             ([], ok)   -> Right [ pkg | (_, pkg) <- ok ]
-            (msgss, _) -> Left (concat msgss)
+            (msgss, _) -> Left (foldMap NE.toList msgss)
 
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines

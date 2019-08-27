@@ -10,7 +10,7 @@ Cabal-Version:      >= 1.10
 -- To update this file, edit 'cabal-install.cabal.pp' and run
 -- 'make cabal-install-prod' in the project's root folder.
 Name:               cabal-install
-Version:            3.0.0.0
+Version:            3.1.0.0
 #
 # NOTE: when updating build-depends, don't forget to update version regexps in bootstrap.sh.
 #
@@ -22,7 +22,7 @@ Version:            3.0.0.0
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
-        Cabal      == 3.0.*,
+        Cabal      == 3.1.*,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
         deepseq    >= 1.4.1.1  && < 1.5,
@@ -30,11 +30,11 @@ Version:            3.0.0.0
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
         filepath   >= 1.4.0.0  && < 1.5,
-        hashable   >= 1.0      && < 1.3,
+        hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 2.3,
         network-uri >= 2.6.0.2 && < 2.7,
-        network    >= 2.6      && < 3.1,
+        network    >= 2.6      && < 3.2,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.2.3.0  && < 1.7,
         random     >= 1        && < 1.2,
@@ -48,6 +48,7 @@ Version:            3.0.0.0
 
     if !impl(ghc >= 8.0)
         build-depends: fail        == 4.9.*
+        build-depends: semigroups  >= 0.18.3 && <0.20
 
     if flag(native-dns)
       if os(windows)
@@ -447,6 +448,7 @@ executable cabal
         UnitTests.Distribution.Client.ArbitraryInstances
         UnitTests.Distribution.Client.FileMonitor
         UnitTests.Distribution.Client.Get
+        UnitTests.Distribution.Client.GenericInstances
         UnitTests.Distribution.Client.GZipUtils
         UnitTests.Distribution.Client.Glob
         UnitTests.Distribution.Client.IndexUtils.Timestamp
@@ -458,6 +460,7 @@ executable cabal
         UnitTests.Distribution.Client.Store
         UnitTests.Distribution.Client.Tar
         UnitTests.Distribution.Client.Targets
+        UnitTests.Distribution.Client.TreeDiffInstances
         UnitTests.Distribution.Client.UserConfig
         UnitTests.Distribution.Client.VCS
         UnitTests.Distribution.Solver.Modular.Builder
@@ -473,7 +476,7 @@ executable cabal
 
     cpp-options: -DMONOLITHIC
     build-depends:
-        Cabal      == 3.0.*,
+        Cabal      == 3.1.*,
         cabal-install-solver-dsl,
         QuickCheck >= 2.8.2,
         array,
@@ -495,6 +498,7 @@ executable cabal
         tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
+        tree-diff,
         time,
         zlib
 %endif
@@ -517,12 +521,14 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Get
+    UnitTests.Distribution.Client.GenericInstances
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
+    UnitTests.Distribution.Client.TreeDiffInstances
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
     UnitTests.Distribution.Client.JobControl
@@ -553,12 +559,13 @@ Test-Suite unit-tests
         tar,
         time,
         zlib,
-        network-uri,
+        network-uri < 2.6.2.0,
         network,
         tasty >= 1.1.0.3 && < 1.2,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
+        tree-diff,
         QuickCheck >= 2.8.2
 
   ghc-options: -threaded

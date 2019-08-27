@@ -26,6 +26,7 @@ import System.FilePath                             (replaceExtension, (</>))
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.List.NonEmpty    as NE
 
 import qualified Distribution.InstalledPackageInfo as IPI
 
@@ -136,7 +137,7 @@ errorTest fp = cabalGoldenTest fp correct $ do
             "UNXPECTED SUCCESS\n" ++
             showGenericPackageDescription gpd
         Left (v, errs) ->
-            unlines $ ("VERSION: " ++ show v) : map (showPError fp) errs
+            unlines $ ("VERSION: " ++ show v) : map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "errors" </> fp
     correct = replaceExtension input "errors"
@@ -202,7 +203,7 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
             unlines (map (showPWarning fp) warns)
             ++ showGenericPackageDescription gpd
         Left (_, errs) ->
-            unlines $ "ERROR" : map (showPError fp) errs
+            unlines $ "ERROR" : map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"
@@ -215,7 +216,7 @@ treeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
     let (_, x) = runParseResult res
     case x of
         Right gpd      -> pure (toExpr gpd)
-        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPError fp) errs
+        Left (_, errs) -> fail $ unlines $ "ERROR" : map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     exprFile = replaceExtension input "expr"
@@ -251,7 +252,7 @@ formatRoundTripTest fp = testCase "roundtrip" $ do
         case x' of
             Right gpd      -> pure gpd
             Left (_, errs) -> do
-                void $ assertFailure $ unlines (map (showPError fp) errs)
+                void $ assertFailure $ unlines (map (showPError fp) $ NE.toList errs)
                 fail "failure"
     input = "tests" </> "ParserTests" </> "regressions" </> fp
 

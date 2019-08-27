@@ -113,7 +113,7 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
       cabalDirLayout,
       projectConfig,
       localPackages
-    } <- establishProjectBaseContext verbosity cliConfig
+    } <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     (_, elaboratedPlan, _) <-
       rebuildInstallPlan verbosity

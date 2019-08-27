@@ -26,12 +26,14 @@ data CabalSpecVersion
     | CabalSpecV2_2
     | CabalSpecV2_4
     | CabalSpecV3_0
+    | CabalSpecV3_2
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 -- | Show cabal spec version, but not the way in the .cabal files
 --
 -- @since 3.0.0.0
 showCabalSpecVersion :: CabalSpecVersion -> String
+showCabalSpecVersion CabalSpecV3_2  = "3.2"
 showCabalSpecVersion CabalSpecV3_0  = "3.0"
 showCabalSpecVersion CabalSpecV2_4  = "2.4"
 showCabalSpecVersion CabalSpecV2_2  = "2.2"
@@ -49,10 +51,11 @@ showCabalSpecVersion CabalSpecV1_2  = "1.2"
 showCabalSpecVersion CabalSpecV1_0  = "1.0"
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV3_0
+cabalSpecLatest = CabalSpecV3_2
 
 cabalSpecFromVersionDigits :: [Int] -> CabalSpecVersion
 cabalSpecFromVersionDigits v
+    | v >= [3,1]  = CabalSpecV3_2
     | v >= [2,5]  = CabalSpecV3_0
     | v >= [2,3]  = CabalSpecV2_4
     | v >= [2,1]  = CabalSpecV2_2
