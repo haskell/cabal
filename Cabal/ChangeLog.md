@@ -2,6 +2,9 @@
   * The 3.0 migration guide gives advice on adapting Custom setup
     scripts to backwards-incompatible changes in this release:
     https://github.com/haskell/cabal/wiki/3.0-migration-guide.
+  * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
+    `cabal check` warning for bounds on internal libraries has been
+    disabled.
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
@@ -67,11 +70,6 @@
     ([#5503](https://github.com/haskell/cabal/issues/5503)).
 
 # 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
-
-  * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
-    `cabal check` warning for bounds on internal libraries has been
-    disabled.
-# 2.4.0.0 (current development version)
   * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
     `cabal check` warning for bounds on internal libraries has been
     disabled.
