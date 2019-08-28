@@ -1,7 +1,15 @@
 # 3.1.0.0 (current development version)
-
-# 3.0.0.0 TBD
   * TODO
+
+ ----
+
+# 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
+  * The 3.0 migration guide gives advice on adapting Custom setup
+    scripts to backwards-incompatible changes in this release:
+    https://github.com/haskell/cabal/wiki/3.0-migration-guide.
+  * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
+    `cabal check` warning for bounds on internal libraries has been
+    disabled.
   * Introduce set notation for `^>=` and `==` operators
     ([#5906](https://github.com/haskell/cabal/pull/5906)).
   * 'check' reports warnings for various ghc-\*-options fields separately
@@ -34,6 +42,8 @@
     add default implementation in terms of `coerce` / `unsafeCoerce`.
   * Implement support for response file arguments to defaultMain* and cabal-install.
   * Uniformly provide 'Semigroup' instances for `base < 4.9` via `semigroups` package
+  * Implement `{cmm,asm}-{sources,options} buildinfo fields for
+    separate compilation of C-- and ASM source files (#6033).
   * Setting `debug-info` now implies `library-stripping: False` and
     `executable-stripping: False) ([#2702](https://github.com/haskell/cabal/issues/2702))
   * `Setup.hs copy` and `install` now work in the presence of
@@ -65,7 +75,6 @@
     ([#5503](https://github.com/haskell/cabal/issues/5503)).
 
 # 2.4.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) September 2018
-
   * Due to [#5119](https://github.com/haskell/cabal/issues/5119), the
     `cabal check` warning for bounds on internal libraries has been
     disabled.
