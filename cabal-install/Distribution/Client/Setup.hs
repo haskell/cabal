@@ -2230,17 +2230,17 @@ defaultInitFlags  = emptyInitFlags { IT.initVerbosity = toFlag normal }
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Create a new .cabal package file.",
+    commandSynopsis = "Create a new .cabal package file (interactively).",
     commandDescription = Just $ \_ -> wrapText $
-         "Create a .cabal, Setup.hs, and optionally a LICENSE file.\n"
+         "Cabalise a project by creating a .cabal, Setup.hs, and "
+      ++ "optionally a LICENSE file.\n"
       ++ "\n"
-      ++ "Calling init with no arguments creates an executable, "
-      ++ "guessing as many options as possible. The interactive "
-      ++ "mode can be invoked by the -i/--interactive flag, which "
-      ++ "will try to guess as much as possible and prompt you for "
-      ++ "the rest. You can change init to always be interactive by "
-      ++ "setting the interactive flag in your configuration file. "
-      ++ "Command-line arguments are provided for scripting purposes.\n",
+      ++ "Calling init with no arguments (recommended) uses an "
+      ++ "interactive mode, which will try to guess as much as "
+      ++ "possible and prompt you for the rest.  Command-line "
+      ++ "arguments are provided for scripting purposes. "
+      ++ "If you don't want interactive mode, be sure to pass "
+      ++ "the -n flag.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",
