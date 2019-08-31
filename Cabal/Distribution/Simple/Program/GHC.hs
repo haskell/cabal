@@ -172,6 +172,19 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
               , "print-bind-contents", "print-evld-with-show"
               , "implicit-import-qualified", "error-spans"
               ]
+            , from [7,8]
+              [ "print-explicit-foralls" -- maybe also earlier, but GHC-7.6 doesn't have --show-options
+              , "print-explicit-kinds"
+              ]
+            , from [8,0]
+              [ "print-explicit-coercions"
+              , "print-explicit-runtime-reps"
+              , "print-equality-relations"
+              , "print-unicode-syntax"
+              , "print-expanded-synonyms"
+              , "print-potential-instances"
+              , "print-typechecker-elaboration"
+              ]
             , from [8,2]
                 [ "diagnostics-show-caret", "local-ghci-history"
                 , "show-warning-groups", "hide-source-paths"
