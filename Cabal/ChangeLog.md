@@ -1,5 +1,6 @@
 # 3.1.0.0 (current development version)
-  * TODO
+  * Don’t rebuild world when new ghc flags that affect how error
+    messages are presented is specified.
 
  ----
 
