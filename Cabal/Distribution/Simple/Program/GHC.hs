@@ -219,7 +219,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
 
     simpleFlags :: Set String
     simpleFlags = Set.fromList . mconcat $
-      [ [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+      [ [ "-n", "-#include", "-Rghc-timing", "-dstg-stats"
         , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
         , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
         , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
