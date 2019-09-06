@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Deprecated.Text
@@ -33,7 +33,9 @@ import Distribution.Simple.Utils
 import Control.Monad (when)
 
 
-benchCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+benchCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                          , HaddockFlags, TestFlags, BenchmarkFlags
+                          )
 benchCommand = Client.installCommand {
   commandName         = "v2-bench",
   commandSynopsis     = "Run benchmarks",
@@ -73,9 +75,11 @@ benchCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-benchAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+benchAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+               , HaddockFlags, TestFlags, BenchmarkFlags )
             -> [String] -> GlobalFlags -> IO ()
-benchAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+benchAction ( configFlags, configExFlags, installFlags
+            , haddockFlags, testFlags, benchmarkFlags )
             targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
@@ -119,7 +123,7 @@ benchAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

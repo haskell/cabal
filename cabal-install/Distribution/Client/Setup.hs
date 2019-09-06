@@ -23,7 +23,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , filterTestFlags
-    , replCommand, testCommand, benchmarkCommand, testOptions
+    , replCommand, testCommand, benchmarkCommand, testOptions, benchmarkOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , filterHaddockArgs, filterHaddockFlags, haddockOptions
@@ -101,7 +101,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
-         , TestFlags, BenchmarkFlags(..)
+         , TestFlags, BenchmarkFlags
          , SDistFlags(..), HaddockFlags(..)
          , CleanFlags(..), DoctestFlags(..)
          , CopyFlags(..), RegisterFlags(..)
@@ -1367,13 +1367,15 @@ updateCommand = CommandUI {
 -- * Other commands
 -- ------------------------------------------------------------
 
-upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+upgradeCommand  :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                             , HaddockFlags, TestFlags, BenchmarkFlags
+                             )
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty),
+    commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -1830,7 +1832,9 @@ defaultSolver = AlwaysModular
 allSolvers :: String
 allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                            , HaddockFlags, TestFlags, BenchmarkFlags
+                            )
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Install packages.",
@@ -1883,7 +1887,7 @@ installCommand = CommandUI {
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
      ++ "    Change installation destination\n",
-  commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty),
+  commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
        -- Note: [Hidden Flags]
@@ -1902,13 +1906,15 @@ installCommand = CommandUI {
                               installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
     ++ liftOptions get5 set5 (testOptions        showOrParseArgs)
+    ++ liftOptions get6 set6 (benchmarkOptions   showOrParseArgs)
   }
   where
-    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
-    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
-    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
-    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
-    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
+    get1 (a,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f) = (a,b,c,d,e,f)
+    get2 (_,b,_,_,_,_) = b; set2 b (a,_,c,d,e,f) = (a,b,c,d,e,f)
+    get3 (_,_,c,_,_,_) = c; set3 c (a,b,_,d,e,f) = (a,b,c,d,e,f)
+    get4 (_,_,_,d,_,_) = d; set4 d (a,b,c,_,e,f) = (a,b,c,d,e,f)
+    get5 (_,_,_,_,e,_) = e; set5 e (a,b,c,d,_,f) = (a,b,c,d,e,f)
+    get6 (_,_,_,_,_,f) = f; set6 f (a,b,c,d,e,_) = (a,b,c,d,e,f)
 
 haddockCommand :: CommandUI HaddockFlags
 haddockCommand = Cabal.haddockCommand
@@ -1967,6 +1973,19 @@ testOptions showOrParseArgs
   where
     prefixTest name | "test-" `isPrefixOf` name = name
                     | otherwise = "test-" ++ name
+
+benchmarkOptions :: ShowOrParseArgs -> [OptionField BenchmarkFlags]
+benchmarkOptions showOrParseArgs
+  = [ opt { optionName = prefixBenchmark name,
+            optionDescr = [ fmapOptFlags (\(_, lflags) -> ([], map prefixBenchmark lflags)) descr
+                          | descr <- optionDescr opt] }
+    | opt <- commandOptions Cabal.benchmarkCommand showOrParseArgs
+    , let name = optionName opt
+    , name `elem` ["benchmark-options", "benchmark-option"]
+    ]
+  where
+    prefixBenchmark name | "benchmark-" `isPrefixOf` name = name
+                         | otherwise = "benchmark-" ++ name
 
 fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
 fmapOptFlags modify (ReqArg d f p r w)    = ReqArg d (modify f) p r w

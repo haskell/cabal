@@ -1672,6 +1672,8 @@ This command takes the following options:
     Keeps the configuration information so it is not necessary to run
     the configure step again before building.
 
+.. _setup-test:
+
 setup test
 ----------
 
@@ -1716,7 +1718,7 @@ the package.
 
 .. option:: --test-option=option
 
-    give an extra option to the test executables. There is no need to
+    Give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
 
@@ -1726,6 +1728,26 @@ the package.
    execution context. The text executable path and test arguments are
    passed as arguments to the wrapper and it is expected that the wrapper
    will return the test's return code, as well as a copy of stdout/stderr.
+
+.. _setup-bench:
+
+setup bench
+-----------
+
+Run the benchmarks specified in the package description file. Aside
+from the following flags, Cabal accepts the name of one or more benchmarks
+on the command line after ``bench``. When supplied, Cabal will run
+only the named benchmarks, otherwise, Cabal will run all benchmarks in
+the package.
+
+.. option:: --benchmark-options=options
+    Give extra options to the benchmark executables.
+
+.. option:: --benchmark-option=option
+
+    Give an extra option to the benchmark executables. There is no need to
+    quote options containing spaces because a single option is assumed,
+    so options will not be split on spaces.
 
 .. _setup-sdist:
 

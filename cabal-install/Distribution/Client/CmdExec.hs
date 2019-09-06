@@ -76,6 +76,7 @@ import Distribution.Simple.GHC
 import Distribution.Simple.Setup
   ( HaddockFlags
   , TestFlags
+  , BenchmarkFlags
   , fromFlagOrDefault
   )
 import Distribution.Simple.Utils
@@ -95,7 +96,9 @@ import Distribution.Client.Compat.Prelude
 import qualified Data.Set as S
 import qualified Data.Map as M
 
-execCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+execCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                         , HaddockFlags, TestFlags, BenchmarkFlags
+                         )
 execCommand = CommandUI
   { commandName = "v2-exec"
   , commandSynopsis = "Give a command access to the store."
@@ -120,9 +123,11 @@ execCommand = CommandUI
   , commandDefaultFlags = commandDefaultFlags Client.installCommand
   }
 
-execAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+execAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+              , HaddockFlags, TestFlags, BenchmarkFlags )
            -> [String] -> GlobalFlags -> IO ()
-execAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+execAction ( configFlags, configExFlags, installFlags
+           , haddockFlags, testFlags, benchmarkFlags )
            extraArgs globalFlags = do
 
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
@@ -196,7 +201,7 @@ execAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
     withOverrides env args program = program
       { programOverrideEnv = programOverrideEnv program ++ env
       , programDefaultArgs = programDefaultArgs program ++ args}

@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          , liftOptions, yesNoOpt )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags
+         ( HaddockFlags, TestFlags, BenchmarkFlags
          , Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, option )
@@ -35,7 +35,8 @@ import qualified Data.Map as Map
 buildCommand ::
   CommandUI
   (BuildFlags, ( ConfigFlags, ConfigExFlags
-               , InstallFlags, HaddockFlags, TestFlags))
+               , InstallFlags, HaddockFlags
+               , TestFlags, BenchmarkFlags ))
 buildCommand = CommandUI {
   commandName         = "v2-build",
   commandSynopsis     = "Compile targets within the project.",
@@ -103,11 +104,13 @@ defaultBuildFlags = BuildFlags
 --
 buildAction ::
   ( BuildFlags
-  , (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags))
+  , ( ConfigFlags, ConfigExFlags, InstallFlags
+    , HaddockFlags, TestFlags, BenchmarkFlags ))
   -> [String] -> GlobalFlags -> IO ()
 buildAction
   ( buildFlags
-  , (configFlags, configExFlags, installFlags, haddockFlags, testFlags))
+  , ( configFlags, configExFlags, installFlags
+    , haddockFlags, testFlags, benchmarkFlags ))
             targetStrings globalFlags = do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
@@ -159,7 +162,7 @@ buildAction
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
