@@ -2199,6 +2199,13 @@ system-dependent values for these fields.
 
     Root directories for the module hierarchy.
 
+    .. note::
+
+      Components can share source directories but modules will be compiled if
+      they can be found there, i.e., if a library and an executable share a
+      source directory and the executable depends on the library's ``Foo``
+      module it will be recompiled even if the library has already been built.
+
 .. pkg-field:: default-extensions: identifier list
 
     A list of Haskell extensions used by every module. These determine
