@@ -1,5 +1,6 @@
 # 3.1.0.0 (current development version)
   * TODO
+  * Passes cxx flags as -optscxx- for the GHC higher than 8.9 version.
 
  ----
 

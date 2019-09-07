@@ -664,7 +664,11 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
-  , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
+
+  , let prefix = if compilerVersion comp `withinRange` orLaterVersion (mkVersion [8,8])
+                 then "-optcxx"
+                 else "-optc"
+    in [ prefix ++ opt | opt <- ghcOptCxxOptions opts]
 
   -----------------
   -- Linker stuff
