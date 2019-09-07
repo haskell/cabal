@@ -2184,14 +2184,20 @@ system-dependent values for these fields.
        :pkg-field:`other-modules`, :pkg-field:`library:exposed-modules` or
        :pkg-field:`executable:main-is` fields.
 
+.. pkg-field:: hs-source-dir: directory list
+    :deprecated: 2.0
+    :removed: 3.0
+    :default: ``.``
+
+    Root directories for the module hierarchy.
+
+    Deprecated in favor of :pkg-field:`hs-source-dirs`.
+
 .. pkg-field:: hs-source-dirs: directory list
 
     :default: ``.``
 
     Root directories for the module hierarchy.
-
-    For backwards compatibility, the old variant ``hs-source-dir`` is
-    also recognized.
 
 .. pkg-field:: default-extensions: identifier list
 
