@@ -1,4 +1,5 @@
 {
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
