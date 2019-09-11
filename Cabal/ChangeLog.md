@@ -1,5 +1,6 @@
 # 3.1.0.0 (current development version)
   * TODO
+  * Fix dependency resolution for preprocessing `chs` files.
 
  ----
 
