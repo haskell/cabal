@@ -468,6 +468,10 @@ library
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary
+  other-modules:
+    Distribution.C2Hs
+    Distribution.C2Hs.Lexer
+  build-tool-depends: alex:alex
 
   -- Parsec parser-related modules
   build-depends:
