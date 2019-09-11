@@ -3,6 +3,7 @@
 .PHONY : cabal-install-dev cabal-install-prod
 
 LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
+LEXER_C2HS:=Cabal/Distribution/C2Hs/Lexer.hs
 SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
 SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
 
@@ -13,10 +14,10 @@ CABALRUN   := cabal new-run --enable-tests
 
 all : exe lib
 
-lib : $(LEXER_HS)
+lib : $(LEXER_HS) $(LEXER_C2HS)
 	$(CABALBUILD) Cabal:libs
 
-exe : $(LEXER_HS)
+exe : $(LEXER_HS) $(LEXER_C2HS)
 	$(CABALBUILD) cabal-install:exes
 
 # source generation: Lexer
@@ -27,6 +28,11 @@ $(LEXER_HS) : boot/Lexer.x
 	alex --latin1 --ghc -o $@ $^
 	cat -s $@ > Lexer.tmp
 	mv Lexer.tmp $@
+
+$(LEXER_CHS) : boot/C2HsLexer.x
+	alex --latin1 --ghc -o $@ $^
+	cat -s $@ > C2HsLexer.tmp
+	mv C2HsLexer.tmp $@
 
 # source generation: SPDX
 
