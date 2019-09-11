@@ -1,8 +1,5 @@
 {
 module Distribution.C2Hs.Lexer ( getImports ) where
-
-import Data.List (groupBy)
-
 }
 
 %wrapper "monad"
@@ -66,7 +63,7 @@ nested_comment = go 1 =<< alexGetInput
                                 Just (c',input_) -> go (addLevel c' $ n) input_
                         _ -> go n input'
 
-          addLevel c' = if c' == 123 then (+1) else id
+          addLevel c' = if c' == 45 then (+1) else id
 
           err (pos,_,_,_) =
             let (AlexPn _ line col) = pos in
@@ -86,11 +83,5 @@ loop = do
     case tok' of
         End -> pure []
         _ -> (tok' :) <$> loop
-
-split :: String -> [String]
-split = filter (/= ":") . groupBy g
-    where g ':' _ = False
-          g _ ':' = False
-          g _ _   = True
 
 }
