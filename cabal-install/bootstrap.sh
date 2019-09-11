@@ -268,6 +268,8 @@ DIGEST_VER="0.0.1.2"; DIGEST_REGEXP="0\.0\.(1\.[2-9]|[2-9]\.?)"
                        # >= 0.0.1.2 && < 0.1
 ZIP_ARCHIVE_VER="0.3.3"; ZIP_ARCHIVE_REGEXP="0\.3\.[3-9]"
                        # >= 0.3.3 && < 0.4
+ALEX_VER="3.2.4"; ALEX_REGEXP="3\.2\.[0-9]"
+                       # >= 3.2.0 && < 3.3
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -430,8 +432,9 @@ do_Cabal_pkg () {
     then
         if need_pkg "Cabal" ${CABAL_VER_REGEXP}
         then
+            ALEX_PATH="$(pwd)/$(find . -name alex -perm 755 | tail -n1)"
             echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
-            (cd ../Cabal && install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP})
+            (cd ../Cabal && ${ALEX_PATH} -g Distribution/C2Hs/Lexer.x && install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP})
         else
             echo "Cabal is already installed and the version is ok."
         fi
@@ -450,6 +453,7 @@ info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+info_pkg "alex"         ${ALEX_VER}    ${ALEX_VER_REGEXP}
 info_pkg "network-uri"  ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
@@ -484,6 +488,7 @@ do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+do_pkg   "alex"         ${ALEX_VER}    ${ALEX_VER_REGEXP}
 
 # Install the Cabal library from the local Git clone if possible.
 do_Cabal_pkg
