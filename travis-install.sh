@@ -20,7 +20,6 @@ if [ -z ${STACK_CONFIG+x} ]; then
             # change to /tmp so cabal.project doesn't affect new-install
             cabal v2-update
             (cd /tmp && cabal v2-install alex --constraint='alex ^>= 3.2.4' --overwrite=always)
-            (cd /tmp && cabal v2-install happy --constraint='happy ^>= 1.19.9' --overwrite=always)
         fi
 
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
