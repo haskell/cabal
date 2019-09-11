@@ -33,6 +33,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
+import Distribution.C2Hs
 import Distribution.Simple.PreProcess.Unlit
 import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
@@ -168,7 +169,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
+    mods <- reorderC2Hs dirs (allLibModules lib clbi)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
