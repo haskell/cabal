@@ -1,4 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 -- Based on https://github.com/gtk2hs/gtk2hs/blob/master/tools/src/Gtk2HsSetup.hs#L414
 module Distribution.C2Hs ( reorderC2Hs ) where
 
