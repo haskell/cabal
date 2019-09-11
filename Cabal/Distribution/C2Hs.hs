@@ -1,9 +1,11 @@
 -- Based on https://github.com/gtk2hs/gtk2hs/blob/master/tools/src/Gtk2HsSetup.hs#L414
 module Distribution.C2Hs ( reorderC2Hs ) where
 
+import Control.Applicative (pure, (<$>))
 import Data.List (foldl')
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Data.Traversable (traverse)
 import Distribution.C2Hs.Lexer
 import Distribution.ModuleName (ModuleName, components)
 import Distribution.Parsec (simpleParsec)

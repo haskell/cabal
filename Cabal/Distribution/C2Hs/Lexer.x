@@ -1,5 +1,7 @@
 {
 module Distribution.C2Hs.Lexer ( getImports ) where
+
+import Control.Applicative ((<$>))
 }
 
 %wrapper "monad"
