@@ -14,10 +14,10 @@ CABALRUN   := cabal new-run --enable-tests
 
 all : exe lib
 
-lib : $(LEXER_HS) $(LEXER_C2HS)
+lib : $(LEXER_HS) $(LEXER_CHS)
 	$(CABALBUILD) Cabal:libs
 
-exe : $(LEXER_HS) $(LEXER_C2HS)
+exe : $(LEXER_HS) $(LEXER_CHS)
 	$(CABALBUILD) cabal-install:exes
 
 # source generation: Lexer
