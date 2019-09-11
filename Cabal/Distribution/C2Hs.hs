@@ -17,37 +17,36 @@ reorderC2Hs dirs preMods = do
 
   mFiles <- traverse findModule preMods
 
-  let preDeps = zipWith (ModDep []) preMods mFiles
+  let preDeps = zip (fmap (ModDep []) preMods) mFiles
 
   modDeps <- traverse extractDeps preDeps
 
   let mods = reverse (sortTopological modDeps)
 
-  pure (mdOriginal <$> mods)
+  pure (moduleOriginal <$> mods)
 
-data ModDep = ModDep { mdRequires :: [ModuleName]
-                     , mdOriginal :: ModuleName
-                     , mdLocation :: Maybe FilePath
+data ModDep = ModDep { moduleRequires :: [ModuleName]
+                     , moduleOriginal :: ModuleName
                      }
 
-extractDeps :: ModDep -> IO ModDep
-extractDeps md@(ModDep _ _ Nothing) = pure md
-extractDeps md@(ModDep _ _ (Just f)) = withUTF8FileContents f $ \con -> do
+extractDeps :: (ModDep, Maybe FilePath) -> IO ModDep
+extractDeps (md, Nothing) = pure md
+extractDeps (md, (Just f)) = withUTF8FileContents f $ \con -> do
   mods <- case getImports con of
         Right ms -> case traverse simpleParsec ms of
             Just ms' -> pure ms'
             Nothing -> dieNoVerbosity ("Cannot parse module name in c2hs file " ++ f)
         Left err -> dieNoVerbosity ("Cannot parse c2hs import in " ++ f ++ ": " ++ err)
-  pure (md { mdRequires = mods })
+  pure (md { moduleRequires = mods })
 
 sortTopological :: [ModDep] -> [ModDep]
-sortTopological ms = fst $ foldl' visit (([]), S.empty) (mdOriginal <$> ms)
+sortTopological ms = fst $ foldl' visit (([]), S.empty) (moduleOriginal <$> ms)
   where
-    set = M.fromList (fmap (\m -> (mdOriginal m, m)) ms)
-    visit (out,visited) m
+    set = M.fromList (fmap (\m -> (moduleOriginal m, m)) ms)
+    visit (out, visited) m
       | m `S.member` visited = (out,visited)
       | otherwise = case m `M.lookup` set of
           Nothing -> (out, m `S.insert` visited)
           Just md -> (md:out', visited')
             where
-              (out',visited') = foldl' visit (out, m `S.insert` visited) (mdRequires md)
+              (out',visited') = foldl' visit (out, m `S.insert` visited) (moduleRequires md)
