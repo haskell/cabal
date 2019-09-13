@@ -12,4 +12,8 @@ tests = [ testCase "simple import" $
             getImports "-- {# import Data.Char #}" @?= Right []
         , testCase "nested block comment" $
             getImports "{- nested {- comment -} -} {# import Data.Char #}" @?= Right ["Data.Char"]
+        , testCase "Not find spurious imports" $
+            getImports "import Data.Word\n{# import Data.Char #}" @?= Right ["Data.Char"]
+        , testCase "Work with qualified imports + spaces" $
+            getImports "{# import qualified   Data.Char #}" @?= Right ["Data.Char"]
         ]
