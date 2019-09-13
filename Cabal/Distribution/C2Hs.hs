@@ -13,7 +13,7 @@ import Distribution.Parsec (simpleParsec)
 import Distribution.Simple.Utils (warn, findFileWithExtension)
 import Distribution.Verbosity (Verbosity)
 
--- | Given a list of 'ModuleName's, sort it according to @c2hs@ @{#import#}@
+-- | Given a list of 'ModuleName's, sort it according to @c2hs@ @{\#import\#}@
 -- declarations.
 reorderC2Hs :: Verbosity
             -> [FilePath] -- ^ Source directories

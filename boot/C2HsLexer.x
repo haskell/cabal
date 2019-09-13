@@ -1,7 +1,7 @@
 {
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 -- | This contains a partial lexer for @.chs@ files; enough to extract 
--- information from @{#import#}@ declarations
+-- information from @{\#import\#}@ declarations
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
@@ -42,7 +42,7 @@ alex = pure
 alexEOF :: Alex Token
 alexEOF = pure End
 
--- | Given a 'String' containing C2Hs, return a list of modules it @{#import#}@s.
+-- | Given a 'String' containing C2Hs, return a list of modules it @{\#import\#}@s.
 getImports :: String -> Either String [String]
 getImports = fmap extractDeps . lexC
 
