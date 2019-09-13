@@ -169,7 +169,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-    mods <- reorderC2Hs dirs (allLibModules lib clbi)
+    mods <- reorderC2Hs verbosity dirs (allLibModules lib clbi)
     for_ (map ModuleName.toFilePath mods) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
