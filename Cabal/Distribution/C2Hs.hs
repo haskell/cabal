@@ -31,7 +31,7 @@ reorderC2Hs v dirs preMods = do
 
     modDeps <- traverse (extractDeps v) preDeps
 
-    let mods = reverse (topSort $ fromDistinctList modDeps)
+    let mods = revTopSort (fromDistinctList modDeps)
 
     pure (fmap (\(N m _ _) -> m) mods)
 
