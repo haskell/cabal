@@ -3,7 +3,8 @@
 {-# LINE 1 "boot/C2HsLexer.x" #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
--- | This contains a lexer for @.chs@ files.
+-- | This contains a partial lexer for @.chs@ files; enough to extract 
+-- information from @{#import#}@ declarations
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
@@ -297,7 +298,7 @@ alex_actions = array (0 :: Int, 18)
   , (0,alex_action_7)
   ]
 
-{-# LINE 30 "boot/C2HsLexer.x" #-}
+{-# LINE 31 "boot/C2HsLexer.x" #-}
 
 data Token = Import
            | Module String
@@ -312,7 +313,7 @@ alexEOF :: Alex Token
 alexEOF = pure End
 
 -- | Given a 'String' containing C2Hs, return a list of modules it @{#import#}@s.
-getImports :: String -> Either String [FilePath]
+getImports :: String -> Either String [String]
 getImports = fmap extractDeps . lexC
 
 -- from: https://github.com/simonmar/alex/blob/master/examples/haskell.x#L128
@@ -343,7 +344,7 @@ nested_comment = go 1 =<< alexGetInput
             let (AlexPn _ line col) = pos in
                 alexError ("Error in nested comment at line " ++ show line ++ ", column " ++ show col)
 
-extractDeps :: [Token] -> [FilePath]
+extractDeps :: [Token] -> [String]
 extractDeps []                   = []
 extractDeps (Import:Module s:xs) = s : extractDeps xs
 extractDeps (_:xs)               = extractDeps xs
