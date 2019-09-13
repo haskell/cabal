@@ -603,6 +603,7 @@ test-suite unit-tests
     UnitTests.Distribution.Version
     UnitTests.Distribution.PkgconfigVersion
     UnitTests.Distribution.C2Hs.Lexer
+    UnitTests.Distribution.C2Hs
   main-is: UnitTests.hs
   build-depends:
     array,

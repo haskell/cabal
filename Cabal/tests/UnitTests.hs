@@ -13,6 +13,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Time
 
+import qualified UnitTests.Distribution.C2Hs
 import qualified UnitTests.Distribution.C2Hs.Lexer
 import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.Time
@@ -38,7 +39,9 @@ tests mtimeChangeCalibrated =
                     else mtimeChangeCalibrated
   in
   testGroup "Unit Tests"
-    [ testGroup "Distribution.C2Hs.Lexer"
+    [ testGroup "Distribution.C2Hs"
+        UnitTests.Distribution.C2Hs.tests
+    , testGroup "Distribution.C2Hs.Lexer"
         UnitTests.Distribution.C2Hs.Lexer.tests
     , testGroup "Distribution.Compat.CreatePipe"
         UnitTests.Distribution.Compat.CreatePipe.tests
