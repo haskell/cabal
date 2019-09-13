@@ -15,9 +15,6 @@ import Distribution.Simple.Utils (warn, findFileWithExtension)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath (joinPath)
 
-modOrig :: Node ModuleName ModuleName -> ModuleName
-modOrig (N m _ _) = m
-
 -- | Given a list of 'ModuleName's, sort it according to @c2hs@ @{#import#}@
 -- declarations.
 reorderC2Hs :: Verbosity
@@ -26,25 +23,25 @@ reorderC2Hs :: Verbosity
             -> IO [ModuleName]
 reorderC2Hs v dirs preMods = do
 
-  let findModule = findFileWithExtension [".chs"] dirs . joinPath . components
+    let findModule = findFileWithExtension [".chs"] dirs . joinPath . components
 
-  mFiles <- traverse findModule preMods
+    mFiles <- traverse findModule preMods
 
-  let preDeps = zip (fmap (\m -> N m m []) preMods) mFiles
+    let preDeps = zip (fmap (\m -> N m m []) preMods) mFiles
 
-  modDeps <- traverse (extractDeps v) preDeps
+    modDeps <- traverse (extractDeps v) preDeps
 
-  let mods = reverse (topSort $ fromDistinctList modDeps)
+    let mods = reverse (topSort $ fromDistinctList modDeps)
 
-  pure (modOrig <$> mods)
+    pure (fmap (\(N m _ _) -> m) mods)
 
 extractDeps :: Verbosity -> (Node ModuleName ModuleName, Maybe FilePath) -> IO (Node ModuleName ModuleName)
 extractDeps _ (md, Nothing) = pure md
 extractDeps v (N m m' _, Just f) = do
-  con <- readFile f
-  mods <- case getImports con of
+    con <- readFile f
+    mods <- case getImports con of
         Right ms -> case traverse simpleParsec ms of
             Just ms' -> pure ms'
             Nothing -> warn v ("Cannot parse module name in c2hs file " ++ f) $> []
         Left err -> warn v ("Cannot parse c2hs import in " ++ f ++ ": " ++ err) $> []
-  pure (N m m' mods)
+    pure (N m m' mods)
