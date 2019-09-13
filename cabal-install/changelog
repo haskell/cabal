@@ -1,7 +1,7 @@
 -*-change-log-*-
 
 3.1.0.0 (current development version)
-	* TODO
+	* Add entry for cabal version 3.0 to cabal initialization script
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* Parse comma-separated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,
