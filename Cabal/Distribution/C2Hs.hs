@@ -18,7 +18,12 @@ import System.FilePath (joinPath)
 modOrig :: Node ModuleName ModuleName -> ModuleName
 modOrig (N m _ _) = m
 
-reorderC2Hs :: Verbosity -> [FilePath] -> [ModuleName] -> IO [ModuleName]
+-- | Given a list of 'ModuleName's, sort it according to @c2hs@ @{#import#}@
+-- declarations.
+reorderC2Hs :: Verbosity
+            -> [FilePath] -- ^ Source directories
+            -> [ModuleName] -- ^ Module names
+            -> IO [ModuleName]
 reorderC2Hs v dirs preMods = do
 
   let findModule = findFileWithExtension [".chs"] dirs . joinPath . components

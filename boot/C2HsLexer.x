@@ -1,5 +1,6 @@
 {
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+-- | This contains a lexer for @.chs@ files.
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
