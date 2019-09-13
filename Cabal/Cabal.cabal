@@ -468,7 +468,6 @@ library
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary
-  other-modules:
     Distribution.C2Hs
     Distribution.C2Hs.Lexer
 
@@ -603,6 +602,7 @@ test-suite unit-tests
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Version
     UnitTests.Distribution.PkgconfigVersion
+    UnitTests.Distribution.C2Hs.Lexer
   main-is: UnitTests.hs
   build-depends:
     array,
