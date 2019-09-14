@@ -49,6 +49,7 @@ import Distribution.Client.Setup
          , doctestCommand
          , copyCommand
          , registerCommand
+         , WriteAutogenFilesFlags(..)
          )
 import Distribution.Simple.Setup
          ( HaddockTarget(..)
@@ -80,6 +81,8 @@ import qualified Distribution.Client.List as List
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdUpdate    as CmdUpdate
 import qualified Distribution.Client.CmdBuild     as CmdBuild
+import qualified Distribution.Client.CmdShowBuildInfo as CmdShowBuildInfo
+import qualified Distribution.Client.CmdWriteAutogenFiles as CmdWriteAutogenFiles
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
@@ -134,7 +137,7 @@ import qualified Distribution.Simple as Simple
 import qualified Distribution.Make as Make
 import qualified Distribution.Types.UnqualComponentName as Make
 import Distribution.Simple.Build
-         ( startInterpreter )
+         ( startInterpreter, initialBuildSteps )
 import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command, CommandSpec(..)
          , CommandType(..), commandsRun, commandAddAction, hiddenCommand
@@ -157,7 +160,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, normal, silent )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
@@ -253,7 +256,11 @@ mainWorker args = do
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       , regularCmd CmdListBin.listbinCommand     CmdListBin.listbinAction
-
+      -- ghc-mod supporting commands
+      , hiddenCmd CmdShowBuildInfo.showBuildInfoCommand
+                    CmdShowBuildInfo.showBuildInfoAction
+      , hiddenCmd CmdWriteAutogenFiles.writeAutogenFilesCommand
+                    CmdWriteAutogenFiles.writeAutogenFilesAction
       ] ++ concat
       [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
       , newCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
@@ -268,7 +275,6 @@ mainWorker args = do
       , newCmd  CmdExec.execCommand           CmdExec.execAction
       , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction
       , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
-
       , legacyCmd configureExCommand configureAction
       , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
@@ -389,23 +395,79 @@ buildAction buildFlags extraArgs globalFlags = do
   nixShell verbosity distPref globalFlags config $ do
     build verbosity config' distPref buildFlags extraArgs
 
+buildAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
+buildAction flags@(buildFlags, _) = buildActionForCommand
+  (Cabal.buildCommand defaultProgramDb)
+  verbosity
+  flags
+  where verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
+
+showBuildInfoAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
+showBuildInfoAction flags@(buildFlags, _) = buildActionForCommand
+  (Cabal.showBuildInfoCommand defaultProgramDb)
+  verbosity
+  flags
+    -- Default silent verbosity so as not to pollute json output
+  where verbosity = fromFlagOrDefault silent (buildVerbosity buildFlags)
+
+buildActionForCommand :: CommandUI BuildFlags
+                      -> Verbosity
+                      -> (BuildFlags, BuildExFlags)
+                      -> [String]
+                      -> Action
+buildActionForCommand commandUI verbosity (buildFlags, buildExFlags) extraArgs globalFlags
+  = do
+    let noAddSource =
+          fromFlagOrDefault DontSkipAddSourceDepsCheck (buildOnly buildExFlags)
+    (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+    distPref             <- findSavedDistPref config (buildDistPref buildFlags)
+    -- Calls 'configureAction' to do the real work, so nothing special has to be
+    -- done to support sandboxes.
+    config'              <- reconfigure configureAction
+                                        verbosity
+                                        distPref
+                                        useSandbox
+                                        noAddSource
+                                        (buildNumJobs buildFlags)
+                                        mempty
+                                        []
+                                        globalFlags
+                                        config
+    nixShell verbosity distPref globalFlags config $ do
+      maybeWithSandboxDirOnSearchPath useSandbox $ buildForCommand commandUI
+                                                                   verbosity
+                                                                   config'
+                                                                   distPref
+                                                                   buildFlags
+                                                                   extraArgs
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
 -- 'reconfigure' twice.
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
-build verbosity config distPref buildFlags extraArgs =
-  setupWrapper verbosity setupOptions Nothing
-               (Cabal.buildCommand progDb) mkBuildFlags (const extraArgs)
-  where
-    progDb       = defaultProgramDb
-    setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+build = buildForCommand (Cabal.buildCommand defaultProgramDb)
 
-    mkBuildFlags version = filterBuildFlags version config buildFlags'
-    buildFlags' = buildFlags
-      { buildVerbosity = toFlag verbosity
-      , buildDistPref  = toFlag distPref
-      }
+buildForCommand :: CommandUI BuildFlags
+                -> Verbosity
+                -> SavedConfig
+                -> FilePath
+                -> BuildFlags
+                -> [String]
+                -> IO ()
+buildForCommand command verbosity config distPref buildFlags extraArgs =
+  setupWrapper verbosity
+               setupOptions
+               Nothing
+               command
+               mkBuildFlags
+               (const extraArgs)
+ where
+  setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+
+  mkBuildFlags version = filterBuildFlags version config buildFlags'
+  buildFlags' = buildFlags { buildVerbosity = toFlag verbosity
+                           , buildDistPref  = toFlag distPref
+                           }
 
 -- | Make sure that we don't pass new flags to setup scripts compiled against
 -- old versions of Cabal.
@@ -711,7 +773,7 @@ listAction listFlags extraArgs globalFlags = do
         , configHcPath     = listHcPath listFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  compProgdb <- if listNeedsCompiler listFlags 
+  compProgdb <- if listNeedsCompiler listFlags
       then do
           (comp, _, progdb) <- configCompilerAux' configFlags
           return (Just (comp, progdb))
@@ -1017,3 +1079,23 @@ manpageAction commands flags extraArgs _ = do
                  then dropExtension pname
                  else pname
   manpageCmd cabalCmd commands flags
+
+--Further commands to support ghc-mod usage
+writeAutogenFilesAction :: WriteAutogenFilesFlags -> [String] -> Action
+writeAutogenFilesAction flags _ globalFlags = do
+  let verbosity = fromFlag (wafVerbosity flags)
+  load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
+  let config = either (\(SomeException _) -> mempty) snd load
+  distPref <- findSavedDistPref config (wafDistPref flags)
+  pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
+  eLBI <- tryGetPersistBuildConfig distPref
+  case eLBI of
+    Left err -> case err of
+      -- Note: the build config could have been generated by a custom setup
+      -- script built against a different Cabal version, so it's crucial that
+      -- we ignore the bad version error here.
+      ConfigStateFileBadVersion _ _ _ -> pure ()
+      _                               -> die' verbosity (show err)
+    Right lbi -> do
+      initialBuildSteps distPref pkg lbi verbosity
+      pure ()
