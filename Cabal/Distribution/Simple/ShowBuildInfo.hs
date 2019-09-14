@@ -2,7 +2,7 @@
 -- This module defines a simple JSON-based format for exporting basic
 -- information about a Cabal package and the compiler configuration Cabal
 -- would use to build it. This can be produced with the
--- @cabal new-show-build-info@ command.
+-- @cabal show-build-info@ command.
 --
 --
 -- This format is intended for consumption by external tooling and should

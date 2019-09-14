@@ -166,6 +166,7 @@ library cabal-lib-client
         Distribution.Client.CmdListBin
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
+        Distribution.Client.CmdShowBuildInfo
         Distribution.Client.CmdSdist
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate

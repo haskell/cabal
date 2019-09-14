@@ -8,7 +8,8 @@ module Distribution.Client.CmdBuild (
 
     -- * Internals exposed for testing
     selectPackageTargets,
-    selectComponentTarget
+    selectComponentTarget,
+    reportTargetProblems
   ) where
 
 import Prelude ()
