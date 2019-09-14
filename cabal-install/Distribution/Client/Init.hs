@@ -194,7 +194,7 @@ displayCabalVersion v = case versionNumbers v of
   [2,0]  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
   [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
   [2,4]  -> "2.4    (+ support for '**' globbing)"
-  [3,0]  -> "3.0    (+ support for v2-* options as default, other bikesheddable content here)"
+  [3,0]  -> "3.0    (+ support for set-notation syntax for '==' and '^>=')"
   _      -> display v
 
 -- | Ask if a simple project with sensible defaults should be created.
@@ -222,19 +222,19 @@ getCabalVersion flags = do
   cabVer <-     return (flagToMaybe $ cabalVersion flags)
             ?>> maybePrompt flags (either (const defaultCabalVersion) id `fmap`
                                   promptList "Please choose version of the Cabal specification to use"
-                                  vlist
+                                  versionList
                                   (Just defaultCabalVersion) displayCabalVersion False)
             ?>> return (Just defaultCabalVersion)
 
   return $  flags { cabalVersion = maybeToFlag cabVer }
 
   where
-    vlist =
-      [ mkVersion [1,10]
-      , mkVersion [2,0]
-      , mkVersion [2,2]
-      , mkVersion [2,4]
-      , mkVersion [3,0]
+    versionList = fmap mkVersion
+      [ [1,10]
+      , [2,0]
+      , [2,2]
+      , [2,4]
+      , [3,0]
       ]
 
 -- | Get the package name: use the package directory (supplied, or the current
