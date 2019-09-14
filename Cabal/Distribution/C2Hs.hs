@@ -4,7 +4,6 @@
 module Distribution.C2Hs ( reorderC2Hs ) where
 
 import Prelude()
-import Data.Functor (($>))
 import Distribution.Compat.Graph
 import Distribution.Compat.Prelude
 import Distribution.C2Hs.Lexer
@@ -40,6 +39,6 @@ extractDeps v (m, Just f) = do
     mods <- case getImports con of
         Right ms -> case traverse simpleParsec ms of
             Just ms' -> pure ms'
-            Nothing -> warn v ("Cannot parse module name in c2hs file " ++ f) $> []
-        Left err -> warn v ("Cannot parse c2hs import in " ++ f ++ ": " ++ err) $> []
+            Nothing -> do { warn v ("Cannot parse module name in c2hs file " ++ f) ; pure [] }
+        Left err -> do { warn v ("Cannot parse c2hs import in " ++ f ++ ": " ++ err) ; pure [] }
     pure (N m m mods)
