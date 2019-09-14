@@ -177,14 +177,16 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
     let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
+    mods <- reorderC2Hs verbosity dirs (foreignLibModules flib)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ otherModules bi) $
+    mods <- reorderC2Hs verbosity dirs (otherModules bi)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
