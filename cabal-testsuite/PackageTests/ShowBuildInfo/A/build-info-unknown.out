@@ -1,0 +1,12 @@
+# cabal show-build-info
+cabal: Internal error in target matching. It should always be possible to find a syntax that's sufficiently qualified to give an unambiguous match. However when matching 'exe:B'  we found exe:B (unknown-component) which does not have an unambiguous syntax. The possible syntax and the targets they match are as follows:
+'exe:B' which matches exe:B (unknown-component), :pkg:exe:lib:exe:module:B (unknown-module), :pkg:exe:lib:exe:file:B (unknown-file)
+# cabal show-build-info
+Resolving dependencies...
+cabal: No unit B-inplace-0.1.0.0
+# cabal show-build-info
+Configuring library for A-0.1.0.0..
+cabal: No unit B-inplace-0.1.0.0
+# cabal show-build-info
+cabal: Internal error in target matching. It should always be possible to find a syntax that's sufficiently qualified to give an unambiguous match. However when matching 'exe:B'  we found exe:B (unknown-component) which does not have an unambiguous syntax. The possible syntax and the targets they match are as follows:
+'exe:B' which matches exe:B (unknown-component), :pkg:exe:lib:exe:module:B (unknown-module), :pkg:exe:lib:exe:file:B (unknown-file)

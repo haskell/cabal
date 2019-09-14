@@ -67,7 +67,7 @@ import System.Directory ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
 
 -- | Take a list of 'String' build targets, and parse and validate them
--- into actual 'TargetInfo's to be built/registered/whatever.
+-- into actual 'TargetInfo's to be built\/registered\/whatever.
 readTargetInfos :: Verbosity -> PackageDescription -> LocalBuildInfo -> [String] -> IO [TargetInfo]
 readTargetInfos verbosity pkg_descr lbi args = do
     build_targets <- readBuildTargets verbosity pkg_descr args
