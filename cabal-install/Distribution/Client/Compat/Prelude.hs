@@ -13,7 +13,9 @@
 module Distribution.Client.Compat.Prelude
   ( module Distribution.Compat.Prelude.Internal
   , Prelude.IO
+  , Proxy (..)
   ) where
 
 import Prelude (IO)
 import Distribution.Compat.Prelude.Internal hiding (IO)
+import Data.Proxy (Proxy (..))

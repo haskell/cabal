@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
@@ -16,7 +17,7 @@ import Distribution.Deprecated.Text as Text
 import qualified Distribution.Deprecated.ReadP as Parse
 
 import Distribution.Package
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription hiding (Flag, SourceRepo)
 import Distribution.Compiler
 import Distribution.Version
 import Distribution.Simple.Compiler
@@ -33,6 +34,7 @@ import Distribution.Client.InstallSymlink
 import Distribution.Client.Dependency.Types
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.Targets
+import Distribution.Client.SourceRepo
 import Distribution.Utils.NubList
 import Network.URI
 
@@ -173,7 +175,7 @@ prop_roundtrip_printparse_all config =
 
 prop_roundtrip_printparse_packages :: [PackageLocationString]
                                    -> [PackageLocationString]
-                                   -> [SourceRepo]
+                                   -> [SourceRepoList]
                                    -> [PackageVersionConstraint]
                                    -> Property
 prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
@@ -762,35 +764,24 @@ instance Arbitrary HaddockTarget where
 instance Arbitrary TestShowDetails where
     arbitrary = arbitraryBoundedEnum
 
-instance Arbitrary SourceRepo where
-    arbitrary = (SourceRepo kind
-                           <$> arbitrary
-                           <*> (fmap getShortToken <$> arbitrary)
-                           <*> (fmap getShortToken <$> arbitrary)
-                           <*> (fmap getShortToken <$> arbitrary)
-                           <*> (fmap getShortToken <$> arbitrary)
-                           <*> (fmap getShortToken <$> arbitrary))
-                `suchThat` (/= emptySourceRepo kind)
-      where
-        kind = RepoKindUnknown "unused"
+instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
+    arbitrary = SourceRepositoryPackage
+        <$> arbitrary
+        <*> (getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> shortListOf 3 arbitrary)
 
-    shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
-      [ repo
-      | ((x1', x2', x3'), (x4', x5', x6'))
-          <- shrink ((x1,
-                      fmap ShortToken x2,
-                      fmap ShortToken x3),
-                     (fmap ShortToken x4,
-                      fmap ShortToken x5,
-                      fmap ShortToken x6))
-      , let repo = SourceRepo RepoThis x1'
-                              (fmap getShortToken x2')
-                              (fmap getShortToken x3')
-                              (fmap getShortToken x4')
-                              (fmap getShortToken x5')
-                              (fmap getShortToken x6')
-      , repo /= emptySourceRepo RepoThis
-      ]
+    shrink (SourceRepositoryPackage x1 x2 x3 x4 x5) =
+        [ SourceRepositoryPackage
+            x1'
+            (getShortToken x2')
+            (fmap getShortToken x3')
+            (fmap getShortToken x4')
+            (fmap getShortToken x5')
+        | (x1', x2', x3', x4', x5') <- shrink
+          (x1, ShortToken x2, fmap ShortToken x3, fmap ShortToken x4, fmap ShortToken x5)
+        ]
 
 instance Arbitrary RepoType where
     arbitrary = elements knownRepoTypes

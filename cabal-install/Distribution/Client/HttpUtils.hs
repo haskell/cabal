@@ -15,7 +15,7 @@ module Distribution.Client.HttpUtils (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Prelude hiding (Proxy (..))
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)

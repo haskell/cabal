@@ -29,6 +29,7 @@ import Distribution.Client.Targets
          ( UserConstraint )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import Distribution.Client.SourceRepo (SourceRepoList)
 
 import Distribution.Client.IndexUtils.Timestamp
          ( IndexState )
@@ -48,7 +49,7 @@ import Distribution.Version
 import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
-         ( FlagAssignment, SourceRepo(..) )
+         ( FlagAssignment )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
@@ -107,7 +108,7 @@ data ProjectConfig
        projectPackagesOptional      :: [String],
 
        -- | Packages in this project from remote source repositories.
-       projectPackagesRepo          :: [SourceRepo],
+       projectPackagesRepo          :: [SourceRepoList],
 
        -- | Packages in this project from hackage repositories.
        projectPackagesNamed         :: [PackageVersionConstraint],

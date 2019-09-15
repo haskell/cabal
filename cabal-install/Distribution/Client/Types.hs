@@ -48,8 +48,8 @@ import Distribution.Types.ComponentName
          ( ComponentName(..) )
 import Distribution.Types.LibraryName
          ( LibraryName(..) )
-import Distribution.Types.SourceRepo
-         ( SourceRepo )
+import Distribution.Client.SourceRepo
+         ( SourceRepoMaybe )
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -287,7 +287,7 @@ data PackageLocation local =
   | RepoTarballPackage Repo PackageId local
 
     -- | A package available from a version control system source repository
-  | RemoteSourceRepoPackage SourceRepo local
+  | RemoteSourceRepoPackage SourceRepoMaybe local
   deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)

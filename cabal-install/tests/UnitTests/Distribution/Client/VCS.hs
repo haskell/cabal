@@ -1,22 +1,20 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 module UnitTests.Distribution.Client.VCS (tests) where
 
+import Distribution.Client.Compat.Prelude
 import Distribution.Client.VCS
 import Distribution.Client.RebuildMonad
          ( execRebuild )
 import Distribution.Simple.Program
 import Distribution.Verbosity as Verbosity
-import Distribution.Types.SourceRepo
+import Distribution.Client.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy)
 
 import Data.List
 import Data.Tuple
 import qualified Data.Map as Map
-import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Set (Set)
-import Data.Char (isSpace)
 
-import Control.Monad
 import qualified Control.Monad.State as State
 import Control.Monad.State (StateT, liftIO, execStateT)
 import Control.Exception
@@ -196,11 +194,13 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
         removeDirectoryRecursiveHack verbosity destRepoPath
       where
         destRepoPath = tmpdir </> "dest"
-        repo = (emptySourceRepo RepoThis) {
-                 repoType     = Just (vcsRepoType vcsVCS),
-                 repoLocation = Just vcsRepoRoot,
-                 repoTag      = Just tagname
-               }
+        repo = SourceRepositoryPackage
+            { srpType     = vcsRepoType vcsVCS
+            , srpLocation = vcsRepoRoot
+            , srpTag      = Just tagname
+            , srpBranch   = Nothing
+            , srpSubdir   = []
+            }
     verbosity = silent
 
 
@@ -264,7 +264,7 @@ checkSyncRepos verbosity VCSTestDriver { vcsVCS = vcs, vcsIgnoreFiles }
                (SyncTargetIterations syncTargetSetIterations) (PrngSeed seed) =
     mapM_ checkSyncTargetSet syncTargetSets
   where
-    checkSyncTargetSet :: [(SourceRepo, FilePath, RepoWorkingState)] -> IO ()
+    checkSyncTargetSet :: [(SourceRepoProxy, FilePath, RepoWorkingState)] -> IO ()
     checkSyncTargetSet syncTargets = do
       _ <- execRebuild "root-unused" $
            syncSourceRepos verbosity vcs
@@ -282,22 +282,24 @@ checkSyncRepos verbosity VCSTestDriver { vcsVCS = vcs, vcsIgnoreFiles }
 pickSyncTargetSets :: RepoType -> RepoState
                    -> FilePath -> [FilePath]
                    -> StdGen
-                   -> [[(SourceRepo, FilePath, RepoWorkingState)]]
+                   -> [[(SourceRepoProxy, FilePath, RepoWorkingState)]]
 pickSyncTargetSets repoType repoState srcRepoPath dstReposPath =
     assert (Map.size (allTags repoState) > 0) $
     unfoldr (Just . swap . pickSyncTargetSet)
   where
-    pickSyncTargetSet :: Rand [(SourceRepo, FilePath, RepoWorkingState)]
+    pickSyncTargetSet :: Rand [(SourceRepoProxy, FilePath, RepoWorkingState)]
     pickSyncTargetSet = flip (mapAccumL (flip pickSyncTarget)) dstReposPath
 
-    pickSyncTarget :: FilePath -> Rand (SourceRepo, FilePath, RepoWorkingState)
+    pickSyncTarget :: FilePath -> Rand (SourceRepoProxy, FilePath, RepoWorkingState)
     pickSyncTarget destRepoPath prng =
         (prng', (repo, destRepoPath, workingState))
       where
-        repo                = (emptySourceRepo RepoThis) {
-                                repoType     = Just repoType,
-                                repoLocation = Just srcRepoPath,
-                                repoTag      = Just tag
+        repo                = SourceRepositoryPackage
+                              { srpType     = repoType
+                              , srpLocation = srcRepoPath
+                              , srpTag      = Just tag
+                              , srpBranch   = Nothing
+                              , srpSubdir   = Proxy
                               }
         (tag, workingState) = Map.elemAt tagIdx (allTags repoState)
         (tagIdx, prng')     = randomR (0, Map.size (allTags repoState) - 1) prng
