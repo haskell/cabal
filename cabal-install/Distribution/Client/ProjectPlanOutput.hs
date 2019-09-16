@@ -20,6 +20,7 @@ import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
 import           Distribution.Client.PackageHash (showHashValue, hashValue)
+import           Distribution.Client.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -212,15 +213,14 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                      , "uri"  J..= J.String (show (remoteRepoURI repoRemote))
                      ]
 
-      sourceRepoToJ :: PD.SourceRepo -> J.Value
-      sourceRepoToJ PD.SourceRepo{..} =
+      sourceRepoToJ :: SourceRepoMaybe -> J.Value
+      sourceRepoToJ SourceRepositoryPackage{..} =
         J.object $ filter ((/= J.Null) . snd) $
-          [ "type"     J..= fmap jdisplay repoType
-          , "location" J..= fmap J.String repoLocation
-          , "module"   J..= fmap J.String repoModule
-          , "branch"   J..= fmap J.String repoBranch
-          , "tag"      J..= fmap J.String repoTag
-          , "subdir"   J..= fmap J.String repoSubdir
+          [ "type"     J..= jdisplay srpType
+          , "location" J..= J.String srpLocation
+          , "branch"   J..= fmap J.String srpBranch
+          , "tag"      J..= fmap J.String srpTag
+          , "subdir"   J..= fmap J.String srpSubdir
           ]
 
       dist_dir = distBuildDirectory distDirLayout

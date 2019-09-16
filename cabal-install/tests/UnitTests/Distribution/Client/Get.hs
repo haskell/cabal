@@ -5,7 +5,8 @@ import Distribution.Client.Get
 
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
-import Distribution.Types.SourceRepo
+import Distribution.Types.SourceRepo (SourceRepo (..), emptySourceRepo, RepoKind (..), RepoType (..))
+import Distribution.Client.SourceRepo (SourceRepositoryPackage (..))
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 
@@ -92,11 +93,19 @@ testUnsupportedRepoType :: Assertion
 testUnsupportedRepoType = do
     e <- assertException $
            clonePackagesFromSourceRepo verbosity "." Nothing pkgrepos
-    e @?= ClonePackageUnsupportedRepoType pkgidfoo repo repotype
+    e @?= ClonePackageUnsupportedRepoType pkgidfoo repo' repotype
   where
     pkgrepos = [(pkgidfoo, [repo])]
-    repo     = (emptySourceRepo RepoHead) {
-                 repoType = Just repotype
+    repo     = (emptySourceRepo RepoHead)
+               { repoType     = Just repotype
+               , repoLocation = Just "loc"
+               }
+    repo'    = SourceRepositoryPackage
+               { srpType     = repotype
+               , srpLocation = "loc"
+               , srpTag      = Nothing
+               , srpBranch   = Nothing
+               , srpSubdir   = Proxy
                }
     repotype = OtherRepoType "baz"
 
@@ -169,10 +178,17 @@ testGitFetchFailed =
                        repoType     = Just Git,
                        repoLocation = Just srcdir
                      }
+          repo'    = SourceRepositoryPackage
+                     { srpType     = Git
+                     , srpLocation = srcdir
+                     , srpTag      = Nothing
+                     , srpBranch   = Nothing
+                     , srpSubdir   = Proxy
+                     }
           pkgrepos = [(pkgidfoo, [repo])]
       e1 <- assertException $
               clonePackagesFromSourceRepo verbosity tmpdir Nothing pkgrepos
-      e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo "git" (ExitFailure 128)
+      e1 @?= ClonePackageFailedWithExitCode pkgidfoo repo' "git" (ExitFailure 128)
 
 
 testNetworkGitClone :: Assertion
