@@ -2201,10 +2201,11 @@ system-dependent values for these fields.
 
     .. note::
 
-      Components can share source directories but modules will be compiled if
-      they can be found there, i.e., if a library and an executable share a
-      source directory and the executable depends on the library's ``Foo``
-      module it will be recompiled even if the library has already been built.
+      Components can share source directories but modules found there will be
+      recompiled even if other components already built them, i.e., if a
+      library and an executable share a source directory and the executable
+      depends on the library and imports its ``Foo`` module, ``Foo`` will be
+      compiled twice, once as part of the library and again for the executable.
 
 .. pkg-field:: default-extensions: identifier list
 
