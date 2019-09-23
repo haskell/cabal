@@ -1,0 +1,23 @@
+name: gogo
+version: 0.1.0.0
+cabal-version: >=1.10
+build-type: Simple
+license: UnspecifiedLicense
+license-file: LICENSE
+extra-source-files:
+    ChangeLog.md
+x-ghc-framework-version: 8.0.2-9.6-2
+x-last-ide-version: HfM1.6.1
+
+executable gogo
+    main-is: Main.hs
+    build-depends:
+        base -any
+    c-sources:
+        Cdefs.c
+        CIntSets.c
+    default-language: Haskell2010
+    other-extensions: QuasiQuotes TemplateHaskell
+                      ForeignFunctionInterface FlexibleContexts OverloadedStrings
+                      DeriveDataTypeable
+
