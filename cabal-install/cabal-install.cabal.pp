@@ -18,7 +18,7 @@ Version:            3.1.0.0
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.13,
+        base       >= 4.8      && < 4.14,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
@@ -495,7 +495,7 @@ executable cabal
         random,
         tagged,
         tar,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && < 1.3,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tree-diff,
@@ -561,7 +561,7 @@ Test-Suite unit-tests
         zlib,
         network-uri < 2.6.2.0,
         network,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
@@ -593,7 +593,7 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
@@ -622,7 +622,7 @@ Test-Suite solver-quickcheck
         hashable,
         random,
         tagged,
-        tasty >= 1.1.0.3 && <1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show >= 1.6.15
@@ -650,7 +650,7 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10,
         tagged
 
