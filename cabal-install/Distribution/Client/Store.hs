@@ -36,7 +36,6 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import           Distribution.Deprecated.Text
 
-import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Control.Exception
 import           Control.Monad (forM_)

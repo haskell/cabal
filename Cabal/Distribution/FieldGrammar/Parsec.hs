@@ -66,7 +66,6 @@ module Distribution.FieldGrammar.Parsec (
 
 import Data.List                   (dropWhileEnd)
 import Data.Ord                    (comparing)
-import Data.Set                    (Set)
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)

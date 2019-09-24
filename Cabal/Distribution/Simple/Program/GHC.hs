@@ -45,7 +45,6 @@ import Language.Haskell.Extension
 import Data.List (stripPrefix)
 import qualified Data.Map as Map
 import Data.Monoid (All(..), Any(..), Endo(..))
-import Data.Set (Set)
 import qualified Data.Set as Set
 
 normaliseGhcArgs :: Maybe Version -> PackageDescription -> [String] -> [String]

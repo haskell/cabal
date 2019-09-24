@@ -54,7 +54,6 @@ import Distribution.Types.UnitId
 import Distribution.Utils.Base62
 
 import qualified Data.Map as Map
-import           Data.Set (Set)
 import qualified Data.Set as Set
 
 -----------------------------------------------------------------------

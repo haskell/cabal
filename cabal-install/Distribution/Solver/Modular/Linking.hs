@@ -12,7 +12,6 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.Function (on)
 import Data.Map ((!))
-import Data.Set (Set)
 import qualified Data.Map         as M
 import qualified Data.Set         as S
 import qualified Data.Traversable as T

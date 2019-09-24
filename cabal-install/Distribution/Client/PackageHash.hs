@@ -60,7 +60,6 @@ import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import           Data.Set (Set)
 
 import Data.Function     (on)
 import Control.Exception (evaluate)

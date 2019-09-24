@@ -28,7 +28,6 @@ import Prelude (read)
 import           Distribution.Deprecated.ReadP ((<++))
 import qualified Distribution.Deprecated.ReadP as Parse
 
-import           Data.Functor.Identity     (Identity (..))
 import           Distribution.Parsec
 import           Distribution.Pretty
 import qualified Text.PrettyPrint          as Disp

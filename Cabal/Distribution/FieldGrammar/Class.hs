@@ -10,8 +10,6 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.Functor.Identity (Identity (..))
-
 import Distribution.CabalSpecVersion (CabalSpecVersion)
 import Distribution.Compat.Newtype   (Newtype)
 import Distribution.Fields.Field
