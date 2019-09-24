@@ -108,6 +108,8 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/assoc-cpp-options.cabal
+  tests/ParserTests/regressions/assoc-cpp-options.check
   tests/ParserTests/regressions/bad-glob-syntax.cabal
   tests/ParserTests/regressions/bad-glob-syntax.check
   tests/ParserTests/regressions/cc-options-with-optimization.cabal

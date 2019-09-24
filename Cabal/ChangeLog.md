@@ -1,4 +1,6 @@
 # 3.1.0.0 (current development version)
+  * `cabal check` verifies `cpp-options` more pedantically, allowing only
+    options starting with `-D` and `-U`.
   * TODO
 
  ----
