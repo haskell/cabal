@@ -531,6 +531,7 @@ library
     Distribution.Utils.Base62
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
+    Distribution.Compat.MD5
     Distribution.Compat.MonadFail
     Distribution.Compat.Prelude
     Distribution.Compat.SnocList
