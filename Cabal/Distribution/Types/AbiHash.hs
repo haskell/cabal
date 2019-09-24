@@ -25,7 +25,7 @@ import Text.PrettyPrint (text)
 --
 -- @since 2.0.0.2
 newtype AbiHash = AbiHash ShortText
-    deriving (Eq, Show, Read, Generic)
+    deriving (Eq, Show, Read, Generic, Typeable)
 
 -- | Construct a 'AbiHash' from a 'String'
 --
@@ -51,7 +51,7 @@ instance IsString AbiHash where
     fromString = mkAbiHash
 
 instance Binary AbiHash
-
+instance Structured AbiHash
 instance NFData AbiHash where rnf = genericRnf
 
 instance Pretty AbiHash where

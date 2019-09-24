@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Simple.InstallDirs.Internal
   ( PathComponent(..)
@@ -10,9 +11,10 @@ import Distribution.Compat.Prelude
 data PathComponent =
        Ordinary FilePath
      | Variable PathTemplateVariable
-     deriving (Eq, Ord, Generic)
+     deriving (Eq, Ord, Generic, Typeable)
 
 instance Binary PathComponent
+instance Structured PathComponent
 
 data PathTemplateVariable =
        PrefixVar     -- ^ The @$prefix@ path variable
@@ -39,9 +41,10 @@ data PathTemplateVariable =
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
                           -- @pass@, @fail@, or @error@.
      | BenchmarkNameVar   -- ^ The name of the benchmark being run
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Generic, Typeable)
 
 instance Binary PathTemplateVariable
+instance Structured PathTemplateVariable
 
 instance Show PathTemplateVariable where
   show PrefixVar     = "prefix"

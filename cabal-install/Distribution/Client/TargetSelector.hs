@@ -191,6 +191,7 @@ data SubComponentTarget =
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary SubComponentTarget
+instance Structured SubComponentTarget
 
 
 -- ------------------------------------------------------------

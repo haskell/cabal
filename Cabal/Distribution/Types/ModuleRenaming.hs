@@ -69,6 +69,7 @@ isDefaultRenaming _ = False
 
 
 instance Binary ModuleRenaming where
+instance Structured ModuleRenaming where
 
 instance NFData ModuleRenaming where rnf = genericRnf
 

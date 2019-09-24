@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -156,9 +157,10 @@ data LocalBuildInfo = LocalBuildInfo {
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
         relocatable   :: Bool --  ^Whether to build a relocatable package
-  } deriving (Generic, Read, Show)
+  } deriving (Generic, Read, Show, Typeable)
 
 instance Binary LocalBuildInfo
+instance Structured LocalBuildInfo
 
 -------------------------------------------------------------------------------
 -- Accessor functions

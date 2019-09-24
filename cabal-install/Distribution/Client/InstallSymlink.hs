@@ -22,6 +22,8 @@ module Distribution.Client.InstallSymlink (
 
 import Distribution.Compat.Binary
          ( Binary )
+import Distribution.Utils.Structured
+         ( Structured )
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Types.UnqualComponentName
@@ -37,6 +39,7 @@ data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
   deriving (Show, Eq, Generic, Bounded, Enum)
 
 instance Binary OverwritePolicy
+instance Structured OverwritePolicy
 
 symlinkBinaries :: Platform -> Compiler
                 -> OverwritePolicy
@@ -56,6 +59,8 @@ symlinkBinary _ _ _ _ _ = fail "Symlinking feature not available on Windows"
 
 import Distribution.Compat.Binary
          ( Binary )
+import Distribution.Utils.Structured
+         ( Structured )
 
 import Distribution.Client.Types
          ( ConfiguredPackage(..), BuildOutcomes )
@@ -110,6 +115,7 @@ data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
   deriving (Show, Eq, Generic, Bounded, Enum)
 
 instance Binary OverwritePolicy
+instance Structured OverwritePolicy
 
 -- | We would like by default to install binaries into some location that is on
 -- the user's PATH. For per-user installations on Unix systems that basically

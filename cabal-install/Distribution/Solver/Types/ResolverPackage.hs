@@ -11,7 +11,8 @@ import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
-import Distribution.Compat.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
+import Distribution.Utils.Structured (Structured)
 import Distribution.Compat.Graph (IsNode(..))
 import Distribution.Package (Package(..), HasUnitId(..))
 import Distribution.Simple.Utils (ordNub)
@@ -27,6 +28,7 @@ data ResolverPackage loc = PreExisting InstSolverPackage
   deriving (Eq, Show, Generic)
 
 instance Binary loc => Binary (ResolverPackage loc)
+instance Structured loc => Structured (ResolverPackage loc)
 
 instance Package (ResolverPackage loc) where
   packageId (PreExisting ipkg)     = packageId ipkg

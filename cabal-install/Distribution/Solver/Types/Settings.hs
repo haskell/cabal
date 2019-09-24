@@ -15,7 +15,8 @@ module Distribution.Solver.Types.Settings
     ) where
 
 import Distribution.Simple.Setup ( BooleanFlag(..) )
-import Distribution.Compat.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
+import Distribution.Utils.Structured (Structured)
 import Distribution.Pretty ( Pretty(pretty) )
 import Distribution.Deprecated.Text ( Text(parse) )
 import GHC.Generics (Generic)
@@ -70,6 +71,17 @@ instance Binary StrongFlags
 instance Binary AllowBootLibInstalls
 instance Binary OnlyConstrained
 instance Binary SolveExecutables
+
+instance Structured ReorderGoals
+instance Structured CountConflicts
+instance Structured IndependentGoals
+instance Structured MinimizeConflictSet
+instance Structured AvoidReinstalls
+instance Structured ShadowPkgs
+instance Structured StrongFlags
+instance Structured AllowBootLibInstalls
+instance Structured OnlyConstrained
+instance Structured SolveExecutables
 
 instance Pretty OnlyConstrained where
   pretty OnlyConstrainedAll = PP.text "all"

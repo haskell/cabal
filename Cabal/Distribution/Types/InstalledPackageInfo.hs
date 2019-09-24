@@ -93,6 +93,7 @@ data InstalledPackageInfo
     deriving (Eq, Generic, Typeable, Read, Show)
 
 instance Binary InstalledPackageInfo
+instance Structured InstalledPackageInfo
 
 instance NFData InstalledPackageInfo where rnf = genericRnf
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -65,7 +66,7 @@ data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
     vFlags :: Set VerbosityFlag,
     vQuiet :: Bool
-  } deriving (Generic, Show, Read)
+  } deriving (Generic, Show, Read, Typeable)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
 mkVerbosity l = Verbosity { vLevel = l, vFlags = Set.empty, vQuiet = False }
@@ -85,6 +86,7 @@ instance Bounded Verbosity where
     maxBound = mkVerbosity maxBound
 
 instance Binary Verbosity
+instance Structured Verbosity
 
 -- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity

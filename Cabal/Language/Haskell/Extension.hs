@@ -58,6 +58,7 @@ data Language =
   deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary Language
+instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
@@ -109,6 +110,7 @@ data Extension =
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary Extension
+instance Structured Extension
 
 instance NFData Extension where rnf = genericRnf
 
@@ -828,6 +830,7 @@ data KnownExtension =
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
+instance Structured KnownExtension
 
 instance NFData KnownExtension where rnf = genericRnf
 

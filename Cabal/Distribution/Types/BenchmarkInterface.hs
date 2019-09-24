@@ -34,7 +34,7 @@ data BenchmarkInterface =
    deriving (Eq, Generic, Read, Show, Typeable, Data)
 
 instance Binary BenchmarkInterface
-
+instance Structured BenchmarkInterface
 instance NFData BenchmarkInterface where rnf = genericRnf
 
 instance Monoid BenchmarkInterface where

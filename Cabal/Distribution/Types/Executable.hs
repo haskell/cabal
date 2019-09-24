@@ -30,7 +30,7 @@ instance L.HasBuildInfo Executable where
     buildInfo f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
 
 instance Binary Executable
-
+instance Structured Executable
 instance NFData Executable where rnf = genericRnf
 
 instance Monoid Executable where

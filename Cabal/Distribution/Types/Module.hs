@@ -29,6 +29,7 @@ data Module =
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary Module
+instance Structured Module
 
 instance Pretty Module where
     pretty (Module uid mod_name) =

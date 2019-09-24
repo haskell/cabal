@@ -5,7 +5,8 @@ module Distribution.Solver.Types.ConstraintSource
     ) where
 
 import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
+import Distribution.Utils.Structured (Structured)
 
 -- | Source of a 'PackageConstraint'.
 data ConstraintSource =
@@ -56,6 +57,7 @@ data ConstraintSource =
   deriving (Eq, Show, Generic)
 
 instance Binary ConstraintSource
+instance Structured ConstraintSource
 
 -- | Description of a 'ConstraintSource'.
 showConstraintSource :: ConstraintSource -> String

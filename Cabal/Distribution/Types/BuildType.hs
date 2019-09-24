@@ -27,7 +27,7 @@ data BuildType
                 deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary BuildType
-
+instance Structured BuildType
 instance NFData BuildType where rnf = genericRnf
 
 knownBuildTypes :: [BuildType]

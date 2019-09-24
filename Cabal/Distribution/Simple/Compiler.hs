@@ -104,6 +104,7 @@ data Compiler = Compiler {
     deriving (Eq, Generic, Typeable, Show, Read)
 
 instance Binary Compiler
+instance Structured Compiler
 
 showCompilerId :: Compiler -> String
 showCompilerId = prettyShow . compilerId
@@ -172,9 +173,10 @@ compilerInfo c = CompilerInfo (compilerId c)
 data PackageDB = GlobalPackageDB
                | UserPackageDB
                | SpecificPackageDB FilePath
-    deriving (Eq, Generic, Ord, Show, Read)
+    deriving (Eq, Generic, Ord, Show, Read, Typeable)
 
 instance Binary PackageDB
+instance Structured PackageDB
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
@@ -225,9 +227,10 @@ absolutePackageDBPath (SpecificPackageDB db) =
 data OptimisationLevel = NoOptimisation
                        | NormalOptimisation
                        | MaximumOptimisation
-    deriving (Bounded, Enum, Eq, Generic, Read, Show)
+    deriving (Bounded, Enum, Eq, Generic, Read, Show, Typeable)
 
 instance Binary OptimisationLevel
+instance Structured OptimisationLevel
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing  = NormalOptimisation
@@ -252,9 +255,10 @@ data DebugInfoLevel = NoDebugInfo
                     | MinimalDebugInfo
                     | NormalDebugInfo
                     | MaximalDebugInfo
-    deriving (Bounded, Enum, Eq, Generic, Read, Show)
+    deriving (Bounded, Enum, Eq, Generic, Read, Show, Typeable)
 
 instance Binary DebugInfoLevel
+instance Structured DebugInfoLevel
 
 flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
 flagToDebugInfoLevel Nothing  = NormalDebugInfo
@@ -407,9 +411,10 @@ data ProfDetailLevel = ProfDetailNone
                      | ProfDetailToplevelFunctions
                      | ProfDetailAllFunctions
                      | ProfDetailOther String
-    deriving (Eq, Generic, Read, Show)
+    deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Binary ProfDetailLevel
+instance Structured ProfDetailLevel
 
 flagToProfDetailLevel :: String -> ProfDetailLevel
 flagToProfDetailLevel "" = ProfDetailDefault

@@ -54,7 +54,7 @@ instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
 
 instance Binary GenericPackageDescription
-
+instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
@@ -74,5 +74,3 @@ instance L.HasBuildInfos GenericPackageDescription where
         <*> (traverse . L._2 . traverse . L.buildInfo) f x4
         <*> (traverse . L._2 . traverse . L.buildInfo) f x5
         <*> (traverse . L._2 . traverse . L.buildInfo) f x6
-
-

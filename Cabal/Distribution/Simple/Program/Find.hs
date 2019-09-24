@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -67,9 +68,10 @@ type ProgramSearchPath = [ProgramSearchPathEntry]
 data ProgramSearchPathEntry =
          ProgramSearchPathDir FilePath  -- ^ A specific dir
        | ProgramSearchPathDefault       -- ^ The system default
-  deriving (Eq, Generic)
+  deriving (Eq, Generic, Typeable)
 
 instance Binary ProgramSearchPathEntry
+instance Structured ProgramSearchPathEntry
 
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]

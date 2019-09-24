@@ -38,6 +38,7 @@ instance Parsec LibraryVisibility where
       _         -> fail $ "Unknown visibility: " ++ name
 
 instance Binary LibraryVisibility
+instance Structured LibraryVisibility
 instance NFData LibraryVisibility where rnf = genericRnf
 
 instance Semigroup LibraryVisibility where

@@ -16,6 +16,7 @@ module Distribution.Utils.ShortText
 import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.String
+import Distribution.Utils.Structured (Structured (..), nominalStructure)
 
 #if defined(MIN_VERSION_bytestring)
 # if MIN_VERSION_bytestring(0,10,4)
@@ -75,6 +76,7 @@ instance Binary ShortText where
     get = fmap (ST . BS.Short.toShort) get
 # endif
 
+
 toShortText = ST . BS.Short.pack . encodeStringUtf8
 
 fromShortText = decodeStringUtf8 . BS.Short.unpack . unST
@@ -90,6 +92,8 @@ toShortText = ST
 
 fromShortText = unST
 #endif
+
+instance Structured ShortText where structure = nominalStructure
 
 instance NFData ShortText where
     rnf = rnf . unST

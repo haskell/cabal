@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Types.ComponentRequestedSpec (
     -- $buildable_vs_enabled_components
@@ -66,8 +67,10 @@ data ComponentRequestedSpec
     = ComponentRequestedSpec { testsRequested      :: Bool
                              , benchmarksRequested :: Bool }
     | OneComponentRequestedSpec ComponentName
-  deriving (Generic, Read, Show, Eq)
+  deriving (Generic, Read, Show, Eq, Typeable)
+
 instance Binary ComponentRequestedSpec
+instance Structured ComponentRequestedSpec
 
 -- | The default set of enabled components.  Historically tests and
 -- benchmarks are NOT enabled by default.

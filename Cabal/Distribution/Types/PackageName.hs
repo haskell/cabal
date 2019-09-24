@@ -46,6 +46,7 @@ instance IsString PackageName where
   fromString = mkPackageName
 
 instance Binary PackageName
+instance Structured PackageName
 
 instance Pretty PackageName where
   pretty = Disp.text . unPackageName

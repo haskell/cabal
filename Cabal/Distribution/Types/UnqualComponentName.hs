@@ -49,6 +49,7 @@ instance IsString UnqualComponentName where
   fromString = mkUnqualComponentName
 
 instance Binary UnqualComponentName
+instance Structured UnqualComponentName
 
 instance Pretty UnqualComponentName where
   pretty = showToken . unUnqualComponentName

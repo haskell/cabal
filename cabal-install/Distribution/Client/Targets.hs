@@ -669,6 +669,7 @@ data UserQualifier =
   deriving (Eq, Show, Generic)
 
 instance Binary UserQualifier
+instance Structured UserQualifier
 
 -- | Version of 'ConstraintScope' that a user may specify on the
 -- command line.
@@ -684,6 +685,7 @@ data UserConstraintScope =
   deriving (Eq, Show, Generic)
 
 instance Binary UserConstraintScope
+instance Structured UserConstraintScope
 
 fromUserQualifier :: UserQualifier -> Qualifier
 fromUserQualifier UserQualToplevel = QualToplevel
@@ -703,6 +705,7 @@ data UserConstraint =
   deriving (Eq, Show, Generic)
            
 instance Binary UserConstraint
+instance Structured UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
 userConstraintPackageName (UserConstraint scope _) = scopePN scope

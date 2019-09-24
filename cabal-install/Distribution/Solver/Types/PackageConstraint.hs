@@ -18,12 +18,13 @@ module Distribution.Solver.Types.PackageConstraint (
     packageConstraintToDependency
   ) where
 
-import Distribution.Compat.Binary      (Binary(..))
+import Distribution.Compat.Binary      (Binary)
 import Distribution.Package            (PackageName)
 import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
 import Distribution.Types.Dependency   (Dependency(..))
 import Distribution.Types.LibraryName  (LibraryName(..))
 import Distribution.Version            (VersionRange, simplifyVersionRange)
+import Distribution.Utils.Structured (Structured)
 
 import Distribution.Solver.Compat.Prelude ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
@@ -102,6 +103,7 @@ data PackageProperty
   deriving (Eq, Show, Generic)
 
 instance Binary PackageProperty
+instance Structured PackageProperty
 
 -- | Pretty-prints a package property.
 dispPackageProperty :: PackageProperty -> Disp.Doc

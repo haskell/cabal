@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
@@ -51,9 +52,10 @@ import Distribution.Compat.Stack
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read)
+data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read, Typeable)
 
 instance Binary a => Binary (Flag a)
+instance Structured a => Structured (Flag a)
 
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)

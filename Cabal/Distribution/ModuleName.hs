@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -23,17 +23,16 @@ module Distribution.ModuleName (
         validModuleComponent,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Utils.ShortText
-import System.FilePath ( pathSeparator )
-
-import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.Pretty
+import Distribution.Utils.ShortText
+import System.FilePath               (pathSeparator)
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint as Disp
+import qualified Text.PrettyPrint                as Disp
 
 -- | A valid Haskell module name.
 --
@@ -41,6 +40,7 @@ newtype ModuleName = ModuleName ShortTextLst
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary ModuleName
+instance Structured ModuleName
 
 instance NFData ModuleName where
     rnf (ModuleName ms) = rnf ms
@@ -130,6 +130,8 @@ instance Read ShortTextLst where
 instance Binary ShortTextLst where
     put = put . stlToList
     get = stlFromList <$> get
+
+instance Structured ShortTextLst
 
 stlToList :: ShortTextLst -> [ShortText]
 stlToList STLNil = []

@@ -39,6 +39,7 @@ data TestSuiteInterface =
    deriving (Eq, Generic, Read, Show, Typeable, Data)
 
 instance Binary TestSuiteInterface
+instance Structured TestSuiteInterface
 
 instance NFData TestSuiteInterface where rnf = genericRnf
 

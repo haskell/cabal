@@ -3,27 +3,35 @@
 
 module UnitTests.Distribution.Client.Glob (tests) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
-import Data.Char
-import Data.List
+import Distribution.Client.Compat.Prelude hiding (last)
+import Prelude ()
+
+import Data.Char (isLetter)
+import Data.List (last, (\\))
 import Distribution.Deprecated.Text (display, parse, simpleParse)
 import Distribution.Deprecated.ReadP
 
 import Distribution.Client.Glob
+import Distribution.Utils.Structured (structureHash)
 import UnitTests.Distribution.Client.ArbitraryInstances
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
 import Control.Exception
+import GHC.Fingerprint (Fingerprint (..))
 
 
 tests :: [TestTree]
 tests =
   [ testProperty "print/parse roundtrip" prop_roundtrip_printparse
   , testCase     "parse examples"        testParseCases
+  , testGroup "Structured hashes"
+    [ testCase "GlobPiece"       $ structureHash (Proxy :: Proxy GlobPiece)       @?= Fingerprint 0xd5e5361866a30ea2 0x31fbfe7b58864782
+    , testCase "FilePathGlobRel" $ structureHash (Proxy :: Proxy FilePathGlobRel) @?= Fingerprint 0x76fa5bcb865a8501 0xb152f68915316f98
+    , testCase "FilePathRoot"    $ structureHash (Proxy :: Proxy FilePathRoot)    @?= Fingerprint 0x713373d51426ec64 0xda7376a38ecee5a5
+    , testCase "FilePathGlob"    $ structureHash (Proxy :: Proxy FilePathGlob)    @?= Fingerprint 0x3c11c41f3f03a1f0 0x96e69d85c37d0024
+    ]
   ]
 
 --TODO: [nice to have] tests for trivial globs, tests for matching,

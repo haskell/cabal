@@ -1,9 +1,10 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE CPP                  #-}
+{-# LANGUAGE DeriveDataTypeable   #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compat.Graph
@@ -83,20 +84,21 @@ module Distribution.Compat.Graph (
     nodeValue,
 ) where
 
+import Distribution.Compat.Prelude hiding (empty, lookup, null, toList)
 import Prelude ()
+
+import Data.Array                    ((!))
+import Data.Either                   (partitionEithers)
+import Data.Graph                    (SCC (..))
+import Distribution.Utils.Structured (Structure (..), Structured (..))
+
+import qualified Data.Array                  as Array
+import qualified Data.Foldable               as Foldable
+import qualified Data.Graph                  as G
+import qualified Data.Map.Strict             as Map
+import qualified Data.Set                    as Set
+import qualified Data.Tree                   as Tree
 import qualified Distribution.Compat.Prelude as Prelude
-import Distribution.Compat.Prelude hiding (lookup, null, empty, toList)
-
-import Data.Graph (SCC(..))
-import qualified Data.Graph as G
-
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import qualified Data.Array as Array
-import Data.Array ((!))
-import qualified Data.Tree as Tree
-import Data.Either (partitionEithers)
-import qualified Data.Foldable as Foldable
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
@@ -128,6 +130,9 @@ instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
 instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
     put x = put (toList x)
     get = fmap fromDistinctList get
+
+instance Structured a => Structured (Graph a) where
+    structure p = Nominal (typeRep p) 0 "Graph" [structure (Proxy :: Proxy a)]
 
 instance (Eq (Key a), Eq a) => Eq (Graph a) where
     g1 == g2 = graphMap g1 == graphMap g2

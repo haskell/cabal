@@ -128,7 +128,7 @@ data License =
   deriving (Generic, Read, Show, Eq, Typeable, Data)
 
 instance Binary License
-
+instance Structured License
 instance NFData License where rnf = genericRnf
 
 -- | The list of all currently recognised licenses.

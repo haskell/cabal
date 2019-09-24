@@ -37,6 +37,7 @@ data PkgconfigVersionRange
   deriving (Generic, Read, Show, Eq, Typeable, Data)
 
 instance Binary PkgconfigVersionRange
+instance Structured PkgconfigVersionRange
 instance NFData PkgconfigVersionRange where rnf = genericRnf
 
 instance Pretty PkgconfigVersionRange where

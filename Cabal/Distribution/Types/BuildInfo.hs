@@ -109,7 +109,7 @@ data BuildInfo = BuildInfo {
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary BuildInfo
-
+instance Structured BuildInfo
 instance NFData BuildInfo where rnf = genericRnf
 
 instance Monoid BuildInfo where

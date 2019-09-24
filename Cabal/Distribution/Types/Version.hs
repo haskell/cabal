@@ -81,6 +81,7 @@ instance Read Version where
         return (mkVersion v)
 
 instance Binary Version
+instance Structured Version
 
 instance NFData Version where
     rnf (PV0 _) = ()

@@ -66,6 +66,7 @@ newtype UnitId = UnitId ShortText
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
 instance Binary UnitId
+instance Structured UnitId
 
 -- | The textual format for 'UnitId' coincides with the format
 -- GHC accepts for @-package-id@.
@@ -113,6 +114,8 @@ getHSLibraryName uid = "HS" ++ prettyShow uid
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Pretty)
+
+instance Structured DefUnitId
 
 -- Workaround for a GHC 8.0.1 bug, see
 -- https://github.com/haskell/cabal/issues/4793#issuecomment-334258288

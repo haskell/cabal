@@ -60,7 +60,7 @@ data VersionRange
   deriving ( Data, Eq, Generic, Read, Show, Typeable )
 
 instance Binary VersionRange
-
+instance Structured VersionRange
 instance NFData VersionRange where rnf = genericRnf
 
 -- | The version range @-any@. That is, a version range containing all

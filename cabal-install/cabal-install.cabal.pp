@@ -114,6 +114,7 @@ Version:            3.1.0.0
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FilePerms
+        Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore

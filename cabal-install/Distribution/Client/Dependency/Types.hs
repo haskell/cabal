@@ -2,23 +2,16 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
-
     PackagesPreferenceDefault(..),
-
   ) where
 
-import Data.Char
-         ( isAlpha, toLower )
+import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import qualified Distribution.Deprecated.ReadP as Parse
-         ( pfail, munch1 )
-import Distribution.Deprecated.Text
-         ( Text(..) )
+import Distribution.Deprecated.Text (Text (..))
+import Text.PrettyPrint             (text)
 
-import Text.PrettyPrint
-         ( text )
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary(..))
+import qualified Distribution.Deprecated.ReadP as Parse (munch1, pfail)
 
 
 -- | All the solvers that can be selected.
@@ -31,6 +24,9 @@ data Solver = Modular
 
 instance Binary PreSolver
 instance Binary Solver
+
+instance Structured PreSolver
+instance Structured Solver
 
 instance Text PreSolver where
   disp AlwaysModular = text "modular"

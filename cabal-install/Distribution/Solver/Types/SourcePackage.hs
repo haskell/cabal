@@ -12,8 +12,9 @@ import Distribution.PackageDescription
 
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
 import Data.Typeable
+import Distribution.Utils.Structured (Structured)
 
 -- | A package description along with the location of the package sources.
 --
@@ -25,7 +26,8 @@ data SourcePackage loc = SourcePackage {
   }
   deriving (Eq, Show, Generic, Typeable)
 
-instance (Binary loc) => Binary (SourcePackage loc)
+instance Binary loc => Binary (SourcePackage loc)
+instance Structured loc => Structured (SourcePackage loc)
 
 instance Package (SourcePackage a) where packageId = packageInfoId
 

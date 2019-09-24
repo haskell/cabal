@@ -348,14 +348,13 @@ renderPackageHashInputs PackageHashInputs{
 newtype HashValue = HashValue BS.ByteString
   deriving (Eq, Generic, Show, Typeable)
 
-instance Binary HashValue where
-  put (HashValue digest) = put digest
-  get = do
-    digest <- get
-    -- Cannot do any sensible validation here. Although we use SHA256
-    -- for stuff we hash ourselves, we can also get hashes from TUF
-    -- and that can in principle use different hash functions in future.
-    return (HashValue digest)
+-- Cannot do any sensible validation here. Although we use SHA256
+-- for stuff we hash ourselves, we can also get hashes from TUF
+-- and that can in principle use different hash functions in future.
+--
+-- Therefore, we simply derive this structurally.
+instance Binary HashValue
+instance Structured HashValue
 
 -- | Hash some data. Currently uses SHA256.
 --

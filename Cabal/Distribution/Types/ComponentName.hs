@@ -28,6 +28,7 @@ data ComponentName = CLibName   LibraryName
                    deriving (Eq, Generic, Ord, Read, Show, Typeable)
 
 instance Binary ComponentName
+instance Structured ComponentName
 
 -- Build-target-ish syntax
 instance Pretty ComponentName where

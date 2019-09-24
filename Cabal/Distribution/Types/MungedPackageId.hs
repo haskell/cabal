@@ -31,6 +31,7 @@ data MungedPackageId
      deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary MungedPackageId
+instance Structured MungedPackageId
 
 -- |
 --

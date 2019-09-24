@@ -22,6 +22,7 @@ data Mixin = Mixin { mixinPackageName :: PackageName
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary Mixin
+instance Structured Mixin
 
 instance NFData Mixin where rnf = genericRnf
 

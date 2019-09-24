@@ -5,7 +5,8 @@ module Distribution.Solver.Types.SolverId
 
 where
 
-import Distribution.Compat.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
+import Distribution.Utils.Structured (Structured)
 import Distribution.Package (PackageId, Package(..), UnitId)
 import GHC.Generics (Generic)
 
@@ -19,6 +20,7 @@ data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId
   deriving (Eq, Ord, Generic)
 
 instance Binary SolverId
+instance Structured SolverId
 
 instance Show SolverId where
     show = show . solverSrcId

@@ -28,6 +28,7 @@ data LibraryName = LMainLibName
                  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary LibraryName
+instance Structured LibraryName
 instance NFData LibraryName where rnf = genericRnf
 
 -- | Pretty print 'LibraryName' in build-target-ish syntax.

@@ -95,7 +95,7 @@ emptySourceRepo kind = SourceRepo
     }
 
 instance Binary SourceRepo
-
+instance Structured SourceRepo
 instance NFData SourceRepo where rnf = genericRnf
 
 -- | What this repo info is for, what it represents.
@@ -115,7 +115,7 @@ data RepoKind =
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary RepoKind
-
+instance Structured RepoKind
 instance NFData RepoKind where rnf = genericRnf
 
 -- | An enumeration of common source control systems. The fields used in the
@@ -128,7 +128,7 @@ data RepoType = Darcs | Git | SVN | CVS
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary RepoType
-
+instance Structured RepoType
 instance NFData RepoType where rnf = genericRnf
 
 knownRepoTypes :: [RepoType]

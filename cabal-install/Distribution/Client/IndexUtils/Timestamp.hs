@@ -21,21 +21,20 @@ module Distribution.Client.IndexUtils.Timestamp
     , IndexState(..)
     ) where
 
+import Distribution.Client.Compat.Prelude
+
+-- read is needed for Text instance
+import Prelude (read)
+
 import qualified Codec.Archive.Tar.Entry    as Tar
-import           Control.DeepSeq
-import           Control.Monad
-import           Data.Char                  (isDigit)
-import           Data.Int                   (Int64)
 import           Data.Time                  (UTCTime (..), fromGregorianValid,
                                              makeTimeOfDayValid, showGregorian,
                                              timeOfDayToTime, timeToTimeOfDay)
 import           Data.Time.Clock.POSIX      (posixSecondsToUTCTime,
                                              utcTimeToPOSIXSeconds)
-import           Distribution.Compat.Binary
 import qualified Distribution.Deprecated.ReadP  as ReadP
 import           Distribution.Deprecated.Text
 import qualified Text.PrettyPrint           as Disp
-import           GHC.Generics (Generic)
 
 -- | UNIX timestamp (expressed in seconds since unix epoch, i.e. 1970).
 newtype Timestamp = TS Int64 -- Tar.EpochTime
@@ -98,9 +97,8 @@ showTimestamp ts = case timestampToUTCTime ts of
   where
     showTOD = show . timeToTimeOfDay
 
-instance Binary Timestamp where
-    put (TS t) = put t
-    get = TS `fmap` get
+instance Binary Timestamp
+instance Structured Timestamp
 
 instance Text Timestamp where
     disp = Disp.text . showTimestamp
@@ -177,6 +175,7 @@ data IndexState = IndexStateHead -- ^ Use all available entries
                 deriving (Eq,Generic,Show)
 
 instance Binary IndexState
+instance Structured IndexState
 instance NFData IndexState
 
 instance Text IndexState where
