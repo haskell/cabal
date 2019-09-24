@@ -1,4 +1,5 @@
-packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
+packages: Cabal/ cabal-testsuite/
+packages: cabal-install/ solver-benchmarks/
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */

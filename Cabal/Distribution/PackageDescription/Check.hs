@@ -1025,13 +1025,18 @@ checkCLikeOptions label prefix accessor pkg =
         checkCCFlags flags = check (any (`elem` flags) all_cLikeOptions)
 
 checkCPPOptions :: PackageDescription -> [PackageCheck]
-checkCPPOptions pkg =
-  catMaybes [
-    checkAlternatives "cpp-options" "include-dirs"
-      [ (flag, dir) | flag@('-':'I':dir) <- all_cppOptions]
+checkCPPOptions pkg = catMaybes
+    [ checkAlternatives "cpp-options" "include-dirs"
+      [ (flag, dir) | flag@('-':'I':dir) <- all_cppOptions ]
     ]
-  where all_cppOptions = [ opts | bi <- allBuildInfo pkg
-                                , opts <- cppOptions bi ]
+    ++
+    [ PackageBuildWarning $ "'cpp-options': " ++ opt ++ " is not portable C-preprocessor flag"
+    | opt <- all_cppOptions
+    -- "-I" is handled above, we allow only -DNEWSTUFF and -UOLDSTUFF
+    , not $ any (`isPrefixOf` opt) ["-D", "-U", "-I" ]
+    ]
+  where
+    all_cppOptions = [ opts | bi <- allBuildInfo pkg, opts <- cppOptions bi ]
 
 checkAlternatives :: String -> String -> [(String, String)]
                   -> Maybe PackageCheck

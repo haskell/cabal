@@ -70,6 +70,9 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Options.Applicative                               as O
 
+-- import Distribution.Types.BuildInfo                (BuildInfo (cppOptions))
+-- import qualified Distribution.Types.BuildInfo.Lens                 as L
+
 #ifdef MIN_VERSION_tree_diff
 import Data.TreeDiff        (ediff)
 import Data.TreeDiff.Pretty (ansiWlEditExprCompact)
@@ -165,36 +168,50 @@ parseParsecTest fpath bs = do
 
 parseCheckTest :: FilePath -> B.ByteString -> IO CheckResult
 parseCheckTest fpath bs = do
-    let (_warnings, parsec) = Parsec.runParseResult $
-                              Parsec.parseGenericPackageDescription bs
+    let (warnings, parsec) = Parsec.runParseResult $
+                             Parsec.parseGenericPackageDescription bs
     case parsec of
         Right gpd -> do
             let checks = checkPackage gpd Nothing
+            let w [] = 0
+                w _  = 1
+
+            -- Look into invalid cpp options
+            -- _ <- L.traverseBuildInfos checkCppFlags gpd
+            
             -- one for file, many checks
-            return (CheckResult 1 0 0 0 0 0 <> foldMap toCheckResult checks)
+            return (CheckResult 1 (w warnings) 0 0 0 0 0 <> foldMap toCheckResult checks)
         Left (_, errors) -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
 
-data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int
+-- checkCppFlags :: BuildInfo -> IO BuildInfo
+-- checkCppFlags bi = do
+--     for_ (cppOptions bi) $ \opt ->
+--         unless (any (`isPrefixOf` opt) ["-D", "-U", "-I"]) $
+--             putStrLn opt
+-- 
+--     return bi
+
+data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int !Int
 
 instance NFData CheckResult where
     rnf !_ = ()
 
 instance Semigroup CheckResult where
-    CheckResult n a b c d e <> CheckResult n' a' b' c' d' e' =
-        CheckResult (n + n') (a + a') (b + b') (c + c') (d + d') (e + e')
+    CheckResult n w a b c d e <> CheckResult n' w' a' b' c' d' e' =
+        CheckResult (n + n') (w + w') (a + a') (b + b') (c + c') (d + d') (e + e')
 
 instance Monoid CheckResult where
-    mempty = CheckResult 0 0 0 0 0 0
+    mempty = CheckResult 0 0 0 0 0 0 0
     mappend = (<>)
 
 toCheckResult :: PackageCheck -> CheckResult
-toCheckResult PackageBuildImpossible {}    = CheckResult 0 1 0 0 0 0
-toCheckResult PackageBuildWarning {}       = CheckResult 0 0 1 0 0 0
-toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 1 0 0
-toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 1 0
-toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 1
+toCheckResult PackageBuildImpossible {}    = CheckResult 0 0 1 0 0 0 0
+toCheckResult PackageBuildWarning {}       = CheckResult 0 0 0 1 0 0 0
+toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 0 1 0 0
+toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 0 1 0
+toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 0 1
 
 -------------------------------------------------------------------------------
 -- Roundtrip test
@@ -309,8 +326,9 @@ main = join (O.execParser opts)
 
     checkP = checkA <$> prefixP
     checkA pfx = do
-        CheckResult n a b c d e <- parseIndex pfx parseCheckTest
+        CheckResult n w a b c d e <- parseIndex pfx parseCheckTest
         putStrLn $ show n ++ " files processed"
+        putStrLn $ show w ++ " have lexer/parser warnings"
         putStrLn $ show a ++ " build impossible"
         putStrLn $ show b ++ " build warning"
         putStrLn $ show c ++ " build dist suspicious"

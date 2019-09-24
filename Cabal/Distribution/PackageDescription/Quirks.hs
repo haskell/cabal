@@ -1,19 +1,17 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 -- |
 --
 -- @since 2.2.0.0
 module Distribution.PackageDescription.Quirks (patchQuirks) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           GHC.Fingerprint (Fingerprint (..), fingerprintData)
-import           Foreign.Ptr (castPtr)
-import           System.IO.Unsafe (unsafeDupablePerformIO)
+import Distribution.Compat.MD5
+import Distribution.Compat.Prelude
+import GHC.Fingerprint             (Fingerprint (..))
+import Prelude ()
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Unsafe as BS
-import qualified Data.Map as Map
+import qualified Data.Map        as Map
 
 -- | Patch legacy @.cabal@ file contents to allow parsec parser to accept
 -- all of Hackage.
@@ -30,13 +28,7 @@ patchQuirks bs = case Map.lookup (BS.take 256 bs, md5 bs) patches of
       where
         output = f bs
 
-md5 :: BS.ByteString -> Fingerprint
-md5 bs = unsafeDupablePerformIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
-    fingerprintData (castPtr ptr) len
-
 -- | 'patches' contains first 256 bytes, pre- and post-fingerprints and a patch function.
---
---
 patches :: Map.Map (BS.ByteString, Fingerprint) (Fingerprint, BS.ByteString -> BS.ByteString)
 patches = Map.fromList
     -- http://hackage.haskell.org/package/unicode-transforms-0.3.3
