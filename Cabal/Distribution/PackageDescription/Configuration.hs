@@ -65,7 +65,6 @@ import Distribution.Types.DependencyMap
 
 import qualified Data.Map.Strict as Map.Strict
 import qualified Data.Map.Lazy   as Map
-import Data.Set ( Set )
 import qualified Data.Set as Set
 import Data.Tree ( Tree(Node) )
 

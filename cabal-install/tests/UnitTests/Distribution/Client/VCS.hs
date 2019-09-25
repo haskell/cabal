@@ -13,7 +13,6 @@ import Data.List
 import Data.Tuple
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set)
 
 import qualified Control.Monad.State as State
 import Control.Monad.State (StateT, liftIO, execStateT)

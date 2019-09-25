@@ -11,7 +11,6 @@ module Distribution.Backpack.PreModuleShape (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 

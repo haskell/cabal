@@ -13,12 +13,10 @@ module Distribution.Backpack.ModSubst (
 import Prelude ()
 import Distribution.Compat.Prelude hiding (mod)
 
+import Distribution.Backpack
 import Distribution.ModuleName
 
-import Distribution.Backpack
-
 import qualified Data.Map as Map
-import Data.Set (Set)
 import qualified Data.Set as Set
 
 -- | Applying module substitutions to semantic objects.

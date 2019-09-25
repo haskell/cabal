@@ -12,7 +12,6 @@ module Distribution.Pretty (
     Separator,
     ) where
 
-import Data.Functor.Identity         (Identity (..))
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Prelude ()

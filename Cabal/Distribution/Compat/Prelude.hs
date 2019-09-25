@@ -45,6 +45,9 @@ module Distribution.Compat.Prelude (
     -- * Some types
     IO, NoCallStackIO,
     Map,
+    Set,
+    Identity (..),
+    Proxy (..),
 
     -- * Data.Maybe
     catMaybes, mapMaybe,
@@ -138,7 +141,10 @@ import GHC.Generics                  (Generic, Rep(..),
                                       V1, U1(U1), K1(unK1), M1(unM1),
                                       (:*:)((:*:)), (:+:)(L1,R1))
 
+import Data.Functor.Identity         (Identity (..))
 import Data.Map                      (Map)
+import Data.Proxy                    (Proxy (..))
+import Data.Set                      (Set)
 
 import Control.Arrow                 (first)
 import Control.Monad                 hiding (mapM)

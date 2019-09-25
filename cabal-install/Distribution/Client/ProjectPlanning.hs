@@ -160,7 +160,6 @@ import           Distribution.Compat.Graph(IsNode(..))
 import           Text.PrettyPrint hiding ((<>))
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
-import           Data.Set (Set)
 import qualified Data.Set as Set
 import           Control.Monad
 import qualified Data.Traversable as T
