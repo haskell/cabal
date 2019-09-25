@@ -20,7 +20,6 @@ module Distribution.Fields.Pretty (
     prettySectionArgs,
     ) where
 
-import Data.Functor.Identity       (Identity (..))
 import Distribution.Compat.Prelude
 import Distribution.Pretty         (showToken)
 import Prelude ()

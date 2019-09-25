@@ -13,7 +13,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.LibraryName
 import Distribution.Version
 
-import Data.Set (Set)
 import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not

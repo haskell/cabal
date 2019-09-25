@@ -42,7 +42,6 @@ module Distribution.Parsec (
     ) where
 
 import Data.Char                           (digitToInt, intToDigit)
-import Data.Functor.Identity               (Identity (..))
 import Data.List                           (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude

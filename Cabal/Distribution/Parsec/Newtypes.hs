@@ -33,8 +33,6 @@ import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.Functor.Identity         (Identity (..))
-import Data.Proxy                    (Proxy (..))
 import Distribution.CabalSpecVersion
 import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)

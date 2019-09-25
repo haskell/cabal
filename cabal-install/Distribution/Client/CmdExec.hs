@@ -92,7 +92,6 @@ import Distribution.Verbosity
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Map as M
 

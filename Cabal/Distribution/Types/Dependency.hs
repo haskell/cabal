@@ -29,7 +29,6 @@ import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 
 import Text.PrettyPrint ((<+>))
-import Data.Set (Set)
 import qualified Data.Set as Set
 
 -- | Describes a dependency on a source package (API)

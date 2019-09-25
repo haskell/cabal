@@ -55,7 +55,6 @@ import Distribution.Compat.Prelude
 import Distribution.ReadE
 
 import Data.List (elemIndex)
-import Data.Set (Set)
 import Distribution.Parsec
 import Distribution.Verbosity.Internal
 

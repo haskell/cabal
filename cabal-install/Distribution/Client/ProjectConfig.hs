@@ -142,7 +142,6 @@ import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
 import qualified Data.List.NonEmpty as NE
-import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Hashable as Hashable
 import Numeric (showHex)

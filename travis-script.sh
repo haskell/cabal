@@ -111,7 +111,12 @@ if [ "x$CABAL_INSTALL_ONLY" != "xYES" ] ; then
     # Run haddock.
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         # TODO: use new-haddock?
-        (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+
+        # haddock: internal error: synifyKind
+        # https://github.com/haskell/haddock/issues/242
+        if [ "$GHCVER" != "7.6.3" ]; then
+            (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
+        fi
     fi
 
     # Check for package warnings

@@ -43,7 +43,6 @@ module Distribution.InstalledPackageInfo (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.Set                              (Set)
 import Distribution.Backpack
 import Distribution.CabalSpecVersion         (cabalSpecLatest)
 import Distribution.FieldGrammar
