@@ -106,7 +106,7 @@ parseGenericPackageDescription bs = do
     setCabalSpecVersion ver
     -- if we get too new version, fail right away
     case ver of
-        Just v | v > mkVersion [3,0] -> parseFailure zeroPos
+        Just v | v > mkVersion [3,1] -> parseFailure zeroPos
             "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
         _ -> pure ()
 
