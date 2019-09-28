@@ -10,9 +10,9 @@ import Test.Tasty.HUnit
 
 tests :: [TestTree]
 tests = [ testCase "libarchive" $
-            reorderC2Hs normal ["tests/C2Hs/src"] ["Codec.Archive.Foreign.Archive", "Codec.Archive.Types.Foreign"] 
+            reorderC2Hs normal ["tests/c2hsTestModules/src"] ["Codec.Archive.Foreign.Archive", "Codec.Archive.Types.Foreign"] 
                 >>= (@?= ["Codec.Archive.Types.Foreign", "Codec.Archive.Foreign.Archive"])
         , testCase "libarchive" $
-            reorderC2Hs normal ["tests/C2Hs/src"] ["Codec.Archive.Types.Foreign", "Codec.Archive.Foreign.Archive"] 
+            reorderC2Hs normal ["tests/c2hsTestModules/src"] ["Codec.Archive.Types.Foreign", "Codec.Archive.Foreign.Archive"] 
                 >>= (@?= ["Codec.Archive.Types.Foreign", "Codec.Archive.Foreign.Archive"])
         ]
