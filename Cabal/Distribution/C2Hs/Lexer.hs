@@ -3,8 +3,11 @@
 {-# LINE 1 "boot/C2HsLexer.x" #-}
 
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
--- | This contains a partial lexer for @.chs@ files; enough to extract 
--- information from @{\#import\#}@ declarations
+-- | This contains a partial lexer for @.chs@ files; enough to extract
+-- information from @{\#import\#}@ declarations.
+--
+-- This is lenient in that it will not reject things like
+-- {# import const Data.Char #}
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
@@ -298,7 +301,7 @@ alex_actions = array (0 :: Int, 18)
   , (0,alex_action_7)
   ]
 
-{-# LINE 31 "boot/C2HsLexer.x" #-}
+{-# LINE 34 "boot/C2HsLexer.x" #-}
 
 data Token = Import
            | Module String

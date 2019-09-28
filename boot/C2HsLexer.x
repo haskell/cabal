@@ -1,7 +1,10 @@
 {
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
--- | This contains a partial lexer for @.chs@ files; enough to extract 
--- information from @{\#import\#}@ declarations
+-- | This contains a partial lexer for @.chs@ files; enough to extract
+-- information from @{\#import\#}@ declarations.
+--
+-- This is lenient in that it will not reject things like
+-- {# import const Data.Char #}
 module Distribution.C2Hs.Lexer ( getImports ) where
 
 import Control.Applicative ((<$>))
