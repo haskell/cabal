@@ -62,7 +62,7 @@ nested_comment = go 1 =<< alexGetInput
                                 Nothing -> err input'
                                 Just (125,input_) -> go (n-1) input_
                                 Just (_,input_) -> go n input_
-                        125 ->
+                        123 ->
                             case alexGetByte input' of
                                 Nothing -> err input'
                                 Just (c',input_) -> go (addLevel c' $ n) input_
