@@ -1,6 +1,11 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+-- | This module contains a function to order @.chs@ files based on their
+-- dependencies on one another thusly: it lexes the @.chs@ source files
+-- looking for @{\# import \#}@ declarations and then topologically sorts
+-- the modules. This ensures that a module's dependencies are preprocessed
+-- first.
 module Distribution.C2Hs ( reorderC2Hs ) where
 
 import Prelude()
