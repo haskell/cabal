@@ -16,4 +16,6 @@ tests = [ testCase "simple import" $
             getImports "import Data.Word\n{# import Data.Char #}" @?= Right ["Data.Char"]
         , testCase "Work with qualified imports + spaces" $
             getImports "{# import qualified   Data.Char #}" @?= Right ["Data.Char"]
+        , testCase "Error on bad block comments" $
+            getImports "{- {- block comment -} {# import Data.Char #}" @?= Left "Error in nested comment at line 1, column 46"
         ]
