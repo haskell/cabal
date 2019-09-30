@@ -10,7 +10,7 @@ import Distribution.Simple.Flag
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.InstallDirs.Internal
 import Distribution.Simple.Setup (HaddockTarget, TestShowDetails)
-import Distribution.Types.GenericPackageDescription (FlagName, FlagAssignment)
+import Distribution.Types.Flag (FlagName, FlagAssignment)
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint

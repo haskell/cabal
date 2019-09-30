@@ -410,6 +410,7 @@ library
     Distribution.Types.BuildInfo
     Distribution.Types.BuildType
     Distribution.Types.ComponentInclude
+    Distribution.Types.ConfVar
     Distribution.Types.Dependency
     Distribution.Types.ExeDependency
     Distribution.Types.LegacyExeDependency
@@ -423,6 +424,7 @@ library
     Distribution.Types.ExecutableScope
     Distribution.Types.Library
     Distribution.Types.LibraryVisibility
+    Distribution.Types.Flag
     Distribution.Types.ForeignLib
     Distribution.Types.ForeignLibType
     Distribution.Types.ForeignLibOption
