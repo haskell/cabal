@@ -656,7 +656,7 @@ the custom publishing of Haddock documentation to Hackage.
 .. warning::
 
   Packages that use Backpack will stop working if uploaded to
-  Hackage, due to https://github.com/haskell/cabal/issues/6005
+  Hackage, due to `issue #6005 <https://github.com/haskell/cabal/issues/6005>`_.
   While this is happening, we recommend not uploading these packages
   to Hackage (and instead referencing the package directly
   as a ``source-repository-package``).
