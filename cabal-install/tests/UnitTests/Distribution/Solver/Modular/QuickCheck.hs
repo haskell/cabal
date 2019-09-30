@@ -21,7 +21,7 @@ import Text.Show.Pretty (parseValue, valToStr)
 import Test.Tasty (TestTree)
 import Test.Tasty.QuickCheck
 
-import Distribution.Types.GenericPackageDescription (FlagName)
+import Distribution.Types.Flag (FlagName)
 import Distribution.Utils.ShortText (ShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)

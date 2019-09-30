@@ -137,3 +137,5 @@ import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
 import Distribution.Types.HookedBuildInfo
 import Distribution.Types.SourceRepo
+import Distribution.Types.Flag
+import Distribution.Types.ConfVar
