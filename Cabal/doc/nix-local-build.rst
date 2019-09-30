@@ -653,6 +653,13 @@ byte) that must be satisfied for it to function correctly in the larger v2-build
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
 
+.. warning::
+
+  If a package uses backpack in any capacity, do not upload it to
+  hackage. The package will not be built correctly when Cabal
+  attempts to install it as a dependency. This may be fixed in
+  a future release.
+
 Configuring builds with cabal.project
 =====================================
 
