@@ -121,7 +121,10 @@ tests config =
   , testGroup "Successful builds" $
     [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
     , testCase      "keep-going"          (testBuildKeepGoing config)
+#ifndef mingw32_HOST_OS
+    -- disabled because https://github.com/haskell/cabal/issues/6272
     , testCase      "local tarball"       (testBuildLocalTarball config)
+#endif
     ]
 
   , testGroup "Regression tests" $
