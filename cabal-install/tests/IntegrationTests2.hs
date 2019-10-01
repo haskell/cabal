@@ -68,6 +68,10 @@ import Data.Tagged (Tagged(..))
 import Data.Proxy  (Proxy(..))
 import Data.Typeable (Typeable)
 
+#if !MIN_VERSION_directory(1,2,7)
+removePathForcibly :: FilePath -> IO ()
+removePathForcibly = removeDirectoryRecursive
+#endif
 
 main :: IO ()
 main =
@@ -1579,7 +1583,7 @@ executePlan ((distDirLayout, cabalDirLayout, _, _, buildSettings),
 cleanProject :: FilePath -> IO ()
 cleanProject testdir = do
     alreadyExists <- doesDirectoryExist distDir
-    when alreadyExists $ removeDirectoryRecursive distDir
+    when alreadyExists $ removePathForcibly distDir
   where
     projectRoot    = ProjectRootImplicit (basedir </> testdir)
     distDirLayout  = defaultDistDirLayout projectRoot Nothing
