@@ -23,7 +23,7 @@ install:
   # Using '-y' and 'refreshenv' as a workaround to:
   # https://github.com/haskell/cabal/issues/3687
   - choco source add -n mistuke -s https://www.myget.org/F/mistuke/api/v2
-  - choco install -y cabal --version 3.0.0.0
+  - choco install -y cabal --version 2.4.1.0
   - choco install -y ghc --version 8.6.5
   - refreshenv
 
