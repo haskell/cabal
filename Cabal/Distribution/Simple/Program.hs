@@ -90,6 +90,7 @@ module Distribution.Simple.Program (
     , reconfigurePrograms
     , requireProgram
     , requireProgramVersion
+    , needProgram
     , runDbProgram
     , getDbProgramOutput
 
