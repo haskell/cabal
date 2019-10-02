@@ -41,7 +41,7 @@ import Distribution.Client.Compat.Prelude
 
 import System.FilePath
 import Control.Monad
-import Control.Monad.IO.Class
+import Control.Monad.Trans (liftIO)
 import qualified Data.Set as Set
 
 needElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Rebuild ()
