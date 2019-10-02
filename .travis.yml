@@ -96,17 +96,23 @@ matrix:
    - env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
 
-   # It's been long known that CI with
-   # Stack does not work so it's disabled until further notice
-   # to reduce latency and avoid wasting CI slots for no reason.
-   #
-   #- env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
-   #  os: linux
-   #
-   # See https://github.com/haskell/cabal/pull/4667#issuecomment-321036564
-   # for why failures are allowed.
-   # allow_failures:
-   # - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
+  # It's been long known that CI with
+  # Stack does not work so it's disabled until further notice
+  # to reduce latency and avoid wasting CI slots for no reason.
+  #
+  #- env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
+  #  os: linux
+  #
+  # See https://github.com/haskell/cabal/pull/4667#issuecomment-321036564
+  # for why failures are allowed.
+  #
+  # OSX jobs timeout often, so they can fail
+  allow_failures:
+  # - env: GHCVER=via-stack SCRIPT=stack STACK_CONFIG=stack.yaml
+   - env: GHCVER=7.10.3 SCRIPT=script
+     os: osx
+   - env: GHCVER=8.0.2 SCRIPT=script
+     os: osx
 
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
