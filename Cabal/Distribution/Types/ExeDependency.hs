@@ -33,6 +33,28 @@ instance Pretty ExeDependency where
   pretty (ExeDependency name exe ver) =
     (pretty name <<>> text ":" <<>> pretty exe) <+> pretty ver
 
+-- | 
+--
+-- Examples
+--
+-- >>> simpleParsec "happy:happy" :: Maybe ExeDependency
+-- Just (ExeDependency (PackageName "happy") (UnqualComponentName "happy") AnyVersion)
+--
+-- >>> simpleParsec "happy:happy >= 1.19.12" :: Maybe ExeDependency
+-- Just (ExeDependency (PackageName "happy") (UnqualComponentName "happy") (OrLaterVersion (mkVersion [1,19,12])))
+--
+-- >>> simpleParsec "happy:happy>=1.19.12" :: Maybe ExeDependency
+-- Just (ExeDependency (PackageName "happy") (UnqualComponentName "happy") (OrLaterVersion (mkVersion [1,19,12])))
+--
+-- >>> simpleParsec "happy : happy >= 1.19.12" :: Maybe ExeDependency
+-- Nothing
+--
+-- >>> simpleParsec "happy: happy >= 1.19.12" :: Maybe ExeDependency
+-- Nothing
+--
+-- >>> simpleParsec "happy :happy >= 1.19.12" :: Maybe ExeDependency
+-- Just (ExeDependency (PackageName "happy") (UnqualComponentName "happy") (OrLaterVersion (mkVersion [1,19,12])))
+--
 instance Parsec ExeDependency where
     parsec = do
         name <- lexemeParsec
