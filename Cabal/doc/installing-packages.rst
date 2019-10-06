@@ -1228,7 +1228,8 @@ Miscellaneous options
 
     Specify that a particular dependency should used for a particular
     package name. In particular, it declares that any reference to
-    *pkgname* in a ``build-depends`` should be resolved to *ipid*.
+    *pkgname* in a :pkg-field:`build-depends` should be resolved to
+    *ipid*.
 
 .. option:: --exact-configuration
 
@@ -1314,8 +1315,8 @@ Miscellaneous options
 
         $ cabal install --constraint="bar == 2.1"
 
-    Version bounds have the same syntax as ``build-depends``. As
-    a special case, the following prevents ``bar`` from being
+    Version bounds have the same syntax as :pkg-field:`build-depends`.
+    As a special case, the following prevents ``bar`` from being
     used at all:
 
     ::
@@ -1354,11 +1355,11 @@ Miscellaneous options
         $ cabal install --constraint="bar test" --constraint="bar bench"
 
     By default, constraints only apply to build dependencies
-    (``build-depends``), build dependencies of build
+    (:pkg-field:`build-depends`), build dependencies of build
     dependencies, and so on. Constraints normally do not apply to
     dependencies of the ``Setup.hs`` script of any package
-    (``setup-depends``) nor do they apply to build tools
-    (``build-tool-depends``) or the dependencies of build
+    (:pkg-field:`setup-depends`) nor do they apply to build tools
+    (:pkg-field:`build-tool-depends`) or the dependencies of build
     tools. To explicitly apply a constraint to a setup or build
     tool dependency, you can add a qualifier to the constraint as
     follows:
