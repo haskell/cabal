@@ -1,6 +1,7 @@
 # 3.1.0.0 (current development version)
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
+  * A `PreProcessor` can define a function to sort modules
   * TODO
 
  ----
