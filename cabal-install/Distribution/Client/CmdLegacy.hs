@@ -108,22 +108,22 @@ legacyNote cmd = wrapText $
     "The v1-" ++ cmd ++ " command is a part of the legacy v1 style of cabal usage.\n\n" ++
 
     "It is a legacy feature and will be removed in a future release of cabal-install." ++
-    " Please file a bug if you cannot replicate a working v1- use case with the new-style" ++
+    " Please file a bug if you cannot replicate a working v1- use case with the nix-style" ++
     " commands.\n\n" ++
 
-    "For more information, see: https://wiki.haskell.org/Cabal/NewBuild\n"
+    "For more information, see: https://cabal.readthedocs.io/en/latest/nix-local-build-overview.html"
 
 toLegacyCmd :: CommandSpec (globals -> IO action) -> [CommandSpec (globals -> IO action)]
 toLegacyCmd mkSpec = [toLegacy mkSpec]
-    where
-        toLegacy (CommandSpec origUi@CommandUI{..} action type') = CommandSpec legUi action type'
-            where
-                legUi = origUi
-                    { commandName = "v1-" ++ commandName
-                    , commandNotes = Just $ \pname -> case commandNotes of
-                        Just notes -> notes pname ++ "\n" ++ legacyNote commandName
-                        Nothing -> legacyNote commandName
-                    }
+  where
+    toLegacy (CommandSpec origUi@CommandUI{..} action type') = CommandSpec legUi action type'
+      where
+        legUi = origUi
+            { commandName = "v1-" ++ commandName
+            , commandNotes = Just $ \pname -> case commandNotes of
+                Just notes -> notes pname ++ "\n" ++ legacyNote commandName
+                Nothing -> legacyNote commandName
+            }
 
 legacyCmd :: (HasVerbosity flags) => CommandUI flags -> (flags -> [String] -> globals -> IO action) -> [CommandSpec (globals -> IO action)]
 legacyCmd ui action = toLegacyCmd (regularCmd ui action)
