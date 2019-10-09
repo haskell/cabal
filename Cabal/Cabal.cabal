@@ -313,6 +313,7 @@ library
     Distribution.Compat.Directory
     Distribution.Compat.Environment
     Distribution.Compat.Exception
+    Distribution.Compat.FilePath
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
