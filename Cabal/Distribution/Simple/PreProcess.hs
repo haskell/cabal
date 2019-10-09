@@ -118,7 +118,7 @@ data PreProcessor = PreProcessor {
                   -> Verbosity -- verbosity
                   -> IO (),    -- Should exit if the preprocessor fails
 
-  reorderPreProcessorDeps :: [FilePath] -- ^ Source directories
+  reorderPreProcessorDeps :: [FilePath] -- Source directories
                           -> Verbosity
                           -> [ModuleName]
                           -> IO [ModuleName] -- Should fail with a warning if dependency resolution fails
