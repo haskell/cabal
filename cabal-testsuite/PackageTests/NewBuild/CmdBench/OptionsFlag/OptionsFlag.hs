@@ -6,7 +6,6 @@ import System.Exit (exitFailure, exitSuccess)
 main :: IO ()
 main = do
   args <- getArgs
-  let allArgs = unwords args
-  if allArgs == "1 2 3 4 5 6"
+  if args == ["1", "2 3", "4", "5 6"]
      then exitSuccess
-     else putStrLn ("Got: " ++ allArgs) >> exitFailure
+     else putStrLn ("Got: " ++ show args) >> exitFailure
