@@ -36,7 +36,7 @@ import Distribution.Client.Setup
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
@@ -64,7 +64,9 @@ import qualified Distribution.Client.Setup as Client
 import qualified Hackage.Security.Client as Sec
 
 updateCommand :: CommandUI ( ConfigFlags, ConfigExFlags
-                           , InstallFlags, HaddockFlags, TestFlags )
+                           , InstallFlags, HaddockFlags
+                           , TestFlags, BenchmarkFlags
+                           )
 updateCommand = Client.installCommand {
   commandName         = "v2-update",
   commandSynopsis     = "Updates list of known packages.",
@@ -114,9 +116,11 @@ instance Text UpdateRequest where
             name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= ',')) ReadP.eof
             return (UpdateRequest name IndexStateHead)
 
-updateAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+updateAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+                , HaddockFlags, TestFlags, BenchmarkFlags )
              -> [String] -> GlobalFlags -> IO ()
-updateAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+updateAction ( configFlags, configExFlags, installFlags
+             , haddockFlags, testFlags, benchmarkFlags )
              extraArgs globalFlags = do
   projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
@@ -174,7 +178,7 @@ updateAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)

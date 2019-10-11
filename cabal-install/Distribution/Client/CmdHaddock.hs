@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), TestFlags, fromFlagOrDefault )
+         ( HaddockFlags(..), TestFlags, BenchmarkFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
@@ -31,8 +31,9 @@ import Distribution.Simple.Utils
 import Control.Monad (when)
 
 
-haddockCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags
-                            ,HaddockFlags, TestFlags)
+haddockCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                            , HaddockFlags, TestFlags, BenchmarkFlags
+                            )
 haddockCommand = Client.installCommand {
   commandName         = "v2-haddock",
   commandSynopsis     = "Build Haddock documentation",
@@ -69,9 +70,11 @@ haddockCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-haddockAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+haddockAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+                 , HaddockFlags, TestFlags, BenchmarkFlags )
                  -> [String] -> GlobalFlags -> IO ()
-haddockAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+haddockAction ( configFlags, configExFlags, installFlags
+              , haddockFlags, testFlags, benchmarkFlags )
                 targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
@@ -113,7 +116,7 @@ haddockAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

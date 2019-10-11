@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags(..), fromFlagOrDefault )
+         ( HaddockFlags, TestFlags(..), BenchmarkFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
@@ -36,7 +36,9 @@ import Control.Monad (when)
 import qualified System.Exit (exitSuccess)
 
 
-testCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+testCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                         , HaddockFlags, TestFlags, BenchmarkFlags
+                         )
 testCommand = Client.installCommand
   { commandName         = "v2-test"
   , commandSynopsis     = "Run test-suites"
@@ -84,9 +86,11 @@ testCommand = Client.installCommand
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-testAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+testAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+              , HaddockFlags, TestFlags, BenchmarkFlags )
            -> [String] -> GlobalFlags -> IO ()
-testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+testAction ( configFlags, configExFlags, installFlags
+           , haddockFlags, testFlags, benchmarkFlags )
            targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
@@ -131,7 +135,7 @@ testAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

@@ -79,6 +79,7 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), defaultTestFlags
+         , BenchmarkFlags(..), defaultBenchmarkFlags
          , installDirsOptions, optionDistPref
          , programDbPaths', programDbOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
@@ -169,7 +170,8 @@ data SavedConfig = SavedConfig {
     savedUploadFlags       :: UploadFlags,
     savedReportFlags       :: ReportFlags,
     savedHaddockFlags      :: HaddockFlags,
-    savedTestFlags         :: TestFlags
+    savedTestFlags         :: TestFlags,
+    savedBenchmarkFlags    :: BenchmarkFlags
   } deriving Generic
 
 instance Monoid SavedConfig where
@@ -189,7 +191,8 @@ instance Semigroup SavedConfig where
     savedUploadFlags       = combinedSavedUploadFlags,
     savedReportFlags       = combinedSavedReportFlags,
     savedHaddockFlags      = combinedSavedHaddockFlags,
-    savedTestFlags         = combinedSavedTestFlags
+    savedTestFlags         = combinedSavedTestFlags,
+    savedBenchmarkFlags    = combinedSavedBenchmarkFlags
   }
     where
       -- This is ugly, but necessary. If we're mappending two config files, we
@@ -512,6 +515,15 @@ instance Semigroup SavedConfig where
         where
           combine      = combine'        savedTestFlags
           lastNonEmpty = lastNonEmpty'   savedTestFlags
+
+      combinedSavedBenchmarkFlags = BenchmarkFlags {
+        benchmarkDistPref  = combine benchmarkDistPref,
+        benchmarkVerbosity = combine benchmarkVerbosity,
+        benchmarkOptions   = lastNonEmpty benchmarkOptions
+        }
+        where
+          combine      = combine'        savedBenchmarkFlags
+          lastNonEmpty = lastNonEmpty'   savedBenchmarkFlags
 
 
 --
@@ -850,7 +862,8 @@ commentSavedConfig = do
         savedUploadFlags       = commandDefaultFlags uploadCommand,
         savedReportFlags       = commandDefaultFlags reportCommand,
         savedHaddockFlags      = defaultHaddockFlags,
-        savedTestFlags         = defaultTestFlags
+        savedTestFlags         = defaultTestFlags,
+        savedBenchmarkFlags    = defaultBenchmarkFlags
         }
   conf1 <- extendToEffectiveConfig conf0
   let globalFlagsConf1 = savedGlobalFlags conf1
