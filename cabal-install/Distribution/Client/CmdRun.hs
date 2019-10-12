@@ -29,7 +29,7 @@ import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
@@ -107,7 +107,9 @@ import System.FilePath
          ( (</>), isValid, isPathSeparator, takeExtension )
 
 
-runCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+runCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                        , HaddockFlags, TestFlags, BenchmarkFlags
+                        )
 runCommand = Client.installCommand {
   commandName         = "v2-run",
   commandSynopsis     = "Run an executable.",
@@ -153,9 +155,11 @@ runCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+runAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+             , HaddockFlags, TestFlags, BenchmarkFlags )
           -> [String] -> GlobalFlags -> IO ()
-runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+runAction ( configFlags, configExFlags, installFlags
+          , haddockFlags, testFlags, benchmarkFlags )
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tempDir <- createTempDirectory globalTmp "cabal-repl."
@@ -299,7 +303,7 @@ runAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was

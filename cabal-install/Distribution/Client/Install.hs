@@ -125,7 +125,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , TestFlags
+         , TestFlags, BenchmarkFlags
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
@@ -148,7 +148,7 @@ import Distribution.Types.Dependency
          ( thisPackageVersion )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
-import Distribution.Pretty ( prettyShow )  
+import Distribution.Pretty ( prettyShow )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint(..) )
 import Distribution.Types.MungedPackageId
@@ -206,11 +206,12 @@ install
   -> InstallFlags
   -> HaddockFlags
   -> TestFlags
+  -> BenchmarkFlags
   -> [UserTarget]
   -> IO ()
 install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgInfo
-  globalFlags configFlags configExFlags installFlags haddockFlags testFlags
-  userTargets0 = do
+  globalFlags configFlags configExFlags installFlags
+  haddockFlags testFlags benchmarkFlags userTargets0 = do
 
     unless (installRootCmd installFlags == Cabal.NoFlag) $
         warn verbosity $ "--root-cmd is no longer supported, "
@@ -238,7 +239,7 @@ install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgIn
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, progdb, useSandbox,
             mSandboxPkgInfo, globalFlags, configFlags, configExFlags,
-            installFlags, haddockFlags, testFlags)
+            installFlags, haddockFlags, testFlags, benchmarkFlags)
 
     die'' message = die' verbosity (message ++ if isUseSandbox useSandbox
                                    then installFailedInSandbox else [])
@@ -272,14 +273,15 @@ type InstallArgs = ( PackageDBStack
                    , ConfigExFlags
                    , InstallFlags
                    , HaddockFlags
-                   , TestFlags )
+                   , TestFlags
+                   , BenchmarkFlags )
 
 -- | Make an install context given install arguments.
 makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repoCtxt, comp, _, progdb,_,_,
-   globalFlags, _, configExFlags, installFlags, _, _) mUserTargets = do
+   globalFlags, _, configExFlags, installFlags, _, _, _) mUserTargets = do
 
     let idxState = flagToMaybe (installIndexState installFlags)
 
@@ -318,7 +320,7 @@ makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
 makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
-   _, _)
+   _, _, _)
   (installedPkgIndex, sourcePkgDb, pkgConfigDb,
    _, pkgSpecifiers, _) = do
 
@@ -334,7 +336,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> SolverInstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _, _)
+  args@(_,_, _, _, _, _, _, _, configFlags, _, installFlags, _, _, _)
   (installedPkgIndex, sourcePkgDb, _,
    userTargets, pkgSpecifiers, _) installPlan0 = do
 
@@ -755,7 +757,7 @@ reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String
                       -> IO ()
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
-  ,_, configFlags, _, installFlags, _, _)
+  ,_, configFlags, _, installFlags, _, _, _)
   (_, sourcePkgDb, _, _, pkgSpecifiers, _)
   message = do
 
@@ -835,7 +837,7 @@ postInstallActions :: Verbosity
                    -> IO ()
 postInstallActions verbosity
   (packageDBs, _, comp, platform, progdb, useSandbox, mSandboxPkgInfo
-  ,globalFlags, configFlags, _, installFlags, _, _)
+  ,globalFlags, configFlags, _, installFlags, _, _, _)
   targets installPlan buildOutcomes = do
 
   updateSandboxTimestampsFile verbosity useSandbox mSandboxPkgInfo
@@ -1089,7 +1091,8 @@ performInstallations :: Verbosity
                      -> IO BuildOutcomes
 performInstallations verbosity
   (packageDBs, repoCtxt, comp, platform, progdb, useSandbox, _,
-   globalFlags, configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+   globalFlags, configFlags, configExFlags, installFlags,
+   haddockFlags, testFlags, _)
   installedPkgIndex installPlan = do
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.

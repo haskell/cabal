@@ -2,13 +2,16 @@ module UnitTests.Distribution.Simple.Utils
     ( tests
     ) where
 
+import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Utils
+import Distribution.System ( buildPlatform )
 import Distribution.Verbosity
 
 import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
                         , removeDirectoryRecursive, removeFile )
+import System.FilePath ( (<.>) )
 import System.IO (hClose, localeEncoding, hPutStrLn)
 import System.IO.Error
 import qualified Control.Exception as Exception
@@ -84,6 +87,10 @@ rawSystemStdInOutTextDecodingTest ghcPath
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 
+dropExeExtensionTest :: Assertion
+dropExeExtensionTest =
+  assertBool "dropExeExtension didn't drop exeExtension!" $
+    dropExeExtension ("foo" <.> exeExtension buildPlatform) == "foo"
 
 
 tests :: FilePath -> [TestTree]
@@ -98,4 +105,6 @@ tests ghcPath =
       withTempDirRemovedTest
     , testCase "rawSystemStdInOut reports text decoding errors" $
       rawSystemStdInOutTextDecodingTest ghcPath
+    , testCase "dropExeExtension drops exe extension" $
+      dropExeExtensionTest
     ]

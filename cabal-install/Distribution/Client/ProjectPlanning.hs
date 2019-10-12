@@ -1884,6 +1884,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabTestFailWhenNoTestSuites = perPkgOptionFlag pkgid False packageConfigTestFailWhenNoTestSuites
         elabTestTestOptions     = perPkgOptionList pkgid packageConfigTestTestOptions
 
+        elabBenchmarkOptions    = perPkgOptionList pkgid packageConfigBenchmarkOptions
+
     perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
     perPkgOptionMaybe :: PackageId ->       (PackageConfig -> Flag a) -> Maybe a
     perPkgOptionList  :: PackageId ->       (PackageConfig -> [a])    -> [a]
@@ -3456,10 +3458,10 @@ setupHsBenchFlags :: ElaboratedConfiguredPackage
                   -> Verbosity
                   -> FilePath
                   -> Cabal.BenchmarkFlags
-setupHsBenchFlags _ _ verbosity builddir = Cabal.BenchmarkFlags
+setupHsBenchFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir = Cabal.BenchmarkFlags
     { benchmarkDistPref  = toFlag builddir
     , benchmarkVerbosity = toFlag verbosity
-    , benchmarkOptions   = mempty
+    , benchmarkOptions   = elabBenchmarkOptions
     }
 
 setupHsBenchArgs :: ElaboratedConfiguredPackage -> [String]

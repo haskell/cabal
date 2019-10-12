@@ -16,7 +16,7 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Verbosity
          ( normal )
 
@@ -26,8 +26,9 @@ import Distribution.Simple.Utils
          ( wrapText, notice )
 import qualified Distribution.Client.Setup as Client
 
-configureCommand :: CommandUI (ConfigFlags, ConfigExFlags
-                              ,InstallFlags, HaddockFlags, TestFlags)
+configureCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
+                              , HaddockFlags, TestFlags, BenchmarkFlags
+                              )
 configureCommand = Client.installCommand {
   commandName         = "v2-configure",
   commandSynopsis     = "Add extra project configuration",
@@ -78,9 +79,11 @@ configureCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags)
+configureAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
+                   , HaddockFlags, TestFlags, BenchmarkFlags )
                 -> [String] -> GlobalFlags -> IO ()
-configureAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags)
+configureAction ( configFlags, configExFlags, installFlags
+                , haddockFlags, testFlags, benchmarkFlags )
                 _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
@@ -123,5 +126,5 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags, testFla
                   globalFlags configFlags configExFlags
                   installFlags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
 

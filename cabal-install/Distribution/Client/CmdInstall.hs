@@ -32,7 +32,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
          , configureExOptions, haddockOptions, installOptions, testOptions
-         , configureOptions, liftOptions )
+         , benchmarkOptions, configureOptions, liftOptions )
 import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(..) )
 import Distribution.Client.Types
@@ -87,7 +87,8 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.InstallSymlink
          ( OverwritePolicy(..), symlinkBinary )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, TestFlags, fromFlagOrDefault, flagToMaybe )
+         ( Flag(..), HaddockFlags, TestFlags, BenchmarkFlags
+         , fromFlagOrDefault, flagToMaybe )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
@@ -142,7 +143,8 @@ import System.FilePath
 
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                            , HaddockFlags, TestFlags, ClientInstallFlags
+                            , HaddockFlags, TestFlags, BenchmarkFlags
+                            , ClientInstallFlags
                             )
 installCommand = CommandUI
   { commandName         = "v2-install"
@@ -194,17 +196,19 @@ installCommand = CommandUI
                   . optionName) $
                                 haddockOptions showOrParseArgs)
      ++ liftOptions get5 set5 (testOptions showOrParseArgs)
-     ++ liftOptions get6 set6 (clientInstallOptions showOrParseArgs)
-  , commandDefaultFlags = ( mempty, mempty, mempty, mempty, mempty
+     ++ liftOptions get6 set6 (benchmarkOptions showOrParseArgs)
+     ++ liftOptions get7 set7 (clientInstallOptions showOrParseArgs)
+  , commandDefaultFlags = ( mempty, mempty, mempty, mempty, mempty, mempty
                           , defaultClientInstallFlags )
   }
   where
-    get1 (a,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f) = (a,b,c,d,e,f)
-    get2 (_,b,_,_,_,_) = b; set2 b (a,_,c,d,e,f) = (a,b,c,d,e,f)
-    get3 (_,_,c,_,_,_) = c; set3 c (a,b,_,d,e,f) = (a,b,c,d,e,f)
-    get4 (_,_,_,d,_,_) = d; set4 d (a,b,c,_,e,f) = (a,b,c,d,e,f)
-    get5 (_,_,_,_,e,_) = e; set5 e (a,b,c,d,_,f) = (a,b,c,d,e,f)
-    get6 (_,_,_,_,_,f) = f; set6 f (a,b,c,d,e,_) = (a,b,c,d,e,f)
+    get1 (a,_,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f,g) = (a,b,c,d,e,f,g)
+    get2 (_,b,_,_,_,_,_) = b; set2 b (a,_,c,d,e,f,g) = (a,b,c,d,e,f,g)
+    get3 (_,_,c,_,_,_,_) = c; set3 c (a,b,_,d,e,f,g) = (a,b,c,d,e,f,g)
+    get4 (_,_,_,d,_,_,_) = d; set4 d (a,b,c,_,e,f,g) = (a,b,c,d,e,f,g)
+    get5 (_,_,_,_,e,_,_) = e; set5 e (a,b,c,d,_,f,g) = (a,b,c,d,e,f,g)
+    get6 (_,_,_,_,_,f,_) = f; set6 f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
+    get7 (_,_,_,_,_,_,g) = g; set7 g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
 
 
 -- | The @install@ command actually serves four different needs. It installs:
@@ -225,11 +229,13 @@ installCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 installAction
-  :: ( ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags
+  :: ( ConfigFlags, ConfigExFlags, InstallFlags
+     , HaddockFlags, TestFlags, BenchmarkFlags
      , ClientInstallFlags)
   -> [String] -> GlobalFlags
   -> IO ()
-installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
+installAction ( configFlags, configExFlags, installFlags
+              , haddockFlags, testFlags, benchmarkFlags
               , clientInstallFlags' )
               targetStrings globalFlags = do
   -- We never try to build tests/benchmarks for remote packages.
@@ -599,7 +605,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags configFlags' configExFlags
                   installFlags clientInstallFlags'
-                  haddockFlags testFlags
+                  haddockFlags testFlags benchmarkFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Install any built exe by symlinking/copying it
