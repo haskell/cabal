@@ -40,9 +40,11 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
+import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.CCompiler
 import Distribution.Simple.Compiler
+import Distribution.Simple.Program.GHC
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -50,6 +52,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
+import Distribution.Text
 import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
@@ -400,13 +403,14 @@ ppHsc2hs bi lbi clbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+      (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
       (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
                                           hsc2hsProgram anyVersion (withPrograms lbi)
       -- See Trac #13896 and https://github.com/haskell/cabal/issues/3122.
       let isCross = hostPlatform lbi /= buildPlatform
           prependCrossFlags = if isCross then ("-x":) else id
       let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
-          pureArgs = genPureArgs gccProg inFile outFile
+          pureArgs = genPureArgs gccProg ghcProg inFile outFile
       if hsc2hsSupportsResponseFiles
       then withResponseFile
              verbosity
@@ -422,20 +426,25 @@ ppHsc2hs bi lbi clbi =
   where
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
-    genPureArgs :: ConfiguredProgram -> String -> String -> [String]
-    genPureArgs gccProg inFile outFile =
+    genPureArgs
+      :: ConfiguredProgram
+      -> ConfiguredProgram
+      -> String
+      -> String
+      -> [String]
+    genPureArgs gccProg ghcProg inFile outFile =
           -- Additional gcc options
           [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
-       ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
+       ++ [ "--lflag=-optl" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
 
           -- OSX frameworks:
-       ++ [ what ++ "=-F" ++ opt
+       ++ [ what ++ "-F" ++ opt
           | isOSX
           , opt <- nub (concatMap Installed.frameworkDirs pkgs)
-          , what <- ["--cflag", "--lflag"] ]
-       ++ [ "--lflag=" ++ arg
+          , what <- ["--cflag=", "--lflag=-optl"] ]
+       ++ [ "--lflag=-optl" ++ arg
           | isOSX
           , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
           , arg <- ["-framework", opt] ]
@@ -465,24 +474,31 @@ ppHsc2hs bi lbi clbi =
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
                  "-I" ++ autogenPackageModulesDir lbi,
                  "-include", autogenComponentModulesDir lbi clbi </> cppHeaderName ] ]
-       ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
-       ++ [ "--lflag=-Wl,-R," ++ opt | isELF
+
+       ++ [ "--lflag=-pgml=" ++ programPath gccProg ]
+       ++ [ "--lflag=-optl-L" ++ opt | opt <- PD.extraLibDirs bi ]
+       ++ [ "--lflag=-optl-Wl,-R," ++ opt | isELF
                                 , opt <- PD.extraLibDirs bi ]
-       ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
-       ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
+       ++ [ "--lflag=-optl-l" ++ opt | opt <- PD.extraLibs    bi ]
+       ++ [ "--lflag=-optl"   ++ opt | opt <- PD.ldOptions    bi ]
 
           -- Options from dependent packages
        ++ [ "--cflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
                 ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
-       ++ [ "--lflag=" ++ opt
-          | pkg <- pkgs
-          , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
-                ++ [ "-Wl,-R," ++ opt | isELF
-                                 , opt <- Installed.libraryDirs    pkg ]
-                ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
-                ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+
+       ++ [ "--lflag=" ++ arg
+          | arg <- packageDbArgs (getImplInfo (compiler lbi)) (withPackageDB lbi) ]
+
+       ++ [ "--lflag=-hide-all-packages" ]
+
+       ++ concat [ [ "--lflag=-package-id",
+                     "--lflag=" ++ display (Installed.installedUnitId pkg) ]
+          | pkg <- pkgs ]
+
+       ++ [ "--lflag=-no-hs-main" ]
+
        ++ hsc2hsOptions bi
 
           -- hsc2hs flag parsing is wrong (see
@@ -492,6 +508,7 @@ ppHsc2hs bi lbi clbi =
           , "--ld=" ++ programPath gccProg ]
 
        ++ ["-o", outFile, inFile]
+
 
     hacked_index = packageHacks (installedPkgs lbi)
     -- Look only at the dependencies of the current component
