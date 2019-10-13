@@ -294,7 +294,9 @@ data PackageConfig
        packageConfigTestKeepTix         :: Flag Bool,
        packageConfigTestWrapper         :: Flag FilePath,
        packageConfigTestFailWhenNoTestSuites :: Flag Bool,
-       packageConfigTestTestOptions     :: [PathTemplate]
+       packageConfigTestTestOptions     :: [PathTemplate],
+       -- Benchmark options
+       packageConfigBenchmarkOptions    :: [PathTemplate]
      }
   deriving (Eq, Show, Generic)
 

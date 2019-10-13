@@ -28,7 +28,7 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
-import Distribution.Types.GenericPackageDescription (unFlagName)
+import Distribution.Types.Flag (unFlagName)
 
 {-------------------------------------------------------------------------------
   Validation

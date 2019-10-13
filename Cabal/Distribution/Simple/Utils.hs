@@ -177,6 +177,7 @@ import Distribution.Version
 import Distribution.Compat.CopyFile
 import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Exception
+import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
@@ -212,7 +213,7 @@ import System.Environment
     ( getProgName )
 import System.Exit
     ( exitWith, ExitCode(..) )
-import System.FilePath
+import System.FilePath as FilePath
     ( normalise, (</>), (<.>)
     , getSearchPath, joinPath, takeDirectory, splitExtension
     , splitDirectories, searchPathSeparator )
@@ -1411,11 +1412,25 @@ shortRelativePath from to =
 -- unchanged.
 dropExeExtension :: FilePath -> FilePath
 dropExeExtension filepath =
-  case splitExtension filepath of
-    (filepath', extension) | extension `elem` exeExtensions -> filepath'
-                           | otherwise                      -> filepath
+  -- System.FilePath's extension handling functions are horribly
+  -- inconsistent, consider:
+  --
+  --     isExtensionOf "" "foo"  == False but
+  --     isExtensionOf "" "foo." == True.
+  --
+  -- On the other hand stripExtension doesn't remove the empty extension:
+  --
+  --    stripExtension "" "foo." == Just "foo."
+  --
+  -- Since by "" in exeExtensions we mean 'no extension' anyways we can
+  -- just always ignore it here.
+  let exts = [ ext | ext <- exeExtensions, ext /= "" ] in
+  fromMaybe filepath $ do
+    ext <- find (`FilePath.isExtensionOf` filepath) exts
+    ext `FilePath.stripExtension` filepath
 
--- | List of possible executable file extensions on the current platform.
+-- | List of possible executable file extensions on the current build
+-- platform.
 exeExtensions :: [String]
 exeExtensions = case buildOS of
   -- Possible improvement: on Windows, read the list of extensions from the

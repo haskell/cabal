@@ -8,7 +8,7 @@ import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Fields.Field                    (SectionArg (..))
 import Distribution.Fields.ParseResult
 import Distribution.Types.Condition
-import Distribution.Types.GenericPackageDescription (ConfVar (..))
+import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Version
        (anyVersion, earlierVersion, intersectVersionRanges, laterVersion, majorBoundVersion,
        mkVersion, noVersion, orEarlierVersion, orLaterVersion, thisVersion, unionVersionRanges,

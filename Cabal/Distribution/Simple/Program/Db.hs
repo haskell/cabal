@@ -57,6 +57,7 @@ module Distribution.Simple.Program.Db (
     reconfigurePrograms,
     requireProgram,
     requireProgramVersion,
+    needProgram,
 
   ) where
 
@@ -413,6 +414,22 @@ reconfigurePrograms verbosity paths argss progdb = do
 requireProgram :: Verbosity -> Program -> ProgramDb
                -> IO (ConfiguredProgram, ProgramDb)
 requireProgram verbosity prog progdb = do
+    mres <- needProgram verbosity prog progdb
+    case mres of
+        Nothing  -> die' verbosity notFound
+        Just res -> return res
+  where
+    notFound = "The program '" ++ programName prog ++ "' is required but it could not be found."
+
+-- | Check that a program is configured and available to be run.
+--
+-- It returns 'Nothing' if the program couldn't be configured,
+-- or is not found.
+--
+-- @since 3.2.0.0
+needProgram :: Verbosity -> Program -> ProgramDb
+            -> IO (Maybe (ConfiguredProgram, ProgramDb))
+needProgram verbosity prog progdb = do
 
   -- If it's not already been configured, try to configure it now
   progdb' <- case lookupProgram prog progdb of
@@ -420,12 +437,8 @@ requireProgram verbosity prog progdb = do
     Just _  -> return progdb
 
   case lookupProgram prog progdb' of
-    Nothing             -> die' verbosity notFound
-    Just configuredProg -> return (configuredProg, progdb')
-
-  where notFound       = "The program '" ++ programName prog
-                      ++ "' is required but it could not be found."
-
+    Nothing             -> return Nothing
+    Just configuredProg -> return (Just (configuredProg, progdb'))
 
 -- | Check that a program is configured and available to be run.
 --

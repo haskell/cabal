@@ -297,6 +297,8 @@ data ElaboratedConfiguredPackage
        elabTestFailWhenNoTestSuites :: Bool,
        elabTestTestOptions       :: [PathTemplate],
 
+       elabBenchmarkOptions      :: [PathTemplate],
+
        -- Setup.hs related things:
 
        -- | One of four modes for how we build and interact with the Setup.hs
