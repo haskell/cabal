@@ -46,6 +46,7 @@ GenericPackageDescription
                                                           extraLibs = [],
                                                           frameworks = [],
                                                           hsSourceDirs = ["src"],
+                                                          hsc2hsOptions = [],
                                                           includeDirs = [],
                                                           includes = [],
                                                           installIncludes = [],
