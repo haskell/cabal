@@ -424,11 +424,8 @@ ppHsc2hs bi lbi clbi =
     -- directly, or via a response file.
     genPureArgs :: ConfiguredProgram -> String -> String -> [String]
     genPureArgs gccProg inFile outFile =
-          [ "--cc=" ++ programPath gccProg
-          , "--ld=" ++ programPath gccProg ]
-
           -- Additional gcc options
-       ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
+          [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
        ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
@@ -486,6 +483,14 @@ ppHsc2hs bi lbi clbi =
                                  , opt <- Installed.libraryDirs    pkg ]
                 ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+       ++ hsc2hsOptions bi
+
+          -- hsc2hs flag parsing is wrong (see
+          -- https://github.com/haskell/hsc2hs/issues/35) so we need to put
+          -- --cc/--ld *after* hsc2hsOptions so that they can be overridden.
+       ++ [ "--cc=" ++ programPath gccProg
+          , "--ld=" ++ programPath gccProg ]
+
        ++ ["-o", outFile, inFile]
 
     hacked_index = packageHacks (installedPkgs lbi)

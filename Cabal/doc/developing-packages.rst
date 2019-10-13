@@ -2576,6 +2576,11 @@ system-dependent values for these fields.
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent parameters`_.
 
+.. pkg-field:: hsc2hs-options: token list
+    :since 3.1
+
+    Command-line arguments to be passed to hsc2hs.
+
 .. pkg-field:: pkgconfig-depends: package list
 
     A list of

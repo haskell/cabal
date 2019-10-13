@@ -395,6 +395,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
         ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
+    <*> monoidalFieldAla "hsc2hs-options"       (alaList' NoCommaFSep Token') L.hsc2hsOptions
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
