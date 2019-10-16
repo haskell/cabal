@@ -461,7 +461,8 @@ installAction ( configFlags, configExFlags, installFlags
       projectConfigShared = ProjectConfigShared {
         projectConfigHcFlavor,
         projectConfigHcPath,
-        projectConfigHcPkg
+        projectConfigHcPkg,
+        projectConfigStoreDir
       },
       projectConfigLocalPackages = PackageConfig {
         packageConfigProgramPaths,
@@ -529,7 +530,7 @@ installAction ( configFlags, configExFlags, installFlags
 
   cabalDir  <- getCabalDir
   mstoreDir <-
-    sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
+    sequenceA $ makeAbsolute <$> flagToMaybe projectConfigStoreDir
   let
     mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
