@@ -70,7 +70,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
          ( takeFields, parseFieldGrammar )
 import Distribution.PackageDescription.FieldGrammar
-         ( executableFieldGrammar, scriptFieldGrammar )
+         ( scriptFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import Distribution.Parsec
@@ -445,7 +445,8 @@ handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
   let
     projectConfigShared' :: ProjectConfigShared
     projectConfigShared' = (projectConfigShared (projectConfig baseCtx))
-      { projectConfigHcPath = maybeToFlag hcPath
+      { projectConfigHcPath = (maybeToFlag hcPath) <>
+                              projectConfigHcPath (projectConfigShared (projectConfig baseCtx))
       }
     baseCtx' = baseCtx
       { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage]
