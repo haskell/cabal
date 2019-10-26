@@ -29,7 +29,7 @@ import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault, maybeToFlag )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
@@ -70,7 +70,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
          ( takeFields, parseFieldGrammar )
 import Distribution.PackageDescription.FieldGrammar
-         ( executableFieldGrammar )
+         ( executableFieldGrammar, scriptFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import Distribution.Parsec
@@ -90,6 +90,8 @@ import Distribution.Types.GenericPackageDescription as GPD
          ( GenericPackageDescription(..), emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
+import Distribution.Types.Script
+         ( Script(..) )
 import Distribution.Types.Version
          ( mkVersion )
 import Distribution.Types.PackageName.Magic
@@ -332,20 +334,20 @@ handleShebang :: FilePath -> [String] -> IO ()
 handleShebang script args =
   runAction (commandDefaultFlags runCommand) (script:args) defaultGlobalFlags
 
-parseScriptBlock :: BS.ByteString -> ParseResult Executable
+parseScriptBlock :: BS.ByteString -> ParseResult Script
 parseScriptBlock str =
     case readFields str of
         Right fs -> do
             let (fields, _) = takeFields fs
-            parseFieldGrammar cabalSpecLatest fields (executableFieldGrammar "script")
+            parseFieldGrammar cabalSpecLatest fields scriptFieldGrammar
         Left perr -> parseFatalFailure pos (show perr) where
             ppos = P.errorPos perr
             pos  = Position (P.sourceLine ppos) (P.sourceColumn ppos)
 
-readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
+readScriptBlock :: Verbosity -> BS.ByteString -> IO Script
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
-readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Executable, BS.ByteString)
+readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Script, BS.ByteString)
 readScriptBlockFromScript verbosity pol str = do
     str' <- case extractScriptBlock pol str of
               Left e -> die' verbosity $ "Failed extracting script block: " ++ e
@@ -401,7 +403,8 @@ handleScriptCase
   -> BS.ByteString
   -> IO (ProjectBaseContext, [TargetSelector])
 handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
-  (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
+  (script, contents') <- readScriptBlockFromScript verbosity pol scriptContents
+  let Script executable hcPath = script
 
   -- We need to create a dummy package that lives in our dummy project.
   let
@@ -440,8 +443,14 @@ handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
   BS.writeFile (tempDir </> mainName) contents'
 
   let
+    projectConfigShared' :: ProjectConfigShared
+    projectConfigShared' = (projectConfigShared (projectConfig baseCtx))
+      { projectConfigHcPath = maybeToFlag hcPath
+      }
     baseCtx' = baseCtx
-      { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage] }
+      { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage]
+      , projectConfig = (projectConfig baseCtx) { projectConfigShared = projectConfigShared' }
+      }
     targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
 
   return (baseCtx', targetSelectors)

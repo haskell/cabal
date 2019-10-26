@@ -462,6 +462,7 @@ a script that looks like:
     {- cabal:
     build-depends: base ^>= 4.11
                 , shelly ^>= 1.8.1
+    with-compiler: ghc-8.8.1
     -}
 
     main :: IO ()

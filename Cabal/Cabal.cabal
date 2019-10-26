@@ -443,6 +443,7 @@ library
     Distribution.Types.UnqualComponentName
     Distribution.Types.IncludeRenaming
     Distribution.Types.Mixin
+    Distribution.Types.Script
     Distribution.Types.SetupBuildInfo
     Distribution.Types.TestSuite
     Distribution.Types.TestSuiteInterface
@@ -521,6 +522,7 @@ library
     Distribution.Types.Library.Lens
     Distribution.Types.PackageDescription.Lens
     Distribution.Types.PackageId.Lens
+    Distribution.Types.Script.Lens
     Distribution.Types.SetupBuildInfo.Lens
     Distribution.Types.SourceRepo.Lens
     Distribution.Types.TestSuite.Lens

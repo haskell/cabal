@@ -7,6 +7,7 @@ module Distribution.Types.Lens (
     module Distribution.Types.Library.Lens,
     module Distribution.Types.PackageDescription.Lens,
     module Distribution.Types.PackageId.Lens,
+    module Distribution.Types.Script.Lens,
     module Distribution.Types.SetupBuildInfo.Lens,
     module Distribution.Types.SourceRepo.Lens,
     module Distribution.Types.TestSuite.Lens,
@@ -20,6 +21,7 @@ import Distribution.Types.GenericPackageDescription.Lens
 import Distribution.Types.Library.Lens
 import Distribution.Types.PackageDescription.Lens
 import Distribution.Types.PackageId.Lens
+import Distribution.Types.Script.Lens
 import Distribution.Types.SetupBuildInfo.Lens
 import Distribution.Types.SourceRepo.Lens
 import Distribution.Types.TestSuite.Lens

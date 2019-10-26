@@ -37,6 +37,8 @@ module Distribution.PackageDescription.FieldGrammar (
     setupBInfoFieldGrammar,
     -- * Component build info
     buildInfoFieldGrammar,
+    -- * Script
+    scriptFieldGrammar
     ) where
 
 import Distribution.Compat.Lens
@@ -57,6 +59,7 @@ import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.LibraryVisibility
+import Distribution.Types.Script
 import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (anyVersion)
 
@@ -539,3 +542,16 @@ setupBInfoFieldGrammar def = flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}
+
+-------------------------------------------------------------------------------
+-- Script
+-------------------------------------------------------------------------------
+
+scriptFieldGrammar
+    :: (FieldGrammar g, Applicative (g Script), Applicative (g Executable), Applicative (g BuildInfo))
+    => g Script Script
+scriptFieldGrammar = Script
+    <$> blurFieldGrammar L.executable (executableFieldGrammar "script")
+    <*> optionalFieldAla "with-compiler" FilePathNT L.hcPath
+{-# SPECIALIZE scriptFieldGrammar :: ParsecFieldGrammar' Script #-}
+{-# SPECIALIZE scriptFieldGrammar :: PrettyFieldGrammar' Script #-}
