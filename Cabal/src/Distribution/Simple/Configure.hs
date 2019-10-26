@@ -574,8 +574,15 @@ configure (pkg_descr0, pbi) cfg = do
           configureAllKnownPrograms (lessVerbose verbosity) programDb
       >>= configureRequiredPrograms verbosity requiredBuildTools
 
+    let withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
+
     (pkg_descr', programDb'') <-
-      configurePkgconfigPackages verbosity pkg_descr programDb' enabled
+      configurePkgconfigPackages
+          verbosity
+          pkg_descr
+          programDb'
+          enabled
+          withFullyStaticExe_
 
     -- Compute internal component graph
     --
@@ -678,7 +685,6 @@ configure (pkg_descr0, pbi) cfg = do
 
         withDynExe_ = fromFlag $ configDynExe cfg
 
-        withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
@@ -1562,8 +1568,9 @@ configureRequiredProgram verbosity progdb
 
 configurePkgconfigPackages :: Verbosity -> PackageDescription
                            -> ProgramDb -> ComponentRequestedSpec
+                           -> Bool
                            -> IO (PackageDescription, ProgramDb)
-configurePkgconfigPackages verbosity pkg_descr progdb enabled
+configurePkgconfigPackages verbosity pkg_descr progdb enabled fullyStatic
   | null allpkgs = return (pkg_descr, progdb)
   | otherwise    = do
     (_, _, progdb') <- requireProgramVersion
@@ -1637,7 +1644,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     pkgconfigBuildInfo pkgdeps = do
       let pkgs = nub [ prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
-      ldflags <- pkgconfig ("--libs"   : pkgs)
+      ldflags <- pkgconfig ("--libs"   : (["--static" | fullyStatic] ++ pkgs))
       return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))
 
 -- | Makes a 'BuildInfo' from C compiler and linker flags.
