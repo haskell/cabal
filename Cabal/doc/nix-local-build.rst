@@ -462,7 +462,6 @@ a script that looks like:
     {- cabal:
     build-depends: base ^>= 4.11
                 , shelly ^>= 1.8.1
-    with-compiler: ghc-8.8.1
     -}
 
     main :: IO ()
@@ -476,6 +475,12 @@ interpreter, or through this command:
 
     $ cabal v2-run script.hs
     $ cabal v2-run script.hs -- --arg1 # args are passed like this
+
+Supported fields include:
+
+- ``build-depends``
+
+- ``with-compiler``
 
 cabal v2-freeze
 ----------------
