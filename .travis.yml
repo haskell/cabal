@@ -69,15 +69,19 @@ matrix:
    - env: GHCVER=8.4.4 SCRIPT=solver-debug-flags USE_GOLD=YES
      sudo: required
      os: linux
+     if: type != pull_request
    - env: GHCVER=8.4.4 SCRIPT=script DEBUG_EXPENSIVE_ASSERTIONS=YES TAGSUFFIX="-fdebug-expensive-assertions" USE_GOLD=YES
      os: linux
      sudo: required
+     if: type != pull_request
    - env: GHCVER=8.0.2 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
+     if: type != pull_request
    - env: GHCVER=8.4.4 SCRIPT=bootstrap USE_GOLD=YES
      sudo: required
      os: linux
+     if: type != pull_request
 
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
@@ -86,15 +90,18 @@ matrix:
      os: osx
      # Keep this synced with travis/upload.sh
      osx_image: xcode6.4 # We need 10.10
+     if: type != pull_request
 
    # TODO: We might want to specify OSX version
    # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
    - env: GHCVER=7.10.3 SCRIPT=script
      os: osx
+     if: type != pull_request
    - env: GHCVER=8.0.2 SCRIPT=script
      os: osx
    - env: GHCVER=8.0.2 SCRIPT=bootstrap
      os: osx
+     if: type != pull_request
 
   # It's been long known that CI with
   # Stack does not work so it's disabled until further notice
