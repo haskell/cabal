@@ -649,7 +649,12 @@ rebuildInstallPlan verbosity
                 projectConfigAllPackages
                 projectConfigLocalPackages
                 (getMapMappend projectConfigSpecificPackage)
-        let instantiatedPlan = instantiateInstallPlan elaboratedPlan
+        let instantiatedPlan
+              = instantiateInstallPlan
+                  cabalStoreDirLayout
+                  defaultInstallDirs
+                  elaboratedShared
+                  elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
         return (instantiatedPlan, elaboratedShared)
       where
@@ -1478,7 +1483,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
             -- 5. Construct the final ElaboratedConfiguredPackage
             let
-                elab = elab1 {
+                elab2 = elab1 {
                     elabModuleShape = lc_shape lc,
                     elabUnitId      = abstractUnitId (lc_uid lc),
                     elabComponentId = lc_cid lc,
@@ -1488,8 +1493,14 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                         compOrderLibDependencies =
                           ordNub (map (abstractUnitId . ci_id)
                                       (lc_includes lc ++ lc_sig_includes lc))
-                      },
-                    elabInstallDirs = install_dirs cid
+                      }
+                   }
+                elab = elab2 {
+                    elabInstallDirs = computeInstallDirs
+                      storeDirLayout
+                      defaultInstallDirs
+                      elaboratedSharedConfig
+                      elab2
                    }
 
             -- 6. Construct the updated local maps
@@ -1544,31 +1555,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                  (pkgConfigDbPkgVersion pkgConfigDB pn))
                 | PkgconfigDependency pn _ <- PD.pkgconfigDepends
                                                 (Cabal.componentBuildInfo comp) ]
-
-            install_dirs cid
-              | shouldBuildInplaceOnly spkg
-              -- use the ordinary default install dirs
-              = (InstallDirs.absoluteInstallDirs
-                   pkgid
-                   (newSimpleUnitId cid)
-                   (compilerInfo compiler)
-                   InstallDirs.NoCopyDest
-                   platform
-                   defaultInstallDirs) {
-
-                  -- absoluteInstallDirs sets these as 'undefined' but we have
-                  -- to use them as "Setup.hs configure" args
-                  InstallDirs.libsubdir  = "",
-                  InstallDirs.libexecsubdir  = "",
-                  InstallDirs.datasubdir = ""
-                }
-
-              | otherwise
-              -- use special simplified install dirs
-              = storePackageInstallDirs
-                  storeDirLayout
-                  (compilerId compiler)
-                  cid
 
             inplace_bin_dir elab =
                 binDirectoryFor
@@ -1631,13 +1617,19 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elab
       where
         elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon pkg
-        elab = elab0 {
+        elab1 = elab0 {
                 elabUnitId = newSimpleUnitId pkgInstalledId,
                 elabComponentId = pkgInstalledId,
                 elabLinkedInstantiatedWith = Map.empty,
-                elabInstallDirs = install_dirs,
                 elabPkgOrComp = ElabPackage $ ElaboratedPackage {..},
                 elabModuleShape = modShape
+            }
+        elab = elab1 {
+                elabInstallDirs =
+                  computeInstallDirs storeDirLayout
+                                     defaultInstallDirs
+                                     elaboratedSharedConfig
+                                     elab1
             }
 
         modShape = case find (matchElabPkg (== (CLibName LMainLibName))) comps of
@@ -1700,31 +1692,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- requested, so that we can maintain an invariant that
         -- pkgStanzasEnabled is a superset of elabStanzasRequested
         pkgStanzasEnabled  = Map.keysSet (Map.filter (id :: Bool -> Bool) elabStanzasRequested)
-
-        install_dirs
-          | shouldBuildInplaceOnly pkg
-          -- use the ordinary default install dirs
-          = (InstallDirs.absoluteInstallDirs
-               pkgid
-               (newSimpleUnitId pkgInstalledId)
-               (compilerInfo compiler)
-               InstallDirs.NoCopyDest
-               platform
-               defaultInstallDirs) {
-
-              -- absoluteInstallDirs sets these as 'undefined' but we have to
-              -- use them as "Setup.hs configure" args
-              InstallDirs.libsubdir  = "",
-              InstallDirs.libexecsubdir = "",
-              InstallDirs.datasubdir = ""
-            }
-
-          | otherwise
-          -- use special simplified install dirs
-          = storePackageInstallDirs
-              storeDirLayout
-              (compilerId compiler)
-              pkgInstalledId
 
     elaborateSolverToCommon :: SolverPackage UnresolvedPkgLoc
                             -> ElaboratedConfiguredPackage
@@ -2152,8 +2119,8 @@ getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
 getComponentId (InstallPlan.Configured elab) = elabComponentId elab
 getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
-instantiateInstallPlan :: ElaboratedInstallPlan -> ElaboratedInstallPlan
-instantiateInstallPlan plan =
+instantiateInstallPlan :: StoreDirLayout -> InstallDirs.InstallDirTemplates -> ElaboratedSharedConfig -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     InstallPlan.new (IndependentGoals False)
                     (Graph.fromDistinctList (Map.elems ready_map))
   where
@@ -2181,12 +2148,12 @@ instantiateInstallPlan plan =
     instantiateComponent uid cid insts
       | Just planpkg <- Map.lookup cid cmap
       = case planpkg of
-          InstallPlan.Configured (elab@ElaboratedConfiguredPackage
+          InstallPlan.Configured (elab0@ElaboratedConfiguredPackage
                                     { elabPkgOrComp = ElabComponent comp }) -> do
             deps <- mapM (substUnitId insts)
                          (compLinkedLibDependencies comp)
             let getDep (Module dep_uid _) = [dep_uid]
-            return $ InstallPlan.Configured elab {
+                elab1 = elab0 {
                     elabUnitId = uid,
                     elabComponentId = cid,
                     elabInstantiatedWith = insts,
@@ -2197,7 +2164,14 @@ instantiateInstallPlan plan =
                             ordNub (map unDefUnitId
                                 (deps ++ concatMap getDep (Map.elems insts)))
                     }
-                }
+                  }
+                elab = elab1 {
+                    elabInstallDirs = computeInstallDirs storeDirLayout
+                                                         defaultInstallDirs
+                                                         elaboratedShared
+                                                         elab1
+                  }
+            return $ InstallPlan.Configured elab
           _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ display cid)
 
@@ -3253,6 +3227,38 @@ storePackageInstallDirs' StoreDirLayout{ storePackageDirectory
     htmldir      = docdir  </> "html"
     haddockdir   = htmldir
     sysconfdir   = prefix </> "etc"
+
+
+
+computeInstallDirs :: StoreDirLayout
+                   -> InstallDirs.InstallDirTemplates
+                   -> ElaboratedSharedConfig
+                   -> ElaboratedConfiguredPackage
+                   -> InstallDirs.InstallDirs FilePath
+computeInstallDirs storeDirLayout defaultInstallDirs elaboratedShared elab
+  | elabBuildStyle elab == BuildInplaceOnly
+  -- use the ordinary default install dirs
+  = (InstallDirs.absoluteInstallDirs
+       (elabPkgSourceId elab)
+       (elabUnitId elab)
+       (compilerInfo (pkgConfigCompiler elaboratedShared))
+       InstallDirs.NoCopyDest
+       (pkgConfigPlatform elaboratedShared)
+       defaultInstallDirs) {
+
+      -- absoluteInstallDirs sets these as 'undefined' but we have
+      -- to use them as "Setup.hs configure" args
+      InstallDirs.libsubdir  = "",
+      InstallDirs.libexecsubdir  = "",
+      InstallDirs.datasubdir = ""
+    }
+
+  | otherwise
+  -- use special simplified install dirs
+  = storePackageInstallDirs'
+      storeDirLayout
+      (compilerId (pkgConfigCompiler elaboratedShared))
+      (elabUnitId elab)
 
 
 --TODO: [code cleanup] perhaps reorder this code
