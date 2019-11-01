@@ -555,3 +555,4 @@ scriptFieldGrammar = Script
     <*> optionalFieldAla "with-compiler" FilePathNT L.hcPath
 {-# SPECIALIZE scriptFieldGrammar :: ParsecFieldGrammar' Script #-}
 {-# SPECIALIZE scriptFieldGrammar :: PrettyFieldGrammar' Script #-}
+

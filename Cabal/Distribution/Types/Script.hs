@@ -14,3 +14,4 @@ data Script = Script {
     hcPath :: Maybe FilePath
     }
     deriving (Generic, Show, Read, Eq, Typeable)
+
