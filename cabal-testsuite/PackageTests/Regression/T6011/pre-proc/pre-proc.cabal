@@ -10,8 +10,3 @@ executable             zero-to-one
   main-is:             MyCustomPreprocessor.hs
   build-depends:       base, directory
   default-language:    Haskell2010
-
-executable             bad-do-not-build-me
-  main-is:             MyMissingPreprocessor.hs
-  build-depends:       base, directory
-  default-language:    Haskell2010
