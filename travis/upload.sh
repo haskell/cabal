@@ -86,7 +86,7 @@ rm $BINARIES # Don't check me in!
 
 # Upload to S3
 S3_URL=$(curl -X POST "https://s3-bouncer.herokuapp.com/put")
-curl "$S3_URL" --upload-file binaries.tgz
+travis_retry curl "$S3_URL" --upload-file binaries.tgz
 rm binaries.tgz # Don't check me in!
 echo "$S3_URL" | xargs basename | cut -d '?' -f 1 > s3-object.txt
 
