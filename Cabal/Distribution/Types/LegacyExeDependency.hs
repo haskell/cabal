@@ -40,7 +40,7 @@ instance Parsec LegacyExeDependency where
         verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
         pure $ LegacyExeDependency name verRange
       where
-        nameP = intercalate "-" <$> P.sepBy1 component (P.char '-')
+        nameP = intercalate "-" <$> toList <$> P.sepByNonEmpty component (P.char '-')
         component = do
             cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
             if all isDigit cs then fail "invalid component" else return cs

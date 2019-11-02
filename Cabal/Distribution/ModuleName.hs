@@ -50,7 +50,7 @@ instance Pretty ModuleName where
     Disp.hcat (intersperse (Disp.char '.') (map Disp.text $ stlToStrings ms))
 
 instance Parsec ModuleName where
-    parsec = fromComponents <$> P.sepBy1 component (P.char '.')
+    parsec = fromComponents <$> toList <$> P.sepByNonEmpty component (P.char '.')
       where
         component = do
             c  <- P.satisfy isUpper

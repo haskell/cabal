@@ -259,8 +259,8 @@ parsecLeadingCommaList :: CabalParsing m => m a -> m [a]
 parsecLeadingCommaList p = do
     c <- P.optional comma
     case c of
-        Nothing -> P.sepEndBy1 lp comma <|> pure []
-        Just _  -> P.sepBy1 lp comma
+        Nothing -> toList <$> P.sepEndByNonEmpty lp comma <|> pure []
+        Just _  -> toList <$> P.sepByNonEmpty lp comma
   where
     lp = p <* P.spaces
     comma = P.char ',' *> P.spaces P.<?> "comma"
@@ -289,7 +289,7 @@ parsecLeadingOptCommaList p = do
     c <- P.optional comma
     case c of
         Nothing -> sepEndBy1Start <|> pure []
-        Just _  -> P.sepBy1 lp comma
+        Just _  -> toList <$> P.sepByNonEmpty lp comma
   where
     lp = p <* P.spaces
     comma = P.char ',' *> P.spaces P.<?> "comma"
@@ -310,7 +310,7 @@ parsecMaybeQuoted :: CabalParsing m => m a -> m a
 parsecMaybeQuoted p = parsecQuoted p <|> p
 
 parsecUnqualComponentName :: CabalParsing m => m String
-parsecUnqualComponentName = intercalate "-" <$> P.sepBy1 component (P.char '-')
+parsecUnqualComponentName = intercalate "-" <$> toList <$> P.sepByNonEmpty component (P.char '-')
   where
     component :: CabalParsing m => m String
     component = do

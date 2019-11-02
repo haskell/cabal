@@ -25,12 +25,9 @@ module Distribution.Compat.Parsing
   , some     -- from Control.Applicative, parsec many1
   , many     -- from Control.Applicative
   , sepBy
-  , sepBy1
   , sepByNonEmpty
-  , sepEndBy1
   , sepEndByNonEmpty
   , sepEndBy
-  , endBy1
   , endByNonEmpty
   , endBy
   , count
@@ -97,26 +94,14 @@ between bra ket p = bra *> p <* ket
 --
 -- >  commaSep p  = p `sepBy` (symbol ",")
 sepBy :: Alternative m => m a -> m sep -> m [a]
-sepBy p sep = sepBy1 p sep <|> pure []
+sepBy p sep = toList <$> sepByNonEmpty p sep <|> pure []
 {-# INLINE sepBy #-}
-
--- | @sepBy1 p sep@ parses /one/ or more occurrences of @p@, separated
--- by @sep@. Returns a list of values returned by @p@.
-sepBy1 :: Alternative m => m a -> m sep -> m [a]
-sepBy1 p sep = toList <$> sepByNonEmpty p sep
-{-# INLINE sepBy1 #-}
 
 -- | @sepByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- by @sep@. Returns a non-empty list of values returned by @p@.
 sepByNonEmpty :: Alternative m => m a -> m sep -> m (NonEmpty a)
 sepByNonEmpty p sep = (:|) <$> p <*> many (sep *> p)
 {-# INLINE sepByNonEmpty #-}
-
--- | @sepEndBy1 p sep@ parses /one/ or more occurrences of @p@,
--- separated and optionally ended by @sep@. Returns a list of values
--- returned by @p@.
-sepEndBy1 :: Alternative m => m a -> m sep -> m [a]
-sepEndBy1 p sep = toList <$> sepEndByNonEmpty p sep
 
 -- | @sepEndByNonEmpty p sep@ parses /one/ or more occurrences of @p@,
 -- separated and optionally ended by @sep@. Returns a non-empty list of values
@@ -130,14 +115,8 @@ sepEndByNonEmpty p sep = (:|) <$> p <*> ((sep *> sepEndBy p sep) <|> pure [])
 --
 -- >  haskellStatements  = haskellStatement `sepEndBy` semi
 sepEndBy :: Alternative m => m a -> m sep -> m [a]
-sepEndBy p sep = sepEndBy1 p sep <|> pure []
+sepEndBy p sep = toList <$> sepEndByNonEmpty p sep <|> pure []
 {-# INLINE sepEndBy #-}
-
--- | @endBy1 p sep@ parses /one/ or more occurrences of @p@, separated
--- and ended by @sep@. Returns a list of values returned by @p@.
-endBy1 :: Alternative m => m a -> m sep -> m [a]
-endBy1 p sep = some (p <* sep)
-{-# INLINE endBy1 #-}
 
 -- | @endByNonEmpty p sep@ parses /one/ or more occurrences of @p@, separated
 -- and ended by @sep@. Returns a non-empty list of values returned by @p@.

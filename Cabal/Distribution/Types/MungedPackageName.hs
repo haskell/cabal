@@ -137,7 +137,7 @@ zdashcode s = go s (Nothing :: Maybe Int) []
 
 parseZDashCode :: CabalParsing m => m [String]
 parseZDashCode = do
-    ns <- P.sepBy1 (some (P.satisfy (/= '-'))) (P.char '-')
+    ns <- toList <$> P.sepByNonEmpty (some (P.satisfy (/= '-'))) (P.char '-')
     return (go ns)
   where
     go ns = case break (=="z") ns of
