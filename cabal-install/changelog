@@ -4,6 +4,9 @@
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
 	  (analogous to how `--test-option(s)` works). (#6209)
+	* ([#6323](https://github.com/haskell/cabal/pull/6323))`v2-build` now supports
+	depending on executables with names different than the package name (fixes
+	[#6011](https://github.com/haskell/cabal/issues/6011)).
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* Parse comma-separated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,
