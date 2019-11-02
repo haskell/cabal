@@ -65,7 +65,7 @@ jobs:
         choco install -y cabal --version 3.0.0.0
         cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
 
-        choco install -y ghc --version ${env:GHCVER}
+        choco install -d -y ghc --version ${env:GHCVER}
         refreshenv
 
         $Env:PATH="C:\ProgramData\chocolatey\lib\ghc\tools\ghc-${env:GHCVER}\bin;"+$Env:PATH
