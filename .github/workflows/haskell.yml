@@ -1,0 +1,32 @@
+%YAML 1.1
+---
+name: Haskell CI
+
+on: [push]
+
+# see https://help.github.com/en/github/automating-your-workflow-with-github-actions/configuring-a-workflow
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: ['ubuntu-18.04','macOS-10.14','windows-latest']
+        ghc: ['8.6.5','8.0.2']
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v1
+    # NB: intentionally *not* using setup-haskell for now
+    - name: "Build (Linux)"
+      if: matrix.os == 'ubuntu-18.04'
+      env:
+        GHCVER: ${{ matrix.ghc }}
+      run: |
+        ls -l /opt/ghc/
+        export PATH=/opt/cabal/3.0/bin:/opt/ghc/$GHCVER/bin:$PATH
+        cabal --version
+        ghc --version
+        cabal update -v3
+        cabal v2-build -w ghc-${GHCVER} all
+...
