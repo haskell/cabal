@@ -15,9 +15,17 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+
     steps:
     - uses: actions/checkout@v1
     # NB: intentionally *not* using setup-haskell for now
+
+    - name: Cache Nix-Style Cabal Store
+      uses: actions/cache@preview
+      with:
+        path: ~/.cabal/store
+        key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-store-3.0
+
     - name: "Build (Linux)"
       if: matrix.os == 'ubuntu-18.04'
       env:
