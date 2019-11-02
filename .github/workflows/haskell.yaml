@@ -56,7 +56,7 @@ jobs:
         cabal update -v3
         cabal v2-build -w ghc-${GHCVER} all
 
-    - name: "Build (Windows)"
+    - name: "GHC Setup (Windows)"
       if: runner.os == 'Windows'
       env:
         GHCVER: ${{ matrix.ghc }}
@@ -65,7 +65,7 @@ jobs:
         choco install -y cabal --version 3.0.0.0
         cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
 
-        choco install -d -y ghc --version ${env:GHCVER}
+        choco install -y ghc --version ${env:GHCVER}
         refreshenv
 
         $Env:PATH="C:\ProgramData\chocolatey\lib\ghc\tools\ghc-${env:GHCVER}\bin;"+$Env:PATH
@@ -73,7 +73,18 @@ jobs:
         cabal --version
         ghc --version
 
-        cabal update -v3
+    - name: "Build (Windows)"
+      if: runner.os == 'Windows'
+      env:
+        GHCVER: ${{ matrix.ghc }}
+      # NB: On Windows the default shell is pwsh
+      run: |
+        $Env:PATH="C:\ProgramData\chocolatey\lib\ghc\tools\ghc-${env:GHCVER}\bin;"+$Env:PATH
+
+        cabal --version
+        ghc --version
+
+        cabal v1-update -v
         cabal v2-build -w ghc-${env:GHCVER} all
 
 ...
