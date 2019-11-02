@@ -10,8 +10,16 @@ jobs:
   build:
     strategy:
       matrix:
-        os: ['ubuntu-18.04','macOS-10.14','windows-latest']
-        ghc: ['8.6.5','8.0.2']
+        os:
+          #- 'ubuntu-18.04'
+          #- 'macOS-10.14'
+          - 'windows-latest'
+
+        ghc:
+          #- '8.6.5'
+          #- '8.4.4'
+          #- '8.2.2'
+          - '8.0.2'
 
     runs-on: ${{ matrix.os }}
 
@@ -20,14 +28,24 @@ jobs:
     - uses: actions/checkout@v1
     # NB: intentionally *not* using setup-haskell for now
 
-    - name: Cache Nix-Style Cabal Store
+    - name: 'Cache Nix-Style Cabal Store (Linux+macOS)'
+      if: runner.os != 'Windows'
       uses: actions/cache@preview
       with:
-        path: ~/.cabal/store
+        # Let's hope this hack works...
+        path: '~/.cabal/store'
+        key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-store-3.0
+
+    - name: 'Cache Nix-Style Cabal Store (Windows)'
+      if: runner.os == 'Windows'
+      uses: actions/cache@preview
+      with:
+        # Let's hope this hack works...
+        path: 'C:/SR'
         key: ${{ runner.os }}-ghc-${{ matrix.ghc }}-store-3.0
 
     - name: "Build (Linux)"
-      if: matrix.os == 'ubuntu-18.04'
+      if: runner.os == 'Linux'
       env:
         GHCVER: ${{ matrix.ghc }}
       run: |
@@ -37,4 +55,25 @@ jobs:
         ghc --version
         cabal update -v3
         cabal v2-build -w ghc-${GHCVER} all
+
+    - name: "Build (Windows)"
+      if: runner.os == 'Windows'
+      env:
+        GHCVER: ${{ matrix.ghc }}
+      # NB: On Windows the default shell is pwsh
+      run: |
+        choco install -y cabal --version 3.0.0.0
+        cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+
+        choco install -y ghc --version ${env:GHCVER}
+        refreshenv
+
+        $Env:PATH="C:\ProgramData\chocolatey\lib\ghc\tools\ghc-${env:GHCVER}\bin;"+$Env:PATH
+
+        cabal --version
+        ghc --version
+
+        cabal update -v3
+        cabal v2-build -w ghc-${env:GHCVER} all
+
 ...
