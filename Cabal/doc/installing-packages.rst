@@ -340,7 +340,7 @@ supported, via the ``-w`` option:
     $ cabal build
 
 It can be occasionally useful to run the compiler-specific package
-manager tool (e.g. ``ghc-pkg``) tool on the sandbox package DB directly
+manager tool (e.g. ``ghc-pkg``) on the sandbox package DB directly
 (for example, you may need to unregister some packages). The
 ``cabal sandbox hc-pkg`` command is a convenient wrapper that runs the
 compiler-specific package manager tool with the arguments:
