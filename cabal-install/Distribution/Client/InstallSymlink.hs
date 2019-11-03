@@ -48,7 +48,7 @@ symlinkBinaries :: Platform -> Compiler
 symlinkBinaries _ _ _ _ _ _ _ = return []
 
 symlinkBinary :: OverwritePolicy
-              -> FilePath -> FilePath -> UnqualComponentName -> String
+              -> FilePath -> FilePath -> FilePath -> String
               -> IO Bool
 symlinkBinary _ _ _ _ _ = fail "Symlinking feature not available on Windows"
 
@@ -154,7 +154,7 @@ symlinkBinaries platform comp overwritePolicy
              ok <- symlinkBinary
                      overwritePolicy
                      publicBinDir  privateBinDir
-                     publicExeName privateExeName
+                     (display publicExeName) privateExeName
              if ok
                then return Nothing
                else return (Just (pkgid, publicExeName,
@@ -220,7 +220,7 @@ symlinkBinary ::
                          --   @/home/user/bin@
   -> FilePath            -- ^ The canonical path of the private bin dir eg
                          --   @/home/user/.cabal/bin@
-  -> UnqualComponentName -- ^ The name of the executable to go in the public bin
+  -> FilePath            -- ^ The name of the executable to go in the public bin
                          --   dir, eg @foo@
   -> String              -- ^ The name of the executable to in the private bin
                          --   dir, eg @foo-1.0@
@@ -229,7 +229,7 @@ symlinkBinary ::
                          --   not own. Other errors like permission errors just
                          --   propagate as exceptions.
 symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName = do
-  ok <- targetOkToOverwrite (publicBindir </> publicName')
+  ok <- targetOkToOverwrite (publicBindir </> publicName)
                             (privateBindir </> privateName)
   case ok of
     NotExists         ->           mkLink >> return True
@@ -239,11 +239,10 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
         NeverOverwrite  ->                     return False
         AlwaysOverwrite -> rmLink >> mkLink >> return True
   where
-    publicName' = display publicName
     relativeBindir = makeRelative publicBindir privateBindir
     mkLink = createSymbolicLink (relativeBindir </> privateName)
-                                (publicBindir   </> publicName')
-    rmLink = removeLink (publicBindir </> publicName')
+                                (publicBindir   </> publicName)
+    rmLink = removeLink (publicBindir </> publicName)
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or

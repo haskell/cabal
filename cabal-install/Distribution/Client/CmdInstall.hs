@@ -108,7 +108,7 @@ import Distribution.System
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName, mkUnqualComponentName )
+         ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -602,7 +602,7 @@ installAction ( configFlags, configExFlags, installFlags
       then installLibraries verbosity
            buildCtx compiler packageDbs progDb envFile envEntries'
       else installExes verbosity
-           baseCtx buildCtx platform compiler clientInstallFlags
+           baseCtx buildCtx platform compiler configFlags clientInstallFlags
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
@@ -620,11 +620,15 @@ installExes
   -> ProjectBuildContext
   -> Platform
   -> Compiler
+  -> ConfigFlags
   -> ClientInstallFlags
   -> IO ()
 installExes verbosity baseCtx buildCtx platform compiler
-            clientInstallFlags = do
+            configFlags clientInstallFlags = do
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
+
+      prefix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgPrefix configFlags))
+      suffix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgSuffix configFlags))
 
       mkUnitBinDir :: UnitId -> FilePath
       mkUnitBinDir =
@@ -633,6 +637,9 @@ installExes verbosity baseCtx buildCtx platform compiler
 
       mkExeName :: UnqualComponentName -> FilePath
       mkExeName exe = unUnqualComponentName exe <.> exeExtension platform
+
+      mkFinalExeName :: UnqualComponentName -> FilePath
+      mkFinalExeName exe = prefix <> unUnqualComponentName exe <> suffix <.> exeExtension platform
       installdirUnknown =
         "installdir is not defined. Set it in your cabal config file "
         ++ "or use --installdir=<path>"
@@ -645,7 +652,7 @@ installExes verbosity baseCtx buildCtx platform compiler
     doInstall = installUnitExes
                   verbosity
                   overwritePolicy
-                  mkUnitBinDir mkExeName
+                  mkUnitBinDir mkExeName mkFinalExeName
                   installdir installMethod
     in traverse_ doInstall $ Map.toList $ targetsMap buildCtx
   where
@@ -748,13 +755,16 @@ installUnitExes
                           -- ^ store directory
   -> (UnqualComponentName -> FilePath) -- ^ A function to get an
                                        -- ^ exe's filename
+  -> (UnqualComponentName -> FilePath) -- ^ A function to get an
+                                       -- ^ exe's final possibly
+                                       -- ^ different to the name in the store.
   -> FilePath
   -> InstallMethod
   -> ( UnitId
      , [(ComponentTarget, [TargetSelector])] )
   -> IO ()
 installUnitExes verbosity overwritePolicy
-                mkSourceBinDir mkExeName
+                mkSourceBinDir mkExeName mkFinalExeName
                 installdir installMethod
                 (unit, components) =
   traverse_ installAndWarn exes
@@ -766,6 +776,7 @@ installUnitExes verbosity overwritePolicy
       success <- installBuiltExe
                    verbosity overwritePolicy
                    (mkSourceBinDir unit) (mkExeName exe)
+                   (mkFinalExeName exe)
                    installdir installMethod
       let errorMessage = case overwritePolicy of
             NeverOverwrite ->
@@ -785,21 +796,22 @@ installBuiltExe
   :: Verbosity -> OverwritePolicy
   -> FilePath -- ^ The directory where the built exe is located
   -> FilePath -- ^ The exe's filename
+  -> FilePath -- ^ The exe's filename in the public install directory
   -> FilePath -- ^ the directory where it should be installed
   -> InstallMethod
   -> IO Bool -- ^ Whether the installation was successful
 installBuiltExe verbosity overwritePolicy
-                sourceDir exeName
+                sourceDir exeName finalExeName
                 installdir InstallMethodSymlink = do
   notice verbosity $ "Symlinking '" <> exeName <> "'"
   symlinkBinary
     overwritePolicy
     installdir
     sourceDir
-    (mkUnqualComponentName exeName)
+    finalExeName
     exeName
 installBuiltExe verbosity overwritePolicy
-                sourceDir exeName
+                sourceDir exeName finalExeName
                 installdir InstallMethodCopy = do
   notice verbosity $ "Copying '" <> exeName <> "'"
   exists <- doesPathExist destination
@@ -809,7 +821,7 @@ installBuiltExe verbosity overwritePolicy
     (False, _              ) -> copy
   where
     source = sourceDir </> exeName
-    destination = installdir </> exeName
+    destination = installdir </> finalExeName
     remove = do
       isDir <- doesDirectoryExist destination
       if isDir
