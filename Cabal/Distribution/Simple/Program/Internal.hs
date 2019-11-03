@@ -13,6 +13,7 @@ module Distribution.Simple.Program.Internal (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.Generic(safeTail)
 
 -- | Extract the version number from the output of 'strip --version'.
 --
@@ -29,7 +30,7 @@ stripExtractVersion str =
       filterPar' :: Int -> [String] -> [String]
       filterPar' _ []                   = []
       filterPar' n (x:xs)
-        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n+1) ((tail x):xs)
+        | n >= 0 && "(" `isPrefixOf` x = filterPar' (n+1) ((safeTail x):xs)
         | n >  0 && ")" `isSuffixOf` x = filterPar' (n-1) xs
         | n >  0                       = filterPar' n xs
         | otherwise                    = x:filterPar' n xs

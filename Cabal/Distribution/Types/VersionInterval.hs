@@ -21,7 +21,7 @@ module Distribution.Types.VersionInterval (
     Bound(..),
     ) where
 
-import Prelude ()
+import Prelude (tail)
 import Distribution.Compat.Prelude
 import Control.Exception (assert)
 

@@ -13,7 +13,7 @@ module Distribution.Client.Outdated ( outdated
                                     , ListOutdatedSettings(..), listOutdated )
 where
 
-import Prelude ()
+import Prelude (last)
 import Distribution.Client.Config
 import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude

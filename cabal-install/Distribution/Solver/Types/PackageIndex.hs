@@ -50,7 +50,8 @@ import Distribution.Solver.Compat.Prelude hiding (lookup)
 
 import Control.Exception (assert)
 import qualified Data.Map as Map
-import Data.List (groupBy, isInfixOf)
+import Data.List (isInfixOf)
+import qualified Data.List.NonEmpty as NE
 
 import Distribution.Package
          ( PackageName, unPackageName, PackageIdentifier(..)
@@ -136,9 +137,9 @@ fromList pkgs = mkPackageIndex
   where
     fixBucket = -- out of groups of duplicates, later ones mask earlier ones
                 -- but Map.fromListWith (++) constructs groups in reverse order
-                map head
+                map NE.head
                 -- Eq instance for PackageIdentifier is wrong, so use Ord:
-              . groupBy (\a b -> EQ == comparing packageId a b)
+              . NE.groupBy (\a b -> EQ == comparing packageId a b)
                 -- relies on sortBy being a stable sort so we
                 -- can pick consistently among duplicates
               . sortBy (comparing packageId)

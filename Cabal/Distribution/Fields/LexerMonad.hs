@@ -32,6 +32,7 @@ module Distribution.Fields.LexerMonad (
   ) where
 
 import qualified Data.ByteString              as B
+import qualified Data.List.NonEmpty           as NE
 import           Distribution.Compat.Prelude
 import           Distribution.Parsec.Position (Position (..), showPos)
 import           Distribution.Parsec.Warning  (PWarnType (..), PWarning (..))
@@ -76,15 +77,15 @@ toPWarnings :: [LexWarning] -> [PWarning]
 toPWarnings
     = map (uncurry toWarning)
     . Map.toList
-    . Map.fromListWith (++)
-    . map (\(LexWarning t p) -> (t, [p]))
+    . Map.fromListWith (<>)
+    . map (\(LexWarning t p) -> (t, pure p))
   where
     toWarning LexWarningBOM poss =
-        PWarning PWTLexBOM (head poss) "Byte-order mark found at the beginning of the file"
+        PWarning PWTLexBOM (NE.head poss) "Byte-order mark found at the beginning of the file"
     toWarning LexWarningNBSP poss =
-        PWarning PWTLexNBSP (head poss) $ "Non breaking spaces at " ++ intercalate ", " (map showPos poss)
+        PWarning PWTLexNBSP (NE.head poss) $ "Non breaking spaces at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
     toWarning LexWarningTab poss =
-        PWarning PWTLexTab (head poss) $ "Tabs used as indentation at " ++ intercalate ", " (map showPos poss)
+        PWarning PWTLexTab (NE.head poss) $ "Tabs used as indentation at " ++ intercalate ", " (NE.toList $ fmap showPos poss)
 
 data LexState = LexState {
         curPos   :: {-# UNPACK #-} !Position,        -- ^ position at current input location

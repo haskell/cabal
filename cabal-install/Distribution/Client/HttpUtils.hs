@@ -14,7 +14,7 @@ module Distribution.Client.HttpUtils (
     isOldHackageURI
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Client.Compat.Prelude hiding (Proxy (..))
 
 import Network.HTTP

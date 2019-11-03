@@ -6,7 +6,7 @@
 module UnitTests.Distribution.Version (versionTests) where
 
 import Distribution.Compat.Prelude.Internal
-import Prelude ()
+import Prelude (tail, last, init)
 
 import Distribution.Version
 import Distribution.Types.VersionRange.Internal

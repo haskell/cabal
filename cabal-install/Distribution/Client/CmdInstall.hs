@@ -18,7 +18,7 @@ module Distribution.Client.CmdInstall (
     establishDummyProjectBaseContext
   ) where
 
-import Prelude ()
+import Prelude (head)
 import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Directory
          ( doesPathExist )
