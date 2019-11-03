@@ -745,8 +745,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   ---------------
   -- Inputs
 
-  , [ prettyShow modu | modu <- flags ghcOptInputModules ]
+  -- Specify the input file(s) first, so that in ghci the `main-is` module is
+  -- in scope instead of the first module defined in `other-modules`.
   , flags ghcOptInputFiles
+  , [ prettyShow modu | modu <- flags ghcOptInputModules ]
 
   , concat [ [ "-o",    out] | out <- flag ghcOptOutputFile ]
   , concat [ [ "-dyno", out] | out <- flag ghcOptOutputDynFile ]
