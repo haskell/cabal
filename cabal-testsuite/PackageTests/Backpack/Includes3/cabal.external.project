@@ -1,1 +1,1 @@
-packages: exe indef sigs
+packages: repo/exe-0.1.0.0 repo/indef-0.1.0.0 repo/sigs-0.1.0.0
