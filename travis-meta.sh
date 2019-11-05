@@ -6,9 +6,9 @@
 # Check that auto-generated files/fields are up to date.
 # ---------------------------------------------------------------------
 
-# Regenerate the CONTRIBUTORS file.
-# Currently doesn't work because Travis uses --depth=50 when cloning.
-#./Cabal/misc/gen-authors.sh > AUTHORS
+# Regenerate the AUTHORS file.
+git fetch --unshallow
+./Cabal/misc/gen-authors.sh > AUTHORS
 
 timed cabal update
 
