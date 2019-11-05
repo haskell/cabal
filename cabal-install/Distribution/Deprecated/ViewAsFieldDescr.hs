@@ -3,8 +3,9 @@ module Distribution.Deprecated.ViewAsFieldDescr (
     ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
-import Prelude (head)
+import Prelude ()
 
+import qualified Data.List.NonEmpty as NE
 import Distribution.Parsec   (parsec)
 import Distribution.Pretty
 import Distribution.ReadE          (parsecToReadE)
@@ -19,10 +20,10 @@ import Distribution.Deprecated.ParseUtils (FieldDescr (..), runE, syntaxError)
 viewAsFieldDescr :: OptionField a -> FieldDescr a
 viewAsFieldDescr (OptionField _n []) =
   error "Distribution.command.viewAsFieldDescr: unexpected"
-viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
+viewAsFieldDescr (OptionField n (d:dd)) = FieldDescr n get set
 
     where
-      optDescr = head $ sortBy cmp dd
+      optDescr = head $ NE.sortBy cmp (d:|dd)
 
       cmp :: OptDescr a -> OptDescr a -> Ordering
       ReqArg{}    `cmp` ReqArg{}    = EQ

@@ -42,8 +42,8 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
-import Prelude (last)
-import Distribution.Compat.Prelude
+import Prelude ()
+import Distribution.Compat.Prelude hiding (init)
 
 import Data.Either (partitionEithers)
 import qualified Data.List.NonEmpty as NE
@@ -162,7 +162,7 @@ register hpi verbosity packagedbs pkgInfo registerOptions
     --
   | registerMultiInstance registerOptions
   , recacheMultiInstance hpi
-  = do let pkgdb = last packagedbs
+  = do let pkgdb = registrationPackageDB packagedbs
        writeRegistrationFileDirectly verbosity hpi pkgdb pkgInfo
        recache hpi verbosity pkgdb
 
@@ -386,9 +386,7 @@ registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
       | otherwise                              = "register"
 
     args file = [cmdname, file]
-             ++ (if noPkgDbStack hpi
-                   then [packageDbOpts hpi (last packagedbs)]
-                   else packageDbStackOpts hpi packagedbs)
+             ++ packageDbStackOpts hpi packagedbs
              ++ [ "--enable-multi-instance"
                 | registerMultiInstance registerOptions ]
              ++ [ "--force-files"
@@ -423,9 +421,7 @@ describeInvocation :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId
 describeInvocation hpi verbosity packagedbs pkgid =
   programInvocation (hcPkgProgram hpi) $
        ["describe", prettyShow pkgid]
-    ++ (if noPkgDbStack hpi
-          then [packageDbOpts hpi (last packagedbs)]
-          else packageDbStackOpts hpi packagedbs)
+    ++ packageDbStackOpts hpi packagedbs
     ++ verbosityOpts hpi verbosity
 
 hideInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
@@ -460,19 +456,21 @@ listInvocation hpi _verbosity packagedb =
 
 
 packageDbStackOpts :: HcPkgInfo -> PackageDBStack -> [String]
-packageDbStackOpts hpi dbstack = case dbstack of
-  (GlobalPackageDB:UserPackageDB:dbs) -> "--global"
-                                       : "--user"
-                                       : map specific dbs
-  (GlobalPackageDB:dbs)               -> "--global"
-                                       : ("--no-user-" ++ packageDbFlag hpi)
-                                       : map specific dbs
-  _                                   -> ierror
-  where
-    specific (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ db
-    specific _ = ierror
-    ierror :: a
-    ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
+packageDbStackOpts hpi dbstack
+  | noPkgDbStack hpi = [packageDbOpts hpi (registrationPackageDB dbstack)]
+  | otherwise        = case dbstack of
+    (GlobalPackageDB:UserPackageDB:dbs) -> "--global"
+                                         : "--user"
+                                         : map specific dbs
+    (GlobalPackageDB:dbs)               -> "--global"
+                                         : ("--no-user-" ++ packageDbFlag hpi)
+                                         : map specific dbs
+    _                                   -> ierror
+    where
+      specific (SpecificPackageDB db) = "--" ++ packageDbFlag hpi ++ "=" ++ db
+      specific _ = ierror
+      ierror :: a
+      ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
 
 packageDbFlag :: HcPkgInfo -> String
 packageDbFlag hpi

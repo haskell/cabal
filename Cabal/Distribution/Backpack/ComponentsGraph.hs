@@ -8,7 +8,7 @@ module Distribution.Backpack.ComponentsGraph (
     componentCycleMsg
 ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Package
@@ -19,6 +19,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.UnqualComponentName
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
+import Distribution.Utils.Generic
 
 import Distribution.Pretty (pretty)
 import Text.PrettyPrint
@@ -94,4 +95,4 @@ componentCycleMsg cnames =
     text $ "Components in the package depend on each other in a cyclic way:\n  "
        ++ intercalate " depends on "
             [ "'" ++ showComponentName cname ++ "'"
-            | cname <- cnames ++ [head cnames] ]
+            | cname <- cnames ++ maybeToList (safeHead cnames) ]

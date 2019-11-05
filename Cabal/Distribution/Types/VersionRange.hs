@@ -39,7 +39,8 @@ module Distribution.Types.VersionRange (
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
-import Prelude (last, init)
+import Distribution.Utils.Generic
+import Prelude ()
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
@@ -130,7 +131,9 @@ withinRange v = foldVersionRange
 -- | @since 2.2
 wildcardUpperBound :: Version -> Version
 wildcardUpperBound = alterVersion $
-    \lowerBound -> init lowerBound ++ [last lowerBound + 1]
+    \lowerBound -> case unsnoc lowerBound of
+        Nothing      -> []
+        Just (xs, x) -> xs ++ [x + 1]
 
 isWildcardRange :: Version -> Version -> Bool
 isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)

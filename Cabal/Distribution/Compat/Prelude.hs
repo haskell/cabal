@@ -64,6 +64,7 @@ module Distribution.Compat.Prelude (
 
     -- * Data.List.NonEmpty
     NonEmpty((:|)), foldl1, foldr1,
+    head, tail, last, init,
 
     -- * Data.Foldable
     Foldable, foldMap, foldr,
@@ -154,7 +155,7 @@ import Data.Char
 import Data.List                     (intercalate, intersperse, isPrefixOf,
                                       isSuffixOf, nub, nubBy, sort, sortBy,
                                       unfoldr)
-import Data.List.NonEmpty            (NonEmpty((:|)))
+import Data.List.NonEmpty            (NonEmpty((:|)), head, tail, init, last)
 import Data.Maybe
 import Data.String                   (IsString (..))
 import Data.Int

@@ -27,13 +27,14 @@ module Distribution.Simple.Program.Run (
     getEffectiveEnvironment,
   ) where
 
-import Prelude (last, init)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Environment
+import Distribution.Utils.Generic
 
 import qualified Data.Map as Map
 import System.FilePath
@@ -243,13 +244,14 @@ multiStageProgramInvocation simple (initial, middle, final) args =
       chunkSize    = maxCommandLineSize - fixedArgSize
 
    in case splitChunks chunkSize args of
-        []     -> [ simple ]
+        []  -> [ simple ]
 
-        [c]    -> [ simple  `appendArgs` c ]
+        [c] -> [ simple  `appendArgs` c ]
 
-        (c:cs) -> [ initial `appendArgs` c ]
-               ++ [ middle  `appendArgs` c'| c' <- init cs ]
-               ++ [ final   `appendArgs` c'| let c' = last cs ]
+        (c:c2:cs) | (xs, x) <- unsnocNE (c2:|cs) ->
+             [ initial `appendArgs` c ]
+          ++ [ middle  `appendArgs` c'| c' <- xs ]
+          ++ [ final   `appendArgs` x ]
 
   where
     appendArgs :: ProgramInvocation -> [String] -> ProgramInvocation

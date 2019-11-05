@@ -22,7 +22,7 @@ module Distribution.Simple.UHC (
     buildLib, buildExe, installLib, registerPackage, inplacePackageDbPath
   ) where
 
-import Prelude (last)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.InstalledPackageInfo
@@ -277,7 +277,7 @@ registerPackage
   -> InstalledPackageInfo
   -> IO ()
 registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
-    dbdir <- case last packageDbs of
+    dbdir <- case registrationPackageDB packageDbs of
       GlobalPackageDB       -> getGlobalPackageDir verbosity progdb
       UserPackageDB         -> getUserPackageDir
       SpecificPackageDB dir -> return dir

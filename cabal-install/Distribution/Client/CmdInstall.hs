@@ -18,7 +18,7 @@ module Distribution.Client.CmdInstall (
     establishDummyProjectBaseContext
   ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Directory
          ( doesPathExist )
@@ -116,7 +116,7 @@ import Distribution.Simple.Utils
          , withTempDirectory, createDirectoryIfMissingVerbose
          , ordNub )
 import Distribution.Utils.Generic
-         ( writeFileAtomic )
+         ( safeHead, writeFileAtomic )
 import Distribution.Deprecated.Text
          ( simpleParse )
 import Distribution.Pretty
@@ -679,7 +679,8 @@ installLibraries verbosity buildCtx compiler
   if supportsPkgEnvFiles $ getImplInfo compiler
     then do
       let
-        getLatest = fmap (head . snd) . take 1 . sortBy (comparing (Down . fst))
+        getLatest :: PackageName -> [InstalledPackageInfo]
+        getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
                   . PI.lookupPackageName installedIndex
         globalLatest = concat (getLatest <$> globalPackages)
 

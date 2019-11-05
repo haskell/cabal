@@ -13,7 +13,7 @@ module Distribution.Client.Outdated ( outdated
                                     , ListOutdatedSettings(..), listOutdated )
 where
 
-import Prelude (last)
+import Prelude ()
 import Distribution.Client.Config
 import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude
@@ -26,6 +26,7 @@ import Distribution.Client.Types
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackageIndex
 import Distribution.Client.Sandbox.PackageEnvironment
+import Distribution.Utils.Generic
 
 import Distribution.Package                          (PackageName, packageVersion)
 import Distribution.PackageDescription               (allBuildDepends)
@@ -204,7 +205,8 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
     relaxMinor :: VersionRange -> VersionRange
     relaxMinor vr =
       let vis = asVersionIntervals vr
-          (LowerBound v0 _,upper) = last vis
-      in case upper of
-           NoUpperBound     -> vr
-           UpperBound _v1 _ -> majorBoundVersion v0
+      in maybe vr relax (safeLast vis)
+      where relax (LowerBound v0 _, upper) =
+              case upper of
+                NoUpperBound     -> vr
+                UpperBound _v1 _ -> majorBoundVersion v0
