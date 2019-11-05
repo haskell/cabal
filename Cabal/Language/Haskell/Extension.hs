@@ -23,7 +23,7 @@ module Language.Haskell.Extension (
         classifyExtension,
   ) where
 
-import Prelude (head)
+import qualified Prelude (head)
 import Distribution.Compat.Prelude
 
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
@@ -889,6 +889,6 @@ classifyKnownExtension string@(c : _)
 knownExtensionTable :: Array Char [(String, KnownExtension)]
 knownExtensionTable =
   accumArray (flip (:)) [] ('A', 'Z')
-    [ (head str, (str, extension))
+    [ (Prelude.head str, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
     | extension <- [toEnum 0 ..]
     , let str = show extension ]

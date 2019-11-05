@@ -6,12 +6,13 @@
 module UnitTests.Distribution.Version (versionTests) where
 
 import Distribution.Compat.Prelude.Internal
-import Prelude (tail, last, init)
+import Prelude ()
 
 import Distribution.Version
 import Distribution.Types.VersionRange.Internal
 import Distribution.Parsec (simpleParsec)
 import Distribution.Pretty
+import Distribution.Utils.Generic
 
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
@@ -317,7 +318,9 @@ prop_withinVersion v v' =
      withinRange v' (withinVersion v)
   == (v' >= v && v' < upper v)
   where
-    upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
+    upper = alterVersion $ \numbers -> case unsnoc numbers of
+      Nothing      -> []
+      Just (xs, x) -> xs ++ [x + 1]
 
 prop_foldVersionRange :: VersionRange -> Property
 prop_foldVersionRange range =
@@ -342,7 +345,9 @@ prop_foldVersionRange range =
     expandVR (VersionRangeParens v) = expandVR v
     expandVR v = v
 
-    upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
+    upper = alterVersion $ \numbers -> case unsnoc numbers of
+      Nothing      -> []
+      Just (xs, x) -> xs ++ [x + 1]
 
 prop_isAnyVersion1 :: VersionRange -> Version -> Property
 prop_isAnyVersion1 range version =
@@ -362,11 +367,11 @@ prop_isNoVersion range version =
 prop_isSpecificVersion1 :: VersionRange -> NonEmptyList Version -> Property
 prop_isSpecificVersion1 range (NonEmpty versions) =
   isJust version && not (null versions') ==>
-    allEqual (fromJust version : versions')
+    allEqual (fromJust version) versions'
   where
-    version     = isSpecificVersion range
-    versions'   = filter (`withinRange` range) versions
-    allEqual xs = and (zipWith (==) xs (tail xs))
+    version       = isSpecificVersion range
+    versions'     = filter (`withinRange` range) versions
+    allEqual x xs = and (zipWith (==) (x:xs) xs)
 
 prop_isSpecificVersion2 :: VersionRange -> Property
 prop_isSpecificVersion2 range =

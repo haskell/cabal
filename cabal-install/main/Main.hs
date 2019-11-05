@@ -67,7 +67,7 @@ import Distribution.Simple.Setup
          , configAbsolutePaths
          )
 
-import Prelude (head, tail)
+import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (get)
 
 import Distribution.Client.SetupWrapper
@@ -236,9 +236,9 @@ main' = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
-  hasScript <- if not (null args)
-    then CmdRun.validScript (head args)
-    else return False
+  maybeScriptAndArgs <- case args of
+    []     -> return Nothing
+    (h:tl) -> (\b -> if b then Just (h:|tl) else Nothing) <$> CmdRun.validScript h
 
   topHandler $
     case commandsRun (globalCommand commands) commands args of
@@ -253,9 +253,8 @@ mainWorker args = do
               -> printNumericVersion
           CommandHelp     help           -> printCommandHelp help
           CommandList     opts           -> printOptionsList opts
-          CommandErrors   errs
-            | hasScript                  -> CmdRun.handleShebang (head args) (tail args)
-            | otherwise                  -> printErrors errs
+          CommandErrors   errs           -> maybe (printErrors errs) go maybeScriptAndArgs where
+            go (script:|scriptArgs) = CmdRun.handleShebang script scriptArgs
           CommandReadyToGo action        -> do
             globalFlags' <- updateSandboxConfigFileFlag globalFlags
             action globalFlags'

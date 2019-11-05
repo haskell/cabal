@@ -3,7 +3,7 @@
 
 module Distribution.Simple.HaskellSuite where
 
-import Prelude (last, init)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import Data.Either (partitionEithers)
@@ -26,6 +26,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.System (Platform)
 import Distribution.Compat.Exception
+import Distribution.Utils.Generic
 import Language.Haskell.Extension
 import Distribution.Simple.Program.Builtin
 
@@ -92,15 +93,15 @@ hstoolVersion :: Verbosity -> FilePath -> IO (Maybe Version)
 hstoolVersion = findProgramVersion "--hspkg-version" id
 
 numericVersion :: Verbosity -> FilePath -> IO (Maybe Version)
-numericVersion = findProgramVersion "--compiler-version" (last . words)
+numericVersion = findProgramVersion "--compiler-version" (fromMaybe "" . safeLast . words)
 
 getCompilerVersion :: Verbosity -> ConfiguredProgram -> IO (String, Version)
 getCompilerVersion verbosity prog = do
   output <- rawSystemStdout verbosity (programPath prog) ["--compiler-version"]
   let
     parts = words output
-    name = concat $ init parts -- there shouldn't be any spaces in the name anyway
-    versionStr = last parts
+    name = concat $ safeInit parts -- there shouldn't be any spaces in the name anyway
+    versionStr = fromMaybe "" $ safeLast parts
   version <-
     maybe (die' verbosity "haskell-suite: couldn't determine compiler version") return $
       simpleParsec versionStr
@@ -217,7 +218,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo = do
 
   runProgramInvocation verbosity $
     (programInvocation hspkg
-      ["update", packageDbOpt $ last packageDbs])
+      ["update", packageDbOpt $ registrationPackageDB packageDbs])
       { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
 
 initPackageDB :: Verbosity -> ProgramDb -> FilePath -> IO ()

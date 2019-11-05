@@ -54,7 +54,7 @@ module Distribution.Simple.Configure
   , platformDefines,
   ) where
 
-import Prelude (head, tail, last)
+import qualified Prelude (tail)
 import Distribution.Compat.Prelude
 
 import Distribution.Compiler
@@ -102,6 +102,7 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Backpack.PreExistingComponent
 import Distribution.Backpack.ConfiguredComponent (newPackageDepsBehaviour)
 import Distribution.Backpack.Id
+import Distribution.Utils.Generic
 import Distribution.Utils.LogProgress
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -112,6 +113,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
 import Control.Monad ( forM, forM_ )
+import Data.List.NonEmpty            ( nonEmpty )
 import Distribution.Compat.Binary    ( decodeOrFailIO, encode )
 import Distribution.Compat.Directory ( listDirectory )
 import Data.ByteString.Lazy          ( ByteString )
@@ -1313,18 +1315,21 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
 
     -- It's an external package, normal situation
     do_external_external =
-        case PackageIndex.lookupDependency installedIndex dep_pkgname vr of
-          []   -> Left (DependencyNotExists dep_pkgname)
-          pkgs -> Right $ head $ snd $ last pkgs
+        case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
+          Nothing  -> Left (DependencyNotExists dep_pkgname)
+          Just pkg -> Right pkg
 
     -- It's an internal library, being looked up externally
     do_external_internal
       :: LibraryName -> Either FailedDependency InstalledPackageInfo
     do_external_internal ln =
-        case PackageIndex.lookupInternalDependency installedIndex
+        case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex
                 (packageName pkgid) vr ln of
-          []   -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
-          pkgs -> Right $ head $ snd $ last pkgs
+          Nothing  -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
+          Just pkg -> Right pkg
+
+    pickLastIPI :: [(Version, [InstalledPackageInfo])] -> Maybe InstalledPackageInfo
+    pickLastIPI pkgs = safeHead . snd . last =<< nonEmpty pkgs
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
@@ -1773,7 +1778,7 @@ checkForeignDeps pkg lbi verbosity =
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
                          (return Nothing)
-                         (go . tail . inits $ allHeaders)
+                         (go . Prelude.tail . inits $ allHeaders) -- inits always contains at least []
             where
               go [] = return Nothing       -- cannot happen
               go (hdrs:hdrsInits) =
@@ -1782,8 +1787,9 @@ checkForeignDeps pkg lbi verbosity =
                       -- If that works, try compiling too
                       (ifBuildsWith hdrs ccArgs
                         (go hdrsInits)
-                        (return . Just . Right . last $ hdrs))
-                      (return . Just . Left . last $ hdrs)
+                        (return . fmap Right . safeLast $ hdrs))
+                      (return . fmap Left . safeLast $ hdrs)
+
 
               cppArgs = "-E":commonCppArgs -- preprocess only
               ccArgs  = "-c":commonCcArgs  -- don't try to link
@@ -2004,7 +2010,7 @@ checkRelocatable verbosity pkg lbi
     -- database to which the package is installed are relative to the
     -- prefix of the package
     depsPrefixRelative = do
-        pkgr <- GHC.pkgRoot verbosity lbi (last (withPackageDB lbi))
+        pkgr <- GHC.pkgRoot verbosity lbi (registrationPackageDB (withPackageDB lbi))
         traverse_ (doCheck pkgr) ipkgs
       where
         doCheck pkgr ipkg

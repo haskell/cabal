@@ -14,8 +14,9 @@ module Distribution.Client.HttpUtils (
     isOldHackageURI
   ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (Proxy (..))
+import Distribution.Utils.Generic
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
@@ -38,7 +39,7 @@ import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Utils
-         ( die', info, warn, debug, notice, writeFileAtomic
+         ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile )
 import Distribution.Client.Utils
          ( withTempFileName )
@@ -305,8 +306,8 @@ configureTransport verbosity extraPath Nothing = do
           [ (name, transport)
           | (name, _, _, mkTrans) <- supportedTransports
           , transport <- maybeToList (mkTrans progdb) ]
-        -- there's always one because the plain one is last and never fails
-    let (name, transport) = head availableTransports
+    let (name, transport) =
+         fromMaybe ("plain-http", plainHttpTransport) (safeHead availableTransports)
     debug verbosity $ "Selected http transport implementation: " ++ name
 
     return transport { transportManuallySelected = False }
