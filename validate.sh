@@ -191,7 +191,7 @@ else
     PROJECTFILE=cabal.project.validate
 fi
 
-BASEHC=$(basename $HC)
+BASEHC=ghc-$($HC --numeric-version)
 BUILDDIR=dist-newstyle-validate-$BASEHC
 CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-${CABAL_VERSION}"
 
