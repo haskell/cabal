@@ -196,7 +196,7 @@ BUILDDIR=dist-newstyle-validate-$BASEHC
 CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-${CABAL_VERSION}"
 
 CABALNEWBUILD="${CABAL} v2-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
-CABALPLAN="${CABALPLAN} --builddir=$BUILDDIR"
+CABALPLANLISTBIN="${CABALPLAN} list-bin --builddir=$BUILDDIR"
 
 # SCRIPT
 #######################################################################
@@ -247,16 +247,16 @@ timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run |
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks || exit 1
 
-CMD="$($CABALPLAN list-bin Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
+CMD="$($CABALPLANLISTBIN Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
 (cd Cabal && timed $CMD) || exit 1
 
-CMD="$($CABALPLAN list-bin Cabal:test:check-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal:test:check-tests) $TESTSUITEJOBS --hide-successes"
 (cd Cabal && timed $CMD) || exit 1
 
-CMD="$($CABALPLAN list-bin Cabal:test:parser-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal:test:parser-tests) $TESTSUITEJOBS --hide-successes"
 (cd Cabal && timed $CMD) || exit 1
 
-CMD=$($CABALPLAN list-bin Cabal:test:hackage-tests)
+CMD=$($CABALPLANLISTBIN Cabal:test:hackage-tests)
 (cd Cabal && timed $CMD read-fields) || exit 1
 (cd Cabal && timed $CMD parsec d)    || exit 1
 (cd Cabal && timed $CMD roundtrip k) || exit 1
@@ -273,7 +273,7 @@ timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks || exit
 
 echo "$CYAN=== cabal-testsuite: Cabal test ======================== $(date +%T) === $RESET"
 
-CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 
 fi # CABALSUITETESTS (Cabal)
@@ -300,19 +300,19 @@ if $CABALINSTALLTESTS; then
 echo "$CYAN=== cabal-install: test ================================ $(date +%T) === $RESET"
 
 # this are sorted in asc time used, quicker tests first.
-CMD="$($CABALPLAN list-bin cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This doesn't work in parallel either
-CMD="$($CABALPLAN list-bin cabal-install:test:unit-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # Only single job, otherwise we fail with "Heap exhausted"
-CMD="$($CABALPLAN list-bin cabal-install:test:memory-usage-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This test-suite doesn't like concurrency
-CMD="$($CABALPLAN list-bin cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
+CMD="$($CABALPLANLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
 (cd cabal-install && timed $CMD) || exit 1
 
 fi # CABALINSTALLTESTS
@@ -321,7 +321,7 @@ fi # CABALINSTALLTESTS
 if $CABALSUITETESTS; then
 echo "$CYAN=== cabal-testsuite: cabal-install test ================ $(date +%T) === $RESET"
 
-CMD="$($CABALPLAN list-bin cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLAN list-bin cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 
 fi # CABALSUITETESTS
