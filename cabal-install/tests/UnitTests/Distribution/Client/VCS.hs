@@ -632,7 +632,7 @@ vcsTestDriverGit verbosity vcs repoRoot =
         return (Just commit')
 
     , vcsTagState = \_ tagname ->
-        git ["tag", "--force", tagname]
+        git ["tag", "--force", "--no-sign", tagname]
 
     , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
         unless (branchname `Map.member` allBranches) $
