@@ -1851,6 +1851,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabProgramPathExtra    = perPkgOptionNubList pkgid packageConfigProgramPathExtra
         elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
         elabExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
+        elabExtraLibDirsStatic  = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
         elabExtraFrameworkDirs  = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
         elabExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
         elabProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
@@ -3464,6 +3465,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configConfigurationsFlags = elabFlagAssignment
     configConfigureArgs       = elabConfigureScriptArgs
     configExtraLibDirs        = elabExtraLibDirs
+    configExtraLibDirsStatic  = elabExtraLibDirsStatic
     configExtraFrameworkDirs  = elabExtraFrameworkDirs
     configExtraIncludeDirs    = elabExtraIncludeDirs
     configProgPrefix          = maybe mempty toFlag elabProgPrefix

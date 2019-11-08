@@ -561,12 +561,16 @@ buildInfoFieldGrammar = BuildInfo
         ^^^ removedIn CabalSpecV3_0
             "Please use 'default-extensions' or 'other-extensions' fields."
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
+    <*> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token)       L.extraLibsStatic
+        ^^^ availableSince CabalSpecV3_8 []
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
         ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
+    <*> monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep FilePathNT)   L.extraLibDirsStatic
+        ^^^ availableSince CabalSpecV3_8 []
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
     <*> monoidalFieldAla "autogen-includes"     (alaList' FSep FilePathNT)    L.autogenIncludes

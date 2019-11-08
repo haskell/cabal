@@ -231,6 +231,9 @@ data ConfigFlags = ConfigFlags {
                                                             -- paths
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraLibDirsStatic :: [FilePath],   -- ^ path to search for extra
+                                              --   libraries when linking
+                                              --   fully static executables
     configExtraFrameworkDirs :: [FilePath],   -- ^ path to search for extra
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
@@ -315,6 +318,7 @@ instance Eq ConfigFlags where
     && equal configInstallDirs
     && equal configScratchDir
     && equal configExtraLibDirs
+    && equal configExtraLibDirsStatic
     && equal configExtraIncludeDirs
     && equal configIPID
     && equal configDeterministic
@@ -631,6 +635,11 @@ configureOptions showOrParseArgs =
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-lib-dirs-static"]
+         "A list of directories to search for external libraries when linking fully static executables"
+         configExtraLibDirsStatic (\v flags -> flags {configExtraLibDirsStatic = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
       ,option "" ["extra-framework-dirs"]

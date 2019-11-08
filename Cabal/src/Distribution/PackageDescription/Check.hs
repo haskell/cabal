@@ -915,7 +915,13 @@ checkGhcOptions fieldName getOptions pkg =
   , checkAlternatives fieldName "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
 
+  , checkAlternatives fieldName "extra-libraries-static"
+      [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
+
   , checkAlternatives fieldName "extra-lib-dirs"
+      [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
+
+  , checkAlternatives fieldName "extra-lib-dirs-static"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
 
   , checkAlternatives fieldName "frameworks"
@@ -1154,7 +1160,8 @@ checkPaths pkg =
     absPaths = concat
       [ [ (path, "includes",       PathKindFile)      | path <- includes     bi ] ++
         [ (path, "include-dirs",   PathKindDirectory) | path <- includeDirs  bi ] ++
-        [ (path, "extra-lib-dirs", PathKindDirectory) | path <- extraLibDirs bi ]
+        [ (path, "extra-lib-dirs", PathKindDirectory) | path <- extraLibDirs bi ] ++
+        [ (path, "extra-lib-dirs-static", PathKindDirectory) | path <- extraLibDirsStatic bi ]
       | bi <- allBuildInfo pkg
       ]
 
@@ -1918,6 +1925,7 @@ checkLocalPathsExist ops pkg = do
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
                   [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+               ++ [ (dir, "extra-lib-dirs-static") | dir <- extraLibDirsStatic bi ]
                ++ [ (dir, "extra-framework-dirs")
                   | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
