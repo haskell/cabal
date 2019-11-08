@@ -37,7 +37,7 @@ module Distribution.Simple.GHCJS (
         GhcImplInfo(..)
  ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -926,21 +926,24 @@ exeMainModuleName Executable{buildInfo = bnfo} =
 -- https://github.com/haskell/cabal/pull/4539#discussion_r118981753.
 decodeMainIsArg :: String -> Maybe ModuleName
 decodeMainIsArg arg
-  | not (null main_fn) && isLower (head main_fn)
+  | headOf main_fn isLower
                         -- The arg looked like "Foo.Bar.baz"
   = Just (ModuleName.fromString main_mod)
-  | isUpper (head arg)  -- The arg looked like "Foo" or "Foo.Bar"
+  | headOf arg isUpper  -- The arg looked like "Foo" or "Foo.Bar"
   = Just (ModuleName.fromString arg)
   | otherwise           -- The arg looked like "baz"
   = Nothing
   where
+    headOf :: String -> (Char -> Bool) -> Bool
+    headOf str pred' = any pred' (safeHead str)
+
     (main_mod, main_fn) = splitLongestPrefix arg (== '.')
 
     splitLongestPrefix :: String -> (Char -> Bool) -> (String,String)
     splitLongestPrefix str pred'
       | null r_pre = (str,           [])
       | otherwise  = (reverse (safeTail r_pre), reverse r_suf)
-                           -- 'tail' drops the char satisfying 'pred'
+                           -- 'safeTail' drops the char satisfying 'pred'
       where (r_suf, r_pre) = break pred' (reverse str)
 
 

@@ -37,8 +37,9 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , mkVersionRange
   ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Solver.Compat.Prelude
+import Distribution.Utils.Generic
 
 -- base
 import Control.Arrow (second)
@@ -719,13 +720,13 @@ extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
 extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
   where
     confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (String, Int)
-    confPkg (CI.SolverInstallPlan.Configured pkg) = Just $ srcPkg pkg
+    confPkg (CI.SolverInstallPlan.Configured pkg) = srcPkg pkg
     confPkg _                               = Nothing
 
-    srcPkg :: SolverPackage UnresolvedPkgLoc -> (String, Int)
+    srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (String, Int)
     srcPkg cpkg =
       let C.PackageIdentifier pn ver = packageInfoId (solverPkgSource cpkg)
-      in (C.unPackageName pn, head (C.versionNumbers ver))
+      in (\vn -> (C.unPackageName pn, vn)) <$> safeHead (C.versionNumbers ver)
 
 {-------------------------------------------------------------------------------
   Auxiliary

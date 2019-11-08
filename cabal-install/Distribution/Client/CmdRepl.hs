@@ -17,7 +17,7 @@ module Distribution.Client.CmdRepl (
     selectComponentTarget
   ) where
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Compat.Lens
@@ -91,6 +91,8 @@ import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Deprecated.Text
          ( display )
+import Distribution.Utils.Generic
+         ( safeHead )
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -256,7 +258,7 @@ replAction ( configFlags, configExFlags, installFlags
           targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
-            (unitId, _) = head $ Map.toList targets
+            Just (unitId, _) = safeHead $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
             Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId 

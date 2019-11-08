@@ -28,8 +28,9 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
-import Prelude (head, init)
+import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.Generic
 
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
@@ -154,7 +155,9 @@ repl pkg_descr lbi flags suffixes args = do
 
   target <- readTargetInfos verbosity pkg_descr lbi args >>= \r -> case r of
     -- This seems DEEPLY questionable.
-    []       -> return (head (allTargetsInBuildOrder' pkg_descr lbi))
+    []       -> case allTargetsInBuildOrder' pkg_descr lbi of
+      (target:_) -> return target
+      []         -> die' verbosity $ "Failed to determine target."
     [target] -> return target
     _        -> die' verbosity $ "The 'repl' command does not support multiple targets at once."
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
@@ -180,7 +183,7 @@ repl pkg_descr lbi flags suffixes args = do
          componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
          buildComponent verbosity NoFlag
                         pkg_descr lbi' suffixes comp clbi distPref
-    | subtarget <- init componentsToBuild ]
+    | subtarget <- safeInit componentsToBuild ]
 
   -- REPL for target components
   let clbi = targetCLBI target

@@ -57,7 +57,7 @@ module Distribution.Simple (
 
 import Control.Exception (try)
 
-import Prelude (head)
+import Prelude ()
 import Distribution.Compat.Prelude
 
 -- local
@@ -524,9 +524,9 @@ sanityCheckHookedBuildInfo verbosity
       ++ "but the package does not have a library."
 
 sanityCheckHookedBuildInfo verbosity pkg_descr (_, hookExes)
-    | not (null nonExistant)
+    | exe1 : _ <- nonExistant
     = die' verbosity $ "The buildinfo contains info for an executable called '"
-      ++ prettyShow (head nonExistant) ++ "' but the package does not have a "
+      ++ prettyShow exe1 ++ "' but the package does not have a "
       ++ "executable with that name."
   where
     pkgExeNames  = nub (map exeName (executables pkg_descr))

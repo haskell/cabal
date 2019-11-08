@@ -20,9 +20,9 @@ module Distribution.Client.Init.Heuristics (
     knownCategories,
 ) where
 
-import Prelude (head, last)
+import Prelude ()
 import Distribution.Client.Compat.Prelude
-import Distribution.Utils.Generic (safeHead, safeTail)
+import Distribution.Utils.Generic (safeHead, safeTail, safeLast)
 
 import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
@@ -87,7 +87,7 @@ guessMainFileCandidates flags = do
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: FilePath -> IO P.PackageName
-guessPackageName = liftM (P.mkPackageName . repair . last . splitDirectories)
+guessPackageName = liftM (P.mkPackageName . repair . fromMaybe "" . safeLast . splitDirectories)
                  . tryCanonicalizePath
   where
     -- Treat each span of non-alphanumeric characters as a hyphen. Each
@@ -346,7 +346,7 @@ maybeReadFile f = do
 -- |Get list of categories used in Hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
-    [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
+    [ cat | pkg <- maybeToList . safeHead =<< (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
           , cat <- splitString ',' catList
     ]

@@ -34,7 +34,7 @@ module Distribution.PackageDescription.Check (
   ) where
 
 import Distribution.Compat.Prelude
-import Prelude (last, init)
+import Prelude ()
 
 import Control.Monad                                 (mapM)
 import Data.List                                     (group)
@@ -56,7 +56,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.ExeDependency
 import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
-import Distribution.Utils.Generic                    (isAscii)
+import Distribution.Utils.Generic                    (isAscii, safeInit)
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension
@@ -1591,8 +1591,8 @@ checkPackageVersions pkg =
 
     boundedAbove :: VersionRange -> Bool
     boundedAbove vr = case asVersionIntervals vr of
-      []        -> True -- this is the inconsistent version range.
-      intervals -> case last intervals of
+      []     -> True -- this is the inconsistent version range.
+      (x:xs) -> case last (x:|xs) of
         (_,   UpperBound _ _) -> True
         (_, NoUpperBound    ) -> False
 
@@ -2145,7 +2145,7 @@ checkTarPath path
       Right (_:_)      -> Just noSplit
      where
         -- drop the '/' between the name and prefix:
-        remainder = init h : rest
+        remainder = safeInit h : rest
 
   where
     nameMax, prefixMax :: Int
