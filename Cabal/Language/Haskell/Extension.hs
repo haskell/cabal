@@ -827,6 +827,18 @@ data KnownExtension =
   -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#deriving-instances-for-empty-data-types>
   | EmptyDataDeriving
 
+  -- | Enable detection of complete user-supplied kind signatures.
+  | CUSKs
+
+  -- | Allows the syntax @import M qualified@.
+  | ImportQualifiedPost
+
+  -- | Allow the use of standalone kind signatures.
+  | StandaloneKindSignatures
+
+  -- | Enable unlifted newtypes.
+  | UnliftedNewtypes
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
