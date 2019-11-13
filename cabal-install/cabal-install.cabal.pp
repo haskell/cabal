@@ -61,6 +61,11 @@ Version:            3.1.0.0
       build-depends: Win32 >= 2 && < 3
     else
       build-depends: unix >= 2.5 && < 2.9
+
+    if flag(lukko)
+      build-depends: lukko >= 0.1 && <0.2
+    else
+      build-depends: base >= 4.10
 %enddef
 %def CABAL_COMPONENTCOMMON
     default-language: Haskell2010
@@ -106,7 +111,6 @@ Version:            3.1.0.0
         Distribution.Client.CmdSdist
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -275,7 +279,6 @@ Build-type:         Custom
 %endif
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
-  tests/README.md
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
@@ -374,6 +377,11 @@ Flag debug-conflict-sets
 Flag debug-tracetree
   description:  Compile in support for tracetree (used to debug the solver)
   default:      False
+  manual:       True
+
+Flag lukko
+  description:  Use @lukko@ for file-locking
+  default:      True
   manual:       True
 
 %if CABAL_FLAG_LIB
