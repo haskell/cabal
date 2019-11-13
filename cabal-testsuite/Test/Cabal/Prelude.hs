@@ -818,8 +818,8 @@ getOpenFilesLimit = return (Just 2048)
 getOpenFilesLimit = liftIO $ do
     ResourceLimits { softLimit } <- getResourceLimit ResourceOpenFiles
     case softLimit of
-        ResourceLimit n -> return (Just n)
-        _ -> return Nothing
+        ResourceLimit n | n >= 0 && n <= 4096 -> return (Just n)
+        _                                     -> return Nothing
 #endif
 
 hasCabalForGhc :: TestM Bool
