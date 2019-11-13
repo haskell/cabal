@@ -21,7 +21,6 @@ Category:           Distribution
 Build-type:         Custom
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
-  tests/README.md
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
@@ -122,6 +121,11 @@ Flag debug-tracetree
   default:      False
   manual:       True
 
+Flag lukko
+  description:  Use @lukko@ for file-locking
+  default:      True
+  manual:       True
+
 custom-setup
    setup-depends:
        Cabal     >= 2.2,
@@ -137,7 +141,9 @@ executable cabal
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
-                     -Wnoncanonical-monadfail-instances
+      if impl(ghc < 8.8)
+        ghc-options: -Wnoncanonical-monadfail-instances
+
 
     ghc-options: -rtsopts -threaded
 
@@ -176,7 +182,6 @@ executable cabal
         Distribution.Client.CmdSdist
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -308,7 +313,7 @@ executable cabal
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.13,
+        base       >= 4.8      && < 4.14,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
@@ -332,7 +337,7 @@ executable cabal
         tar        >= 0.5.0.3  && < 0.6,
         time       >= 1.5.0.1  && < 1.10,
         zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.5.2.2 && < 0.6,
+        hackage-security >= 0.6.0.0 && < 0.7,
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2
 
@@ -349,6 +354,11 @@ executable cabal
       build-depends: Win32 >= 2 && < 3
     else
       build-depends: unix >= 2.5 && < 2.9
+
+    if flag(lukko)
+      build-depends: lukko >= 0.1 && <0.2
+    else
+      build-depends: base >= 4.10
 
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS

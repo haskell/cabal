@@ -5,7 +5,7 @@ module Main
 import Test.Tasty
 import Test.Tasty.Golden.Advanced (goldenTest)
 
-import Data.Algorithm.Diff                    (Diff (..), getGroupedDiff)
+import Data.Algorithm.Diff                    (PolyDiff (..), getGroupedDiff)
 import Distribution.Fields                    (runParseResult)
 import Distribution.PackageDescription.Check  (checkPackage)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription)

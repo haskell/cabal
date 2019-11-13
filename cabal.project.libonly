@@ -1,8 +1,5 @@
--- A copy of cabal.project, but with a trimmed down 'packages'
--- field. Needed for LIB_ONLY configurations that can't build cabal-install,
--- only lib:Cabal.
-
 packages: Cabal/ cabal-testsuite/
+tests: True
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
@@ -19,6 +16,4 @@ program-options
 package Cabal
   ghc-options: -fno-ignore-asserts
 package cabal-testsuite
-  ghc-options: -fno-ignore-asserts
-package cabal-install
   ghc-options: -fno-ignore-asserts

@@ -11,7 +11,7 @@ import Test.Tasty.Golden.Advanced (goldenTest)
 import Test.Tasty.HUnit
 
 import Control.Monad                               (unless, void)
-import Data.Algorithm.Diff                         (Diff (..), getGroupedDiff)
+import Data.Algorithm.Diff                         (PolyDiff (..), getGroupedDiff)
 import Data.Maybe                                  (isNothing)
 import Distribution.Fields                         (runParseResult)
 import Distribution.PackageDescription             (GenericPackageDescription)

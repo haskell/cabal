@@ -18,7 +18,7 @@ Version:            3.0.0.0
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.13,
+        base       >= 4.8      && < 4.14,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
@@ -42,7 +42,7 @@ Version:            3.0.0.0
         tar        >= 0.5.0.3  && < 0.6,
         time       >= 1.5.0.1  && < 1.10,
         zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.5.2.2 && < 0.6,
+        hackage-security >= 0.6.0.0 && < 0.7,
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2
 
@@ -59,6 +59,11 @@ Version:            3.0.0.0
       build-depends: Win32 >= 2 && < 3
     else
       build-depends: unix >= 2.5 && < 2.9
+
+    if flag(lukko)
+      build-depends: lukko >= 0.1 && <0.2
+    else
+      build-depends: base >= 4.10
 %enddef
 %def CABAL_COMPONENTCOMMON
     default-language: Haskell2010
@@ -66,7 +71,9 @@ Version:            3.0.0.0
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
-                     -Wnoncanonical-monadfail-instances
+      if impl(ghc < 8.8)
+        ghc-options: -Wnoncanonical-monadfail-instances
+
 %enddef
 %def CABAL_BUILDINFO
 %if CABAL_FLAG_LIB
@@ -104,7 +111,6 @@ Version:            3.0.0.0
         Distribution.Client.CmdSdist
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -273,7 +279,6 @@ Build-type:         Custom
 %endif
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
-  tests/README.md
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
@@ -372,6 +377,11 @@ Flag debug-conflict-sets
 Flag debug-tracetree
   description:  Compile in support for tracetree (used to debug the solver)
   default:      False
+  manual:       True
+
+Flag lukko
+  description:  Use @lukko@ for file-locking
+  default:      True
   manual:       True
 
 %if CABAL_FLAG_LIB
@@ -494,7 +504,7 @@ executable cabal
         random,
         tagged,
         tar,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && < 1.3,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tree-diff,
@@ -560,7 +570,7 @@ Test-Suite unit-tests
         zlib,
         network-uri < 2.6.2.0,
         network,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
@@ -592,7 +602,7 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
@@ -621,7 +631,7 @@ Test-Suite solver-quickcheck
         hashable,
         random,
         tagged,
-        tasty >= 1.1.0.3 && <1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-quickcheck,
         QuickCheck >= 2.8.2,
         pretty-show >= 1.6.15
@@ -649,7 +659,7 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty >= 1.1.0.3 && < 1.2,
+        tasty >= 1.2.3 && <1.3,
         tasty-hunit >= 0.10,
         tagged
 
