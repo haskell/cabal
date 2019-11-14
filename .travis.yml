@@ -109,6 +109,10 @@ matrix:
  # It seems pointless to run head if we're going to ignore the results.
  #- GHCVER=head
 
+  # Marks the build result as soon as all the non-"allow_failures" jobs finish, based on their results
+  # while the remaining `allow_failures` jobs continue to run.
+  fast_finish: true
+
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
