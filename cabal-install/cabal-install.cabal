@@ -21,7 +21,6 @@ Category:           Distribution
 Build-type:         Custom
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
-  tests/README.md
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.
@@ -122,6 +121,11 @@ Flag debug-tracetree
   default:      False
   manual:       True
 
+Flag lukko
+  description:  Use @lukko@ for file-locking
+  default:      True
+  manual:       True
+
 custom-setup
    setup-depends:
        Cabal     >= 2.2,
@@ -176,7 +180,6 @@ executable cabal
         Distribution.Client.CmdSdist
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FileLock
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -351,6 +354,11 @@ executable cabal
       build-depends: Win32 >= 2 && < 3
     else
       build-depends: unix >= 2.5 && < 2.9
+
+    if flag(lukko)
+      build-depends: lukko >= 0.1 && <0.2
+    else
+      build-depends: base >= 4.10
 
     if flag(debug-expensive-assertions)
       cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
