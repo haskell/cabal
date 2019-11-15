@@ -33,7 +33,7 @@ library
     optparse-applicative,
     process,
     time,
-    statistics >= 0.14 && < 0.15,
+    statistics >= 0.14 && < 0.16,
     vector
   default-language: Haskell2010
 
@@ -54,7 +54,7 @@ test-suite unit-tests
   build-depends:
     base,
     solver-benchmarks,
-    statistics >= 0.14 && < 0.15,
+    statistics >= 0.14 && < 0.16,
     tasty,
     tasty-hunit
   default-language: Haskell2010
