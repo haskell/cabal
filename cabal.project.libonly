@@ -1,16 +1,8 @@
 packages: Cabal/ cabal-testsuite/
-packages: cabal-install/ solver-benchmarks/
 tests: True
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
-
--- Remove after hackage-repo-tool release
-allow-newer:
-  hackage-repo-tool:optparse-applicative
-
-allow-newer:
-  hackage-security:Cabal
 
 program-options
   -- So us hackers get all the assertion failures early:
@@ -24,6 +16,4 @@ program-options
 package Cabal
   ghc-options: -fno-ignore-asserts
 package cabal-testsuite
-  ghc-options: -fno-ignore-asserts
-package cabal-install
   ghc-options: -fno-ignore-asserts

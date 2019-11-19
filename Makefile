@@ -6,8 +6,8 @@ LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
 SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
 SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
 
-CABALBUILD := cabal new-build --enable-tests
-CABALRUN   := cabal new-run --enable-tests
+CABALBUILD := cabal v2-build
+CABALRUN   := cabal v2-run
 
 # default rules
 
@@ -18,6 +18,10 @@ lib : $(LEXER_HS)
 
 exe : $(LEXER_HS)
 	$(CABALBUILD) cabal-install:exes
+
+# Build library with oldest supported GHC
+lib-ghc-7.6 :
+	$(CABALBUILD) --project-file=cabal.project.libonly --with-compiler=ghc-7.6.3 Cabal:libs
 
 # source generation: Lexer
 
@@ -33,10 +37,10 @@ $(LEXER_HS) : boot/Lexer.x
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
 $(SPDX_LICENSE_HS) : boot/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- boot/SPDX.LicenseId.template.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.6.json $(SPDX_LICENSE_HS)
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- boot/SPDX.LicenseId.template.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.6.json $(SPDX_LICENSE_HS)
 
 $(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- boot/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.6.json $(SPDX_EXCEPTION_HS)
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- boot/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.6.json $(SPDX_EXCEPTION_HS)
 
 # cabal-install.cabal file generation
 
@@ -59,21 +63,21 @@ cabal-install-monolithic : cabal-install/cabal-install.cabal.pp
 gen-extra-source-files : gen-extra-source-files-lib gen-extra-source-files-cli
 
 gen-extra-source-files-lib :
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
 
 # We need to generate cabal-install-dev so the test modules are in .cabal file!
 gen-extra-source-files-cli :
 	$(MAKE) cabal-install-dev
-	cabal new-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.pp $$(pwd)/cabal-install/cabal-install.cabal
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.pp $$(pwd)/cabal-install/cabal-install.cabal
 	$(MAKE) cabal-install-prod
 
 # ghcid
 
 ghcid-lib :
-	ghcid -c 'cabal new-repl Cabal'
+	ghcid -c 'cabal v2-repl Cabal'
 
 ghcid-cli :
-	ghcid -c 'cabal new-repl cabal-install'
+	ghcid -c 'cabal v2-repl cabal-install'
 
 # doctests (relies on .ghc.environment files)
 
@@ -83,7 +87,7 @@ doctest :
 # tests
 
 check-tests :
-	$(CABALRUN) --enable-tests check-tests -- --cwd Cabal ${TEST}
+	$(CABALRUN) check-tests -- --cwd Cabal ${TEST}
 
 parser-tests :
 	$(CABALRUN) parser-tests -- --cwd Cabal ${TEST}
