@@ -52,6 +52,9 @@ import Distribution.Package                  hiding (installedUnitId)
 import Distribution.Types.ComponentName
 import Distribution.Utils.Generic            (toUTF8BS)
 
+import Control.DeepSeq (deepseq)
+import Data.ByteString (ByteString)
+
 import qualified Data.Map            as Map
 import qualified Distribution.Fields as P
 import qualified Text.PrettyPrint    as Disp
@@ -91,16 +94,14 @@ sourceComponentName = CLibName . sourceLibName
 -- Parsing
 
 -- | Return either errors, or IPI with list of warnings
---
--- /Note:/ errors array /may/ be empty, but the parse is still failed (it's a bug though)
 parseInstalledPackageInfo
-    :: String
+    :: ByteString
     -> Either (NonEmpty String) ([String], InstalledPackageInfo)
-parseInstalledPackageInfo s = case P.readFields (toUTF8BS s) of
+parseInstalledPackageInfo s = case P.readFields s of
     Left err -> Left (show err :| [])
     Right fs -> case partitionFields fs of
         (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
-            (ws, Right x) -> Right (ws', x) where
+            (ws, Right x) -> ws' `deepseq` x `deepseq` Right (ws', x) where
                 ws' = map (P.showPWarning "") ws
             (_,  Left (_, errs)) -> Left errs' where
                 errs' = fmap (P.showPError "") errs

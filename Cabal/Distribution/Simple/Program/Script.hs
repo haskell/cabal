@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program.Script
@@ -20,6 +21,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Simple.Program.Run
+import Distribution.Simple.Utils
 import Distribution.System
 
 -- | Generate a system script, either POSIX shell script or Windows batch file
@@ -45,8 +47,8 @@ invocationAsShellScript
        ++ concatMap setEnv envExtra
        ++ [ "cd " ++ quote cwd | cwd <- maybeToList mcwd ]
        ++ [ (case minput of
-              Nothing    -> ""
-              Just input -> "echo " ++ quote input ++ " | ")
+              Nothing     -> ""
+              Just input -> "echo " ++ quote (iodataToText input) ++ " | ")
          ++ unwords (map quote $ path : args) ++ " \"$@\""]
 
   where
@@ -59,6 +61,10 @@ invocationAsShellScript
     escape []        = []
     escape ('\'':cs) = "'\\''" ++ escape cs
     escape (c   :cs) = c        : escape cs
+
+iodataToText :: IOData -> String
+iodataToText (IODataText str)   = str
+iodataToText (IODataBinary lbs) = fromUTF8LBS lbs
 
 
 -- | Generate a Windows batch file that invokes a program.
@@ -81,7 +87,7 @@ invocationAsBatchFile
 
             Just input ->
                 [ "(" ]
-             ++ [ "echo " ++ escape line | line <- lines input ]
+             ++ [ "echo " ++ escape line | line <- lines $ iodataToText input ]
              ++ [ ") | "
                ++ "\"" ++ path ++ "\""
                ++ concatMap (\arg -> ' ':quote arg) args ]

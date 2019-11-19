@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module UnitTests.Distribution.Simple.Utils
     ( tests
     ) where
@@ -69,7 +70,7 @@ rawSystemStdInOutTextDecodingTest ghcPath
       hClose handleExe
 
       -- Compile
-      (IODataText resOutput, resErrors, resExitCode) <- rawSystemStdInOut normal
+      (resOutput, resErrors, resExitCode) <- rawSystemStdInOut normal
          ghcPath ["-o", filenameExe, filenameHs]
          Nothing Nothing Nothing
          IODataModeText
@@ -82,8 +83,7 @@ rawSystemStdInOutTextDecodingTest ghcPath
            Nothing Nothing Nothing
            IODataModeText -- not binary mode output, ie utf8 text mode so try to decode
   case res of
-    Right (IODataText x1, x2, x3) -> assertFailure $ "expected IO decoding exception: " ++ show (x1,x2,x3)
-    Right (IODataBinary _, _, _)  -> assertFailure "internal error"
+    Right (x1, x2, x3) -> assertFailure $ "expected IO decoding exception: " ++ show (x1,x2,x3)
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 

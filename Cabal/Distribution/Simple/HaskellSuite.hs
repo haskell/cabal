@@ -139,7 +139,7 @@ getInstalledPackages verbosity packagedbs progdb =
 
   where
     parsePackages str =
-        case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
+        case partitionEithers $ map (parseInstalledPackageInfo . toUTF8BS) (splitPkgs str) of
             ([], ok)   -> Right [ pkg | (_, pkg) <- ok ]
             (msgss, _) -> Left (foldMap NE.toList msgss)
 
@@ -219,7 +219,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo = do
   runProgramInvocation verbosity $
     (programInvocation hspkg
       ["update", packageDbOpt $ registrationPackageDB packageDbs])
-      { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
+      { progInvokeInput = Just $ IODataText $ showInstalledPackageInfo installedPkgInfo }
 
 initPackageDB :: Verbosity -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity progdb dbPath =
