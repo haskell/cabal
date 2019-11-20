@@ -76,18 +76,18 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
-    <*> freeTextFieldDef    "copyright"                                L.copyright
-    <*> freeTextFieldDef    "maintainer"                               L.maintainer
-    <*> freeTextFieldDef    "author"                                   L.author
-    <*> freeTextFieldDef    "stability"                                L.stability
+    <*> freeTextFieldDefST  "copyright"                                L.copyright
+    <*> freeTextFieldDefST  "maintainer"                               L.maintainer
+    <*> freeTextFieldDefST  "author"                                   L.author
+    <*> freeTextFieldDefST  "stability"                                L.stability
     <*> monoidalFieldAla    "tested-with"   (alaList' FSep TestedWith) L.testedWith
-    <*> freeTextFieldDef    "homepage"                                 L.homepage
-    <*> freeTextFieldDef    "package-url"                              L.pkgUrl
-    <*> freeTextFieldDef    "bug-reports"                              L.bugReports
+    <*> freeTextFieldDefST  "homepage"                                 L.homepage
+    <*> freeTextFieldDefST  "package-url"                              L.pkgUrl
+    <*> freeTextFieldDefST   "bug-reports"                              L.bugReports
     <*> pure [] -- source-repos are stanza
-    <*> freeTextFieldDef    "synopsis"                                 L.synopsis
-    <*> freeTextFieldDef    "description"                              L.description
-    <*> freeTextFieldDef    "category"                                 L.category
+    <*> freeTextFieldDefST  "synopsis"                                 L.synopsis
+    <*> freeTextFieldDefST  "description"                              L.description
+    <*> freeTextFieldDefST  "category"                                 L.category
     <*> prefixedFields      "x-"                                       L.customFieldsPD
     <*> optionalField       "build-type"                               L.buildTypeRaw
     <*> pure Nothing -- custom-setup

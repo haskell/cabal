@@ -73,6 +73,7 @@ import qualified System.Directory        (getDirectoryContents)
 import qualified System.FilePath.Windows as FilePath.Windows (isValid)
 
 import qualified Data.Set as Set
+import qualified Distribution.Utils.ShortText as ShortText
 
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
@@ -497,32 +498,32 @@ checkFields pkg =
             ++ "' use '" ++ prettyShow replacement ++ "'."
              | (ext, Just replacement) <- ourDeprecatedExtensions ]
 
-  , check (null (category pkg)) $
+  , check (ShortText.null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
 
-  , check (null (maintainer pkg)) $
+  , check (ShortText.null (maintainer pkg)) $
       PackageDistSuspicious "No 'maintainer' field."
 
-  , check (null (synopsis pkg) && null (description pkg)) $
+  , check (ShortText.null (synopsis pkg) && ShortText.null (description pkg)) $
       PackageDistInexcusable "No 'synopsis' or 'description' field."
 
-  , check (null (description pkg) && not (null (synopsis pkg))) $
+  , check (ShortText.null (description pkg) && not (ShortText.null (synopsis pkg))) $
       PackageDistSuspicious "No 'description' field."
 
-  , check (null (synopsis pkg) && not (null (description pkg))) $
+  , check (ShortText.null (synopsis pkg) && not (ShortText.null (description pkg))) $
       PackageDistSuspicious "No 'synopsis' field."
 
     --TODO: recommend the bug reports URL, author and homepage fields
     --TODO: recommend not using the stability field
     --TODO: recommend specifying a source repo
 
-  , check (length (synopsis pkg) >= 80) $
+  , check (ShortText.length (synopsis pkg) >= 80) $
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
 
     -- See also https://github.com/haskell/cabal/pull/3479
-  , check (not (null (description pkg))
-           && length (description pkg) <= length (synopsis pkg)) $
+  , check (not (ShortText.null (description pkg))
+           && ShortText.length (description pkg) <= ShortText.length (synopsis pkg)) $
       PackageDistSuspicious $
            "The 'description' field should be longer than the 'synopsis' "
         ++ "field. "

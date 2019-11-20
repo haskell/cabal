@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes        #-}
 module Distribution.Types.PackageDescription.Lens (
     PackageDescription,
     module Distribution.Types.PackageDescription.Lens,
@@ -9,27 +9,28 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Compiler                  (CompilerFlavor)
-import Distribution.License                   (License)
-import Distribution.ModuleName                (ModuleName)
-import Distribution.Types.Benchmark           (Benchmark, benchmarkModules)
-import Distribution.Types.Benchmark.Lens      (benchmarkName, benchmarkBuildInfo)
-import Distribution.Types.BuildInfo           (BuildInfo)
-import Distribution.Types.BuildType           (BuildType)
-import Distribution.Types.ComponentName       (ComponentName(..))
-import Distribution.Types.Executable          (Executable, exeModules)
-import Distribution.Types.Executable.Lens     (exeName, exeBuildInfo)
-import Distribution.Types.ForeignLib          (ForeignLib, foreignLibModules)
-import Distribution.Types.ForeignLib.Lens     (foreignLibName, foreignLibBuildInfo)
-import Distribution.Types.Library             (Library, explicitLibModules)
-import Distribution.Types.Library.Lens        (libName, libBuildInfo)
-import Distribution.Types.PackageDescription  (PackageDescription)
-import Distribution.Types.PackageId           (PackageIdentifier)
-import Distribution.Types.SetupBuildInfo      (SetupBuildInfo)
-import Distribution.Types.SourceRepo          (SourceRepo)
-import Distribution.Types.TestSuite           (TestSuite, testModules)
-import Distribution.Types.TestSuite.Lens      (testName, testBuildInfo)
-import Distribution.Version                   (Version, VersionRange)
+import Distribution.Compiler                 (CompilerFlavor)
+import Distribution.License                  (License)
+import Distribution.ModuleName               (ModuleName)
+import Distribution.Types.Benchmark          (Benchmark, benchmarkModules)
+import Distribution.Types.Benchmark.Lens     (benchmarkBuildInfo, benchmarkName)
+import Distribution.Types.BuildInfo          (BuildInfo)
+import Distribution.Types.BuildType          (BuildType)
+import Distribution.Types.ComponentName      (ComponentName (..))
+import Distribution.Types.Executable         (Executable, exeModules)
+import Distribution.Types.Executable.Lens    (exeBuildInfo, exeName)
+import Distribution.Types.ForeignLib         (ForeignLib, foreignLibModules)
+import Distribution.Types.ForeignLib.Lens    (foreignLibBuildInfo, foreignLibName)
+import Distribution.Types.Library            (Library, explicitLibModules)
+import Distribution.Types.Library.Lens       (libBuildInfo, libName)
+import Distribution.Types.PackageDescription (PackageDescription)
+import Distribution.Types.PackageId          (PackageIdentifier)
+import Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
+import Distribution.Types.SourceRepo         (SourceRepo)
+import Distribution.Types.TestSuite          (TestSuite, testModules)
+import Distribution.Types.TestSuite.Lens     (testBuildInfo, testName)
+import Distribution.Utils.ShortText          (ShortText)
+import Distribution.Version                  (Version, VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -42,23 +43,23 @@ licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
 licenseRaw f s = fmap (\x -> s { T.licenseRaw = x }) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' PackageDescription [String]
+licenseFiles :: Lens' PackageDescription [FilePath]
 licenseFiles f s = fmap (\x -> s { T.licenseFiles = x }) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
-copyright :: Lens' PackageDescription String
+copyright :: Lens' PackageDescription ShortText
 copyright f s = fmap (\x -> s { T.copyright = x }) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' PackageDescription String
+maintainer :: Lens' PackageDescription ShortText
 maintainer f s = fmap (\x -> s { T.maintainer = x }) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' PackageDescription String
+author :: Lens' PackageDescription ShortText
 author f s = fmap (\x -> s { T.author = x }) (f (T.author s))
 {-# INLINE author #-}
 
-stability :: Lens' PackageDescription String
+stability :: Lens' PackageDescription ShortText
 stability f s = fmap (\x -> s { T.stability = x }) (f (T.stability s))
 {-# INLINE stability #-}
 
@@ -66,15 +67,15 @@ testedWith :: Lens' PackageDescription [(CompilerFlavor,VersionRange)]
 testedWith f s = fmap (\x -> s { T.testedWith = x }) (f (T.testedWith s))
 {-# INLINE testedWith #-}
 
-homepage :: Lens' PackageDescription String
+homepage :: Lens' PackageDescription ShortText
 homepage f s = fmap (\x -> s { T.homepage = x }) (f (T.homepage s))
 {-# INLINE homepage #-}
 
-pkgUrl :: Lens' PackageDescription String
+pkgUrl :: Lens' PackageDescription ShortText
 pkgUrl f s = fmap (\x -> s { T.pkgUrl = x }) (f (T.pkgUrl s))
 {-# INLINE pkgUrl #-}
 
-bugReports :: Lens' PackageDescription String
+bugReports :: Lens' PackageDescription ShortText
 bugReports f s = fmap (\x -> s { T.bugReports = x }) (f (T.bugReports s))
 {-# INLINE bugReports #-}
 
@@ -82,15 +83,15 @@ sourceRepos :: Lens' PackageDescription [SourceRepo]
 sourceRepos f s = fmap (\x -> s { T.sourceRepos = x }) (f (T.sourceRepos s))
 {-# INLINE sourceRepos #-}
 
-synopsis :: Lens' PackageDescription String
+synopsis :: Lens' PackageDescription ShortText
 synopsis f s = fmap (\x -> s { T.synopsis = x }) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 
-description :: Lens' PackageDescription String
+description :: Lens' PackageDescription ShortText
 description f s = fmap (\x -> s { T.description = x }) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' PackageDescription String
+category :: Lens' PackageDescription ShortText
 category f s = fmap (\x -> s { T.category = x }) (f (T.category s))
 {-# INLINE category #-}
 
@@ -165,18 +166,18 @@ componentModules :: Monoid r => ComponentName -> Getting r PackageDescription [M
 componentModules cname = case cname of
     CLibName    name ->
       componentModules' name allLibraries             libName            explicitLibModules
-    CFLibName   name -> 
+    CFLibName   name ->
       componentModules' name (foreignLibs . traverse) foreignLibName     foreignLibModules
-    CExeName    name -> 
+    CExeName    name ->
       componentModules' name (executables . traverse) exeName            exeModules
-    CTestName   name -> 
+    CTestName   name ->
       componentModules' name (testSuites  . traverse) testName           testModules
     CBenchName  name ->
       componentModules' name (benchmarks  . traverse) benchmarkName      benchmarkModules
   where
     componentModules'
         :: (Eq name, Monoid r)
-        => name 
+        => name
         -> Traversal' PackageDescription a
         -> Lens' a name
         -> (a -> [ModuleName])
@@ -192,21 +193,21 @@ componentModules cname = case cname of
 -- | @since 2.4
 componentBuildInfo :: ComponentName -> Traversal' PackageDescription BuildInfo
 componentBuildInfo cname = case cname of
-    CLibName    name -> 
+    CLibName    name ->
       componentBuildInfo' name allLibraries             libName            libBuildInfo
-    CFLibName   name -> 
+    CFLibName   name ->
       componentBuildInfo' name (foreignLibs . traverse) foreignLibName     foreignLibBuildInfo
-    CExeName    name -> 
+    CExeName    name ->
       componentBuildInfo' name (executables . traverse) exeName            exeBuildInfo
-    CTestName   name -> 
+    CTestName   name ->
       componentBuildInfo' name (testSuites  . traverse) testName           testBuildInfo
     CBenchName  name ->
       componentBuildInfo' name (benchmarks  . traverse) benchmarkName      benchmarkBuildInfo
   where
     componentBuildInfo' :: Eq name
-                        => name 
+                        => name
                         -> Traversal' PackageDescription a
-                        -> Lens' a name 
+                        -> Lens' a name
                         -> Traversal' a BuildInfo
                         -> Traversal' PackageDescription BuildInfo
     componentBuildInfo' name pdL nameL biL =

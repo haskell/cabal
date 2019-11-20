@@ -72,6 +72,8 @@ instance FieldGrammar PrettyFieldGrammar where
             showFT | v >= CabalSpecV3_0 = showFreeTextV3
                    | otherwise          = showFreeText
 
+    freeTextFieldDefST = defaultFreeTextFieldDefST
+
     monoidalFieldAla fn _pack l = PrettyFG pp
       where
         pp v s = ppField fn (prettyVersioned v (pack' _pack (aview l s)))

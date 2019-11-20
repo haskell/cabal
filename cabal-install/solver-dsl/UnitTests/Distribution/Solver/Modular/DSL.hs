@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)

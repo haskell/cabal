@@ -57,6 +57,8 @@ import Distribution.Client.Init.Types     ( InitFlags(..) )
 import Distribution.Client.Compat.Process ( readProcessWithExitCode )
 import System.Exit ( ExitCode(..) )
 
+import qualified Distribution.Utils.ShortText as ShortText
+
 -- | Return a list of candidate main files for this executable: top-level
 -- modules including the word 'Main' in the file name. The list is sorted in
 -- order of preference, shorter file names are preferred. 'Right's are existing
@@ -348,7 +350,7 @@ knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- maybeToList . safeHead =<< (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
-          , cat <- splitString ',' catList
+          , cat <- splitString ',' $ ShortText.fromShortText catList
     ]
 
 -- Parse name and email, from darcs pref files or environment variable

@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE OverloadedStrings  #-}
 module Distribution.Types.InstalledPackageInfo (
     InstalledPackageInfo (..),
     emptyInstalledPackageInfo,
@@ -25,6 +26,7 @@ import Distribution.Types.LibraryVisibility
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Version                 (nullVersion)
+import Distribution.Utils.ShortText         (ShortText)
 
 import qualified Distribution.Package as Package
 import qualified Distribution.SPDX    as SPDX
@@ -50,15 +52,15 @@ data InstalledPackageInfo
         instantiatedWith  :: [(ModuleName, OpenModule)],
         compatPackageKey  :: String,
         license           :: Either SPDX.License License,
-        copyright         :: String,
-        maintainer        :: String,
-        author            :: String,
-        stability         :: String,
-        homepage          :: String,
-        pkgUrl            :: String,
-        synopsis          :: String,
-        description       :: String,
-        category          :: String,
+        copyright         :: !ShortText,
+        maintainer        :: !ShortText,
+        author            :: !ShortText,
+        stability         :: !ShortText,
+        homepage          :: !ShortText,
+        pkgUrl            :: !ShortText,
+        synopsis          :: !ShortText,
+        description       :: !ShortText,
+        category          :: !ShortText,
         -- these parts are required by an installed package only:
         abiHash           :: AbiHash,
         indefinite        :: Bool,

@@ -101,7 +101,7 @@ parseInstalledPackageInfo s = case P.readFields s of
     Left err -> Left (show err :| [])
     Right fs -> case partitionFields fs of
         (fs', _) -> case P.runParseResult $ parseFieldGrammar cabalSpecLatest fs' ipiFieldGrammar of
-            (ws, Right x) -> ws' `deepseq` x `deepseq` Right (ws', x) where
+            (ws, Right x) -> x `deepseq` Right (ws', x) where
                 ws' = map (P.showPWarning "") ws
             (_,  Left (_, errs)) -> Left errs' where
                 errs' = fmap (P.showPError "") errs

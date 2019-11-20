@@ -231,8 +231,8 @@ roundtripTest testFieldsTransform fpath bs = do
     let x1 = x0 & L.packageDescription . L.licenseFiles %~ stripEmpty
     let y2 = y1 & L.packageDescription . L.licenseFiles %~ stripEmpty
 
-    let y = y2 & L.packageDescription . L.description .~ ""
-    let x = x1 & L.packageDescription . L.description .~ ""
+    let y = y2 & L.packageDescription . L.description .~ mempty
+    let x = x1 & L.packageDescription . L.description .~ mempty
 
     assertEqual' bs' x y
 

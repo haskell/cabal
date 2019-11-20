@@ -36,6 +36,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Control.Applicative                           (Const (..))
+import Control.DeepSeq                               (deepseq)
 import Control.Monad                                 (guard)
 import Control.Monad.State.Strict                    (StateT, execStateT)
 import Control.Monad.Trans.Class                     (lift)
@@ -70,9 +71,7 @@ import Distribution.Types.PackageDescription         (specVersion')
 import Distribution.Types.UnqualComponentName        (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
-import Distribution.Version
-       (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0,
-       versionNumbers)
+import Distribution.Version                          (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0, versionNumbers)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
@@ -200,7 +199,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
     checkForUndefinedFlags gpd1
-    return gpd1
+    gpd1 `deepseq` return gpd1
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse

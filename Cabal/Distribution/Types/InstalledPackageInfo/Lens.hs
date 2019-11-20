@@ -14,6 +14,8 @@ import Distribution.Package                    (AbiHash, ComponentId, PackageIde
 import Distribution.Types.InstalledPackageInfo (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.Types.LibraryName          (LibraryName)
 import Distribution.Types.LibraryVisibility    (LibraryVisibility)
+import Distribution.Utils.ShortText            (ShortText)
+
 
 import qualified Distribution.SPDX                       as SPDX
 import qualified Distribution.Types.InstalledPackageInfo as T
@@ -46,39 +48,39 @@ license :: Lens' InstalledPackageInfo (Either SPDX.License License)
 license f s = fmap (\x -> s { T.license = x }) (f (T.license s))
 {-# INLINE license #-}
 
-copyright :: Lens' InstalledPackageInfo String
+copyright :: Lens' InstalledPackageInfo ShortText
 copyright f s = fmap (\x -> s { T.copyright = x }) (f (T.copyright s))
 {-# INLINE copyright #-}
 
-maintainer :: Lens' InstalledPackageInfo String
+maintainer :: Lens' InstalledPackageInfo ShortText
 maintainer f s = fmap (\x -> s { T.maintainer = x }) (f (T.maintainer s))
 {-# INLINE maintainer #-}
 
-author :: Lens' InstalledPackageInfo String
+author :: Lens' InstalledPackageInfo ShortText
 author f s = fmap (\x -> s { T.author = x }) (f (T.author s))
 {-# INLINE author #-}
 
-stability :: Lens' InstalledPackageInfo String
+stability :: Lens' InstalledPackageInfo ShortText
 stability f s = fmap (\x -> s { T.stability = x }) (f (T.stability s))
 {-# INLINE stability #-}
 
-homepage :: Lens' InstalledPackageInfo String
+homepage :: Lens' InstalledPackageInfo ShortText
 homepage f s = fmap (\x -> s { T.homepage = x }) (f (T.homepage s))
 {-# INLINE homepage #-}
 
-pkgUrl :: Lens' InstalledPackageInfo String
+pkgUrl :: Lens' InstalledPackageInfo ShortText
 pkgUrl f s = fmap (\x -> s { T.pkgUrl = x }) (f (T.pkgUrl s))
 {-# INLINE pkgUrl #-}
 
-synopsis :: Lens' InstalledPackageInfo String
+synopsis :: Lens' InstalledPackageInfo ShortText
 synopsis f s = fmap (\x -> s { T.synopsis = x }) (f (T.synopsis s))
 {-# INLINE synopsis #-}
 
-description :: Lens' InstalledPackageInfo String
+description :: Lens' InstalledPackageInfo ShortText
 description f s = fmap (\x -> s { T.description = x }) (f (T.description s))
 {-# INLINE description #-}
 
-category :: Lens' InstalledPackageInfo String
+category :: Lens' InstalledPackageInfo ShortText
 category f s = fmap (\x -> s { T.category = x }) (f (T.category s))
 {-# INLINE category #-}
 

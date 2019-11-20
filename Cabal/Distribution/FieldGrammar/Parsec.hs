@@ -71,12 +71,13 @@ import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)
 import Prelude ()
 
-import qualified Data.ByteString    as BS
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Map.Strict    as Map
-import qualified Data.Set           as Set
-import qualified Text.Parsec        as P
-import qualified Text.Parsec.Error  as P
+import qualified Data.ByteString              as BS
+import qualified Data.List.NonEmpty           as NE
+import qualified Data.Map.Strict              as Map
+import qualified Data.Set                     as Set
+import qualified Distribution.Utils.ShortText as ShortText
+import qualified Text.Parsec                  as P
+import qualified Text.Parsec.Error            as P
 
 import Distribution.CabalSpecVersion
 import Distribution.FieldGrammar.Class
@@ -84,7 +85,7 @@ import Distribution.Fields.Field
 import Distribution.Fields.ParseResult
 import Distribution.Parsec
 import Distribution.Parsec.FieldLineStream
-import Distribution.Parsec.Position        (positionRow, positionCol)
+import Distribution.Parsec.Position        (positionCol, positionRow)
 
 -------------------------------------------------------------------------------
 -- Auxiliary types
@@ -233,6 +234,22 @@ instance FieldGrammar ParsecFieldGrammar where
             | null fls           = pure ""
             | v >= CabalSpecV3_0 = pure (fieldlinesToFreeText3 pos fls)
             | otherwise          = pure (fieldlinesToFreeText fls)
+
+    -- freeTextFieldDefST = defaultFreeTextFieldDefST
+    freeTextFieldDefST fn _ = ParsecFG (Set.singleton fn) Set.empty parser where
+        parser v fields = case Map.lookup fn fields of
+            Nothing          -> pure mempty
+            Just []          -> pure mempty
+            Just [x]         -> parseOne v x
+            Just xs@(_:y:ys) -> do
+                warnMultipleSingularFields fn xs
+                NE.last <$> traverse (parseOne v) (y:|ys)
+
+        parseOne v (MkNamelessField pos fls) = case fls of
+            []                     -> pure mempty
+            [FieldLine _  bs]      -> pure (ShortText.unsafeFromUTF8BS bs)
+            _ | v >= CabalSpecV3_0 -> pure (ShortText.toShortText $ fieldlinesToFreeText3 pos fls)
+              | otherwise          -> pure (ShortText.toShortText $ fieldlinesToFreeText fls)
 
     monoidalFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser
       where

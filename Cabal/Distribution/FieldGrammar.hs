@@ -25,6 +25,7 @@ module Distribution.FieldGrammar  (
     takeFields,
     runFieldParser,
     runFieldParser',
+    defaultFreeTextFieldDefST,
     )  where
 
 import Distribution.Compat.Prelude

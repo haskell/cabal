@@ -88,6 +88,7 @@ import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
 import Distribution.Version
+import Distribution.Utils.ShortText
 
 import qualified Distribution.SPDX as SPDX
 
@@ -113,18 +114,18 @@ data PackageDescription
         package        :: PackageIdentifier,
         licenseRaw     :: Either SPDX.License License,
         licenseFiles   :: [FilePath],
-        copyright      :: String,
-        maintainer     :: String,
-        author         :: String,
-        stability      :: String,
+        copyright      :: !ShortText,
+        maintainer     :: !ShortText,
+        author         :: !ShortText,
+        stability      :: !ShortText,
         testedWith     :: [(CompilerFlavor,VersionRange)],
-        homepage       :: String,
-        pkgUrl         :: String,
-        bugReports     :: String,
+        homepage       :: !ShortText,
+        pkgUrl         :: !ShortText,
+        bugReports     :: !ShortText,
         sourceRepos    :: [SourceRepo],
-        synopsis       :: String, -- ^A one-line summary of this package
-        description    :: String, -- ^A more verbose description of this package
-        category       :: String,
+        synopsis       :: !ShortText, -- ^A one-line summary of this package
+        description    :: !ShortText, -- ^A more verbose description of this package
+        category       :: !ShortText,
         customFieldsPD :: [(String,String)], -- ^Custom fields starting
                                              -- with x-, stored in a
                                              -- simple assoc-list.
@@ -224,18 +225,18 @@ emptyPackageDescription
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,
                       buildTypeRaw = Nothing,
-                      copyright    = "",
-                      maintainer   = "",
-                      author       = "",
-                      stability    = "",
+                      copyright    = mempty,
+                      maintainer   = mempty,
+                      author       = mempty,
+                      stability    = mempty,
                       testedWith   = [],
-                      homepage     = "",
-                      pkgUrl       = "",
-                      bugReports   = "",
+                      homepage     = mempty,
+                      pkgUrl       = mempty,
+                      bugReports   = mempty,
                       sourceRepos  = [],
-                      synopsis     = "",
-                      description  = "",
-                      category     = "",
+                      synopsis     = mempty,
+                      description  = mempty,
+                      category     = mempty,
                       customFieldsPD = [],
                       setupBuildInfo = Nothing,
                       library      = Nothing,

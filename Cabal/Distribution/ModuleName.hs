@@ -28,8 +28,8 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Utils.ShortText
-import System.FilePath               (pathSeparator)
+import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
+import System.FilePath              (pathSeparator)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
