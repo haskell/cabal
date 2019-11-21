@@ -6,6 +6,7 @@
 module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)
   , Dependencies(..)
+  , ExSubLib(..)
   , ExTest(..)
   , ExExe(..)
   , ExConstraint(..)
@@ -21,13 +22,21 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleQualifier(..)
   , ExampleVar(..)
   , EnableAllTests(..)
+  , dependencies
+  , publicDependencies
+  , unbuildableDependencies
   , exAv
   , exAvNoLibrary
   , exInst
+  , exSubLib
+  , exTest
+  , exExe
   , exFlagged
   , exResolve
   , extractInstallPlan
   , declareFlags
+  , withSubLibrary
+  , withSubLibraries
   , withSetupDeps
   , withTest
   , withTests
@@ -45,6 +54,7 @@ import Distribution.Utils.Generic
 -- base
 import Control.Arrow (second)
 import qualified Data.Map as Map
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 
 -- Cabal
 import qualified Distribution.CabalSpecVersion          as C
@@ -57,6 +67,7 @@ import qualified Distribution.Package                   as C
 import qualified Distribution.Types.ExeDependency       as C
 import qualified Distribution.Types.ForeignLib          as C
 import qualified Distribution.Types.LegacyExeDependency as C
+import qualified Distribution.Types.LibraryVisibility   as C
 import qualified Distribution.Types.PkgconfigDependency as C
 import qualified Distribution.Types.PkgconfigVersion    as C
 import qualified Distribution.Types.PkgconfigVersionRange as C
@@ -139,12 +150,40 @@ type ExamplePkgName    = String
 type ExamplePkgVersion = Int
 type ExamplePkgHash    = String  -- for example "installed" packages
 type ExampleFlagName   = String
+type ExampleSubLibName = String
 type ExampleTestName   = String
 type ExampleExeName    = String
 type ExampleVersionRange = C.VersionRange
 
-data Dependencies = NotBuildable | Buildable [ExampleDependency]
-  deriving Show
+data Dependencies = Dependencies {
+    depsVisibility :: C.LibraryVisibility
+  , depsIsBuildable :: Bool
+  , depsExampleDependencies :: [ExampleDependency]
+  } deriving Show
+
+instance Semigroup Dependencies where
+  deps1 <> deps2 = Dependencies {
+      depsVisibility = depsVisibility deps1 <> depsVisibility deps2
+    , depsIsBuildable = depsIsBuildable deps1 && depsIsBuildable deps2
+    , depsExampleDependencies = depsExampleDependencies deps1 ++ depsExampleDependencies deps2
+    }
+
+instance Monoid Dependencies where
+  mempty = Dependencies {
+      depsVisibility = mempty
+    , depsIsBuildable = True
+    , depsExampleDependencies = []
+    }
+  mappend = (<>)
+
+dependencies :: [ExampleDependency] -> Dependencies
+dependencies deps = mempty { depsExampleDependencies = deps }
+
+publicDependencies :: Dependencies
+publicDependencies = mempty { depsVisibility = C.LibraryVisibilityPublic }
+
+unbuildableDependencies :: Dependencies
+unbuildableDependencies = mempty { depsIsBuildable = False }
 
 data ExampleDependency =
     -- | Simple dependency on any version
@@ -156,6 +195,12 @@ data ExampleDependency =
     -- | Simple dependency on a range of versions, with an inclusive lower bound
     -- and an exclusive upper bound.
   | ExRange ExamplePkgName ExamplePkgVersion ExamplePkgVersion
+
+    -- | Sub-library dependency
+  | ExSubLibAny ExamplePkgName ExampleSubLibName
+
+    -- | Sub-library dependency on a fixed version
+  | ExSubLibFix ExamplePkgName ExampleSubLibName ExamplePkgVersion
 
     -- | Build-tool-depends dependency
   | ExBuildToolAny ExamplePkgName ExampleExeName
@@ -190,13 +235,24 @@ data ExFlag = ExFlag {
   , exFlagType    :: FlagType
   } deriving Show
 
-data ExTest = ExTest ExampleTestName [ExampleDependency]
+data ExSubLib = ExSubLib ExampleSubLibName Dependencies
 
-data ExExe = ExExe ExampleExeName [ExampleDependency]
+data ExTest = ExTest ExampleTestName Dependencies
+
+data ExExe = ExExe ExampleExeName Dependencies
+
+exSubLib :: ExampleSubLibName -> [ExampleDependency] -> ExSubLib
+exSubLib name deps = ExSubLib name (dependencies deps)
+
+exTest :: ExampleTestName -> [ExampleDependency] -> ExTest
+exTest name deps = ExTest name (dependencies deps)
+
+exExe :: ExampleExeName -> [ExampleDependency] -> ExExe
+exExe name deps = ExExe name (dependencies deps)
 
 exFlagged :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
           -> ExampleDependency
-exFlagged n t e = ExFlagged n (Buildable t) (Buildable e)
+exFlagged n t e = ExFlagged n (dependencies t) (dependencies e)
 
 data ExConstraint =
     ExVersionConstraint ConstraintScope ExampleVersionRange
@@ -212,7 +268,7 @@ data ExPreference =
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
   , exAvVersion :: ExamplePkgVersion
-  , exAvDeps    :: ComponentDeps [ExampleDependency]
+  , exAvDeps    :: ComponentDeps Dependencies
 
   -- Setting flags here is only necessary to override the default values of
   -- the fields in C.Flag.
@@ -252,7 +308,7 @@ newtype EnableAllTests = EnableAllTests Bool
 --
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
-exAv n v ds = (exAvNoLibrary n v) { exAvDeps = CD.fromLibraryDeps ds }
+exAv n v ds = (exAvNoLibrary n v) { exAvDeps = CD.fromLibraryDeps (dependencies ds) }
 
 -- | Constructs an 'ExampleAvailable' package without a default library
 -- component.
@@ -269,9 +325,18 @@ declareFlags flags ex = ex {
       exAvFlags = flags
     }
 
+withSubLibrary :: ExampleAvailable -> ExSubLib -> ExampleAvailable
+withSubLibrary ex lib = withSubLibraries ex [lib]
+
+withSubLibraries :: ExampleAvailable -> [ExSubLib] -> ExampleAvailable
+withSubLibraries ex libs =
+  let subLibCDs = CD.fromList [(CD.ComponentSubLib $ C.mkUnqualComponentName name, deps)
+                              | ExSubLib name deps <- libs]
+  in ex { exAvDeps = exAvDeps ex <> subLibCDs }
+
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps = ex {
-      exAvDeps = exAvDeps ex <> CD.fromSetupDeps setupDeps
+      exAvDeps = exAvDeps ex <> CD.fromSetupDeps (dependencies setupDeps)
     }
 
 withTest :: ExampleAvailable -> ExTest -> ExampleAvailable
@@ -341,7 +406,7 @@ exAvSrcPkg ex =
               usedFlags :: Map ExampleFlagName C.PackageFlag
               usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
                 where
-                  names = concatMap extractFlags $ CD.flatDeps (exAvDeps ex)
+                  names = extractFlags $ CD.flatDeps (exAvDeps ex)
           in -- 'declaredFlags' overrides 'usedFlags' to give flags non-default settings:
              Map.elems $ declaredFlags `Map.union` usedFlags
 
@@ -350,7 +415,7 @@ exAvSrcPkg ex =
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
         benchmarks = [(name, deps) | (CD.ComponentBench name, deps) <- CD.toList (exAvDeps ex)]
         executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
-        setup = case CD.setupDeps (exAvDeps ex) of
+        setup = case depsExampleDependencies $ CD.setupDeps (exAvDeps ex) of
                   []   -> Nothing
                   deps -> Just C.SetupBuildInfo {
                             C.setupDepends = mkSetupDeps deps,
@@ -379,30 +444,30 @@ exAvSrcPkg ex =
               , C.gpdScannedVersion = Nothing
               , C.genPackageFlags = flags
               , C.condLibrary =
-                  let mkLib bi = mempty { C.libBuildInfo = bi }
+                  let mkLib v bi = mempty { C.libVisibility = v, C.libBuildInfo = bi }
                       -- Avoid using the Monoid instance for [a] when getting
                       -- the library dependencies, to allow for the possibility
                       -- that the package doesn't have a library:
                       libDeps = lookup CD.ComponentLib (CD.toList (exAvDeps ex))
-                  in mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable <$> libDeps
+                  in mkTopLevelCondTree defaultLib mkLib <$> libDeps
               , C.condSubLibraries =
-                  let mkTree = mkCondTree defaultLib mkLib . mkBuildInfoTree . Buildable
-                      mkLib bi = mempty { C.libBuildInfo = bi }
+                  let mkTree = mkTopLevelCondTree defaultSubLib mkLib
+                      mkLib v bi = mempty { C.libVisibility = v, C.libBuildInfo = bi }
                   in map (second mkTree) subLibraries
               , C.condForeignLibs =
-                  let mkTree = mkCondTree mempty mkLib . mkBuildInfoTree . Buildable
+                  let mkTree = mkTopLevelCondTree (mkLib defaultTopLevelBuildInfo) (const mkLib)
                       mkLib bi = mempty { C.foreignLibBuildInfo = bi }
                   in map (second mkTree) foreignLibraries
               , C.condExecutables =
-                  let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
+                  let mkTree = mkTopLevelCondTree defaultExe (const mkExe)
                       mkExe bi = mempty { C.buildInfo = bi }
                   in map (second mkTree) executables
               , C.condTestSuites =
-                  let mkTree = mkCondTree defaultTest mkTest . mkBuildInfoTree . Buildable
+                  let mkTree = mkTopLevelCondTree defaultTest (const mkTest)
                       mkTest bi = mempty { C.testBuildInfo = bi }
                   in map (second mkTree) testSuites
               , C.condBenchmarks  =
-                  let mkTree = mkCondTree defaultBenchmark mkBench . mkBuildInfoTree . Buildable
+                  let mkTree = mkTopLevelCondTree defaultBenchmark (const mkBench)
                       mkBench bi = mempty { C.benchmarkBuildInfo = bi }
                   in map (second mkTree) benchmarks
               }
@@ -423,19 +488,34 @@ exAvSrcPkg ex =
     defaultTopLevelBuildInfo = mempty { C.defaultLanguage = Just Haskell98 }
 
     defaultLib :: C.Library
-    defaultLib = mempty { C.exposedModules = [Module.fromString "Module"] }
+    defaultLib = mempty {
+        C.libBuildInfo = defaultTopLevelBuildInfo
+      , C.exposedModules = [Module.fromString "Module"]
+      , C.libVisibility = C.LibraryVisibilityPublic
+      }
+
+    defaultSubLib :: C.Library
+    defaultSubLib = mempty {
+        C.libBuildInfo = defaultTopLevelBuildInfo
+      , C.exposedModules = [Module.fromString "Module"]
+      }
 
     defaultExe :: C.Executable
-    defaultExe = mempty { C.modulePath = "Main.hs" }
+    defaultExe = mempty {
+        C.buildInfo = defaultTopLevelBuildInfo
+      , C.modulePath = "Main.hs"
+      }
 
     defaultTest :: C.TestSuite
     defaultTest = mempty {
-        C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
+        C.testBuildInfo = defaultTopLevelBuildInfo
+      , C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
       }
 
     defaultBenchmark :: C.Benchmark
     defaultBenchmark = mempty {
-        C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1,0]) "Benchmark.hs"
+        C.benchmarkBuildInfo = defaultTopLevelBuildInfo
+      , C.benchmarkInterface = C.BenchmarkExeV10 (C.mkVersion [1,0]) "Benchmark.hs"
       }
 
     -- Split the set of dependencies into the set of dependencies of the library,
@@ -477,57 +557,43 @@ exAvSrcPkg ex =
       in (dep:other, exts, lang, pcpkgs, exes, legacyExes)
 
     -- Extract the total set of flags used
-    extractFlags :: ExampleDependency -> [ExampleFlagName]
-    extractFlags (ExAny _)            = []
-    extractFlags (ExFix _ _)          = []
-    extractFlags (ExRange _ _ _)      = []
-    extractFlags (ExBuildToolAny _ _)   = []
-    extractFlags (ExBuildToolFix _ _ _) = []
-    extractFlags (ExLegacyBuildToolAny _)   = []
-    extractFlags (ExLegacyBuildToolFix _ _) = []
-    extractFlags (ExFlagged f a b)    =
-        f : concatMap extractFlags (deps a ++ deps b)
+    extractFlags :: Dependencies -> [ExampleFlagName]
+    extractFlags deps = concatMap go (depsExampleDependencies deps)
       where
-        deps :: Dependencies -> [ExampleDependency]
-        deps NotBuildable = []
-        deps (Buildable ds) = ds
-    extractFlags (ExExt _)      = []
-    extractFlags (ExLang _)     = []
-    extractFlags (ExPkg _)      = []
+        go :: ExampleDependency -> [ExampleFlagName]
+        go (ExAny _)                  = []
+        go (ExFix _ _)                = []
+        go (ExRange _ _ _)            = []
+        go (ExSubLibAny _ _)          = []
+        go (ExSubLibFix _ _ _)        = []
+        go (ExBuildToolAny _ _)       = []
+        go (ExBuildToolFix _ _ _)     = []
+        go (ExLegacyBuildToolAny _)   = []
+        go (ExLegacyBuildToolFix _ _) = []
+        go (ExFlagged f a b)          = f : extractFlags a ++ extractFlags b
+        go (ExExt _)                  = []
+        go (ExLang _)                 = []
+        go (ExPkg _)                  = []
 
-    -- Convert a tree of BuildInfos into a tree of a specific component type.
-    -- 'defaultTopLevel' contains the default values for the component, and
-    -- 'mkComponent' creates a component from a 'BuildInfo'.
-    mkCondTree :: forall a. Semigroup a =>
-                  a -> (C.BuildInfo -> a)
-               -> DependencyTree C.BuildInfo
-               -> DependencyTree a
-    mkCondTree defaultTopLevel mkComponent (C.CondNode topData topConstraints topComps) =
-        C.CondNode {
-            C.condTreeData =
-                defaultTopLevel <> mkComponent (defaultTopLevelBuildInfo <> topData)
-          , C.condTreeConstraints = topConstraints
-          , C.condTreeComponents = goComponents topComps
-          }
-      where
-        go :: DependencyTree C.BuildInfo -> DependencyTree a
-        go (C.CondNode ctData constraints comps) =
-            C.CondNode (mkComponent ctData) constraints (goComponents comps)
+    -- Convert 'Dependencies' into a tree of a specific component type, using
+    -- the given top level component and function for creating a component at
+    -- any level.
+    mkTopLevelCondTree :: forall a. Semigroup a =>
+                          a
+                       -> (C.LibraryVisibility -> C.BuildInfo -> a)
+                       -> Dependencies
+                       -> DependencyTree a
+    mkTopLevelCondTree defaultTopLevel mkComponent deps =
+      let condNode = mkCondTree mkComponent deps
+      in condNode { C.condTreeData = defaultTopLevel <> C.condTreeData condNode }
 
-        goComponents :: [DependencyComponent C.BuildInfo]
-                     -> [DependencyComponent a]
-        goComponents comps = [C.CondBranch cond (go t) (go <$> me) | C.CondBranch cond t me <- comps]
-
-    mkBuildInfoTree :: Dependencies -> DependencyTree C.BuildInfo
-    mkBuildInfoTree NotBuildable =
-      C.CondNode {
-             C.condTreeData        = mempty { C.buildable = False }
-           , C.condTreeConstraints = []
-           , C.condTreeComponents  = []
-           }
-    mkBuildInfoTree (Buildable deps) =
-      let (libraryDeps, exts, mlang, pcpkgs, buildTools, legacyBuildTools) = splitTopLevel deps
+    -- Convert 'Dependencies' into a tree of a specific component type, using
+    -- the given function to generate each component.
+    mkCondTree :: (C.LibraryVisibility -> C.BuildInfo -> a) -> Dependencies -> DependencyTree a
+    mkCondTree mkComponent deps =
+      let (libraryDeps, exts, mlang, pcpkgs, buildTools, legacyBuildTools) = splitTopLevel (depsExampleDependencies deps)
           (directDeps, flaggedDeps) = splitDeps libraryDeps
+          component = mkComponent (depsVisibility deps) bi
           bi = mempty {
                   C.otherExtensions = exts
                 , C.defaultLanguage = mlang
@@ -539,25 +605,27 @@ exAvSrcPkg ex =
                                        | (n,v) <- pcpkgs
                                        , let n' = C.mkPkgconfigName n
                                        , let v' = C.PcThisVersion (mkSimplePkgconfigVersion v) ]
+                , C.buildable = depsIsBuildable deps
               }
       in C.CondNode {
-             C.condTreeData        = bi -- Necessary for language extensions
+             C.condTreeData        = component
            -- TODO: Arguably, build-tools dependencies should also
            -- effect constraints on conditional tree. But no way to
            -- distinguish between them
            , C.condTreeConstraints = map mkDirect directDeps
-           , C.condTreeComponents  = map mkFlagged flaggedDeps
+           , C.condTreeComponents  = map (mkFlagged mkComponent) flaggedDeps
            }
 
-    mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr C.mainLibSet
+    mkDirect :: (ExamplePkgName, C.LibraryName, C.VersionRange) -> C.Dependency
+    mkDirect (dep, name, vr) = C.Dependency (C.mkPackageName dep) vr (NonEmptySet.singleton name)
 
-    mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
-              -> DependencyComponent C.BuildInfo
-    mkFlagged (f, a, b) =
+    mkFlagged :: (C.LibraryVisibility -> C.BuildInfo -> a)
+              -> (ExampleFlagName, Dependencies, Dependencies)
+              -> DependencyComponent a
+    mkFlagged mkComponent (f, a, b) =
         C.CondBranch (C.Var (C.PackageFlag (C.mkFlagName f)))
-                     (mkBuildInfoTree a)
-                     (Just (mkBuildInfoTree b))
+                     (mkCondTree mkComponent a)
+                     (Just (mkCondTree mkComponent b))
 
     -- Split a set of dependencies into direct dependencies and flagged
     -- dependencies. A direct dependency is a tuple of the name of package and
@@ -565,20 +633,26 @@ exAvSrcPkg ex =
     -- 'mkDirect' for example. A flagged dependency is the set of dependencies
     -- guarded by a flag.
     splitDeps :: [ExampleDependency]
-              -> ( [(ExamplePkgName, C.VersionRange)]
+              -> ( [(ExamplePkgName, C.LibraryName, C.VersionRange)]
                  , [(ExampleFlagName, Dependencies, Dependencies)]
                  )
     splitDeps [] =
       ([], [])
     splitDeps (ExAny p:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, C.anyVersion):directDeps, flaggedDeps)
+      in ((p, C.LMainLibName, C.anyVersion):directDeps, flaggedDeps)
     splitDeps (ExFix p v:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, C.thisVersion $ mkSimpleVersion v):directDeps, flaggedDeps)
+      in ((p, C.LMainLibName, C.thisVersion $ mkSimpleVersion v):directDeps, flaggedDeps)
     splitDeps (ExRange p v1 v2:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
-      in ((p, mkVersionRange v1 v2):directDeps, flaggedDeps)
+      in ((p, C.LMainLibName, mkVersionRange v1 v2):directDeps, flaggedDeps)
+    splitDeps (ExSubLibAny p lib:deps) =
+      let (directDeps, flaggedDeps) = splitDeps deps
+      in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.anyVersion):directDeps, flaggedDeps)
+    splitDeps (ExSubLibFix p lib v:deps) =
+      let (directDeps, flaggedDeps) = splitDeps deps
+      in ((p, C.LSubLibName (C.mkUnqualComponentName lib), C.thisVersion $ mkSimpleVersion v):directDeps, flaggedDeps)
     splitDeps (ExFlagged f a b:deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in (directDeps, (f, a, b):flaggedDeps)
