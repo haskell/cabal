@@ -102,8 +102,10 @@ data FailReason = UnsupportedExtension Extension
                 | NewPackageDoesNotMatchExistingConstraint ConflictingDep
                 | ConflictingConstraints ConflictingDep ConflictingDep
                 | NewPackageIsMissingRequiredComponent ExposedComponent (DependencyReason QPN)
+                | NewPackageHasPrivateRequiredComponent ExposedComponent (DependencyReason QPN)
                 | NewPackageHasUnbuildableRequiredComponent ExposedComponent (DependencyReason QPN)
                 | PackageRequiresMissingComponent QPN ExposedComponent
+                | PackageRequiresPrivateComponent QPN ExposedComponent
                 | PackageRequiresUnbuildableComponent QPN ExposedComponent
                 | CannotInstall
                 | CannotReinstall
