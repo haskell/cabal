@@ -150,7 +150,7 @@ duplicateDependencies name =
     pkgs :: ExampleDb
     pkgs = [
         Right $ exAv "A" 1 (dependencyTree 1)
-      , Right $ exAv "B" 1 [] `withExe` ExExe "exe" []
+      , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]
@@ -178,7 +178,7 @@ duplicateFlaggedDependencies name =
     pkgs :: ExampleDb
     pkgs = [
         Right $ exAv "A" 1 (dependencyTree 1)
-      , Right $ exAv "B" 1 [] `withExe` ExExe "exe" []
+      , Right $ exAv "B" 1 [] `withExe` exExe "exe" []
       ]
 
     dependencyTree :: Int -> [ExampleDependency]

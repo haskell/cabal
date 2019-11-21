@@ -7,6 +7,7 @@ import Prelude ()
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Set as S
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -571,7 +572,7 @@ unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
 convLibDeps :: DependencyReason PN -> Dependency -> [LDep PN]
 convLibDeps dr (Dependency pn vr libs) =
     [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Constrained vr)
-    | lib <- S.toList libs ]
+    | lib <- NonEmptySet.toList libs ]
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
