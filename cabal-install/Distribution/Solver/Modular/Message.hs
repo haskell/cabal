@@ -25,6 +25,7 @@ import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
+import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 
 data Message =
@@ -220,8 +221,10 @@ showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++
 showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
 showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"
 showFR _ (NewPackageIsMissingRequiredComponent comp dr) = " (does not contain " ++ showExposedComponent comp ++ ", which is required by " ++ showDependencyReason dr ++ ")"
+showFR _ (NewPackageHasPrivateRequiredComponent comp dr) = " (" ++ showExposedComponent comp ++ " is private, but it is required by " ++ showDependencyReason dr ++ ")"
 showFR _ (NewPackageHasUnbuildableRequiredComponent comp dr) = " (" ++ showExposedComponent comp ++ " is not buildable in the current environment, but it is required by " ++ showDependencyReason dr ++ ")"
 showFR _ (PackageRequiresMissingComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component does not exist)"
+showFR _ (PackageRequiresPrivateComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is private)"
 showFR _ (PackageRequiresUnbuildableComponent qpn comp) = " (requires " ++ showExposedComponent comp ++ " from " ++ showQPN qpn ++ ", but the component is not buildable in the current environment)"
 showFR _ CannotInstall                    = " (only already installed instances can be used)"
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
@@ -247,8 +250,9 @@ showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA 
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
 
 showExposedComponent :: ExposedComponent -> String
-showExposedComponent ExposedLib = "library"
-showExposedComponent (ExposedExe name) = "executable '" ++ unUnqualComponentName name ++ "'"
+showExposedComponent (ExposedLib LMainLibName)       = "library"
+showExposedComponent (ExposedLib (LSubLibName name)) = "library '" ++ unUnqualComponentName name ++ "'"
+showExposedComponent (ExposedExe name)               = "executable '" ++ unUnqualComponentName name ++ "'"
 
 constraintSource :: ConstraintSource -> String
 constraintSource src = "constraint from " ++ showConstraintSource src
@@ -257,8 +261,9 @@ showConflictingDep :: ConflictingDep -> String
 showConflictingDep (ConflictingDep dr (PkgComponent qpn comp) ci) =
   let DependencyReason qpn' _ _ = dr
       componentStr = case comp of
-                       ExposedExe exe -> " (exe " ++ unUnqualComponentName exe ++ ")"
-                       ExposedLib     -> ""
+                       ExposedExe exe               -> " (exe " ++ unUnqualComponentName exe ++ ")"
+                       ExposedLib LMainLibName      -> ""
+                       ExposedLib (LSubLibName lib) -> " (lib " ++ unUnqualComponentName lib ++ ")"
   in case ci of
        Fixed i        -> (if qpn /= qpn' then showDependencyReason dr ++ " => " else "") ++
                          showQPN qpn ++ componentStr ++ "==" ++ showI i
