@@ -281,7 +281,7 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
-    , testGroup "library dependencies" [
+    , testGroup "main library dependencies" [
           let db = [Right $ exAvNoLibrary "A" 1 `withExe` exExe "exe" []]
           in runTest $ mkTest db "install build target without a library" ["A"] $
              solverSuccess [("A", 1)]
@@ -296,6 +296,62 @@ tests = [
                    , Right $ exAvNoLibrary "B" 2 `withExe` exe
                    , Right $ exAv "B" 1 [] `withExe` exe ]
           in runTest $ mkTest db "choose version of build-depends dependency that has a library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+        ]
+    , testGroup "sub-library dependencies" [
+          let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAv "B" 1 [] ]
+          in runTest $
+             mkTest db "reject package that is missing required sub-library" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" [] ]
+          in runTest $
+             mkTest db "reject package with private but required sub-library" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1
+                       `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies] ]
+          in runTest $ constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
+             mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1
+                       `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies] ]
+          in runTest $
+             mkTest db "treat sub-library as visible even though flag choice could make it private" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAv "B" 1 [] `withSubLibrary` exSubLib "sub-lib" []
+                   , Right $ exAv "C" 1 [ExSubLibAny "B" "sub-lib"] ]
+              goals :: [ExampleVar]
+              goals = [
+                  P QualNone "A"
+                , P QualNone "B"
+                , P QualNone "C"
+                ]
+          in runTest $ goalOrder goals $
+             mkTest db "reject package that requires a private sub-library" ["A", "C"] $
+             solverFailure $ isInfixOf $
+             "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib-v1"]
+                   , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib-v2" publicDependencies
+                   , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib-v1" publicDependencies ]
+          in runTest $ mkTest db "choose version of package containing correct sub-library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib" (dependencies [])
+                   , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib" publicDependencies ]
+          in runTest $ mkTest db "choose version of package with public sub-library" ["A"] $
              solverSuccess [("A", 1), ("B", 1)]
         ]
     -- build-tool-depends dependencies
