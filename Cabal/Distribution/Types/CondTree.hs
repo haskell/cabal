@@ -140,8 +140,9 @@ traverseCondBranchC f (CondBranch cnd t me) = CondBranch cnd
 
 -- | Extract the condition matched by the given predicate from a cond tree.
 --
--- We use this mainly for extracting buildable conditions (see the Note above),
--- but the function is in fact more general.
+-- We use this mainly for extracting buildable conditions (see the Note in
+-- Distribution.PackageDescription.Configuration), but the function is in fact
+-- more general.
 extractCondition :: Eq v => (a -> Bool) -> CondTree v c a -> Condition v
 extractCondition p = go
   where
