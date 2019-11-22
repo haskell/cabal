@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE DeriveFoldable      #-}
 {-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE DeriveTraversable   #-}
@@ -5,16 +6,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module GenUtils where
 
-import Control.Lens
+import Control.Lens (each, ix, (%~), (&))
 import Data.Char    (toUpper)
 import Data.Maybe   (fromMaybe)
 import Data.Text    (Text)
+import GHC.Generics     (Generic)
 
+import qualified Zinza                as Z
 import qualified Data.Algorithm.Diff as Diff
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
-import qualified Data.Text.Lazy      as TL
 
 -------------------------------------------------------------------------------
 -- License List version
@@ -59,7 +61,7 @@ instance Ord OrdT where
 -- Commmons
 -------------------------------------------------------------------------------
 
-header :: TL.Text
+header :: String
 header = "-- This file is generated. See Makefile's spdx rule"
 
 -------------------------------------------------------------------------------
@@ -127,3 +129,33 @@ mkList (x:xs) =
     "    [ " <> x <> "\n"
     <> foldMap (\x' -> "    , " <> x' <> "\n") xs
     <> "    ]"
+
+-------------------------------------------------------------------------------
+-- Zinza inputs
+-------------------------------------------------------------------------------
+
+data Input = Input
+    { inputLicenseIds      :: Text
+    , inputLicenses        :: [InputLicense]
+    , inputLicenseList_all :: Text
+    , inputLicenseList_3_0 :: Text
+    , inputLicenseList_3_2 :: Text
+    , inputLicenseList_3_6 :: Text
+    }
+  deriving (Show, Generic)
+
+instance Z.Zinza Input where
+    toType  = Z.genericToTypeSFP
+    toValue = Z.genericToValueSFP
+
+data InputLicense = InputLicense
+    { ilConstructor   :: Text
+    , ilId            :: Text
+    , ilName          :: Text
+    , ilIsOsiApproved :: Bool
+    }
+  deriving (Show, Generic)
+
+instance Z.Zinza InputLicense where
+    toType  = Z.genericToTypeSFP
+    toValue = Z.genericToValueSFP

@@ -1,21 +1,20 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Control.Lens     hiding ((.=))
-import Data.Aeson       (FromJSON (..), Value, eitherDecode, object, withObject, (.:), (.=))
-import Data.Foldable    (for_)
+import Control.Lens     (imap)
+import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.:))
 import Data.List        (sortOn)
 import Data.Semigroup   ((<>))
 import Data.Text        (Text)
 import Data.Traversable (for)
+import GHC.Generics     (Generic)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set             as Set
 import qualified Data.Text            as T
-import qualified Data.Text.Lazy       as TL
-import qualified Data.Text.Lazy.IO    as TL
 import qualified Options.Applicative  as O
-import qualified Text.Microstache     as M
+import qualified Zinza                as Z
 
 import GenUtils
 
@@ -34,7 +33,7 @@ main = generate =<< O.execParser opts where
     licensesAll = PerV
         <$> licenses "3.0"
         <*> licenses "3.2"
-        <*> licenses "3.5"
+        <*> licenses "3.6"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"
@@ -54,27 +53,26 @@ main = generate =<< O.execParser opts where
 generate :: Opts -> IO ()
 generate (Opts tmplFile fns out) = do
     lss <- for fns $ \fn -> either fail pure . eitherDecode =<< LBS.readFile fn
-    template <- M.compileMustacheFile tmplFile
-    let (ws, rendered) = generate' lss template
-    for_ ws $ putStrLn . M.displayMustacheWarning
-    TL.writeFile out (header <> "\n" <> rendered)
+    template <- Z.parseAndCompileTemplateIO tmplFile
+    output <- generate' lss template
+    writeFile out (header <> "\n" <> output)
     putStrLn $ "Generated file " ++ out
 
 generate'
     :: PerV LicenseList
-    -> M.Template
-    -> ([M.MustacheWarning], TL.Text)
-generate' lss template = M.renderMustacheW template $ object
-    [ "licenseIds" .= licenseIds
-    , "licenses"   .= licenseValues
-    , "licenseList_all" .= mkLicenseList (== allVers)
-    , "licenseList_3_0" .= mkLicenseList
+    -> (Input -> IO String)
+    -> IO String
+generate' lss template = template $ Input
+    { inputLicenseIds      = licenseIds
+    , inputLicenses        = licenseValues
+    , inputLicenseList_all = mkLicenseList (== allVers)
+    , inputLicenseList_3_0 = mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
-    , "licenseList_3_2" .= mkLicenseList
+    , inputLicenseList_3_2 = mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
-    , "licenseList_3_6" .= mkLicenseList
+    , inputLicenseList_3_6 = mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
-    ]
+    }
   where
     PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) = lss
 
@@ -88,13 +86,13 @@ generate' lss template = M.renderMustacheW template $ object
 
     filterDeprecated = filter (not . licenseDeprecated)
 
-    licenseValues :: [Value]
-    licenseValues = flip map constructorNames $ \(c, l, _) -> object
-        [ "licenseCon"      .= c
-        , "licenseId"       .= textShow (licenseId l)
-        , "licenseName"     .= textShow (licenseName l)
-        , "isOsiApproved"   .= licenseOsiApproved l
-        ]
+    licenseValues :: [InputLicense]
+    licenseValues = flip map constructorNames $ \(c, l, _) -> InputLicense
+        { ilConstructor   = c
+        , ilId            = textShow (licenseId l)
+        , ilName          = textShow (licenseName l)
+        , ilIsOsiApproved = licenseOsiApproved l
+        }
 
     licenseIds :: Text
     licenseIds = T.intercalate "\n" $ flip imap constructorNames $ \i (c, l, vers) ->
@@ -108,7 +106,7 @@ generate' lss template = M.renderMustacheW template $ object
     mkLicenseList p = mkList [ n | (n, _, vers) <- constructorNames, p vers ]
 
 -------------------------------------------------------------------------------
--- Licenses
+-- JSON inputs
 -------------------------------------------------------------------------------
 
 data License = License
@@ -119,15 +117,15 @@ data License = License
     }
   deriving (Show)
 
+newtype LicenseList = LL [License]
+  deriving (Show)
+
 instance FromJSON License where
     parseJSON = withObject "License" $ \obj -> License
         <$> obj .: "licenseId"
         <*> obj .: "name"
         <*> obj .: "isOsiApproved"
         <*> obj .: "isDeprecatedLicenseId"
-
-newtype LicenseList = LL [License]
-  deriving (Show)
 
 instance FromJSON LicenseList where
     parseJSON = withObject "License list" $ \obj ->
