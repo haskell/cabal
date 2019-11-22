@@ -381,7 +381,7 @@ versionRangeParser digitParser = expr
 
         -- a plain version without tags or wildcards
         verPlain :: CabalParsing m => m Version
-        verPlain = mkVersion <$> P.sepBy1 digitParser (P.char '.')
+        verPlain = mkVersion <$> toList <$> P.sepByNonEmpty digitParser (P.char '.')
 
         -- either wildcard or normal version
         verOrWild :: CabalParsing m => m (Bool, Version)

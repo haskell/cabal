@@ -22,6 +22,7 @@ module Distribution.Client.Init.Heuristics (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic (safeHead, safeTail, safeLast)
 
 import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
@@ -86,7 +87,7 @@ guessMainFileCandidates flags = do
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: FilePath -> IO P.PackageName
-guessPackageName = liftM (P.mkPackageName . repair . last . splitDirectories)
+guessPackageName = liftM (P.mkPackageName . repair . fromMaybe "" . safeLast . splitDirectories)
                  . tryCanonicalizePath
   where
     -- Treat each span of non-alphanumeric characters as a hyphen. Each
@@ -132,7 +133,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         (files, dirs) <- liftM partitionEithers (mapM (tagIsDir dir) entries)
         let modules = catMaybes [ guessModuleName hierarchy file
                                 | file <- files
-                                , isUpper (head file) ]
+                                , maybe False isUpper (safeHead file) ]
         modules' <- mapM (findImportsAndExts projectRoot) modules
         recMods <- mapM (scanRecursive dir hierarchy) dirs
         return $ concat (modules' : recMods)
@@ -151,8 +152,8 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
                       $ intercalate "." . reverse $ (unqualModName : hierarchy)
         ext           = case takeExtension entry of '.':e -> e; e -> e
     scanRecursive parent hierarchy entry
-      | isUpper (head entry) = scan (parent </> entry) (entry : hierarchy)
-      | isLower (head entry) && not (ignoreDir entry) =
+      | maybe False isUpper (safeHead entry) = scan (parent </> entry) (entry : hierarchy)
+      | maybe False isLower (safeHead entry) && not (ignoreDir entry) =
           scanForModulesIn projectRoot $ foldl (</>) srcRoot (reverse (entry : hierarchy))
       | otherwise = return []
     ignoreDir ('.':_)  = True
@@ -345,7 +346,7 @@ maybeReadFile f = do
 -- |Get list of categories used in Hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
-    [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
+    [ cat | pkg <- maybeToList . safeHead =<< (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
           , cat <- splitString ',' catList
     ]
@@ -358,7 +359,7 @@ nameAndMail str
   | otherwise  = (Flag $ trim nameOrEmail, Flag mail)
   where
     (nameOrEmail,erest) = break (== '<') str
-    (mail,_)            = break (== '>') (tail erest)
+    (mail,_)            = break (== '>') (safeTail erest)
 
 trim :: String -> String
 trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse

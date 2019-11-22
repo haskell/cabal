@@ -66,7 +66,7 @@ instance (Ord a, Read a) => Read (NubList a) where
 
 -- | Helper used by NubList/NubListR's Read instances.
 readNubList :: (Read a) => ([a] -> l a) -> R.ReadPrec (l a)
-readNubList toList = R.parens . R.prec 10 $ fmap toList R.readPrec
+readNubList listToL = R.parens . R.prec 10 $ fmap listToL R.readPrec
 
 -- | Binary instance for 'NubList a' is the same as for '[a]'. For 'put', we
 -- just pull off constructor and put the list. For 'get', we get the list and

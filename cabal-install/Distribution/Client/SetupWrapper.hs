@@ -81,6 +81,8 @@ import Distribution.Client.JobControl
          ( Lock, criticalSection )
 import Distribution.Simple.Setup
          ( Flag(..) )
+import Distribution.Utils.Generic
+         ( safeHead )
 import Distribution.Simple.Utils
          ( die', debug, info, infoNoWrap
          , cabalVersion, tryFindPackageDesc, comparing
@@ -726,7 +728,8 @@ getExternalSetupMethod verbosity options pkg bt = do
                  ++ "' requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
-      pkgs -> let ipkginfo = head . snd . bestVersion fst $ pkgs
+      pkgs -> let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
+                  err = error "Distribution.Client.installedCabalVersion: empty version list"
               in return (packageVersion ipkginfo
                         ,Just . IPI.installedComponentId $ ipkginfo, options'')
 

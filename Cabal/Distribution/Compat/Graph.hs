@@ -85,7 +85,7 @@ module Distribution.Compat.Graph (
 
 import Prelude ()
 import qualified Distribution.Compat.Prelude as Prelude
-import Distribution.Compat.Prelude hiding (lookup, null, empty)
+import Distribution.Compat.Prelude hiding (lookup, null, empty, toList)
 
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G

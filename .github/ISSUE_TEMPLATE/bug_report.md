@@ -22,7 +22,7 @@ Please use version-prefixed commands (e.g. `v2-build` or `v1-build`) to avoid am
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**System informataion**
+**System information**
  - Operating system
  - `cabal`, `ghc` versions
 

@@ -17,7 +17,6 @@ import Distribution.Client.RebuildMonad
 
 import Distribution.Solver.Types.OptionalStanza
 
-import Distribution.Simple.Glob
 import Distribution.Simple.PreProcess
 
 import Distribution.Types.PackageDescription
@@ -34,14 +33,11 @@ import Distribution.Types.ForeignLib
 
 import Distribution.ModuleName
 
-import Distribution.Verbosity (silent)
-
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import System.FilePath
 import Control.Monad
-import Control.Monad.IO.Class
 import qualified Data.Set as Set
 
 needElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Rebuild ()
@@ -156,9 +152,7 @@ needBuildInfo pkg_descr bi modules = do
     -- compilation).  It would be even better if we knew on a
     -- per-component basis which headers would be used but that
     -- seems to be too difficult.
-    forM_ (extraSrcFiles pkg_descr) $ \ glob -> do
-      files <- liftIO $ matchDirFileGlob silent (specVersion pkg_descr) "." glob
-      mapM_ needIfExists (filter ((==".h").takeExtension) files)
+    mapM_ needIfExists (filter ((==".h").takeExtension) (extraSrcFiles pkg_descr))
     forM_ (installIncludes bi) $ \f ->
         findFileMonitored ("." : includeDirs bi) f
             >>= maybe (return ()) need

@@ -37,7 +37,8 @@ import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
 import Data.List
-  ( groupBy, (\\) )
+  ( (\\) )
+import qualified Data.List.NonEmpty as NE
 import Data.Function
   ( on )
 import qualified Data.Map as M
@@ -636,25 +637,25 @@ chooseDep flags (m, Just ps)
       -- do it.
       grps  -> do message flags ("\nWarning: multiple packages found providing "
                                  ++ display m
-                                 ++ ": " ++ intercalate ", " (map (display . P.pkgName . head) grps))
+                                 ++ ": " ++ intercalate ", " (fmap (display . P.pkgName . NE.head) grps))
                   message flags "You will need to pick one and manually add it to the Build-depends: field."
                   return Nothing
   where
-    pkgGroups = groupBy ((==) `on` P.pkgName) (map P.packageId ps)
+    pkgGroups = NE.groupBy ((==) `on` P.pkgName) (map P.packageId ps)
 
     desugar = maybe True (< mkVersion [2]) $ flagToMaybe (cabalVersion flags)
 
     -- Given a list of available versions of the same package, pick a dependency.
-    toDep :: [P.PackageIdentifier] -> IO P.Dependency
+    toDep :: NonEmpty P.PackageIdentifier -> IO P.Dependency
 
     -- If only one version, easy.  We change e.g. 0.4.2  into  0.4.*
-    toDep [pid] = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid) (Set.singleton LMainLibName) --TODO sublibraries
+    toDep (pid:|[]) = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid) (Set.singleton LMainLibName) --TODO sublibraries
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
-      message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
-      return $ P.Dependency (P.pkgName . head $ pids)
-                            (pvpize desugar . maximum . map P.pkgVersion $ pids)
+      message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . NE.head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
+      return $ P.Dependency (P.pkgName . NE.head $ pids)
+                            (pvpize desugar . maximum . fmap P.pkgVersion $ pids)
                             (Set.singleton LMainLibName) --TODO take into account sublibraries
 
 -- | Given a version, return an API-compatible (according to PVP) version range.

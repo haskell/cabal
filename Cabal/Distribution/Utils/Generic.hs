@@ -64,13 +64,18 @@ module Distribution.Utils.Generic (
         ordNub,
         ordNubBy,
         ordNubRight,
+        safeHead,
         safeTail,
+        safeLast,
+        safeInit,
         unintersperse,
         wrapText,
         wrapLine,
         unfoldrM,
         spanMaybe,
         breakMaybe,
+        unsnoc,
+        unsnocNE,
 
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
@@ -280,11 +285,11 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 --
 -- Example:
 --
--- >>> tail $ Data.List.dropWhileEnd (<3) [undefined, 5, 4, 3, 2, 1]
+-- >>> safeTail $ Data.List.dropWhileEnd (<3) [undefined, 5, 4, 3, 2, 1]
 -- *** Exception: Prelude.undefined
 -- ...
 --
--- >>> tail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
+-- >>> safeTail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
 -- [5,4,3]
 --
 -- >>> take 3 $ Data.List.dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
@@ -363,10 +368,26 @@ listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
   where
     bSet = Set.fromList b
 
+-- | A total variant of 'head'.
+safeHead :: [a] -> Maybe a
+safeHead []    = Nothing
+safeHead (x:_) = Just x
+
 -- | A total variant of 'tail'.
 safeTail :: [a] -> [a]
 safeTail []     = []
 safeTail (_:xs) = xs
+
+-- | A total variant of 'last'.
+safeLast :: [a] -> Maybe a
+safeLast []     = Nothing
+safeLast (x:xs) = Just (foldl (\_ a -> a) x xs)
+
+-- | A total variant of 'init'.
+safeInit :: [a] -> [a]
+safeInit []     = []
+safeInit [_]    = []
+safeInit (x:xs) = x : safeInit xs
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
@@ -453,6 +474,35 @@ unfoldrM f = go where
         case m of
             Nothing      -> return []
             Just (a, b') -> liftM (a :) (go b')
+
+-- | The opposite of 'snoc', which is the reverse of 'cons'
+--
+-- Example:
+--
+-- >>> unsnoc [1, 2, 3]
+-- Just ([1,2],3)
+--
+-- >>> unsnoc []
+-- Nothing
+--
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc []     = Nothing
+unsnoc (x:xs) = Just (unsnocNE (x :| xs))
+
+-- | Like 'unsnoc', but for 'NonEmpty' so without the 'Maybe'
+--
+-- Example:
+--
+-- >>> unsnocNE (1 :| [2, 3])
+-- ([1,2],3)
+--
+-- >>> unsnocNE (1 :| [])
+-- ([],1)
+--
+unsnocNE :: NonEmpty a -> ([a], a)
+unsnocNE (x:|xs) = go x xs where
+    go y []     = ([], y)
+    go y (z:zs) = let ~(ws, w) = go z zs in (y : ws, w)
 
 -- ------------------------------------------------------------
 -- * FilePath stuff

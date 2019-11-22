@@ -68,7 +68,7 @@ instance NFData MungedPackageName where rnf = genericRnf
 -- >>> prettyShow $ MungedPackageName "servant" LMainLibName
 -- "servant"
 --
--- >>> prettyShow $ MungedPackageName "servant" (LSubLibName "lackey") 
+-- >>> prettyShow $ MungedPackageName "servant" (LSubLibName "lackey")
 -- "z-servant-z-lackey"
 --
 instance Pretty MungedPackageName where
@@ -77,7 +77,7 @@ instance Pretty MungedPackageName where
     -- indefinite package for us.
     pretty = Disp.text . encodeCompatPackageName'
 
--- | 
+-- |
 --
 -- >>> simpleParsec "servant" :: Maybe MungedPackageName
 -- Just (MungedPackageName (PackageName "servant") LMainLibName)
@@ -137,7 +137,7 @@ zdashcode s = go s (Nothing :: Maybe Int) []
 
 parseZDashCode :: CabalParsing m => m [String]
 parseZDashCode = do
-    ns <- P.sepBy1 (some (P.satisfy (/= '-'))) (P.char '-')
+    ns <- toList <$> P.sepByNonEmpty (some (P.satisfy (/= '-'))) (P.char '-')
     return (go ns)
   where
     go ns = case break (=="z") ns of

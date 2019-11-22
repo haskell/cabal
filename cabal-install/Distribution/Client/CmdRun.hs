@@ -18,7 +18,7 @@ module Distribution.Client.CmdRun (
   ) where
 
 import Prelude ()
-import Distribution.Client.Compat.Prelude
+import Distribution.Client.Compat.Prelude hiding (toList)
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages

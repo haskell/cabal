@@ -2,25 +2,16 @@
 # We specify language: c, so it doesn't default to e.g. ruby
 language: c
 
-dist: trusty
+dist: xenial
 
 # This sets the default config for each job to use full VMs.
 # The VMs have 2 cores and 8 gigs of ram. Larger VMs are also available.
 sudo: true
 
 # We whitelist branches, as we don't really need to build dev-branches.
+# Except if those branches are in a fork.
 # Remember to add release branches, both here and to appveyor.yml.
-branches:
-  only:
-    - master
-    - "3.0"
-    - "2.4"
-    - "2.2"
-    - "2.0"
-    - "1.24"
-    - "1.22"
-    - "1.20"
-    - "1.18"
+if: branch IN (master, 3.0, 2.4, 2.2, 2.0, 1.24, 1.22, 1.20, 1.18) OR repo != haskell/cabal
 
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
@@ -59,7 +50,7 @@ matrix:
    - env: GHCVER=8.4.4 SCRIPT=script USE_GOLD=YES DEPLOY_DOCS=YES
      os: linux
      sudo: required
-   - env: GHCVER=8.6.4 SCRIPT=script USE_GOLD=YES
+   - env: GHCVER=8.6.5 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
    #- env: GHCVER=8.8.1 SCRIPT=script USE_GOLD=YES
@@ -117,6 +108,10 @@ matrix:
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
  #- GHCVER=head
+
+  # Marks the build result as soon as all the non-"allow_failures" jobs finish, based on their results
+  # while the remaining `allow_failures` jobs continue to run.
+  fast_finish: true
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -177,6 +172,9 @@ after_success:
 
 notifications:
   irc:
+    if: repo = haskell/cabal
     channels:
       - "chat.freenode.net##haskell-cabal"
-  slack: haskell-cabal:sCq6GLfy9N8MJrInosg871n4
+  slack:
+    if: repo = haskell/cabal
+    rooms: haskell-cabal:sCq6GLfy9N8MJrInosg871n4

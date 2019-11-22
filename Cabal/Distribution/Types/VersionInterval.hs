@@ -118,9 +118,9 @@ invariant (VersionIntervals intervals) = all validInterval intervals
     doesNotTouch' ((_,u), (l',_)) = doesNotTouch u l'
 
     adjacentIntervals :: [(VersionInterval, VersionInterval)]
-    adjacentIntervals
-      | null intervals = []
-      | otherwise      = zip intervals (tail intervals)
+    adjacentIntervals = case intervals of
+      []     -> []
+      (_:tl) -> zip intervals tl
 
 checkInvariant :: VersionIntervals -> VersionIntervals
 checkInvariant is = assert (invariant is) is

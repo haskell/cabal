@@ -24,7 +24,6 @@ module Distribution.Simple.UHC (
 
 import Prelude ()
 import Distribution.Compat.Prelude
-import Data.Foldable (toList)
 
 import Distribution.InstalledPackageInfo
 import Distribution.Package hiding (installedUnitId)
@@ -278,7 +277,7 @@ registerPackage
   -> InstalledPackageInfo
   -> IO ()
 registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
-    dbdir <- case last packageDbs of
+    dbdir <- case registrationPackageDB packageDbs of
       GlobalPackageDB       -> getGlobalPackageDir verbosity progdb
       UserPackageDB         -> getUserPackageDir
       SpecificPackageDB dir -> return dir

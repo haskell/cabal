@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns #-}
 
 
 -- | Management for the installed package store.
@@ -23,7 +23,6 @@ module Distribution.Client.Store (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.Compat.FileLock
 
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.RebuildMonad
@@ -41,8 +40,16 @@ import           Control.Exception
 import           Control.Monad (forM_)
 import           System.FilePath
 import           System.Directory
-import           System.IO
 
+#ifdef MIN_VERSION_lukko
+import Lukko
+#else
+import System.IO (openFile, IOMode(ReadWriteMode), hClose)
+import GHC.IO.Handle.Lock (hLock, hTryLock, LockMode(ExclusiveLock))
+#if MIN_VERSION_base(4,11,0)
+import GHC.IO.Handle.Lock (hUnlock)
+#endif
+#endif
 
 -- $concurrency
 --
@@ -235,6 +242,26 @@ withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
                        compid unitid action =
     bracket takeLock releaseLock (\_hnd -> action)
   where
+#ifdef MIN_VERSION_lukko
+    takeLock
+        | fileLockingSupported = do
+            fd <- fdOpen (storeIncomingLock compid unitid)
+            gotLock <- fdTryLock fd ExclusiveLock
+            unless gotLock  $ do
+                info verbosity $ "Waiting for file lock on store entry "
+                              ++ display compid </> display unitid
+                fdLock fd ExclusiveLock
+            return fd
+
+        -- if there's no locking, do nothing. Be careful on AIX.
+        | otherwise = return undefined -- :(
+
+    releaseLock fd
+        | fileLockingSupported = do
+            fdUnlock fd
+            fdClose fd
+        | otherwise = return ()
+#else
     takeLock = do
       h <- openFile (storeIncomingLock compid unitid) ReadWriteMode
       -- First try non-blocking, but if we would have to wait then
@@ -246,5 +273,5 @@ withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
         hLock h ExclusiveLock
       return h
 
-    releaseLock = hClose
-
+    releaseLock h = hUnlock h >> hClose h
+#endif

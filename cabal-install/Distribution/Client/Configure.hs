@@ -24,6 +24,7 @@ module Distribution.Client.Configure (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Utils.Generic (safeHead)
 
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -85,6 +86,8 @@ import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
+import Data.Foldable
+         ( forM_ )
 import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
@@ -272,12 +275,12 @@ checkConfigExFlags :: Package pkg
                    -> ConfigExFlags
                    -> IO ()
 checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
-  unless (null unknownConstraints) $ warn verbosity $
-             "Constraint refers to an unknown package: "
-          ++ showConstraint (head unknownConstraints)
-  unless (null unknownPreferences) $ warn verbosity $
-             "Preference refers to an unknown package: "
-          ++ display (head unknownPreferences)
+  forM_ (safeHead unknownConstraints) $ \h ->
+    warn verbosity $ "Constraint refers to an unknown package: "
+          ++ showConstraint h
+  forM_ (safeHead unknownPreferences) $ \h ->
+    warn verbosity $ "Preference refers to an unknown package: "
+          ++ display h
   where
     unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
                          configExConstraints flags

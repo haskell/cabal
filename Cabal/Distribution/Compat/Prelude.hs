@@ -64,6 +64,7 @@ module Distribution.Compat.Prelude (
 
     -- * Data.List.NonEmpty
     NonEmpty((:|)), foldl1, foldr1,
+    head, tail, last, init,
 
     -- * Data.Foldable
     Foldable, foldMap, foldr,
@@ -71,6 +72,7 @@ module Distribution.Compat.Prelude (
     find, foldl',
     traverse_, for_,
     any, all,
+    toList,
 
     -- * Data.Traversable
     Traversable, traverse, sequenceA,
@@ -103,7 +105,7 @@ module Distribution.Compat.Prelude (
     ) where
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-  ( IO, mapM, mapM_, sequence, null, length, foldr, any, all
+  ( IO, mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
   -- partial functions
   , read
   , foldr1, foldl1
@@ -123,8 +125,9 @@ import Prelude                       as BasePrelude hiding
 #if !MINVER_base_48
 import Control.Applicative           (Applicative (..), (<$), (<$>))
 import Distribution.Compat.Semigroup (Monoid (..))
+import Data.Foldable                 (toList)
 #else
-import Data.Foldable                 (length, null)
+import Data.Foldable                 (length, null, Foldable(toList))
 #endif
 
 import Data.Foldable                 (Foldable (foldMap, foldr), find, foldl', for_, traverse_, any, all)
@@ -152,7 +155,7 @@ import Data.Char
 import Data.List                     (intercalate, intersperse, isPrefixOf,
                                       isSuffixOf, nub, nubBy, sort, sortBy,
                                       unfoldr)
-import Data.List.NonEmpty            (NonEmpty((:|)))
+import Data.List.NonEmpty            (NonEmpty((:|)), head, tail, init, last)
 import Data.Maybe
 import Data.String                   (IsString (..))
 import Data.Int

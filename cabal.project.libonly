@@ -1,0 +1,19 @@
+packages: Cabal/ cabal-testsuite/
+tests: True
+
+-- Uncomment to allow picking up extra local unpacked deps:
+--optional-packages: */
+
+program-options
+  -- So us hackers get all the assertion failures early:
+  --
+  -- NOTE: currently commented out, see
+  -- https://github.com/haskell/cabal/issues/3911
+  --
+  -- ghc-options: -fno-ignore-asserts
+  --
+  -- as a workaround we specify it for each package individually:
+package Cabal
+  ghc-options: -fno-ignore-asserts
+package cabal-testsuite
+  ghc-options: -fno-ignore-asserts
