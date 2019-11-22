@@ -1,14 +1,8 @@
 # cabal v2-build
 Resolving dependencies...
-Build profile: -w ghc-<GHCVER> -O1
-In order, the following will be built:
- - d-0.1.0.0 (lib:privatelib) (first run)
- - p-0.1.0.0 (lib) (first run)
-Warning: d.cabal:10:22: visibility is experimental feature (issue #5660)
-Configuring library 'privatelib' for d-0.1.0.0..
-Preprocessing library 'privatelib' for d-0.1.0.0..
-Building library 'privatelib' for d-0.1.0.0..
-Warning: p.cabal:6:20: colon specifier is experimental feature (issue #5660)
-Configuring library for p-0.1.0.0..
-cabal: Encountered missing or private dependencies:
-    d:{privatelib} ==0.1.0.0
+cabal: Could not resolve dependencies:
+[__0] trying: d-0.1.0.0 (user goal)
+[__1] next goal: p (user goal)
+[__1] rejecting: p-0.1.0.0 (requires library 'privatelib' from d, but the component is private)
+[__1] fail (backjumping, conflict set: d, p)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: d (2), p (2)
