@@ -534,6 +534,7 @@ library
     Distribution.Backpack.Id
     Distribution.Utils.UnionFind
     Distribution.Utils.Base62
+    Distribution.Compat.Async
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MD5
