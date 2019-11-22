@@ -31,7 +31,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- | SPDX License identifier
 data LicenseId
-{{{ licenseIds }}}
+{{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
 
 instance Binary LicenseId where
@@ -110,23 +110,23 @@ licenseIdMigrationMessage = go where
 
 -- | License SPDX identifier, e.g. @"BSD-3-Clause"@.
 licenseId :: LicenseId -> String
-{{#licenses}}
-licenseId {{licenseCon}} = {{{licenseId}}}
-{{/licenses}}
+{% for l in licenses %}
+licenseId {{l.constructor}} = {{l.id}}
+{% endfor %}
 
 -- | License name, e.g. @"GNU General Public License v2.0 only"@
 licenseName :: LicenseId -> String
-{{#licenses}}
-licenseName {{licenseCon}} = {{{licenseName}}}
-{{/licenses}}
+{% for l in licenses %}
+licenseName {{l.constructor}} = {{l.name}}
+{% endfor %}
 
 -- | Whether the license is approved by Open Source Initiative (OSI).
 --
 -- See <https://opensource.org/licenses/alphabetical>.
 licenseIsOsiApproved :: LicenseId -> Bool
-{{#licenses}}
-licenseIsOsiApproved {{licenseCon}} = {{#isOsiApproved}}True{{/isOsiApproved}}{{^isOsiApproved}}False{{/isOsiApproved}}
-{{/licenses}}
+{% for l in licenses %}
+licenseIsOsiApproved {{l.constructor}} = {% if l.isOsiApproved %}True{% else %}False{% endif %}
+{% endfor %}
 
 -------------------------------------------------------------------------------
 -- Creation
@@ -134,13 +134,13 @@ licenseIsOsiApproved {{licenseCon}} = {{#isOsiApproved}}True{{/isOsiApproved}}{{
 
 licenseIdList :: LicenseListVersion -> [LicenseId]
 licenseIdList LicenseListVersion_3_0 =
-{{{licenseList_3_0}}}
+{{licenseList_3_0}}
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_2 =
-{{{licenseList_3_2}}}
+{{licenseList_3_2}}
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_6 =
-{{{licenseList_3_6}}}
+{{licenseList_3_6}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
@@ -164,4 +164,4 @@ stringLookup_3_6 = Map.fromList $ map (\i -> (licenseId i, i)) $
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]
 bulkOfLicenses =
-{{{licenseList_all}}}
+{{licenseList_all}}
