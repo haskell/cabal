@@ -1421,7 +1421,7 @@ remoteRepoSectionDescr =
 --
 
 -- | Parser combinator for simple fields which uses the field type's
--- 'Monoid' instance for combining multiple occurences of the field.
+-- 'Monoid' instance for combining multiple occurrences of the field.
 monoidField :: Monoid a => String -> (a -> Doc) -> ReadP a a
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 monoidField name showF readF get' set =

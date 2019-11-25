@@ -5,7 +5,7 @@
 
 #include "dynamicCharacterOperations.h"
 
-/** Initialize a matrix (fill in all values for non-ambiguous chracter transition costs) using a TCM sent in from an outside source. */
+/** Initialize a matrix (fill in all values for non-ambiguous character transition costs) using a TCM sent in from an outside source. */
 costMatrix_p matrixInit(size_t alphSize, int *tcm);
 
 /** C wrapper for cpp destructor */

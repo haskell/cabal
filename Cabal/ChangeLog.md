@@ -231,7 +231,7 @@
     types (#4701).
   * Support for building with Win32 version 2.6 (#4835).
   * Change `compilerExtensions` and `ghcOptExtensionMap` to contain
-    `Maybe Flag`s, since a supported extention can lack a flag (#4443).
+    `Maybe Flag`s, since a supported extension can lack a flag (#4443).
   * Pretty-printing of `.cabal` files is slightly different due to
     parser changes. For an example, see
     https://mail.haskell.org/pipermail/cabal-devel/2017-December/010414.html.
@@ -477,7 +477,7 @@
   * Support GHC 7.10.
   * Experimental support for emitting DWARF debug info.
   * Preliminary support for relocatable packages.
-  * Allow cabal to be used inside cabal exec enviroments.
+  * Allow cabal to be used inside cabal exec environments.
   * hpc: support multiple "ways" (e.g. profiling and vanilla).
   * Support GHCJS.
   * Improved command line documentation.
@@ -813,7 +813,7 @@
   * It is no longer necessary to run `configure` before `clean` or `sdist`
   * Added support for ghc's `-split-objs`
   * Initial support for JHC
-  * Ignore extension fields in `.cabal` files (fields begining with "`x-`")
+  * Ignore extension fields in `.cabal` files (fields beginning with "`x-`")
   * Some changes to command hooks API to improve consistency
   * Hugs support improvements
   * Added GeneralisedNewtypeDeriving language extension

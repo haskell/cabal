@@ -47,7 +47,7 @@ fieldName (Section n _ _) = n
 fieldAnn :: Field ann -> ann
 fieldAnn = nameAnn . fieldName
 
--- | All transitive descendands of 'Field', including itself.
+-- | All transitive descendants of 'Field', including itself.
 --
 -- /Note:/ the resulting list is never empty.
 --

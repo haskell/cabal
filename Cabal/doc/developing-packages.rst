@@ -1340,7 +1340,7 @@ look something like this:
         build-depends: foo-internal, base
 
 Internal libraries are also useful for packages that define multiple
-executables, but do not define a publically accessible library. Internal
+executables, but do not define a publicly accessible library. Internal
 libraries are only visible internally in the package (so they can only
 be added to the :pkg-field:`build-depends` of same-package libraries,
 executables, test suites, etc.) Internal libraries locally shadow any
@@ -2013,7 +2013,7 @@ system-dependent values for these fields.
     **Library Names**
 
     External libraries are identified by the package's name they're
-    provided by (currently a package can only publically expose its
+    provided by (currently a package can only publicly expose its
     main library compeonent; in future, packages with multiple exposed
     public library components will be supported and a syntax for
     referring to public sub-libraries will be provided).

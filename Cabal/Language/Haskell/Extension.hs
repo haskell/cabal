@@ -777,7 +777,7 @@ data KnownExtension =
   -- to the type-level.
   | TypeInType
 
-  -- | Allow recursive (and therefore undecideable) super-class relationships.
+  -- | Allow recursive (and therefore undecidable) super-class relationships.
   | UndecidableSuperClasses
 
   -- | A temporary extension to help library authors check if their
