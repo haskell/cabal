@@ -61,7 +61,7 @@ instance Parsec PkgconfigVersionRange where
     -- note: the wildcard is used in some places, e.g
     -- http://hackage.haskell.org/package/bindings-libzip-0.10.1/bindings-libzip.cabal
     --
-    -- however, in the presense of alphanumerics etc. lax version parser,
+    -- however, in the presence of alphanumerics etc. lax version parser,
     -- wildcard is ill-specified
 
     parsec = do

@@ -129,7 +129,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- In principle, this is supposed to contain the
                 -- resolved package description, that does not contain
                 -- any conditionals.  However, it MAY NOT contain
-                -- the description wtih a 'HookedBuildInfo' applied
+                -- the description with a 'HookedBuildInfo' applied
                 -- to it; see 'HookedBuildInfo' for the whole sordid saga.
                 -- As much as possible, Cabal library should avoid using
                 -- this parameter.

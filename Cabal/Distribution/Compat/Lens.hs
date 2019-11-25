@@ -72,7 +72,7 @@ type Traversal' s a = Traversal s s a a
 
 type Getting r s a = LensLike (Const r) s s a a
 
-type AGetter s   a   = LensLike (Const a)     s s a a  -- this doens't exist in 'lens'
+type AGetter s   a   = LensLike (Const a)     s s a a  -- this doesn't exist in 'lens'
 type ASetter s t a b = LensLike Identity      s t a b
 type ALens   s t a b = LensLike (Pretext a b) s t a b
 
