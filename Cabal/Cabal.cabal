@@ -473,6 +473,8 @@ library
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary
+    Distribution.C2Hs
+    Distribution.C2Hs.Lexer
 
   -- Parsec parser-related modules
   build-depends:
@@ -607,6 +609,8 @@ test-suite unit-tests
     UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Version
     UnitTests.Distribution.PkgconfigVersion
+    UnitTests.Distribution.C2Hs.Lexer
+    UnitTests.Distribution.C2Hs
   main-is: UnitTests.hs
   build-depends:
     array,

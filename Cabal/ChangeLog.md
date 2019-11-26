@@ -2,6 +2,7 @@
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
   * TODO
+  * Fix dependency resolution for preprocessing `chs` files.
 
  ----
 

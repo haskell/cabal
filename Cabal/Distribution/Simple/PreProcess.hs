@@ -33,6 +33,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
+import Distribution.C2Hs
 import Distribution.Simple.PreProcess.Unlit
 import Distribution.Backpack.DescribeUnitId
 import Distribution.Package
@@ -168,21 +169,24 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                   ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
+    mods <- reorderC2Hs verbosity dirs (allLibModules lib clbi)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
+    mods <- reorderC2Hs verbosity dirs (foreignLibModules flib)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ otherModules bi) $
+    mods <- reorderC2Hs verbosity dirs (otherModules bi)
+    for_ (map ModuleName.toFilePath mods) $
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
