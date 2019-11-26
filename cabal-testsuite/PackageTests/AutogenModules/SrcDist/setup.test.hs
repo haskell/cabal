@@ -13,7 +13,7 @@ main = setupAndCabalTest $ do
 
         -- Calling sdist without running configure first makes test fail with:
         -- "Exception: Run the 'configure' command first."
-        -- This is becuase we are calling getPersistBuildConfig
+        -- This is because we are calling getPersistBuildConfig
 
         configureResult <- setup' "configure" []
         sdistResult <- setup' "sdist" []

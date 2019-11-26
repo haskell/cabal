@@ -903,7 +903,7 @@ gbuildModDefFiles (GReplFLib _ flib) = foreignLibModDefFile flib
 -- In case of 'Nothing', 'Distribution.ModuleName.main' can be assumed.
 exeMainModuleName :: Executable -> Maybe ModuleName
 exeMainModuleName Executable{buildInfo = bnfo} =
-    -- GHC honors the last occurence of a module name updated via -main-is
+    -- GHC honors the last occurrence of a module name updated via -main-is
     --
     -- Moreover, -main-is when parsed left-to-right can update either
     -- the "Main" module name, or the "main" function name, or both,
@@ -1311,7 +1311,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                 }
             ForeignLibNativeStatic ->
               -- this should be caught by buildFLib
-              -- (and if we do implement tihs, we probably don't even want to call
+              -- (and if we do implement this, we probably don't even want to call
               -- ghc here, but rather Ar.createArLibArchive or something)
               cabalBug "static libraries not yet implemented"
             ForeignLibTypeUnknown ->

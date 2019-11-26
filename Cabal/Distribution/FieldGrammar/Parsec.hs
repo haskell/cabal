@@ -47,7 +47,7 @@
 -- is obviously invalid specification.
 --
 -- We can parse 'Fields' like we parse @aeson@ objects, yet we use
--- slighly higher-level API, so we can process unspecified fields,
+-- slightly higher-level API, so we can process unspecified fields,
 -- to report unknown fields and save custom @x-fields@.
 --
 module Distribution.FieldGrammar.Parsec (

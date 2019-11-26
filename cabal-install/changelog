@@ -509,7 +509,7 @@
 0.6.2 Duncan Coutts <duncan@haskell.org> Feb 2009
 	* The upgrade command has been disabled in this release
 	* The configure and install commands now have consistent behaviour
-	* Reduce the tendancy to re-install already existing packages
+	* Reduce the tendency to re-install already existing packages
 	* The --constraint= flag now works for the install command
 	* New --preference= flag for soft constraints / version preferences
 	* Improved bootstrap.sh script, smarter and better error checking

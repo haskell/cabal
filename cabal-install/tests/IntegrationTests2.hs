@@ -1410,7 +1410,7 @@ testBuildKeepGoing config = do
     expectBuildFailed failure1
     _ <- expectPackageConfigured plan1 res1 "q-0.1"
 
-    -- With keep-going then we should go on to sucessfully build Q
+    -- With keep-going then we should go on to successfully build Q
     (plan2, res2) <- executePlan
                  =<< planProject testdir (config `mappend` keepGoing True)
     (_, failure2) <- expectPackageFailed plan2 res2 "p-0.1"

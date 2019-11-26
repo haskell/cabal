@@ -25,7 +25,7 @@ newtype NubList a =
     deriving (Eq, Generic, Typeable)
 
 -- NubList assumes that nub retains the list order while removing duplicate
--- elements (keeping the first occurence). Documentation for "Data.List.nub"
+-- elements (keeping the first occurrence). Documentation for "Data.List.nub"
 -- does not specifically state that ordering is maintained so we will add a test
 -- for that to the test suite.
 
