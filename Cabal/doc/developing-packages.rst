@@ -2492,12 +2492,13 @@ system-dependent values for these fields.
     appropriately.
 
 .. pkg-field:: asm-sources: filename list
-    :since: 2.2
+    :since: 3.0
 
     A list of assembly source files to be compiled and linked with the
     Haskell files.
 
 .. pkg-field:: cmm-sources: filename list
+    :since: 3.0
 
     A list of C-- source files to be compiled and linked with the Haskell
     files.
@@ -2564,8 +2565,14 @@ system-dependent values for these fields.
     command-line arguments with the :pkg-field:`cc-options` and the
     :pkg-field:`cxx-options` fields.
 
+.. pkg-field:: cmm-options: token list
+    :since: 3.0
+
+    Command-line arguments to be passed to the compiler when compiling
+    C-- code. See also :pkg-field:`cmm-sources`.
+
 .. pkg-field:: asm-options: token list
-    :since: 2.2
+    :since: 3.0
 
     Command-line arguments to be passed to the assembler when compiling
     assembler code. See also :pkg-field:`asm-sources`.

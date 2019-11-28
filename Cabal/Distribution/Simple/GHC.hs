@@ -545,8 +545,12 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let cLikeFiles  = fromNubListR $
-                    toNubListR (cSources libBi) <> toNubListR (cxxSources libBi)
+  let cLikeFiles  = fromNubListR $ mconcat
+                      [ toNubListR (cSources   libBi)
+                      , toNubListR (cxxSources libBi)
+                      , toNubListR (cmmSources libBi)
+                      , toNubListR (asmSources libBi)
+                      ]
       cObjs       = map (`replaceExtension` objExtension) cLikeFiles
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
@@ -671,7 +675,6 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     ifReplLib (runGhcProg replOpts)
 
   -- build any C sources
-  -- TODO: Add support for S and CMM files.
   unless (not has_code || null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
     sequence_
@@ -701,6 +704,68 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
              whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
            unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
       | filename <- cSources libBi]
+
+  -- build any ASM sources
+  unless (not has_code || null (asmSources libBi)) $ do
+    info verbosity "Building Assembler Sources..."
+    sequence_
+      [ do let baseAsmOpts    = Internal.componentAsmGhcOptions verbosity implInfo
+                                lbi libBi clbi libTargetDir filename
+               vanillaAsmOpts = if isGhcDynamic
+                                -- Dynamic GHC requires objects to be built
+                                -- with -fPIC for REPL to work. See #2207.
+                                then baseAsmOpts { ghcOptFPic = toFlag True }
+                                else baseAsmOpts
+               profAsmOpts    = vanillaAsmOpts `mappend` mempty {
+                                 ghcOptProfilingMode = toFlag True,
+                                 ghcOptObjSuffix     = toFlag "p_o"
+                               }
+               sharedAsmOpts  = vanillaAsmOpts `mappend` mempty {
+                                 ghcOptFPic        = toFlag True,
+                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                                 ghcOptObjSuffix   = toFlag "dyn_o"
+                               }
+               odir           = fromFlag (ghcOptObjDir vanillaAsmOpts)
+           createDirectoryIfMissingVerbose verbosity True odir
+           let runGhcProgIfNeeded asmOpts = do
+                 needsRecomp <- checkNeedsRecompilation filename asmOpts
+                 when needsRecomp $ runGhcProg asmOpts
+           runGhcProgIfNeeded vanillaAsmOpts
+           unless forRepl $
+             whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedAsmOpts)
+           unless forRepl $ whenProfLib (runGhcProgIfNeeded profAsmOpts)
+      | filename <- asmSources libBi]
+
+  -- build any Cmm sources
+  unless (not has_code || null (cmmSources libBi)) $ do
+    info verbosity "Building C-- Sources..."
+    sequence_
+      [ do let baseCmmOpts    = Internal.componentCmmGhcOptions verbosity implInfo
+                                lbi libBi clbi libTargetDir filename
+               vanillaCmmOpts = if isGhcDynamic
+                                -- Dynamic GHC requires C sources to be built
+                                -- with -fPIC for REPL to work. See #2207.
+                                then baseCmmOpts { ghcOptFPic = toFlag True }
+                                else baseCmmOpts
+               profCmmOpts    = vanillaCmmOpts `mappend` mempty {
+                                 ghcOptProfilingMode = toFlag True,
+                                 ghcOptObjSuffix     = toFlag "p_o"
+                               }
+               sharedCmmOpts  = vanillaCmmOpts `mappend` mempty {
+                                 ghcOptFPic        = toFlag True,
+                                 ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                                 ghcOptObjSuffix   = toFlag "dyn_o"
+                               }
+               odir          = fromFlag (ghcOptObjDir vanillaCmmOpts)
+           createDirectoryIfMissingVerbose verbosity True odir
+           let runGhcProgIfNeeded cmmOpts = do
+                 needsRecomp <- checkNeedsRecompilation filename cmmOpts
+                 when needsRecomp $ runGhcProg cmmOpts
+           runGhcProgIfNeeded vanillaCmmOpts
+           unless forRepl $
+             whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCmmOpts)
+           unless forRepl $ whenProfLib (runGhcProgIfNeeded profCmmOpts)
+      | filename <- cmmSources libBi]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
   -- with ghci, but .c files can depend on .h files generated by ghc by ffi
@@ -1942,6 +2007,8 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
                    && null (cxxSources (libBuildInfo lib))
+                   && null (cmmSources (libBuildInfo lib))
+                   && null (asmSources (libBuildInfo lib))
     has_code = not (componentIsIndefinite clbi)
     whenHasCode = when has_code
     whenVanilla = when (hasLib && withVanillaLib lbi)
