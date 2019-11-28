@@ -984,6 +984,12 @@ buildAndInstallUnpackedPackage verbosity
             let prefix   = normalise $
                            dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
                 entryDir = tmpDirNormalised </> prefix
+
+            -- if there weren't anything to build, it might be that directory is not created
+            -- the @setup Cabal.copyCommand@ above might do nothing.
+            -- https://github.com/haskell/cabal/issues/4130
+            createDirectoryIfMissingVerbose verbosity True entryDir
+
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))
