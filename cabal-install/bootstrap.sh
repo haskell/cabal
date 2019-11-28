@@ -260,8 +260,8 @@ EDIT_DISTANCE_VER="0.2.2.1"; EDIT_DISTANCE_VER_REGEXP="0\.2\.2\.?"
                        # 0.2.2.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.3.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.((2\.[2-9]|[3-9])|3)"
-                       # >= 0.5.2 && < 0.6
+HACKAGE_SECURITY_VER="0.6.0.0"; HACKAGE_SECURITY_VER_REGEXP="0\.6\."
+                       # >= 0.7.0.0 && < 0.7
 TAR_VER="0.5.1.0";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
 DIGEST_VER="0.0.1.2"; DIGEST_REGEXP="0\.0\.(1\.[2-9]|[2-9]\.?)"
