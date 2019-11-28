@@ -1,0 +1,111 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               `PackageName "freetype"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName]),
+                                             Dependency
+                                               `PackageName "freetype"`
+                                               AnyVersion
+                                               (Set.fromList [LMainLibName])],
+                      condTreeData = Library
+                                       {exposedModules = [],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenIncludes = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = PerCompilerFlavor [] [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  `PackageName "freetype"`
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName]),
+                                                                                Dependency
+                                                                                  `PackageName "freetype"`
+                                                                                  AnyVersion
+                                                                                  (Set.fromList
+                                                                                     [LMainLibName])],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = LMainLibName,
+                                        libVisibility = LibraryVisibilityPublic,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [],
+   genPackageFlags = [],
+   packageDescription = PackageDescription
+                          {author = "",
+                           benchmarks = [],
+                           bugReports = "",
+                           buildTypeRaw = Nothing,
+                           category = "",
+                           copyright = "",
+                           customFieldsPD = [],
+                           dataDir = "",
+                           dataFiles = [],
+                           description = "",
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "",
+                           library = Nothing,
+                           licenseFiles = [],
+                           licenseRaw = Left NONE,
+                           maintainer = "",
+                           package = PackageIdentifier
+                                       {pkgName = `PackageName "issue"`,
+                                        pkgVersion = `mkVersion [6083]`},
+                           pkgUrl = "",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [],
+                           specVersionRaw = Left `mkVersion [3,0]`,
+                           stability = "",
+                           subLibraries = [],
+                           synopsis = "",
+                           testSuites = [],
+                           testedWith = []}}
