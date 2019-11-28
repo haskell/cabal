@@ -175,6 +175,3 @@ notifications:
     if: repo = haskell/cabal
     channels:
       - "chat.freenode.net##haskell-cabal"
-  slack:
-    if: repo = haskell/cabal
-    rooms: haskell-cabal:sCq6GLfy9N8MJrInosg871n4

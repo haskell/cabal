@@ -78,8 +78,6 @@ Some tips for using Travis effectively:
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
 
-* If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
-
 **How to debug a failing CI test.**
 One of the annoying things about running tests on CI is when they
 fail, there is often no easy way to further troubleshoot the broken
