@@ -123,6 +123,7 @@ errorTests = testGroup "errors"
     , errorTest "libpq1.cabal"
     , errorTest "libpq2.cabal"
     , errorTest "MiniAgda.cabal"
+    , errorTest "big-version.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -180,6 +181,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "indentation.cabal"
     , regressionTest "indentation2.cabal"
     , regressionTest "indentation3.cabal"
+    , regressionTest "big-version.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
