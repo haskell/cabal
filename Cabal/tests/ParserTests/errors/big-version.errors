@@ -1,0 +1,6 @@
+VERSION: Just (mkVersion [2,4])
+big-version.cabal:4:32: 
+unexpected At most 9 numbers are allowed per version number part
+
+1234567890
+

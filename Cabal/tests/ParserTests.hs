@@ -106,6 +106,7 @@ errorTests = testGroup "errors"
     , errorTest "spdx-1.cabal"
     , errorTest "spdx-2.cabal"
     , errorTest "spdx-3.cabal"
+    , errorTest "big-version.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -148,6 +149,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "spdx-1.cabal"
     , regressionTest "spdx-2.cabal"
     , regressionTest "spdx-3.cabal"
+    , regressionTest "big-version.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

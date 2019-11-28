@@ -1,19 +1,19 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 -- |
 --
 -- @since 2.2.0.0
 module Distribution.PackageDescription.Quirks (patchQuirks) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
-import           GHC.Fingerprint (Fingerprint (..), fingerprintData)
-import           Foreign.Ptr (castPtr)
-import           System.IO.Unsafe (unsafeDupablePerformIO)
+import Distribution.Compat.Prelude
+import Foreign.Ptr                 (castPtr)
+import GHC.Fingerprint             (Fingerprint (..), fingerprintData)
+import Prelude ()
+import System.IO.Unsafe            (unsafeDupablePerformIO)
 
-import qualified Data.ByteString as BS
+import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Unsafe as BS
-import qualified Data.Map as Map
+import qualified Data.Map               as Map
 
 -- | Patch legacy @.cabal@ file contents to allow parsec parser to accept
 -- all of Hackage.
@@ -35,8 +35,6 @@ md5 bs = unsafeDupablePerformIO $ BS.unsafeUseAsCStringLen bs $ \(ptr, len) ->
     fingerprintData (castPtr ptr) len
 
 -- | 'patches' contains first 256 bytes, pre- and post-fingerprints and a patch function.
---
---
 patches :: Map.Map (BS.ByteString, Fingerprint) (Fingerprint, BS.ByteString -> BS.ByteString)
 patches = Map.fromList
     -- http://hackage.haskell.org/package/unicode-transforms-0.3.3
@@ -152,6 +150,113 @@ patches = Map.fromList
          (Fingerprint 13690322768477779172 19704059263540994)
          (Fingerprint 11189374824645442376 8363528115442591078)
          (bsReplace "&&!" "&& !")
+    -- flag used, but not defined
+    , mk "name:                brainheck\nversion:             0.1.0.2\nsynopsis:            Brainh*ck interpreter in haskell\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\nhomepage:            https://gi"
+         (Fingerprint 6910727116443152200 15401634478524888973)
+         (Fingerprint 16551412117098094368 16260377389127603629)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 1\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 14320987921316832277 10031098243571536929)
+         (Fingerprint 7959395602414037224 13279941216182213050)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 2\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 3809078390223299128 10796026010775813741)
+         (Fingerprint 1127231189459220796 12088367524333209349)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                brainheck\r\nversion:             0.1.0.2\r\nx-revision: 3\r\nsynopsis:            Brainh*ck interpreter in haskell\r\ndescription:         Brainh*ck interpreter written in haskell and taking advantage of many prominent libraries\r\nhomepage:   "
+         (Fingerprint 13860013038089410950 12479824176801390651)
+         (Fingerprint 4687484721703340391 8013395164515771785)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.1\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 16215911397419608203 15594928482155652475)
+         (Fingerprint 15120681510314491047 2666192399775157359)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.1\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 16593139224723441188 4052919014346212001)
+         (Fingerprint 3577381082410411593 11481899387780544641)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.2\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 9321301260802539374 1316392715016096607)
+         (Fingerprint 3784628652257760949 12662640594755291035)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.2\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 2546901804824433337 2059732715322561176)
+         (Fingerprint 8082068680348326500 615008613291421947)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\nversion:             0.1.0.3\nsynopsis:            Get word counts and distributions\ndescription:         A command line tool to compute the word distribution from various types of document, converting to text with pandoc.\nho"
+         (Fingerprint 2282380737467965407 12457554753171662424)
+         (Fingerprint 17324757216926991616 17172911843227482125)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                wordchoice\r\nversion:             0.1.0.3\r\nx-revision: 1\r\nsynopsis:            Get word counts and distributions\r\ndescription:         A command line tool to compute the word distribution from various types of document, converting to te"
+         (Fingerprint 12907988890480595481 11078473638628359710)
+         (Fingerprint 13246185333368731848 4663060731847518614)
+         (bsReplace "flag(llvm-fast)" "False")
+    , mk "name:                hw-prim-bits\nversion:             0.1.0.0\nsynopsis:            Primitive support for bit manipulation\ndescription:         Please see README.md\nhomepage:            https://github.com/githubuser/hw-prim-bits#readme\nlicense:            "
+         (Fingerprint 12386777729082870356 17414156731912743711)
+         (Fingerprint 3452290353395041602 14102887112483033720)
+         (bsReplace "flag(sse42)" "False")
+    , mk "name:                   hw-prim-bits\nversion:                0.1.0.1\nsynopsis:               Primitive support for bit manipulation\ndescription:            Please see README.md\nhomepage:               https://github.com/githubuser/hw-prim-bits#readme\nlicen"
+         (Fingerprint 6870520675313101180 14553457351296240636)
+         (Fingerprint 12481021059537696455 14711088786769892762)
+         (bsReplace "flag(sse42)" "False")
+    -- leading zeros in version digits
+    -- https://github.com/haskell-infra/hackage-trustees/issues/128
+    -- https://github.com/haskell/cabal/issues/5092
+    -- https://github.com/haskell/cabal/issues/5138
+    , mk "name:            Sit\nversion:         0.2017.02.26\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Anonymous\nmaintainer:      Anonymous\nhomepage:        NONE\ncategory:        Dependent"
+         (Fingerprint 8458530898096910998 3228538743646501413)
+         (Fingerprint 14470502514907936793 17514354054641875371)
+         (bsReplace "0.2017.02.26" "0.2017.2.26")
+    , mk "name:            Sit\nversion:         0.2017.05.01\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel <andreas.abel@gu.se>\nmaintainer:      Andreas Abel <andreas.abel@gu.se>\n"
+         (Fingerprint 1450130849535097473 11742099607098860444)
+         (Fingerprint 16679762943850814021 4253724355613883542)
+         (bsReplace "0.2017.05.01" "0.2017.5.1")
+    , mk "name:            Sit\nversion:         0.2017.05.02\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel <andreas.abel@gu.se>\nmaintainer:      Andreas Abel <andreas.abel@gu.se>\n"
+         (Fingerprint 297248532398492441 17322625167861324800)
+         (Fingerprint 634812045126693280 1755581866539318862)
+         (bsReplace "0.2017.05.02" "0.2017.5.2")
+    , mk "name:            Sit\nversion:         0.2017.5.02\nx-revision: 1\n-- x-revision:1 see https://github.com/haskell-infra/hackage-trustees/issues/128\nbuild-type:      Simple\ncabal-version:   >= 1.8\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor: "
+         (Fingerprint 3697869560530373941 3942982281026987312)
+         (Fingerprint 14344526114710295386 16386400353475114712)
+         (bsReplace "0.2017.5.02" "0.2017.5.2")
+    , mk "name:            MiniAgda\nversion:         0.2017.02.18\nbuild-type:      Simple\ncabal-version:   >= 1.22\nlicense:         OtherLicense\nlicense-file:    LICENSE\nauthor:          Andreas Abel and Karl Mehltretter\nmaintainer:      Andreas Abel <andreas.abel@i"
+         (Fingerprint 17167128953451088679 4300350537748753465)
+         (Fingerprint 12402236925293025673 7715084875284020606)
+         (bsReplace "0.2017.02.18" "0.2017.2.18")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.0.0\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 11256076039027887363 6867903407496243216)
+         (Fingerprint 12159816716813155434 5278015399212299853)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\r\n  2.0\r\nname:\r\n  fast-downward\r\nversion:\r\n  0.1.0.0\r\nx-revision: \r\n  1\r\nbuild-type:\r\n  Simple\r\nsynopsis:\r\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\r\ndescription:\r\n  @fast-downward@ is a library for mode"
+         (Fingerprint 9216193973149680231 893446343655828508)
+         (Fingerprint 10020169545407746427 1828336750379510675)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.0.1\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 9899886602574848632 5980433644983783334)
+         (Fingerprint 12007469255857289958 8321466548645225439)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    , mk "cabal-version:\n  2.0\nname:\n  fast-downward\nversion:\n  0.1.1.0\nbuild-type:\n  Simple\nsynopsis:\n  Solve classical planning problems (STRIPS/SAS+) using Haskell & Fast Downward.\ndescription:\n  @fast-downward@ is a library for modelling classical planning probl"
+         (Fingerprint 12694656661460787751 1902242956706735615)
+         (Fingerprint 15433152131513403849 2284712791516353264)
+         (bsReplace "1.2.03.0" "1.2.3.0")
+    -- 9 digits limit
+    , mk "Name:                SGplus\nVersion:             1.1\nSynopsis:            (updated) Small geometry library for dealing with vectors and collision detection\nLicense:             BSD3\nLicense-file:        LICENSE\nAuthor:              Neil Brown\nMaintainer:  "
+         (Fingerprint 17735649550442248029 11493772714725351354)
+         (Fingerprint 9565458801063261772 15955773698774721052)
+         (bsReplace "1000000000" "100000000")
+    , mk "-- Initial control-dotdotdot.cabal generated by cabal init.  For further \n-- documentation, see http://haskell.org/cabal/users-guide/\n\nname:                control-dotdotdot\nversion:             0.1.0.1\nsynopsis:            Haskell operator\n               "
+         (Fingerprint 1514257173776509942 7756050823377346485)
+         (Fingerprint 14082092642045505999 18415918653404121035)
+         (bsReplace "9223372036854775807" "5")
+    , mk "name:                data-foldapp\r\nversion:             0.1.1.0\r\nsynopsis:            Fold function applications. Framework for variadic functions.\r\ndescription:         Fold function applications. Framework for variadic functions.\r\nhomepage:            ht"
+         (Fingerprint 4511234156311243251 11701153011544112556)
+         (Fingerprint 11820542702491924189 4902231447612406724)
+         (bsReplace "9223372036854775807" "999" . bsReplace "9223372036854775807" "999")
+    , mk "-- Initial data-list-zigzag.cabal generated by cabal init.  For further \r\n-- documentation, see http://haskell.org/cabal/users-guide/\r\n\r\nname:                data-list-zigzag\r\nversion:             0.1.1.1\r\nsynopsis:            A list but with a balanced en"
+         (Fingerprint 12475837388692175691 18053834261188158945)
+         (Fingerprint 16279938253437334942 15753349540193002309)
+         (bsReplace "9223372036854775807" "999")
+
     ]
   where
     mk a b c d = ((a, b), (c, d))
