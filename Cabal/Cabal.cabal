@@ -161,6 +161,9 @@ extra-source-files:
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format
+  tests/ParserTests/regressions/issue-5846.cabal
+  tests/ParserTests/regressions/issue-5846.expr
+  tests/ParserTests/regressions/issue-5846.format
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr

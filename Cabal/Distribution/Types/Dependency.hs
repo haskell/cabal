@@ -88,6 +88,9 @@ instance Parsec Dependency where
               $ (char ':' *> spaces *>)
               $ versionGuardMultilibs
               $ pure <$> parseLib name <|> parseMultipleLibs name
+
+        spaces -- https://github.com/haskell/cabal/issues/5846
+
         ver  <- parsec <|> pure anyVersion
         return $ Dependency name ver $ Set.fromList libs
       where makeLib pn ln | unPackageName pn == ln = LMainLibName
