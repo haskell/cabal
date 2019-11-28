@@ -1,0 +1,7 @@
+cabal-version:       3.0
+name:                big-vesion
+-- 9 digits
+version:             123456789
+
+library
+  default-language: Haskell2010
