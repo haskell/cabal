@@ -35,6 +35,8 @@ extra-source-files:
   -- BEGIN gen-extra-source-files
   tests/ParserTests/errors/MiniAgda.cabal
   tests/ParserTests/errors/MiniAgda.errors
+  tests/ParserTests/errors/big-version.cabal
+  tests/ParserTests/errors/big-version.errors
   tests/ParserTests/errors/common1.cabal
   tests/ParserTests/errors/common1.errors
   tests/ParserTests/errors/common2.cabal
@@ -112,6 +114,9 @@ extra-source-files:
   tests/ParserTests/regressions/assoc-cpp-options.check
   tests/ParserTests/regressions/bad-glob-syntax.cabal
   tests/ParserTests/regressions/bad-glob-syntax.check
+  tests/ParserTests/regressions/big-version.cabal
+  tests/ParserTests/regressions/big-version.expr
+  tests/ParserTests/regressions/big-version.format
   tests/ParserTests/regressions/cc-options-with-optimization.cabal
   tests/ParserTests/regressions/cc-options-with-optimization.check
   tests/ParserTests/regressions/common-conditional.cabal
