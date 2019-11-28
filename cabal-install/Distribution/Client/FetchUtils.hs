@@ -162,7 +162,7 @@ fetchPackage verbosity repoCtxt loc = case loc of
 -- | Fetch a repo package if we don't have it already.
 --
 fetchRepoTarball :: Verbosity -> RepoContext -> Repo -> PackageId -> IO FilePath
-fetchRepoTarball verbosity repoCtxt repo pkgid = do
+fetchRepoTarball verbosity' repoCtxt repo pkgid = do
   fetched <- doesFileExist (packageFile repo pkgid)
   if fetched
     then do info verbosity $ display pkgid ++ " has already been downloaded."
@@ -171,9 +171,10 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
             res <- downloadRepoPackage
             progressMessage verbosity ProgressDownloaded (display pkgid)
             return res
-
-
   where
+    -- whether we download or not is non-deterministic
+    verbosity = verboseUnmarkOutput verbosity'
+
     downloadRepoPackage = case repo of
       RepoLocal{..} -> return (packageFile repo pkgid)
 
