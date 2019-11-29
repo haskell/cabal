@@ -141,7 +141,9 @@ executable cabal
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
-                     -Wnoncanonical-monadfail-instances
+      if impl(ghc < 8.8)
+        ghc-options: -Wnoncanonical-monadfail-instances
+
 
     ghc-options: -rtsopts -threaded
 

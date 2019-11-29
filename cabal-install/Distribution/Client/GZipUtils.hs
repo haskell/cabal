@@ -18,12 +18,14 @@ module Distribution.Client.GZipUtils (
     maybeDecompress,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Codec.Compression.Zlib.Internal
 import Data.ByteString.Lazy.Internal as BS (ByteString(Empty, Chunk))
 
 #if MIN_VERSION_zlib(0,6,0)
 import Control.Exception (throw)
-import Control.Monad (liftM)
 import Control.Monad.ST.Lazy (ST, runST)
 import qualified Data.ByteString as Strict
 #endif
