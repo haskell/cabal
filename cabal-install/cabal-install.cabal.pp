@@ -73,7 +73,9 @@ Version:            3.1.0.0
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
-                     -Wnoncanonical-monadfail-instances
+      if impl(ghc < 8.8)
+        ghc-options: -Wnoncanonical-monadfail-instances
+
 %enddef
 %def CABAL_BUILDINFO
 %if CABAL_FLAG_LIB

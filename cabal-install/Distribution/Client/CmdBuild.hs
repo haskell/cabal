@@ -11,10 +11,12 @@ module Distribution.Client.CmdBuild (
     selectComponentTarget
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
-import Distribution.Compat.Semigroup ((<>))
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
          , liftOptions, yesNoOpt )

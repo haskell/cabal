@@ -13,7 +13,7 @@ if [ -z ${STACK_CONFIG+x} ]; then
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
         travis_retry sudo add-apt-repository -y ppa:hvr/ghc
         travis_retry sudo apt-get update
-        travis_retry sudo apt-get install --force-yes cabal-install-2.4 ghc-$GHCVER-prof ghc-$GHCVER-dyn
+        travis_retry sudo apt-get install --force-yes cabal-install-3.0 ghc-$GHCVER-prof ghc-$GHCVER-dyn
         if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn ghc-head-prof ghc-head-dyn; fi
 
         if [ "$SCRIPT" = "meta" ]; then
@@ -67,7 +67,7 @@ if [ -z ${STACK_CONFIG+x} ]; then
         cd ..;
 
         mkdir "${HOME}/bin"
-        travis_retry curl -L https://downloads.haskell.org/~cabal/cabal-install-2.4.0.0/cabal-install-2.4.0.0-x86_64-apple-darwin-sierra.tar.gz | tar xzO > "${HOME}/bin/cabal"
+        travis_retry curl -L https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz | tar xzO > "${HOME}/bin/cabal"
         chmod a+x "${HOME}/bin/cabal"
         "${HOME}/bin/cabal" --version
 

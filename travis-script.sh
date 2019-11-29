@@ -73,7 +73,8 @@ timed cabal update
 # Install executables if necessary
 # ---------------------------------------------------------------------
 
-timed cabal install $jobs happy
+# TODO: we need v2-install -z
+(cd /tmp && timed cabal v2-install $jobs happy --overwrite-policy=always)
 
 # ---------------------------------------------------------------------
 # Setup our local project
@@ -159,7 +160,8 @@ fi
 # test suites are baked into the cabal binary
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS cabal-install:cabal
 
-timed cabal new-install $jobs hackage-repo-tool --overwrite-policy=always
+# TODO: we need v2-install -z
+(cd /tmp && timed cabal new-install $jobs hackage-repo-tool --overwrite-policy=always)
 
 if [ "x$SKIP_TESTS" = "xYES" ]; then
    exit 1;

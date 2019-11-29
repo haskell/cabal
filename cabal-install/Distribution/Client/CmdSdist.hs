@@ -9,6 +9,9 @@ module Distribution.Client.CmdSdist
     , SdistFlags(..), defaultSdistFlags
     , OutputFormat(..)) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
 import Distribution.Client.ProjectOrchestration
@@ -28,9 +31,6 @@ import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), defaultDistDirLayout )
 import Distribution.Client.ProjectConfig
     ( findProjectRoot, readProjectConfig )
-
-import Distribution.Compat.Semigroup
-    ((<>))
 
 import Distribution.Package
     ( Package(packageId) )
@@ -64,8 +64,6 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Compression.GZip  as GZip
 import Control.Exception
     ( throwIO )
-import Control.Monad
-    ( when, forM_ )
 import Control.Monad.Trans
     ( liftIO )
 import Control.Monad.State.Lazy
@@ -77,7 +75,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
 import Data.List
-    ( find, sortOn, nub )
+    ( sortOn )
 import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
@@ -192,7 +190,7 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
             | length pkgs > 1, not listSources, Just "-" <- mOutputPath' ->
                 die' verbosity "Can't write multiple tarballs to standard output!"
             | otherwise ->
-                mapM_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distLayout) format (outputPath pkg) pkg) pkgs
+                traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distLayout) format (outputPath pkg) pkg) pkgs
 
 data IsExec = Exec | NoExec
             deriving (Show, Eq)
@@ -256,7 +254,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                             Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                             Right path -> tell [Tar.directoryEntry path]
 
-                        forM_ files $ \(perm, file) -> do
+                        for_ files $ \(perm, file) -> do
                             let fileDir = takeDirectory (prefix </> file)
                                 perm' = case perm of
                                     Exec -> Tar.executableFilePermissions
@@ -276,9 +274,9 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
 
                 entries <- execWriterT (evalStateT entriesM mempty)
                 let -- Pretend our GZip file is made on Unix.
-                    normalize bs = BSL.concat [first, "\x03", rest']
+                    normalize bs = BSL.concat [pfx, "\x03", rest']
                         where
-                            (first, rest) = BSL.splitAt 9 bs
+                            (pfx, rest) = BSL.splitAt 9 bs
                             rest' = BSL.tail rest
                     -- The Unix epoch, which is the default value, is
                     -- unsuitable because it causes unpacking problems on
