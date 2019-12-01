@@ -73,9 +73,7 @@ timed cabal update
 # Install executables if necessary
 # ---------------------------------------------------------------------
 
-#if ! command -v happy; then
-    timed cabal install $jobs happy
-#fi
+timed cabal install $jobs happy
 
 # ---------------------------------------------------------------------
 # Setup our local project
@@ -83,15 +81,9 @@ timed cabal update
 
 make cabal-install-monolithic
 if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
-    cp cabal.project.travis.libonly cabal.project
+    cp cabal.project.libonly cabal.project
 fi
 cp cabal.project.local.travis cabal.project.local
-
-# hackage-repo-tool is a bit touchy to install on GHC 8.0, so instead we
-# do it via new-build.  See also cabal.project.local.travis.  The downside of
-# doing it this way is that the build product cannot be cached, but
-# hackage-repo-tool is a relatively small package so it's good.
-timed cabal unpack hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}
 
 # ---------------------------------------------------------------------
 # Cabal
@@ -167,7 +159,7 @@ fi
 # test suites are baked into the cabal binary
 timed cabal new-build $jobs $CABAL_INSTALL_FLAGS cabal-install:cabal
 
-timed cabal new-build $jobs hackage-repo-tool
+timed cabal new-install $jobs hackage-repo-tool --overwrite-policy=always
 
 if [ "x$SKIP_TESTS" = "xYES" ]; then
    exit 1;
@@ -177,7 +169,7 @@ fi
 timed ${CABAL_INSTALL_EXE} update
 
 # Big tests
-(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_EXE} --with-hackage-repo-tool ${HACKAGE_REPO_TOOL_BDIR}/build/hackage-repo-tool/hackage-repo-tool $TEST_OPTIONS) || exit $?
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/cabal-tests/cabal-tests --builddir=${CABAL_TESTSUITE_BDIR} -j3 --skip-setup-tests --with-cabal ${CABAL_INSTALL_EXE} --with-hackage-repo-tool hackage-repo-tool $TEST_OPTIONS) || exit $?
 
 # Cabal check
 # TODO: remove -main-is and re-enable me.

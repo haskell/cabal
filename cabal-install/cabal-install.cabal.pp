@@ -43,7 +43,7 @@ Version:            3.1.0.0
         time       >= 1.5.0.1  && < 1.10,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.5.2.2 && < 0.6,
+        hackage-security >= 0.6.0.0 && < 0.7,
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2
 

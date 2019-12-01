@@ -1,6 +1,5 @@
 set -e
 
-HACKAGE_REPO_TOOL_VERSION="0.1.1.1"
 CABAL_VERSION="3.1.0.0"
 CABAL_INSTALL_VERSION="3.1.0.0"
 
@@ -16,7 +15,6 @@ CABAL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/Cabal-${CA
 CABAL_TESTSUITE_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-testsuite-${CABAL_VERSION}"
 CABAL_INSTALL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/cabal-install-${CABAL_INSTALL_VERSION}"
 SOLVER_BENCHMARKS_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/solver-benchmarks-${CABAL_VERSION}"
-HACKAGE_REPO_TOOL_BDIR="${TRAVIS_BUILD_DIR}/dist-newstyle/build/$ARCH/ghc-$GHCVER/hackage-repo-tool-${HACKAGE_REPO_TOOL_VERSION}/x/hackage-repo-tool"
 CABAL_INSTALL_EXE=${CABAL_INSTALL_BDIR}/x/cabal/build/cabal/cabal
 
 # ---------------------------------------------------------------------
