@@ -2,17 +2,17 @@ module UnitTests.Distribution.Client.GZipUtils (
   tests
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Codec.Compression.GZip          as GZip
 import Codec.Compression.Zlib          as Zlib
 import Control.Exception.Base                  (evaluate)
 import Control.Exception                       (try, SomeException)
-import Control.Monad                           (void)
 import Data.ByteString                as BS    (null)
 import Data.ByteString.Lazy           as BSL   (pack, toChunks)
 import Data.ByteString.Lazy.Char8     as BSLL  (pack, init, length)
-import Data.Monoid                             ((<>))
 import Distribution.Client.GZipUtils           (maybeDecompress)
-import Data.Word                               (Word8)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -34,7 +34,7 @@ maybeDecompressUnitTest =
      >> assertBool "decompress gzip (with show)" (show (maybeDecompress compressedGZip) == show original)
      >> assertBool "decompress zlib"             (maybeDecompress compressedZlib        == original)
      >> assertBool "decompress gzip"             (maybeDecompress compressedGZip        == original)
-     >> assertBool "have no empty chunks"        (Prelude.all (not . BS.null) . BSL.toChunks . maybeDecompress $ compressedZlib)
+     >> assertBool "have no empty chunks"        (all (not . BS.null) . BSL.toChunks . maybeDecompress $ compressedZlib)
      >> (runBrokenStream >>= assertBool "decompress broken stream" . isLeft)
   where
     original = BSLL.pack "original uncompressed input"

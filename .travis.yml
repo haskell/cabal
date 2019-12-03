@@ -53,6 +53,9 @@ matrix:
    - env: GHCVER=8.6.5 SCRIPT=script USE_GOLD=YES
      os: linux
      sudo: required
+   - env: GHCVER=8.8.1 SCRIPT=script USE_GOLD=YES
+     os: linux
+     sudo: required
    #- env: GHCVER=8.8.1 SCRIPT=script USE_GOLD=YES
    #  os: linux
    #  sudo: required
@@ -120,7 +123,7 @@ before_install:
  - export PATH=$HOME/bin:$PATH
  - export PATH=$HOME/.cabal/bin:$PATH
  - export PATH=$HOME/.local/bin:$PATH
- - export PATH=/opt/cabal/2.4/bin:$PATH
+ - export PATH=/opt/cabal/3.0/bin:$PATH
  - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.gold" 20; fi
  - if [ "$USE_GOLD" = "YES" ]; then sudo update-alternatives --install "/usr/bin/ld" "ld" "/usr/bin/ld.bfd" 10; fi
  - ld -v
