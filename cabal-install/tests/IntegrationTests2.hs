@@ -68,6 +68,10 @@ import Data.Tagged (Tagged(..))
 import Data.Proxy  (Proxy(..))
 import Data.Typeable (Typeable)
 
+#if !MIN_VERSION_directory(1,2,7)
+removePathForcibly :: FilePath -> IO ()
+removePathForcibly = removeDirectoryRecursive
+#endif
 
 main :: IO ()
 main =
@@ -117,7 +121,10 @@ tests config =
   , testGroup "Successful builds" $
     [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
     , testCase      "keep-going"          (testBuildKeepGoing config)
+#ifndef mingw32_HOST_OS
+    -- disabled because https://github.com/haskell/cabal/issues/6272
     , testCase      "local tarball"       (testBuildLocalTarball config)
+#endif
     ]
 
   , testGroup "Regression tests" $
@@ -1579,7 +1586,7 @@ executePlan ((distDirLayout, cabalDirLayout, _, _, buildSettings),
 cleanProject :: FilePath -> IO ()
 cleanProject testdir = do
     alreadyExists <- doesDirectoryExist distDir
-    when alreadyExists $ removeDirectoryRecursive distDir
+    when alreadyExists $ removePathForcibly distDir
   where
     projectRoot    = ProjectRootImplicit (basedir </> testdir)
     distDirLayout  = defaultDistDirLayout projectRoot Nothing

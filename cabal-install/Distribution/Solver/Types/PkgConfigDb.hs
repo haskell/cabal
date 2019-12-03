@@ -31,7 +31,7 @@ import Distribution.Compat.Environment          (lookupEnv)
 import Distribution.Package                     (PkgconfigName, mkPkgconfigName)
 import Distribution.Parsec
 import Distribution.Simple.Program
-       (ProgramDb, getProgramOutput, pkgConfigProgram, requireProgram)
+       (ProgramDb, getProgramOutput, pkgConfigProgram, needProgram)
 import Distribution.Simple.Utils                (info)
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigVersionRange
@@ -56,23 +56,28 @@ instance Binary PkgConfigDb
 -- information.
 readPkgConfigDb :: Verbosity -> ProgramDb -> IO PkgConfigDb
 readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
-  (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
-  pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
-  -- The output of @pkg-config --list-all@ also includes a description
-  -- for each package, which we do not need.
-  let pkgNames = map (takeWhile (not . isSpace)) pkgList
-  pkgVersions <- lines <$> getProgramOutput verbosity pkgConfig
-                             ("--modversion" : pkgNames)
-  (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
-      where
-        -- For when pkg-config invocation fails (possibly because of a
-        -- too long command line).
-        ioErrorHandler :: IOException -> IO PkgConfigDb
-        ioErrorHandler e = do
-          info verbosity ("Failed to query pkg-config, Cabal will continue"
-                          ++ " without solving for pkg-config constraints: "
-                          ++ show e)
-          return NoPkgConfigDb
+    mpkgConfig <- needProgram verbosity pkgConfigProgram progdb
+    case mpkgConfig of
+      Nothing             -> noPkgConfig "Cannot find pkg-config program"
+      Just (pkgConfig, _) -> do
+        pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
+        -- The output of @pkg-config --list-all@ also includes a description
+        -- for each package, which we do not need.
+        let pkgNames = map (takeWhile (not . isSpace)) pkgList
+        pkgVersions <- lines <$> getProgramOutput verbosity pkgConfig
+                                   ("--modversion" : pkgNames)
+        (return . pkgConfigDbFromList . zip pkgNames) pkgVersions
+  where
+    -- For when pkg-config invocation fails (possibly because of a
+    -- too long command line).
+    noPkgConfig extra = do
+        info verbosity ("Failed to query pkg-config, Cabal will continue"
+                        ++ " without solving for pkg-config constraints: "
+                        ++ extra)
+        return NoPkgConfigDb
+
+    ioErrorHandler :: IOException -> IO PkgConfigDb
+    ioErrorHandler e = noPkgConfig (show e)
 
 -- | Create a `PkgConfigDb` from a list of @(packageName, version)@ pairs.
 pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
@@ -134,10 +139,11 @@ getPkgConfigDbDirs verbosity progdb =
     -- > pkg-config --variable pc_path pkg-config
     --
     getDefPath = handle ioErrorHandler $ do
-      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
-      parseSearchPath <$>
-        getProgramOutput verbosity pkgConfig
-                         ["--variable", "pc_path", "pkg-config"]
+      mpkgConfig <- needProgram verbosity pkgConfigProgram progdb
+      case mpkgConfig of
+        Nothing -> return []
+        Just (pkgConfig, _) -> parseSearchPath <$>
+          getProgramOutput verbosity pkgConfig ["--variable", "pc_path", "pkg-config"]
 
     parseSearchPath str =
       case lines str of
