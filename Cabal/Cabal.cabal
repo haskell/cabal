@@ -35,6 +35,8 @@ extra-source-files:
   -- BEGIN gen-extra-source-files
   tests/ParserTests/errors/MiniAgda.cabal
   tests/ParserTests/errors/MiniAgda.errors
+  tests/ParserTests/errors/big-version.cabal
+  tests/ParserTests/errors/big-version.errors
   tests/ParserTests/errors/common1.cabal
   tests/ParserTests/errors/common1.errors
   tests/ParserTests/errors/common2.cabal
@@ -110,6 +112,9 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.format
   tests/ParserTests/regressions/bad-glob-syntax.cabal
   tests/ParserTests/regressions/bad-glob-syntax.check
+  tests/ParserTests/regressions/big-version.cabal
+  tests/ParserTests/regressions/big-version.expr
+  tests/ParserTests/regressions/big-version.format
   tests/ParserTests/regressions/cc-options-with-optimization.cabal
   tests/ParserTests/regressions/cc-options-with-optimization.check
   tests/ParserTests/regressions/common-conditional.cabal
@@ -159,6 +164,12 @@ extra-source-files:
   tests/ParserTests/regressions/issue-5055.cabal
   tests/ParserTests/regressions/issue-5055.expr
   tests/ParserTests/regressions/issue-5055.format
+  tests/ParserTests/regressions/issue-5846.cabal
+  tests/ParserTests/regressions/issue-5846.expr
+  tests/ParserTests/regressions/issue-5846.format
+  tests/ParserTests/regressions/issue-6083-pkg-pkg.cabal
+  tests/ParserTests/regressions/issue-6083-pkg-pkg.expr
+  tests/ParserTests/regressions/issue-6083-pkg-pkg.format
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr

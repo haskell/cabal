@@ -123,6 +123,7 @@ errorTests = testGroup "errors"
     , errorTest "libpq1.cabal"
     , errorTest "libpq2.cabal"
     , errorTest "MiniAgda.cabal"
+    , errorTest "big-version.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -165,6 +166,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "wl-pprint-indef.cabal"
     , regressionTest "th-lift-instances.cabal"
     , regressionTest "issue-5055.cabal"
+    , regressionTest "issue-6083-pkg-pkg.cabal"
     , regressionTest "noVersion.cabal"
     , regressionTest "spdx-1.cabal"
     , regressionTest "spdx-2.cabal"
@@ -177,9 +179,11 @@ regressionTests = testGroup "regressions"
     , regressionTest "mixin-3.cabal"
     , regressionTest "libpq1.cabal"
     , regressionTest "libpq2.cabal"
+    , regressionTest "issue-5846.cabal"
     , regressionTest "indentation.cabal"
     , regressionTest "indentation2.cabal"
     , regressionTest "indentation3.cabal"
+    , regressionTest "big-version.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree

@@ -1,0 +1,11 @@
+cabal-version: 3.0
+name: issue
+version: 5846
+
+library
+  default-language: Haskell2010
+  build-depends: lib1:{a,b}
+               , lib2:c
+
+  build-depends: lib3:d>=1
+  build-depends: lib4:{a,b}>=1

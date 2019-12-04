@@ -109,7 +109,13 @@ versionDigitParser = (some d >>= toNumber) P.<?> "version digit (integral withou
     toNumber :: CabalParsing m => [Int] -> m Int
     toNumber [0]   = return 0
     toNumber (0:_) = P.unexpected "Version digit with leading zero"
-    toNumber xs    = return $ foldl' (\a b -> a * 10 + b) 0 xs
+    toNumber xs
+        -- 10^9 = 1000000000
+        -- 2^30 = 1073741824
+        --
+        -- GHC Int is at least 32 bits, so 2^31-1 is the 'maxBound'.
+        | length xs > 9 = P.unexpected "At most 9 numbers are allowed per version number part"
+        | otherwise     = return $ foldl' (\a b -> a * 10 + b) 0 xs
 
     d :: P.CharParsing m => m Int
     d = f <$> P.satisfyRange '0' '9'
