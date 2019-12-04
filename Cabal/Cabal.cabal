@@ -281,8 +281,10 @@ library
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
     ghc-options: -Wcompat -Wnoncanonical-monad-instances
-                 -Wnoncanonical-monadfail-instances
-  else
+    if impl(ghc <8.8)
+      ghc-options: -Wnoncanonical-monadfail-instances
+
+  if !impl(ghc >= 8.0)
     -- at least one of lib:Cabal's dependency (i.e. `parsec`)
     -- already depends on `fail` and `semigroups` transitively
     build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
@@ -605,14 +607,14 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
-    tasty >= 1.1.0.3 && < 1.2,
+    tasty >= 1.2.3 && < 1.3,
     tasty-hunit,
     tasty-quickcheck,
     tagged,
     temporary,
     text,
     pretty,
-    QuickCheck >= 2.11.3 && < 2.12,
+    QuickCheck >= 2.13.2 && < 2.14,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
@@ -623,22 +625,22 @@ test-suite parser-tests
   main-is: ParserTests.hs
   build-depends:
     base,
-    base-compat >=0.10.4 && <0.11,
+    base-compat >=0.11.0 && <0.12,
     bytestring,
     directory,
     filepath,
-    tasty >= 1.1.0.3 && < 1.2,
+    tasty >= 1.2.3 && < 1.3,
     tasty-hunit,
     tasty-quickcheck,
     tasty-golden >=2.3.1.1 && <2.4,
-    Diff >=0.3.4 && <0.4,
+    Diff >=0.4 && <0.5,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.2 && <0.1
+      tree-diff      >= 0.1 && <0.2
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language
@@ -654,9 +656,9 @@ test-suite check-tests
     bytestring,
     directory,
     filepath,
-    tasty >= 1.1.0.3 && < 1.2,
+    tasty >= 1.2.3 && < 1.3,
     tasty-golden >=2.3.1.1 && <2.4,
-    Diff >=0.3.4 && <0.4,
+    Diff >=0.4 && <0.5,
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
@@ -696,15 +698,15 @@ test-suite hackage-tests
     filepath
 
   build-depends:
-    base-compat          >=0.10.4   && <0.11,
+    base-compat          >=0.11.0   && <0.12,
     base-orphans         >=0.6      && <0.9,
-    optparse-applicative >=0.13.2.0 && <0.15,
+    optparse-applicative >=0.13.2.0 && <0.16,
     stm                  >=2.4.5.0  && <2.6,
     tar                  >=0.5.0.3  && <0.6
 
   if impl(ghc >= 7.8)
     build-depends:
-      tree-diff      >= 0.0.2 && <0.1
+      tree-diff      >= 0.1 && <0.2
     other-modules:
       Instances.TreeDiff
       Instances.TreeDiff.Language
@@ -726,7 +728,7 @@ test-suite rpmvercmp
     bytestring
 
   build-depends:
-    tasty >= 1.1.0.3 && < 1.2,
+    tasty >= 1.2.3 && < 1.3,
     tasty-hunit,
     tasty-quickcheck,
     QuickCheck

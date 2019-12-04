@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.6 && <4.13
+    , base >= 4.6 && <4.14
     -- this needs to match the in-tree lib:Cabal version
     , Cabal == 3.0.0.0
 
@@ -36,14 +36,15 @@ library
   import: shared
 
   exposed-modules:
-    Test.Cabal.Workdir
-    Test.Cabal.Script
-    Test.Cabal.Run
+    Test.Cabal.CheckArMetadata
+    Test.Cabal.Monad
+    Test.Cabal.OutputNormalizer
     Test.Cabal.Plan
     Test.Cabal.Prelude
+    Test.Cabal.Run
+    Test.Cabal.Script
     Test.Cabal.Server
-    Test.Cabal.Monad
-    Test.Cabal.CheckArMetadata
+    Test.Cabal.Workdir
 
   other-modules:
     Test.Cabal.ScriptEnv0
@@ -61,10 +62,10 @@ library
     , directory             ^>= 1.2.0.1 || ^>= 1.3.0.0
     , exceptions            ^>= 0.10.0
     , filepath              ^>= 1.3.0.1 || ^>= 1.4.0.0
-    , optparse-applicative  ^>= 0.14.3.0
+    , optparse-applicative  ^>= 0.14.3.0 || ^>=0.15.1.0
     , process               ^>= 1.1.0.2 || ^>= 1.2.0.0 || ^>= 1.4.2.0 || ^>= 1.6.1.0
     , regex-compat-tdfa     ^>= 0.95.1.4
-    , regex-tdfa            ^>= 1.2.3.1
+    , regex-tdfa            ^>= 1.2.3.1 || ^>=1.3.1.0
     , temporary             ^>= 1.3
     , text                  ^>= 1.2.3.1
     , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0
@@ -91,7 +92,7 @@ executable cabal-tests
     , process
     , transformers
     -- dependencies specific to exe:cabal-tests
-    , clock                 ^>= 0.7.2
+    , clock                 ^>= 0.7.2 || ^>=0.8
 
   build-tool-depends: cabal-testsuite:setup
 
