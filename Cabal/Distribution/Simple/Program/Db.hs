@@ -426,7 +426,7 @@ requireProgram verbosity prog progdb = do
 -- It returns 'Nothing' if the program couldn't be configured,
 -- or is not found.
 --
--- @since 3.2.0.0
+-- @since 3.0.1.0
 needProgram :: Verbosity -> Program -> ProgramDb
             -> IO (Maybe (ConfiguredProgram, ProgramDb))
 needProgram verbosity prog progdb = do
