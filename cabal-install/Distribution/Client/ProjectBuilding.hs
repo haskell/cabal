@@ -272,7 +272,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
 --
 -- The packages are visited in dependency order, starting with packages with no
 -- dependencies. The result for each package is accumulated into a 'Map' and
--- returned as the final result. In addition, when visting a package, the
+-- returned as the final result. In addition, when visiting a package, the
 -- visiting function is passed the results for all the immediate package
 -- dependencies. This can be used to propagate information from dependencies.
 --
@@ -983,6 +983,12 @@ buildAndInstallUnpackedPackage verbosity
             let prefix   = normalise $
                            dropDrive (InstallDirs.prefix (elabInstallDirs pkg))
                 entryDir = tmpDirNormalised </> prefix
+
+            -- if there weren't anything to build, it might be that directory is not created
+            -- the @setup Cabal.copyCommand@ above might do nothing.
+            -- https://github.com/haskell/cabal/issues/4130
+            createDirectoryIfMissingVerbose verbosity True entryDir
+
             LBS.writeFile
               (entryDir </> "cabal-hash.txt")
               (renderPackageHashInputs (packageHashInputs pkgshared pkg))

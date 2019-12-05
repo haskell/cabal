@@ -341,7 +341,7 @@ filterIPNs ipns d@(Dependency pn _ _)
 
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
--- of all arguments preceeding the input 'CondTree'.
+-- of all arguments preceding the input 'CondTree'.
 convCondTree :: Map FlagName Bool -> DependencyReason PN -> PackageDescription -> OS -> Arch -> CompilerInfo -> PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->

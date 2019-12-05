@@ -478,7 +478,7 @@ db1 =
        ]
 
 -- In this example, we _can_ install C and D as independent goals, but we have
--- to pick two diferent versions for B (arbitrarily)
+-- to pick two different versions for B (arbitrarily)
 db2 :: ExampleDb
 db2 = [
     Right $ exAv "A" 1 []
@@ -874,7 +874,7 @@ db14 = [
 -- has a setup dependency on D, and D has a regular dependency on C-*. However,
 -- version C-1.0 is already available (perhaps it didn't have this setup dep).
 -- Thus, we should be able to break this cycle even if we are installing package
--- E, which explictly depends on C-2.0.
+-- E, which explicitly depends on C-2.0.
 db15 :: ExampleDb
 db15 = [
     -- First example (real cycle, no solution)
@@ -1211,7 +1211,7 @@ testIndepGoals4 name =
 -- | Test the trace messages that we get when a package refers to an unknown pkg
 --
 -- TODO: Currently we don't actually test the trace messages, and this particular
--- test still suceeds. The trace can only be verified by hand.
+-- test still succeeds. The trace can only be verified by hand.
 db21 :: ExampleDb
 db21 = [
     Right $ exAv "A" 1 [ExAny "B"]
