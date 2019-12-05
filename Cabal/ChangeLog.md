@@ -1,3 +1,13 @@
+# 3.0.1.0 TBW
+  * Add GHC-8.8 flags to normaliseGhcFlags
+    ([#6379](https://github.com/haskell/cabal/pull/6379))
+  * Typo fixes
+    ([#6372](https://github.com/haskell/cabal/pull/6372))
+  * Limit version number parts to contain at most 9 digits
+    ([#6386](https://github.com/haskell/cabal/pull/6386)
+  * Fix boundless sublibrary depedency parse failure
+    ([#5846](https://github.com/haskell/cabal/issues/5846))
+
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * The 3.0 migration guide gives advice on adapting Custom setup
     scripts to backwards-incompatible changes in this release:
