@@ -220,7 +220,7 @@ exploreLog mbj enableBj (CountConflicts countConflicts) t = para go t initES
 --
 avoidSet :: Var QPN -> QGoalReason -> ConflictSet
 avoidSet var gr =
-  CS.union (CS.singleton var) (goalReasonToCS gr)
+  CS.union (CS.singleton var) (goalReasonToConflictSet gr)
 
 -- | Interface.
 --

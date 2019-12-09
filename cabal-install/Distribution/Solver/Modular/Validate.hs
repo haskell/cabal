@@ -320,7 +320,7 @@ checkComponentsInNewPackage required qpn providedComps =
                -> (ExposedComponent -> DependencyReason QPN -> FailReason)
                -> Conflict
     mkConflict comp dr mkFailure =
-        (CS.insert (P qpn) (dependencyReasonToCS dr), mkFailure comp dr)
+        (CS.insert (P qpn) (dependencyReasonToConflictSet dr), mkFailure comp dr)
 
     buildableProvidedComps :: [ExposedComponent]
     buildableProvidedComps = [comp | (comp, IsBuildable True) <- M.toList providedComps]
@@ -393,13 +393,13 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
     extendSingle :: PPreAssignment -> LDep QPN -> Either Conflict PPreAssignment
     extendSingle a (LDep dr (Ext  ext ))  =
       if extSupported  ext  then Right a
-                            else Left (dependencyReasonToCS dr, UnsupportedExtension ext)
+                            else Left (dependencyReasonToConflictSet dr, UnsupportedExtension ext)
     extendSingle a (LDep dr (Lang lang))  =
       if langSupported lang then Right a
-                            else Left (dependencyReasonToCS dr, UnsupportedLanguage lang)
+                            else Left (dependencyReasonToConflictSet dr, UnsupportedLanguage lang)
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
-                          else Left (dependencyReasonToCS dr, MissingPkgconfigPackage pn vr)
+                          else Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
     extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
@@ -448,14 +448,14 @@ merge ::
 merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed i2))
   | i1 == i2  = Right $ MergedDepFixed comp1 vs1 i1
   | otherwise =
-      Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+      Left ( (CS.union `on` dependencyReasonToConflictSet) vs1 vs2
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i1)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
 merge (MergedDepFixed comp1 vs1 i@(I v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
   | checkVR vr v = Right $ MergedDepFixed comp1 vs1 i
   | otherwise    =
-      Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+      Left ( (CS.union `on` dependencyReasonToConflictSet) vs1 vs2
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
@@ -467,7 +467,7 @@ merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fi
     go ((vr, comp1, vs1) : vros)
        | checkVR vr v = go vros
        | otherwise    =
-           Left ( (CS.union `on` dependencyReasonToCS) vs1 vs2
+           Left ( (CS.union `on` dependencyReasonToConflictSet) vs1 vs2
                 , ( ConflictingDep vs1 (PkgComponent p comp1) (Constrained vr)
                   , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
@@ -512,7 +512,7 @@ extendRequiredComponents available = foldM extendSingle
                -> (QPN -> ExposedComponent -> FailReason)
                -> Conflict
     mkConflict qpn comp dr mkFailure =
-      (CS.insert (P qpn) (dependencyReasonToCS dr), mkFailure qpn comp)
+      (CS.insert (P qpn) (dependencyReasonToConflictSet dr), mkFailure qpn comp)
 
     buildableComps :: Map comp IsBuildable -> [comp]
     buildableComps comps = [comp | (comp, IsBuildable True) <- M.toList comps]
