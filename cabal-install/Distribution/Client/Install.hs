@@ -395,6 +395,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
 
       . setCountConflicts countConflicts
 
+      . setFineGrainedConflicts fineGrainedConflicts
+
       . setMinimizeConflictSet minimizeConflictSet
 
       . setAvoidReinstalls avoidReinstalls
@@ -463,6 +465,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
                        fromFlag (installReinstall         installFlags)
     reorderGoals     = fromFlag (installReorderGoals      installFlags)
     countConflicts   = fromFlag (installCountConflicts    installFlags)
+    fineGrainedConflicts = fromFlag (installFineGrainedConflicts installFlags)
     minimizeConflictSet = fromFlag (installMinimizeConflictSet installFlags)
     independentGoals = fromFlag (installIndependentGoals  installFlags)
     avoidReinstalls  = fromFlag (installAvoidReinstalls   installFlags)

@@ -958,6 +958,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . setCountConflicts solverSettingCountConflicts
 
+      . setFineGrainedConflicts solverSettingFineGrainedConflicts
+
       . setMinimizeConflictSet solverSettingMinimizeConflictSet
 
         --TODO: [required eventually] should only be configurable for

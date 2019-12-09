@@ -455,7 +455,7 @@ merge (MergedDepFixed comp1 vs1 i1) (PkgDep vs2 (PkgComponent p comp2) ci@(Fixed
 merge (MergedDepFixed comp1 vs1 i@(I v _)) (PkgDep vs2 (PkgComponent p comp2) ci@(Constrained vr))
   | checkVR vr v = Right $ MergedDepFixed comp1 vs1 i
   | otherwise    =
-      Left ( (CS.union `on` dependencyReasonToConflictSet) vs1 vs2
+      Left ( createConflictSetForVersionConflict p v vs1 vr vs2
            , ( ConflictingDep vs1 (PkgComponent p comp1) (Fixed i)
              , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
@@ -467,7 +467,7 @@ merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent p comp2) ci@(Fi
     go ((vr, comp1, vs1) : vros)
        | checkVR vr v = go vros
        | otherwise    =
-           Left ( (CS.union `on` dependencyReasonToConflictSet) vs1 vs2
+           Left ( createConflictSetForVersionConflict p v vs2 vr vs1
                 , ( ConflictingDep vs1 (PkgComponent p comp1) (Constrained vr)
                   , ConflictingDep vs2 (PkgComponent p comp2) ci ) )
 
@@ -478,6 +478,45 @@ merge (MergedDepConstrained vrOrigins) (PkgDep vs2 (PkgComponent _ comp2) (Const
     -- before a refactoring. Consider prepending the version range, if there is
     -- no negative performance impact.
     vrOrigins ++ [(vr, comp2, vs2)])
+
+-- | Creates a conflict set representing a conflict between a version constraint
+-- and the fixed version chosen for a package.
+createConflictSetForVersionConflict :: QPN
+                                    -> Ver
+                                    -> DependencyReason QPN
+                                    -> VR
+                                    -> DependencyReason QPN
+                                    -> ConflictSet
+createConflictSetForVersionConflict pkg
+                                    conflictingVersion
+                                    versionDR@(DependencyReason p1 _ _)
+                                    conflictingVersionRange
+                                    versionRangeDR@(DependencyReason p2 _ _) =
+  let hasFlagsOrStanzas (DependencyReason _ fs ss) = not (M.null fs) || not (S.null ss)
+  in
+    -- The solver currently only optimizes the case where there is a conflict
+    -- between the version chosen for a package and a version constraint that
+    -- is not under any flags or stanzas. Here is how we check for this case:
+    --
+    --   (1) Choosing a specific version for a package foo is implemented as
+    --       adding a dependency from foo to that version of foo (See
+    --       extendWithPackageChoice), so we check that the DependencyReason
+    --       contains the current package and no flag or stanza choices.
+    --
+    --   (2) We check that the DependencyReason for the version constraint also
+    --       contains no flag or stanza choices.
+    --
+    -- When these criteria are not met, we fall back to calling
+    -- dependencyReasonToConflictSet.
+    if p1 == pkg && not (hasFlagsOrStanzas versionDR) && not (hasFlagsOrStanzas versionRangeDR)
+    then let cs1 = dependencyReasonToConflictSetWithVersionConflict
+                   p2
+                   (CS.OrderedVersionRange conflictingVersionRange)
+                   versionDR
+             cs2 = dependencyReasonToConflictSetWithVersionConstraintConflict
+                   pkg conflictingVersion versionRangeDR
+         in cs1 `CS.union` cs2
+    else dependencyReasonToConflictSet versionRangeDR `CS.union` dependencyReasonToConflictSet versionDR
 
 -- | Takes a list of new dependencies and uses it to try to update the map of
 -- known component dependencies. It returns a failure when a new dependency

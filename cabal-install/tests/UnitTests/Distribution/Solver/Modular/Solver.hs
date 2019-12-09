@@ -331,7 +331,7 @@ tests = [
               -- and an executable conflict apply to the same package version.
               "[__1] rejecting: H:bt-pkg:exe.bt-pkg-4.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)\n"
            ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-3.0.0 (does not contain executable 'exe1', which is required by H)\n"
-           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0, H:bt-pkg:exe.bt-pkg-1.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
+           ++ "[__1] rejecting: H:bt-pkg:exe.bt-pkg-2.0.0 (conflict: H => H:bt-pkg:exe.bt-pkg (exe exe1)==3.0.0)"
 
         , runTest $ chooseExeAfterBuildToolsPackage True "choose exe after choosing its package - success"
 
@@ -408,6 +408,266 @@ tests = [
           chooseUnbuildableExeAfterBuildToolsPackage
           "choose unbuildable exe after choosing its package"
         ]
+
+    , testGroup "--fine-grained-conflicts" [
+
+          -- Skipping a version because of a problematic dependency:
+          --
+          -- When the solver explores A-4, it finds that it cannot satisfy B's
+          -- dependencies. This allows the solver to skip the subsequent
+          -- versions of A that also depend on B.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 4 [ExAny "B"]
+                    , Right $ exAv "A" 3 [ExAny "B"]
+                    , Right $ exAv "A" 2 [ExAny "B"]
+                    , Right $ exAv "A" 1 []
+                    , Right $ exAv "B" 2 [ExAny "unknown1"]
+                    , Right $ exAv "B" 1 [ExAny "unknown2"]
+                    ]
+                  msg = [
+                      "[__0] trying: A-4.0.0 (user goal)"
+                    , "[__1] trying: B-2.0.0 (dependency of A)"
+                    , "[__2] unknown package: unknown1 (dependency of B)"
+                    , "[__2] fail (backjumping, conflict set: B, unknown1)"
+                    , "[__1] trying: B-1.0.0"
+                    , "[__2] unknown package: unknown2 (dependency of B)"
+                    , "[__2] fail (backjumping, conflict set: B, unknown2)"
+                    , "[__1] fail (backjumping, conflict set: A, B, unknown1, unknown2)"
+                    , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                       ++ "caused the previous version to fail: depends on 'B')"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] done"
+                    ]
+              in setVerbose $
+                 mkTest db "skip version due to problematic dependency" ["A"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1)]
+
+        , -- Skipping a version because of a restrictive constraint on a
+          -- dependency:
+          --
+          -- The solver rejects A-4 because its constraint on B excludes B-1.
+          -- Then the solver is able to skip A-3 and A-2 because they also
+          -- exclude B-1, even though they don't have the exact same constraints
+          -- on B.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 4 [ExFix "B" 14]
+                    , Right $ exAv "A" 3 [ExFix "B" 13]
+                    , Right $ exAv "A" 2 [ExFix "B" 12]
+                    , Right $ exAv "A" 1 [ExFix "B" 11]
+                    , Right $ exAv "B" 11 []
+                    ]
+                  msg = [
+                      "[__0] trying: A-4.0.0 (user goal)"
+                    , "[__1] next goal: B (dependency of A)"
+                    , "[__1] rejecting: B-11.0.0 (conflict: A => B==14.0.0)"
+                    , "[__1] fail (backjumping, conflict set: A, B)"
+                    , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that "
+                       ++ "caused the previous version to fail: depends on 'B' but excludes "
+                       ++ "version 11.0.0)"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] next goal: B (dependency of A)"
+                    , "[__1] trying: B-11.0.0"
+                    , "[__2] done"
+                    ]
+              in setVerbose $
+                 mkTest db "skip version due to restrictive constraint on its dependency" ["A"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1), ("B", 11)]
+
+        , -- This test tests the case where the solver chooses a version for one
+          -- package, B, before choosing a version for one of its reverse
+          -- dependencies, C. While the solver is exploring the subtree rooted
+          -- at B-3, it finds that C-2's dependency on B conflicts with B-3.
+          -- Then the solver is able to skip C-1, because it also excludes B-3.
+          --
+          -- --fine-grained-conflicts could have a benefit in this case even
+          -- though the solver would have found the conflict between B-3 and C-1
+          -- immediately after trying C-1 anyway. It prevents C-1 from
+          -- introducing any other conflicts which could increase the size of
+          -- the conflict set.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 1 [ExAny "B", ExAny "C"]
+                    , Right $ exAv "B" 3 []
+                    , Right $ exAv "B" 2 []
+                    , Right $ exAv "B" 1 []
+                    , Right $ exAv "C" 2 [ExFix "B" 2]
+                    , Right $ exAv "C" 1 [ExFix "B" 1]
+                    ]
+                  goals = [P QualNone pkg | pkg <- ["A", "B", "C"]]
+                  expectedMsg = [
+                      "[__0] trying: A-1.0.0 (user goal)"
+                    , "[__1] trying: B-3.0.0 (dependency of A)"
+                    , "[__2] next goal: C (dependency of A)"
+                    , "[__2] rejecting: C-2.0.0 (conflict: B==3.0.0, C => B==2.0.0)"
+                    , "[__2] skipping: C-1.0.0 (has the same characteristics that caused the "
+                       ++ "previous version to fail: excludes 'B' version 3.0.0)"
+                    , "[__2] fail (backjumping, conflict set: A, B, C)"
+                    , "[__1] trying: B-2.0.0"
+                    , "[__2] next goal: C (dependency of A)"
+                    , "[__2] trying: C-2.0.0"
+                    , "[__3] done"
+                    ]
+              in setVerbose $ goalOrder goals $
+                 mkTest db "skip version that excludes dependency that was already chosen" ["A"] $
+                 SolverResult (isInfixOf expectedMsg) $ Right [("A", 1), ("B", 2), ("C", 2)]
+
+        , -- This test tests how the solver merges conflicts when it has
+          -- multiple reasons to add a variable to the conflict set. In this
+          -- case, package A conflicts with B and C. The solver should take the
+          -- union of the conflicts and then only skip a version if it does not
+          -- resolve any of the conflicts.
+          --
+          -- The solver rejects A-3 because it can't find consistent versions for
+          -- its two dependencies, B and C. Then it skips A-2 because A-2 also
+          -- depends on B and C. This test ensures that the solver considers
+          -- A-1 even though A-1 only resolves one of the conflicts (A-1 removes
+          -- the dependency on C).
+          runTest $
+              let db = [
+                      Right $ exAv "A" 3 [ExAny "B", ExAny "C"]
+                    , Right $ exAv "A" 2 [ExAny "B", ExAny "C"]
+                    , Right $ exAv "A" 1 [ExAny "B"]
+                    , Right $ exAv "B" 1 [ExFix "D" 1]
+                    , Right $ exAv "C" 1 [ExFix "D" 2]
+                    , Right $ exAv "D" 1 []
+                    , Right $ exAv "D" 2 []
+                    ]
+                  goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+                  msg = [
+                      "[__0] trying: A-3.0.0 (user goal)"
+                    , "[__1] trying: B-1.0.0 (dependency of A)"
+                    , "[__2] trying: C-1.0.0 (dependency of A)"
+                    , "[__3] next goal: D (dependency of B)"
+                    , "[__3] rejecting: D-2.0.0 (conflict: B => D==1.0.0)"
+                    , "[__3] rejecting: D-1.0.0 (conflict: C => D==2.0.0)"
+                    , "[__3] fail (backjumping, conflict set: B, C, D)"
+                    , "[__2] fail (backjumping, conflict set: A, B, C, D)"
+                    , "[__1] fail (backjumping, conflict set: A, B, C, D)"
+                    , "[__0] skipping: A-2.0.0 (has the same characteristics that caused the "
+                       ++ "previous version to fail: depends on 'B'; depends on 'C')"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] trying: B-1.0.0 (dependency of A)"
+                    , "[__2] next goal: D (dependency of B)"
+                    , "[__2] rejecting: D-2.0.0 (conflict: B => D==1.0.0)"
+                    , "[__2] trying: D-1.0.0"
+                    , "[__3] done"
+                    ]
+              in setVerbose $ goalOrder goals $
+                 mkTest db "only skip a version if it resolves none of the previous conflicts" ["A"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1), ("B", 1), ("D", 1)]
+
+        , -- This test ensures that the solver log doesn't show all conflicts
+          -- that the solver encountered in a subtree. The solver should only
+          -- show the conflicts that are contained in the current conflict set.
+          --
+          -- The goal order forces the solver to try A-4, encounter a conflict
+          -- with B-2, try B-1, and then try C. A-4 conflicts with the only
+          -- version of C, so the solver backjumps with a conflict set of
+          -- {A, C}. When the solver skips the next version of A, the log should
+          -- mention the conflict with C but not B.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 4 [ExFix "B" 1, ExFix "C" 1]
+                    , Right $ exAv "A" 3 [ExFix "B" 1, ExFix "C" 1]
+                    , Right $ exAv "A" 2 [ExFix "C" 1]
+                    , Right $ exAv "A" 1 [ExFix "C" 2]
+                    , Right $ exAv "B" 2 []
+                    , Right $ exAv "B" 1 []
+                    , Right $ exAv "C" 2 []
+                    ]
+                  goals = [P QualNone pkg | pkg <- ["A", "B", "C"]]
+                  msg = [
+                      "[__0] trying: A-4.0.0 (user goal)"
+                    , "[__1] next goal: B (dependency of A)"
+                    , "[__1] rejecting: B-2.0.0 (conflict: A => B==1.0.0)"
+                    , "[__1] trying: B-1.0.0"
+                    , "[__2] next goal: C (dependency of A)"
+                    , "[__2] rejecting: C-2.0.0 (conflict: A => C==1.0.0)"
+                    , "[__2] fail (backjumping, conflict set: A, C)"
+                    , "[__0] skipping: A-3.0.0, A-2.0.0 (has the same characteristics that caused the "
+                       ++ "previous version to fail: depends on 'C' but excludes version 2.0.0)"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] next goal: C (dependency of A)"
+                    , "[__1] trying: C-2.0.0"
+                    , "[__2] done"
+                    ]
+              in setVerbose $ goalOrder goals $
+                 mkTest db "don't show conflicts that aren't part of the conflict set" ["A"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1), ("C", 2)]
+
+        , -- Tests that the conflict set is properly updated when a version is
+          -- skipped due to being excluded by one of its reverse dependencies'
+          -- constraints.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 2 [ExFix "B" 3]
+                    , Right $ exAv "A" 1 [ExFix "B" 1]
+                    , Right $ exAv "B" 2 []
+                    , Right $ exAv "B" 1 []
+                    ]
+                  msg = [
+                      "[__0] trying: A-2.0.0 (user goal)"
+                    , "[__1] next goal: B (dependency of A)"
+
+                      -- During this step, the solver adds A and B to the
+                      -- conflict set, with the details of each package's
+                      -- conflict:
+                      --
+                      -- A: A's constraint rejected B-2.
+                      -- B: B was rejected by A's B==3 constraint
+                    , "[__1] rejecting: B-2.0.0 (conflict: A => B==3.0.0)"
+
+                      -- When the solver skips B-1, it cannot simply reuse the
+                      -- previous conflict set. It also needs to update A's
+                      -- entry to say that A also rejected B-1. Otherwise, the
+                      -- solver wouldn't know that A-1 could resolve one of
+                      -- the conflicts encountered while exploring A-2. The
+                      -- solver would skip A-1, even though it leads to the
+                      -- solution.
+                    , "[__1] skipping: B-1.0.0 (has the same characteristics that caused "
+                       ++ "the previous version to fail: excluded by constraint '==3.0.0' from 'A')"
+
+                    , "[__1] fail (backjumping, conflict set: A, B)"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] next goal: B (dependency of A)"
+                    , "[__1] rejecting: B-2.0.0 (conflict: A => B==1.0.0)"
+                    , "[__1] trying: B-1.0.0"
+                    , "[__2] done"
+                    ]
+              in setVerbose $
+                 mkTest db "update conflict set after skipping version - 1" ["A"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1), ("B", 1)]
+
+        , -- Tests that the conflict set is properly updated when a version is
+          -- skipped due to excluding a version of one of its dependencies.
+          -- This test is similar the previous one, with the goal order reversed.
+          runTest $
+              let db = [
+                      Right $ exAv "A" 2 []
+                    , Right $ exAv "A" 1 []
+                    , Right $ exAv "B" 2 [ExFix "A" 3]
+                    , Right $ exAv "B" 1 [ExFix "A" 1]
+                    ]
+                  goals = [P QualNone pkg | pkg <- ["A", "B"]]
+                  msg = [
+                      "[__0] trying: A-2.0.0 (user goal)"
+                    , "[__1] next goal: B (user goal)"
+                    , "[__1] rejecting: B-2.0.0 (conflict: A==2.0.0, B => A==3.0.0)"
+                    , "[__1] skipping: B-1.0.0 (has the same characteristics that caused "
+                       ++ "the previous version to fail: excludes 'A' version 2.0.0)"
+                    , "[__1] fail (backjumping, conflict set: A, B)"
+                    , "[__0] trying: A-1.0.0"
+                    , "[__1] next goal: B (user goal)"
+                    , "[__1] rejecting: B-2.0.0 (conflict: A==1.0.0, B => A==3.0.0)"
+                    , "[__1] trying: B-1.0.0"
+                    , "[__2] done"
+                    ]
+              in setVerbose $ goalOrder goals $
+                 mkTest db "update conflict set after skipping version - 2" ["A", "B"] $
+                 SolverResult (isInfixOf msg) $ Right [("A", 1), ("B", 1)]
+        ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
           -- See issue #3203. The solver should only choose a version for A once.
@@ -428,16 +688,15 @@ tests = [
         , testSummarizedLog "show conflicts from final conflict set after exhaustive search" Nothing $
                 "Could not resolve dependencies:\n"
              ++ "[__0] trying: A-1.0.0 (user goal)\n"
-             ++ "[__1] unknown package: D (dependency of A)\n"
-             ++ "[__1] fail (backjumping, conflict set: A, D)\n"
+             ++ "[__1] unknown package: F (dependency of A)\n"
+             ++ "[__1] fail (backjumping, conflict set: A, F)\n"
              ++ "After searching the rest of the dependency tree exhaustively, "
-             ++ "these were the goals I've had most trouble fulfilling: A, D"
+             ++ "these were the goals I've had most trouble fulfilling: A, F"
         , testSummarizedLog "show first conflicts after inexhaustive search" (Just 3) $
                 "Could not resolve dependencies:\n"
              ++ "[__0] trying: A-1.0.0 (user goal)\n"
              ++ "[__1] trying: B-3.0.0 (dependency of A)\n"
-             ++ "[__2] next goal: C (dependency of B)\n"
-             ++ "[__2] rejecting: C-1.0.0 (conflict: B => C==3.0.0)\n"
+             ++ "[__2] unknown package: C (dependency of B)\n"
              ++ "[__2] fail (backjumping, conflict set: B, C)\n"
              ++ "Backjump limit reached (currently 3, change with --max-backjumps "
              ++ "or try to run with --reorder-goals).\n"
@@ -1399,28 +1658,27 @@ dbPC1 = [
   , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
--- | Test for the solver's summarized log. The final conflict set is {A, D},
+-- | Test for the solver's summarized log. The final conflict set is {A, F},
 -- though the goal order forces the solver to find the (avoidable) conflict
--- between B >= 2 and C first. When the solver reaches the backjump limit, it
--- should only show the log to the first conflict. When the backjump limit is
--- high enough to allow an exhaustive search, the solver should make use of the
--- final conflict set to only show the conflict between A and D in the
--- summarized log.
+-- between B and C first. When the solver reaches the backjump limit, it should
+-- only show the log to the first conflict. When the backjump limit is high
+-- enough to allow an exhaustive search, the solver should make use of the final
+-- conflict set to only show the conflict between A and F in the summarized log.
 testSummarizedLog :: String -> Maybe Int -> String -> TestTree
 testSummarizedLog testName mbj expectedMsg =
     runTest $ maxBackjumps mbj $ goalOrder goals $ mkTest db testName ["A"] $
     solverFailure (== expectedMsg)
   where
     db = [
-        Right $ exAv "A" 1 [ExAny "B", ExAny "D"]
-      , Right $ exAv "B" 3 [ExFix "C" 3]
-      , Right $ exAv "B" 2 [ExFix "C" 2]
-      , Right $ exAv "B" 1 [ExAny "C"]
-      , Right $ exAv "C" 1 []
+        Right $ exAv "A" 1 [ExAny "B", ExAny "F"]
+      , Right $ exAv "B" 3 [ExAny "C"]
+      , Right $ exAv "B" 2 [ExAny "D"]
+      , Right $ exAv "B" 1 [ExAny "E"]
+      , Right $ exAv "E" 1 []
       ]
 
     goals :: [ExampleVar]
-    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
+    goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D", "E", "F"]]
 
 dbMinimizeConflictSet :: ExampleDb
 dbMinimizeConflictSet = [
@@ -1453,9 +1711,7 @@ testMinimizeConflictSet testName =
       , "Trying to remove variable \"A\" from the conflict set."
       , "Failed to remove \"A\" from the conflict set. Continuing with {A, B, C, D}."
       , "Trying to remove variable \"B\" from the conflict set."
-      , "Successfully removed \"B\" from the conflict set. Continuing with {A, C, D}."
-      , "Trying to remove variable \"C\" from the conflict set."
-      , "Successfully removed \"C\" from the conflict set. Continuing with {A, D}."
+      , "Successfully removed \"B\" from the conflict set. Continuing with {A, D}."
       , "Trying to remove variable \"D\" from the conflict set."
       , "Failed to remove \"D\" from the conflict set. Continuing with {A, D}."
       ]
@@ -1467,7 +1723,7 @@ testMinimizeConflictSet testName =
      ++ "[__1] rejecting: D-1.0.0 (conflict: A => D==2.0.0)\n"
      ++ "[__1] fail (backjumping, conflict set: A, D)\n"
      ++ "After searching the rest of the dependency tree exhaustively, these "
-          ++ "were the goals I've had most trouble fulfilling: A (7), D (6)"
+          ++ "were the goals I've had most trouble fulfilling: A (5), D (4)"
 
     goals :: [ExampleVar]
     goals = [P QualNone pkg | pkg <- ["A", "B", "C", "D"]]
