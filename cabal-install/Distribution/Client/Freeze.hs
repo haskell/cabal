@@ -175,6 +175,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setCountConflicts countConflicts
 
+      . setFineGrainedConflicts fineGrainedConflicts
+
       . setMinimizeConflictSet minimizeConflictSet
 
       . setShadowPkgs shadowPkgs
@@ -207,6 +209,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
     reorderGoals     = fromFlag (freezeReorderGoals     freezeFlags)
     countConflicts   = fromFlag (freezeCountConflicts   freezeFlags)
+    fineGrainedConflicts = fromFlag (freezeFineGrainedConflicts freezeFlags)
     minimizeConflictSet = fromFlag (freezeMinimizeConflictSet freezeFlags)
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)

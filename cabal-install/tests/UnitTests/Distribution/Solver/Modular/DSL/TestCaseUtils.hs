@@ -4,6 +4,7 @@ module UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils (
     SolverTest
   , SolverResult(..)
   , maxBackjumps
+  , disableFineGrainedConflicts
   , minimizeConflictSet
   , independentGoals
   , allowBootLibInstalls
@@ -53,6 +54,10 @@ import UnitTests.Options
 
 maxBackjumps :: Maybe Int -> SolverTest -> SolverTest
 maxBackjumps mbj test = test { testMaxBackjumps = mbj }
+
+disableFineGrainedConflicts :: SolverTest -> SolverTest
+disableFineGrainedConflicts test =
+    test { testFineGrainedConflicts = FineGrainedConflicts False }
 
 minimizeConflictSet :: SolverTest -> SolverTest
 minimizeConflictSet test =
@@ -105,6 +110,7 @@ data SolverTest = SolverTest {
   , testTargets              :: [String]
   , testResult               :: SolverResult
   , testMaxBackjumps         :: Maybe Int
+  , testFineGrainedConflicts :: FineGrainedConflicts
   , testMinimizeConflictSet  :: MinimizeConflictSet
   , testIndepGoals           :: IndependentGoals
   , testAllowBootLibInstalls :: AllowBootLibInstalls
@@ -201,6 +207,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets              = targets
   , testResult               = result
   , testMaxBackjumps         = Nothing
+  , testFineGrainedConflicts = FineGrainedConflicts True
   , testMinimizeConflictSet  = MinimizeConflictSet False
   , testIndepGoals           = IndependentGoals False
   , testAllowBootLibInstalls = AllowBootLibInstalls False
@@ -224,8 +231,8 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
                      testMaxBackjumps (CountConflicts True)
-                     testMinimizeConflictSet testIndepGoals
-                     (ReorderGoals False) testAllowBootLibInstalls
+                     testFineGrainedConflicts testMinimizeConflictSet
+                     testIndepGoals (ReorderGoals False) testAllowBootLibInstalls
                      testOnlyConstrained testEnableBackjumping testSolveExecutables
                      (sortGoals <$> testGoalOrder) testConstraints
                      testSoftConstraints testVerbosity testEnableAllTests
