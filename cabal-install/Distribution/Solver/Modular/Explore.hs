@@ -86,7 +86,7 @@ logBackjump mbj cs es =
   where
     reachedBjLimit = case mbj of
                        Nothing    -> const False
-                       Just limit -> (== limit)
+                       Just limit -> (>= limit)
 
 -- | Like 'retry', except that it only applies the input function when the
 -- backjump limit has not been reached.
