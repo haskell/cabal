@@ -16,6 +16,7 @@ module Distribution.Simple.Program.GHC (
 
     runGHC,
 
+    packageDbArgs,
     packageDbArgsDb,
     normaliseGhcArgs
 
