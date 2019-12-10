@@ -176,9 +176,6 @@ timed $CABALPLAN --version
 # Basic setup
 #######################################################################
 
-# NOTE: This should match cabal-testsuite version
-CABAL_VERSION="3.1.0.0"
-
 if [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"
 else
@@ -193,7 +190,7 @@ fi
 
 BASEHC=ghc-$($HC --numeric-version)
 BUILDDIR=dist-newstyle-validate-$BASEHC
-CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-${CABAL_VERSION}"
+CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 
 CABALNEWBUILD="${CABAL} v2-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALPLANLISTBIN="${CABALPLAN} list-bin --builddir=$BUILDDIR"
