@@ -186,7 +186,7 @@ main = do
                                   = "UNEXPECTED OK"
                                   | otherwise
                                   = "FAIL"
-                            unless (mainArgHideSuccesses args && status /= "FAIL") $ do
+                            unless (mainArgHideSuccesses args && status == "OK") $ do
                                 logMeta $
                                     path ++ replicate (margin - length path) ' ' ++ status ++
                                     if time >= 0.01
