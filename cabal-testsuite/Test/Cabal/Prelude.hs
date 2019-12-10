@@ -830,9 +830,14 @@ hasCabalForGhc = do
         (testVerbosity env)
         ghcProgram
         (runnerProgramDb (testScriptEnv env))
+
     -- TODO: I guess, to be more robust what we should check for
     -- specifically is that the Cabal library we want to use
     -- will be picked up by the package db stack of ghc-program
+
+    -- liftIO $ putStrLn $ "ghc_program:        " ++ show ghc_program
+    -- liftIO $ putStrLn $ "runner_ghc_program: " ++ show runner_ghc_program
+
     return (programPath ghc_program == programPath runner_ghc_program)
 
 -- | If you want to use a Custom setup with new-build, it needs to
