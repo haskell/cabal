@@ -110,5 +110,13 @@ cabal-install-test:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
 
-validate-via-docker:
-	docker build -t cabal-validate -f validate.dockerfile .
+# Docker validation
+
+validate-via-docker-7.6.3:
+	docker build -t cabal-validate -f .docker/validate-7.6.3.dockerfile .
+
+validate-via-docker-8.6.5:
+	docker build -t cabal-validate -f .docker/validate-8.6.5.dockerfile .
+
+validate-via-docker-8.8.1:
+	docker build -t cabal-validate -f .docker/validate-8.8.1.dockerfile .

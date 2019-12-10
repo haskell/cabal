@@ -1,19 +1,24 @@
-FROM    haskell:8.6.5
+# TODO: change to bionic
+# https://github.com/haskell-CI/haskell-ci/issues/342
+FROM    phadej/ghc:7.6.3-xenial
 
-# We need prof GHC for some tests
+# We need newer compiler, to install cabal-plan
 RUN     apt-get update
-RUN     apt-get install ghc-8.6.5-prof
+RUN     apt-get install -y ghc-8.6.5 ghc-7.6.3-dyn
 
 # Install cabal-plan
 RUN     cabal v2-update
-RUN     cabal v2-install cabal-plan --constraint 'cabal-plan ^>=0.6'
+RUN     cabal v2-install -w /opt/ghc/8.6.5/bin/ghc-8.6.5 cabal-plan --constraint 'cabal-plan ^>=0.6'
+
+# Remove ghc-8.6.5, so it doesn't interfere
+RUN     apt-get remove -y ghc-8.6.5
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
-RUN     cabal v2-install -w ghc-8.6.5 --lib \
+RUN     cabal v2-install -w ghc-7.6.3 --lib \
           aeson \
           async \
           base-compat \
@@ -31,7 +36,6 @@ RUN     cabal v2-install -w ghc-8.6.5 --lib \
           pretty-show \
           regex-compat-tdfa \
           regex-tdfa \
-          resolv \
           statistics \
           tar \
           tasty \
@@ -40,9 +44,19 @@ RUN     cabal v2-install -w ghc-8.6.5 --lib \
           tasty-quickcheck \
           tree-diff \
           zlib \
+	  --constraint="bytestring installed" \
+	  --constraint="binary     installed" \
+	  --constraint="containers installed" \
+	  --constraint="deepseq    installed" \
+	  --constraint="directory  installed" \
+	  --constraint="filepath   installed" \
+	  --constraint="pretty     installed" \
+	  --constraint="process    installed" \
+	  --constraint="time       installed" \
+	  --constraint="unix       installed" \
         && rm -rf $HOME/.ghc
 
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -w ghc-8.6.5 -v
+RUN     sh ./validate.sh -l -w ghc-7.6.3 -v
