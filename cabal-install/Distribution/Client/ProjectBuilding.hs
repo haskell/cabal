@@ -38,9 +38,8 @@ module Distribution.Client.ProjectBuilding (
     BuildFailureReason(..),
   ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
+import Distribution.Client.Compat.Prelude
+import Prelude ()
 
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
 import           Distribution.Client.RebuildMonad
@@ -96,28 +95,19 @@ import           Distribution.Pretty
 import           Distribution.Compat.Graph (IsNode(..))
 
 import qualified Data.List.NonEmpty as NE
-import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import           Data.List (isPrefixOf)
 
-import           Control.Monad
-import           Control.Exception
-import           Data.Function (on)
-import           Data.Maybe
+import Control.Exception (Exception (..), Handler (..), SomeAsyncException, SomeException, assert, catches, handle, throwIO)
+import Data.Function     (on)
+import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
+import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
+import System.IO         (IOMode (AppendMode), withFile)
 
-import           System.FilePath
-import           System.IO
-import           System.Directory
+import Distribution.Compat.Directory (listDirectory)
 
-#if !MIN_VERSION_directory(1,2,5)
-listDirectory :: FilePath -> IO [FilePath]
-listDirectory path =
-  (filter f) <$> (getDirectoryContents path)
-  where f filename = filename /= "." && filename /= ".."
-#endif
 
 ------------------------------------------------------------------------------
 -- * Overall building strategy.
@@ -591,7 +581,7 @@ rebuildTargets verbosity
 
     createDirectoryIfMissingVerbose verbosity True distBuildRootDirectory
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
-    mapM_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
+    traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
     -- Before traversing the install plan, pre-emptively find all packages that
     -- will need to be downloaded and start downloading them.
@@ -1014,7 +1004,7 @@ buildAndInstallUnpackedPackage verbosity
               listFilesRecursive :: FilePath -> IO [FilePath]
               listFilesRecursive path = do
                 files <- fmap (path </>) <$> (listDirectory path)
-                allFiles <- forM files $ \file -> do
+                allFiles <- for files $ \file -> do
                   isDir <- doesDirectoryExist file
                   if isDir
                     then listFilesRecursive file
@@ -1448,11 +1438,10 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       ++ show perror
 
     readPkgConf pkgConfDir pkgConfFile = do
-      (warns, ipkg) <-
-        withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
-        case Installed.parseInstalledPackageInfo pkgConfStr of
-          Left perrors -> pkgConfParseFailed $ unlines $ NE.toList perrors
-          Right (warns, ipkg) -> return (warns, ipkg)
+      pkgConfStr <- BS.readFile (pkgConfDir </> pkgConfFile)
+      (warns, ipkg) <- case Installed.parseInstalledPackageInfo pkgConfStr of
+        Left perrors -> pkgConfParseFailed $ unlines $ NE.toList perrors
+        Right (warns, ipkg) -> return (warns, ipkg)
 
       unless (null warns) $
         warn verbosity $ unlines warns

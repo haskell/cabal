@@ -283,7 +283,7 @@ ipiTest fp = testGroup fp $
 
 ipiFormatGoldenTest :: FilePath -> TestTree
 ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
-    contents <- readFile input
+    contents <- BS.readFile input
     let res = IPI.parseInstalledPackageInfo contents
     return $ toUTF8BS $ case res of
         Left err -> "ERROR " ++ show err
@@ -296,7 +296,7 @@ ipiFormatGoldenTest fp = cabalGoldenTest "format" correct $ do
 #ifdef MIN_VERSION_tree_diff
 ipiTreeDiffGoldenTest :: FilePath -> TestTree
 ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
-    contents <- readFile input
+    contents <- BS.readFile input
     let res = IPI.parseInstalledPackageInfo contents
     case res of
         Left err -> fail $ "ERROR " ++ show err
@@ -308,10 +308,10 @@ ipiTreeDiffGoldenTest fp = ediffGolden goldenTest "expr" exprFile $ do
 
 ipiFormatRoundTripTest :: FilePath -> TestTree
 ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
-    contents <- readFile input
+    contents <- BS.readFile input
     x <- parse contents
     let contents' = IPI.showInstalledPackageInfo x
-    y <- parse contents'
+    y <- parse (toUTF8BS contents')
 
     -- ghc-pkg prints pkgroot itself, based on cli arguments!
     let x' = x { IPI.pkgRoot = Nothing }
@@ -321,11 +321,11 @@ ipiFormatRoundTripTest fp = testCase "roundtrip" $ do
 
     -- Complete round-trip
     let contents2 = IPI.showFullInstalledPackageInfo x
-    z <- parse contents2
+    z <- parse (toUTF8BS contents2)
     assertEqual "re-parsed doesn't match" x z
 
   where
-    parse :: String -> IO IPI.InstalledPackageInfo
+    parse :: BS.ByteString -> IO IPI.InstalledPackageInfo
     parse c = do
         case IPI.parseInstalledPackageInfo c of
             Right (_, ipi) -> return ipi

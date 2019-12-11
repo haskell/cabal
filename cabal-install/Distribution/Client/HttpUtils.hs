@@ -40,7 +40,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
-         , copyFileVerbose,  withTempFile )
+         , copyFileVerbose,  withTempFile, IOData (..) )
 import Distribution.Client.Utils
          ( withTempFileName )
 import Distribution.Client.Types
@@ -351,7 +351,7 @@ curlTransport prog =
     addAuthConfig auth progInvocation = progInvocation
       { progInvokeInput = do
           (uname, passwd) <- auth
-          return $ unlines
+          return $ IODataText $ unlines
             [ "--digest"
             , "--user " ++ uname ++ ":" ++ passwd
             ]
@@ -508,7 +508,7 @@ wgetTransport prog =
         -- and sensitive data should not be passed via command line arguments.
         let
           invocation = (programInvocation prog ("--input-file=-" : args))
-            { progInvokeInput = Just (uriToString id uri "")
+            { progInvokeInput = Just $ IODataText $ uriToString id uri ""
             }
 
         -- wget returns its output on stderr rather than stdout
@@ -619,7 +619,7 @@ powershellTransport prog =
             ]
       debug verbosity script
       getProgramInvocationOutput verbosity (programInvocation prog args)
-        { progInvokeInput = Just (script ++ "\nExit(0);")
+        { progInvokeInput = Just $ IODataText $ script ++ "\nExit(0);"
         }
 
     escape = show

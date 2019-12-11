@@ -1,5 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -42,30 +44,28 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude hiding (init)
+import Prelude ()
 
-import Data.Either (partitionEithers)
-import qualified Data.List.NonEmpty as NE
-
+import Distribution.Compat.Exception
 import Distribution.InstalledPackageInfo
-import Distribution.Simple.Compiler
-import Distribution.Simple.Program.Types
-import Distribution.Simple.Program.Run
-import Distribution.Simple.Utils
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.Simple.Compiler
+import Distribution.Simple.Program.Run
+import Distribution.Simple.Program.Types
+import Distribution.Simple.Utils
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Verbosity
-import Distribution.Compat.Exception
 
-import Data.List
-         ( stripPrefix )
-import System.FilePath as FilePath
-         ( (</>), (<.>)
-         , splitPath, splitDirectories, joinPath, isPathSeparator )
+import Data.List       (stripPrefix)
+import System.FilePath as FilePath (isPathSeparator, joinPath, splitDirectories, splitPath, (<.>), (</>))
+
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Lazy  as LBS
+import qualified Data.List.NonEmpty    as NE
 import qualified System.FilePath.Posix as FilePath.Posix
 
 -- | Information about the features and capabilities of an @hc-pkg@
@@ -225,9 +225,9 @@ expose hpi verbosity packagedb pkgid =
 describe :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId -> IO [InstalledPackageInfo]
 describe hpi verbosity packagedb pid = do
 
-  output <- getProgramInvocationOutput verbosity
+  output <- getProgramInvocationLBS verbosity
               (describeInvocation hpi verbosity packagedb pid)
-    `catchIO` \_ -> return ""
+    `catchIO` \_ -> return mempty
 
   case parsePackages output of
     Left ok -> return ok
@@ -250,7 +250,7 @@ hide hpi verbosity packagedb pkgid =
 dump :: HcPkgInfo -> Verbosity -> PackageDB -> IO [InstalledPackageInfo]
 dump hpi verbosity packagedb = do
 
-  output <- getProgramInvocationOutput verbosity
+  output <- getProgramInvocationLBS verbosity
               (dumpInvocation hpi verbosity packagedb)
     `catchIO` \e -> die' verbosity $ programId (hcPkgProgram hpi) ++ " dump failed: "
                        ++ displayException e
@@ -260,26 +260,50 @@ dump hpi verbosity packagedb = do
     _       -> die' verbosity $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " dump'"
 
-parsePackages :: String -> Either [InstalledPackageInfo] [String]
-parsePackages str =
-    case partitionEithers $ map parseInstalledPackageInfo (splitPkgs str) of
-        ([], ok)   -> Left [ setUnitId . maybe id mungePackagePaths (pkgRoot pkg) $ pkg | (_, pkg) <- ok ]
-        (msgss, _) -> Right (foldMap NE.toList msgss)
 
---TODO: this could be a lot faster. We're doing normaliseLineEndings twice
--- and converting back and forth with lines/unlines.
-splitPkgs :: String -> [String]
-splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
+parsePackages :: LBS.ByteString -> Either [InstalledPackageInfo] [String]
+parsePackages lbs0 =
+    case traverse parseInstalledPackageInfo $ splitPkgs lbs0 of
+        Right ok  -> Left [ setUnitId . maybe id mungePackagePaths (pkgRoot pkg) $ pkg | (_, pkg) <- ok ]
+        Left msgs -> Right (NE.toList msgs)
   where
-    -- Handle the case of there being no packages at all.
-    checkEmpty [s] | all isSpace s = []
-    checkEmpty ss                  = ss
+    splitPkgs :: LBS.ByteString -> [BS.ByteString]
+    splitPkgs = checkEmpty . doSplit
+      where
+        -- Handle the case of there being no packages at all.
+        checkEmpty [s] | BS.all isSpace8 s = []
+        checkEmpty ss                      = ss
 
-    splitWith :: (a -> Bool) -> [a] -> [[a]]
-    splitWith p xs = ys : case zs of
-                       []   -> []
-                       _:ws -> splitWith p ws
-      where (ys,zs) = break p xs
+        isSpace8 :: Word8 -> Bool
+        isSpace8 9  = True -- '\t'
+        isSpace8 10 = True -- '\n'
+        isSpace8 13 = True -- '\r'
+        isSpace8 32 = True -- ' '
+        isSpace8 _  = False
+
+        doSplit :: LBS.ByteString -> [BS.ByteString]
+        doSplit lbs = go (LBS.findIndices (\w -> w == 10 || w == 13) lbs)
+          where
+            go :: [Int64] -> [BS.ByteString]
+            go []         = [ LBS.toStrict lbs ]
+            go (idx:idxs) =
+                let (pfx, sfx) = LBS.splitAt idx lbs
+                in case foldr (<|>) Nothing $ map (`lbsStripPrefix` sfx) separators of
+                    Just sfx' -> LBS.toStrict pfx : doSplit sfx'
+                    Nothing   -> go idxs
+
+            separators :: [LBS.ByteString]
+            separators = ["\n---\n", "\r\n---\r\n", "\r---\r"]
+
+lbsStripPrefix :: LBS.ByteString -> LBS.ByteString -> Maybe LBS.ByteString
+#if MIN_VERSION_bytestring(0,10,8)
+lbsStripPrefix pfx lbs = LBS.stripPrefix pfx lbs
+#else
+lbsStripPrefix pfx lbs
+    | LBS.isPrefixOf pfx lbs = Just (LBS.drop (LBS.length pfx) lbs)
+    | otherwise              = Nothing
+#endif
+
 
 mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
 -- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec
@@ -376,7 +400,7 @@ registerInvocation
   -> ProgramInvocation
 registerInvocation hpi verbosity packagedbs pkgInfo registerOptions =
     (programInvocation (hcPkgProgram hpi) (args "-")) {
-      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+      progInvokeInput         = Just $ IODataText $ showInstalledPackageInfo pkgInfo,
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where

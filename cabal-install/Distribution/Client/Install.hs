@@ -135,7 +135,7 @@ import qualified Distribution.Simple.Setup as Cabal
          , testCommand, TestFlags(..) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, comparing
-         , writeFileAtomic, withUTF8FileContents )
+         , writeFileAtomic )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -173,6 +173,8 @@ import Distribution.System
 import Distribution.Verbosity as Verbosity
          ( Verbosity, modifyVerbosity, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
+
+import qualified Data.ByteString as BS
 
 --TODO:
 -- * assign flags to packages individually
@@ -1551,14 +1553,14 @@ installUnpackedPackage verbosity installLock numJobs
 
     readPkgConf :: FilePath -> FilePath
                 -> IO Installed.InstalledPackageInfo
-    readPkgConf pkgConfDir pkgConfFile =
-      (withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfText ->
-        case Installed.parseInstalledPackageInfo pkgConfText of
-          Left perrors    -> pkgConfParseFailed $ unlines $ NE.toList perrors
-          Right (warns, pkgConf) -> do
-            unless (null warns) $
-              warn verbosity $ unlines warns
-            return pkgConf)
+    readPkgConf pkgConfDir pkgConfFile = do
+      pkgConfText <- BS.readFile (pkgConfDir </> pkgConfFile)
+      case Installed.parseInstalledPackageInfo pkgConfText of
+        Left perrors    -> pkgConfParseFailed $ unlines $ NE.toList perrors
+        Right (warns, pkgConf) -> do
+          unless (null warns) $
+            warn verbosity $ unlines warns
+          return pkgConf
 
     pkgConfParseFailed :: String -> IO a
     pkgConfParseFailed perror =

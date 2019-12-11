@@ -61,6 +61,7 @@ module Distribution.Simple.Program (
     , programInvocation
     , runProgramInvocation
     , getProgramInvocationOutput
+    , getProgramInvocationLBS
 
     -- * The collection of unconfigured and configured programs
     , builtinPrograms
