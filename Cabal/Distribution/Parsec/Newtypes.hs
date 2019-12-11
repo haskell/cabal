@@ -18,6 +18,10 @@ module Distribution.Parsec.Newtypes (
     Sep (..),
     -- ** Type
     List,
+    -- * Set
+    alaSet,
+    alaSet',
+    Set',
     -- * Version & License
     SpecVersion (..),
     TestedWith (..),
@@ -38,10 +42,10 @@ import Distribution.Compiler         (CompilerFlavor)
 import Distribution.License          (License)
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Version
-       (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
+import Distribution.Version          (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
 import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
 
+import qualified Data.Set                        as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX               as SPDX
 
@@ -116,6 +120,36 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
+
+-- | Like 'List', but for 'Set'.
+newtype Set' sep b a = Set' { _getSet :: Set a }
+
+-- | 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
+-- arguments to constraint the resulting type
+--
+-- >>> :t alaSet VCat
+-- alaSet VCat :: Set a -> Set' VCat (Identity a) a
+--
+-- >>> :t alaSet' FSep Token
+-- alaSet' FSep Token :: Set String -> Set' FSep Token String
+--
+-- >>> unpack' (alaSet' FSep Token) <$> eitherParsec "foo bar foo"
+-- Right (fromList ["bar","foo"])
+--
+alaSet :: sep -> Set a -> Set' sep (Identity a) a
+alaSet _ = Set'
+
+-- | More general version of 'alaSet'.
+alaSet' :: sep -> (a -> b) -> Set a -> Set' sep b a
+alaSet' _ _ = Set'
+
+instance Newtype (Set a) (Set' sep wrapper a)
+
+instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
+    parsec   = pack . Set.fromList . map (unpack :: b -> a) <$> parseSep (Proxy :: Proxy sep) parsec
+
+instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
+    pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
 
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }
