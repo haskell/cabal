@@ -1,4 +1,4 @@
-module Distribution.Compat.MD5 (
+module Distribution.Utils.MD5 (
     MD5,
     showMD5,
     md5,

@@ -322,6 +322,7 @@ library
     Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
+    Distribution.Utils.MD5
     Distribution.Utils.Structured
     Distribution.Compat.CreatePipe
     Distribution.Compat.Directory
@@ -552,7 +553,6 @@ library
     Distribution.Compat.Async
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
-    Distribution.Compat.MD5
     Distribution.Compat.MonadFail
     Distribution.Compat.Prelude
     Distribution.Compat.SnocList
