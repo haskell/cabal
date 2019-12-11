@@ -17,3 +17,4 @@ module Distribution.Client.Compat.Prelude
 
 import Prelude (IO)
 import Distribution.Compat.Prelude.Internal hiding (IO)
+import Distribution.Client.Compat.Orphans ()

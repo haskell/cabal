@@ -67,6 +67,9 @@ module Distribution.Client.InstallPlan (
   reverseDependencyClosure,
   ) where
 
+import Distribution.Client.Compat.Prelude hiding (toList, lookup, tail)
+import Prelude (tail)
+
 import Distribution.Client.Types hiding (BuildOutcomes)
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.Simple.Configure as Configure
@@ -90,30 +93,18 @@ import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.InstSolverPackage
 
 import           Distribution.Utils.LogProgress
+import           Distribution.Utils.Structured (Structured (..), Structure(Nominal))
 
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
 
-import Data.List
-         ( foldl', intercalate )
 import qualified Data.Foldable as Foldable (all, toList)
-import Data.Maybe
-         ( fromMaybe, mapMaybe )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
-import Distribution.Compat.Binary (Binary(..))
-import GHC.Generics
-import Data.Typeable
-import Control.Monad
 import Control.Exception
          ( assert )
 import qualified Data.Map as Map
-import           Data.Map (Map)
 import qualified Data.Set as Set
-import           Data.Set (Set)
-
-import Prelude hiding (lookup)
-
 
 -- When cabal tries to install a number of packages, including all their
 -- dependencies it has a non-trivial problem to solve.
@@ -203,8 +194,8 @@ instance (IsNode ipkg, IsNode srcpkg, Key ipkg ~ UnitId, Key srcpkg ~ UnitId)
     nodeNeighbors (Configured  spkg) = nodeNeighbors spkg
     nodeNeighbors (Installed   spkg) = nodeNeighbors spkg
 
-instance (Binary ipkg, Binary srcpkg)
-      => Binary (GenericPlanPackage ipkg srcpkg)
+instance (Binary ipkg, Binary srcpkg) => Binary (GenericPlanPackage ipkg srcpkg)
+instance (Structured ipkg, Structured srcpkg) => Structured (GenericPlanPackage ipkg srcpkg)
 
 type PlanPackage = GenericPlanPackage
                    InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
@@ -262,16 +253,23 @@ internalError :: String -> String -> a
 internalError loc msg = error $ "internal error in InstallPlan." ++ loc
                              ++ if null msg then "" else ": " ++ msg
 
+instance (Structured ipkg, Structured srcpkg) => Structured (GenericInstallPlan ipkg srcpkg) where
+    structure p = Nominal (typeRep p) 0 "GenericInstallPlan"
+        [ structure (Proxy :: Proxy ipkg)
+        , structure (Proxy :: Proxy srcpkg)
+        ]
+
 instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
           Binary ipkg, Binary srcpkg)
        => Binary (GenericInstallPlan ipkg srcpkg) where
     put GenericInstallPlan {
               planGraph      = graph,
               planIndepGoals = indepGoals
-        } = put (graph, indepGoals)
+        } = put graph >> put indepGoals
 
     get = do
-      (graph, indepGoals) <- get
+      graph <- get
+      indepGoals <- get
       return $! mkInstallPlan "(instance Binary)" graph indepGoals
 
 showPlanGraph :: (Package ipkg, Package srcpkg,

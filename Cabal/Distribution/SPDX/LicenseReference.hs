@@ -34,6 +34,7 @@ licenseDocumentRef :: LicenseRef -> Maybe String
 licenseDocumentRef = _lrDocument
 
 instance Binary LicenseRef
+instance Structured LicenseRef
 
 instance NFData LicenseRef where
     rnf (LicenseRef d l) = rnf d `seq` rnf l

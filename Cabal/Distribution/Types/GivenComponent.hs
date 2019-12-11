@@ -25,4 +25,4 @@ data GivenComponent =
   deriving (Generic, Read, Show, Eq, Typeable)
 
 instance Binary GivenComponent
-
+instance Structured GivenComponent

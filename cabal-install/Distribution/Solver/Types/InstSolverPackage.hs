@@ -4,6 +4,7 @@ module Distribution.Solver.Types.InstSolverPackage
     ) where
 
 import Distribution.Compat.Binary (Binary(..))
+import Distribution.Utils.Structured (Structured)
 import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..) )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
@@ -23,6 +24,7 @@ data InstSolverPackage = InstSolverPackage {
   deriving (Eq, Show, Generic)
 
 instance Binary InstSolverPackage
+instance Structured InstSolverPackage
 
 instance Package InstSolverPackage where
     packageId i =

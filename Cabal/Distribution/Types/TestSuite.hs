@@ -34,6 +34,7 @@ instance L.HasBuildInfo TestSuite where
     buildInfo f l = (\x -> l { testBuildInfo = x }) <$> f (testBuildInfo l)
 
 instance Binary TestSuite
+instance Structured TestSuite
 
 instance NFData TestSuite where rnf = genericRnf
 

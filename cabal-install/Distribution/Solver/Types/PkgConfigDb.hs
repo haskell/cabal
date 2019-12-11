@@ -50,6 +50,7 @@ data PkgConfigDb =  PkgConfigDb (M.Map PkgconfigName (Maybe PkgconfigVersion))
      deriving (Show, Generic, Typeable)
 
 instance Binary PkgConfigDb
+instance Structured PkgConfigDb
 
 -- | Query pkg-config for the list of installed packages, together
 -- with their versions. Return a `PkgConfigDb` encapsulating this

@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -127,7 +128,7 @@ defaultDistPref = "dist"
 data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool
-  } deriving (Generic)
+  } deriving (Generic, Typeable)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -283,9 +284,10 @@ data ConfigFlags = ConfigFlags {
       -- tools (like cabal-install) so they can add multiple-public-libraries
       -- compatibility to older ghcs by checking visibility externally.
   }
-  deriving (Generic, Read, Show)
+  deriving (Generic, Read, Show, Typeable)
 
 instance Binary ConfigFlags
+instance Structured ConfigFlags
 
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
@@ -1035,7 +1037,7 @@ data SDistFlags = SDistFlags {
     sDistListSources :: Flag FilePath,
     sDistVerbosity   :: Flag Verbosity
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
@@ -1108,7 +1110,7 @@ data RegisterFlags = RegisterFlags {
     regArgs        :: [String],
     regCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags = RegisterFlags {
@@ -1222,7 +1224,7 @@ data HscolourFlags = HscolourFlags {
     hscolourVerbosity   :: Flag Verbosity,
     hscolourCabalFilePath :: Flag FilePath
     }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 emptyHscolourFlags :: HscolourFlags
 emptyHscolourFlags = mempty
@@ -1315,7 +1317,7 @@ data DoctestFlags = DoctestFlags {
     doctestDistPref     :: Flag FilePath,
     doctestVerbosity    :: Flag Verbosity
   }
-   deriving (Show, Generic)
+   deriving (Show, Generic, Typeable)
 
 defaultDoctestFlags :: DoctestFlags
 defaultDoctestFlags = DoctestFlags {
@@ -1383,9 +1385,10 @@ instance Semigroup DoctestFlags where
 --    from documentation tarballs, and we might also want to use different
 --    flags than for development builds, so in this case we store the generated
 --    documentation in @<dist>/doc/html/<package id>-docs@.
-data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
+data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic, Typeable)
 
 instance Binary HaddockTarget
+instance Structured HaddockTarget
 
 instance Pretty HaddockTarget where
     pretty ForHackage     = Disp.text "for-hackage"
@@ -1418,7 +1421,7 @@ data HaddockFlags = HaddockFlags {
     haddockCabalFilePath :: Flag FilePath,
     haddockArgs         :: [String]
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags  = HaddockFlags {
@@ -1591,7 +1594,7 @@ data CleanFlags = CleanFlags {
     cleanVerbosity :: Flag Verbosity,
     cleanCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
@@ -1649,7 +1652,7 @@ data BuildFlags = BuildFlags {
     buildArgs :: [String],
     buildCabalFilePath :: Flag FilePath
   }
-  deriving (Read, Show, Generic)
+  deriving (Read, Show, Generic, Typeable)
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
@@ -1739,7 +1742,7 @@ data ReplFlags = ReplFlags {
     replReload      :: Flag Bool,
     replReplOptions :: [String]
   }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Typeable)
 
 defaultReplFlags :: ReplFlags
 defaultReplFlags  = ReplFlags {
@@ -1838,9 +1841,10 @@ replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
 -- ------------------------------------------------------------
 
 data TestShowDetails = Never | Failures | Always | Streaming | Direct
-    deriving (Eq, Ord, Enum, Bounded, Generic, Show)
+    deriving (Eq, Ord, Enum, Bounded, Generic, Show, Typeable)
 
 instance Binary TestShowDetails
+instance Structured TestShowDetails
 
 knownTestShowDetails :: [TestShowDetails]
 knownTestShowDetails = [minBound..maxBound]
@@ -1876,7 +1880,7 @@ data TestFlags = TestFlags {
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
-  } deriving (Generic)
+  } deriving (Generic, Typeable)
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -1996,7 +2000,7 @@ data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
     benchmarkOptions   :: [PathTemplate]
-  } deriving (Generic)
+  } deriving (Generic, Typeable)
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
@@ -2229,7 +2233,7 @@ optionNumJobs get set =
 data ShowBuildInfoFlags = ShowBuildInfoFlags
   { buildInfoBuildFlags :: BuildFlags
   , buildInfoOutputFile :: Maybe FilePath
-  } deriving Show
+  } deriving (Show, Typeable)
 
 defaultShowBuildFlags  :: ShowBuildInfoFlags
 defaultShowBuildFlags =

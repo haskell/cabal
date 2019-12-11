@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
@@ -133,6 +134,7 @@ data ConfiguredProgram = ConfiguredProgram {
   deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Binary ConfiguredProgram
+instance Structured ConfiguredProgram
 
 -- | Where a program was found. Also tells us whether it's specified by user or
 -- not.  This includes not just the path, but the program as well.
@@ -142,9 +144,10 @@ data ProgramLocation
       -- eg. --ghc-path=\/usr\/bin\/ghc-6.6
     | FoundOnSystem { locationPath :: FilePath }
       -- ^The program was found automatically.
-      deriving (Eq, Generic, Read, Show)
+      deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Binary ProgramLocation
+instance Structured ProgramLocation
 
 -- | The full path of a configured program.
 programPath :: ConfiguredProgram -> FilePath

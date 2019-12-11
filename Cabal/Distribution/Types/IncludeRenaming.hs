@@ -30,6 +30,7 @@ data IncludeRenaming
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary IncludeRenaming
+instance Structured IncludeRenaming
 
 instance NFData IncludeRenaming where rnf = genericRnf
 

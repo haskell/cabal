@@ -44,6 +44,7 @@ data License
   deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 instance Binary License
+instance Structured License
 
 instance NFData License where
     rnf NONE        = ()

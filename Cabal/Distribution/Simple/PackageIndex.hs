@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -144,9 +145,10 @@ data PackageIndex a = PackageIndex {
   -- preserved. See #1463 for discussion.
   packageIdIndex :: !(Map (PackageName, LibraryName) (Map Version [a]))
 
-  } deriving (Eq, Generic, Show, Read)
+  } deriving (Eq, Generic, Show, Read, Typeable)
 
 instance Binary a => Binary (PackageIndex a)
+instance Structured a => Structured (PackageIndex a)
 
 -- | The default package index which contains 'InstalledPackageInfo'.  Normally
 -- use this.

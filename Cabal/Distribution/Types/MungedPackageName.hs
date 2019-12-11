@@ -34,6 +34,7 @@ data MungedPackageName = MungedPackageName !PackageName !LibraryName
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary MungedPackageName
+instance Structured MungedPackageName
 instance NFData MungedPackageName where rnf = genericRnf
 
 -- | Computes the package name for a library.  If this is the public

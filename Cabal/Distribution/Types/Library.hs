@@ -34,7 +34,7 @@ instance L.HasBuildInfo Library where
     buildInfo f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
 
 instance Binary Library
-
+instance Structured Library
 instance NFData Library where rnf = genericRnf
 
 emptyLibrary :: Library

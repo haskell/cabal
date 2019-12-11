@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.ModuleShape (
@@ -29,9 +30,10 @@ data ModuleShape = ModuleShape {
     modShapeProvides :: OpenModuleSubst,
     modShapeRequires :: Set ModuleName
     }
-    deriving (Eq, Show, Generic)
+    deriving (Eq, Show, Generic, Typeable)
 
 instance Binary ModuleShape
+instance Structured ModuleShape
 
 instance ModSubst ModuleShape where
     modSubst subst (ModuleShape provs reqs)

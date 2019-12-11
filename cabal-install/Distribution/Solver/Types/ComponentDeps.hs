@@ -62,6 +62,7 @@ data Component =
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary Component
+instance Structured Component
 
 -- | Dependency for a single component.
 type ComponentDep a = (Component, a)
@@ -89,6 +90,7 @@ instance Traversable ComponentDeps where
   traverse f = fmap ComponentDeps . traverse f . unComponentDeps
 
 instance Binary a => Binary (ComponentDeps a)
+instance Structured a => Structured (ComponentDeps a)
 
 componentNameToComponent :: CN.ComponentName -> Component
 componentNameToComponent (CN.CLibName  LN.LMainLibName)   = ComponentLib

@@ -66,7 +66,7 @@ data CompilerFlavor =
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary CompilerFlavor
-
+instance Structured CompilerFlavor
 instance NFData CompilerFlavor where rnf = genericRnf
 
 knownCompilerFlavors :: [CompilerFlavor]
@@ -125,6 +125,7 @@ data PerCompilerFlavor v = PerCompilerFlavor v v
   deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary a => Binary (PerCompilerFlavor a)
+instance Structured a => Structured (PerCompilerFlavor a)
 instance NFData a => NFData (PerCompilerFlavor a)
 
 perCompilerFlavorToList :: PerCompilerFlavor v -> [(CompilerFlavor, v)]
@@ -143,10 +144,10 @@ instance (Semigroup a, Monoid a) => Monoid (PerCompilerFlavor a) where
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Generic, Ord, Read, Show)
+  deriving (Eq, Generic, Ord, Read, Show, Typeable)
 
 instance Binary CompilerId
-
+instance Structured CompilerId
 instance NFData CompilerId where rnf = genericRnf
 
 instance Pretty CompilerId where
@@ -192,9 +193,10 @@ instance Binary CompilerInfo
 data AbiTag
   = NoAbiTag
   | AbiTag String
-  deriving (Eq, Generic, Show, Read)
+  deriving (Eq, Generic, Show, Read, Typeable)
 
 instance Binary AbiTag
+instance Structured AbiTag
 
 instance Pretty AbiTag where
   pretty NoAbiTag     = Disp.empty

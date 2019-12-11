@@ -25,6 +25,7 @@ data InstallMethod = InstallMethodCopy
   deriving (Eq, Show, Generic, Bounded, Enum)
 
 instance Binary InstallMethod
+instance Structured InstallMethod
 
 data ClientInstallFlags = ClientInstallFlags
   { cinstInstallLibs     :: Flag Bool
@@ -42,6 +43,7 @@ instance Semigroup ClientInstallFlags where
   (<>) = gmappend
 
 instance Binary ClientInstallFlags
+instance Structured ClientInstallFlags
 
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags = ClientInstallFlags

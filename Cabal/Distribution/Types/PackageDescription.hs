@@ -152,6 +152,7 @@ data PackageDescription
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary PackageDescription
+instance Structured PackageDescription
 
 instance NFData PackageDescription where rnf = genericRnf
 

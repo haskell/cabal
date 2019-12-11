@@ -52,6 +52,7 @@ depLibraries :: Dependency -> Set LibraryName
 depLibraries (Dependency _ _ cs) = cs
 
 instance Binary Dependency
+instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
 
 instance Pretty Dependency where

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Types.ExposedModule where
 
@@ -17,7 +18,7 @@ data ExposedModule
        exposedName      :: ModuleName,
        exposedReexport  :: Maybe OpenModule
      }
-  deriving (Eq, Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Pretty ExposedModule where
     pretty (ExposedModule m reexport) =
@@ -40,5 +41,5 @@ instance Parsec ExposedModule where
         return (ExposedModule m reexport)
 
 instance Binary ExposedModule
-
+instance Structured ExposedModule
 instance NFData ExposedModule where rnf = genericRnf

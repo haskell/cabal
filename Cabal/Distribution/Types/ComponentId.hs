@@ -56,6 +56,7 @@ instance IsString ComponentId where
     fromString = mkComponentId
 
 instance Binary ComponentId
+instance Structured ComponentId
 
 instance Pretty ComponentId where
   pretty = text . unComponentId

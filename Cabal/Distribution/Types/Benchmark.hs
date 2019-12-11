@@ -31,7 +31,7 @@ data Benchmark = Benchmark {
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary Benchmark
-
+instance Structured Benchmark
 instance NFData Benchmark where rnf = genericRnf
 
 instance L.HasBuildInfo Benchmark where

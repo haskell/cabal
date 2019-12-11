@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE RankNTypes         #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -61,19 +61,21 @@ module Distribution.Simple.Program.Db (
 
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import Distribution.Simple.Program.Types
-import Distribution.Simple.Program.Find
-import Distribution.Simple.Program.Builtin
-import Distribution.Simple.Utils
-import Distribution.Version
 import Distribution.Pretty
+import Distribution.Simple.Program.Builtin
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Types
+import Distribution.Simple.Utils
+import Distribution.Utils.Structured       (Structure (..), Structured (..))
 import Distribution.Verbosity
+import Distribution.Version
 
 import Control.Monad (join)
-import Data.Tuple (swap)
+import Data.Tuple    (swap)
+
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------
@@ -150,6 +152,12 @@ instance Binary ProgramDb where
       progSearchPath  = searchpath,
       configuredProgs = progs
     }
+
+instance Structured ProgramDb where
+    structure p = Nominal (typeRep p) 0 "ProgramDb"
+        [ structure (Proxy :: Proxy ProgramSearchPath)
+        , structure (Proxy :: Proxy ConfiguredProgs)
+        ]
 
 
 -- | The 'Read'\/'Show' and 'Binary' instances do not preserve all the

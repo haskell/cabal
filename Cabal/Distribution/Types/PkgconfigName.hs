@@ -47,6 +47,7 @@ instance IsString PkgconfigName where
     fromString = mkPkgconfigName
 
 instance Binary PkgconfigName
+instance Structured PkgconfigName
 
 -- pkg-config allows versions and other letters in package names, eg
 -- "gtk+-2.0" is a valid pkg-config package _name_.  It then has a package

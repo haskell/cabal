@@ -22,6 +22,7 @@ data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
 instance Binary TestType
+instance Structured TestType
 
 instance NFData TestType where rnf = genericRnf
 

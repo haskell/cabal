@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns       #-}
 {-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE LambdaCase         #-}
 {-# LANGUAGE NamedFieldPuns     #-}
 {-# LANGUAGE RecordWildCards    #-}
@@ -1056,7 +1057,6 @@ readSourcePackageLocalTarball verbosity tarballFile = do
     liftIO $ fmap (mkSpecificSourcePackage location)
            . uncurry (readSourcePackageCabalFile verbosity)
          =<< extractTarballPackageCabalFile (root </> tarballFile)
-
 
 -- | A helper for 'fetchAndReadSourcePackages' to handle the case of
 -- 'ProjectPackageRemoteTarball'. We download the tarball to the dist src dir

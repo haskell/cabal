@@ -114,7 +114,7 @@ import Control.Exception
     ( ErrorCall, Exception, evaluate, throw, throwIO, try )
 import Control.Monad ( forM, forM_ )
 import Data.List.NonEmpty            ( nonEmpty )
-import Distribution.Compat.Binary    ( decodeOrFailIO, encode )
+import Distribution.Utils.Structured ( structuredDecodeOrFailIO, structuredEncode )
 import Distribution.Compat.Directory ( listDirectory )
 import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
@@ -212,7 +212,7 @@ getConfigStateFile filename = do
               Right x -> x
 
     let getStoredValue = do
-          result <- decodeOrFailIO (BLC8.tail body)
+          result <- structuredDecodeOrFailIO (BLC8.tail body)
           case result of
             Left _ -> throw ConfigStateFileNoParse
             Right x -> return x
@@ -257,7 +257,7 @@ writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
-      BLC8.unlines [showHeader pkgId, encode lbi]
+      BLC8.unlines [showHeader pkgId, structuredEncode lbi]
   where
     pkgId = localPackage lbi
 

@@ -322,6 +322,7 @@ library
     Distribution.Utils.IOData
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
+    Distribution.Utils.Structured
     Distribution.Compat.CreatePipe
     Distribution.Compat.Directory
     Distribution.Compat.Environment
@@ -335,6 +336,7 @@ library
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
     Distribution.Compat.Time
+    Distribution.Compat.Typeable
     Distribution.Compat.DList
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -619,8 +621,10 @@ test-suite unit-tests
     UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Utils.ShortText
+    UnitTests.Distribution.Utils.Structured
     UnitTests.Distribution.Version
     UnitTests.Distribution.PkgconfigVersion
+    UnitTests.Orphans
   main-is: UnitTests.hs
   build-depends:
     array,

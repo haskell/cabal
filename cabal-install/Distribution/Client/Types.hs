@@ -4,7 +4,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -68,9 +67,8 @@ import Distribution.Deprecated.ParseUtils (parseOptCommaList)
 import Distribution.Simple.Utils (ordNub)
 import Distribution.Deprecated.Text (Text(..))
 
-import Network.URI (URI(..), URIAuth(..), nullURI)
-import Control.Exception
-         ( Exception, SomeException )
+import Network.URI (URI(..), nullURI)
+import Control.Exception (Exception, SomeException)
 import qualified Text.PrettyPrint as Disp
 
 
@@ -172,6 +170,7 @@ annotatedIdToConfiguredId aid = ConfiguredId {
     }
 
 instance Binary ConfiguredId
+instance Structured ConfiguredId
 
 instance Show ConfiguredId where
   show cid = show (confInstId cid)
@@ -241,6 +240,7 @@ data PackageSpecifier pkg =
   deriving (Eq, Show, Functor, Generic)
 
 instance Binary pkg => Binary (PackageSpecifier pkg)
+instance Structured pkg => Structured (PackageSpecifier pkg)
 
 pkgSpecifierTarget :: Package pkg => PackageSpecifier pkg -> PackageName
 pkgSpecifierTarget (NamedPackage name _)       = name
@@ -291,17 +291,7 @@ data PackageLocation local =
   deriving (Show, Functor, Eq, Ord, Generic, Typeable)
 
 instance Binary local => Binary (PackageLocation local)
-
--- note, network-uri-2.6.0.3+ provide a Generic instance but earlier
--- versions do not, so we use manual Binary instances here
-instance Binary URI where
-  put (URI a b c d e) = do put a; put b; put c; put d; put e
-  get = do !a <- get; !b <- get; !c <- get; !d <- get; !e <- get
-           return (URI a b c d e)
-
-instance Binary URIAuth where
-  put (URIAuth a b c) = do put a; put b; put c
-  get = do !a <- get; !b <- get; !c <- get; return (URIAuth a b c)
+instance Structured local => Structured (PackageLocation local)
 
 data RemoteRepo =
     RemoteRepo {
@@ -334,6 +324,7 @@ data RemoteRepo =
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary RemoteRepo
+instance Structured RemoteRepo
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
@@ -369,6 +360,7 @@ data Repo =
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary Repo
+instance Structured Repo
 
 -- | Check if this is a remote repo
 isRepoRemote :: Repo -> Bool
@@ -423,11 +415,10 @@ instance Binary BuildResult
 instance Binary DocsResult
 instance Binary TestsResult
 
---FIXME: this is a total cheat
-instance Binary SomeException where
-  put _ = return ()
-  get = fail "cannot serialise exceptions"
-
+instance Structured BuildFailure
+instance Structured BuildResult
+instance Structured DocsResult
+instance Structured TestsResult
 
 -- ------------------------------------------------------------
 -- * --allow-newer/--allow-older
@@ -554,6 +545,14 @@ instance Binary RelaxedDep
 instance Binary AllowNewer
 instance Binary AllowOlder
 
+instance Structured RelaxDeps
+instance Structured RelaxDepMod
+instance Structured RelaxDepScope
+instance Structured RelaxDepSubject
+instance Structured RelaxedDep
+instance Structured AllowNewer
+instance Structured AllowOlder
+
 -- | Return 'True' if 'RelaxDeps' specifies a non-empty set of relaxations
 --
 -- Equivalent to @isRelaxDeps = (/= 'mempty')@
@@ -607,3 +606,4 @@ data WriteGhcEnvironmentFilesPolicy
   deriving (Eq, Enum, Bounded, Generic, Show)
 
 instance Binary WriteGhcEnvironmentFilesPolicy
+instance Structured WriteGhcEnvironmentFilesPolicy

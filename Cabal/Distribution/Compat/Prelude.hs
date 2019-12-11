@@ -33,11 +33,12 @@ module Distribution.Compat.Prelude (
     -- * Common type-classes
     Semigroup (..),
     gmappend, gmempty,
-    Typeable,
+    Typeable, TypeRep, typeRep,
     Data,
     Generic,
     NFData (..), genericRnf,
     Binary (..),
+    Structured,
     Alternative (..),
     MonadPlus (..),
     IsString (..),
@@ -137,7 +138,7 @@ import qualified Data.Foldable
 import Control.Applicative           (Alternative (..))
 import Control.DeepSeq               (NFData (..))
 import Data.Data                     (Data)
-import Data.Typeable                 (Typeable)
+import Distribution.Compat.Typeable  (Typeable, TypeRep, typeRep)
 import Distribution.Compat.Binary    (Binary (..))
 import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
 import GHC.Generics                  (Generic, Rep(..),
@@ -166,6 +167,8 @@ import qualified Text.PrettyPrint as Disp
 
 import qualified Prelude as OrigPrelude
 import Distribution.Compat.Stack
+
+import Distribution.Utils.Structured (Structured)
 
 type IO a = WithCallStack (OrigPrelude.IO a)
 type NoCallStackIO a = OrigPrelude.IO a

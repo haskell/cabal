@@ -60,6 +60,9 @@ module Distribution.Client.ProjectPlanning.Types (
     SetupScriptStyle(..),
   ) where
 
+import           Distribution.Client.Compat.Prelude
+import           Prelude ()
+
 import           Distribution.Client.TargetSelector
                    ( SubComponentTarget(..) )
 import           Distribution.Client.PackageHash
@@ -102,16 +105,10 @@ import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Simple.Utils (ordNub)
 
-import           Data.Map (Map)
 import qualified Data.Map as Map
-import           Data.Maybe (catMaybes)
-import           Data.Set (Set)
 import qualified Data.ByteString.Lazy as LBS
-import           Distribution.Compat.Binary
-import           GHC.Generics (Generic)
 import qualified Data.Monoid as Mon
-import           Data.Typeable
-import           Control.Monad
+import           Control.Monad (guard)
 import           System.FilePath ((</>))
 
 
@@ -158,6 +155,7 @@ data ElaboratedSharedConfig
   --TODO: [code cleanup] no Eq instance
 
 instance Binary ElaboratedSharedConfig
+instance Structured ElaboratedSharedConfig
 
 data ElaboratedConfiguredPackage
    = ElaboratedConfiguredPackage {
@@ -463,6 +461,7 @@ instance IsNode ElaboratedConfiguredPackage where
     nodeNeighbors = elabOrderDependencies
 
 instance Binary ElaboratedConfiguredPackage
+instance Structured ElaboratedConfiguredPackage
 
 data ElaboratedPackageOrComponent
     = ElabPackage   ElaboratedPackage
@@ -470,6 +469,7 @@ data ElaboratedPackageOrComponent
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedPackageOrComponent
+instance Structured ElaboratedPackageOrComponent
 
 elabComponentName :: ElaboratedConfiguredPackage -> Maybe ComponentName
 elabComponentName elab =
@@ -661,6 +661,7 @@ data ElaboratedComponent
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedComponent
+instance Structured ElaboratedComponent
 
 -- | See 'elabOrderDependencies'.
 compOrderDependencies :: ElaboratedComponent -> [UnitId]
@@ -709,6 +710,7 @@ data ElaboratedPackage
   deriving (Eq, Show, Generic)
 
 instance Binary ElaboratedPackage
+instance Structured ElaboratedPackage
 
 -- | See 'elabOrderDependencies'.  This gives the unflattened version,
 -- which can be useful in some circumstances.
@@ -740,6 +742,7 @@ data BuildStyle =
   deriving (Eq, Show, Generic)
 
 instance Binary BuildStyle
+instance Structured BuildStyle
 
 type CabalFileText = LBS.ByteString
 
@@ -757,6 +760,7 @@ data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
   deriving (Eq, Ord, Show, Generic)
 
 instance Binary ComponentTarget
+instance Structured ComponentTarget
 
 -- | Unambiguously render a 'ComponentTarget', e.g., to pass
 -- to a Cabal Setup script.
@@ -832,3 +836,4 @@ data SetupScriptStyle = SetupCustomExplicitDeps
   deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SetupScriptStyle
+instance Structured SetupScriptStyle

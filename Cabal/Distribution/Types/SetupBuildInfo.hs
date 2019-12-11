@@ -28,7 +28,7 @@ data SetupBuildInfo = SetupBuildInfo
     deriving (Generic, Show, Eq, Read, Typeable, Data)
 
 instance Binary SetupBuildInfo
-
+instance Structured SetupBuildInfo
 instance NFData SetupBuildInfo where rnf = genericRnf
 
 instance Monoid SetupBuildInfo where

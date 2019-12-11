@@ -116,7 +116,7 @@ askRoot = Rebuild Reader.ask
 --
 -- Do not share 'FileMonitor's between different uses of 'rerunIfChanged'.
 --
-rerunIfChanged :: (Binary a, Binary b)
+rerunIfChanged :: (Binary a, Structured a, Binary b, Structured b)
                => Verbosity
                -> FileMonitor a b
                -> a

@@ -20,6 +20,9 @@ module Distribution.Client.ProjectConfig.Types (
     MapMappend(..),
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.Types
          ( RemoteRepo, AllowNewer(..), AllowOlder(..)
          , WriteGhcEnvironmentFilesPolicy )
@@ -62,14 +65,7 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
          ( Verbosity )
 
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Set (Set)
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup
-import GHC.Generics (Generic)
-import Data.Typeable
-
 
 -------------------------------
 -- Project config types
@@ -306,11 +302,18 @@ instance Binary ProjectConfigShared
 instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
 
+instance Structured ProjectConfig
+instance Structured ProjectConfigBuildOnly
+instance Structured ProjectConfigShared
+instance Structured ProjectConfigProvenance
+instance Structured PackageConfig
 
 -- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
 -- the last value rather than the first value for overlapping keys.
 newtype MapLast k v = MapLast { getMapLast :: Map k v }
   deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+
+instance (Structured k, Structured v) => Structured (MapLast k v)
 
 instance Ord k => Monoid (MapLast k v) where
   mempty  = MapLast Map.empty
@@ -325,6 +328,8 @@ instance Ord k => Semigroup (MapLast k v) where
 -- 'mappend's values of overlapping keys rather than taking the first.
 newtype MapMappend k v = MapMappend { getMapMappend :: Map k v }
   deriving (Eq, Show, Functor, Generic, Binary, Typeable)
+
+instance (Structured k, Structured v) => Structured (MapMappend k v)
 
 instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
   mempty  = MapMappend Map.empty
@@ -410,6 +415,7 @@ data SolverSettings
   deriving (Eq, Show, Generic, Typeable)
 
 instance Binary SolverSettings
+instance Structured SolverSettings
 
 
 -- | Resolved configuration for things that affect how we build and not the

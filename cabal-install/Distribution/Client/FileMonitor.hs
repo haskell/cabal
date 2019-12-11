@@ -34,6 +34,11 @@ module Distribution.Client.FileMonitor (
   updateFileMonitor,
   MonitorTimestamp,
   beginUpdateFileMonitor,
+
+  -- * Internal
+  MonitorStateFileSet,
+  MonitorStateFile,
+  MonitorStateGlob,
   ) where
 
 import Prelude ()
@@ -41,7 +46,6 @@ import Distribution.Client.Compat.Prelude
 
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString.Lazy as BS
-import qualified Distribution.Compat.Binary as Binary
 import qualified Data.Hashable as Hashable
 
 import           Control.Monad
@@ -56,7 +60,7 @@ import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
-
+import           Distribution.Utils.Structured (structuredDecodeOrFailIO, structuredEncode)
 import           System.FilePath
 import           System.Directory
 import           System.IO
@@ -98,6 +102,10 @@ data MonitorKindDir  = DirExists
 instance Binary MonitorFilePath
 instance Binary MonitorKindFile
 instance Binary MonitorKindDir
+
+instance Structured MonitorFilePath
+instance Structured MonitorKindFile
+instance Structured MonitorKindDir
 
 -- | Monitor a single file for changes, based on its modification time.
 -- The monitored file is considered to have changed if it no longer
@@ -202,7 +210,10 @@ data MonitorStateFileSet
      -- there is also no particular gain either. That said, we do preserve the
      -- order of the lists just to reduce confusion (and have predictable I/O
      -- patterns).
-  deriving Show
+  deriving (Show, Generic)
+
+instance Binary MonitorStateFileSet
+instance Structured MonitorStateFileSet
 
 type Hash = Int
 
@@ -232,6 +243,8 @@ data MonitorStateFileStatus
 
 instance Binary MonitorStateFile
 instance Binary MonitorStateFileStatus
+instance Structured MonitorStateFile
+instance Structured MonitorStateFileStatus
 
 -- | The state necessary to determine whether the files matched by a globbing
 -- match have changed.
@@ -256,6 +269,9 @@ data MonitorStateGlobRel
 
 instance Binary MonitorStateGlob
 instance Binary MonitorStateGlobRel
+
+instance Structured MonitorStateGlob
+instance Structured MonitorStateGlobRel
 
 -- | We can build a 'MonitorStateFileSet' from a set of 'MonitorFilePath' by
 -- inspecting the state of the file system, and we can go in the reverse
@@ -399,7 +415,7 @@ data MonitorChangedReason a =
 -- See 'FileMonitor' for a full explanation.
 --
 checkFileMonitorChanged
-  :: (Binary a, Binary b)
+  :: (Binary a, Structured a, Binary b, Structured b)
   => FileMonitor a b            -- ^ cache file path
   -> FilePath                   -- ^ root directory
   -> a                          -- ^ guard or key value
@@ -477,23 +493,24 @@ checkFileMonitorChanged
 --
 -- This determines the type and format of the binary cache file.
 --
-readCacheFile :: (Binary a, Binary b)
+readCacheFile :: (Binary a, Structured a, Binary b, Structured b)
               => FileMonitor a b
               -> IO (Either String (MonitorStateFileSet, a, b))
 readCacheFile FileMonitor {fileMonitorCacheFile} =
-    withBinaryFile fileMonitorCacheFile ReadMode $ \hnd ->
-      Binary.decodeOrFailIO =<< BS.hGetContents hnd
+    withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
+        contents <- BS.hGetContents hnd
+        structuredDecodeOrFailIO contents
 
 -- | Helper for writing the cache file.
 --
 -- This determines the type and format of the binary cache file.
 --
-rewriteCacheFile :: (Binary a, Binary b)
+rewriteCacheFile :: (Binary a, Structured a, Binary b, Structured b)
                  => FileMonitor a b
                  -> MonitorStateFileSet -> a -> b -> IO ()
 rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
     writeFileAtomic fileMonitorCacheFile $
-      Binary.encode (fileset, key, result)
+        structuredEncode (fileset, key, result)
 
 -- | Probe the file system to see if any of the monitored files have changed.
 --
@@ -754,7 +771,7 @@ probeMonitorStateGlobRel _ _ _ _ MonitorStateGlobDirTrailing =
 -- any files then you can use @Nothing@ for the timestamp parameter.
 --
 updateFileMonitor
-  :: (Binary a, Binary b)
+  :: (Binary a, Structured a, Binary b, Structured b)
   => FileMonitor a b          -- ^ cache file path
   -> FilePath                 -- ^ root directory
   -> Maybe MonitorTimestamp   -- ^ timestamp when the update action started
@@ -961,7 +978,7 @@ getFileHash hashcache relfile absfile mtime =
 -- that the set of files to monitor can change then it's simpler just to throw
 -- away the structure and use a finite map.
 --
-readCacheFileHashes :: (Binary a, Binary b)
+readCacheFileHashes :: (Binary a, Structured a, Binary b, Structured b)
                     => FileMonitor a b -> IO FileHashCache
 readCacheFileHashes monitor =
     handleDoesNotExist Map.empty $
@@ -1105,15 +1122,3 @@ handleIOException e =
 -- Instances
 --
 
-instance Binary MonitorStateFileSet where
-  put (MonitorStateFileSet singlePaths globPaths) = do
-    put (1 :: Int) -- version
-    put singlePaths
-    put globPaths
-  get = do
-    ver <- get
-    if ver == (1 :: Int)
-      then do singlePaths <- get
-              globPaths   <- get
-              return $! MonitorStateFileSet singlePaths globPaths
-      else fail "MonitorStateFileSet: wrong version"

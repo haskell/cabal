@@ -61,6 +61,10 @@ instance Binary FilePathRoot
 instance Binary FilePathGlobRel
 instance Binary GlobPiece
 
+instance Structured FilePathGlob
+instance Structured FilePathRoot
+instance Structured FilePathGlobRel
+instance Structured GlobPiece
 
 -- | Check if a 'FilePathGlob' doesn't actually make use of any globbing and
 -- is in fact equivalent to a non-glob 'FilePath'.

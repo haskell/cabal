@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Types.AbiDependency where
 
@@ -25,7 +26,7 @@ data AbiDependency = AbiDependency {
         depUnitId  :: Package.UnitId,
         depAbiHash :: Package.AbiHash
     }
-  deriving (Eq, Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show, Typeable)
 
 instance Pretty AbiDependency where
     pretty (AbiDependency uid abi) =
@@ -39,4 +40,5 @@ instance  Parsec AbiDependency where
         return (AbiDependency uid abi)
 
 instance Binary AbiDependency
+instance Structured AbiDependency
 instance NFData AbiDependency where rnf = genericRnf

@@ -29,6 +29,7 @@ data PackageIdentifier
      deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary PackageIdentifier
+instance Structured PackageIdentifier
 
 instance Pretty PackageIdentifier where
   pretty (PackageIdentifier n v)

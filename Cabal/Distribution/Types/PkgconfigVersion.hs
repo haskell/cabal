@@ -34,6 +34,7 @@ instance Ord PkgconfigVersion where
     PkgconfigVersion a `compare` PkgconfigVersion b = rpmvercmp a b
 
 instance Binary PkgconfigVersion
+instance Structured PkgconfigVersion
 instance NFData PkgconfigVersion where rnf = genericRnf
 
 instance Pretty PkgconfigVersion where
