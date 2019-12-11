@@ -112,8 +112,44 @@ cabal-install-test:
 
 # Docker validation
 
+validate-via-docker-all :
+	@echo "This takes a lot of time"
+	@echo 5
+	@sleep 1
+	@echo 4
+	@sleep 1
+	@echo 3
+	@sleep 1
+	@echo 2
+	@sleep 1
+	@echo 1
+	@sleep 1
+	$(MAKE) validate-via-docker-7.6.3
+	$(MAKE) validate-via-docker-7.8.4
+	$(MAKE) validate-via-docker-7.10.3
+	$(MAKE) validate-via-docker-8.0.2
+	$(MAKE) validate-via-docker-8.2.2
+	$(MAKE) validate-via-docker-8.4.4
+	$(MAKE) validate-via-docker-8.6.5
+	$(MAKE) validate-via-docker-8.8.1
+
 validate-via-docker-7.6.3:
 	docker build -t cabal-validate -f .docker/validate-7.6.3.dockerfile .
+
+validate-via-docker-7.8.4:
+	docker build -t cabal-validate -f .docker/validate-7.8.4.dockerfile .
+
+validate-via-docker-7.10.3:
+	docker build -t cabal-validate -f .docker/validate-7.10.3.dockerfile .
+
+validate-via-docker-8.0.2:
+	docker build -t cabal-validate -f .docker/validate-8.0.2.dockerfile .
+
+validate-via-docker-8.2.2:
+	docker build -t cabal-validate -f .docker/validate-8.2.2.dockerfile .
+
+validate-via-docker-8.4.4:
+	docker build -t cabal-validate -f .docker/validate-8.4.4.dockerfile .
 
 validate-via-docker-8.6.5:
 	docker build -t cabal-validate -f .docker/validate-8.6.5.dockerfile .
