@@ -5,8 +5,8 @@
 -- @since 2.2.0.0
 module Distribution.PackageDescription.Quirks (patchQuirks) where
 
-import Distribution.Compat.MD5
 import Distribution.Compat.Prelude
+import Distribution.Utils.MD5
 import GHC.Fingerprint             (Fingerprint (..))
 import Prelude ()
 

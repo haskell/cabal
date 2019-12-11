@@ -111,8 +111,8 @@ import Data.Kind (Type)
 #define Type *
 #endif
 
-import Distribution.Compat.MD5
 import Distribution.Compat.Typeable (Typeable, TypeRep, typeRep)
+import Distribution.Utils.MD5
 
 import Data.Monoid (mconcat)
 
