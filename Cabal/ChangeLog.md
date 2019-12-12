@@ -7,13 +7,12 @@
     ([#6386](https://github.com/haskell/cabal/pull/6386)
   * Fix boundless sublibrary depedency parse failure
     ([#5846](https://github.com/haskell/cabal/issues/5846))
-# 3.1.0.0 (current development version)
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
   * Don’t rebuild world when new ghc flags that affect how error
     messages are presented is specified.
-
- ----
+  * Fix dropExeExtension behaviour on Windows
+    ([#6287](https://github.com/haskell/cabal/pull/6287)
 
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * The 3.0 migration guide gives advice on adapting Custom setup
