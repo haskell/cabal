@@ -110,5 +110,41 @@ cabal-install-test:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
 
-validate-via-docker:
-	docker build -t cabal-validate -f validate.dockerfile .
+# Docker validation
+
+# Use this carefully, on big machine you can say
+#
+#   make validate-via-docker-all -j4 -O
+#
+validate-via-docker-all : validate-via-docker-7.6.3
+validate-via-docker-all : validate-via-docker-7.8.4
+validate-via-docker-all : validate-via-docker-7.10.3
+validate-via-docker-all : validate-via-docker-8.0.2
+validate-via-docker-all : validate-via-docker-8.2.2
+validate-via-docker-all : validate-via-docker-8.4.4
+validate-via-docker-all : validate-via-docker-8.6.5
+validate-via-docker-all : validate-via-docker-8.8.1
+
+validate-via-docker-7.6.3:
+	docker build -t cabal-validate -f .docker/validate-7.6.3.dockerfile .
+
+validate-via-docker-7.8.4:
+	docker build -t cabal-validate -f .docker/validate-7.8.4.dockerfile .
+
+validate-via-docker-7.10.3:
+	docker build -t cabal-validate -f .docker/validate-7.10.3.dockerfile .
+
+validate-via-docker-8.0.2:
+	docker build -t cabal-validate -f .docker/validate-8.0.2.dockerfile .
+
+validate-via-docker-8.2.2:
+	docker build -t cabal-validate -f .docker/validate-8.2.2.dockerfile .
+
+validate-via-docker-8.4.4:
+	docker build -t cabal-validate -f .docker/validate-8.4.4.dockerfile .
+
+validate-via-docker-8.6.5:
+	docker build -t cabal-validate -f .docker/validate-8.6.5.dockerfile .
+
+validate-via-docker-8.8.1:
+	docker build -t cabal-validate -f .docker/validate-8.8.1.dockerfile .
