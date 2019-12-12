@@ -55,7 +55,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [8,9]))
+        (earlierVersion (mkVersion [8,11]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
@@ -179,6 +179,11 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
                 ]
             , from [8,4] ["show-loaded-modules"]
             , from [8,6] [ "ghci-leak-check", "no-it" ]
+            , from [8,10]
+                [ "defer-diagnostics"      -- affects printing of diagnostics
+                , "keep-going"             -- try harder, the build will still fail if it's erroneous
+                , "print-axiom-incomps"    -- print more debug info for closed type families
+                ]
             ]
       , flagIn . invertibleFlagSet "-d" $ [ "ppr-case-as-let", "ppr-ticks" ]
       , isOptIntFlag
