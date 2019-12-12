@@ -6,6 +6,7 @@ RUN     cabal v2-install cabal-plan --constraint 'cabal-plan ^>=0.6'
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
+RUN     cabal v2-install doctest --constraint 'doctest ^>= 0.16.2'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
@@ -41,4 +42,4 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -w ghc-8.8.1 -v
+RUN     sh ./validate.sh -w ghc-8.8.1 -v -D

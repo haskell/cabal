@@ -13,6 +13,7 @@ CABALINSTALLTESTS=true
 CABALSUITETESTS=true
 CABALONLY=false
 DEPSONLY=false
+DOCTEST=false
 VERBOSE=false
 
 # Help
@@ -22,7 +23,7 @@ show_usage() {
 cat <<EOF
 ./validate.sh - build & test
 
-Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -v ]
+Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -D | -v ]
   A script which runs all the tests.
 
 Available options:
@@ -35,6 +36,7 @@ Available options:
   -x CABAL       With cabal-install
   -y CABALPLAN   With cabal-plan
   -d             Build dependencies only
+  -D             Run doctest
   -v             Verbose
 EOF
 exit 0
@@ -110,7 +112,7 @@ footer() {
 # getopt
 #######################################################################
 
-while getopts 'j:lCcsw:x:y:dv' flag; do
+while getopts 'j:lCcsw:x:y:dDv' flag; do
     case $flag in
         j) JOBS="$OPTARG"
             ;;
@@ -129,6 +131,8 @@ while getopts 'j:lCcsw:x:y:dv' flag; do
         y) CABALPLAN="$OPTARG"
             ;;
         d) DEPSONLY=true
+            ;;
+        D) DOCTEST=true
             ;;
         v) VERBOSE=true
             ;;
@@ -165,6 +169,7 @@ cabal-install tests: $CABALINSTALLTESTS
 cabal-testsuite:     $CABALSUITETESTS
 library only:        $CABALONLY
 dependencies only:   $DEPSONLY
+doctest:             $DOCTEST
 verbose:             $VERBOSE
 
 EOF
@@ -236,6 +241,21 @@ echo "$CYAN=== Cabal: build ======================================= $(date +%T) 
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dry-run || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep || exit 1
 timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit 1
+
+if $DOCTEST; then
+if command -v doctest >/dev/null; then
+echo "$CYAN=== Cabal: doctest ===================================== $(date +%T) === $RESET"
+
+timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --write-ghc-environment-files=always || exit 1
+timed doctest --fast Cabal/Distribution Cabal/Language
+timed rm -f .ghc.environment.*
+
+else
+
+echo "No doctest command found"
+
+fi # command -v doctest
+fi # DOCTEST
 
 if $CABALTESTS; then
 echo "$CYAN=== Cabal: test ======================================== $(date +%T) === $RESET"
