@@ -66,6 +66,7 @@ import Distribution.Pretty
 import Distribution.Parsec (simpleParsec)
 import Distribution.Utils.NubList
 import Distribution.Version
+import qualified Distribution.Utils.ShortText as ShortText
 
 import Distribution.Verbosity
 import Language.Haskell.Extension
@@ -352,20 +353,23 @@ fromFlags env flags =
       ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
-fromPackageDescription haddockTarget pkg_descr =
-      mempty { argInterfaceFile = Flag $ haddockName pkg_descr,
-               argPackageName = Flag $ packageId $ pkg_descr,
-               argOutputDir = Dir $
-                   "doc" </> "html" </> haddockDirName haddockTarget pkg_descr,
-               argPrologue = Flag $ if null desc then synopsis pkg_descr
-                                    else desc,
-               argTitle = Flag $ showPkg ++ subtitle
-             }
-      where
-        desc = PD.description pkg_descr
-        showPkg = prettyShow (packageId pkg_descr)
-        subtitle | null (synopsis pkg_descr) = ""
-                 | otherwise                 = ": " ++ synopsis pkg_descr
+fromPackageDescription haddockTarget pkg_descr = mempty
+    { argInterfaceFile = Flag $ haddockName pkg_descr
+    , argPackageName = Flag $ packageId $ pkg_descr
+    , argOutputDir = Dir $
+        "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
+    , argPrologue = Flag $ ShortText.fromShortText $
+        if ShortText.null desc
+        then synopsis pkg_descr
+        else desc
+    , argTitle = Flag $ showPkg ++ subtitle
+    }
+  where
+    desc = PD.description pkg_descr
+    showPkg = prettyShow (packageId pkg_descr)
+    subtitle
+        | ShortText.null (synopsis pkg_descr) = ""
+        | otherwise                           = ": " ++ ShortText.fromShortText (synopsis pkg_descr)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                  -> BuildInfo -> ComponentLocalBuildInfo -> FilePath

@@ -4,6 +4,7 @@ module Distribution.FieldGrammar.Class (
     optionalField,
     optionalFieldDef,
     monoidalField,
+    defaultFreeTextFieldDefST,
     ) where
 
 import Distribution.Compat.Lens
@@ -15,6 +16,7 @@ import Distribution.Compat.Newtype   (Newtype)
 import Distribution.Fields.Field
 import Distribution.Parsec           (Parsec)
 import Distribution.Pretty           (Pretty)
+import Distribution.Utils.ShortText
 
 -- | 'FieldGrammar' is parametrised by
 --
@@ -78,6 +80,12 @@ class FieldGrammar g where
         :: FieldName
         -> ALens' s String -- ^ lens into the field
         -> g s String
+
+    -- | @since 3.2.0.0
+    freeTextFieldDefST
+        :: FieldName
+        -> ALens' s ShortText -- ^ lens into the field
+        -> g s ShortText
 
     -- | Monoidal field.
     --
@@ -157,3 +165,15 @@ monoidalField
     -> ALens' s a  -- ^ lens into the field
     -> g s a
 monoidalField fn = monoidalFieldAla fn Identity
+
+-- | Default implementation for 'freeTextFieldDefST'.
+defaultFreeTextFieldDefST
+    :: (Functor (g s), FieldGrammar g)
+    => FieldName
+    -> ALens' s ShortText -- ^ lens into the field
+    -> g s ShortText
+defaultFreeTextFieldDefST fn l =
+    toShortText <$> freeTextFieldDef fn (cloneLens l . st)
+  where
+    st :: Lens' ShortText String
+    st f s = toShortText <$> f (fromShortText s)

@@ -67,15 +67,15 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
     <+> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
     <+> optionalFieldDefAla "license"              SpecLicenseLenient            L.license (Left SPDX.NONE)
-    <+> freeTextFieldDef    "copyright"                                          L.copyright
-    <+> freeTextFieldDef    "maintainer"                                         L.maintainer
-    <+> freeTextFieldDef    "author"                                             L.author
-    <+> freeTextFieldDef    "stability"                                          L.stability
-    <+> freeTextFieldDef    "homepage"                                           L.homepage
-    <+> freeTextFieldDef    "package-url"                                        L.pkgUrl
-    <+> freeTextFieldDef    "synopsis"                                           L.synopsis
-    <+> freeTextFieldDef    "description"                                        L.description
-    <+> freeTextFieldDef    "category"                                           L.category
+    <+> freeTextFieldDefST    "copyright"                                          L.copyright
+    <+> freeTextFieldDefST    "maintainer"                                         L.maintainer
+    <+> freeTextFieldDefST    "author"                                             L.author
+    <+> freeTextFieldDefST    "stability"                                          L.stability
+    <+> freeTextFieldDefST    "homepage"                                           L.homepage
+    <+> freeTextFieldDefST    "package-url"                                        L.pkgUrl
+    <+> freeTextFieldDefST    "synopsis"                                           L.synopsis
+    <+> freeTextFieldDefST    "description"                                        L.description
+    <+> freeTextFieldDefST    "category"                                           L.category
     -- Installed fields
     <+> optionalFieldDef    "abi"                                                L.abiHash (mkAbiHash "")
     <+> booleanFieldDef     "indefinite"                                         L.indefinite False

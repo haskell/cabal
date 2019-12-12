@@ -84,6 +84,8 @@ instance FieldGrammar FieldDescrs where
         f s = showFreeText (aview l s)
         g s = cloneLens l (const parsecFreeText) s
 
+    freeTextFieldDefST = defaultFreeTextFieldDefST
+
     monoidalFieldAla fn _pack l = singletonF fn f g where
         f s = pretty (pack' _pack (aview l s))
         g s = cloneLens l (\x -> mappend x . unpack' _pack <$> P.parsec) s

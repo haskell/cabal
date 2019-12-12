@@ -23,6 +23,6 @@ tests = testGroup "Distribution.Utils.Structured"
     , testCase "SPDX.License"   $ structureHash (Proxy :: Proxy License)        @?= Fingerprint 0xd3d4a09f517f9f75 0xbc3d16370d5a853a
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
-    , testCase "LocalBuildInfo" $ structureHash (Proxy :: Proxy LocalBuildInfo) @?= Fingerprint 0x968aca759a33b9f8 0x19323edc38fbcbcb
+    , testCase "LocalBuildInfo" $ structureHash (Proxy :: Proxy LocalBuildInfo) @?= Fingerprint 0xb48ff44b0e5d96ff 0xfc099544337e90ab
 #endif
     ]

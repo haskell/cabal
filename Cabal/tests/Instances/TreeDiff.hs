@@ -36,6 +36,7 @@ import Distribution.Types.Mixin
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.UnitId              (DefUnitId, UnitId)
 import Distribution.Types.UnqualComponentName
+import Distribution.Utils.ShortText           (ShortText, fromShortText)
 
 -------------------------------------------------------------------------------
 -- instances
@@ -94,3 +95,5 @@ instance ToExpr TestSuiteInterface
 instance ToExpr TestType
 instance ToExpr UnitId where toExpr = defaultExprViaShow
 instance ToExpr UnqualComponentName where toExpr = defaultExprViaShow
+
+instance ToExpr ShortText where toExpr = toExpr . fromShortText
