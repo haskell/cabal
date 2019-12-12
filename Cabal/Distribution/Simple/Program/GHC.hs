@@ -55,7 +55,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [8,9]))
+        (earlierVersion (mkVersion [8,11]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
@@ -172,6 +172,19 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
               , "print-bind-contents", "print-evld-with-show"
               , "implicit-import-qualified", "error-spans"
               ]
+            , from [7,8]
+              [ "print-explicit-foralls" -- maybe also earlier, but GHC-7.6 doesn't have --show-options
+              , "print-explicit-kinds"
+              ]
+            , from [8,0]
+              [ "print-explicit-coercions"
+              , "print-explicit-runtime-reps"
+              , "print-equality-relations"
+              , "print-unicode-syntax"
+              , "print-expanded-synonyms"
+              , "print-potential-instances"
+              , "print-typechecker-elaboration"
+              ]
             , from [8,2]
                 [ "diagnostics-show-caret", "local-ghci-history"
                 , "show-warning-groups", "hide-source-paths"
@@ -179,6 +192,11 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
                 ]
             , from [8,4] ["show-loaded-modules"]
             , from [8,6] [ "ghci-leak-check", "no-it" ]
+            , from [8,10]
+                [ "defer-diagnostics"      -- affects printing of diagnostics
+                , "keep-going"             -- try harder, the build will still fail if it's erroneous
+                , "print-axiom-incomps"    -- print more debug info for closed type families
+                ]
             ]
       , flagIn . invertibleFlagSet "-d" $ [ "ppr-case-as-let", "ppr-ticks" ]
       , isOptIntFlag
@@ -201,7 +219,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
 
     simpleFlags :: Set String
     simpleFlags = Set.fromList . mconcat $
-      [ [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+      [ [ "-n", "-#include", "-Rghc-timing", "-dstg-stats"
         , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
         , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
         , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"
