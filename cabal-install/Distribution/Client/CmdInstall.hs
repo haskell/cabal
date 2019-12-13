@@ -426,10 +426,14 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
   home <- getHomeDirectory
   let
     ProjectConfig {
+      projectConfigBuildOnly = ProjectConfigBuildOnly {
+        projectConfigLogsDir
+      },
       projectConfigShared = ProjectConfigShared {
         projectConfigHcFlavor,
         projectConfigHcPath,
-        projectConfigHcPkg
+        projectConfigHcPkg,
+        projectConfigStoreDir
       },
       projectConfigLocalPackages = PackageConfig {
         packageConfigProgramPaths,
@@ -495,9 +499,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     else return []
 
   cabalDir  <- getCabalDir
-  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe (globalStoreDir globalFlags)
+  mstoreDir <- sequenceA $ makeAbsolute <$> flagToMaybe projectConfigStoreDir
   let
-    mlogsDir    = flagToMaybe (globalLogsDir globalFlags)
+    mlogsDir    = flagToMaybe projectConfigLogsDir
     cabalLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
     packageDbs  = storePackageDBStack (cabalStoreDirLayout cabalLayout) compilerId
 
