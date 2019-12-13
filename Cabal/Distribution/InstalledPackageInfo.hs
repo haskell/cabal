@@ -62,7 +62,8 @@ import qualified Text.PrettyPrint    as Disp
 import Distribution.Types.InstalledPackageInfo
 import Distribution.Types.InstalledPackageInfo.FieldGrammar
 
-
+-- $setup
+-- >>> :set -XOverloadedStrings
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi =

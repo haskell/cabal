@@ -1,7 +1,7 @@
 set -e
 
-CABAL_VERSION="3.1.0.0"
-CABAL_INSTALL_VERSION="3.1.0.0"
+CABAL_VERSION="3.3.0.0"
+CABAL_INSTALL_VERSION="3.3.0.0"
 
 if [ "$TRAVIS_OS_NAME" = "linux" ]; then
     ARCH="x86_64-linux"
