@@ -1287,7 +1287,7 @@ checkCabalVersion pkg =
            [ prettyShow (Dependency name (eliminateMajorBoundSyntax versionRange) Set.empty)
            | Dependency name versionRange _ <- depsUsingMajorBoundSyntax ]
 
-  , checkVersion [2,1] (any (not . null)
+  , checkVersion [3,0] (any (not . null)
                         (concatMap buildInfoField
                          [ asmSources
                          , cmmSources
@@ -1296,7 +1296,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
         ++ " and 'extra-library-flavours' requires the package "
-        ++ " to specify at least 'cabal-version: >= 2.1'."
+        ++ " to specify at least 'cabal-version: 3.0'."
 
   , checkVersion [2,5] (any (not . null) $ buildInfoField extraDynLibFlavours) $
       PackageDistInexcusable $
