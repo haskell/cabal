@@ -173,6 +173,19 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
               , "print-bind-contents", "print-evld-with-show"
               , "implicit-import-qualified", "error-spans"
               ]
+            , from [7,8]
+              [ "print-explicit-foralls" -- maybe also earlier, but GHC-7.6 doesn't have --show-options
+              , "print-explicit-kinds"
+              ]
+            , from [8,0]
+              [ "print-explicit-coercions"
+              , "print-explicit-runtime-reps"
+              , "print-equality-relations"
+              , "print-unicode-syntax"
+              , "print-expanded-synonyms"
+              , "print-potential-instances"
+              , "print-typechecker-elaboration"
+              ]
             , from [8,2]
                 [ "diagnostics-show-caret", "local-ghci-history"
                 , "show-warning-groups", "hide-source-paths"
@@ -202,7 +215,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
 
     simpleFlags :: Set String
     simpleFlags = Set.fromList . mconcat $
-      [ [ "-n", "-#include", "-Rghc-timing", "-dsuppress-all", "-dstg-stats"
+      [ [ "-n", "-#include", "-Rghc-timing", "-dstg-stats"
         , "-dth-dec-file", "-dsource-stats", "-dverbose-core2core"
         , "-dverbose-stg2stg", "-dcore-lint", "-dstg-lint", "-dcmm-lint"
         , "-dasm-lint", "-dannot-lint", "-dshow-passes", "-dfaststring-stats"

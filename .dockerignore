@@ -3,6 +3,8 @@
 cabal.project.local
 .ghc.environment.*
 
+.docker/
+
 **/.hpc
 **/*.hi
 **/*.o

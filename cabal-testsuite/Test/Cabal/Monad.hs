@@ -285,13 +285,24 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     -- them up we must configure them
     program_db <- configureAllKnownPrograms verbosity program_db3
 
+    let ghcAndRunnedGhcAreTheSame :: Bool
+        ghcAndRunnedGhcAreTheSame = fromMaybe False $ do
+            ghc_program        <- lookupProgram ghcProgram program_db
+            runner_ghc_program <- lookupProgram ghcProgram (runnerProgramDb senv)
+            return $ programPath ghc_program == programPath runner_ghc_program
+
     let db_stack =
             case argGhcPath (testCommonArgs args) of
                 Nothing -> runnerPackageDbStack senv -- NB: canonicalized
                 -- Can't use the build package db stack since they
                 -- are all for the wrong versions!  TODO: Make
                 -- this configurable
-                Just _  -> [GlobalPackageDB]
+                --
+                -- Oleg: if runner ghc and provided ghc are the same,
+                -- use runnerPackageDbStack. See 'hasCabalForGhc' check.
+                Just _
+                    | ghcAndRunnedGhcAreTheSame -> runnerPackageDbStack senv
+                    | otherwise                 -> [GlobalPackageDB]
         env = TestEnv {
                     testSourceDir = script_dir,
                     testTmpDir = tmp_dir,
