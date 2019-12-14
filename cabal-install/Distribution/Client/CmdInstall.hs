@@ -125,7 +125,7 @@ import Distribution.Pretty
 import Control.Exception
          ( catch )
 import Control.Monad
-         ( mapM, mapM_ )
+         ( mapM, forM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
@@ -371,7 +371,7 @@ installAction ( configFlags, configExFlags, installFlags
               gatherTargets :: UnitId -> TargetSelector
               gatherTargets targetId = TargetPackageNamed pkgName targetFilter
                 where
-                  Just targetUnit = Map.lookup targetId planMap
+                  targetUnit = Map.findWithDefault (error "cannot find target unit") targetId planMap
                   PackageIdentifier{..} = packageId targetUnit
 
               targets' = fmap gatherTargets targetIds
@@ -385,12 +385,11 @@ installAction ( configFlags, configExFlags, installFlags
 
             createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
-            unless (Map.null targets) $
-              mapM_
-                (\(SpecificSourcePackage pkg) -> packageToSdist verbosity
+            unless (Map.null targets) $ forM_ (localPackages localBaseCtx) $ \lpkg -> case lpkg of
+                SpecificSourcePackage pkg -> packageToSdist verbosity
                   (distProjectRootDirectory localDistDirLayout) TarGzArchive
                   (distSdistFile localDistDirLayout (packageId pkg)) pkg
-                ) (localPackages localBaseCtx)
+                NamedPackage pkgName _ -> error $ "Got NamedPackage " ++ prettyShow pkgName
 
             if null targets
               then return (hackagePkgs, hackageTargets)

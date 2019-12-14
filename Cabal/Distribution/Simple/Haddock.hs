@@ -525,7 +525,11 @@ getGhcCppOpts haddockVersion bi =
     haddockVersionMacro  = "-D__HADDOCK_VERSION__="
                            ++ show (v1 * 1000 + v2 * 10 + v3)
       where
-        [v1, v2, v3] = take 3 $ versionNumbers haddockVersion ++ [0,0]
+        (v1, v2, v3) = case versionNumbers haddockVersion of
+            []        -> (0,0,0)
+            [x]       -> (x,0,0)
+            [x,y]     -> (x,y,0)
+            (x:y:z:_) -> (x,y,z)
 
 getGhcLibDir :: Verbosity -> LocalBuildInfo
              -> IO HaddockArgs

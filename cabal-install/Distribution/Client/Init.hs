@@ -951,7 +951,9 @@ createMainHs flags =
       _ -> writeMainHs flags mainFile
   else return ()
   where
-    Flag mainFile = mainIs flags
+    mainFile = case mainIs flags of
+      Flag x -> x
+      NoFlag -> error "createMainHs: no mainIs"
 
 --- | Write a main file if it doesn't already exist.
 writeMainHs :: InitFlags -> FilePath -> IO ()

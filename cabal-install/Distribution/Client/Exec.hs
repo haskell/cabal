@@ -89,7 +89,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb iEnv =
                Windows -> "PATH"
                _       -> "LD_LIBRARY_PATH"
     env getGlobalPackageDB hcProgram packagePathEnvVar = do
-        let Just program = lookupProgram hcProgram programDb
+        let program = fromMaybe (error "failed to find hcProgram") $ lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
         sandboxConfigFilePath <- getSandboxConfigFilePath mempty
         let sandboxPackagePath   = sandboxPackageDBPath sandboxDir comp platform

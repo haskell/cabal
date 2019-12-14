@@ -286,7 +286,7 @@ foldMInstallPlanDepOrder visit =
       -- we go in the right order so the results map has entries for all deps
       let depresults :: [b]
           depresults =
-            map (\ipkgid -> let Just result = Map.lookup ipkgid results
+            map (\ipkgid -> let result = Map.findWithDefault (error "foldMInstallPlanDepOrder") ipkgid results
                               in result)
                 (InstallPlan.depends pkg)
       result <- visit pkg depresults
@@ -596,7 +596,7 @@ rebuildTargets verbosity
         handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
 
         let uid = installedUnitId pkg
-            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus in
+            pkgBuildStatus = Map.findWithDefault (error "rebuildTargets") uid pkgsBuildStatus in
 
         rebuildTarget
           verbosity
@@ -756,7 +756,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
       | InstallPlan.Configured elab
          <- InstallPlan.reverseTopologicalOrder installPlan
       , let uid = installedUnitId elab
-            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
+            pkgBuildStatus = Map.findWithDefault (error "asyncDownloadPackages") uid pkgsBuildStatus
       , BuildStatusDownload <- [pkgBuildStatus]
       ]
 

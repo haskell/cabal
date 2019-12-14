@@ -79,12 +79,7 @@ import Data.Word          (Word, Word16, Word32, Word64, Word8)
 
 import qualified Control.Monad.Trans.State.Strict as State
 
-import Control.Exception (catch, evaluate)
-#if __GLASGOW_HASKELL__ >= 711
-import Control.Exception (pattern ErrorCall)
-#else
-import Control.Exception (ErrorCall (..))
-#endif
+import Control.Exception (ErrorCall (..), catch, evaluate)
 
 import GHC.Generics
 
@@ -277,8 +272,13 @@ structuredDecode lbs = snd (Binary.decode lbs :: (Tag a, a))
 
 structuredDecodeOrFailIO :: (Binary.Binary a, Structured a) => LBS.ByteString -> IO (Either String a)
 structuredDecodeOrFailIO bs =
-  catch (evaluate (structuredDecode bs) >>= return . Right)
-  $ \(ErrorCall str) -> return $ Left str
+    catch (evaluate (structuredDecode bs) >>= return . Right) handler
+  where
+#if MIN_VERSION_base(4,9,0)
+    handler (ErrorCallWithLocation str _) = return $ Left str
+#else
+    handler (ErrorCall str) = return $ Left str
+#endif
 
 -------------------------------------------------------------------------------
 -- Helper data
