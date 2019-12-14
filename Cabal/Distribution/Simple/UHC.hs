@@ -116,9 +116,11 @@ getGlobalPackageDir :: Verbosity -> ProgramDb -> IO FilePath
 getGlobalPackageDir verbosity progdb = do
     output <- getDbProgramOutput verbosity
                 uhcProgram progdb ["--meta-pkgdir-system"]
-    -- call to "lines" necessary, because pkgdir contains an extra newline at the end
-    let [pkgdir] = lines output
+    -- we need to trim because pkgdir contains an extra newline at the end
+    let pkgdir = trimEnd output
     return pkgdir
+  where
+    trimEnd = reverse . dropWhile isSpace . reverse
 
 getUserPackageDir :: NoCallStackIO FilePath
 getUserPackageDir = do

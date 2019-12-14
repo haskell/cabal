@@ -100,7 +100,7 @@ import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescription )
 import Distribution.Fields
          ( runParseResult, PError, PWarning, showPWarning)
-import Distribution.Pretty ()
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.SourceRepo
          ( RepoType(..) )
 import Distribution.Client.SourceRepo
@@ -1152,7 +1152,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
     --TODO: pass progPathExtra on to 'configureVCS'
     let _progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
-                          let Just vcs = Map.lookup repoType knownVCSs in
+                          let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs in
                           configureVCS verbosity {-progPathExtra-} vcs
 
     concat <$> sequence

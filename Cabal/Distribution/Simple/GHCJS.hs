@@ -241,7 +241,7 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcjsProg = Internal.getGhcInfo verbosity implInfo ghcjsProg
   where
-    Just version = programVersion ghcjsProg
+    version = fromMaybe (error "GHCJS.getGhcInfo: no version") $ programVersion ghcjsProg
     implInfo = ghcVersionImplInfo version
 
 -- | Given a single package DB, return all installed packages.
@@ -275,7 +275,7 @@ toPackageIndex verbosity pkgss progdb = do
   return $! (mconcat indices)
 
   where
-    Just ghcjsProg = lookupProgram ghcjsProgram progdb
+    ghcjsProg = fromMaybe (error "GHCJS.toPackageIndex no ghcjs program") $ lookupProgram ghcjsProgram progdb
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
@@ -307,7 +307,7 @@ getUserPackageDB _verbosity ghcjsProg platform = do
     platformAndVersion = Internal.ghcPlatformAndVersionString
                            platform ghcjsVersion
     packageConfFileName = "package.conf.d"
-    Just ghcjsVersion = programVersion ghcjsProg
+    ghcjsVersion = fromMaybe (error "GHCJS.getUserPackageDB: no version") $ programVersion ghcjsProg
 
 checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
@@ -360,7 +360,7 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
       if isFileStyle then return path
                      else return (path </> "package.cache")
 
-    Just ghcjsProg = lookupProgram ghcjsProgram progdb
+    ghcjsProg = fromMaybe (error "GHCJS.toPackageIndex no ghcjs program") $ lookupProgram ghcjsProgram progdb
 
 
 toJSLibName :: String -> String
@@ -1782,8 +1782,8 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                    }
   where
     v7_10 = mkVersion [7,10]
-    Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram progdb
-    Just ver          = programVersion ghcjsPkgProg
+    ghcjsPkgProg = fromMaybe (error "GHCJS.hcPkgInfo no ghcjs program") $ lookupProgram ghcjsPkgProgram progdb
+    ver          = fromMaybe (error "GHCJS.hcPkgInfo no ghcjs version") $ programVersion ghcjsPkgProg
 
 registerPackage
   :: Verbosity
@@ -1800,7 +1800,7 @@ pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
 pkgRoot verbosity lbi = pkgRoot'
    where
     pkgRoot' GlobalPackageDB =
-      let Just ghcjsProg = lookupProgram ghcjsProgram (withPrograms lbi)
+      let ghcjsProg = fromMaybe (error "GHCJS.pkgRoot: no ghcjs program") $ lookupProgram ghcjsProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcjsProg)
     pkgRoot' UserPackageDB = do
       appDir <- getAppUserDataDirectory "ghcjs"
@@ -1830,4 +1830,4 @@ runCmd progdb exe =
   )
   where
     script = exe <.> "jsexe" </> "all" <.> "js"
-    Just ghcjsProg = lookupProgram ghcjsProgram progdb
+    ghcjsProg = fromMaybe (error "GHCJS.runCmd: no ghcjs program") $ lookupProgram ghcjsProgram progdb

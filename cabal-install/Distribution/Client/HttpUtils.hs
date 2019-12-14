@@ -282,7 +282,7 @@ configureTransport verbosity extraPath (Just name) =
           Just prog -> snd <$> requireProgram verbosity prog baseProgDb
                        --      ^^ if it fails, it'll fail here
 
-        let Just transport = mkTrans progdb
+        let transport = fromMaybe (error "configureTransport: failed to make transport") $ mkTrans progdb
         return transport { transportManuallySelected = True }
 
       Nothing -> die' verbosity $ "Unknown HTTP transport specified: " ++ name
@@ -645,9 +645,11 @@ powershellTransport prog =
               HdrIfModifiedSince  -> "IfModifiedSince = "  ++ escape value
               HdrReferer          -> "Referer = "          ++ escape value
               HdrTransferEncoding -> "TransferEncoding = " ++ escape value
-              HdrRange            -> let (start, _:end) =
+              HdrRange            -> let (start, end) =
                                           if "bytes=" `isPrefixOf` value
-                                             then break (== '-') value'
+                                             then case break (== '-') value' of
+                                                 (start', '-':end') -> (start', end')
+                                                 _                  -> error $ "Could not decode range: " ++ value
                                              else error $ "Could not decode range: " ++ value
                                          value' = drop 6 value
                                      in "AddRange(\"bytes\", " ++ escape start ++ ", " ++ escape end ++ ");"

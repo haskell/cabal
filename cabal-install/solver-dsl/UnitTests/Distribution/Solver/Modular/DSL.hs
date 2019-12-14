@@ -587,7 +587,9 @@ exAvSrcPkg ex =
     -- custom-setup only supports simple dependencies
     mkSetupDeps :: [ExampleDependency] -> [C.Dependency]
     mkSetupDeps deps =
-      let (directDeps, []) = splitDeps deps in map mkDirect directDeps
+      case splitDeps deps of
+        (directDeps, []) -> map mkDirect directDeps
+        _                -> error "mkSetupDeps: custom setup has non-simple deps"
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n, 0, 0]

@@ -162,7 +162,8 @@ toComponentLocalBuildInfos
                        . map Right
                        $ graph
         combined_graph = Graph.unionRight external_graph internal_graph
-        Just local_graph = Graph.closure combined_graph (map nodeKey graph)
+        local_graph = fromMaybe (error "toComponentLocalBuildInfos: closure returned Nothing")
+                    $ Graph.closure combined_graph (map nodeKey graph)
         -- The database of transitively reachable installed packages that the
         -- external components the package (as a whole) depends on.  This will be
         -- used in several ways:

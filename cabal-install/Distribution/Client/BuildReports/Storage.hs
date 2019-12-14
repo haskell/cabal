@@ -1,3 +1,5 @@
+-- TODO
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Reporting

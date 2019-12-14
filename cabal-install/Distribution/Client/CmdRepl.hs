@@ -250,13 +250,14 @@ replAction ( configFlags, configExFlags, installFlags
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
         withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan _ -> do
+          -- targets should be non-empty map, but there's no NonEmptyMap yet.
           targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
-            Just (unitId, _) = safeHead $ Map.toList targets
+            (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
-            Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId 
+            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId 
             baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId baseCtx
 
           return (Just oci, baseCtx')

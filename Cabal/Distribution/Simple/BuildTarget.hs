@@ -58,6 +58,7 @@ import qualified Distribution.Compat.CharParsing as P
 
 import Control.Monad ( msum )
 import Data.List ( stripPrefix, groupBy, partition )
+import qualified Data.List.NonEmpty as NE
 import Data.Either ( partitionEithers )
 import System.FilePath as FilePath
          ( dropExtension, normalise, splitDirectories, joinPath, splitPath
@@ -318,8 +319,9 @@ resolveBuildTarget pkg userTarget fexists =
 
   where
     classifyMatchErrors errs
-      | not (null expected) = let (things, got:_) = unzip expected in
-                              BuildTargetExpected userTarget things got
+      | Just expected' <- NE.nonEmpty expected
+                            = let (things, got:|_) = NE.unzip expected' in
+                              BuildTargetExpected userTarget (NE.toList things) got
       | not (null nosuch)   = BuildTargetNoSuch   userTarget nosuch
       | otherwise = error $ "resolveBuildTarget: internal error in matching"
       where

@@ -88,8 +88,8 @@ readUserConstraintTest :: String -> UserConstraint -> Assertion
 readUserConstraintTest str uc =
   assertEqual ("Couldn't read constraint: '" ++ str ++ "'") expected actual
   where
-    expected = uc
-    actual   = let Right r = readUserConstraint str in r
+    expected = Right uc
+    actual   = readUserConstraint str
 
 parseUserConstraintTest :: String -> UserConstraint -> Assertion
 parseUserConstraintTest str uc =
