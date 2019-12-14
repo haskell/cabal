@@ -366,6 +366,7 @@ instance Arbitrary ClientInstallFlags where
     arbitrary =
       ClientInstallFlags
         <$> arbitrary
+        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary

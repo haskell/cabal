@@ -341,12 +341,13 @@ instance Semigroup SavedConfig where
           combine        = combine'        savedInstallFlags
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
 
-      combinedSavedClientInstallFlags = ClientInstallFlags {
-        cinstInstallLibs = combine cinstInstallLibs,
-        cinstEnvironmentPath = combine cinstEnvironmentPath,
-        cinstOverwritePolicy = combine cinstOverwritePolicy,
-        cinstInstallMethod = combine cinstInstallMethod,
-        cinstInstalldir = combine cinstInstalldir
+      combinedSavedClientInstallFlags = ClientInstallFlags
+        { cinstInstallLibs     = combine cinstInstallLibs
+        , cinstIgnoreProject   = combine cinstIgnoreProject
+        , cinstEnvironmentPath = combine cinstEnvironmentPath
+        , cinstOverwritePolicy = combine cinstOverwritePolicy
+        , cinstInstallMethod   = combine cinstInstallMethod
+        , cinstInstalldir      = combine cinstInstalldir
         }
         where
           combine        = combine'        savedClientInstallFlags
