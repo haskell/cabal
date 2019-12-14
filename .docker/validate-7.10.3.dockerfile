@@ -1,15 +1,15 @@
 FROM    phadej/ghc:7.10.3-bionic
 
-# We need newer compiler, to install cabal-plan
-RUN     apt-get update
-RUN     apt-get install -y ghc-8.6.5
-
 # Install cabal-plan
-RUN     cabal v2-update
-RUN     cabal v2-install -w /opt/ghc/8.6.5/bin/ghc-8.6.5 cabal-plan --constraint 'cabal-plan ^>=0.6'
+RUN     mkdir -p /root/.cabal/bin && \
+        curl -L https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz && \
+        echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c - && \
+        xz -d < cabal-plan.xz > /root/.cabal/bin/cabal-plan && \
+        rm -f cabal-plan.xz && \
+        chmod a+x /root/.cabal/bin/cabal-plan
 
-# Remove ghc-8.6.5, so it doesn't interfere
-RUN     apt-get remove -y ghc-8.6.5
+# Update index
+RUN     cabal v2-update
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
