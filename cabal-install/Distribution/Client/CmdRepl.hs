@@ -30,15 +30,13 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfig
-         , projectConfigConfigFile, readGlobalConfig )
+         ( ProjectConfig(..), withProjectOrGlobalConfigIgn
+         , projectConfigConfigFile )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning 
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
-import Distribution.Client.RebuildMonad
-         ( runRebuild )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
@@ -237,11 +235,8 @@ replAction ( configFlags, configExFlags, installFlags
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
     
-    (baseCtx, targetSelectors, finalizer, replType) <- if ignoreProject
-      then do
-        globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-        without globalConfig
-      else withProjectOrGlobalConfig verbosity globalConfigFlag with without
+    (baseCtx, targetSelectors, finalizer, replType) <-
+      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
 
     when (buildSettingOnlyDeps (buildSettings baseCtx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "

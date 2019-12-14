@@ -29,6 +29,7 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalFreezeConfig,
     withProjectOrGlobalConfig,
+    withProjectOrGlobalConfigIgn,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
@@ -453,6 +454,24 @@ instance Exception BadProjectRoot where
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
+
+-- | Like 'withProjectOrGlobalConfig', with an additional boolean
+-- which tells to ignore local project.
+--
+-- Used to implement -z / --ignore-project behaviour
+--
+withProjectOrGlobalConfigIgn
+    :: Bool -- ^ whether to ignore local project
+    -> Verbosity
+    -> Flag FilePath
+    -> IO a
+    -> (ProjectConfig -> IO a)
+    -> IO a
+withProjectOrGlobalConfigIgn True  verbosity gcf _with without = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    without globalConfig
+withProjectOrGlobalConfigIgn False verbosity gcf with without =
+    withProjectOrGlobalConfig verbosity gcf with without
 
 withProjectOrGlobalConfig :: Verbosity
                           -> Flag FilePath
