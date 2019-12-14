@@ -27,7 +27,8 @@ data InstallMethod = InstallMethodCopy
 instance Binary InstallMethod
 
 data ClientInstallFlags = ClientInstallFlags
-  { cinstInstallLibs :: Flag Bool
+  { cinstInstallLibs     :: Flag Bool
+  , cinstIgnoreProject   :: Flag Bool
   , cinstEnvironmentPath :: Flag FilePath
   , cinstOverwritePolicy :: Flag OverwritePolicy
   , cinstInstallMethod :: Flag InstallMethod
@@ -46,6 +47,7 @@ instance Binary ClientInstallFlags
 defaultClientInstallFlags :: ClientInstallFlags
 defaultClientInstallFlags = ClientInstallFlags
   { cinstInstallLibs = toFlag False
+  , cinstIgnoreProject   = toFlag False
   , cinstEnvironmentPath = mempty
   , cinstOverwritePolicy = mempty
   , cinstInstallMethod = mempty
@@ -57,6 +59,10 @@ clientInstallOptions _ =
   [ option [] ["lib"]
     "Install libraries rather than executables from the target package."
     cinstInstallLibs (\v flags -> flags { cinstInstallLibs = v })
+    trueArg
+  , option "z" ["ignore-project"]
+    "Ignore local project configuration"
+    cinstIgnoreProject (\v flags -> flags { cinstIgnoreProject = v })
     trueArg
   , option [] ["package-env", "env"]
     "Set the environment file that may be modified."
