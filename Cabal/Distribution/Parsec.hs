@@ -379,7 +379,9 @@ escapeCode = (charEsc <|> charNum <|> charAscii <|> charControl) P.<?> "escape c
                                      nomore :: m ()
                                      nomore = P.notFollowedBy anyd <|> toomuch
 
-                                     (low, ex : high) = splitAt bd dps
+                                     (low, ex, high) = case splitAt bd dps of
+                                        (low', ex' : high') -> (low', ex', high')
+                                        (_, _)              -> error "escapeCode: Logic error"
                                   in ((:) <$> P.choice low <*> atMost (length bds) anyd) <* nomore
                                      <|> ((:) <$> ex <*> ([] <$ nomore <|> bounded'' dps bds))
                                      <|> if not (null bds)

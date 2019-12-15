@@ -18,12 +18,7 @@ module Distribution.Compat.Binary
 #endif
        ) where
 
-import Control.Exception (catch, evaluate)
-#if __GLASGOW_HASKELL__ >= 711
-import Control.Exception (pattern ErrorCall)
-#else
-import Control.Exception (ErrorCall(..))
-#endif
+import Control.Exception (ErrorCall (..), catch, evaluate)
 import Data.ByteString.Lazy (ByteString)
 
 #if __GLASGOW_HASKELL__ >= 708 || MIN_VERSION_binary(0,7,0)
@@ -67,5 +62,10 @@ encodeFile f = BSL.writeFile f . encode
 
 decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
 decodeOrFailIO bs =
-  catch (evaluate (decode bs) >>= return . Right)
-  $ \(ErrorCall str) -> return $ Left str
+    catch (evaluate (decode bs) >>= return . Right) handler
+  where
+#if MIN_VERSION_base(4,9,0)
+    handler (ErrorCallWithLocation str _) = return $ Left str
+#else
+    handler (ErrorCall str) = return $ Left str
+#endif

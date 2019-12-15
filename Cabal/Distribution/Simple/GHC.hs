@@ -317,7 +317,7 @@ guessRunghcFromGhcPath = guessToolFromGhcPath runghcProgram
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
   where
-    Just version = programVersion ghcProg
+    version = fromMaybe (error "GHC.getGhcInfo: no ghc version") $ programVersion ghcProg
     implInfo = ghcVersionImplInfo version
 
 -- | Given a single package DB, return all installed packages.
@@ -363,7 +363,7 @@ toPackageIndex verbosity pkgss progdb = do
   return $! mconcat indices
 
   where
-    Just ghcProg = lookupProgram ghcProgram progdb
+    ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
@@ -396,7 +396,7 @@ getUserPackageDB _verbosity ghcProg platform = do
     platformAndVersion = Internal.ghcPlatformAndVersionString
                            platform ghcVersion
     packageConfFileName = "package.conf.d"
-    Just ghcVersion = programVersion ghcProg
+    ghcVersion = fromMaybe (error "GHC.getUserPackageDB: no ghc version") $ programVersion ghcProg
 
 checkPackageDbEnvVar :: Verbosity -> IO ()
 checkPackageDbEnvVar verbosity =
@@ -475,7 +475,7 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
       if isFileStyle then return path
                      else return (path </> "package.cache")
 
-    Just ghcProg = lookupProgram ghcProgram progdb
+    ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
 
 -- -----------------------------------------------------------------------------
@@ -2032,9 +2032,9 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo
   , HcPkg.suppressFilesCheck   = v >= [6,6]
   }
   where
-    v               = versionNumbers ver
-    Just ghcPkgProg = lookupProgram ghcPkgProgram progdb
-    Just ver        = programVersion ghcPkgProg
+    v          = versionNumbers ver
+    ghcPkgProg = fromMaybe (error "GHC.hcPkgInfo: no ghc program") $ lookupProgram ghcPkgProgram progdb
+    ver        = fromMaybe (error "GHC.hcPkgInfo: no ghc version") $ programVersion ghcPkgProg
 
 registerPackage
   :: Verbosity
@@ -2051,7 +2051,7 @@ pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
 pkgRoot verbosity lbi = pkgRoot'
    where
     pkgRoot' GlobalPackageDB =
-      let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+      let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)
     pkgRoot' UserPackageDB = do
       appDir <- getAppUserDataDirectory "ghc"

@@ -56,6 +56,9 @@
 
 module Distribution.Simple.ShowBuildInfo (mkBuildInfo) where
 
+import Distribution.Compat.Prelude
+import Prelude ()
+
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.Program.GHC as GHC
 
@@ -122,7 +125,7 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
       ]
       where
         bi = componentBuildInfo comp
-        Just comp = lookupComponent pkg_descr name
+        comp = fromMaybe (error $ "mkBuildInfo: no component " ++ prettyShow name) $ lookupComponent pkg_descr name
         compType = case comp of
           CLib _   -> "lib"
           CExe _   -> "exe"

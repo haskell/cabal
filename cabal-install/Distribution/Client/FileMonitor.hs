@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -1097,11 +1098,16 @@ checkDirectoryModificationTime dir mtime =
       then return Nothing
       else return (Just mtime')
 
--- | Run an IO computation, returning @e@ if there is an 'error'
+-- | Run an IO computation, returning the first argument @e@ if there is an 'error'
 -- call. ('ErrorCall')
 handleErrorCall :: a -> IO a -> IO a
-handleErrorCall e =
-    handle (\(ErrorCall _) -> return e)
+handleErrorCall e = handle handler where
+#if MIN_VERSION_base(4,9,0)
+    handler (ErrorCallWithLocation _ _) = return e
+#else
+    handler (ErrorCall _) = return e
+#endif
+
 
 -- | Run an IO computation, returning @e@ if there is any 'IOException'.
 --

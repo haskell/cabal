@@ -166,6 +166,7 @@ import qualified Data.Traversable as T
 import           Control.Monad.State as State
 import           Control.Exception
 import           Data.List (groupBy)
+import qualified Data.List.NonEmpty as NE
 import           Data.Either
 import           Data.Function
 import           System.FilePath
@@ -877,8 +878,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
                        return (pkgid, hashFromTUF hash)
                   | pkgid <- pkgids ]
           | (repo, pkgids) <-
-                map (\grp@((_,repo):_) -> (repo, map fst grp))
-              . groupBy ((==)    `on` (remoteRepoName . repoRemote . snd))
+                map (\grp@((_,repo):|_) -> (repo, map fst (NE.toList grp)))
+              . NE.groupBy ((==)    `on` (remoteRepoName . repoRemote . snd))
               . sortBy  (compare `on` (remoteRepoName . repoRemote . snd))
               $ repoTarballPkgsWithMetadata
           ]
@@ -1714,12 +1715,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         elabIsCanonical     = True
         elabPkgSourceId     = pkgid
-        elabPkgDescription  = let Right (desc, _) =
-                                    PD.finalizePD
+        elabPkgDescription  = case PD.finalizePD
                                     flags elabEnabledSpec (const True)
                                     platform (compilerInfo compiler)
-                                    [] gdesc
-                               in desc
+                                    [] gdesc of
+                               Right (desc, _) -> desc
+                               Left _          -> error "Failed to finalizePD in elaborateSolverToCommon"
         elabFlagAssignment  = flags
         elabFlagDefaults    = PD.mkFlagAssignment
                               [ (Cabal.flagName flag, Cabal.flagDefault flag)

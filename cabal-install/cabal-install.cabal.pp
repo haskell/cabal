@@ -69,7 +69,7 @@ Version:            3.3.0.0
 %enddef
 %def CABAL_COMPONENTCOMMON
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -527,7 +527,7 @@ Test-Suite unit-tests
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -main-is UnitTests
+  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is UnitTests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
@@ -591,7 +591,7 @@ Test-Suite memory-usage-tests
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs "-with-rtsopts=-M4M -K1K" -main-is MemoryUsageTests
+  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns "-with-rtsopts=-M4M -K1K" -main-is MemoryUsageTests
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
     UnitTests.Distribution.Solver.Modular.MemoryUsage
@@ -619,7 +619,7 @@ Test-Suite solver-quickcheck
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -main-is SolverQuickCheck
+  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is SolverQuickCheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.QuickCheck
     UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
@@ -651,7 +651,7 @@ test-suite integration-tests2
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -main-is IntegrationTests2
+  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is IntegrationTests2
   other-modules:
   build-depends:
         base,

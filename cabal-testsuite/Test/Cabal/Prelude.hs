@@ -42,22 +42,24 @@ import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack
 
-import Text.Regex.TDFA
+import Text.Regex.TDFA ((=~))
 
-import Control.Concurrent.Async
+import Control.Concurrent.Async (waitCatch, withAsync)
 import qualified Data.Aeson as JSON
 import qualified Data.ByteString.Lazy as BSL
-import Control.Monad
-import Control.Monad.Trans.Reader
-import Control.Monad.IO.Class
+import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
+import Control.Monad.Trans.Reader (withReaderT, runReaderT)
+import Control.Monad.IO.Class (MonadIO (..))
 import qualified Data.ByteString.Char8 as C
-import Data.List
-import Data.Maybe
-import System.Exit
-import System.FilePath
+import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
+import Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
+import Data.Maybe (mapMaybe, fromMaybe)
+import System.Exit (ExitCode (..))
+import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory
+import System.Directory (getTemporaryDirectory, getCurrentDirectory, copyFile, removeFile, copyFile, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -157,7 +159,7 @@ setup'' prefix cmd args = do
                   ++ args
             _ -> args
     let rel_dist_dir = definitelyMakeRelative (testCurrentDir env) (testDistDir env)
-        full_args = cmd : [marked_verbose, "--distdir", rel_dist_dir] ++ args'
+        full_args = cmd :| [marked_verbose, "--distdir", rel_dist_dir] ++ args'
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
     if testCabalInstallAsSetup env
@@ -184,7 +186,7 @@ setup'' prefix cmd args = do
                     , "reconfigure"
                     , "doctest"
                     ]
-                (a:as) = full_args
+                (a:|as) = full_args
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
             in runProgramM cabalProgram full_args'
         else do
@@ -192,14 +194,14 @@ setup'' prefix cmd args = do
                       (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Simple
-                then runM (testSetupPath env) full_args
+                then runM (testSetupPath env) (NE.toList full_args)
                 -- Run the Custom script!
                 else do
                   r <- liftIO $ runghc (testScriptEnv env)
                                        (Just (testCurrentDir env))
                                        (testEnvironment env)
                                        (testCurrentDir env </> prefix </> "Setup.hs")
-                                       full_args
+                                       (NE.toList full_args)
                   recordLog r
                   requireSuccess r
     -- This code is very tempting (and in principle should be quick:

@@ -207,7 +207,9 @@ writeSimpleTestStub :: PD.TestSuite -- ^ library 'TestSuite' for which a stub
 writeSimpleTestStub t dir = do
     createDirectoryIfMissing True dir
     let filename = dir </> stubFilePath t
-        PD.TestSuiteLibV09 _ m = PD.testInterface t
+        m = case PD.testInterface t of
+            PD.TestSuiteLibV09 _  m' -> m'
+            _                        -> error "writeSimpleTestStub: invalid TestSuite passed"
     writeFile filename $ simpleTestStub m
 
 -- | Source code for library test suite stub executable
