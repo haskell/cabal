@@ -73,7 +73,7 @@ import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
          ( readGlobalConfig, projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
+         , resolveBuildTimeSettings, withProjectOrGlobalConfigIgn )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -249,6 +249,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
     targetFilter = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
+    withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector], ProjectConfig)
     withProject = do
       let verbosity' = lessVerbose verbosity
 
@@ -369,6 +370,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
 
           return (specs ++ packageSpecifiers, selectors ++ packageTargets, projectConfig localBaseCtx)
 
+    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [TargetSelector], ProjectConfig)
     withoutProject globalConfig = do
       let
         parsePkg pkgName
@@ -420,8 +422,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
         packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
       return (packageSpecifiers, packageTargets, projectConfig)
 
-  (specs, selectors, config) <- withProjectOrGlobalConfig verbosity globalConfigFlag
-                                  withProject withoutProject
+  let
+    ignoreProject = fromFlagOrDefault False (cinstIgnoreProject clientInstallFlags)
+
+  (specs, selectors, config) <-
+     withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
 
   home <- getHomeDirectory
   let
@@ -513,6 +518,13 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
   -- installables correctly. For that, we need a place to put a
   -- temporary dist directory.
   globalTmp <- getTemporaryDirectory
+
+  -- if we are installing executables, we shouldn't take into account
+  -- environment specifiers.
+  let envSpecs' :: [PackageSpecifier a]
+      envSpecs' | installLibs = envSpecs
+                | otherwise   = []
+
   withTempDirectory
     verbosity
     globalTmp
@@ -522,7 +534,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags, testFlags
                  verbosity
                  config
                  tmpDir
-                 (envSpecs ++ specs)
+                 (envSpecs' ++ specs)
                  InstallCommand
 
     buildCtx <-
