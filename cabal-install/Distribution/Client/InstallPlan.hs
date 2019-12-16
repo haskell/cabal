@@ -67,6 +67,8 @@ module Distribution.Client.InstallPlan (
   reverseDependencyClosure,
   ) where
 
+import Distribution.Compat.Stack (WithCallStack)
+
 import Distribution.Client.Types hiding (BuildOutcomes)
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.Simple.Configure as Configure
@@ -80,6 +82,7 @@ import Distribution.Package
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
 import Distribution.Deprecated.Text
+import Distribution.Pretty (prettyShow)
 import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -174,6 +177,11 @@ data GenericPlanPackage ipkg srcpkg
    | Installed   srcpkg
   deriving (Eq, Show, Generic)
 
+displayGenericPlanPackage :: (IsUnit ipkg, IsUnit srcpkg) => GenericPlanPackage ipkg srcpkg -> String
+displayGenericPlanPackage (PreExisting pkg) = "PreExisting " ++ prettyShow (nodeKey pkg)
+displayGenericPlanPackage (Configured pkg)  = "Configured " ++ prettyShow (nodeKey pkg)
+displayGenericPlanPackage (Installed pkg)   = "Installed " ++ prettyShow (nodeKey pkg)
+
 -- | Convenience combinator for destructing 'GenericPlanPackage'.
 -- This is handy because if you case manually, you have to handle
 -- 'Configured' and 'Installed' separately (where often you want
@@ -258,7 +266,7 @@ mkInstallPlan loc graph indepGoals =
       planIndepGoals = indepGoals
     }
 
-internalError :: String -> String -> a
+internalError :: WithCallStack (String -> String -> a)
 internalError loc msg = error $ "internal error in InstallPlan." ++ loc
                              ++ if null msg then "" else ": " ++ msg
 
@@ -621,7 +629,7 @@ isInstalled _                = False
 -- and return any packages that are newly in the processing state (ie ready to
 -- process), along with the updated 'Processing' state.
 --
-completed :: (IsUnit ipkg, IsUnit srcpkg)
+completed :: forall ipkg srcpkg. (IsUnit ipkg, IsUnit srcpkg)
           => GenericInstallPlan ipkg srcpkg
           -> Processing -> UnitId
           -> ([GenericReadyPackage srcpkg], Processing)
@@ -646,8 +654,9 @@ completed plan (Processing processingSet completedSet failedSet) pkgid =
                             (map nodeKey newlyReady)
     processing'    = Processing processingSet' completedSet' failedSet
 
-    asReadyPackage (Configured pkg) = ReadyPackage pkg
-    asReadyPackage _ = internalError "completed" ""
+    asReadyPackage :: GenericPlanPackage ipkg srcpkg -> GenericReadyPackage srcpkg
+    asReadyPackage (Configured pkg)  = ReadyPackage pkg
+    asReadyPackage pkg = internalError "completed" $ "not in configured state: " ++ displayGenericPlanPackage pkg
 
 failed :: (IsUnit ipkg, IsUnit srcpkg)
        => GenericInstallPlan ipkg srcpkg
@@ -673,7 +682,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     processing'    = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg
-    asConfiguredPackage _ = internalError "failed" "not in configured state"
+    asConfiguredPackage pkg = internalError "failed" $ "not in configured state: " ++ displayGenericPlanPackage pkg
 
 processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
                     => GenericInstallPlan ipkg srcpkg
