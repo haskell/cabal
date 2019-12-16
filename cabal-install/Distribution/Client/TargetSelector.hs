@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor,
              RecordWildCards, NamedFieldPuns #-}
+-- TODO
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.TargetSelector
@@ -78,6 +80,7 @@ import Data.Function
          ( on )
 import Data.List
          ( stripPrefix, partition, groupBy )
+import qualified Data.List.NonEmpty as NE
 import Data.Ord
          ( comparing )
 import qualified Data.Map.Lazy   as Map.Lazy
@@ -503,9 +506,9 @@ resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
     projectIsEmpty = null knownPackagesAll
 
     classifyMatchErrors errs
-      | not (null expected)
-      = let (things, got:_) = unzip expected in
-        TargetSelectorExpected targetStr things got
+      | Just expectedNE <- NE.nonEmpty expected
+      = let (things, got:|_) = NE.unzip expectedNE in
+        TargetSelectorExpected targetStr (NE.toList things) got
 
       | not (null nosuch)
       = TargetSelectorNoSuch targetStr nosuch

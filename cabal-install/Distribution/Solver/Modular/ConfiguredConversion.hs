@@ -45,7 +45,7 @@ convCP iidx sidx (CP qpi fa es ds) =
                       solverPkgExeDeps = fmap snd ds'
                     }
       where
-        Just srcpkg = CI.lookupPackageId sidx pi
+        srcpkg = fromMaybe (error "convCP: lookupPackageId failed") $ CI.lookupPackageId sidx pi
   where
     ds' :: ComponentDeps ([SolverId] {- lib -}, [SolverId] {- exe -})
     ds' = fmap (partitionEithers . map convConfId) ds

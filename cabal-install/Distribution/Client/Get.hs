@@ -35,6 +35,7 @@ import Distribution.Simple.Utils
          ( notice, die', info, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
+import Distribution.Pretty (prettyShow)
 import Distribution.Deprecated.Text (display)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
@@ -273,7 +274,7 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
            throwIO (ClonePackageFailedWithExitCode
                       pkgid (srpToProxy repo) (programName (vcsProgram vcs)) exitcode)
       | (pkgid, repo, vcs, destDir) <- pkgrepos'
-      , let Just vcs' = Map.lookup (vcsRepoType vcs) vcss
+      , let vcs' = Map.findWithDefault (error $ "Cannot configure " ++ prettyShow (vcsRepoType vcs)) (vcsRepoType vcs) vcss
       ]
 
   where

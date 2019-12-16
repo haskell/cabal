@@ -1,5 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+
+-- TODO: remove this
+{-# OPTIONS -fno-warn-incomplete-uni-patterns #-}
 module Distribution.Solver.Modular.Linking (
     validateLinking
   ) where

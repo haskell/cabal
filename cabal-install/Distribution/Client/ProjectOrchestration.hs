@@ -222,6 +222,10 @@ establishProjectBaseContext verbosity cliConfig currentCommand = do
                           verbosity cabalDirLayout
                           projectConfig
 
+    -- https://github.com/haskell/cabal/issues/6013
+    when (null (projectPackages projectConfig) && null (projectPackagesOptional projectConfig)) $
+        warn verbosity "There are no packages or optional-packages in the project"
+
     return ProjectBaseContext {
       distDirLayout,
       cabalDirLayout,

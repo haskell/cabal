@@ -8,6 +8,9 @@
 
 module IntegrationTests2 where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Config (getCabalDir)
@@ -49,11 +52,6 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.Verbosity
 import Distribution.Text
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (mempty, mappend)
-#endif
-import Data.List (sort)
-import Data.String (IsString(..))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad
@@ -65,8 +63,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
-import Data.Proxy  (Proxy(..))
-import Data.Typeable (Typeable)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
@@ -439,7 +435,7 @@ testTargetSelectorAmbiguous reportSubCase = do
         }
       }
       where
-        Just pkgid = simpleParse pkgidstr
+        pkgid = fromMaybe (error $ "failed to parse " ++ pkgidstr) $ simpleParse pkgidstr
 
     mkexe :: String -> Executable
     mkexe name = mempty { exeName = fromString name }
@@ -474,7 +470,7 @@ mkTargetAllPackages = TargetAllPackages Nothing
 
 instance IsString PackageIdentifier where
     fromString pkgidstr = pkgid
-      where Just pkgid = simpleParse pkgidstr
+      where pkgid = fromMaybe (error $"fromString @PackageIdentifier " ++ show pkgidstr) $ simpleParse pkgidstr
 
 
 testTargetSelectorNoCurrentPackage :: Assertion
@@ -492,7 +488,7 @@ testTargetSelectorNoCurrentPackage = do
     zipWithM_ (@?=) errs
       [ TargetSelectorNoCurrentPackage ts
       | target <- targets
-      , let Just ts = parseTargetString target
+      , let ts = fromMaybe (error $ "failed to parse target string " ++ target) $ parseTargetString target
       ]
     cleanProject testdir
   where

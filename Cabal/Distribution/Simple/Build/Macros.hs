@@ -109,9 +109,9 @@ generateToolVersionMacros progs = concat
   ++ generateMacros "TOOL_" progname version
   | prog <- progs
   , isJust . programVersion $ prog
-  , let progid       = programId prog ++ "-" ++ prettyShow version
-        progname     = map fixchar (programId prog)
-        Just version = programVersion prog
+  , let progid   = programId prog ++ "-" ++ prettyShow version
+        progname = map fixchar (programId prog)
+        version  = fromMaybe version0 (programVersion prog)
   ]
 
 -- | Common implementation of 'generatePackageVersionMacros' and
@@ -131,7 +131,11 @@ generateMacros macro_prefix name version =
     ]
   ,"\n"]
   where
-    (major1:major2:minor:_) = map show (versionNumbers version ++ repeat 0)
+    (major1,major2,minor) = case map show (versionNumbers version) of
+        []        -> ("0", "0", "0")
+        [x]       -> (x,   "0", "0")
+        [x,y]     -> (x,   y,   "0")
+        (x:y:z:_) -> (x,   y,   z)
 
 -- | Generate the @CURRENT_COMPONENT_ID@ definition for the component ID
 --   of the current package.

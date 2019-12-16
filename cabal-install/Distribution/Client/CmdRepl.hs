@@ -30,15 +30,13 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfig
-         , projectConfigConfigFile, readGlobalConfig )
+         ( ProjectConfig(..), withProjectOrGlobalConfigIgn
+         , projectConfigConfigFile )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning 
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
-import Distribution.Client.RebuildMonad
-         ( runRebuild )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
@@ -237,11 +235,8 @@ replAction ( configFlags, configExFlags, installFlags
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
     
-    (baseCtx, targetSelectors, finalizer, replType) <- if ignoreProject
-      then do
-        globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
-        without globalConfig
-      else withProjectOrGlobalConfig verbosity globalConfigFlag with without
+    (baseCtx, targetSelectors, finalizer, replType) <-
+      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
 
     when (buildSettingOnlyDeps (buildSettings baseCtx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
@@ -255,13 +250,14 @@ replAction ( configFlags, configExFlags, installFlags
         -- help us resolve the targets, but that isn't ideal for performance,
         -- especially in the no-project case.
         withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan _ -> do
+          -- targets should be non-empty map, but there's no NonEmptyMap yet.
           targets <- validatedTargets elaboratedPlan targetSelectors
           
           let
-            Just (unitId, _) = safeHead $ Map.toList targets
+            (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
-            Just pkgId = packageId <$> InstallPlan.lookup elaboratedPlan unitId 
+            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId 
             baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId baseCtx
 
           return (Just oci, baseCtx')

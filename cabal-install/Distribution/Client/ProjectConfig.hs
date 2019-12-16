@@ -29,6 +29,7 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalFreezeConfig,
     withProjectOrGlobalConfig,
+    withProjectOrGlobalConfigIgn,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
@@ -99,7 +100,7 @@ import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescription )
 import Distribution.Fields
          ( runParseResult, PError, PWarning, showPWarning)
-import Distribution.Pretty ()
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.SourceRepo
          ( RepoType(..) )
 import Distribution.Client.SourceRepo
@@ -453,6 +454,24 @@ instance Exception BadProjectRoot where
 renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
+
+-- | Like 'withProjectOrGlobalConfig', with an additional boolean
+-- which tells to ignore local project.
+--
+-- Used to implement -z / --ignore-project behaviour
+--
+withProjectOrGlobalConfigIgn
+    :: Bool -- ^ whether to ignore local project
+    -> Verbosity
+    -> Flag FilePath
+    -> IO a
+    -> (ProjectConfig -> IO a)
+    -> IO a
+withProjectOrGlobalConfigIgn True  verbosity gcf _with without = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    without globalConfig
+withProjectOrGlobalConfigIgn False verbosity gcf with without =
+    withProjectOrGlobalConfig verbosity gcf with without
 
 withProjectOrGlobalConfig :: Verbosity
                           -> Flag FilePath
@@ -1133,7 +1152,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
     --TODO: pass progPathExtra on to 'configureVCS'
     let _progPathExtra = fromNubList projectConfigProgPathExtra
     getConfiguredVCS <- delayInitSharedResources $ \repoType ->
-                          let Just vcs = Map.lookup repoType knownVCSs in
+                          let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs in
                           configureVCS verbosity {-progPathExtra-} vcs
 
     concat <$> sequence

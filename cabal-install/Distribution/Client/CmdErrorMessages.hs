@@ -7,6 +7,9 @@ module Distribution.Client.CmdErrorMessages (
     module Distribution.Client.TargetSelector,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetSelector
          ( ComponentKindFilter, componentKind, showTargetSelector )
@@ -22,8 +25,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Deprecated.Text
          ( display )
 
-import Data.Maybe (isNothing)
-import Data.List (sortBy, groupBy, nub)
+import qualified Data.List.NonEmpty as NE
 import Data.Function (on)
 
 
@@ -77,8 +79,8 @@ renderListSemiAnd (x:xs) = x ++ "; " ++ renderListSemiAnd xs
 -- >   | (pkgname, components) <- sortGroupOn packageName allcomponents ]
 --
 sortGroupOn :: Ord b => (a -> b) -> [a] -> [(b, [a])]
-sortGroupOn key = map (\xs@(x:_) -> (key x, xs))
-                . groupBy ((==) `on` key)
+sortGroupOn key = map (\(x:|xs) -> (key x, x:xs))
+                . NE.groupBy ((==) `on` key)
                 . sortBy  (compare `on` key)
 
 
