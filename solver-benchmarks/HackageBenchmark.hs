@@ -174,9 +174,34 @@ runCabal :: Int -> FilePath -> [String] -> PackageName -> IO CabalTrial
 runCabal timeoutSeconds cabal flags pkg = do
   ((exitCode, err), time) <- timeEvent $ do
     let timeout = "timeout --foreground -sINT " ++ show timeoutSeconds
-        cabalCmd =
-            unwords $
-            [cabal, "install", "--ignore-project", "--lib", unPackageName pkg, "--dry-run", "-vsilent+nowrap"] ++ flags
+        cabalCmd = unwords $
+            [ cabal
+
+              -- A non-existent store directory prevents cabal from reading the
+              -- store, which would cause the size of the store to affect run
+              -- time.
+            , "--store-dir=non-existent-store-dir"
+
+            , "v2-install"
+
+              -- These flags prevent a Cabal project or package environment from
+              -- affecting the install plan.
+            , "--ignore-project"
+            , "--package-env=non-existent-package-env"
+
+              -- --lib allows solving for packages with libraries or
+              -- executables.
+            , "--lib"
+
+            , unPackageName pkg
+
+            , "--dry-run"
+
+              -- The test doesn't currently handle stdout, so we suppress it
+              -- with silent. nowrap simplifies parsing the errors messages.
+            , "-vsilent+nowrap"]
+
+             ++ flags
         cmd = (shell (timeout ++ " " ++ cabalCmd)) { std_err = CreatePipe }
 
     -- TODO: Read stdout and compare the install plans.
