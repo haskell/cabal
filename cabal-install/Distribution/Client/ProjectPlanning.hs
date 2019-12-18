@@ -70,6 +70,7 @@ module Distribution.Client.ProjectPlanning (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import           Distribution.Client.HashValue
 import           Distribution.Client.ProjectPlanning.Types as Ty
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad

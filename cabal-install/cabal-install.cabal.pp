@@ -134,6 +134,7 @@ Version:            3.3.0.0
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
         Distribution.Client.Haddock
+        Distribution.Client.HashValue
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
         Distribution.Client.IndexUtils.Timestamp

@@ -61,9 +61,9 @@ module Distribution.Client.Setup
     , liftOptions
     , yesNoOpt
     --TODO: stop exporting these:
-    , showRepo
-    , parseRepo
-    , readRepo
+    , showRemoteRepo
+    , parseRemoteRepo
+    , readRemoteRepo
     ) where
 
 import Prelude ()
@@ -73,6 +73,7 @@ import Distribution.Deprecated.ReadP (readP_to_E)
 
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
+         , LocalRepo (..), emptyLocalRepo
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , WriteGhcEnvironmentFilesPolicy(..)
          )
@@ -420,7 +421,12 @@ globalCommand commands = CommandUI {
        option [] ["remote-repo"]
          "The name and url for a remote repository"
          globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
-         (reqArg' "NAME:URL" (toNubList . maybeToList . readRepo) (map showRepo . fromNubList))
+         (reqArg' "NAME:URL" (toNubList . maybeToList . readRemoteRepo) (map showRemoteRepo . fromNubList))
+
+      ,option [] ["local-no-index-repo"]
+         "The name and a path for a local no-index repository"
+         globalLocalNoIndexRepos (\v flags -> flags { globalLocalNoIndexRepos = v })
+         (reqArg' "NAME:PATH" (toNubList . maybeToList . readLocalRepo) (map showLocalRepo . fromNubList))
 
       ,option [] ["remote-repo-cache"]
          "The location where downloads from all remote repos are cached"
@@ -2951,15 +2957,15 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
       v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
         | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
-showRepo :: RemoteRepo -> String
-showRepo repo = remoteRepoName repo ++ ":"
+showRemoteRepo :: RemoteRepo -> String
+showRemoteRepo repo = remoteRepoName repo ++ ":"
              ++ uriToString id (remoteRepoURI repo) []
 
-readRepo :: String -> Maybe RemoteRepo
-readRepo = readPToMaybe parseRepo
+readRemoteRepo :: String -> Maybe RemoteRepo
+readRemoteRepo = readPToMaybe parseRemoteRepo
 
-parseRepo :: Parse.ReadP r RemoteRepo
-parseRepo = do
+parseRemoteRepo :: Parse.ReadP r RemoteRepo
+parseRemoteRepo = do
   name   <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
   _      <- Parse.char ':'
   uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
@@ -2972,6 +2978,21 @@ parseRepo = do
     remoteRepoKeyThreshold   = 0,
     remoteRepoShouldTryHttps = False
   }
+
+showLocalRepo :: LocalRepo -> String
+showLocalRepo repo = localRepoName repo ++ ":" ++ localRepoPath repo
+
+readLocalRepo :: String -> Maybe LocalRepo
+readLocalRepo = readPToMaybe parseLocalRepo
+
+parseLocalRepo :: Parse.ReadP r LocalRepo
+parseLocalRepo = do
+  name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
+  _    <- Parse.char ':'
+  path <- Parse.munch1 (const True)
+  return $ (emptyLocalRepo name)
+    { localRepoPath = path
+    }
 
 -- ------------------------------------------------------------
 -- * Helpers for Documentation

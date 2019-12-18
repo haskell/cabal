@@ -177,6 +177,7 @@ fetchRepoTarball verbosity' repoCtxt repo pkgid = do
 
     downloadRepoPackage = case repo of
       RepoLocal{..} -> return (packageFile repo pkgid)
+      RepoLocalNoIndex{..} -> return (packageFile repo pkgid)
 
       RepoRemote{..} -> do
         transport <- repoContextGetTransport repoCtxt
@@ -292,6 +293,7 @@ packageFile repo pkgid = packageDir repo pkgid
 -- the tarball for a given @PackageIdentifer@ is stored.
 --
 packageDir :: Repo -> PackageId -> FilePath
+packageDir (RepoLocalNoIndex (LocalRepo _ dir _) _) _pkgid = dir
 packageDir repo pkgid = repoLocalDir repo
                     </> display (packageName    pkgid)
                     </> display (packageVersion pkgid)

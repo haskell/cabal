@@ -49,8 +49,10 @@ module Distribution.Utils.Structured (
     -- | These functions operate like @binary@'s counterparts,
     -- but the serialised version has a structure hash in front.
     structuredEncode,
+    structuredEncodeFile,
     structuredDecode,
     structuredDecodeOrFailIO,
+    structuredDecodeFileOrFail,
     -- * Structured class
     Structured (structure),
     MD5,
@@ -262,6 +264,10 @@ structuredEncode
   => a -> LBS.ByteString
 structuredEncode x = Binary.encode (Tag :: Tag a, x)
 
+-- | Lazily serialise a value to a file
+structuredEncodeFile :: (Binary.Binary a, Structured a) => FilePath -> a -> IO ()
+structuredEncodeFile f = LBS.writeFile f . structuredEncode
+
 -- | Structured 'Binary.decode'.
 -- Decode a value from a lazy 'LBS.ByteString', reconstructing the original structure.
 -- Throws pure exception on invalid inputs.
@@ -279,6 +285,10 @@ structuredDecodeOrFailIO bs =
 #else
     handler (ErrorCall str) = return $ Left str
 #endif
+
+-- | Lazily reconstruct a value previously written to a file.
+structuredDecodeFileOrFail :: (Binary.Binary a, Structured a) => FilePath -> IO (Either String a)
+structuredDecodeFileOrFail f = structuredDecodeOrFailIO =<< LBS.readFile f
 
 -------------------------------------------------------------------------------
 -- Helper data

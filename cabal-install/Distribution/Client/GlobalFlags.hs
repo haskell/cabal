@@ -17,7 +17,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..) )
+         ( Repo(..), RemoteRepo(..), LocalRepo (..), localRepoCacheKey )
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -27,7 +27,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
-         ( info )
+         ( info, warn )
 
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
@@ -48,6 +48,8 @@ import qualified Hackage.Security.Client.Repository.Remote  as Sec.Remote
 import qualified Distribution.Client.Security.HTTP          as Sec.HTTP
 import qualified Distribution.Client.Security.DNS           as Sec.DNS
 
+import qualified System.FilePath.Posix as FilePath.Posix
+
 -- ------------------------------------------------------------
 -- * Global flags
 -- ------------------------------------------------------------
@@ -62,6 +64,7 @@ data GlobalFlags = GlobalFlags {
     globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
     globalLocalRepos        :: NubList FilePath,
+    globalLocalNoIndexRepos :: NubList LocalRepo,
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
@@ -83,6 +86,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
+    globalLocalNoIndexRepos = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
@@ -141,20 +145,25 @@ withRepoContext :: Verbosity -> GlobalFlags -> (RepoContext -> IO a) -> IO a
 withRepoContext verbosity globalFlags =
     withRepoContext'
       verbosity
-      (fromNubList (globalRemoteRepos    globalFlags))
-      (fromNubList (globalLocalRepos     globalFlags))
-      (fromFlag    (globalCacheDir       globalFlags))
-      (flagToMaybe (globalHttpTransport  globalFlags))
-      (flagToMaybe (globalIgnoreExpiry   globalFlags))
-      (fromNubList (globalProgPathExtra globalFlags))
+      (fromNubList (globalRemoteRepos       globalFlags))
+      (fromNubList (globalLocalRepos        globalFlags))
+      (fromNubList (globalLocalNoIndexRepos globalFlags))
+      (fromFlag    (globalCacheDir          globalFlags))
+      (flagToMaybe (globalHttpTransport     globalFlags))
+      (flagToMaybe (globalIgnoreExpiry      globalFlags))
+      (fromNubList (globalProgPathExtra     globalFlags))
 
-withRepoContext' :: Verbosity -> [RemoteRepo] -> [FilePath]
+withRepoContext' :: Verbosity -> [RemoteRepo] -> [FilePath] -> [LocalRepo]
                  -> FilePath  -> Maybe String -> Maybe Bool
                  -> [FilePath]
                  -> (RepoContext -> IO a)
                  -> IO a
-withRepoContext' verbosity remoteRepos localRepos
+withRepoContext' verbosity remoteRepos localRepos localNoIndexRepos
                  sharedCacheDir httpTransport ignoreExpiry extraPaths = \callback -> do
+    for_ localNoIndexRepos $ \local ->
+        unless (FilePath.Posix.isAbsolute (localRepoPath local)) $
+            warn verbosity $ "file+noindex " ++ localRepoName local ++ " repository path is not absolute; this is fragile, and not recommended"
+
     transportRef <- newMVar Nothing
     let httpLib = Sec.HTTP.transportAdapter
                     verbosity
@@ -162,6 +171,7 @@ withRepoContext' verbosity remoteRepos localRepos
     initSecureRepos verbosity httpLib secureRemoteRepos $ \secureRepos' ->
       callback RepoContext {
           repoContextRepos          = allRemoteRepos
+                                   ++ allLocalNoIndexRepos
                                    ++ map RepoLocal localRepos
         , repoContextGetTransport   = getTransport transportRef
         , repoContextWithSecureRepo = withSecureRepo secureRepos'
@@ -170,11 +180,21 @@ withRepoContext' verbosity remoteRepos localRepos
   where
     secureRemoteRepos =
       [ (remote, cacheDir) | RepoSecure remote cacheDir <- allRemoteRepos ]
+
+    allRemoteRepos :: [Repo]
     allRemoteRepos =
       [ (if isSecure then RepoSecure else RepoRemote) remote cacheDir
       | remote <- remoteRepos
       , let cacheDir = sharedCacheDir </> remoteRepoName remote
             isSecure = remoteRepoSecure remote == Just True
+      ]
+
+    allLocalNoIndexRepos :: [Repo]
+    allLocalNoIndexRepos =
+      [ RepoLocalNoIndex local cacheDir
+      | local <- localNoIndexRepos
+      , let cacheDir | localRepoSharedCache local = sharedCacheDir </> localRepoCacheKey local
+                     | otherwise                  = localRepoPath local
       ]
 
     getTransport :: MVar (Maybe HttpTransport) -> IO HttpTransport

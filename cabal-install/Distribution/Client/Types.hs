@@ -49,6 +49,7 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Client.SourceRepo
          ( SourceRepoMaybe )
+import Distribution.Client.HashValue (showHashValue, hashValue, truncateHash)
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
@@ -64,12 +65,14 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
 import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Deprecated.ParseUtils (parseOptCommaList)
-import Distribution.Simple.Utils (ordNub)
+import Distribution.Simple.Utils (ordNub, toUTF8BS)
 import Distribution.Deprecated.Text (Text(..))
 
 import Network.URI (URI(..), nullURI)
 import Control.Exception (Exception, SomeException)
+
 import qualified Text.PrettyPrint as Disp
+import qualified Data.ByteString.Lazy.Char8 as LBS
 
 
 newtype Username = Username { unUsername :: String }
@@ -330,6 +333,34 @@ instance Structured RemoteRepo
 emptyRemoteRepo :: String -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI Nothing [] 0 False
 
+-- | /no-index/ style local repositories.
+--
+-- https://github.com/haskell/cabal/issues/6359
+data LocalRepo = LocalRepo
+    { localRepoName        :: String
+    , localRepoPath        :: FilePath
+    , localRepoSharedCache :: Bool
+    }
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary LocalRepo
+instance Structured LocalRepo
+
+-- | Construct a partial 'LocalRepo' value to fold the field parser list over.
+emptyLocalRepo :: String -> LocalRepo
+emptyLocalRepo name = LocalRepo name "" False
+
+-- | Calculate a cache key for local-repo.
+--
+-- For remote repositories we just use name, but local repositories may
+-- all be named "local", so we add a bit of `localRepoPath` into the
+-- mix.
+localRepoCacheKey :: LocalRepo -> String
+localRepoCacheKey local = localRepoName local ++ "-" ++ hashPart where
+    hashPart
+        = showHashValue $ truncateHash 8 $ hashValue
+        $ LBS.fromStrict $ toUTF8BS $ localRepoPath local
+
 -- | Different kinds of repositories
 --
 -- NOTE: It is important that this type remains serializable.
@@ -337,6 +368,14 @@ data Repo =
     -- | Local repositories
     RepoLocal {
         repoLocalDir :: FilePath
+      }
+  
+    -- | Local repository, without index.
+    --
+    -- https://github.com/haskell/cabal/issues/6359
+  | RepoLocalNoIndex
+      { repoLocal    :: LocalRepo
+      , repoLocalDir :: FilePath
       }
 
     -- | Standard (unsecured) remote repositores
@@ -364,14 +403,16 @@ instance Structured Repo
 
 -- | Check if this is a remote repo
 isRepoRemote :: Repo -> Bool
-isRepoRemote RepoLocal{} = False
-isRepoRemote _           = True
+isRepoRemote RepoLocal{}        = False
+isRepoRemote RepoLocalNoIndex{} = False
+isRepoRemote _                  = True
 
 -- | Extract @RemoteRepo@ from @Repo@ if remote.
 maybeRepoRemote :: Repo -> Maybe RemoteRepo
-maybeRepoRemote (RepoLocal    _localDir) = Nothing
-maybeRepoRemote (RepoRemote r _localDir) = Just r
-maybeRepoRemote (RepoSecure r _localDir) = Just r
+maybeRepoRemote (RepoLocal          _localDir) = Nothing
+maybeRepoRemote (RepoLocalNoIndex _ _localDir) = Nothing
+maybeRepoRemote (RepoRemote       r _localDir) = Just r
+maybeRepoRemote (RepoSecure       r _localDir) = Just r
 
 -- ------------------------------------------------------------
 -- * Build results
