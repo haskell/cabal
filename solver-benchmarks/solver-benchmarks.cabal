@@ -30,6 +30,8 @@ library
     base,
     bytestring,
     Cabal >= 2.3,
+    directory,
+    filepath,
     optparse-applicative,
     process,
     time,

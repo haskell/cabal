@@ -27,7 +27,9 @@ import Statistics.Test.MannWhitneyU ( PositionTest(..), TestResult(..)
                                     , mannWhitneyUCriticalValue
                                     , mannWhitneyUtest)
 import Statistics.Types (PValue, mkPValue)
+import System.Directory (getTemporaryDirectory)
 import System.Exit (ExitCode(..), exitFailure)
+import System.FilePath ((</>))
 import System.IO ( BufferMode(LineBuffering), hPutStrLn, hSetBuffering, stderr
                  , stdout)
 import System.Process ( StdStream(CreatePipe), CreateProcess(..), callProcess
@@ -56,6 +58,10 @@ data CabalResult
   = Solution
   | NoInstallPlan
   | BackjumpLimit
+  | Unbuildable
+  | UnbuildableDep
+  | ComponentCycle
+  | ModReexpIssue
   | PkgNotFound
   | Timeout
   | Unknown
@@ -81,14 +87,14 @@ hackageBenchmarkMain = do
   -- "trial" or "summary".
   when argPrintTrials $ putStr $ printf "%-16s " "trial/summary"
   putStrLn $
-      printf "%-*s %-13s %-13s %11s %11s %11s %11s %11s"
+      printf "%-*s %-14s %-14s %11s %11s %11s %11s %11s"
              nameColumnWidth "package" "result1" "result2"
              "mean1" "mean2" "stddev1" "stddev2" "speedup"
 
   forM_ pkgs $ \pkg -> do
     let printTrial msgType result1 result2 time1 time2 =
             putStrLn $
-            printf "%-16s %-*s %-13s %-13s %10.3fs %10.3fs"
+            printf "%-16s %-*s %-14s %-14s %10.3fs %10.3fs"
                    msgType nameColumnWidth (unPackageName pkg)
                    (show result1) (show result2)
                    (diffTimeToDouble time1) (diffTimeToDouble time2)
@@ -125,7 +131,7 @@ hackageBenchmarkMain = do
       if isSignificantResult result1 result2
           || isSignificantTimeDifference argPValue ts1 ts2
       then putStrLn $
-           printf "%-*s %-13s %-13s %10.3fs %10.3fs %10.3fs %10.3fs %10.3f"
+           printf "%-*s %-14s %-14s %10.3fs %10.3fs %10.3fs %10.3fs %10.3f"
                   nameColumnWidth (unPackageName pkg)
                   (show result1) (show result2) mean1 mean2 stddev1 stddev2 speedup
       else when (argPrintTrials || argPrintSkippedPackages) $
@@ -169,10 +175,37 @@ hackageBenchmarkMain = do
 runCabal :: Int -> FilePath -> [String] -> PackageName -> IO CabalTrial
 runCabal timeoutSeconds cabal flags pkg = do
   ((exitCode, err), time) <- timeEvent $ do
+    tmpDir <- getTemporaryDirectory
+
     let timeout = "timeout --foreground -sINT " ++ show timeoutSeconds
-        cabalCmd =
-            unwords $
-            [cabal, "install", unPackageName pkg, "--dry-run", "-v0"] ++ flags
+        cabalCmd = unwords $
+            [ cabal
+
+              -- A non-existent store directory prevents cabal from reading the
+              -- store, which would cause the size of the store to affect run
+              -- time.
+            , "--store-dir=" ++ (tmpDir </> "non-existent-store-dir")
+
+            , "v2-install"
+
+              -- These flags prevent a Cabal project or package environment from
+              -- affecting the install plan.
+            , "--ignore-project"
+            , "--package-env=non-existent-package-env"
+
+              -- --lib allows solving for packages with libraries or
+              -- executables.
+            , "--lib"
+
+            , unPackageName pkg
+
+            , "--dry-run"
+
+              -- The test doesn't currently handle stdout, so we suppress it
+              -- with silent. nowrap simplifies parsing the errors messages.
+            , "-vsilent+nowrap"]
+
+             ++ flags
         cmd = (shell (timeout ++ " " ++ cabalCmd)) { std_err = CreatePipe }
 
     -- TODO: Read stdout and compare the install plans.
@@ -182,12 +215,16 @@ runCabal timeoutSeconds cabal flags pkg = do
   let exhaustiveMsg =
           "After searching the rest of the dependency tree exhaustively"
       result
-        | exitCode == ExitSuccess                                  = Solution
-        | exitCode == ExitFailure 124                              = Timeout
-        | fromString exhaustiveMsg `B.isInfixOf` err               = NoInstallPlan
-        | fromString "Backjump limit reached" `B.isInfixOf` err    = BackjumpLimit
-        | fromString "There is no package named" `B.isInfixOf` err = PkgNotFound
-        | otherwise                                                = Unknown
+        | exitCode == ExitSuccess                                                          = Solution
+        | exitCode == ExitFailure 124                                                      = Timeout
+        | fromString exhaustiveMsg `B.isInfixOf` err                                       = NoInstallPlan
+        | fromString "Backjump limit reached" `B.isInfixOf` err                            = BackjumpLimit
+        | fromString "none of the components are available to build" `B.isInfixOf` err     = Unbuildable
+        | fromString "Dependency on unbuildable" `B.isInfixOf` err                         = UnbuildableDep
+        | fromString "Dependency cycle between the following components" `B.isInfixOf` err = ComponentCycle
+        | fromString "Problem with module re-exports" `B.isInfixOf` err                    = ModReexpIssue
+        | fromString "There is no package named" `B.isInfixOf` err                         = PkgNotFound
+        | otherwise                                                                        = Unknown
   return (CabalTrial time result)
 
 isSampleLargeEnough :: PValue Double -> Int -> Bool
@@ -224,12 +261,16 @@ isSignificantResult r1 r2 = r1 /= r2 || not (isExpectedResult r1)
 
 -- Is this result expected in a benchmark run on all of Hackage?
 isExpectedResult :: CabalResult -> Bool
-isExpectedResult Solution      = True
-isExpectedResult NoInstallPlan = True
-isExpectedResult BackjumpLimit = True
-isExpectedResult Timeout       = True
-isExpectedResult PkgNotFound   = False
-isExpectedResult Unknown       = False
+isExpectedResult Solution       = True
+isExpectedResult NoInstallPlan  = True
+isExpectedResult BackjumpLimit  = True
+isExpectedResult Timeout        = True
+isExpectedResult Unbuildable    = True
+isExpectedResult UnbuildableDep = True
+isExpectedResult ComponentCycle = True
+isExpectedResult ModReexpIssue  = True
+isExpectedResult PkgNotFound    = False
+isExpectedResult Unknown        = False
 
 -- Combine CabalResults from multiple trials. Ignoring timeouts, all results
 -- should be the same. If they aren't the same, we returns Unknown.
