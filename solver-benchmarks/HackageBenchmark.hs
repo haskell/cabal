@@ -27,7 +27,9 @@ import Statistics.Test.MannWhitneyU ( PositionTest(..), TestResult(..)
                                     , mannWhitneyUCriticalValue
                                     , mannWhitneyUtest)
 import Statistics.Types (PValue, mkPValue)
+import System.Directory (getTemporaryDirectory)
 import System.Exit (ExitCode(..), exitFailure)
+import System.FilePath ((</>))
 import System.IO ( BufferMode(LineBuffering), hPutStrLn, hSetBuffering, stderr
                  , stdout)
 import System.Process ( StdStream(CreatePipe), CreateProcess(..), callProcess
@@ -173,6 +175,8 @@ hackageBenchmarkMain = do
 runCabal :: Int -> FilePath -> [String] -> PackageName -> IO CabalTrial
 runCabal timeoutSeconds cabal flags pkg = do
   ((exitCode, err), time) <- timeEvent $ do
+    tmpDir <- getTemporaryDirectory
+
     let timeout = "timeout --foreground -sINT " ++ show timeoutSeconds
         cabalCmd = unwords $
             [ cabal
@@ -180,7 +184,7 @@ runCabal timeoutSeconds cabal flags pkg = do
               -- A non-existent store directory prevents cabal from reading the
               -- store, which would cause the size of the store to affect run
               -- time.
-            , "--store-dir=non-existent-store-dir"
+            , "--store-dir=" ++ (tmpDir </> "non-existent-store-dir")
 
             , "v2-install"
 

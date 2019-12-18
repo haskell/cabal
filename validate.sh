@@ -14,6 +14,7 @@ CABALSUITETESTS=true
 CABALONLY=false
 DEPSONLY=false
 DOCTEST=false
+BENCHMARKS=false
 VERBOSE=false
 
 # Help
@@ -23,7 +24,7 @@ show_usage() {
 cat <<EOF
 ./validate.sh - build & test
 
-Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -D | -v ]
+Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -D | -b | -v ]
   A script which runs all the tests.
 
 Available options:
@@ -37,6 +38,7 @@ Available options:
   -y CABALPLAN   With cabal-plan
   -d             Build dependencies only
   -D             Run doctest
+  -b             Run benchmarks (quick run, verify they work)
   -v             Verbose
 EOF
 exit 0
@@ -112,7 +114,7 @@ footer() {
 # getopt
 #######################################################################
 
-while getopts 'j:lCcsw:x:y:dDv' flag; do
+while getopts 'j:lCcsw:x:y:dDbv' flag; do
     case $flag in
         j) JOBS="$OPTARG"
             ;;
@@ -133,6 +135,8 @@ while getopts 'j:lCcsw:x:y:dDv' flag; do
         d) DEPSONLY=true
             ;;
         D) DOCTEST=true
+            ;;
+        b) BENCHMARKS=true
             ;;
         v) VERBOSE=true
             ;;
@@ -170,6 +174,7 @@ cabal-testsuite:     $CABALSUITETESTS
 library only:        $CABALONLY
 dependencies only:   $DEPSONLY
 doctest:             $DOCTEST
+benchmarks:          $BENCHMARKS
 verbose:             $VERBOSE
 
 EOF
@@ -342,6 +347,27 @@ CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TEST
 (cd cabal-testsuite && timed $CMD) || exit 1
 
 fi # CABALSUITETESTS
+
+# solver-benchmarks
+#######################################################################
+
+if $BENCHMARKS; then
+echo "$CYAN=== solver-benchmarks: build =========================== $(date +%T) === $RESET"
+
+timed $CABALNEWBUILD solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests --enable-tests
+
+echo "$CYAN=== solver-benchmarks: test ============================ $(date +%T) === $RESET"
+
+CMD="$($CABALPLANLISTBIN solver-benchmarks:test:unit-tests)"
+(cd Cabal && timed $CMD) || exit 1
+
+echo "$CYAN=== solver-benchmarks: run ============================= $(date +%T) === $RESET"
+
+SOLVEPKG=Chart-diagrams
+CMD="$($CABALPLANLISTBIN solver-benchmarks:exe:hackage-benchmark) --cabal1=$CABAL --cabal2=$($CABALPLANLISTBIN cabal-install:exe:cabal) --trials=5 --packages=$SOLVEPKG --print-trials"
+(cd Cabal && timed $CMD) || exit 1
+
+fi
 
 # END
 #######################################################################
