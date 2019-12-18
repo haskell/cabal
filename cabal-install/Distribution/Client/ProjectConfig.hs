@@ -187,6 +187,7 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
       verbosity
       buildSettingRemoteRepos
       buildSettingLocalRepos
+      buildSettingLocalNoIndexRepos
       buildSettingCacheDir
       buildSettingHttpTransport
       (Just buildSettingIgnoreExpiry)
@@ -209,6 +210,7 @@ projectConfigWithSolverRepoContext verbosity
       verbosity
       (fromNubList projectConfigRemoteRepos)
       (fromNubList projectConfigLocalRepos)
+      (fromNubList projectConfigLocalNoIndexRepos)
       (fromFlagOrDefault
                    (error
                     "projectConfigWithSolverRepoContext: projectConfigCacheDir")
@@ -233,6 +235,7 @@ resolveSolverSettings ProjectConfig{
     -- the flag assignments need checking.
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
+    solverSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
     solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
@@ -296,6 +299,7 @@ resolveBuildTimeSettings verbosity
                            projectConfigShared = ProjectConfigShared {
                              projectConfigRemoteRepos,
                              projectConfigLocalRepos,
+                             projectConfigLocalNoIndexRepos,
                              projectConfigProgPathExtra
                            },
                            projectConfigBuildOnly
@@ -316,6 +320,7 @@ resolveBuildTimeSettings verbosity
     buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
     buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
     buildSettingLocalRepos    = fromNubList projectConfigLocalRepos
+    buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
     buildSettingCacheDir      = fromFlag    projectConfigCacheDir
     buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
     buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry

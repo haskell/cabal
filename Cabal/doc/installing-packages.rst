@@ -57,7 +57,7 @@ The name of the repository is given on the first line, and can be
 anything; packages downloaded from this repository will be cached under
 ``~/.cabal/packages/hackage.haskell.org`` (or whatever name you specify;
 you can change the prefix by changing the value of
-``remote-repo-cache``). If you want, you can configure multiple
+:cfg-field:`remote-repo-cache`). If you want, you can configure multiple
 repositories, and ``cabal`` will combine them and be able to download
 packages from any of them.
 
@@ -97,7 +97,32 @@ received were the right ones. How that is done is however outside the
 scope of ``cabal`` proper.
 
 More information about the security infrastructure can be found at
-https://github.com/well-typed/hackage-security.
+https://github.com/haskell/hackage-security.
+
+Local no-index repositories
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It's possible to use a directory of `.tar.gz` package files as a local package
+repository.
+
+::
+
+    repository my-local-repository
+      url: file+noindex:///absolute/path/to/directory
+
+``cabal`` will construct the index automatically from the
+``package-name-version.tar.gz`` files in the directory, and will use optional
+corresponding ``package-name-version.cabal`` files as new revisions.
+
+The index is cached inside the given directory. If the directory is not
+writable, you can append ``#shared-cache`` fragment to the URI,
+then the cache will be stored inside the :cfg-field:`remote-repo-cache` directory.
+The part of the path will be used to determine the cache key part.
+
+.. note::
+    The URI scheme ``file:`` is interpreted as a remote repository,
+    as described in the previous sections, thus requiring manual construction
+    of ``01-index.tar`` file.
 
 Legacy repositories
 ^^^^^^^^^^^^^^^^^^^
@@ -120,7 +145,7 @@ although, in (and only in) the specific case of Hackage, the URL
 ``http://hackage.haskell.org/packages/archive`` will be silently
 translated to ``http://hackage.haskell.org/``.
 
-The second kind of legacy repositories are so-called “local”
+The second kind of legacy repositories are so-called “(legacy) local”
 repositories:
 
 ::
