@@ -178,7 +178,7 @@ typeName f (Structure t v n s) = fmap (\n' -> Structure t v n' s) (f n)
 -- | Flatten 'Structure' into something we can calculate hash of.
 --
 -- As 'Structure' can be potentially infinite. For mutually recursive types,
--- we keep track of 'TypeRep's, and put just 'TypeRep' name when it's occured
+-- we keep track of 'TypeRep's, and put just 'TypeRep' name when it's occurred
 -- another time.
 structureBuilder :: Structure -> Builder.Builder
 structureBuilder s0 = State.evalState (go s0) Map.empty where

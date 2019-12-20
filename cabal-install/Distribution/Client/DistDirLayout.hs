@@ -155,11 +155,11 @@ data CabalDirLayout = CabalDirLayout {
 
 -- | Information about the root directory of the project.
 --
--- It can either be an implict project root in the current dir if no
+-- It can either be an implicit project root in the current dir if no
 -- @cabal.project@ file is found, or an explicit root if the file is found.
 --
 data ProjectRoot =
-       -- | -- ^ An implict project root. It contains the absolute project
+       -- | -- ^ An implicit project root. It contains the absolute project
        -- root dir.
        ProjectRootImplicit FilePath
 

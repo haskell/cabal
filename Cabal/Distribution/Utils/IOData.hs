@@ -78,7 +78,7 @@ instance KnownIODataMode LBS.ByteString where
 -- This is the dual operation ot 'hGetIODataContents',
 -- and consequently the handle is closed with `hClose`.
 --
--- /Note:/ this performes lazy-IO.
+-- /Note:/ this performs lazy-IO.
 --
 -- @since 2.2
 hPutContents :: System.IO.Handle -> IOData -> Prelude.IO ()
