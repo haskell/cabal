@@ -143,7 +143,7 @@ summarizePackage verbosity packageLog = do
   where
     addTriple (p1, f1, e1) (p2, f2, e2) = (p1 + p2, f1 + f2, e1 + e2)
 
--- | Print a summary of a single test case's result to the console, supressing
+-- | Print a summary of a single test case's result to the console, suppressing
 -- output for certain verbosity or test filter levels.
 summarizeTest :: Verbosity -> TestShowDetails -> TestLogs -> IO ()
 summarizeTest _ _ (GroupLogs {}) = return ()

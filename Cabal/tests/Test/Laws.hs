@@ -53,7 +53,7 @@ monoid_2 :: (Eq a, Data.Monoid.Monoid a) => a -> a -> a -> Bool
 monoid_2 x y z = (x `mappend`  y) `mappend` z
               ==  x `mappend` (y  `mappend` z)
 
--- | The 'mconcat' definition. It can be overidden for the sake of effeciency
+-- | The 'mconcat' definition. It can be overidden for the sake of efficiency
 -- but it must still satisfy the property given by the default definition:
 --
 -- > mconcat = foldr mappend mempty

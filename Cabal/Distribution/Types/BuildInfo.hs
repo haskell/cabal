@@ -82,7 +82,7 @@ data BuildInfo = BuildInfo {
                                        --   Example 2: a library that is being built by a foreing tool (e.g. rust)
                                        --              and copied and registered together with this library.  The
                                        --              logic on how this library is built will have to be encoded in a
-                                       --              custom Setup for now.  Oherwise cabal would need to lear how to
+                                       --              custom Setup for now.  Otherwise cabal would need to lear how to
                                        --              call arbitrary library builders.
         extraLibFlavours  :: [String], -- ^ Hidden Flag.  This set of strings, will be appended to all libraries when
                                        --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This

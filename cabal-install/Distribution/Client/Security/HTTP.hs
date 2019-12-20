@@ -143,7 +143,7 @@ mkReqHeaders reqHeaders mRange = concat [
     insert :: Eq a => a -> [b] -> [(a, [b])] -> [(a, [b])]
     insert x y = modifyAssocList x (++ y)
 
-    -- modify the first maching element
+    -- modify the first matching element
     modifyAssocList :: Eq a => a -> (b -> b) -> [(a, b)] -> [(a, b)]
     modifyAssocList a f = go where
         go []                         = []
