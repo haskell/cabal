@@ -75,7 +75,8 @@ import Data.List
 import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory
-    , createDirectoryIfMissing, makeAbsolute )
+    , createDirectoryIfMissing, makeAbsolute
+    , getPermissions, executable )
 import System.FilePath
     ( (</>), (<.>), makeRelative, normalise, takeDirectory )
 
@@ -281,10 +282,11 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                             Right path -> tell [Tar.directoryEntry path]
 
                         for_ files $ \(perm, file) -> do
+                            realPerm <- getPermissions file
                             let fileDir = takeDirectory (prefix </> file)
                                 perm' = case perm of
-                                    Exec -> Tar.executableFilePermissions
-                                    NoExec -> Tar.ordinaryFilePermissions
+                                    Exec | executable realPerm -> Tar.executableFilePermissions
+                                    _                          -> Tar.ordinaryFilePermissions
                             needsEntry <- gets (Set.notMember fileDir)
 
                             when needsEntry $ do
