@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 3.1.0.0 (current development version)
+	* `v2-sdist` no longer gives files that are not already executable extra permissions
+	  when generating a tarball. (#5813, #6454)
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
 	  (analogous to how `--test-option(s)` works). (#6209)
