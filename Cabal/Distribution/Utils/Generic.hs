@@ -369,21 +369,29 @@ listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
     bSet = Set.fromList b
 
 -- | A total variant of 'head'.
+--
+-- @since 3.2.0.0
 safeHead :: [a] -> Maybe a
 safeHead []    = Nothing
 safeHead (x:_) = Just x
 
 -- | A total variant of 'tail'.
+--
+-- @since 3.2.0.0
 safeTail :: [a] -> [a]
 safeTail []     = []
 safeTail (_:xs) = xs
 
 -- | A total variant of 'last'.
+--
+-- @since 3.2.0.0
 safeLast :: [a] -> Maybe a
 safeLast []     = Nothing
 safeLast (x:xs) = Just (foldl (\_ a -> a) x xs)
 
 -- | A total variant of 'init'.
+--
+-- @since 3.2.0.0
 safeInit :: [a] -> [a]
 safeInit []     = []
 safeInit [_]    = []

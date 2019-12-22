@@ -56,7 +56,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.ExeDependency
 import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
-import Distribution.Utils.Generic                    (isAscii, safeInit)
+import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
 import Distribution.Version
 import Language.Haskell.Extension

@@ -154,6 +154,8 @@ module Distribution.Simple.Utils (
         ordNubRight,
         safeHead,
         safeTail,
+        safeLast,
+        safeInit,
         unintersperse,
         wrapText,
         wrapLine,

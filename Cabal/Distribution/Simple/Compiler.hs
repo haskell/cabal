@@ -73,7 +73,6 @@ module Distribution.Simple.Compiler (
 
 import Prelude ()
 import Distribution.Compat.Prelude
-import Distribution.Utils.Generic(safeLast)
 import Distribution.Pretty
 
 import Distribution.Compiler
