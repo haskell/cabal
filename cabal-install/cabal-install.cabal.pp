@@ -106,6 +106,7 @@ Version:            3.0.1.0
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
+        Distribution.Client.CmdRun.ClientRunFlags
         Distribution.Client.CmdTest
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdSdist
