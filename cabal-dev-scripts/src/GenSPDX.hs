@@ -8,7 +8,6 @@ import Data.List        (sortOn)
 import Data.Semigroup   ((<>))
 import Data.Text        (Text)
 import Data.Traversable (for)
-import GHC.Generics     (Generic)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set             as Set
