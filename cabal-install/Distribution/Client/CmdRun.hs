@@ -23,15 +23,20 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Client.CmdRun.ClientRunFlags
+
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
+         , configureExOptions, haddockOptions, installOptions, testOptions
+         , benchmarkOptions, configureOptions, liftOptions )
+import Distribution.Solver.Types.ConstraintSource
+         ( ConstraintSource(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
-import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), OptionField (..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Deprecated.Text
@@ -45,7 +50,7 @@ import Distribution.Client.CmdInstall
          ( establishDummyProjectBaseContext )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
-         , withProjectOrGlobalConfig )
+         , withProjectOrGlobalConfigIgn )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -109,43 +114,74 @@ import System.FilePath
 
 runCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                         , HaddockFlags, TestFlags, BenchmarkFlags
+                        , ClientRunFlags
                         )
-runCommand = Client.installCommand {
-  commandName         = "v2-run",
-  commandSynopsis     = "Run an executable.",
-  commandUsage        = usageAlternatives "v2-run"
-                          [ "[TARGET] [FLAGS] [-- EXECUTABLE_FLAGS]" ],
-  commandDescription  = Just $ \pname -> wrapText $
-        "Runs the specified executable-like component (an executable, a test, "
-     ++ "or a benchmark), first ensuring it is up to date.\n\n"
+runCommand = CommandUI
+  { commandName         = "v2-run"
+  , commandSynopsis     = "Run an executable."
+  , commandUsage        = usageAlternatives "v2-run"
+                          [ "[TARGET] [FLAGS] [-- EXECUTABLE_FLAGS]" ]
+  , commandDescription  = Just $ \pname -> wrapText $
+         "Runs the specified executable-like component (an executable, a test, "
+      ++ "or a benchmark), first ensuring it is up to date.\n\n"
 
-     ++ "Any executable-like component in any package in the project can be "
-     ++ "specified. A package can be specified if contains just one "
-     ++ "executable-like. The default is to use the package in the current "
-     ++ "directory if it contains just one executable-like.\n\n"
+      ++ "Any executable-like component in any package in the project can be "
+      ++ "specified. A package can be specified if contains just one "
+      ++ "executable-like. The default is to use the package in the current "
+      ++ "directory if it contains just one executable-like.\n\n"
 
-     ++ "Extra arguments can be passed to the program, but use '--' to "
-     ++ "separate arguments for the program from arguments for " ++ pname
-     ++ ". The executable is run in an environment where it can find its "
-     ++ "data files inplace in the build tree.\n\n"
+      ++ "Extra arguments can be passed to the program, but use '--' to "
+      ++ "separate arguments for the program from arguments for " ++ pname
+      ++ ". The executable is run in an environment where it can find its "
+      ++ "data files inplace in the build tree.\n\n"
 
-     ++ "Dependencies are built or rebuilt as necessary. Additional "
-     ++ "configuration flags can be specified on the command line and these "
-     ++ "extend the project configuration from the 'cabal.project', "
-     ++ "'cabal.project.local' and other files.",
-  commandNotes        = Just $ \pname ->
-        "Examples:\n"
-     ++ "  " ++ pname ++ " v2-run\n"
-     ++ "    Run the executable-like in the package in the current directory\n"
-     ++ "  " ++ pname ++ " v2-run foo-tool\n"
-     ++ "    Run the named executable-like (in any package in the project)\n"
-     ++ "  " ++ pname ++ " v2-run pkgfoo:foo-tool\n"
-     ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
-     ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
-     ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
+      ++ "Dependencies are built or rebuilt as necessary. Additional "
+      ++ "configuration flags can be specified on the command line and these "
+      ++ "extend the project configuration from the 'cabal.project', "
+      ++ "'cabal.project.local' and other files."
+  , commandNotes        = Just $ \pname ->
+         "Examples:\n"
+      ++ "  " ++ pname ++ " v2-run\n"
+      ++ "    Run the executable-like in the package in the current directory\n"
+      ++ "  " ++ pname ++ " v2-run foo-tool\n"
+      ++ "    Run the named executable-like (in any package in the project)\n"
+      ++ "  " ++ pname ++ " v2-run pkgfoo:foo-tool\n"
+      ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
+      ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
+      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
+      ++ cmdCommonHelpTextNewBuildBeta
+  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty, mempty)
+  , commandOptions      = \showOrParseArgs ->
+          liftOptions get1 set1
+          -- Note: [Hidden Flags]
+          -- hide "constraint", "dependency", and
+          -- "exact-configuration" from the configure options.
+          (filter ((`notElem` ["constraint", "dependency"
+                              , "exact-configuration"])
+                   . optionName) $
+                                 configureOptions   showOrParseArgs)
+      ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
+      ++ liftOptions get3 set3
+          -- hide "target-package-db" flag from the
+          -- install options.
+          (filter ((`notElem` ["target-package-db"])
+                   . optionName) $
+                                 installOptions     showOrParseArgs)
+      ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
+      ++ liftOptions get5 set5 (testOptions        showOrParseArgs)
+      ++ liftOptions get6 set6 (benchmarkOptions   showOrParseArgs)
+      ++ liftOptions get7 set7 (clientRunOptions showOrParseArgs)
   }
+  where
+    get1 (a,_,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f,g) = (a,b,c,d,e,f,g)
+    get2 (_,b,_,_,_,_,_) = b; set2 b (a,_,c,d,e,f,g) = (a,b,c,d,e,f,g)
+    get3 (_,_,c,_,_,_,_) = c; set3 c (a,b,_,d,e,f,g) = (a,b,c,d,e,f,g)
+    get4 (_,_,_,d,_,_,_) = d; set4 d (a,b,c,_,e,f,g) = (a,b,c,d,e,f,g)
+    get5 (_,_,_,_,e,_,_) = e; set5 e (a,b,c,d,_,f,g) = (a,b,c,d,e,f,g)
+    get6 (_,_,_,_,_,f,_) = f; set6 f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
+    get7 (_,_,_,_,_,_,g) = g; set7 g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
+
 
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
@@ -156,10 +192,12 @@ runCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 runAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-             , HaddockFlags, TestFlags, BenchmarkFlags )
+             , HaddockFlags, TestFlags, BenchmarkFlags
+             , ClientRunFlags )
           -> [String] -> GlobalFlags -> IO ()
 runAction ( configFlags, configExFlags, installFlags
-          , haddockFlags, testFlags, benchmarkFlags )
+          , haddockFlags, testFlags, benchmarkFlags
+          , clientRunFlags )
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tempDir <- createTempDirectory globalTmp "cabal-repl."
@@ -170,7 +208,10 @@ runAction ( configFlags, configExFlags, installFlags
       without config =
         establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir [] OtherCommand
 
-    baseCtx <- withProjectOrGlobalConfig verbosity globalConfigFlag with without
+    let
+      ignoreProject = fromFlagOrDefault False (crunIgnoreProject clientRunFlags)
+
+    baseCtx <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
 
     let
       scriptOrError script err = do
