@@ -475,6 +475,6 @@ instance L.HasBuildInfos PackageDescription where
         <*> (traverse . L.buildInfo) f x6 -- benchmarks
         <*> pure a20                      -- data files
         <*> pure a21                      -- data dir
-        <*> pure a22                      -- exta src files
+        <*> pure a22                      -- extra src files
         <*> pure a23                      -- extra temp files
         <*> pure a24                      -- extra doc files

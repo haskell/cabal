@@ -82,7 +82,7 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "big-vesion"`,
+                                       {pkgName = `PackageName "big-version"`,
                                         pkgVersion = `mkVersion [123456789]`},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
