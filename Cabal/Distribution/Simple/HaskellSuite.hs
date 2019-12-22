@@ -26,7 +26,6 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.System (Platform)
 import Distribution.Compat.Exception
-import Distribution.Utils.Generic
 import Language.Haskell.Extension
 import Distribution.Simple.Program.Builtin
 
