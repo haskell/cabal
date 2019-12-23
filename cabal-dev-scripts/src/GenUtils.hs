@@ -145,8 +145,9 @@ data Input = Input
   deriving (Show, Generic)
 
 instance Z.Zinza Input where
-    toType  = Z.genericToTypeSFP
-    toValue = Z.genericToValueSFP
+    toType    = Z.genericToTypeSFP
+    toValue   = Z.genericToValueSFP
+    fromValue = Z.genericFromValueSFP
 
 data InputLicense = InputLicense
     { ilConstructor   :: Text
@@ -157,5 +158,6 @@ data InputLicense = InputLicense
   deriving (Show, Generic)
 
 instance Z.Zinza InputLicense where
-    toType  = Z.genericToTypeSFP
-    toValue = Z.genericToValueSFP
+    toType    = Z.genericToTypeSFP
+    toValue   = Z.genericToValueSFP
+    fromValue = Z.genericFromValueSFP

@@ -20,13 +20,6 @@ module Distribution.Client.PackageHash (
     -- ** Platform-specific variations
     hashedInstalledPackageIdLong,
     hashedInstalledPackageIdShort,
-
-    -- * Low level hash choice
-    HashValue,
-    hashValue,
-    showHashValue,
-    readFileHashValue,
-    hashFromTUF,
   ) where
 
 import Prelude ()
@@ -48,23 +41,16 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Deprecated.Text
          ( display )
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
+import Distribution.Client.HashValue
 import Distribution.Client.Types
          ( InstalledPackageId )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
-import qualified Hackage.Security.Client    as Sec
-
-import qualified Crypto.Hash.SHA256         as SHA256
-import qualified Data.ByteString.Base16     as Base16
-import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Data.Function     (on)
-import Control.Exception (evaluate)
-import System.IO         (withBinaryFile, IOMode(..))
-
 
 -------------------------------
 -- Calculating package hashes
@@ -121,14 +107,10 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
         -- max length now 64
         [ truncateStr 14 (display name)
         , truncateStr  8 (display version)
-        , showHashValue (truncateHash (hashPackageHashInputs pkghashinputs))
+        , showHashValue (truncateHash 20 (hashPackageHashInputs pkghashinputs))
         ]
   where
     PackageIdentifier name version = pkgHashPkgId
-
-    -- Truncate a 32 byte SHA256 hash to 160bits, 20 bytes :-(
-    -- It'll render as 40 hex chars.
-    truncateHash (HashValue h) = HashValue (BS.take 20 h)
 
     -- Truncate a string, with a visual indication that it is truncated.
     truncateStr n s | length s <= n = s
@@ -163,11 +145,10 @@ hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} 
     intercalate "-"
       [ filter (not . flip elem "aeiou") (display name)
       , display version
-      , showHashValue (truncateHash (hashPackageHashInputs pkghashinputs))
+      , showHashValue (truncateHash 4 (hashPackageHashInputs pkghashinputs))
       ]
   where
     PackageIdentifier name version = pkgHashPkgId
-    truncateHash (HashValue h) = HashValue (BS.take 4 h)
 
 -- | All the information that contribues to a package's hash, and thus its
 -- 'InstalledPackageId'.
@@ -330,57 +311,3 @@ renderPackageHashInputs PackageHashInputs{
          | otherwise    = entry key format value
 
     showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst) . unFlagAssignment
-
------------------------------------------------
--- The specific choice of hash implementation
---
-
--- Is a crypto hash necessary here? One thing to consider is who controls the
--- inputs and what's the result of a hash collision. Obviously we should not
--- install packages we don't trust because they can run all sorts of code, but
--- if I've checked there's no TH, no custom Setup etc, is there still a
--- problem? If someone provided us a tarball that hashed to the same value as
--- some other package and we installed it, we could end up re-using that
--- installed package in place of another one we wanted. So yes, in general
--- there is some value in preventing intentional hash collisions in installed
--- package ids.
-
-newtype HashValue = HashValue BS.ByteString
-  deriving (Eq, Generic, Show, Typeable)
-
--- Cannot do any sensible validation here. Although we use SHA256
--- for stuff we hash ourselves, we can also get hashes from TUF
--- and that can in principle use different hash functions in future.
---
--- Therefore, we simply derive this structurally.
-instance Binary HashValue
-instance Structured HashValue
-
--- | Hash some data. Currently uses SHA256.
---
-hashValue :: LBS.ByteString -> HashValue
-hashValue = HashValue . SHA256.hashlazy
-
-showHashValue :: HashValue -> String
-showHashValue (HashValue digest) = BS.unpack (Base16.encode digest)
-
--- | Hash the content of a file. Uses SHA256.
---
-readFileHashValue :: FilePath -> IO HashValue
-readFileHashValue tarball =
-    withBinaryFile tarball ReadMode $ \hnd ->
-      evaluate . hashValue =<< LBS.hGetContents hnd
-
--- | Convert a hash from TUF metadata into a 'PackageSourceHash'.
---
--- Note that TUF hashes don't neessarily have to be SHA256, since it can
--- support new algorithms in future.
---
-hashFromTUF :: Sec.Hash -> HashValue
-hashFromTUF (Sec.Hash hashstr) =
-    --TODO: [code cleanup] either we should get TUF to use raw bytestrings or
-    -- perhaps we should also just use a base16 string as the internal rep.
-    case Base16.decode (BS.pack hashstr) of
-      (hash, trailing) | not (BS.null hash) && BS.null trailing
-        -> HashValue hash
-      _ -> error "hashFromTUF: cannot decode base16 hash"

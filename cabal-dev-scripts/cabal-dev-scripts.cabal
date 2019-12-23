@@ -37,7 +37,7 @@ executable gen-spdx
     , lens                  ^>=4.18.1
     , optparse-applicative  ^>=0.15.1.0
     , text
-    , zinza                 ^>=0.1
+    , zinza                 ^>=0.2
 
 executable gen-spdx-exc
   default-language: Haskell2010
@@ -54,4 +54,4 @@ executable gen-spdx-exc
     , lens                  ^>=4.18.1
     , optparse-applicative  ^>=0.15.1.0
     , text
-    , zinza                 ^>=0.1
+    , zinza                 ^>=0.2

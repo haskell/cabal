@@ -102,7 +102,6 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Backpack.PreExistingComponent
 import Distribution.Backpack.ConfiguredComponent (newPackageDepsBehaviour)
 import Distribution.Backpack.Id
-import Distribution.Utils.Generic
 import Distribution.Utils.LogProgress
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -972,7 +971,7 @@ dependencySatisfiable
            -- Reinterpret the "package name" as an unqualified component
            -- name
            = LSubLibName $ packageNameToUnqualComponentName depName
-    -- Check whether a libray exists and is visible.
+    -- Check whether a library exists and is visible.
     -- We don't disambiguate between dependency on non-existent or private
     -- library yet, so we just return a bool and later report a generic error.
     visible lib = maybe

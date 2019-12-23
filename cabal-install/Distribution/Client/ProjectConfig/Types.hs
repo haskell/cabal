@@ -24,7 +24,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.Types
-         ( RemoteRepo, AllowNewer(..), AllowOlder(..)
+         ( RemoteRepo, LocalRepo, AllowNewer(..), AllowOlder(..)
          , WriteGhcEnvironmentFilesPolicy )
 import Distribution.Client.Dependency.Types
          ( PreSolver )
@@ -179,6 +179,7 @@ data ProjectConfigShared
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalRepos        :: NubList FilePath,
+       projectConfigLocalNoIndexRepos :: NubList LocalRepo,
        projectConfigIndexState        :: Flag IndexState,
        projectConfigStoreDir          :: Flag FilePath,
 
@@ -387,6 +388,7 @@ data SolverSettings
    = SolverSettings {
        solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
        solverSettingLocalRepos        :: [FilePath],
+       solverSettingLocalNoIndexRepos :: [LocalRepo],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
        solverSettingPreferences       :: [PackageVersionConstraint],
        solverSettingFlagAssignment    :: FlagAssignment, -- ^ For all local packages
@@ -446,6 +448,7 @@ data BuildTimeSettings
        buildSettingKeepTempFiles         :: Bool,
        buildSettingRemoteRepos           :: [RemoteRepo],
        buildSettingLocalRepos            :: [FilePath],
+       buildSettingLocalNoIndexRepos     :: [LocalRepo],
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
        buildSettingIgnoreExpiry          :: Bool,

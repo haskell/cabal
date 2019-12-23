@@ -14,7 +14,7 @@ import Distribution.Types.MungedPackageName
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import GHC.Generics (Generic)
 
--- | An 'InstSolverPackage' is a pre-existing installed pacakge
+-- | An 'InstSolverPackage' is a pre-existing installed package
 -- specified by the dependency solver.
 data InstSolverPackage = InstSolverPackage {
       instSolverPkgIPI :: InstalledPackageInfo,

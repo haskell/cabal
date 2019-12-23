@@ -1,3 +1,6 @@
+{- cabal:
+build-depends: base, containers
+-}
 {-# LANGUAGE DeriveFunctor #-}
 module Main (main) where
 

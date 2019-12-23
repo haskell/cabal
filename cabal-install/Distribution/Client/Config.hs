@@ -41,7 +41,8 @@ module Distribution.Client.Config (
     userConfigUpdate,
     createDefaultConfigFile,
 
-    remoteRepoFields
+    remoteRepoFields,
+    postProcessRepo,
   ) where
 
 import Language.Haskell.Extension ( Language(Haskell2010) )
@@ -50,7 +51,7 @@ import Distribution.Deprecated.ViewAsFieldDescr
          ( viewAsFieldDescr )
 
 import Distribution.Client.Types
-         ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo
+         ( RemoteRepo(..), LocalRepo (..), Username(..), Password(..), emptyRemoteRepo
          , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
          )
 import Distribution.Client.BuildReports.Types
@@ -64,7 +65,7 @@ import Distribution.Client.Setup
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
-         , showRepo, parseRepo, readRepo )
+         , showRemoteRepo, parseRemoteRepo, readRemoteRepo )
 import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
@@ -92,7 +93,7 @@ import Distribution.Deprecated.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseOptCommaList, parseTokenQ )
+         , parseFilePathQ, parseOptCommaList, parseTokenQ, syntaxError)
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
@@ -252,6 +253,7 @@ instance Semigroup SavedConfig where
         globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
         globalCacheDir          = combine globalCacheDir,
         globalLocalRepos        = lastNonEmptyNL globalLocalRepos,
+        globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
         globalRequireSandbox    = combine globalRequireSandbox,
@@ -1034,7 +1036,7 @@ deprecatedFieldDescriptions :: [FieldDescr SavedConfig]
 deprecatedFieldDescriptions =
   [ liftGlobalFlag $
     listField "repos"
-      (Disp.text . showRepo) parseRepo
+      (Disp.text . showRemoteRepo) parseRemoteRepo
       (fromNubList . globalRemoteRepos)
       (\rs cfg -> cfg { globalRemoteRepos = toNubList rs })
   , liftGlobalFlag $
@@ -1117,9 +1119,9 @@ parseConfig src initial = \str -> do
   let init0   = savedInitFlags config
       user0   = savedUserInstallDirs config
       global0 = savedGlobalInstallDirs config
-  (remoteRepoSections0, haddockFlags, initFlags, user, global, paths, args) <-
+  (remoteRepoSections0, localRepoSections0, haddockFlags, initFlags, user, global, paths, args) <-
     foldM parseSections
-          ([], savedHaddockFlags config, init0, user0, global0, [], [])
+          ([], [], savedHaddockFlags config, init0, user0, global0, [], [])
           knownSections
 
   let remoteRepoSections =
@@ -1127,9 +1129,15 @@ parseConfig src initial = \str -> do
         . nubBy ((==) `on` remoteRepoName)
         $ remoteRepoSections0
 
+  let localRepoSections =
+          reverse
+        . nubBy ((==) `on` localRepoName)
+        $ localRepoSections0
+
   return . fixConfigMultilines $ config {
     savedGlobalFlags       = (savedGlobalFlags config) {
        globalRemoteRepos   = toNubList remoteRepoSections,
+       globalLocalNoIndexRepos = toNubList localRepoSections,
        -- the global extra prog path comes from the configure flag prog path
        globalProgPathExtra = configProgramPathExtra (savedConfigureFlags config)
        },
@@ -1185,67 +1193,91 @@ parseConfig src initial = \str -> do
     parse = parseFields (configFieldDescriptions src
                       ++ deprecatedFieldDescriptions) initial
 
-    parseSections (rs, h, i, u, g, p, a)
-                 (ParseUtils.Section _ "repository" name fs) = do
+    parseSections (rs, ls, h, i, u, g, p, a)
+                 (ParseUtils.Section lineno "repository" name fs) = do
       r' <- parseFields remoteRepoFields (emptyRemoteRepo name) fs
-      when (remoteRepoKeyThreshold r' > length (remoteRepoRootKeys r')) $
-        warning $ "'key-threshold' for repository " ++ show (remoteRepoName r')
-               ++ " higher than number of keys"
-      when (not (null (remoteRepoRootKeys r'))
-            && remoteRepoSecure r' /= Just True) $
-        warning $ "'root-keys' for repository " ++ show (remoteRepoName r')
-               ++ " non-empty, but 'secure' not set to True."
-      return (r':rs, h, i, u, g, p, a)
+      r'' <- postProcessRepo lineno name r'
+      case r'' of
+          Left local   -> return (rs,        local:ls, h, i, u, g, p, a)
+          Right remote -> return (remote:rs, ls,       h, i, u, g, p, a)
 
-    parseSections (rs, h, i, u, g, p, a)
+    parseSections (rs, ls, h, i, u, g, p, a)
                  (ParseUtils.F lno "remote-repo" raw) = do
-      let mr' = readRepo raw
+      let mr' = readRemoteRepo raw
       r' <- maybe (ParseFailed $ NoParse "remote-repo" lno) return mr'
-      return (r':rs, h, i, u, g, p, a)
+      return (r':rs, ls, h, i, u, g, p, a)
 
-    parseSections accum@(rs, h, i, u, g, p, a)
+    parseSections accum@(rs, ls, h, i, u, g, p, a)
                  (ParseUtils.Section _ "haddock" name fs)
       | name == ""        = do h' <- parseFields haddockFlagsFields h fs
-                               return (rs, h', i, u, g, p, a)
+                               return (rs, ls, h', i, u, g, p, a)
       | otherwise         = do
           warning "The 'haddock' section should be unnamed"
           return accum
 
-    parseSections accum@(rs, h, i, u, g, p, a)
+    parseSections accum@(rs, ls, h, i, u, g, p, a)
                  (ParseUtils.Section _ "init" name fs)
       | name == ""        = do i' <- parseFields initFlagsFields i fs
-                               return (rs, h, i', u, g, p, a)
+                               return (rs, ls, h, i', u, g, p, a)
       | otherwise         = do
           warning "The 'init' section should be unnamed"
           return accum
 
-    parseSections accum@(rs, h, i, u, g, p, a)
+    parseSections accum@(rs, ls, h, i, u, g, p, a)
                   (ParseUtils.Section _ "install-dirs" name fs)
       | name' == "user"   = do u' <- parseFields installDirsFields u fs
-                               return (rs, h, i, u', g, p, a)
+                               return (rs, ls, h, i, u', g, p, a)
       | name' == "global" = do g' <- parseFields installDirsFields g fs
-                               return (rs, h, i, u, g', p, a)
+                               return (rs, ls, h, i, u, g', p, a)
       | otherwise         = do
           warning "The 'install-paths' section should be for 'user' or 'global'"
           return accum
       where name' = lowercase name
-    parseSections accum@(rs, h, i, u, g, p, a)
+    parseSections accum@(rs, ls, h, i, u, g, p, a)
                  (ParseUtils.Section _ "program-locations" name fs)
       | name == ""        = do p' <- parseFields withProgramsFields p fs
-                               return (rs, h, i, u, g, p', a)
+                               return (rs, ls, h, i, u, g, p', a)
       | otherwise         = do
           warning "The 'program-locations' section should be unnamed"
           return accum
-    parseSections accum@(rs, h, i, u, g, p, a)
+    parseSections accum@(rs, ls, h, i, u, g, p, a)
                   (ParseUtils.Section _ "program-default-options" name fs)
       | name == ""        = do a' <- parseFields withProgramOptionsFields a fs
-                               return (rs, h, i, u, g, p, a')
+                               return (rs, ls, h, i, u, g, p, a')
       | otherwise         = do
           warning "The 'program-default-options' section should be unnamed"
           return accum
     parseSections accum f = do
       warning $ "Unrecognized stanza on line " ++ show (lineNo f)
       return accum
+
+postProcessRepo :: Int -> String -> RemoteRepo -> ParseResult (Either LocalRepo RemoteRepo)
+postProcessRepo lineno reponame repo0 = do
+    when (null reponame) $
+        syntaxError lineno $ "a 'repository' section requires the "
+                          ++ "repository name as an argument"
+
+    case uriScheme (remoteRepoURI repo0) of
+        -- TODO: check that there are no authority, query or fragment
+        -- Note: the trailing colon is important
+        "file+noindex:" -> do
+            let uri = remoteRepoURI repo0
+            return $ Left $ LocalRepo reponame (uriPath uri) (uriFragment uri == "#shared-cache")
+
+        _              -> do
+            let repo = repo0 { remoteRepoName = reponame }
+
+            when (remoteRepoKeyThreshold repo > length (remoteRepoRootKeys repo)) $
+                warning $ "'key-threshold' for repository "
+                    ++ show (remoteRepoName repo)
+                    ++ " higher than number of keys"
+
+            when (not (null (remoteRepoRootKeys repo)) && remoteRepoSecure repo /= Just True) $
+                warning $ "'root-keys' for repository "
+                    ++ show (remoteRepoName repo)
+                    ++ " non-empty, but 'secure' not set to True."
+
+            return $ Right repo
 
 showConfig :: SavedConfig -> String
 showConfig = showConfigWithComments mempty
@@ -1297,7 +1329,7 @@ installDirsFields = map viewAsFieldDescr installDirsOptions
 
 ppRemoteRepoSection :: RemoteRepo -> RemoteRepo -> Doc
 ppRemoteRepoSection def vals = ppSection "repository" (remoteRepoName vals)
-        remoteRepoFields (Just def) vals
+    remoteRepoFields (Just def) vals
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =

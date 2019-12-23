@@ -19,7 +19,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
-import           Distribution.Client.PackageHash (showHashValue, hashValue)
+import           Distribution.Client.HashValue (showHashValue, hashValue)
 import           Distribution.Client.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -201,6 +201,10 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         case repo of
           RepoLocal{..} ->
             J.object [ "type" J..= J.String "local-repo"
+                     , "path" J..= J.String repoLocalDir
+                     ]
+          RepoLocalNoIndex{..} ->
+            J.object [ "type" J..= J.String "local-repo-no-index"
                      , "path" J..= J.String repoLocalDir
                      ]
           RepoRemote{..} ->

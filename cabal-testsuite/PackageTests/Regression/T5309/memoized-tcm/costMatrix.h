@@ -139,7 +139,7 @@ class CostMatrix
          *  the median for the two. Puts the median and alphabet size into retMedian,
          *  which must therefore by necessity be allocated elsewhere.
          *
-         *  This functin allocates _if necessary_. So freeing inputs after a call will not
+         *  This function allocates _if necessary_. So freeing inputs after a call will not
          *  cause invalid reads from the cost matrix.
          */
         int getSetCostMedian(dcElement_t* left, dcElement_t* right, dcElement_t* retMedian);

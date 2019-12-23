@@ -73,7 +73,7 @@ fieldLineBS (FieldLine _ bs) = bs
 -- | Section arguments, e.g. name of the library
 data SectionArg ann
     = SecArgName  !ann !ByteString
-      -- ^ identifier, or omething which loos like number. Also many dot numbers, i.e. "7.6.3"
+      -- ^ identifier, or something which looks like number. Also many dot numbers, i.e. "7.6.3"
     | SecArgStr   !ann !ByteString
       -- ^ quoted string
     | SecArgOther !ann !ByteString

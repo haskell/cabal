@@ -108,6 +108,7 @@ Version:            3.2.0.0
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
+        Distribution.Client.CmdRun.ClientRunFlags
         Distribution.Client.CmdTest
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdSdist
@@ -134,6 +135,7 @@ Version:            3.2.0.0
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
         Distribution.Client.Haddock
+        Distribution.Client.HashValue
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
         Distribution.Client.IndexUtils.Timestamp

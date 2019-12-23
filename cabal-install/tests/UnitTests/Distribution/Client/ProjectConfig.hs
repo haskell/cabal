@@ -459,6 +459,7 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitrary
+        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryConstraints
         <*> shortListOf 2 arbitrary
@@ -485,6 +486,7 @@ instance Arbitrary ProjectConfigShared where
                                , projectConfigHaddockIndex = x05
                                , projectConfigRemoteRepos = x06
                                , projectConfigLocalRepos = x07
+                               , projectConfigLocalNoIndexRepos = x07b
                                , projectConfigIndexState = x08
                                , projectConfigConstraints = x09
                                , projectConfigPreferences = x10
@@ -513,6 +515,7 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigHaddockIndex = x05'
                             , projectConfigRemoteRepos = x06'
                             , projectConfigLocalRepos = x07'
+                            , projectConfigLocalNoIndexRepos = x07b'
                             , projectConfigIndexState = x08'
                             , projectConfigConstraints = postShrink_Constraints x09'
                             , projectConfigPreferences = x10'
@@ -534,13 +537,13 @@ instance Arbitrary ProjectConfigShared where
                             , projectConfigProgPathExtra = x26'
                             , projectConfigStoreDir = x27' }
       | ((x00', x01', x02', x03', x04'),
-         (x05', x06', x07', x08', x09'),
+         (x05', x06', x07', x07b', x08', x09'),
          (x10', x11', x12', x13', x14', x15'),
          (x16', x17', x18', x19', x20', x21'),
           x22', x23', x24', x25', x26', x27')
           <- shrink
                ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04),
-                (x05, x06, x07, x08, preShrink_Constraints x09),
+                (x05, x06, x07, x07b, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14, x15),
                 (x16, x17, x18, x19, x20, x21),
                  x22, x23, x24, x25, x26, x27)
@@ -823,6 +826,12 @@ instance Arbitrary RemoteRepo where
         arbitraryRootKey =
           shortListOf1 5 (oneof [ choose ('0', '9')
                                 , choose ('a', 'f') ])
+
+instance Arbitrary LocalRepo where
+    arbitrary = LocalRepo
+        <$> arbitraryShortToken `suchThat` (not . (":" `isPrefixOf`))
+        <*> elements ["/tmp/foo", "/tmp/bar"] -- TODO: generate valid absolute paths
+        <*> arbitrary
 
 instance Arbitrary UserConstraintScope where
     arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
