@@ -63,4 +63,4 @@ RUN     cabal v2-install -w ghc-7.6.3 --lib \
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -l -w ghc-7.6.3 -v
+RUN     sh ./validate.sh --lib-only -w ghc-7.6.3 -v

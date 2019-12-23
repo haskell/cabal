@@ -1,6 +1,4 @@
-# TODO: change to bionic
-# https://github.com/haskell-CI/haskell-ci/issues/342
-FROM    phadej/ghc:7.8.4-xenial
+FROM    phadej/ghc:8.8.1-xenial
 
 # Install cabal-plan
 RUN     mkdir -p /root/.cabal/bin && \
@@ -10,9 +8,9 @@ RUN     mkdir -p /root/.cabal/bin && \
         rm -f cabal-plan.xz && \
         chmod a+x /root/.cabal/bin/cabal-plan
 
-# We need newer compiler, to install cabal-plan
+# Install older compilers
 RUN     apt-get update
-RUN     apt-get install -y ghc-7.8.4-dyn
+RUN     apt-get install -y ghc-7.0.4 ghc-7.0.4-dyn ghc-7.2.2 ghc-7.2.2-dyn ghc-7.4.2 ghc-7.4.2-dyn
 
 # Update index
 RUN     cabal v2-update
@@ -22,7 +20,7 @@ RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
-RUN     cabal v2-install -w ghc-7.8.4 --lib \
+RUN     cabal v2-install -w ghc-8.8.1 --lib \
           aeson \
           async \
           base-compat \
@@ -40,6 +38,7 @@ RUN     cabal v2-install -w ghc-7.8.4 --lib \
           pretty-show \
           regex-compat-tdfa \
           regex-tdfa \
+          resolv \
           statistics \
           tar \
           tasty \
@@ -48,19 +47,9 @@ RUN     cabal v2-install -w ghc-7.8.4 --lib \
           tasty-quickcheck \
           tree-diff \
           zlib \
-      --constraint="bytestring installed" \
-      --constraint="binary     installed" \
-      --constraint="containers installed" \
-      --constraint="deepseq    installed" \
-      --constraint="directory  installed" \
-      --constraint="filepath   installed" \
-      --constraint="pretty     installed" \
-      --constraint="process    installed" \
-      --constraint="time       installed" \
-      --constraint="unix       installed" \
         && rm -rf $HOME/.ghc
 
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh --lib-only -w ghc-7.8.4 -v
+RUN     sh ./validate.sh -w ghc-8.8.1 -v --lib-only --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4 --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2 --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2

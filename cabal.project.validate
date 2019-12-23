@@ -1,4 +1,5 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
+tests: True
 
 write-ghc-environment-files: never
 

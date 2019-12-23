@@ -8,6 +8,13 @@ RUN     mkdir -p /root/.cabal/bin && \
         rm -f cabal-plan.xz && \
         chmod a+x /root/.cabal/bin/cabal-plan
 
+# install cabal-env
+RUN     curl -sL https://github.com/phadej/cabal-extras/releases/download/preview-20191225/cabal-env-snapshot-20191225-x86_64-linux.xz > cabal-env.xz && \
+        echo "1b567d529c5f627fd8c956e57ae8f0d9f11ee66d6db34b7fb0cb1c370b4edf01  cabal-env.xz" | sha256sum -c - && \
+        xz -d < cabal-env.xz > $HOME/.cabal/bin/cabal-env && \
+        rm -f cabal-env.xz && \
+        chmod a+x $HOME/.cabal/bin/cabal-env
+
 # Update index
 RUN     cabal v2-update
 
@@ -49,4 +56,4 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -w ghc-8.8.1 -v -D -b
+RUN     sh ./validate.sh -w ghc-8.8.1 -v --doctest --solver-benchmarks
