@@ -102,7 +102,6 @@ import Distribution.Backpack.DescribeUnitId
 import Distribution.Backpack.PreExistingComponent
 import Distribution.Backpack.ConfiguredComponent (newPackageDepsBehaviour)
 import Distribution.Backpack.Id
-import Distribution.Utils.Generic
 import Distribution.Utils.LogProgress
 
 import qualified Distribution.Simple.GHC   as GHC
