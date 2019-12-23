@@ -148,3 +148,6 @@ validate-via-docker-8.6.5:
 
 validate-via-docker-8.8.1:
 	docker build -t cabal-validate -f .docker/validate-8.8.1.dockerfile .
+
+validate-via-docker-old:
+	docker build -t cabal-validate -f .docker/validate-old.dockerfile .
