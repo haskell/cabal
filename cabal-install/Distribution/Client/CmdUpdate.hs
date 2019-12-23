@@ -186,7 +186,8 @@ updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)
 updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
-    RepoLocal{..} -> return ()
+    RepoLocal{} -> return ()
+    RepoLocalNoIndex{} -> return ()
     RepoRemote{..} -> do
       downloadResult <- downloadIndex transport verbosity
                         repoRemote repoLocalDir

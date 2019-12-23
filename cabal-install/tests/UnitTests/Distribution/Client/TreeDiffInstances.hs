@@ -61,6 +61,7 @@ instance ToExpr HaddockTarget
 instance ToExpr IndependentGoals
 instance ToExpr IndexState
 instance ToExpr InstallMethod
+instance ToExpr LocalRepo
 instance ToExpr MinimizeConflictSet
 instance ToExpr OnlyConstrained
 instance ToExpr OptimisationLevel

@@ -27,12 +27,12 @@ import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
-         ( RemoteRepo(..), emptyRemoteRepo
+         ( RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
          , AllowNewer(..), AllowOlder(..) )
 import Distribution.Client.SourceRepo (sourceRepositoryPackageGrammar, SourceRepoList)
 
 import Distribution.Client.Config
-         ( SavedConfig(..), remoteRepoFields )
+         ( SavedConfig(..), remoteRepoFields, postProcessRepo )
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
@@ -78,7 +78,7 @@ import Text.PrettyPrint
          ( Doc, ($+$) )
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils (field)
 import Distribution.Deprecated.ParseUtils
-         ( ParseResult(..), PError(..), syntaxError, PWarning(..), warning
+         ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , simpleField, commaNewLineListField, newLineListField, parseTokenQ
          , parseHaskellString, showToken )
 import Distribution.Client.ParseUtils
@@ -89,6 +89,8 @@ import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
 
 import qualified Data.Map as Map
+
+import Network.URI (URI (..))
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -334,6 +336,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos,
+      globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalProgPathExtra     = projectConfigProgPathExtra,
       globalStoreDir          = projectConfigStoreDir
     } = globalFlags
@@ -568,6 +571,7 @@ convertToLegacySharedConfig
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalCacheDir          = projectConfigCacheDir,
       globalLocalRepos        = projectConfigLocalRepos,
+      globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = mempty,
       globalRequireSandbox    = mempty,
@@ -1385,36 +1389,39 @@ programDbOptions progDb showOrParseArgs get' set =
                | otherwise       = arg
 
 
+-- The implementation is slight hack: we parse all as remote repository
+-- but if the url schema is file+noindex, we switch to local.
 remoteRepoSectionDescr :: SectionDescr GlobalFlags
-remoteRepoSectionDescr =
-    SectionDescr {
-      sectionName        = "repository",
-      sectionFields      = remoteRepoFields,
-      sectionSubsections = [],
-      sectionGet         = map (\x->(remoteRepoName x, x)) . fromNubList
-                         . globalRemoteRepos,
-      sectionSet         =
-        \lineno reponame repo0 conf -> do
-          when (null reponame) $
-            syntaxError lineno $ "a 'repository' section requires the "
-                              ++ "repository name as an argument"
-          let repo = repo0 { remoteRepoName = reponame }
-          when (remoteRepoKeyThreshold repo
-                 > length (remoteRepoRootKeys repo)) $
-            warning $ "'key-threshold' for repository "
-                   ++ show (remoteRepoName repo)
-                   ++ " higher than number of keys"
-          when (not (null (remoteRepoRootKeys repo))
-                && remoteRepoSecure repo /= Just True) $
-            warning $ "'root-keys' for repository "
-                   ++ show (remoteRepoName repo)
-                   ++ " non-empty, but 'secure' not set to True."
-          return conf {
-            globalRemoteRepos = overNubList (++[repo]) (globalRemoteRepos conf)
-          },
-      sectionEmpty       = emptyRemoteRepo ""
+remoteRepoSectionDescr = SectionDescr
+    { sectionName        = "repository"
+    , sectionEmpty       = emptyRemoteRepo ""
+    , sectionFields      = remoteRepoFields
+    , sectionSubsections = []
+    , sectionGet         = getS
+    , sectionSet         = setS
     }
+  where
+    getS :: GlobalFlags -> [(String, RemoteRepo)]
+    getS gf =
+        map (\x->(remoteRepoName x, x)) (fromNubList (globalRemoteRepos gf))
+        ++
+        map (\x->(localRepoName x, localToRemote x)) (fromNubList (globalLocalNoIndexRepos gf))
 
+    setS :: Int -> String -> RemoteRepo -> GlobalFlags -> ParseResult GlobalFlags
+    setS lineno reponame repo0 conf = do
+        repo1 <- postProcessRepo lineno reponame repo0
+        case repo1 of
+            Left repo -> return conf
+                { globalLocalNoIndexRepos  = overNubList (++[repo]) (globalLocalNoIndexRepos conf)
+                }
+            Right repo -> return conf
+                { globalRemoteRepos = overNubList (++[repo]) (globalRemoteRepos conf)
+                }
+
+    localToRemote :: LocalRepo -> RemoteRepo
+    localToRemote (LocalRepo name path sharedCache) = (emptyRemoteRepo name)
+        { remoteRepoURI = URI "file+noindex:" Nothing path "" (if sharedCache then "#shared-cache" else "")
+        }
 
 -------------------------------
 -- Local field utils
