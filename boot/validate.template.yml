@@ -1,0 +1,239 @@
+# This file is auto-generated
+#
+# To regenerate it run
+#
+#     make github-actions
+#
+name: Validation
+on:
+  push:
+    branches:
+      - master
+      - "3.2"
+  pull_request:
+    branches:
+      - master
+  release:
+    types:
+      - created
+
+jobs:
+{############################################################################}
+{# Misc jobs                                                                #}
+{############################################################################}
+  meta:
+    name: Meta checks
+    runs-on: ubuntu-18.04
+    # This job is not run in a container, any recent GHC should be fine
+    steps:
+      - name: Set PATH
+        run: |
+          echo "::add-path::$HOME/.cabal/bin"
+          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/ghc/8.6.5/bin"
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cabal/store
+          key: linux-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - name: Install alex
+        run: cabal v2-install alex
+      - uses: actions/checkout@v1
+      - name: Regenerate files
+        run: |
+          make lexer
+          make gen-extra-source-files
+          make spdx
+          make github-actions
+      - name: Check that diff is clean
+        run: |
+          git status > /dev/null
+          git diff-files -p --exit-code
+  doctest:
+    name: Doctest Cabal
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Set PATH
+        run: |
+          echo "::add-path::$HOME/.cabal/bin"
+          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/ghc/8.6.5/bin"
+      - name: Install cabal-env
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/preview-20191225/cabal-env-snapshot-20191225-x86_64-linux.xz > cabal-env.xz
+          echo "1b567d529c5f627fd8c956e57ae8f0d9f11ee66d6db34b7fb0cb1c370b4edf01  cabal-env.xz" | sha256sum -c -
+          xz -d < cabal-env.xz > $HOME/.cabal/bin/cabal-env
+          rm -f cabal-env.xz
+          chmod a+x $HOME/.cabal/bin/cabal-env
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cabal/store
+          key: linux-store-doctest
+      - name: Update Hackage index
+        run: cabal v2-update
+      - name: Install doctest
+        run: cabal v2-install doctest
+      - name: Install libraries
+        run: |
+          cabal-env --transitive QuickCheck
+          cabal-env array bytestring containers deepseq directory filepath pretty process time binary unix text parsec mtl
+          cat $HOME/.ghc/*/environments/default
+      - uses: actions/checkout@v1
+      - name: Doctest
+        run: make doctest
+
+{############################################################################}
+{# Bootstrap jobs                                                           #}
+{############################################################################}
+  boostrap-linux:
+    name: Bootstrap on Linux
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Set PATH
+        run: |
+          echo "::add-path::/opt/ghc/8.6.5/bin"
+      - uses: actions/checkout@v1
+      - name: bootstrap.sh
+        env:
+          EXTRA_CONFIGURE_OPTS: ""
+        run: |
+          cd cabal-install
+          sh ./bootstrap.sh --no-doc
+      - name: Smoke test
+        run: |
+          $HOME/.cabal/bin/cabal --version
+
+      - name: Prepare for upload
+        run: xz -c < $HOME/.cabal/bin/cabal > cabal-artifact.xz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: cabal-linux-x86_64.xz
+          path: cabal-artifact.xz
+
+  boostrap-macos:
+    name: Bootstrap on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Install GHC
+        run: |
+          cd $(mktemp -d)
+          curl -sLO "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
+          tar -xJf ghc-*.tar.xz
+          cd ghc-*
+          ./configure --prefix=/opt/ghc/8.6.5
+          sudo make install
+      - name: Set PATH
+        run: |
+          echo "::add-path::/opt/ghc/8.6.5/bin"
+          echo "::add-path::$HOME/.cabal/bin"
+      - uses: actions/checkout@v1
+      - name: bootstrap.sh
+        env:
+          EXTRA_CONFIGURE_OPTS: ""
+        run: |
+          cd cabal-install
+          sh ./bootstrap.sh --no-doc
+      - name: Smoke test
+        run: |
+          $HOME/.cabal/bin/cabal --version
+
+      - name: Prepare for upload
+        run: xz -c < $HOME/.cabal/bin/cabal > cabal-artifact.xz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: cabal-macos-x86_64.xz
+          path: cabal-artifact.xz
+
+{############################################################################}
+{# Linux jobs                                                               #}
+{############################################################################}
+{% for job in jobs %}
+  validate-{{ mangleVersion job.version }}{% if job.old %}-old{% endif %}:
+    name: validate.sh {%if job.old %}old GHCs{% else %}ghc-{{job.version}}{% endif %}
+    runs-on: ubuntu-18.04
+{% for needs in job.needs %}
+    needs: validate-{{ mangleVersion needs }}
+{% endfor %}
+    container:
+      image: phadej/ghc:{{job.version}}-{% if job.xenial %}xenial{% else %}bionic{% endif %}
+    steps:
+      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
+      - name: Set PATH
+        run: |
+          echo "::add-path::$HOME/.cabal/bin"
+      - name: Install cabal-plan
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
+          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
+          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
+          rm -f cabal-plan.xz
+          chmod a+x $HOME/.cabal/bin/cabal-plan
+{% if or job.xenial job.old %}
+      - name: apt-get update
+        run: apt-get update
+{% endif %}
+{% if job.xenial %}
+      - name: Install dynamic libraries
+        run: apt-get install -y ghc-{{job.version}}-dyn
+{% endif %}
+{% if job.old %}
+      - name: Install extra compilers
+        run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
+{% endif %}
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v1
+{% for step in job.steps %}
+      - name: Validate {{step}}
+        run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
+{% endfor %}
+{% endfor %}
+
+{############################################################################}
+{# MacOS jobs                                                               #}
+{############################################################################}
+{% for job in macosJobs %}
+  validate-macos-{{ mangleVersion job.version }}:
+    name: validate.sh macOS ghc-{{job.version}}
+    runs-on: macos-latest
+{% for needs in job.needs %}
+    needs: validate-macos-{{ mangleVersion needs }}
+{% endfor %}
+    steps:
+      - name: Install GHC
+        run: |
+          cd $(mktemp -d)
+          curl -sLO {{job.ghcUrl}}
+          tar -xJf ghc-*.tar.xz
+          cd ghc-*
+          ./configure --prefix=/opt/ghc/{{job.version}}
+          sudo make install
+      - name: Install Cabal
+        run: |
+          cd $(mktemp -d)
+          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          tar -xJf cabal-install-*.tar.xz
+          sudo mkdir -p /opt/cabal/3.0/bin
+          sudo cp cabal /opt/cabal/3.0/bin/cabal
+          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+      - name: Set PATH
+        run: |
+          echo "::add-path::/opt/ghc/{{job.version}}/bin"
+          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::$HOME/.cabal/bin"
+      - name: Update Hackage index
+        run: cabal v2-update
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+{# aeson +fast, so we don't wait for -O2 #}
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+      - uses: actions/checkout@v1
+{% for step in job.steps %}
+      - name: Validate {{step}}
+        run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
+{% endfor %}
+{% endfor %}

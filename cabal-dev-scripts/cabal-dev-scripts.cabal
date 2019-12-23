@@ -55,3 +55,14 @@ executable gen-spdx-exc
     , optparse-applicative  ^>=0.15.1.0
     , text
     , zinza                 ^>=0.2
+
+executable gen-validate
+  default-language: Haskell2010
+  main-is:          GenValidate.hs
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , bytestring
+    , HsYAML      ^>=0.2.1.0
+    , zinza       ^>=0.2

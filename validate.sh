@@ -442,7 +442,7 @@ CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TEST
 # solver-benchmarks
 #######################################################################
 
-step_solver_benchmarks_test() {
+step_solver_benchmarks_tests() {
 print_header "solver-benchmarks: test"
 
 CMD="$($CABALPLANLISTBIN solver-benchmarks:test:unit-tests)"
