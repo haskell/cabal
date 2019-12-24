@@ -13,7 +13,7 @@ library
 
 executable prog
   default-language: Haskell2010
-  main-is: prog.hs
+  main-is: program.hs
   ghc-options: -Wmissing-export-lists -Werror
   build-depends:
     base, impl, prog
