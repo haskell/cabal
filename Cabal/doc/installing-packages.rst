@@ -90,7 +90,7 @@ You can, but are not recommended to, omit these two fields. In that case
 ``cabal`` will download the ``root.json`` field and use it without
 verification. Although this bootstrapping step is then unsafe, all
 subsequent access is secure (provided that the downloaded ``root.json``
-was not tempered with). Of course, adding ``root-keys`` and
+was not tampered with). Of course, adding ``root-keys`` and
 ``key-threshold`` to your repository specification only shifts the
 problem, because now you somehow need to make sure that the key IDs you
 received were the right ones. How that is done is however outside the
