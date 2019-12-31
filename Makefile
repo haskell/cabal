@@ -65,6 +65,12 @@ gen-extra-source-files : gen-extra-source-files-lib gen-extra-source-files-cli
 gen-extra-source-files-lib :
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
 
+# github actions
+github-actions : .github/workflows/validate.yml
+
+.github/workflows/validate.yml : boot/validate.template.yml cabal-dev-scripts/src/GenValidate.hs
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
+
 # We need to generate cabal-install-dev so the test modules are in .cabal file!
 gen-extra-source-files-cli :
 	$(MAKE) cabal-install-dev
@@ -148,3 +154,6 @@ validate-via-docker-8.6.5:
 
 validate-via-docker-8.8.1:
 	docker build -t cabal-validate -f .docker/validate-8.8.1.dockerfile .
+
+validate-via-docker-old:
+	docker build -t cabal-validate -f .docker/validate-old.dockerfile .

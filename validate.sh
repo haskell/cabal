@@ -8,14 +8,20 @@ HC=ghc-8.2.2
 CABAL=cabal
 CABALPLAN=cabal-plan
 JOBS=4
-CABALTESTS=true
-CABALINSTALLTESTS=true
+LIBTESTS=true
+CLITESTS=true
 CABALSUITETESTS=true
-CABALONLY=false
+LIBONLY=false
 DEPSONLY=false
 DOCTEST=false
 BENCHMARKS=false
 VERBOSE=false
+
+TARGETS=""
+STEPS=""
+EXTRAHCS=""
+
+LISTSTEPS=false
 
 # Help
 #######################################################################
@@ -24,24 +30,29 @@ show_usage() {
 cat <<EOF
 ./validate.sh - build & test
 
-Usage: ./validate.sh [ -j JOBS | -l | -C | -c | -s | -w HC | -x CABAL | -y CABALPLAN | -d | -D | -b | -v ]
+Usage: ./validate.sh [options]
   A script which runs all the tests.
 
 Available options:
-  -j JOBS        cabal v2-build -j argument (default: $JOBS)
-  -l             Test Cabal-the-library only (default: $CABALONLY)
-  -C             Don't run Cabal tests (default: $CABALTESTS)
-  -c             Don't run cabal-install tests (default: $CABALINSTALLTESTS)
-  -s             Don't run cabal-testsuite tests (default: $CABALSUITETESTS)
-  -w HC          With compiler
-  -x CABAL       With cabal-install
-  -y CABALPLAN   With cabal-plan
-  -d             Build dependencies only
-  -D             Run doctest
-  -b             Run benchmarks (quick run, verify they work)
-  -v             Verbose
+  -j, --jobs JOBS                   cabal v2-build -j argument (default:  $JOBS)
+      --libonly                     Test onlt Cabal-the-library
+      --cli                         Test both Cabal-the-library and cabal-install
+      --(no-)run-lib-tests          Run library tests
+      --(no-)run-cli-tests          Run client tests
+      --(no-)run-lib-suite          Run cabal-testsuite with library
+      --(no-)run-cli-suite          Run cabal-testsuite with client
+  -w, --with-compiler HC            With compiler
+      --with-cabal CABAL            With cabal-install
+      --with-cabal-plan CABALPLAN   With cabal-plan
+      --extra-hc HC                 Extra compiler to run test-suite with
+      --(no-)doctest                Run doctest on library
+      --(no-)solver-benchmarks      Build and trial run solver-benchmarks
+  -v, --verbose                     Verbose output
+  -q, --quiet                       Less output
+  -s, --step STEP                   Run only specific step (can be specified mutliple times)
+      --list-steps                  List steps and build-targets and exit
+      --help                        Print this message and exit
 EOF
-exit 0
 }
 
 # "library"
@@ -103,56 +114,165 @@ timed() {
     fi
 }
 
-footer() {
-    JOB_END_TIME=$(date +%s)
-    tduration=$((JOB_END_TIME - JOB_START_TIME))
+print_header() {
+    TITLE=$1
+    TITLEPAT="$(echo "$TITLE"|sed 's:.:=:g')"
+    echo "$CYAN===X============================================================ $(date +%T) ===$RESET" \
+      | sed "s#X$TITLEPAT=# $TITLE #"
 
-    echo "$CYAN=== END ============================================ $(date +%T) === $RESET"
-    echo "$CYAN!!! Validation took $tduration seconds. $RESET"
 }
 
 # getopt
 #######################################################################
 
-while getopts 'j:lCcsw:x:y:dDbv' flag; do
-    case $flag in
-        j) JOBS="$OPTARG"
+while [ $# -gt 0 ]; do
+    arg=$1
+    case $arg in
+        --help)
+            show_usage
+            exit
             ;;
-        l) CABALONLY=true
+        -j|--jobs)
+            JOBS="$2"
+            shift
+            shift
             ;;
-        C) CABALTESTS=false
+        --lib-only)
+            LIBONLY=true
+            shift
             ;;
-        c) CABALINSTALLTESTS=false
+        --cli)
+            LIBONLY=false
+            shift
             ;;
-        s) CABALSUITETESTS=false
+        --run-lib-tests)
+            LIBTESTS=true
+            shift
             ;;
-        w) HC="$OPTARG"
+        --no-run-lib-tests)
+            LIBTESTS=false
+            shift
             ;;
-        x) CABAL="$OPTARG"
+        --run-cli-tests)
+            CLITESTS=true
+            shift
             ;;
-        y) CABALPLAN="$OPTARG"
+        --no-run-cli-tests)
+            CLITESTS=false
+            shift
             ;;
-        d) DEPSONLY=true
+        --run-lib-suite)
+            LIBSUITE=true
+            shift
             ;;
-        D) DOCTEST=true
+        --no-run-lib-suite)
+            LIBSUITE=false
+            shift
             ;;
-        b) BENCHMARKS=true
+        --run-cli-suite)
+            CLISUITE=true
+            shift
             ;;
-        v) VERBOSE=true
+        --no-run-cli-suite)
+            CLISUITE=false
+            shift
             ;;
-        ?) show_usage
+        -w|--with-compiler)
+            HC=$2
+            shift
+            shift
             ;;
+        --with-cabal)
+            CABAL=$2
+            shift
+            shift
+            ;;
+        --with-cabal-plan)
+            CABALPLAN=$2
+            shift
+            shift
+            ;;
+        --extra-hc)
+            EXTRAHCS="$EXTRAHCS $2"
+            shift
+            shift
+            ;;
+        --doctest)
+            DOCTEST=true
+            shift
+            ;;
+        --no-doctest)
+            DOCTEST=false
+            shift
+            ;;
+        --solver-benchmarks)
+            BENCHMARKS=true
+            shift
+            ;;
+        --no-solver-benchmarks)
+            BENCHMARKS=false
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -q|--quiet)
+            VERBOSE=false
+            shift
+            ;;
+        -s|--step)
+            STEPS="$STEPS $2"
+            shift
+            shift
+            ;;
+        --list-steps)
+            LISTSTEPS=true
+            shift
+            ;;
+        *)
+            echo "Unknown option $arg"
+            exit 1
     esac
 done
 
-shift $((OPTIND - 1))
-
-# header
+# calculate steps and build targets
 #######################################################################
 
-if [ "xhelp" = "x$1" ]; then
-    show_usage;
+# If there are no explicit steps given calculate them
+if $LIBONLY; then
+    CLITESTS=false
+    CLISUITE=false
+    BENCHMARKS=false
 fi
+
+if [ -z "$STEPS" ]; then
+    STEPS="print-config print-tool-versions"
+    if ! $LIBONLY;  then STEPS="$STEPS make-cabal-install-dev"; fi
+    STEPS="$STEPS build"
+    if $DOCTEST;    then STEPS="$STEPS doctest";   fi
+    if $LIBTESTS;   then STEPS="$STEPS lib-tests"; fi
+    if $LIBSUITE;   then STEPS="$STEPS lib-suite"; fi
+    if $LIBSUITE && [ -n "$EXTRAHCS" ];
+                    then STEPS="$STEPS lib-suite-extras"; fi
+    if $CLITESTS;   then STEPS="$STEPS cli-tests"; fi
+    if $CLISUITE;   then STEPS="$STEPS cli-suite"; fi
+    if $BENCHMARKS; then STEPS="$STEPS solver-benchmarks-tests solver-benchmarks-run"; fi
+    STEPS="$STEPS time-summary"
+fi
+
+TARGETS="Cabal cabal-testsuite"
+if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install"; fi
+if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
+
+if $LISTSTEPS; then
+  echo "Targets: $TARGETS"
+  echo "Steps:   $STEPS"
+  exit
+fi
+
+# Adjust runtime configuration
+#######################################################################
 
 TESTSUITEJOBS="-j$JOBS"
 JOBS="-j$JOBS"
@@ -160,39 +280,13 @@ JOBS="-j$JOBS"
 # assume compiler is GHC
 RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-echo "$CYAN=== validate.sh ======================================== $(date +%T) === $RESET"
-
-cat <<EOF
-compiler:            $HC
-runhaskell           $RUNHASKELL
-cabal-install:       $CABAL
-cabal-plan:          $CABALPLAN
-jobs:                $JOBS
-Cabal tests:         $CABALTESTS
-cabal-install tests: $CABALINSTALLTESTS
-cabal-testsuite:     $CABALSUITETESTS
-library only:        $CABALONLY
-dependencies only:   $DEPSONLY
-doctest:             $DOCTEST
-benchmarks:          $BENCHMARKS
-verbose:             $VERBOSE
-
-EOF
-
-timed $HC --version
-timed $CABAL --version
-timed $CABALPLAN --version
-
-# Basic setup
-#######################################################################
-
 if [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"
 else
     ARCH="x86_64-osx"
 fi
 
-if $CABALONLY; then
+if $LIBONLY; then
     PROJECTFILE=cabal.project.validate.libonly
 else
     PROJECTFILE=cabal.project.validate
@@ -205,69 +299,78 @@ CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 CABALNEWBUILD="${CABAL} v2-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
 CABALPLANLISTBIN="${CABALPLAN} list-bin --builddir=$BUILDDIR"
 
-# SCRIPT
+# header
 #######################################################################
 
-if ! $CABALONLY; then
+step_print_config() {
+print_header print-config
 
-echo "$CYAN=== make cabal-install-dev ============================= $(date +%T) === $RESET"
+cat <<EOF
+compiler:            $HC
+runhaskell           $RUNHASKELL
+cabal-install:       $CABAL
+cabal-plan:          $CABALPLAN
+jobs:                $JOBS
+Cabal tests:         $LIBTESTS
+cabal-install tests: $CLITESTS
+cabal-testsuite:     $CABALSUITETESTS
+library only:        $LIBONLY
+dependencies only:   $DEPSONLY
+doctest:             $DOCTEST
+benchmarks:          $BENCHMARKS
+verbose:             $VERBOSE
+extra complers:      $EXTRAHCS
 
-# make cabal-install-dev
+EOF
+}
+
+step_print_tool_versions() {
+print_header print-tool-versions
+
+timed $HC --version
+timed $CABAL --version
+timed $CABALPLAN --version
+
+for EXTRAHC in $EXTRAHCS; do
+    timed $EXTRAHC --version
+done
+}
+
+step_time_summary() {
+    print_header END
+
+    JOB_END_TIME=$(date +%s)
+    tduration=$((JOB_END_TIME - JOB_START_TIME))
+
+    echo "$CYAN!!! Validation took $tduration seconds. $RESET"
+}
+
+# build
+#######################################################################
+
+step_make_cabal_install_dev() {
+print_header "make cabal-install-dev"
 timed ${RUNHASKELL} cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+}
 
-fi # CABALONLY
-
-# Dependencies
-
-if $DEPSONLY; then
-
-echo "$CYAN=== dependencies  ====================================== $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep --dry-run || exit 1
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep || exit 1
-if $CABALTESTS; then
-    timed $CABALNEWBUILD Cabal --enable-tests --disable-benchmarks --dep --dry-run || exit 1
-    timed $CABALNEWBUILD Cabal --enable-tests --disable-benchmarks --dep || exit 1
-fi
-
-# Unfortunately we can not install cabal-install or cabal-testsuite dependencies:
-# that would build Cabal-lib!
-
-footer
-exit
-
-fi # DEPSONLY
+step_build() {
+print_header "build"
+timed $CABALNEWBUILD $TARGETS --dry-run || exit 1
+timed $CABALNEWBUILD $TARGETS || exit 1
+}
 
 # Cabal lib
 #######################################################################
 
-echo "$CYAN=== Cabal: build ======================================= $(date +%T) === $RESET"
+step_doctest() {
+print_header "Cabal: doctest"
+cabal-env --name doctest-Cabal --transitive QuickCheck
+cabal-env --name doctest-Cabal array bytestring containers deepseq directory filepath pretty process time binary unix text parsec mtl
+timed doctest -package-env=doctest-Cabal --fast Cabal/Distribution Cabal/Language
+}
 
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dry-run || exit 1
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --dep || exit 1
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks || exit 1
-
-if $DOCTEST; then
-if command -v doctest >/dev/null; then
-echo "$CYAN=== Cabal: doctest ===================================== $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD Cabal:lib:Cabal --enable-tests --disable-benchmarks --write-ghc-environment-files=always || exit 1
-timed doctest --fast Cabal/Distribution Cabal/Language
-timed rm -f .ghc.environment.*
-
-else
-
-echo "No doctest command found"
-
-fi # command -v doctest
-fi # DOCTEST
-
-if $CABALTESTS; then
-echo "$CYAN=== Cabal: test ======================================== $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dry-run || exit 1
-timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks --dep || exit 1
-timed $CABALNEWBUILD Cabal:tests --enable-tests --disable-benchmarks || exit 1
+step_lib_tests() {
+print_header "Cabal: tests"
 
 CMD="$($CABALPLANLISTBIN Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
 (cd Cabal && timed $CMD) || exit 1
@@ -282,44 +385,32 @@ CMD=$($CABALPLANLISTBIN Cabal:test:hackage-tests)
 (cd Cabal && timed $CMD read-fields) || exit 1
 (cd Cabal && timed $CMD parsec d)    || exit 1
 (cd Cabal && timed $CMD roundtrip k) || exit 1
+}
 
-fi # $CABALTESTS
+# Cabal cabal-testsuite
+#######################################################################
 
-if $CABALSUITETESTS; then
-
-echo "$CYAN=== cabal-testsuite: build ============================= $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dry-run || exit 1
-timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks --dep || exit 1
-timed $CABALNEWBUILD cabal-testsuite --enable-tests --disable-benchmarks || exit 1
-
-echo "$CYAN=== cabal-testsuite: Cabal test ======================== $(date +%T) === $RESET"
+step_lib_suite() {
+print_header "Cabal: cabal-testsuite"
 
 CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
+}
 
-fi # CABALSUITETESTS (Cabal)
+step_lib_suite_extras() {
+for EXTRAHC in $EXTRAHCS; do
 
-# If testing only library, stop here
-if $CABALONLY; then
-    footer
-    exit
-fi
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$EXTRAHC --hide-successes"
+(cd cabal-testsuite && timed $CMD) || exit 1
+
+done
+}
 
 # cabal-install
 #######################################################################
 
-echo "$CYAN=== cabal-install: build =============================== $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD cabal-install --enable-tests --disable-benchmarks --dry-run || exit 1
-
-# For some reason this sometimes fails. So we try twice.
-CMD="$CABALNEWBUILD cabal-install --enable-tests --disable-benchmarks"
-(timed $CMD) || (timed $CMD) || exit 1
-
-
-if $CABALINSTALLTESTS; then
-echo "$CYAN=== cabal-install: test ================================ $(date +%T) === $RESET"
+step_cli_tests() {
+print_header "cabal-install: tests"
 
 # this are sorted in asc time used, quicker tests first.
 CMD="$($CABALPLANLISTBIN cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
@@ -336,42 +427,59 @@ CMD="$($CABALPLANLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-succe
 # This test-suite doesn't like concurrency
 CMD="$($CABALPLANLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
 (cd cabal-install && timed $CMD) || exit 1
+}
 
-fi # CABALINSTALLTESTS
+# cabal-install cabal-testsuite
+#######################################################################
 
-
-if $CABALSUITETESTS; then
-echo "$CYAN=== cabal-testsuite: cabal-install test ================ $(date +%T) === $RESET"
+step_cli_suite() {
+print_header "cabal-install: cabal-testsuite"
 
 CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
-
-fi # CABALSUITETESTS
+}
 
 # solver-benchmarks
 #######################################################################
 
-if $BENCHMARKS; then
-echo "$CYAN=== solver-benchmarks: build =========================== $(date +%T) === $RESET"
-
-timed $CABALNEWBUILD solver-benchmarks:hackage-benchmark solver-benchmarks:unit-tests --enable-tests
-
-echo "$CYAN=== solver-benchmarks: test ============================ $(date +%T) === $RESET"
+step_solver_benchmarks_tests() {
+print_header "solver-benchmarks: test"
 
 CMD="$($CABALPLANLISTBIN solver-benchmarks:test:unit-tests)"
 (cd Cabal && timed $CMD) || exit 1
+}
 
-echo "$CYAN=== solver-benchmarks: run ============================= $(date +%T) === $RESET"
+step_solver_benchmarks_run() {
+print_header "solver-benchmarks: run"
 
 SOLVEPKG=Chart-diagrams
 CMD="$($CABALPLANLISTBIN solver-benchmarks:exe:hackage-benchmark) --cabal1=$CABAL --cabal2=$($CABALPLANLISTBIN cabal-install:exe:cabal) --trials=5 --packages=$SOLVEPKG --print-trials"
 (cd Cabal && timed $CMD) || exit 1
+}
 
-fi
-
-# END
+# Steps dispatcher
 #######################################################################
 
-footer
+for step in $STEPS; do
+    case $step in
+        print-config)             step_print_config            ;;
+        print-tool-versions)      step_print_tool_versions     ;;
+        make-cabal-install-dev)   step_make_cabal_install_dev  ;;
+        build)                    step_build                   ;;
+        doctest)                  step_doctest                 ;;
+        lib-tests)                step_lib_tests               ;;
+        cli-tests)                step_cli_tests               ;;
+        lib-suite)                step_lib_suite               ;;
+        lib-suite-extras)         step_lib_suite_extras        ;;
+        cli-suite)                step_cli_suite               ;;
+        solver-benchmarks-tests)  step_solver_benchmarks_tests ;;
+        solver-benchmarks-run)    step_solver_benchmarks_run   ;;
+        time-summary)             step_time_summary            ;;
+        *) 
+            echo "Invalid step $step"
+            exit 1
+            ;;
+    esac
+done
 
 #######################################################################
