@@ -51,7 +51,7 @@ directory, run the command: (using cabal-install-2.0 or greater.)
 
 ::
 
-    $ cabal v2-build
+    $ cabal v2-build all
 
 To build a specific package, you can either run ``v2-build`` from the
 directory of the package in question:
