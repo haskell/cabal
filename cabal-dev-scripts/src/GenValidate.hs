@@ -22,7 +22,8 @@ main = do
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
                 { zJobs =
-                    [ GhcJob "8.8.1"  False "--solver-benchmarks" False [] defSteps
+                    [ GhcJob "8.8.2"  False "--solver-benchmarks" False [] defSteps
+                    , GhcJob "8.8.1"  False "--solver-benchmarks" False [] defSteps -- to be removed
                     , GhcJob "8.6.5"  False ""                    False ["8.8.1"] defSteps
                     , GhcJob "8.4.4"  False ""                    False ["8.8.1"] defSteps
                     , GhcJob "8.2.2"  False ""                    False ["8.8.1"] defSteps
@@ -40,6 +41,14 @@ main = do
                 , zMacosJobs =
                     [ mkMacGhcJob "8.8.1" "https://downloads.haskell.org/~ghc/8.8.1/ghc-8.8.1-x86_64-apple-darwin.tar.xz"
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
+                    ]
+                , zWinJobs =
+                    -- 8.8.1 fails atm,
+                    -- Shutting down GHCi sessions (please be patient)...
+                    -- Unexpected failure on GHCi exit: fd:10: hClose: resource vanished (Broken pipe)
+                    -- cabal-tests: fd:10: hClose: resource vanished (Broken pipe)
+                    -- [ WinGhcJob "8.8.1" ["8.6.5"]
+                    [ WinGhcJob "8.6.5" []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)
@@ -86,6 +95,7 @@ libSteps =
 data Z = Z
     { zJobs          :: [GhcJob]
     , zMacosJobs     :: [MacGhcJob]
+    , zWinJobs       :: [WinGhcJob]
     , zMangleVersion :: String -> String
     , zOr            :: Bool -> Bool -> Bool
     , zNotNull       :: [String] -> Bool
@@ -112,6 +122,12 @@ data MacGhcJob = MacGhcJob
     }
   deriving (Generic)
 
+data WinGhcJob = WinGhcJob
+    { wgjVersion :: String
+    , wgjNeeds   :: [String]
+    }
+  deriving (Generic)
+
 mkMacGhcJob :: String -> String -> MacGhcJob
 mkMacGhcJob v u = MacGhcJob
     { mgjVersion = v
@@ -132,6 +148,11 @@ instance Zinza GhcJob where
     fromValue = genericFromValueSFP
 
 instance Zinza MacGhcJob where
+    toType    = genericToTypeSFP
+    toValue   = genericToValueSFP
+    fromValue = genericFromValueSFP
+
+instance Zinza WinGhcJob where
     toType    = genericToTypeSFP
     toValue   = genericToValueSFP
     fromValue = genericFromValueSFP

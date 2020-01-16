@@ -1724,6 +1724,9 @@ expectBuildFailed (BuildFailure _ reason) =
 withFileFinallyRestore :: FilePath -> IO a -> IO a
 withFileFinallyRestore file action = do
     copyFile file backup
-    action `finally` renameFile backup file
+    action `finally` handle onIOError (renameFile backup file)
   where
     backup = file <.> "backup"
+
+    onIOError :: IOException -> IO ()
+    onIOError e = putStrLn $ "WARNING: Cannot restore " ++ file ++ "; " ++ show e
