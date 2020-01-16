@@ -5,18 +5,17 @@
 #     make github-actions
 #
 name: Validation
-on:
-  push:
-    branches:
-      - master
-      - "3.2"
-      - github-actions-windows
-  pull_request:
-    branches:
-      - master
-  release:
-    types:
-      - created
+on: push
+#  push:
+#    branches:
+#      - master
+#      - "3.2"
+#  pull_request:
+#    branches:
+#      - master
+#  release:
+#    types:
+#      - created
 
 jobs:
   test-windows-8.6.5:
