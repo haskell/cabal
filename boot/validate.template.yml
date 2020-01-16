@@ -10,6 +10,7 @@ on:
     branches:
       - master
       - "3.2"
+      - github-actions-windows
   pull_request:
     branches:
       - master
@@ -18,6 +19,30 @@ on:
       - created
 
 jobs:
+  test-windows-8.6.5:
+    runs-on: windows-latest
+    steps:
+      - name: Install Cabal
+        run: |
+          choco install -y cabal --version 3.0.0.0
+          cabal --version
+
+      - name: Install GHC
+        run: |
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+          choco install -y ghc --version 8.6.5
+
+          ghc --version
+
+      - name: Set PATH
+        run: |
+          Write-Host "C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
+
+      - name: Test
+        run: 
+          ghc --version
+          cabal --version
+
 #{############################################################################}
 #{# Misc jobs                                                                #}
 #{############################################################################}
