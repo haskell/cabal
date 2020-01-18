@@ -4,6 +4,9 @@
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
 	  (analogous to how `--test-option(s)` works). (#6209)
+	* Add solver optimization to skip a version of a package if it does not resolve
+	  any conflicts encountered in the last version, controlled by flag
+	  '--fine-grained-conflicts'. (#5918)
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* Parse comma-separated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,

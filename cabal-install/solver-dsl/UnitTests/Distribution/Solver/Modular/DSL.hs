@@ -655,6 +655,7 @@ exResolve :: ExampleDb
           -> [ExamplePkgName]
           -> Maybe Int
           -> CountConflicts
+          -> FineGrainedConflicts
           -> MinimizeConflictSet
           -> IndependentGoals
           -> ReorderGoals
@@ -669,9 +670,9 @@ exResolve :: ExampleDb
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts
-          minimizeConflictSet indepGoals reorder allowBootLibInstalls
-          onlyConstrained enableBj solveExes goalOrder constraints
-          prefs verbosity enableAllTests
+          fineGrainedConflicts minimizeConflictSet indepGoals reorder
+          allowBootLibInstalls onlyConstrained enableBj solveExes goalOrder
+          constraints prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -695,6 +696,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts
                    $ addConstraints (fmap toLpc enableTests)
                    $ addPreferences (fmap toPref prefs)
                    $ setCountConflicts countConflicts
+                   $ setFineGrainedConflicts fineGrainedConflicts
                    $ setMinimizeConflictSet minimizeConflictSet
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder

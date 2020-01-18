@@ -57,6 +57,7 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 data SolverConfig = SolverConfig {
   reorderGoals           :: ReorderGoals,
   countConflicts         :: CountConflicts,
+  fineGrainedConflicts   :: FineGrainedConflicts,
   minimizeConflictSet    :: MinimizeConflictSet,
   independentGoals       :: IndependentGoals,
   avoidReinstalls        :: AvoidReinstalls,
@@ -104,7 +105,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   where
     explorePhase     = backjumpAndExplore (maxBackjumps sc)
                                           (enableBackjumping sc)
+                                          (fineGrainedConflicts sc)
                                           (countConflicts sc)
+                                          idx
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id

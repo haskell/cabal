@@ -145,7 +145,9 @@ addChildren bs@(BS { rdeps = rdm, open = gs, next = Goals })
 -- and then handle each instance in turn.
 addChildren bs@(BS { rdeps = rdm, index = idx, next = OneGoal (PkgGoal qpn@(Q _ pn) gr) }) =
   case M.lookup pn idx of
-    Nothing  -> FailF (varToConflictSet (P qpn) `CS.union` goalReasonToCS gr) UnknownPackage
+    Nothing  -> FailF
+                (varToConflictSet (P qpn) `CS.union` goalReasonToConflictSetWithConflict qpn gr)
+                UnknownPackage
     Just pis -> PChoiceF qpn rdm gr (W.fromList (L.map (\ (i, info) ->
                                                        ([], POption i Nothing, bs { next = Instance qpn info }))
                                                      (M.toList pis)))

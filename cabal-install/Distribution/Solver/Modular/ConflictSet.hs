@@ -10,7 +10,9 @@
 -- > import qualified Distribution.Solver.Modular.ConflictSet as CS
 module Distribution.Solver.Modular.ConflictSet (
     ConflictSet -- opaque
+  , Conflict(..)
   , ConflictMap
+  , OrderedVersionRange(..)
 #ifdef DEBUG_CONFLICT_SETS
   , conflictSetOrigin
 #endif
@@ -26,19 +28,21 @@ module Distribution.Solver.Modular.ConflictSet (
   , delete
   , empty
   , singleton
+  , singletonWithConflict
   , size
   , member
+  , lookup
   , filter
   , fromList
   ) where
 
-import Prelude hiding (filter)
+import Prelude hiding (lookup)
 import Data.List (intercalate, sortBy)
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Function (on)
+import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import qualified Data.Map as M
 
 #ifdef DEBUG_CONFLICT_SETS
 import Data.Tree
@@ -46,15 +50,14 @@ import GHC.Stack
 #endif
 
 import Distribution.Solver.Modular.Var
+import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
 
--- | The set of variables involved in a solver conflict
---
--- Since these variables should be preprocessed in some way, this type is
--- kept abstract.
+-- | The set of variables involved in a solver conflict, each paired with
+-- details about the conflict.
 data ConflictSet = CS {
-    -- | The set of variables involved on the conflict
-    conflictSetToSet :: !(Set (Var QPN))
+    -- | The set of variables involved in the conflict
+    conflictSetToMap :: !(Map (Var QPN) (Set Conflict))
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
@@ -72,11 +75,48 @@ data ConflictSet = CS {
   }
   deriving (Show)
 
+-- | More detailed information about how a conflict set variable caused a
+-- conflict. This information can be used to determine whether a second value
+-- for that variable would lead to the same conflict.
+--
+-- TODO: Handle dependencies under flags or stanzas.
+data Conflict =
+
+    -- | The conflict set variable represents a package which depends on the
+    -- specified problematic package. For example, the conflict set entry
+    -- '(P x, GoalConflict y)' means that package x introduced package y, and y
+    -- led to a conflict.
+    GoalConflict QPN
+
+    -- | The conflict set variable represents a package with a constraint that
+    -- excluded the specified package and version. For example, the conflict set
+    -- entry '(P x, VersionConstraintConflict y (mkVersion [2, 0]))' means that
+    -- package x's constraint on y excluded y-2.0.
+  | VersionConstraintConflict QPN Ver
+
+    -- | The conflict set variable represents a package that was excluded by a
+    -- constraint from the specified package. For example, the conflict set
+    -- entry '(P x, VersionConflict y (orLaterVersion (mkVersion [2, 0])))'
+    -- means that package y's constraint 'x >= 2.0' excluded some version of x.
+  | VersionConflict QPN OrderedVersionRange
+
+    -- | Any other conflict.
+  | OtherConflict
+  deriving (Eq, Ord, Show)
+
+-- | Version range with an 'Ord' instance.
+newtype OrderedVersionRange = OrderedVersionRange VR
+  deriving (Eq, Show)
+
+-- TODO: Avoid converting the version ranges to strings.
+instance Ord OrderedVersionRange where
+  compare = compare `on` show
+
 instance Eq ConflictSet where
-  (==) = (==) `on` conflictSetToSet
+  (==) = (==) `on` conflictSetToMap
 
 instance Ord ConflictSet where
-  compare = compare `on` conflictSetToSet
+  compare = compare `on` conflictSetToMap
 
 showConflictSet :: ConflictSet -> String
 showConflictSet = intercalate ", " . map showVar . toList
@@ -102,10 +142,10 @@ showCS showCount cm =
 -------------------------------------------------------------------------------}
 
 toSet :: ConflictSet -> Set (Var QPN)
-toSet = conflictSetToSet
+toSet = M.keysSet . conflictSetToMap
 
 toList :: ConflictSet -> [Var QPN]
-toList = S.toList . conflictSetToSet
+toList = M.keys . conflictSetToMap
 
 union ::
 #ifdef DEBUG_CONFLICT_SETS
@@ -113,7 +153,7 @@ union ::
 #endif
   ConflictSet -> ConflictSet -> ConflictSet
 union cs cs' = CS {
-      conflictSetToSet = S.union (conflictSetToSet cs) (conflictSetToSet cs')
+      conflictSetToMap = M.unionWith S.union (conflictSetToMap cs) (conflictSetToMap cs')
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc (map conflictSetOrigin [cs, cs'])
 #endif
@@ -125,7 +165,7 @@ unions ::
 #endif
   [ConflictSet] -> ConflictSet
 unions css = CS {
-      conflictSetToSet = S.unions (map conflictSetToSet css)
+      conflictSetToMap = M.unionsWith S.union (map conflictSetToMap css)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc (map conflictSetOrigin css)
 #endif
@@ -137,7 +177,7 @@ insert ::
 #endif
   Var QPN -> ConflictSet -> ConflictSet
 insert var cs = CS {
-      conflictSetToSet = S.insert var (conflictSetToSet cs)
+      conflictSetToMap = M.insert var (S.singleton OtherConflict) (conflictSetToMap cs)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
 #endif
@@ -145,7 +185,7 @@ insert var cs = CS {
 
 delete :: Var QPN -> ConflictSet -> ConflictSet
 delete var cs = CS {
-      conflictSetToSet = S.delete var (conflictSetToSet cs)
+      conflictSetToMap = M.delete var (conflictSetToMap cs)
     }
 
 empty ::
@@ -154,7 +194,7 @@ empty ::
 #endif
   ConflictSet
 empty = CS {
-      conflictSetToSet = S.empty
+      conflictSetToMap = M.empty
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif
@@ -165,30 +205,28 @@ singleton ::
   (?loc :: CallStack) =>
 #endif
   Var QPN -> ConflictSet
-singleton var = CS {
-      conflictSetToSet = S.singleton var
+singleton var = singletonWithConflict var OtherConflict
+
+singletonWithConflict ::
+#ifdef DEBUG_CONFLICT_SETS
+  (?loc :: CallStack) =>
+#endif
+  Var QPN -> Conflict -> ConflictSet
+singletonWithConflict var conflict = CS {
+      conflictSetToMap = M.singleton var (S.singleton conflict)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif
     }
 
 size :: ConflictSet -> Int
-size = S.size . conflictSetToSet
+size = M.size . conflictSetToMap
 
 member :: Var QPN -> ConflictSet -> Bool
-member var = S.member var . conflictSetToSet
+member var = M.member var . conflictSetToMap
 
-filter ::
-#ifdef DEBUG_CONFLICT_SETS
-  (?loc :: CallStack) =>
-#endif
-  (Var QPN -> Bool) -> ConflictSet -> ConflictSet
-filter p cs = CS {
-      conflictSetToSet = S.filter p (conflictSetToSet cs)
-#ifdef DEBUG_CONFLICT_SETS
-    , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
-#endif
-    }
+lookup :: Var QPN -> ConflictSet -> Maybe (Set Conflict)
+lookup var = M.lookup var . conflictSetToMap
 
 fromList ::
 #ifdef DEBUG_CONFLICT_SETS
@@ -196,7 +234,7 @@ fromList ::
 #endif
   [Var QPN] -> ConflictSet
 fromList vars = CS {
-      conflictSetToSet = S.fromList vars
+      conflictSetToMap = M.fromList [(var, S.singleton OtherConflict) | var <- vars]
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif

@@ -32,8 +32,11 @@ module Distribution.Solver.Modular.Dependency (
   , QGoalReason
   , goalToVar
   , varToConflictSet
-  , goalReasonToCS
-  , dependencyReasonToCS
+  , goalReasonToConflictSet
+  , goalReasonToConflictSetWithConflict
+  , dependencyReasonToConflictSet
+  , dependencyReasonToConflictSetWithVersionConstraintConflict
+  , dependencyReasonToConflictSetWithVersionConflict
   ) where
 
 import Prelude ()
@@ -279,14 +282,30 @@ goalToVar (Goal v _) = v
 varToConflictSet :: Var QPN -> ConflictSet
 varToConflictSet = CS.singleton
 
-goalReasonToCS :: GoalReason QPN -> ConflictSet
-goalReasonToCS UserGoal            = CS.empty
-goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
+-- | Convert a 'GoalReason' to a 'ConflictSet' that can be used when the goal
+-- leads to a conflict.
+goalReasonToConflictSet :: GoalReason QPN -> ConflictSet
+goalReasonToConflictSet UserGoal            = CS.empty
+goalReasonToConflictSet (DependencyGoal dr) = dependencyReasonToConflictSet dr
+
+-- | Convert a 'GoalReason' to a 'ConflictSet' containing the reason that the
+-- conflict occurred, namely the conflict set variables caused a conflict by
+-- introducing the given package goal. See the documentation for 'GoalConflict'.
+--
+-- This function currently only specifies the reason for the conflict in the
+-- simple case where the 'GoalReason' does not involve any flags or stanzas.
+-- Otherwise, it falls back to calling 'goalReasonToConflictSet'.
+goalReasonToConflictSetWithConflict :: QPN -> GoalReason QPN -> ConflictSet
+goalReasonToConflictSetWithConflict goal (DependencyGoal (DependencyReason qpn flags stanzas))
+  | M.null flags && S.null stanzas =
+      CS.singletonWithConflict (P qpn) $ CS.GoalConflict goal
+goalReasonToConflictSetWithConflict _    gr = goalReasonToConflictSet gr
 
 -- | This function returns the solver variables responsible for the dependency.
--- It drops the flag and stanza values, which are only needed for log messages.
-dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
-dependencyReasonToCS (DependencyReason qpn flags stanzas) =
+-- It drops the values chosen for flag and stanza variables, which are only
+-- needed for log messages.
+dependencyReasonToConflictSet :: DependencyReason QPN -> ConflictSet
+dependencyReasonToConflictSet (DependencyReason qpn flags stanzas) =
     CS.fromList $ P qpn : flagVars ++ map stanzaToVar (S.toList stanzas)
   where
     -- Filter out any flags that introduced the dependency with both values.
@@ -297,3 +316,40 @@ dependencyReasonToCS (DependencyReason qpn flags stanzas) =
 
     stanzaToVar :: Stanza -> Var QPN
     stanzaToVar = S . SN qpn
+
+-- | Convert a 'DependencyReason' to a 'ConflictSet' specifying that the
+-- conflict occurred because the conflict set variables introduced a problematic
+-- version constraint. See the documentation for 'VersionConstraintConflict'.
+--
+-- This function currently only specifies the reason for the conflict in the
+-- simple case where the 'DependencyReason' does not involve any flags or
+-- stanzas. Otherwise, it falls back to calling 'dependencyReasonToConflictSet'.
+dependencyReasonToConflictSetWithVersionConstraintConflict :: QPN
+                                                           -> Ver
+                                                           -> DependencyReason QPN
+                                                           -> ConflictSet
+dependencyReasonToConflictSetWithVersionConstraintConflict
+    dependency excludedVersion dr@(DependencyReason qpn flags stanzas)
+  | M.null flags && S.null stanzas =
+    CS.singletonWithConflict (P qpn) $
+    CS.VersionConstraintConflict dependency excludedVersion
+  | otherwise = dependencyReasonToConflictSet dr
+
+-- | Convert a 'DependencyReason' to a 'ConflictSet' specifying that the
+-- conflict occurred because the conflict set variables introduced a version of
+-- a package that was excluded by a version constraint. See the documentation
+-- for 'VersionConflict'.
+--
+-- This function currently only specifies the reason for the conflict in the
+-- simple case where the 'DependencyReason' does not involve any flags or
+-- stanzas. Otherwise, it falls back to calling 'dependencyReasonToConflictSet'.
+dependencyReasonToConflictSetWithVersionConflict :: QPN
+                                                 -> CS.OrderedVersionRange
+                                                 -> DependencyReason QPN
+                                                 -> ConflictSet
+dependencyReasonToConflictSetWithVersionConflict
+    pkgWithVersionConstraint constraint dr@(DependencyReason qpn flags stanzas)
+  | M.null flags && S.null stanzas =
+    CS.singletonWithConflict (P qpn) $
+    CS.VersionConflict pkgWithVersionConstraint constraint
+  | otherwise = dependencyReasonToConflictSet dr

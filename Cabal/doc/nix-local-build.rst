@@ -2115,6 +2115,23 @@ Most users generally won't need these.
     The command line variant of this field is
     ``--(no-)count-conflicts``.
 
+.. cfg-field:: fine-grained-conflicts: boolean
+               --fine-grained-conflicts
+               --no-fine-grained-conflicts
+    :synopsis: Skip a version of a package if it does not resolve any conflicts
+	       encountered in the last version (solver optimization).
+
+    :default: True
+
+    When enabled, the solver will skip a version of a package if it does not
+    resolve any of the conflicts encountered in the last version of that
+    package. For example, if ``foo-1.2`` depended on ``bar``, and the solver
+    couldn't find consistent versions for ``bar``'s dependencies, then the
+    solver would skip ``foo-1.1`` if it also depended on ``bar``.
+
+    The command line variant of this field is
+    ``--(no-)fine-grained-conflicts``.
+
 .. cfg-field:: minimize-conflict-set: boolean
                --minimize-conflict-set
                --no-minimize-conflict-set

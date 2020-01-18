@@ -57,8 +57,8 @@ tests = [
             let r1 = solve' mGoalOrder1 test
                 r2 = solve' mGoalOrder2 test { testTargets = targets2 }
                 solve' goalOrder =
-                    solve (EnableBackjumping True) (ReorderGoals False)
-                          (CountConflicts True) indepGoals
+                    solve (EnableBackjumping True) (FineGrainedConflicts True)
+                          (ReorderGoals False) (CountConflicts True) indepGoals
                           (getBlind <$> goalOrder)
                 targets = testTargets test
                 targets2 = case targetOrder of
@@ -73,8 +73,9 @@ tests = [
           \test reorderGoals ->
             let r1 = solve' (IndependentGoals False) test
                 r2 = solve' (IndependentGoals True)  test
-                solve' indep = solve (EnableBackjumping True) reorderGoals
-                                     (CountConflicts True) indep Nothing
+                solve' indep =
+                    solve (EnableBackjumping True) (FineGrainedConflicts True)
+                          reorderGoals (CountConflicts True) indep Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -83,26 +84,52 @@ tests = [
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
-                solve' enableBj = solve enableBj reorderGoals
-                                        (CountConflicts True) indepGoals Nothing
+                solve' enableBj =
+                    solve enableBj (FineGrainedConflicts False) reorderGoals
+                          (CountConflicts True) indepGoals Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
 
-    -- This test uses --no-count-conflicts, because the goal order used with
-    -- --count-conflicts depends on the total set of conflicts seen by the
+    , testPropertyWithSeed "fine-grained conflicts does not affect solvability" $
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (FineGrainedConflicts True)  test
+                r2 = solve' (FineGrainedConflicts False) test
+                solve' fineGrainedConflicts =
+                    solve (EnableBackjumping True) fineGrainedConflicts
+                    reorderGoals (CountConflicts True) indepGoals Nothing
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                isRight (resultPlan r1) === isRight (resultPlan r2)
+
+    -- The next two tests use --no-count-conflicts, because the goal order used
+    -- with --count-conflicts depends on the total set of conflicts seen by the
     -- solver. The solver explores more of the tree and encounters more
     -- conflicts when it doesn't backjump. The different goal orders can lead to
     -- different solutions and cause the test to fail.
     -- TODO: Find a faster way to randomly sort goals, and then use a random
-    -- goal order in this test.
+    -- goal order in these tests.
+
     , testPropertyWithSeed
           "backjumping does not affect the result (with static goal order)" $
           \test reorderGoals indepGoals ->
             let r1 = solve' (EnableBackjumping True)  test
                 r2 = solve' (EnableBackjumping False) test
-                solve' enableBj = solve enableBj reorderGoals
-                                  (CountConflicts False) indepGoals Nothing
+                solve' enableBj =
+                    solve enableBj (FineGrainedConflicts False) reorderGoals
+                          (CountConflicts False) indepGoals Nothing
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                resultPlan r1 === resultPlan r2
+
+    , testPropertyWithSeed
+          "fine-grained conflicts does not affect the result (with static goal order)" $
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (FineGrainedConflicts True)  test
+                r2 = solve' (FineGrainedConflicts False) test
+                solve' fineGrainedConflicts =
+                    solve (EnableBackjumping True) fineGrainedConflicts
+                          reorderGoals (CountConflicts False) indepGoals Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 resultPlan r1 === resultPlan r2
@@ -132,10 +159,15 @@ newtype VarOrdering = VarOrdering {
       unVarOrdering :: Variable P.QPN -> Variable P.QPN -> Ordering
     }
 
-solve :: EnableBackjumping -> ReorderGoals -> CountConflicts -> IndependentGoals
+solve :: EnableBackjumping
+      -> FineGrainedConflicts
+      -> ReorderGoals
+      -> CountConflicts
+      -> IndependentGoals
       -> Maybe VarOrdering
-      -> SolverTest -> Result
-solve enableBj reorder countConflicts indep goalOrder test =
+      -> SolverTest
+      -> Result
+solve enableBj fineGrainedConflicts reorder countConflicts indep goalOrder test =
   let (lg, result) =
         runProgress $ exResolve (unTestDb (testDb test)) Nothing Nothing
                   (pkgConfigDbFromList [])
@@ -143,7 +175,8 @@ solve enableBj reorder countConflicts indep goalOrder test =
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  countConflicts (MinimizeConflictSet False) indep reorder
+                  countConflicts fineGrainedConflicts
+                  (MinimizeConflictSet False) indep reorder
                   (AllowBootLibInstalls False) OnlyConstrainedNone enableBj
                   (SolveExecutables True) (unVarOrdering <$> goalOrder)
                   (testConstraints test) (testPreferences test) normal

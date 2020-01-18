@@ -55,6 +55,7 @@ instance ToExpr CompilerFlavor
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts
 instance ToExpr DebugInfoLevel
+instance ToExpr FineGrainedConflicts
 instance ToExpr FlagAssignment
 instance ToExpr FlagName where toExpr = defaultExprViaShow
 instance ToExpr HaddockTarget

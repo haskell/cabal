@@ -17,12 +17,14 @@ tests = [
 
 -- | This test solves for n packages that each have two versions. There is no
 -- solution, because the nth package depends on another package that doesn't fit
--- its version constraint. Backjumping is disabled, so the solver must explore a
--- search tree of size 2^n. It should fail if memory usage is proportional to
--- the size of the tree.
+-- its version constraint. Backjumping and fine grained conflicts are disabled,
+-- so the solver must explore a search tree of size 2^n. It should fail if
+-- memory usage is proportional to the size of the tree.
 basicTest :: String -> SolverTest
 basicTest name =
-    disableBackjumping $ mkTest pkgs name ["target"] anySolverFailure
+    disableBackjumping $
+    disableFineGrainedConflicts $
+    mkTest pkgs name ["target"] anySolverFailure
   where
     n :: Int
     n = 18
@@ -44,6 +46,7 @@ basicTest name =
 flagsTest :: String -> SolverTest
 flagsTest name =
     disableBackjumping $
+    disableFineGrainedConflicts $
     goalOrder orderedFlags $ mkTest pkgs name ["pkg"] anySolverFailure
   where
     n :: Int
@@ -69,14 +72,16 @@ flagsTest name =
 -- has a long chain of dependencies (pkg-1 through pkg-n). However, pkg-n
 -- depends on pkg-n+1, which doesn't exist, so there is no solution. Since each
 -- dependency has two versions, the solver must try 2^n combinations when
--- backjumping is disabled. These combinations create large search trees under
--- each of the two choices for target-setup.setup-dep. Although the choice to
--- not link is disallowed by the Single Instance Restriction, the solver doesn't
--- know that until it has explored (and evaluated) the whole tree under the
--- choice to link. If the two trees are shared, memory usage spikes.
+-- backjumping and fine grained conflicts are disabled. These combinations
+-- create large search trees under each of the two choices for
+-- target-setup.setup-dep. Although the choice to not link is disallowed by the
+-- Single Instance Restriction, the solver doesn't know that until it has
+-- explored (and evaluated) the whole tree under the choice to link. If the two
+-- trees are shared, memory usage spikes.
 issue2899 :: String -> SolverTest
 issue2899 name =
     disableBackjumping $
+    disableFineGrainedConflicts $
     goalOrder goals $ mkTest pkgs name ["target"] anySolverFailure
   where
     n :: Int
