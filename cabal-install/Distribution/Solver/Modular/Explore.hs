@@ -86,7 +86,7 @@ logBackjump mbj cs es =
   where
     reachedBjLimit = case mbj of
                        Nothing    -> const False
-                       Just limit -> (== limit)
+                       Just limit -> (>= limit)
 
 -- | Like 'retry', except that it only applies the input function when the
 -- backjump limit has not been reached.
@@ -220,7 +220,7 @@ exploreLog mbj enableBj (CountConflicts countConflicts) t = para go t initES
 --
 avoidSet :: Var QPN -> QGoalReason -> ConflictSet
 avoidSet var gr =
-  CS.union (CS.singleton var) (goalReasonToCS gr)
+  CS.union (CS.singleton var) (goalReasonToConflictSet gr)
 
 -- | Interface.
 --

@@ -32,8 +32,8 @@ module Distribution.Solver.Modular.Dependency (
   , QGoalReason
   , goalToVar
   , varToConflictSet
-  , goalReasonToCS
-  , dependencyReasonToCS
+  , goalReasonToConflictSet
+  , dependencyReasonToConflictSet
   ) where
 
 import Prelude ()
@@ -279,14 +279,17 @@ goalToVar (Goal v _) = v
 varToConflictSet :: Var QPN -> ConflictSet
 varToConflictSet = CS.singleton
 
-goalReasonToCS :: GoalReason QPN -> ConflictSet
-goalReasonToCS UserGoal            = CS.empty
-goalReasonToCS (DependencyGoal dr) = dependencyReasonToCS dr
+-- | Convert a 'GoalReason' to a 'ConflictSet' that can be used when the goal
+-- leads to a conflict.
+goalReasonToConflictSet :: GoalReason QPN -> ConflictSet
+goalReasonToConflictSet UserGoal            = CS.empty
+goalReasonToConflictSet (DependencyGoal dr) = dependencyReasonToConflictSet dr
 
 -- | This function returns the solver variables responsible for the dependency.
--- It drops the flag and stanza values, which are only needed for log messages.
-dependencyReasonToCS :: DependencyReason QPN -> ConflictSet
-dependencyReasonToCS (DependencyReason qpn flags stanzas) =
+-- It drops the values chosen for flag and stanza variables, which are only
+-- needed for log messages.
+dependencyReasonToConflictSet :: DependencyReason QPN -> ConflictSet
+dependencyReasonToConflictSet (DependencyReason qpn flags stanzas) =
     CS.fromList $ P qpn : flagVars ++ map stanzaToVar (S.toList stanzas)
   where
     -- Filter out any flags that introduced the dependency with both values.

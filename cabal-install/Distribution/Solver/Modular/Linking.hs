@@ -251,7 +251,7 @@ linkDeps target = \deps -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
-        lg'' <- lift' $ lgMerge ((CS.union `on` dependencyReasonToCS) dr1 dr2) lg lg'
+        lg'' <- lift' $ lgMerge ((CS.union `on` dependencyReasonToConflictSet) dr1 dr2) lg lg'
         updateLinkGroup lg''
       (Flagged fn _ t f, ~(Flagged _ _ t' f')) -> do
         vs <- get
