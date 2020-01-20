@@ -47,6 +47,7 @@ module Distribution.Client.Dependency (
     setPreferenceDefault,
     setReorderGoals,
     setCountConflicts,
+    setFineGrainedConflicts,
     setMinimizeConflictSet,
     setIndependentGoals,
     setAvoidReinstalls,
@@ -159,6 +160,7 @@ data DepResolverParams = DepResolverParams {
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex UnresolvedSourcePackage,
        depResolverReorderGoals      :: ReorderGoals,
        depResolverCountConflicts    :: CountConflicts,
+       depResolverFineGrainedConflicts :: FineGrainedConflicts,
        depResolverMinimizeConflictSet :: MinimizeConflictSet,
        depResolverIndependentGoals  :: IndependentGoals,
        depResolverAvoidReinstalls   :: AvoidReinstalls,
@@ -197,6 +199,7 @@ showDepResolverParams p =
   ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault        p)
   ++ "\nreorder goals: "     ++ show (asBool (depResolverReorderGoals     p))
   ++ "\ncount conflicts: "   ++ show (asBool (depResolverCountConflicts   p))
+  ++ "\nfine grained conflicts: " ++ show (asBool (depResolverFineGrainedConflicts p))
   ++ "\nminimize conflict set: " ++ show (asBool (depResolverMinimizeConflictSet p))
   ++ "\nindependent goals: " ++ show (asBool (depResolverIndependentGoals p))
   ++ "\navoid reinstalls: "  ++ show (asBool (depResolverAvoidReinstalls  p))
@@ -254,6 +257,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverSourcePkgIndex    = sourcePkgIndex,
        depResolverReorderGoals      = ReorderGoals False,
        depResolverCountConflicts    = CountConflicts True,
+       depResolverFineGrainedConflicts = FineGrainedConflicts True,
        depResolverMinimizeConflictSet = MinimizeConflictSet False,
        depResolverIndependentGoals  = IndependentGoals False,
        depResolverAvoidReinstalls   = AvoidReinstalls False,
@@ -308,6 +312,12 @@ setCountConflicts :: CountConflicts -> DepResolverParams -> DepResolverParams
 setCountConflicts count params =
     params {
       depResolverCountConflicts = count
+    }
+
+setFineGrainedConflicts :: FineGrainedConflicts -> DepResolverParams -> DepResolverParams
+setFineGrainedConflicts fineGrained params =
+    params {
+      depResolverFineGrainedConflicts = fineGrained
     }
 
 setMinimizeConflictSet :: MinimizeConflictSet -> DepResolverParams -> DepResolverParams
@@ -755,7 +765,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
-  $ runSolver solver (SolverConfig reordGoals cntConflicts minimize indGoals noReinstalls
+  $ runSolver solver (SolverConfig reordGoals cntConflicts fineGrained minimize
+                      indGoals noReinstalls
                       shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
                       solveExes order verbosity (PruneAfterFirstSuccess False))
                      platform comp installedPkgIndex sourcePkgIndex
@@ -769,6 +780,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       sourcePkgIndex
       reordGoals
       cntConflicts
+      fineGrained
       minimize
       indGoals
       noReinstalls
@@ -1015,9 +1027,9 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _reorderGoals _countConflicts _minimizeConflictSet
-                              _indGoals _avoidReinstalls _shadowing _strFlags
-                              _maxBjumps _enableBj _solveExes
+                              _reorderGoals _countConflicts _fineGrained
+                              _minimizeConflictSet _indGoals _avoidReinstalls
+                              _shadowing _strFlags _maxBjumps _enableBj _solveExes
                               _allowBootLibInstalls _onlyConstrained _order _verbosity) =
     collectEithers $ map selectPackage (Set.toList targets)
   where

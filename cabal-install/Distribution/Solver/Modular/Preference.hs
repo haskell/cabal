@@ -343,7 +343,9 @@ onlyConstrained :: (PN -> Bool) -> Tree d QGoalReason -> Tree d QGoalReason
 onlyConstrained p = trav go
   where
     go (PChoiceF v@(Q _ pn) _ gr _) | not (p pn)
-      = FailF (varToConflictSet (P v) `CS.union` goalReasonToConflictSet gr) NotExplicit
+      = FailF
+        (varToConflictSet (P v) `CS.union` goalReasonToConflictSetWithConflict v gr)
+        NotExplicit
     go x
       = x
 

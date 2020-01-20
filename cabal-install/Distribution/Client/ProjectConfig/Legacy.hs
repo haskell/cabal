@@ -374,6 +374,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installFineGrainedConflicts = projectConfigFineGrainedConflicts,
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installPerComponent       = projectConfigPerComponent,
       installIndependentGoals   = projectConfigIndependentGoals,
@@ -611,6 +612,7 @@ convertToLegacySharedConfig
       installUpgradeDeps       = mempty, --projectConfigUpgradeDeps,
       installReorderGoals      = projectConfigReorderGoals,
       installCountConflicts    = projectConfigCountConflicts,
+      installFineGrainedConflicts = projectConfigFineGrainedConflicts,
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installIndependentGoals  = projectConfigIndependentGoals,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
@@ -1004,8 +1006,9 @@ legacySharedConfigFieldDescrs =
       , "one-shot", "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts"
-      , "minimize-conflict-set", "independent-goals"
-      , "strong-flags" , "allow-boot-library-installs", "reject-unconstrained-dependencies", "index-state"
+      , "fine-grained-conflicts" , "minimize-conflict-set", "independent-goals"
+      , "strong-flags" , "allow-boot-library-installs"
+      , "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)
