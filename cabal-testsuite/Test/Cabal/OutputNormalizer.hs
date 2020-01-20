@@ -33,13 +33,11 @@ normalizeOutput nenv =
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
   . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
-    -- Look for foo-0.1/installed-0d6...
+    -- Look for 0.1/installed-0d6uzW7Ubh1Fb4TB5oeQ3G
     -- These installed packages will vary depending on GHC version
-    -- Makes assumption that installed packages don't have numbers
-    -- in package name segment.
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
-  . resub "([a-zA-Z]+(-[a-zA-Z])*)-[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.]+"
-          "\\1-<VERSION>/installed-<HASH>..."
+  . resub "[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.+]+"
+          "<VERSION>/installed-<HASH>"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
     -- Some GHC versions are chattier than others
