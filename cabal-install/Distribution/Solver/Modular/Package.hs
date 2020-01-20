@@ -18,8 +18,7 @@ module Distribution.Solver.Modular.Package
   , unPN
   ) where
 
-import Prelude ()
-import Distribution.Solver.Compat.Prelude
+import Data.List as L
 
 import Distribution.Package -- from Cabal
 import Distribution.Deprecated.Text (display)
@@ -58,12 +57,14 @@ data I = I Ver Loc
 -- | String representation of an instance.
 showI :: I -> String
 showI (I v InRepo)   = showVer v
-showI (I v (Inst uid)) = showVer v ++ "/installed" ++ extractPackageAbiHash uid
+showI (I v (Inst uid)) = showVer v ++ "/installed" ++ shortId uid
   where
-    extractPackageAbiHash xs =
-      case first reverse $ break (=='-') $ reverse (display xs) of
-        (ys, []) -> ys
-        (ys, _)  -> '-' : ys
+    -- A hack to extract the beginning of the package ABI hash
+    shortId = snip (splitAt 4) (++ "...")
+            . snip ((\ (x, y) -> (reverse x, y)) . break (=='-') . reverse) ('-':)
+            . display
+    snip p f xs = case p xs of
+                    (ys, zs) -> (if L.null zs then id else f) ys
 
 -- | Package instance. A package name and an instance.
 data PI qpn = PI qpn I
