@@ -66,9 +66,14 @@ gen-extra-source-files-lib :
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
 
 # github actions
-github-actions : .github/workflows/validate.yml
+github-actions : .github/workflows/artifacts.yml
+github-actions : .github/workflows/quick-jobs.yml
+github-actions : .github/workflows/bootstrap.yml
+github-actions : .github/workflows/linux.yml
+github-actions : .github/workflows/macos.yml
+github-actions : .github/workflows/windows.yml
 
-.github/workflows/validate.yml : boot/validate.template.yml cabal-dev-scripts/src/GenValidate.hs
+.github/workflows/%.yml : boot/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
 
 # We need to generate cabal-install-dev so the test modules are in .cabal file!

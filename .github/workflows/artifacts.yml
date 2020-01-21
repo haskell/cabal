@@ -1,0 +1,138 @@
+name: Artifacts
+on:
+  push:
+    branches:
+      - master
+      - "3.2"
+  pull_request:
+    branches:
+      - master
+  release:
+    types:
+      - created
+
+jobs:
+  artifact-linux:
+    name: Artifact on Linux
+    runs-on: ubuntu-18.04
+    container:
+      # Older Ubuntu for older glibc
+      image: phadej/ghc:8.6.5-xenial
+    steps:
+      - name: Set PATH
+        run: |
+          echo "::add-path::$HOME/.cabal/bin"
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v1
+      - name: Release project
+        run: |
+          cp cabal.project.release cabal.project
+          rm -rf cabal.project.local cabal.project.freeze
+      - name: Build
+        run: |
+          cabal v2-build cabal-install:exe:cabal
+          cp $(find dist-newstyle -type f -executable -name cabal) cabal.exe
+      - name: Smoke test
+        run: |
+          ./cabal.exe --version
+      - name: Prepare for upload
+        run: xz -c < cabal.exe > cabal-artifact.xz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: cabal-linux-x86_64.xz
+          path: cabal-artifact.xz
+
+  artifact-macos:
+    name: Artifact on macOS
+    runs-on: macos-latest
+    steps:
+      - name: Install GHC
+        run: |
+          cd $(mktemp -d)
+          curl -sLO "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
+          tar -xJf ghc-*.tar.xz
+          cd ghc-*
+          ./configure --prefix=/opt/ghc/8.6.5
+          sudo make install
+      - name: Install Cabal
+        run: |
+          cd $(mktemp -d)
+          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          tar -xJf cabal-install-*.tar.xz
+          sudo mkdir -p /opt/cabal/3.0/bin
+          sudo cp cabal /opt/cabal/3.0/bin/cabal
+          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+      - name: Set PATH
+        run: |
+          echo "::add-path::/opt/ghc/8.6.5/bin"
+          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::$HOME/.cabal/bin"
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v1
+      - name: Release project
+        run: |
+          cp cabal.project.release cabal.project
+          rm -rf cabal.project.local cabal.project.freeze
+      - name: Build
+        run: |
+          cabal v2-build cabal-install:exe:cabal
+          # macOS find doesn't know -executable
+          cp $(find dist-newstyle -type f -name cabal) cabal.exe
+      - name: Smoke test
+        run: |
+          ./cabal.exe --version
+      - name: Prepare for upload
+        run: xz -c < cabal.exe > cabal-artifact.xz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: cabal-macos-x86_64.xz
+          path: cabal-artifact.xz
+
+  artifact-windows:
+    name: Artifact on Windows
+    runs-on: windows-latest
+    steps:
+      - name: Configure Chocolatey
+        run: choco source add -n mistuke -s https://www.myget.org/F/mistuke/api/v2
+      - name: Install msys2
+        run: choco install -y msys2
+      - name: Install Cabal
+        run: choco install -y cabal --version 3.0.0.0
+      - name: Install GHC
+        run: choco install -y ghc --version 8.6.5
+      - name: Set PATH
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0"
+          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
+      - name: Print versions
+        run: |
+          ghc --version
+          cabal --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v1
+      - name: Release project
+        shell: bash
+        run: |
+          cp cabal.project.release cabal.project
+          rm -rf cabal.project.local cabal.project.freeze
+      - name: Build
+        shell: bash
+        run: |
+          cabal v2-build cabal-install:exe:cabal
+          cp dist-newstyle/build/x86_64-windows/ghc-8.6.5/cabal-install-3.3.0.0/build/cabal/cabal.exe cabal.exe
+      - name: Smoke test
+        shell: bash
+        run: |
+          ./cabal.exe --version
+      - name: Prepare for upload
+        shell: bash
+        run: xz -c < cabal.exe > cabal-artifact.xz
+      - uses: actions/upload-artifact@v1
+        with:
+          name: cabal-windows-x86_64.xz
+          path: cabal-artifact.xz

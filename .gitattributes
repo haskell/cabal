@@ -1,3 +1,6 @@
+# https://github.community/t5/GitHub-Actions/git-config-core-autocrlf-should-default-to-false/m-p/30731#M534
+* -text
+
 /Cabal/ChangeLog.md merge=union
 /cabal-install/changelog merge=union
 /cabal-testsuite/PackageTests/NewBuild/CmdRun/Script/script.hs eol=crlf

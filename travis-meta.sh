@@ -6,6 +6,10 @@
 # Check that auto-generated files/fields are up to date.
 # ---------------------------------------------------------------------
 
+# For some reason status might now be clean after checkout
+git reset --hard
+git status
+
 # Regenerate the CONTRIBUTORS file.
 # Currently doesn't work because Travis uses --depth=50 when cloning.
 #./Cabal/misc/gen-authors.sh > AUTHORS
