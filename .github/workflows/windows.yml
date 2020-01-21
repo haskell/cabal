@@ -13,6 +13,7 @@ on:
   pull_request:
     branches:
       - master
+      - "3.2"
   release:
     types:
       - created
@@ -73,4 +74,4 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.3.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.2.0.0\x\cabal\build\cabal\cabal.exe
