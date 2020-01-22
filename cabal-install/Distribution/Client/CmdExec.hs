@@ -82,6 +82,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( die'
   , info
+  , createDirectoryIfMissingVerbose
   , withTempDirectory
   , wrapText
   )
@@ -223,11 +224,8 @@ withTempEnvFile :: Verbosity
                 -> PostBuildProjectStatus
                 -> ([(String, Maybe String)] -> IO a)
                 -> IO a
-withTempEnvFile verbosity
-                baseCtx
-                buildCtx
-                buildStatus
-                action =
+withTempEnvFile verbosity baseCtx buildCtx buildStatus action = do
+  createDirectoryIfMissingVerbose verbosity True (distTempDirectory (distDirLayout baseCtx))
   withTempDirectory
    verbosity
    (distTempDirectory (distDirLayout baseCtx))
