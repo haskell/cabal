@@ -42,6 +42,7 @@ jobs:
           make lexer
           make gen-extra-source-files
           make spdx
+          make templates
           make github-actions
       - name: Check that diff is clean
         run: |

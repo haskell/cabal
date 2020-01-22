@@ -2,10 +2,6 @@
 .PHONY : gen-extra-source-files gen-extra-source-files-lib gen-extra-source-files-cli
 .PHONY : cabal-install-dev cabal-install-prod
 
-LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
-SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
-SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
-
 CABALBUILD := cabal v2-build
 CABALRUN   := cabal v2-run
 
@@ -25,6 +21,8 @@ lib-ghc-7.6 :
 
 # source generation: Lexer
 
+LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
+
 lexer : $(LEXER_HS)
 
 $(LEXER_HS) : boot/Lexer.x
@@ -34,6 +32,9 @@ $(LEXER_HS) : boot/Lexer.x
 
 # source generation: SPDX
 
+SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
+SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
+
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
 $(SPDX_LICENSE_HS) : boot/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
@@ -41,6 +42,15 @@ $(SPDX_LICENSE_HS) : boot/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUt
 
 $(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- boot/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.6.json $(SPDX_EXCEPTION_HS)
+
+# source generation: templates
+
+TEMPLATE_MACROS:=Cabal/Distribution/Simple/Build/Macros/Z.hs
+
+templates : $(TEMPLATE_MACROS)
+
+$(TEMPLATE_MACROS) : boot/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
 
 # cabal-install.cabal file generation
 

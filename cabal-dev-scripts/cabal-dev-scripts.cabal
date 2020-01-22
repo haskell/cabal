@@ -66,3 +66,17 @@ executable gen-validate
     , bytestring
     , HsYAML      ^>=0.2.1.0
     , zinza       ^>=0.2
+
+executable gen-cabal-macros
+  default-language: Haskell2010
+  main-is:          GenCabalMacros.hs
+  other-modules:    Capture
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , bytestring
+    , Cabal
+    , syb               ^>=0.7.1
+    , template-haskell
+    , zinza             ^>=0.2
