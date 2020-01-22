@@ -64,6 +64,8 @@ import Test.Tasty.HUnit
 import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
+import qualified Data.ByteString as BS
+
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
 removePathForcibly = removeDirectoryRecursive
@@ -1721,12 +1723,12 @@ expectBuildFailed (BuildFailure _ reason) =
 
 -- | Allow altering a file during a test, but then restore it afterwards
 --
+-- We read into the memory, as filesystems are tricky. (especially Windows)
+--
 withFileFinallyRestore :: FilePath -> IO a -> IO a
 withFileFinallyRestore file action = do
-    copyFile file backup
-    action `finally` handle onIOError (renameFile backup file)
+    originalContents <- BS.readFile file
+    action `finally` handle onIOError (BS.writeFile file originalContents)
   where
-    backup = file <.> "backup"
-
     onIOError :: IOException -> IO ()
     onIOError e = putStrLn $ "WARNING: Cannot restore " ++ file ++ "; " ++ show e
