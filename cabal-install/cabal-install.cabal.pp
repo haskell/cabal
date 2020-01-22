@@ -657,6 +657,7 @@ test-suite integration-tests2
   other-modules:
   build-depends:
         base,
+        bytestring,
         Cabal,
         cabal-lib-client,
         containers,
