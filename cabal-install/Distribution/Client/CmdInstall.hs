@@ -140,6 +140,8 @@ import System.Directory
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
          ( (</>), (<.>), takeDirectory, takeBaseName )
+import System.Info
+         ( os )
 
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
@@ -668,7 +670,12 @@ installExes verbosity baseCtx buildCtx platform compiler
   where
     overwritePolicy = fromFlagOrDefault NeverOverwrite $
                       cinstOverwritePolicy clientInstallFlags
-    installMethod   = fromFlagOrDefault InstallMethodSymlink $
+    isWindows = System.Info.os == "mingw32"
+    defaultMethod
+      -- Copy since windows doesn't support symlinks by default
+      | isWindows = InstallMethodCopy
+      | otherwise = InstallMethodSymlink
+    installMethod   = fromFlagOrDefault defaultMethod $
                       cinstInstallMethod clientInstallFlags
 
 -- | Install any built library by adding it to the default ghc environment
