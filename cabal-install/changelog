@@ -7,6 +7,7 @@
 	* Add solver optimization to skip a version of a package if it does not resolve
 	  any conflicts encountered in the last version, controlled by flag
 	  '--fine-grained-conflicts'. (#5918)
+	* On windows use copy as the default install method for executables
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* Parse comma-separated lists for extra-prog-path, extra-lib-dirs, extra-framework-dirs,
