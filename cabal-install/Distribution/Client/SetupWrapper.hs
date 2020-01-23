@@ -903,7 +903,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
         rewriteFileEx verbosity cppMacrosFile
-            (generatePackageVersionMacros (map snd selectedDeps))
+            (generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps))
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 

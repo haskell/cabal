@@ -250,7 +250,7 @@ cabalVersion = mkVersion' Paths_Cabal.version
 #elif defined(CABAL_VERSION)
 cabalVersion = mkVersion [CABAL_VERSION]
 #else
-cabalVersion = mkVersion [1,9999]  --used when bootstrapping
+cabalVersion = mkVersion [3,0]  --used when bootstrapping
 #endif
 
 -- ----------------------------------------------------------------------------
