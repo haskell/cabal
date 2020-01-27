@@ -493,6 +493,8 @@ unfoldrM f = go where
 -- >>> unsnoc []
 -- Nothing
 --
+-- @since 3.2.0.0
+--
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc []     = Nothing
 unsnoc (x:xs) = Just (unsnocNE (x :| xs))
@@ -506,6 +508,8 @@ unsnoc (x:xs) = Just (unsnocNE (x :| xs))
 --
 -- >>> unsnocNE (1 :| [])
 -- ([],1)
+--
+-- @since 3.2.0.0
 --
 unsnocNE :: NonEmpty a -> ([a], a)
 unsnocNE (x:|xs) = go x xs where

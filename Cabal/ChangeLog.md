@@ -1,10 +1,40 @@
-# 3.1.0.0 (current development version)
+# 3.2.0.0 [Someone](mailto:somewhere@example.com) February 2020
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
   * Don’t rebuild world when new ghc flags that affect how error
     messages are presented is specified.
+  * Fix multilib build-depends parsing (#5846)
+  * Change free text `String` fields to use `ShortText` in package description
+    and installed packge info.
+  * Split `Distribution.Types.Flag` and `Distribution.Types.ConfVar`
+    `Distribution.Types.GenericPackageDescription`
+  * Add GHC-8.10 support, including new extensions to
+    `Language.Haskell.Extension`
+  * Use more `NonEmpty` instead of ordinary lists
+  * Add `Distribution.Utils.Structured` for fingeprinting `Binary` blobs
+  * Add `null`, `length` and `unsafeFromUTF8BS` to `Distribution.Utils.ShortText`
+  * Refactor `Distribution.Utils.IOData` module
+  * Rename `Distribution.Compat.MD5` to `Distribution.Utils.MD5`
+  * Add `safeHead`, `safeTail`, `safeLast` to `Distribution.Utils.Generic`
+  * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`
+  * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
+  * Add `Distribution.Compat.Async`
 
- ----
+# 3.0.1.0 TBW
+  * Add GHC-8.8 flags to normaliseGhcFlags
+    ([#6379](https://github.com/haskell/cabal/pull/6379))
+  * Typo fixes
+    ([#6372](https://github.com/haskell/cabal/pull/6372))
+  * Limit version number parts to contain at most 9 digits
+    ([#6386](https://github.com/haskell/cabal/pull/6386)
+  * Fix boundless sublibrary depedency parse failure
+    ([#5846](https://github.com/haskell/cabal/issues/5846))
+  * `cabal check` verifies `cpp-options` more pedantically, allowing only
+    options starting with `-D` and `-U`.
+  * Don’t rebuild world when new ghc flags that affect how error
+    messages are presented is specified.
+  * Fix dropExeExtension behaviour on Windows
+    ([#6287](https://github.com/haskell/cabal/pull/6287)
 
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * The 3.0 migration guide gives advice on adapting Custom setup
