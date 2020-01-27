@@ -71,9 +71,13 @@ toShortText :: String -> ShortText
 fromShortText :: ShortText -> String
 
 -- | Convert from UTF-8 encoded strict 'ByteString'.
+--
+-- @since 3.2.0.0
 unsafeFromUTF8BS :: BS.ByteString -> ShortText
 
 -- | Text whether 'ShortText' is empty.
+--
+-- @since 3.2.0.0
 null :: ShortText -> Bool
 
 -- | Compact representation of short 'Strings'
@@ -148,6 +152,8 @@ instance IsString ShortText where
     fromString = toShortText
 
 -- | /O(n)/. Length in characters. /Slow/ as converts to string.
+--
+-- @since 3.2.0.0
 length :: ShortText -> Int
 length = List.length . fromShortText
 -- Note: avoid using it, we use it @cabal check@ implementation, where it's ok.

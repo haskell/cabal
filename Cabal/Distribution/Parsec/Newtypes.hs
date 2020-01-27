@@ -122,6 +122,8 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 -- | Like 'List', but for 'Set'.
+--
+-- @since 3.2.0.0
 newtype Set' sep b a = Set' { _getSet :: Set a }
 
 -- | 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
@@ -136,10 +138,13 @@ newtype Set' sep b a = Set' { _getSet :: Set a }
 -- >>> unpack' (alaSet' FSep Token) <$> eitherParsec "foo bar foo"
 -- Right (fromList ["bar","foo"])
 --
+-- @since 3.2.0.0
 alaSet :: sep -> Set a -> Set' sep (Identity a) a
 alaSet _ = Set'
 
 -- | More general version of 'alaSet'.
+--
+-- @since 3.2.0.0
 alaSet' :: sep -> (a -> b) -> Set a -> Set' sep b a
 alaSet' _ _ = Set'
 

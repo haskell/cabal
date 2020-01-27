@@ -236,6 +236,8 @@ structureBuilder s0 = State.evalState (go s0) Map.empty where
 -- instance 'Structured' Record
 -- @
 --
+-- @since 3.2.0.0
+--
 class Typeable a => Structured a where
     structure :: Proxy a -> Structure
     default structure :: (Generic a, GStructured (Rep a)) => Proxy a -> Structure
