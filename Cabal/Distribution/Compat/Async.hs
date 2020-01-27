@@ -6,6 +6,8 @@
 -- Copyright (c) 2012, Simon Marlow
 -- Licensed under BSD-3-Clause
 --
+-- @since 3.2.0.0
+--
 module Distribution.Compat.Async (
     AsyncM,
     withAsync, waitCatch,
