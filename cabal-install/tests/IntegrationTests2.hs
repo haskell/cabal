@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- For the handy instance IsString PackageIdentifier
@@ -55,9 +57,11 @@ import Distribution.Text
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad
+import Control.Concurrent (threadDelay)
 import Control.Exception hiding (assert)
 import System.FilePath
 import System.Directory
+import System.IO (hPutStrLn, stderr)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -1448,7 +1452,7 @@ testRegressionIssue3324 config = do
     -- add the missing dep, now it should work
     let qcabal  = basedir </> testdir </> "q" </> "q.cabal"
     withFileFinallyRestore qcabal $ do
-      appendFile qcabal ("  build-depends: p\n")
+      tryFewTimes $ BS.appendFile qcabal ("  build-depends: p\n")
       (plan2, res2) <- executePlan =<< planProject testdir config
       _ <- expectPackageInstalled plan2 res2 "p-0.1"
       _ <- expectPackageInstalled plan2 res2 "q-0.1"
@@ -1728,7 +1732,25 @@ expectBuildFailed (BuildFailure _ reason) =
 withFileFinallyRestore :: FilePath -> IO a -> IO a
 withFileFinallyRestore file action = do
     originalContents <- BS.readFile file
-    action `finally` handle onIOError (BS.writeFile file originalContents)
+    action `finally` handle onIOError (tryFewTimes $ BS.writeFile file originalContents)
   where
     onIOError :: IOException -> IO ()
     onIOError e = putStrLn $ "WARNING: Cannot restore " ++ file ++ "; " ++ show e
+
+-- Hopefully works around some Windows file-locking things.
+-- Use with care:
+--
+-- Try action 4 times, with small sleep in between,
+-- retrying if it fails for 'IOException' reason.
+--
+tryFewTimes :: forall a. IO a -> IO a
+tryFewTimes action = go (3 :: Int) where
+    go :: Int -> IO a
+    go !n | n <= 0    = action
+          | otherwise = action `catch` onIOError n
+
+    onIOError :: Int -> IOException -> IO a
+    onIOError n e = do
+        hPutStrLn stderr $ "Trying " ++ show n ++ " after " ++ show e
+        threadDelay 10000
+        go (n - 1)
