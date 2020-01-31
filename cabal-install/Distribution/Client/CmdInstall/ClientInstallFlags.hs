@@ -81,7 +81,7 @@ clientInstallOptions _ =
     "How to install the executables."
     cinstInstallMethod (\v flags -> flags { cinstInstallMethod = v })
     $ reqArg
-        "copy|symlink"
+        "default|copy|symlink"
         readInstallMethodFlag
         showInstallMethodFlag
   , option [] ["installdir"]
@@ -103,6 +103,7 @@ showOverwritePolicyFlag NoFlag                 = []
 
 readInstallMethodFlag :: ReadE (Flag InstallMethod)
 readInstallMethodFlag = ReadE $ \case
+  "default" -> Right $ NoFlag
   "copy"    -> Right $ Flag InstallMethodCopy
   "symlink" -> Right $ Flag InstallMethodSymlink
   method    -> Left  $ "'" <> method <> "' isn't a valid install-method"
