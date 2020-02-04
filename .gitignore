@@ -50,6 +50,7 @@ ctags
 
 # stack artifacts
 /.stack-work/
+stack.yaml.lock
 
 # Shake artifacts
 .shake*

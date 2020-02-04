@@ -1,11 +1,11 @@
-resolver: lts-11.6
+resolver: nightly-2020-02-04
 packages:
 - Cabal/
 - cabal-install/
 - cabal-testsuite/
 extra-deps:
-  - resolv-0.1.1.1
-  - QuickCheck-2.11.3
+  - hackage-security-0.6.0.0@sha256:69987d46e7b55fe5f0fc537021c3873c5f6f44a6665d349ee6995fd593df8147,11976
+  - lukko-0.1.1.1@sha256:5c674bdd8a06b926ba55d872abe254155ed49a58df202b4d842b643e5ed6bcc9,4289
 nix:
   packages:
   - autoconf
@@ -14,3 +14,4 @@ nix:
   - haskellPackages.alex
   - zlib
   - zlib.out
+allow-newer: true  # only needed for Cabal 3.3
