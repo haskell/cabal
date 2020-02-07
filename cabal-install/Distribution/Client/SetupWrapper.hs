@@ -111,7 +111,8 @@ import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
 import System.Exit         ( ExitCode(..), exitWith )
-import System.Process      ( createProcess, StdStream(..), proc, waitForProcess
+import Distribution.Compat.Process (createProcess)
+import System.Process      ( StdStream(..), proc, waitForProcess
                            , ProcessHandle )
 import qualified System.Process as Process
 import Data.List           ( foldl1' )
@@ -464,6 +465,7 @@ runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr _delegate = do
     mbToStd :: Maybe Handle -> StdStream
     mbToStd Nothing = Inherit
     mbToStd (Just hdl) = UseHandle hdl
+
 -- ------------------------------------------------------------
 -- * Self-Exec SetupMethod
 -- ------------------------------------------------------------
