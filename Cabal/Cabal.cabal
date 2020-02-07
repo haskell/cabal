@@ -334,6 +334,7 @@ library
     Distribution.Compat.Newtype
     Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
+    Distribution.Compat.Process
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
     Distribution.Compat.Time
