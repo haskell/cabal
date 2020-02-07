@@ -34,6 +34,7 @@
 	* Use `hackage-security-0.6`
 	  ([#6388](https://github.com/haskell/cabal/pull/6388))
 	* Other dependency upgrades
+	* On windows use copy as the default install method for executables
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* `v2-haddock` fails on `haddock` failures (#5977)

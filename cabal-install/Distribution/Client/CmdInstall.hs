@@ -85,10 +85,11 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
-         ( OverwritePolicy(..), symlinkBinary )
+         ( OverwritePolicy(..), symlinkBinary, trySymlink )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, TestFlags, BenchmarkFlags
-         , fromFlagOrDefault, flagToMaybe )
+         ( Flag(..), HaddockFlags, TestFlags, BenchmarkFlags )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
@@ -104,7 +105,7 @@ import Distribution.Simple.GHC
          , GhcEnvironmentFileEntry(..)
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
 import Distribution.System
-         ( Platform )
+         ( Platform , buildOS, OS (Windows) )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
@@ -140,7 +141,6 @@ import System.Directory
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
          ( (</>), (<.>), takeDirectory, takeBaseName )
-
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, TestFlags, BenchmarkFlags
@@ -658,6 +658,10 @@ installExes verbosity baseCtx buildCtx platform compiler
                 pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
   warnIfNoExes verbosity buildCtx
+
+  installMethod <- flagElim defaultMethod return $
+    cinstInstallMethod clientInstallFlags
+
   let
     doInstall = installUnitExes
                   verbosity
@@ -668,8 +672,18 @@ installExes verbosity baseCtx buildCtx platform compiler
   where
     overwritePolicy = fromFlagOrDefault NeverOverwrite $
                       cinstOverwritePolicy clientInstallFlags
-    installMethod   = fromFlagOrDefault InstallMethodSymlink $
-                      cinstInstallMethod clientInstallFlags
+    isWindows = buildOS == Windows
+
+    -- This is in IO as we will make environment checks,
+    -- to decide which method is best
+    defaultMethod :: IO InstallMethod
+    defaultMethod
+      -- Try symlinking in temporary directory, if it works default to
+      -- symlinking even on windows
+      | isWindows = do
+        symlinks <- trySymlink verbosity
+        return $ if symlinks then InstallMethodSymlink else InstallMethodCopy
+      | otherwise = return InstallMethodSymlink
 
 -- | Install any built library by adding it to the default ghc environment
 installLibraries

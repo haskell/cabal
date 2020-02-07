@@ -559,12 +559,13 @@ repository, this command will build cabal-install HEAD and symlink the
 
     $ cabal v2-install exe:cabal
 
-Where symlinking is not possible (eg. on Windows), ``--install-method=copy``
-can be used:
+Where symlinking is not possible (eg. on some Windows versions) the ``copy``
+method is used by default. You can specify the install method
+by using ``--install-method`` flag:
 
 ::
 
-    $ cabal v2-install exe:cabal --install-method=copy --installdir=~/bin
+    $ cabal v2-install exe:cabal --install-method=copy --installdir=$HOME/bin
 
 Note that copied executables are not self-contained, since they might use
 data-files from the store.

@@ -16,46 +16,8 @@ module Distribution.Client.InstallSymlink (
     OverwritePolicy(..),
     symlinkBinaries,
     symlinkBinary,
+    trySymlink,
   ) where
-
-#ifdef mingw32_HOST_OS
-
-import Distribution.Compat.Binary
-         ( Binary )
-import Distribution.Utils.Structured
-         ( Structured )
-
-import Distribution.Package (PackageIdentifier)
-import Distribution.Types.UnqualComponentName
-import Distribution.Client.InstallPlan (InstallPlan)
-import Distribution.Client.Types (BuildOutcomes)
-import Distribution.Client.Setup (InstallFlags)
-import Distribution.Simple.Setup (ConfigFlags)
-import Distribution.Simple.Compiler
-import Distribution.System
-import GHC.Generics (Generic)
-
-data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
-  deriving (Show, Eq, Generic, Bounded, Enum)
-
-instance Binary OverwritePolicy
-instance Structured OverwritePolicy
-
-symlinkBinaries :: Platform -> Compiler
-                -> OverwritePolicy
-                -> ConfigFlags
-                -> InstallFlags
-                -> InstallPlan
-                -> BuildOutcomes
-                -> IO [(PackageIdentifier, UnqualComponentName, FilePath)]
-symlinkBinaries _ _ _ _ _ _ _ = return []
-
-symlinkBinary :: OverwritePolicy
-              -> FilePath -> FilePath -> FilePath -> String
-              -> IO Bool
-symlinkBinary _ _ _ _ _ = fail "Symlinking feature not available on Windows"
-
-#else
 
 import Distribution.Compat.Binary
          ( Binary )
@@ -91,12 +53,11 @@ import Distribution.System
          ( Platform )
 import Distribution.Deprecated.Text
          ( display )
+import Distribution.Verbosity  ( Verbosity )
+import Distribution.Simple.Utils ( info, withTempDirectory )
 
-import System.Posix.Files
-         ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
-         , removeLink )
 import System.Directory
-         ( canonicalizePath )
+         ( canonicalizePath, getTemporaryDirectory, removeFile )
 import System.FilePath
          ( (</>), splitPath, joinPath, isAbsolute )
 
@@ -110,6 +71,11 @@ import Data.Maybe
          ( catMaybes )
 import GHC.Generics
          ( Generic )
+
+import Distribution.Client.Compat.Directory ( createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink )
+
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 
 data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
   deriving (Show, Eq, Generic, Bounded, Enum)
@@ -246,9 +212,8 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
         AlwaysOverwrite -> rmLink >> mkLink >> return True
   where
     relativeBindir = makeRelative publicBindir privateBindir
-    mkLink = createSymbolicLink (relativeBindir </> privateName)
-                                (publicBindir   </> publicName)
-    rmLink = removeLink (publicBindir </> publicName)
+    mkLink = createFileLink (relativeBindir </> privateName) (publicBindir   </> publicName)
+    rmLink = removeFile (publicBindir </> publicName)
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or
@@ -260,11 +225,11 @@ targetOkToOverwrite :: FilePath -- ^ The file path of the symlink to the private
                                 -- Use 'canonicalizePath' to make this.
                     -> IO SymlinkStatus
 targetOkToOverwrite symlink target = handleNotExist $ do
-  status <- getSymbolicLinkStatus symlink
-  if not (isSymbolicLink status)
+  isLink <- pathIsSymbolicLink symlink
+  if not isLink
     then return NotOurFile
-    else do target' <- canonicalizePath symlink
-            -- This relies on canonicalizePath handling symlinks
+    else do target' <- canonicalizePath =<< getSymbolicLinkTarget symlink
+            -- This partially relies on canonicalizePath handling symlinks
             if target == target'
               then return OkToOverwrite
               else return NotOurFile
@@ -296,4 +261,27 @@ makeRelative a b = assert (isAbsolute a && isAbsolute b) $
    in joinPath $ [ ".." | _  <- drop commonLen as ]
               ++ drop commonLen bs
 
-#endif
+-- | Try to make a symlink in a temporary directory.
+--
+-- If this works, we can try to symlink: even on Windows.
+--
+trySymlink :: Verbosity -> IO Bool
+trySymlink verbosity = do
+  tmp <- getTemporaryDirectory
+  withTempDirectory verbosity tmp "cabal-symlink-test" $ \tmpDirPath -> do
+    let from = tmpDirPath </> "file.txt"
+    let to   = tmpDirPath </> "file2.txt"
+
+    -- create a file
+    BS.writeFile from (BS8.pack "TEST")
+
+    -- create a symbolic link
+    let create :: IO Bool
+        create = do
+          createFileLink from to
+          info verbosity $ "Symlinking seems to work"
+          return True
+
+    create `catchIO` \exc -> do
+      info verbosity $ "Symlinking doesn't seem to be working: " ++ show exc
+      return False

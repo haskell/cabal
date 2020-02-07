@@ -58,7 +58,8 @@ Version:            3.3.0.0
         build-depends: resolv      >= 0.1.1 && < 0.2
 
     if os(windows)
-      build-depends: Win32 >= 2 && < 3
+      -- newer directory for symlinks
+      build-depends: Win32 >= 2 && < 3, directory >=1.3.1.0
     else
       build-depends: unix >= 2.5 && < 2.9
 
