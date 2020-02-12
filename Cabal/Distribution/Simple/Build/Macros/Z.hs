@@ -72,7 +72,7 @@ render z_root = execWriter $ do
     tell " */\n"
   tell "\n"
   forM_ (zTools z_root) $ \z_var1_tool -> do
-    tell "/* package "
+    tell "/* tool "
     tell (ztoolName z_var1_tool)
     tell "-"
     tell (prettyShow (ztoolVersion z_var1_tool))
@@ -85,7 +85,7 @@ render z_root = execWriter $ do
     tell " \""
     tell (prettyShow (ztoolVersion z_var1_tool))
     tell "\"\n"
-    tell "#endif /* VERSION_"
+    tell "#endif /* TOOL_VERSION_"
     tell (zMangleStr z_root (ztoolName z_var1_tool))
     tell " */\n"
     tell "#ifndef MIN_TOOL_VERSION_"
@@ -109,14 +109,14 @@ render z_root = execWriter $ do
     tell " && (minor) <= "
     tell (ztoolZ z_var1_tool)
     tell ")\n"
-    tell "#endif /* MIN_VERSION_"
+    tell "#endif /* MIN_TOOL_VERSION_"
     tell (zMangleStr z_root (ztoolName z_var1_tool))
     tell " */\n"
   tell "\n"
   if (zNotNull z_root (zPackageKey z_root))
   then do
-    tell "#ifndef CURRENT_packageKey\n"
-    tell "#define CURRENT_packageKey \""
+    tell "#ifndef CURRENT_PACKAGE_KEY\n"
+    tell "#define CURRENT_PACKAGE_KEY \""
     tell (zPackageKey z_root)
     tell "\"\n"
     tell "#endif /* CURRENT_packageKey */\n"
