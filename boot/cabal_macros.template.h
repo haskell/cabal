@@ -14,21 +14,21 @@
 {% endfor %}
 
 {% for tool in tools %}
-/* package {{ tool.name }}-{{ tool.version }} */
+/* tool {{ tool.name }}-{{ tool.version }} */
 #ifndef TOOL_VERSION_{{ mangleStr tool.name }}
 #define TOOL_VERSION_{{ mangleStr tool.name }} "{{ tool.version }}"
-#endif /* VERSION_{{ mangleStr tool.name }} */
+#endif /* TOOL_VERSION_{{ mangleStr tool.name }} */
 #ifndef MIN_TOOL_VERSION_{{ mangleStr tool.name }}
 #define MIN_TOOL_VERSION_{{ mangleStr tool.name }}(major1,major2,minor) (\
   (major1) <  {{ tool.x }} || \
   (major1) == {{ tool.x }} && (major2) <  {{ tool.y }} || \
   (major1) == {{ tool.x }} && (major2) == {{ tool.y }} && (minor) <= {{ tool.z }})
-#endif /* MIN_VERSION_{{ mangleStr tool.name }} */
+#endif /* MIN_TOOL_VERSION_{{ mangleStr tool.name }} */
 {% endfor %}
 
 {% if notNull packageKey %}
-#ifndef CURRENT_packageKey
-#define CURRENT_packageKey "{{ packageKey }}"
+#ifndef CURRENT_PACKAGE_KEY
+#define CURRENT_PACKAGE_KEY "{{ packageKey }}"
 #endif /* CURRENT_packageKey */
 {% endif %}
 {% if notNull componentId %}
