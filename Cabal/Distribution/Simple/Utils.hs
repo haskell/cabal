@@ -233,12 +233,11 @@ import Foreign.C.Error (Errno (..), ePIPE)
 import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Control.Exception (IOException, evaluate, throwIO, fromException)
 import Numeric (showFFloat)
-import qualified System.Process as Process
-         ( CreateProcess(..), StdStream(..), proc)
+import Distribution.Compat.Process  (createProcess, rawSystem, runInteractiveProcess)
 import System.Process
-         ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
+         ( ProcessHandle
          , showCommandForUser, waitForProcess)
-
+import qualified System.Process as Process
 import qualified GHC.IO.Exception as GHC
 
 import qualified Text.PrettyPrint as Disp
@@ -679,6 +678,8 @@ maybeExit :: IO ExitCode -> IO ()
 maybeExit cmd = do
   res <- cmd
   unless (res == ExitSuccess) $ exitWith res
+
+
 
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args = withFrozenCallStack $

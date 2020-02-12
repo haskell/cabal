@@ -19,6 +19,7 @@
   * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`
   * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
   * Add `Distribution.Compat.Async`
+  * Add `Distribution.Compat.Process` with `enableProcessJobs`
 
 # 3.0.1.0 TBW
   * Add GHC-8.8 flags to normaliseGhcFlags
