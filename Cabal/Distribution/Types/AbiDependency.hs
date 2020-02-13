@@ -7,6 +7,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Package            as Package
@@ -38,6 +39,12 @@ instance  Parsec AbiDependency where
         _ <- P.char '='
         abi <- parsec
         return (AbiDependency uid abi)
+
+instance Described AbiDependency where
+    describe _ =
+        describe (Proxy :: Proxy Package.UnitId) <> 
+        reChar '=' <>
+        describe (Proxy :: Proxy Package.AbiHash)
 
 instance Binary AbiDependency
 instance Structured AbiDependency

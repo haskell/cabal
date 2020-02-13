@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 module Distribution.Types.TestType (
     TestType(..),
@@ -10,9 +11,10 @@ import Distribution.Compat.Prelude
 import Distribution.Version
 import Prelude ()
 
+import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
-import Text.PrettyPrint          (char, text)
+import Text.PrettyPrint                    (char, text)
 
 -- | The \"test-type\" field in the test suite stanza.
 --
@@ -40,3 +42,6 @@ instance Parsec TestType where
       "exitcode-stdio" -> TestTypeExe ver
       "detailed"       -> TestTypeLib ver
       _                -> TestTypeUnknown name ver
+
+instance Described TestType where
+    describe _ = REUnion ["exitcode-stdio-1.0", "detailed-0.9"]

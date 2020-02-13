@@ -90,6 +90,9 @@ html_context = {
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CabalUsersGuide'
 
+# MathJax to use SVG rendering by default
+mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_SVG'
+
 
 # -- Options for LaTeX output ---------------------------------------------
 

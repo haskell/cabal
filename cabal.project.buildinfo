@@ -1,0 +1,5 @@
+packages: Cabal/
+packages: buildinfo-reference-generator/
+tests: False
+optimization: False
+with-compiler: ghc-8.6.5

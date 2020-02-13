@@ -303,6 +303,9 @@ library
     -- already depends on `fail` and `semigroups` transitively
     build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
 
+  if !impl(ghc >= 7.10)
+    build-depends: void >= 0.7.3 && < 0.8
+
   if !impl(ghc >= 7.8)
     -- semigroups depends on tagged.
     build-depends:  tagged >=0.8.6 && <0.9
@@ -481,6 +484,8 @@ library
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
+    Distribution.Utils.CharSet
+    Distribution.Utils.Regex
     Distribution.Utils.Generic
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
@@ -504,6 +509,7 @@ library
     Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
+    Distribution.FieldGrammar.Described
     Distribution.FieldGrammar.FieldDescrs
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
@@ -614,6 +620,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time
+    UnitTests.Distribution.Described
     UnitTests.Distribution.Simple.Glob
     UnitTests.Distribution.Simple.Program.GHC
     UnitTests.Distribution.Simple.Program.Internal
@@ -621,6 +628,7 @@ test-suite unit-tests
     UnitTests.Distribution.SPDX
     UnitTests.Distribution.System
     UnitTests.Distribution.Types.GenericPackageDescription
+    UnitTests.Distribution.Utils.CharSet
     UnitTests.Distribution.Utils.Generic
     UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Utils.ShortText
@@ -644,6 +652,7 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
+    rere >=0.1 && <0.2,
     tasty >= 1.2.3 && < 1.3,
     tasty-hunit,
     tasty-quickcheck,
@@ -656,6 +665,14 @@ test-suite unit-tests
     Cabal
   ghc-options: -Wall
   default-language: Haskell2010
+
+  if !impl(ghc >= 7.10)
+    build-depends: void
+
+  -- Cabal-quickcheck
+  hs-source-dirs: Cabal-quickcheck/src
+  other-modules:
+    Test.QuickCheck.Instances.Cabal
 
 test-suite parser-tests
   type: exitcode-stdio-1.0
@@ -677,7 +694,7 @@ test-suite parser-tests
   default-language: Haskell2010
 
   if !impl(ghc >= 8.0)
-    build-depends:  semigroups
+    build-depends: semigroups
 
   if impl(ghc >= 7.8)
     build-depends:

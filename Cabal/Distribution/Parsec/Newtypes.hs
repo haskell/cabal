@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
-{-# LANGUAGE TypeSynonymInstances   #-}
 -- | This module provides @newtype@ wrappers to be used with "Distribution.FieldGrammar".
 module Distribution.Parsec.Newtypes (
     -- * List
@@ -38,8 +38,9 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compiler         (CompilerFlavor)
-import Distribution.License          (License)
+import Distribution.Compiler               (CompilerFlavor)
+import Distribution.FieldGrammar.Described
+import Distribution.License                (License)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version          (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
@@ -69,29 +70,36 @@ class    Sep sep  where
 
     parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
 
+    describeSep :: Proxy sep -> Regex a -> Regex a
+
 instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
+    describeSep _ = reCommaList
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
+    describeSep _ = reCommaList
 instance Sep VCat where
     prettySep _  = vcat
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
+    describeSep _ = reCommaList
 instance Sep FSep where
     prettySep _  = fsep
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
+    describeSep _ = reOptCommaList
 instance Sep NoCommaFSep where
     prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
+    describeSep _ = reSpacedList
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
@@ -121,6 +129,10 @@ instance (Newtype a b, Sep sep, Parsec b) => Parsec (List sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
+instance (Newtype a b, Sep sep, Described b) => Described (List sep b a) where
+    describe _ = describeSep (Proxy :: Proxy sep) (describe (Proxy :: Proxy b))
+
+--
 -- | Like 'List', but for 'Set'.
 --
 -- @since 3.2.0.0
@@ -156,6 +168,9 @@ instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
 
+instance (Newtype a b, Ord a, Sep sep, Described b) => Described (Set' sep b a) where
+    describe _ = describeSep (Proxy :: Proxy sep) (describe (Proxy :: Proxy b))
+
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }
 
@@ -166,6 +181,9 @@ instance Parsec Token where
 
 instance Pretty Token where
     pretty = showToken . unpack
+
+instance Described Token where
+    describe _ = REUnion [reHsString, reMunch1CS csNotSpaceOrComma]
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' { getToken' :: String }
@@ -178,6 +196,9 @@ instance Parsec Token' where
 instance Pretty Token' where
     pretty = showToken . unpack
 
+instance Described Token' where
+    describe _ = REUnion [reHsString, reMunch1CS csNotSpace]
+
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted { getMQuoted :: a }
 
@@ -188,6 +209,10 @@ instance Parsec a => Parsec (MQuoted a) where
 
 instance Pretty a => Pretty (MQuoted a)  where
     pretty = pretty . unpack
+
+instance Described a => Described (MQuoted a) where
+    -- TODO: this is simplification
+    describe _ = describe ([] :: [a])
 
 -- | Version range or just version, i.e. @cabal-version@ field.
 --
@@ -215,6 +240,9 @@ instance Parsec SpecVersion where
 instance Pretty SpecVersion where
     pretty = either pretty pretty . unpack
 
+instance Described SpecVersion where
+    describe _ = "3.0" -- :)
+
 specVersionFromRange :: VersionRange -> Version
 specVersionFromRange versionRange = case asVersionIntervals versionRange of
     []                            -> mkVersion [0]
@@ -235,6 +263,9 @@ instance Parsec SpecLicense where
 instance Pretty SpecLicense where
     pretty = either pretty pretty . unpack
 
+instance Described SpecLicense where
+    describe _ = RETodo
+
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }
 
@@ -247,6 +278,9 @@ instance Pretty TestedWith where
     pretty x = case unpack x of
         (compiler, vr) -> pretty compiler <+> pretty vr
 
+instance Described TestedWith where
+    describe _ = RETodo
+
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT { getFilePathNT :: String }
 
@@ -257,6 +291,9 @@ instance Parsec FilePathNT where
 
 instance Pretty FilePathNT where
     pretty = showFilePath . unpack
+
+instance Described FilePathNT where
+    describe _ = describe ([] :: [Token])
 
 -------------------------------------------------------------------------------
 -- Internal

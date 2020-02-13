@@ -26,10 +26,11 @@ module Distribution.ModuleName (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
-import System.FilePath              (pathSeparator)
+import Distribution.Utils.ShortText        (ShortText, fromShortText, toShortText)
+import System.FilePath                     (pathSeparator)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
@@ -56,6 +57,9 @@ instance Parsec ModuleName where
             c  <- P.satisfy isUpper
             cs <- P.munch validModuleChar
             return (c:cs)
+
+instance Described ModuleName where
+    describe _ = RETodo
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

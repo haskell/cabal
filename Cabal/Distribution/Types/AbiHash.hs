@@ -13,6 +13,7 @@ import Distribution.Utils.ShortText
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Pretty
 import Distribution.Parsec
+import Distribution.FieldGrammar.Described
 
 import Text.PrettyPrint (text)
 
@@ -59,3 +60,6 @@ instance Pretty AbiHash where
 
 instance Parsec AbiHash where
     parsec = fmap mkAbiHash (P.munch isAlphaNum)
+
+instance Described AbiHash where
+    describe _ = reMunchCS csAlphaNum 

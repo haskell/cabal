@@ -13,3 +13,4 @@ Welcome to the Cabal User Guide
    nix-local-build-overview
    nix-integration
    file-format-changelog
+   buildinfo-fields-reference

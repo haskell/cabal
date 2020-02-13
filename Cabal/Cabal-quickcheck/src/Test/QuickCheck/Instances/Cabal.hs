@@ -3,15 +3,29 @@
 module Test.QuickCheck.Instances.Cabal () where
 
 import Control.Applicative (liftA2)
+import Data.Char (isAlphaNum, isDigit)
+import Data.List (intercalate)
 import Test.QuickCheck
 
 import Distribution.SPDX
 import Distribution.Version
+import Distribution.Types.PackageName
 import Distribution.Types.VersionRange.Internal
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
 #endif
+
+-------------------------------------------------------------------------------
+-- PackageName
+-------------------------------------------------------------------------------
+
+instance Arbitrary PackageName where
+    arbitrary = mkPackageName . intercalate "-" <$> shortListOf1 2 nameComponent
+      where
+        nameComponent = shortListOf1 5 (elements packageChars)
+                        `suchThat` (not . all isDigit)
+        packageChars  = filter isAlphaNum ['\0'..'\127']
 
 -------------------------------------------------------------------------------
 -- Version
@@ -150,3 +164,11 @@ instance Arbitrary LicenseExpression where
     shrink (EOr a b)  = a : b : map (uncurry EOr) (shrink (a, b))
     shrink _          = []
 
+-------------------------------------------------------------------------------
+-- Helpers
+-------------------------------------------------------------------------------
+
+shortListOf1 :: Int -> Gen a -> Gen [a]
+shortListOf1 bound gen = sized $ \n -> do
+    k <- choose (1, 1 `max` ((n `div` 2) `min` bound))
+    vectorOf k gen

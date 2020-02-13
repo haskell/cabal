@@ -10,6 +10,7 @@ import Prelude ()
 
 import Text.PrettyPrint ((<+>))
 
+import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.IncludeRenaming
@@ -35,3 +36,6 @@ instance Parsec Mixin where
         P.spaces
         incl <- parsec
         return (Mixin mod_name incl)
+
+instance Described Mixin where
+    describe _ = RETodo
