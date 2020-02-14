@@ -79,6 +79,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
+import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
@@ -119,7 +120,7 @@ import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), partition, inits, stripPrefix, intersect )
+    ( (\\), partition, inits, stripPrefix, intersect, dropWhileEnd )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Map as Map
@@ -1616,13 +1617,11 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       version <- pkgconfig ["--modversion", pkg]
                  `catchIO`   (\_ -> die' verbosity notFound)
                  `catchExit` (\_ -> die' verbosity notFound)
-      case simpleParsec version of
-        Nothing -> die' verbosity
-                   "parsing output of pkg-config --modversion failed"
-        Just v | not (withinPkgconfigVersionRange v range) ->
-                 die' verbosity (badVersion v)
-               | otherwise ->
-                 info verbosity (depSatisfied v)
+      let trim = dropWhile isSpace . dropWhileEnd isSpace
+      let v = PkgconfigVersion (toUTF8BS $ trim version)
+      if not (withinPkgconfigVersionRange v range)
+      then die' verbosity (badVersion v)
+      else info verbosity (depSatisfied v)
       where
         notFound     = "The pkg-config package '" ++ pkg ++ "'"
                     ++ versionRequirement
