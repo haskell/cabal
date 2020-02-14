@@ -40,6 +40,14 @@ instance NFData PkgconfigVersion where rnf = genericRnf
 instance Pretty PkgconfigVersion where
     pretty (PkgconfigVersion bs) = PP.text (BS8.unpack bs)
 
+-- |
+--
+-- >>> simpleParsec "1.0.2n" :: Maybe PkgconfigVersion
+-- Just (PkgconfigVersion "1.0.2n")
+--
+-- >>> simpleParsec "0.3.5+ds" :: Maybe PkgconfigVersion
+-- Nothing
+--
 instance Parsec PkgconfigVersion where
     parsec = PkgconfigVersion . BS8.pack <$> P.munch1 predicate where
         predicate c = isAsciiAlphaNum c || c == '.' || c == '-'
