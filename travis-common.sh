@@ -1,6 +1,6 @@
 set -e
 
-CABAL_VERSION="3.0.1.0"
+CABAL_VERSION="3.0.2.0"
 CABAL_INSTALL_VERSION="3.0.1.0"
 
 if [ "$TRAVIS_OS_NAME" = "linux" ]; then
