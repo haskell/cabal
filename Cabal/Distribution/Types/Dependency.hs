@@ -57,9 +57,9 @@ instance NFData Dependency where rnf = genericRnf
 
 instance Pretty Dependency where
     pretty (Dependency name ver sublibs) = pretty name
-                                       <+> optionalMonoid
-                                             (sublibs /= Set.singleton LMainLibName)
-                                             (PP.colon <+> PP.braces prettySublibs)
+                                       <<>> optionalMonoid
+                                            (sublibs /= Set.singleton LMainLibName)
+                                            (PP.colon <<>> PP.braces prettySublibs)
                                        <+> pretty ver
       where
         optionalMonoid True x = x
@@ -81,12 +81,40 @@ versionGuardMultilibs expr = do
   else
     expr
 
+-- |
+--
+-- >>> simpleParsec "mylib:sub" :: Maybe Dependency
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub")]))
+--
+-- >>> simpleParsec "mylib:{sub1,sub2}" :: Maybe Dependency
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+--
+-- >>> simpleParsec "mylib:{ sub1 , sub2 }" :: Maybe Dependency
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+--
+-- >>> simpleParsec "mylib:{ sub1 , sub2 } ^>= 42" :: Maybe Dependency
+-- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+--
+-- Spaces around colon are not allowed:
+--
+-- >>> simpleParsec "mylib: sub" :: Maybe Dependency
+-- Nothing
+--
+-- >>> simpleParsec "mylib :sub" :: Maybe Dependency
+-- Nothing
+--
+-- >>> simpleParsec "mylib: {sub1,sub2}" :: Maybe Dependency
+-- Nothing
+--
+-- >>> simpleParsec "mylib :{sub1,sub2}" :: Maybe Dependency
+-- Nothing
+--
 instance Parsec Dependency where
     parsec = do
-        name <- lexemeParsec
+        name <- parsec
 
         libs <- option [LMainLibName]
-              $ (char ':' *> spaces *>)
+              $ (char ':' *>)
               $ versionGuardMultilibs
               $ pure <$> parseLib name <|> parseMultipleLibs name
 
