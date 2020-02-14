@@ -20,6 +20,8 @@
   * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
   * Add `Distribution.Compat.Async`
   * Add `Distribution.Compat.Process` with `enableProcessJobs`
+  * Disallow spaces around colon `:` in Dependency (`build-depends` syntax
+  * Make `configure` accept any `pkg-config --modversion` output
 
 # 3.0.1.0 TBW
   * Add GHC-8.8 flags to normaliseGhcFlags
