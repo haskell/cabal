@@ -1,3 +1,7 @@
+# 3.0.2.0
+  * Disallow spaces around colon `:` in Dependency (`build-depends` syntax
+  * Make `configure` accept any `pkg-config --modversion` output
+
 # 3.0.1.0 TBW
   * Add GHC-8.8 flags to normaliseGhcFlags
     ([#6379](https://github.com/haskell/cabal/pull/6379))
