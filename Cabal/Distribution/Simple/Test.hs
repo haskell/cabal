@@ -42,6 +42,7 @@ import System.Directory
     , removeFile )
 import System.Exit ( exitFailure, exitSuccess )
 import System.FilePath ( (</>) )
+import qualified Prelude (IO)
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: Args                    -- ^positional command-line arguments
@@ -59,7 +60,7 @@ test args pkg_descr lbi flags = do
         enabledTests = LBI.enabledTestLBIs pkg_descr lbi
 
         doTest :: ((PD.TestSuite, LBI.ComponentLocalBuildInfo),
-                    Maybe TestSuiteLog) -> IO TestSuiteLog
+                    Maybe TestSuiteLog) -> Prelude.IO TestSuiteLog
         doTest ((suite, clbi), _) =
             case PD.testInterface suite of
               PD.TestSuiteExeV10 _ _ ->

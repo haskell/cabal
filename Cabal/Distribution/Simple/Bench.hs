@@ -35,6 +35,7 @@ import Distribution.Pretty
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
+import qualified Prelude (IO)
 
 -- | Perform the \"@.\/setup bench@\" action.
 bench :: Args                    -- ^positional command-line arguments
@@ -49,7 +50,7 @@ bench args pkg_descr lbi flags = do
         enabledBenchmarks = map fst (LBI.enabledBenchLBIs pkg_descr lbi)
 
         -- Run the benchmark
-        doBench :: PD.Benchmark -> IO ExitCode
+        doBench :: PD.Benchmark -> Prelude.IO ExitCode
         doBench bm =
             case PD.benchmarkInterface bm of
               PD.BenchmarkExeV10 _ _ -> do

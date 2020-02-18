@@ -177,9 +177,9 @@ parseString
     -> IO a
 parseString parser verbosity name bs = do
     let (warnings, result) = runParseResult (parser bs)
-    traverse_ (warn verbosity . showPWarning name) warnings
+    traverse_ (\warning -> warn verbosity $ showPWarning name warning) warnings
     case result of
         Right x -> return x
         Left (_, errors) -> do
-            traverse_ (warn verbosity . showPError name) errors
+            traverse_ (\warning -> warn verbosity $ showPError name warning) errors
             die' verbosity $ "Failed parsing \"" ++ name ++ "\"."

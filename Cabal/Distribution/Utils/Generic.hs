@@ -256,8 +256,9 @@ readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> BS.readFile f
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  withBinaryFile name ReadMode
-    (\hnd -> BS.hGetContents hnd >>= action . ignoreBOM . fromUTF8LBS)
+  withBinaryFile name ReadMode $ \hnd -> do
+    contents <- BS.hGetContents hnd
+    action $ ignoreBOM $ fromUTF8LBS contents
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --

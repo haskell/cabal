@@ -573,6 +573,7 @@ unregister pkg lbi regFlags = do
       verbosity = fromFlag (regVerbosity regFlags)
       packageDb = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
                                     (regPackageDB regFlags)
+      unreg :: HcPkg.HcPkgInfo -> IO ()
       unreg hpi =
         let invocation = HcPkg.unregisterInvocation
                            hpi Verbosity.normal packageDb pkgid

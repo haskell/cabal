@@ -241,6 +241,7 @@ import qualified System.Process as Process
 import qualified GHC.IO.Exception as GHC
 
 import qualified Text.PrettyPrint as Disp
+import qualified Prelude (IO)
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
@@ -426,7 +427,7 @@ displaySomeException se =
 #endif
 
 topHandler :: IO a -> IO a
-topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
+topHandler prog = topHandlerWith (\_ -> exitWith (ExitFailure 1)) prog
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
@@ -915,7 +916,7 @@ xargs :: Int -> ([String] -> IO ())
 xargs maxSize rawSystemFun fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
-   in traverse_ (rawSystemFun . (fixedArgs ++)) (chunks chunkSize bigArgs)
+   in traverse_ (\args -> rawSystemFun $ fixedArgs ++ args) (chunks chunkSize bigArgs)
 
   where chunks len = unfoldr $ \s ->
           if null s then Nothing
@@ -1019,7 +1020,7 @@ findModuleFilesEx :: Verbosity
                   -> [ModuleName] -- ^ modules
                   -> IO [(FilePath, FilePath)]
 findModuleFilesEx verbosity searchPath extensions moduleNames =
-  traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
+  traverse (\modName -> findModuleFileEx verbosity searchPath extensions modName) moduleNames
 
 {-# DEPRECATED findModuleFile "Use findModuleFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
 findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
@@ -1147,11 +1148,11 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs []         = return ()
-    createDirs (dir:[])   = createDir dir throwIO
+    createDirs (dir:[])   = createDir dir (\exc -> throwIO exc)
     createDirs (dir:dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
-        createDir dir throwIO
+        createDir dir (\exc -> throwIO exc)
 
     createDir :: FilePath -> (IOException -> IO ()) -> IO ()
     createDir dir notExistHandler = do
@@ -1170,7 +1171,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
           | isAlreadyExistsError e -> (do
               isDir <- doesDirectoryExist dir
               unless isDir $ throwIO e
-              ) `catchIO` ((\_ -> return ()) :: IOException -> IO ())
+              ) `catchIO` ((\_ -> return ()) :: IOException -> Prelude.IO ())
           | otherwise              -> throwIO e
 
 createDirectoryVerbose :: Verbosity -> FilePath -> IO ()
@@ -1231,7 +1232,7 @@ copyFilesWith doCopy verbosity targetDir srcFiles = withFrozenCallStack $ do
 
   -- Create parent directories for everything
   let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
-  traverse_ (createDirectoryIfMissingVerbose verbosity True) dirs
+  traverse_ (\dir -> createDirectoryIfMissingVerbose verbosity True dir) dirs
 
   -- Copy all the files
   sequence_ [ let src  = srcBase   </> srcFile
@@ -1295,8 +1296,8 @@ copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursive verbosity srcDir destDir = withFrozenCallStack $ do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
-  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f)
-                                                   | f <- srcFiles ]
+  copyFilesWith (\_ f g -> copyFile f g) verbosity destDir [ (srcDir, f)
+                                                           | f <- srcFiles ]
 
 -------------------
 -- File permissions
@@ -1355,8 +1356,7 @@ withTempFileEx opts tmpDir template action =
 --
 withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
 withTempDirectory verbosity targetDir template f = withFrozenCallStack $
-  withTempDirectoryEx verbosity defaultTempFileOptions targetDir template
-    (withLexicalCallStack f)
+  withTempDirectoryEx verbosity defaultTempFileOptions targetDir template f
 
 -- | A version of 'withTempDirectory' that additionally takes a
 -- 'TempFileOptions' argument.
@@ -1481,8 +1481,11 @@ findPackageDesc dir
 
 -- |Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
-tryFindPackageDesc verbosity dir =
-  either (die' verbosity) return =<< findPackageDesc dir
+tryFindPackageDesc verbosity dir = do
+  desc <- findPackageDesc dir
+  case desc of
+    Left err -> die' verbosity err
+    Right d  -> return d
 
 -- |Find auxiliary package information in the given directory.
 -- Looks for @.buildinfo@ files.

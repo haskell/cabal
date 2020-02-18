@@ -670,7 +670,7 @@ autoconfUserHooks
        preUnreg    = readHook regVerbosity regDistPref
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
-                          -> LocalBuildInfo -> IO ()
+                          -> LocalBuildInfo -> Prelude.IO ()
           defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
                        baseDir lbi' = fromMaybe ""
@@ -692,7 +692,7 @@ autoconfUserHooks
           readHookWithArgs :: (a -> Flag Verbosity)
                            -> (a -> Flag FilePath)
                            -> Args -> a
-                           -> IO HookedBuildInfo
+                           -> Prelude.IO HookedBuildInfo
           readHookWithArgs get_verbosity get_dist_pref _ flags = do
               dist_dir <- findDistPrefOrDefault (get_dist_pref flags)
               getHookedBuildInfo verbosity (dist_dir </> "build")
@@ -701,7 +701,7 @@ autoconfUserHooks
 
           readHook :: (a -> Flag Verbosity)
                    -> (a -> Flag FilePath)
-                   -> Args -> a -> IO HookedBuildInfo
+                   -> Args -> a -> Prelude.IO HookedBuildInfo
           readHook get_verbosity get_dist_pref a flags = do
               noExtraFlags a
               dist_dir <- findDistPrefOrDefault (get_dist_pref flags)

@@ -372,7 +372,7 @@ configurePrograms :: Verbosity
                   -> ProgramDb
                   -> IO ProgramDb
 configurePrograms verbosity progs progdb =
-  foldM (flip (configureProgram verbosity)) progdb progs
+  foldM (\db pgm -> configureProgram verbosity pgm db) progdb progs
 
 
 -- | Unconfigure a program.  This is basically a hack and you shouldn't
@@ -406,8 +406,8 @@ reconfigurePrograms :: Verbosity
                     -> IO ProgramDb
 reconfigurePrograms verbosity paths argss progdb = do
   configurePrograms verbosity progs
-   . userSpecifyPaths paths
-   . userSpecifyArgss argss
+   $ userSpecifyPaths paths
+   $ userSpecifyArgss argss
    $ progdb
 
   where
@@ -501,6 +501,8 @@ lookupProgramVersion verbosity prog range programDb = do
 requireProgramVersion :: Verbosity -> Program -> VersionRange
                       -> ProgramDb
                       -> IO (ConfiguredProgram, Version, ProgramDb)
-requireProgramVersion verbosity prog range programDb =
-  join $ either (die' verbosity) return `fmap`
-  lookupProgramVersion verbosity prog range programDb
+requireProgramVersion verbosity prog range programDb = do
+  result <- lookupProgramVersion verbosity prog range programDb
+  case result of
+    Left err -> die' verbosity err
+    Right res -> return res

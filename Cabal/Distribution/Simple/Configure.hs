@@ -146,6 +146,7 @@ import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Data.Set as Set
+import qualified Prelude (IO)
 
 
 type UseExternalInternalDeps = Bool
@@ -229,25 +230,25 @@ getConfigStateFile filename = do
 -- info.
 tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
                       -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetConfigStateFile = try . getConfigStateFile
+tryGetConfigStateFile path = try $ getConfigStateFile path
 
 -- | Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                          -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetPersistBuildConfig = try . getPersistBuildConfig
+tryGetPersistBuildConfig path = try $ getPersistBuildConfig path
 
 -- | Read the 'localBuildInfoFile'. Throw an exception if the file is
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
 getPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                       -> IO LocalBuildInfo
-getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
+getPersistBuildConfig path = getConfigStateFile $ localBuildInfoFile path
 
 -- | Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                            -> IO (Maybe LocalBuildInfo)
-maybeGetPersistBuildConfig =
-    liftM (either (const Nothing) Just) . tryGetPersistBuildConfig
+maybeGetPersistBuildConfig path =
+    liftM (either (const Nothing) Just) $ tryGetPersistBuildConfig path
 
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
@@ -452,10 +453,11 @@ configure (pkg_descr0, pbi) cfg = do
     -- version of a dependency, and the executable to use another.
     (allConstraints  :: [Dependency],
      requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo)
-        <- either (die' verbosity) return $
-              combinedConstraints (configConstraints cfg)
-                                  (configDependencies cfg)
-                                  installedPackageSet
+        <- case combinedConstraints (configConstraints cfg)
+                                    (configDependencies cfg)
+                                    installedPackageSet of
+            Left err -> die' verbosity err
+            Right r  -> return r
 
     -- pkg_descr:   The resolved package description, that does not contain any
     --              conditionals, because we have have an assignment for
@@ -590,9 +592,9 @@ configure (pkg_descr0, pbi) cfg = do
                 , Nothing == desugarBuildTool pkg_descr buildTool ]
           externBuildToolDeps ++ unknownBuildTools
 
-    programDb' <-
-          configureAllKnownPrograms (lessVerbose verbosity) programDb
-      >>= configureRequiredPrograms verbosity requiredBuildTools
+    programDb' <- do
+          progs <- configureAllKnownPrograms (lessVerbose verbosity) programDb
+          configureRequiredPrograms verbosity requiredBuildTools progs
 
     (pkg_descr', programDb'') <-
       configurePkgconfigPackages verbosity pkg_descr programDb' enabled
@@ -1532,7 +1534,7 @@ configureRequiredPrograms verbosity deps progdb =
 -- program matches the required version; otherwise we will accept
 -- any version of the program and assume that it is a simpleProgram.
 configureRequiredProgram :: Verbosity -> ProgramDb -> LegacyExeDependency
-                            -> IO ProgramDb
+                            -> Prelude.IO ProgramDb
 configureRequiredProgram verbosity progdb
   (LegacyExeDependency progName verRange) =
   case lookupKnownProgram progName progdb of
@@ -1952,7 +1954,7 @@ checkPackageProblems verbosity dir gpkg pkg = do
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
   if null errors
-    then traverse_ (warn verbosity) warnings
+    then traverse_ (\w -> warn verbosity w) warnings
     else die' verbosity (intercalate "\n\n" errors)
 
 -- | Preform checks if a relocatable build is allowed

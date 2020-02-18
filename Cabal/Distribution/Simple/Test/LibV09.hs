@@ -229,7 +229,8 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap (\s -> fromMaybe (error $ "panic! read " ++ show s) $ readMaybe s) getContents -- TODO: eradicateNoParse
     dir <- getCurrentDirectory
-    results <- (tests >>= stubRunTests) `CE.catch` errHandler
+    results <- CE.handle errHandler $ do tests'<- tests
+                                         stubRunTests tests'
     setCurrentDirectory dir
     stubWriteLog f n results
   where

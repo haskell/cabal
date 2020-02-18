@@ -318,7 +318,7 @@ haddock pkg_descr lbi suffixes flags' = do
 
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
-      for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
+      for_ files $ \f -> copyFileTo verbosity (unDir $ argOutputDir commonArgs) f
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -501,7 +501,7 @@ getInterfaces :: Verbosity
               -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
     (packageFlags, warnings) <- haddockPackageFlags verbosity lbi clbi htmlTemplate
-    traverse_ (warn (verboseUnmarkOutput verbosity)) warnings
+    traverse_ (\w -> warn (verboseUnmarkOutput verbosity) w) warnings
     return $ mempty {
                  argInterfaces = packageFlags
                }
@@ -833,10 +833,13 @@ hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
           -> [PPSuffixHandler]
           -> HscolourFlags
           -> IO ()
-hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
-    either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg) =<<
-      lookupProgramVersion verbosity hscolourProgram
+hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags = do
+    result <- lookupProgramVersion verbosity hscolourProgram
       (orLaterVersion (mkVersion [1,8])) (withPrograms lbi)
+    case result of
+      Left err -> onNoHsColour err
+      Right (hscolourProg, _, _) -> go hscolourProg
+
   where
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do
