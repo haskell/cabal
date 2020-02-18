@@ -84,6 +84,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
 import qualified System.Info
+import qualified Prelude (IO)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -339,10 +340,10 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> ProgramDb
                                  -> [PackageDB]
                                  -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity platform progdb =
-    traverse getPackageDBPath
+getInstalledPackagesMonitorFiles verbosity platform progdb pkgdb =
+    traverse getPackageDBPath pkgdb
   where
-    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath :: PackageDB -> Prelude.IO FilePath
     getPackageDBPath GlobalPackageDB =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcjsProg
 
@@ -1719,9 +1720,9 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     installOrdinary = install False True
     installShared   = install True  True
 
-    copyModuleFiles ext =
-      findModuleFilesEx verbosity [builtDir'] [ext] (allLibModules lib clbi)
-      >>= installOrdinaryFiles verbosity targetDir
+    copyModuleFiles ext = do
+      files <- findModuleFilesEx verbosity [builtDir'] [ext] (allLibModules lib clbi)
+      installOrdinaryFiles verbosity targetDir files
 
     compiler_id = compilerId (compiler lbi)
     platform = hostPlatform lbi
@@ -1799,6 +1800,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
 pkgRoot verbosity lbi = pkgRoot'
    where
+    pkgRoot' :: PackageDB -> IO FilePath
     pkgRoot' GlobalPackageDB =
       let ghcjsProg = fromMaybe (error "GHCJS.pkgRoot: no ghcjs program") $ lookupProgram ghcjsProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcjsProg)

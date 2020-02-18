@@ -133,7 +133,8 @@ wipeMetadata verbosity path = do
     -- Check for existence first (ReadWriteMode would create one otherwise)
     exists <- doesFileExist path
     unless exists $ wipeError "Temporary file disappeared"
-    withBinaryFile path ReadWriteMode $ \ h -> hFileSize h >>= wipeArchive h
+    withBinaryFile path ReadWriteMode $ \ h -> do size <- hFileSize h
+                                                  wipeArchive h size
 
   where
     wipeError msg = dieWithLocation' verbosity path Nothing $

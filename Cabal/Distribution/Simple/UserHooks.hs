@@ -32,7 +32,7 @@ module Distribution.Simple.UserHooks (
   ) where
 
 import Prelude ()
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (IO)
 
 import Distribution.PackageDescription
 import Distribution.Simple.Program
@@ -40,6 +40,8 @@ import Distribution.Simple.Command
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.LocalBuildInfo
+-- Use Prelude.IO to avoid impredicativity due to HasCallStack
+import Prelude (IO)
 
 type Args = [String]
 

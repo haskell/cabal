@@ -22,6 +22,7 @@
   * Add `Distribution.Compat.Process` with `enableProcessJobs`
   * Disallow spaces around colon `:` in Dependency (`build-depends` syntax
   * Make `configure` accept any `pkg-config --modversion` output
+  * `IO` actions in `UserHooks` no longer have a `HasCallStack` constraint
 
 # 3.0.1.0 TBW
   * Add GHC-8.8 flags to normaliseGhcFlags

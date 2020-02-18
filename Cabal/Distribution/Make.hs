@@ -82,8 +82,10 @@ import Distribution.Pretty
 import System.Environment (getArgs, getProgName)
 import System.Exit
 
+import qualified Prelude (IO)
+
 defaultMain :: IO ()
-defaultMain = getArgs >>= defaultMainArgs
+defaultMain = getArgs >>= \args -> defaultMainArgs args
 
 defaultMainArgs :: [String] -> IO ()
 defaultMainArgs = defaultMainHelper
@@ -114,6 +116,9 @@ defaultMainHelper args =
                                   ++ prettyShow cabalVersion
 
     progs = defaultProgramDb
+    -- N.B. Use (Prelude.IO ()) instead of (HasCallStack => IO ()) to avoid
+    -- impredicativity.
+    commands :: [Command (Prelude.IO ())]
     commands =
       [configureCommand progs `commandAddAction` configureAction
       ,buildCommand     progs `commandAddAction` buildAction
@@ -126,7 +131,9 @@ defaultMainHelper args =
       ,unregisterCommand      `commandAddAction` unregisterAction
       ]
 
-configureAction :: ConfigFlags -> [String] -> IO ()
+type Action flags = flags -> [String] -> Prelude.IO ()
+
+configureAction :: Action ConfigFlags
 configureAction flags args = do
   noExtraFlags args
   let verbosity = fromFlag (configVerbosity flags)
@@ -135,7 +142,7 @@ configureAction flags args = do
     : configureArgs backwardsCompatHack flags
   where backwardsCompatHack = True
 
-copyAction :: CopyFlags -> [String] -> IO ()
+copyAction :: Action CopyFlags
 copyAction flags args = do
   noExtraFlags args
   let destArgs = case fromFlag $ copyDest flags of
@@ -145,40 +152,40 @@ copyAction flags args = do
 
   rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
 
-installAction :: InstallFlags -> [String] -> IO ()
+installAction :: Action InstallFlags
 installAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ installVerbosity flags) "make" ["install"]
   rawSystemExit (fromFlag $ installVerbosity flags) "make" ["register"]
 
-haddockAction :: HaddockFlags -> [String] -> IO ()
+haddockAction :: Action HaddockFlags
 haddockAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
     `catchIO` \_ ->
     rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
 
-buildAction :: BuildFlags -> [String] -> IO ()
+buildAction :: Action BuildFlags
 buildAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ buildVerbosity flags) "make" []
 
-cleanAction :: CleanFlags -> [String] -> IO ()
+cleanAction :: Action CleanFlags
 cleanAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ cleanVerbosity flags) "make" ["clean"]
 
-sdistAction :: SDistFlags -> [String] -> IO ()
+sdistAction :: Action SDistFlags
 sdistAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ sDistVerbosity flags) "make" ["dist"]
 
-registerAction :: RegisterFlags -> [String] -> IO ()
+registerAction :: Action RegisterFlags
 registerAction  flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ regVerbosity flags) "make" ["register"]
 
-unregisterAction :: RegisterFlags -> [String] -> IO ()
+unregisterAction :: Action RegisterFlags
 unregisterAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ regVerbosity flags) "make" ["unregister"]

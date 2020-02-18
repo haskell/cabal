@@ -56,13 +56,15 @@ expandResponse = go recursionLimit "."
     recursionLimit = 100
 
     go :: Int -> FilePath -> [String] -> IO [String]
-    go n dir
-      | n >= 0    = fmap concat . mapM (expand n dir)
-      | otherwise = const $ hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
+    go n dir xs
+      | n >= 0    = fmap concat $ mapM (\x -> expand n dir x) xs
+      | otherwise = hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
 
     expand :: Int -> FilePath -> String -> IO [String]
     expand n dir arg@('@':f) = readRecursively n (dir </> f) `catchIOError` (const $ print "?" >> return [arg])
     expand _n _dir x = return [x]
 
     readRecursively :: Int -> FilePath -> IO [String]
-    readRecursively n f = go (n - 1) (takeDirectory f) =<< unescapeArgs <$> readFile f
+    readRecursively n f = do
+      xs <- unescapeArgs <$> readFile f
+      go (n - 1) (takeDirectory f) xs

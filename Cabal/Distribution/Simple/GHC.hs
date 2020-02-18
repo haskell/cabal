@@ -123,6 +123,7 @@ import qualified System.Info
 #ifndef mingw32_HOST_OS
 import System.Posix (createSymbolicLink)
 #endif /* mingw32_HOST_OS */
+import qualified Prelude (IO)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -454,10 +455,10 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> ProgramDb
                                  -> [PackageDB]
                                  -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity platform progdb =
-    traverse getPackageDBPath
+getInstalledPackagesMonitorFiles verbosity platform progdb pkgdbs =
+    traverse getPackageDBPath pkgdbs
   where
-    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath :: PackageDB -> Prelude.IO FilePath
     getPackageDBPath GlobalPackageDB =
       selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
 
@@ -1993,9 +1994,9 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     installOrdinary = install False
     installShared   = install True
 
-    copyModuleFiles ext =
-      findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
-      >>= installOrdinaryFiles verbosity targetDir
+    copyModuleFiles ext = do
+      files <- findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
+      installOrdinaryFiles verbosity targetDir files
 
     compiler_id = compilerId (compiler lbi)
     platform = hostPlatform lbi
@@ -2050,6 +2051,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo registerOptions =
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
 pkgRoot verbosity lbi = pkgRoot'
    where
+    pkgRoot' :: PackageDB -> IO FilePath
     pkgRoot' GlobalPackageDB =
       let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)

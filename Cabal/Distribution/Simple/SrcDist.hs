@@ -179,7 +179,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , fmap concat
     . withAllFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
        biSrcs   <- allSourcesBuildInfo verbosity flibBi pps []
-       defFiles <- mapM (findModDefFile verbosity flibBi pps)
+       defFiles <- mapM (\file -> findModDefFile verbosity flibBi pps file)
          (foreignLibModDefFile flib)
        return (defFiles ++ biSrcs)
 
@@ -233,7 +233,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let lbi   = libBuildInfo l
            incls = filter (`notElem` autogenIncludes lbi) (installIncludes lbi)
            relincdirs = "." : filter isRelative (includeDirs lbi)
-       traverse (fmap snd . findIncludeFile verbosity relincdirs) incls
+       traverse (\incl -> snd <$> findIncludeFile verbosity relincdirs incl) incls
 
     -- Setup script, if it exists.
   , fmap (maybe [] (\f -> [f])) $ findSetupFile ""
@@ -372,9 +372,11 @@ overwriteSnapshotPackageDesc verbosity pkg targetDir = do
     -- We could just writePackageDescription targetDescFile pkg_descr,
     -- but that would lose comments and formatting.
     descFile <- defaultPackageDesc verbosity
-    withUTF8FileContents descFile $
+    withUTF8FileContents descFile $ \contents -> 
       writeUTF8File (targetDir </> descFile)
-        . unlines . map (replaceVersion (packageVersion pkg)) . lines
+        $ unlines
+        $ map (replaceVersion (packageVersion pkg))
+        $ lines contents
 
   where
     replaceVersion :: Version -> String -> String
