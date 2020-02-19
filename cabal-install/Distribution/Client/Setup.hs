@@ -144,6 +144,7 @@ import Distribution.Client.GlobalFlags
          ( GlobalFlags(..), defaultGlobalFlags
          , RepoContext(..), withRepoContext
          )
+import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 
 import Data.List
          ( deleteFirstsBy )
@@ -1435,16 +1436,16 @@ uninstallCommand = CommandUI {
     commandOptions      = \_ -> []
   }
 
-manpageCommand :: CommandUI (Flag Verbosity)
+manpageCommand :: CommandUI ManpageFlags
 manpageCommand = CommandUI {
-    commandName         = "manpage",
+    commandName         = "man",
     commandSynopsis     = "Outputs manpage source.",
     commandDescription  = Just $ \_ ->
       "Output manpage source to STDOUT.\n",
     commandNotes        = Nothing,
-    commandUsage        = usageFlags "manpage",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbosity id const]
+    commandUsage        = usageFlags "man",
+    commandDefaultFlags = defaultManpageFlags,
+    commandOptions      = manpageOptions
   }
 
 runCommand :: CommandUI (BuildFlags, BuildExFlags)

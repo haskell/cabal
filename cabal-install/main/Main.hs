@@ -138,7 +138,8 @@ import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
-import Distribution.Client.Manpage            (manpage)
+import Distribution.Client.Manpage            (manpageCmd)
+import Distribution.Client.ManpageFlags       (ManpageFlags (..))
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
                                               ,relaxEncodingErrors
@@ -1244,13 +1245,13 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Make      -> Make.defaultMainArgs args
     Custom    -> error "actAsSetupAction Custom"
 
-manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
-manpageAction commands flagVerbosity extraArgs _ = do
-  let verbosity = fromFlag flagVerbosity
+manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
+manpageAction commands flags extraArgs _ = do
+  let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
     die' verbosity $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   let cabalCmd = if takeExtension pname == ".exe"
                  then dropExtension pname
                  else pname
-  putStrLn $ manpage cabalCmd commands
+  manpageCmd cabalCmd commands flags

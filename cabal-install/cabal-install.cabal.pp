@@ -150,6 +150,7 @@ Version:            3.3.0.0
         Distribution.Client.JobControl
         Distribution.Client.List
         Distribution.Client.Manpage
+        Distribution.Client.ManpageFlags
         Distribution.Client.Nix
         Distribution.Client.Outdated
         Distribution.Client.PackageHash
