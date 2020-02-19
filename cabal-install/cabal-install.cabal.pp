@@ -279,11 +279,7 @@ Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
 Copyright:          2003-2019, Cabal Development Team
 Category:           Distribution
-%if CABAL_FLAG_LIB
 Build-type:         Simple
-%else
-Build-type:         Custom
-%endif
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
 
@@ -391,16 +387,6 @@ Flag lukko
   default:      True
   manual:       True
 
-%if CABAL_FLAG_LIB
-%else
-custom-setup
-   setup-depends:
-       Cabal     >= 2.2,
-       base,
-       process   >= 1.1.0.1  && < 1.7,
-       filepath  >= 1.3      && < 1.5
-
-%endif
 #
 # Libraries, if CABAL_FLAG_LIB
 #
