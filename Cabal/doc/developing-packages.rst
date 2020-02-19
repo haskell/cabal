@@ -3281,6 +3281,18 @@ Declaring a ``custom-setup`` stanza also enables the generation of
     :pkg-field:`build-depends` field for a description of the syntax expected by
     this field.
 
+    If the field is not specified the implicit package set will be used.
+    The package set contains packages bundled with GHC (i.e. ``base``,
+    ``bytestring``) and specifically ``Cabal``.
+    The specific bounds are put on ``Cabal`` dependency:
+    lower-bound is inferred from :pkg-field:`cabal-version`,
+    and the upper-bound is ``< 1.25``.
+
+    ``Cabal`` version is additionally restricted by GHC,
+    with absolute minimum being ``1.20``, and for example ``Custom``
+    builds with GHC-8.10 require at least ``Cabal-3.2``.
+
+
 Backward compatibility and ``custom-setup``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
