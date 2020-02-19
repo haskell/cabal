@@ -41,6 +41,53 @@ executables by default, you would change this line to
 You can also use ``cabal user-config update`` to migrate configuration
 files created by older versions of ``cabal``.
 
+Environment variables
+---------------------
+
+Various environment variables affect ``cabal-install``.
+
+``CABAL_CONFIG``
+   The variable to find global configuration file.
+
+``CABAL_DIR``
+   Default content directory for ``cabal-install`` files.
+   Default value is ``getAppUserDataDirectory "cabal"``, which is
+   ``$HOME/.cabal`` on unix systems. 
+
+   .. note::
+
+       The CABAL_DIR might be dropped in the future, when
+       ``cabal-install`` starts to use XDG Directory specification.
+
+``CABAL_BUILDDIR``
+    The override for default ``dist`` build directory.
+    Note, the nix-style builds build directory (``dist-newstyle``)
+    is not affected by this environment variable.
+
+``CABAL_SANDBOX_PACKAGE_PATH``
+   Variable related to deprecated sandbox functionality.
+
+``CABAL_SANDBOX_CONFIG``
+   Variable related to deprecated sandbox functionality.
+
+Configuration file discovery
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. If ``$CABAL_CONFIG`` is set use it,
+2. otherwise if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``
+3. otherwise use ``getAppUserDirectory "cabal"``
+
+If the configuration file doesn't exist ``cabal-install``
+will generate the default one, with directories based on
+``$CABAL_DIR`` (if set) or ``getAppUserDirectory "cabal"`` prefix.
+
+.. note:
+
+    If ``$CABAL_CONFIG`` is set, but the file doesn't exist,
+    one will be generated with ``$CABAL_DIR`` or ``getAppUserDirectory "cabal"``
+    based prefixes. In other words not the prefixes based on a
+    directory part of ``$CABAL_CONFIG`` path.
+
 Repository specification
 ------------------------
 
