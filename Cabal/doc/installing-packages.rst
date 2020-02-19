@@ -312,6 +312,11 @@ Hackage_ web site.
 Developing with sandboxes
 -------------------------
 
+.. warning::
+
+   This functionality is deprecated.
+   Please migrate to use nix-style builds.
+
 By default, any dependencies of the package are installed into the
 global or user package databases (e.g. using
 ``cabal install --only-dependencies``). If you're building several
