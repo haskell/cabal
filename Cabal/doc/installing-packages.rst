@@ -52,7 +52,7 @@ Various environment variables affect ``cabal-install``.
 ``CABAL_DIR``
    Default content directory for ``cabal-install`` files.
    Default value is ``getAppUserDataDirectory "cabal"``, which is
-   ``$HOME/.cabal`` on unix systems. 
+   ``$HOME/.cabal`` on unix systems and ``%APPDATA%\cabal`` in Windows.
 
    .. note::
 
