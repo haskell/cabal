@@ -38,8 +38,6 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
 import Distribution.Pretty (prettyShow)
-import Distribution.Deprecated.Text
-         ( display )
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
 import Distribution.Client.HashValue
 import Distribution.Client.Types
@@ -76,11 +74,22 @@ hashedInstalledPackageId
 -- without significant path length limitations (ie not Windows).
 --
 hashedInstalledPackageIdLong :: PackageHashInputs -> InstalledPackageId
-hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    mkComponentId $
-         display pkgHashPkgId   -- to be a bit user friendly
-      ++ "-"
-      ++ showHashValue (hashPackageHashInputs pkghashinputs)
+hashedInstalledPackageIdLong
+    pkghashinputs@PackageHashInputs{pkgHashPkgId,pkgHashComponent}
+    = mkComponentId $
+           prettyShow pkgHashPkgId   -- to be a bit user friendly
+        ++ maybe "" displayComponent pkgHashComponent
+        ++ "-"
+        ++ showHashValue (hashPackageHashInputs pkghashinputs)
+  where
+    displayComponent :: CD.Component -> String
+    displayComponent CD.ComponentLib        = ""
+    displayComponent (CD.ComponentSubLib s) = "-l-" ++ prettyShow s
+    displayComponent (CD.ComponentFLib s)   = "-f-" ++ prettyShow s
+    displayComponent (CD.ComponentExe s)    = "-e-" ++ prettyShow s
+    displayComponent (CD.ComponentTest s)   = "-t-" ++ prettyShow s
+    displayComponent (CD.ComponentBench s)  = "-b-" ++ prettyShow s
+    displayComponent CD.ComponentSetup      = "-setup"
 
 -- | On Windows we have serious problems with path lengths. Windows imposes a
 -- maximum path length of 260 chars, and even if we can use the windows long
@@ -105,8 +114,8 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
     mkComponentId $
       intercalate "-"
         -- max length now 64
-        [ truncateStr 14 (display name)
-        , truncateStr  8 (display version)
+        [ truncateStr 14 (prettyShow name)
+        , truncateStr  8 (prettyShow version)
         , showHashValue (truncateHash 20 (hashPackageHashInputs pkghashinputs))
         ]
   where
@@ -143,8 +152,8 @@ hashedInstalledPackageIdVeryShort :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
   mkComponentId $
     intercalate "-"
-      [ filter (not . flip elem "aeiou") (display name)
-      , display version
+      [ filter (not . flip elem "aeiou") (prettyShow name)
+      , prettyShow version
       , showHashValue (truncateHash 4 (hashPackageHashInputs pkghashinputs))
       ]
   where
@@ -250,37 +259,37 @@ renderPackageHashInputs PackageHashInputs{
     -- into the ghc-pkg db. At that point this should probably be changed to
     -- use the config file infrastructure so it can be read back in again.
     LBS.pack $ unlines $ catMaybes $
-      [ entry "pkgid"       display pkgHashPkgId
+      [ entry "pkgid"       prettyShow pkgHashPkgId
       , mentry "component"  show pkgHashComponent
       , entry "src"         showHashValue pkgHashSourceHash
       , entry "pkg-config-deps"
-                            (intercalate ", " . map (\(pn, mb_v) -> display pn ++
+                            (intercalate ", " . map (\(pn, mb_v) -> prettyShow pn ++
                                                     case mb_v of
                                                         Nothing -> ""
                                                         Just v -> " " ++ prettyShow v)
                                               . Set.toList) pkgHashPkgConfigDeps
-      , entry "deps"        (intercalate ", " . map display
+      , entry "deps"        (intercalate ", " . map prettyShow
                                               . Set.toList) pkgHashDirectDeps
         -- and then all the config
-      , entry "compilerid"  display pkgHashCompilerId
-      , entry "platform"    display pkgHashPlatform
+      , entry "compilerid"  prettyShow pkgHashCompilerId
+      , entry "platform" prettyShow pkgHashPlatform
       , opt   "flags" mempty showFlagAssignment pkgHashFlagAssignment
       , opt   "configure-script" [] unwords pkgHashConfigureScriptArgs
-      , opt   "vanilla-lib" True  display pkgHashVanillaLib
-      , opt   "shared-lib"  False display pkgHashSharedLib
-      , opt   "dynamic-exe" False display pkgHashDynExe
-      , opt   "fully-static-exe" False display pkgHashFullyStaticExe
-      , opt   "ghci-lib"    False display pkgHashGHCiLib
-      , opt   "prof-lib"    False display pkgHashProfLib
-      , opt   "prof-exe"    False display pkgHashProfExe
+      , opt   "vanilla-lib" True  prettyShow pkgHashVanillaLib
+      , opt   "shared-lib"  False prettyShow pkgHashSharedLib
+      , opt   "dynamic-exe" False prettyShow pkgHashDynExe
+      , opt   "fully-static-exe" False prettyShow pkgHashFullyStaticExe
+      , opt   "ghci-lib"    False prettyShow pkgHashGHCiLib
+      , opt   "prof-lib"    False prettyShow pkgHashProfLib
+      , opt   "prof-exe"    False prettyShow pkgHashProfExe
       , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail
       , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail
-      , opt   "hpc"          False display pkgHashCoverage
+      , opt   "hpc"          False prettyShow pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
-      , opt   "split-objs"   False display pkgHashSplitObjs
-      , opt   "split-sections" False display pkgHashSplitSections
-      , opt   "stripped-lib" False display pkgHashStripLibs
-      , opt   "stripped-exe" True  display pkgHashStripExes
+      , opt   "split-objs"   False prettyShow pkgHashSplitObjs
+      , opt   "split-sections" False prettyShow pkgHashSplitSections
+      , opt   "stripped-lib" False prettyShow pkgHashStripLibs
+      , opt   "stripped-exe" True  prettyShow pkgHashStripExes
       , opt   "debug-info"   NormalDebugInfo (show . fromEnum) pkgHashDebugInfo
       , opt   "extra-lib-dirs"     [] unwords pkgHashExtraLibDirs
       , opt   "extra-framework-dirs" [] unwords pkgHashExtraFrameworkDirs
@@ -288,18 +297,18 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
 
-      , opt   "documentation"  False display pkgHashDocumentation
-      , opt   "haddock-hoogle" False display pkgHashHaddockHoogle
-      , opt   "haddock-html"   False display pkgHashHaddockHtml
+      , opt   "documentation"  False prettyShow pkgHashDocumentation
+      , opt   "haddock-hoogle" False prettyShow pkgHashHaddockHoogle
+      , opt   "haddock-html"   False prettyShow pkgHashHaddockHtml
       , opt   "haddock-html-location" Nothing (fromMaybe "") pkgHashHaddockHtmlLocation
-      , opt   "haddock-foreign-libraries" False display pkgHashHaddockForeignLibs
-      , opt   "haddock-executables" False display pkgHashHaddockExecutables
-      , opt   "haddock-tests" False display pkgHashHaddockTestSuites
-      , opt   "haddock-benchmarks" False display pkgHashHaddockBenchmarks
-      , opt   "haddock-internal" False display pkgHashHaddockInternal
+      , opt   "haddock-foreign-libraries" False prettyShow pkgHashHaddockForeignLibs
+      , opt   "haddock-executables" False prettyShow pkgHashHaddockExecutables
+      , opt   "haddock-tests" False prettyShow pkgHashHaddockTestSuites
+      , opt   "haddock-benchmarks" False prettyShow pkgHashHaddockBenchmarks
+      , opt   "haddock-internal" False prettyShow pkgHashHaddockInternal
       , opt   "haddock-css" Nothing (fromMaybe "") pkgHashHaddockCss
-      , opt   "haddock-hyperlink-source" False display pkgHashHaddockLinkedSource
-      , opt   "haddock-quickjump" False display pkgHashHaddockQuickJump
+      , opt   "haddock-hyperlink-source" False prettyShow pkgHashHaddockLinkedSource
+      , opt   "haddock-quickjump" False prettyShow pkgHashHaddockQuickJump
       , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
 
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
