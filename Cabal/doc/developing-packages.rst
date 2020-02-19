@@ -2187,6 +2187,7 @@ system-dependent values for these fields.
 .. pkg-field:: hs-source-dir: directory list
     :deprecated: 2.0
     :removed: 3.0
+
     :default: ``.``
 
     Root directories for the module hierarchy.
