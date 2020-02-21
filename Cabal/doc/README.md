@@ -61,7 +61,7 @@ So, you cannot have
     """"""""""""""""""""""
 ```
 
-* RST simply parses a file and interpretes headings to indicate the
+* RST simply parses a file and interprets headings to indicate the
   start of a new block,
   * at the level implied by the header's *adornment*, if the adornment was
   previously encountered in this file,
