@@ -14,15 +14,30 @@
 module Distribution.Client.Manpage
   ( -- * Manual page generation
     manpage
+  , manpageCmd
+  , ManpageFlags
+  , defaultManpageFlags
+  , manpageOptions
   ) where
 
-import Distribution.Simple.Command
-import Distribution.Client.Setup (globalCommand)
+import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import Data.Char (toUpper)
-import Data.List (intercalate)
+import Distribution.Client.ManpageFlags
+import Distribution.Client.Setup        (globalCommand)
+import Distribution.Compat.Process      (createProcess)
+import Distribution.Simple.Command
+import Distribution.Simple.Flag         (fromFlagOrDefault)
+import System.Exit                      (exitWith)
+import System.IO                        (hClose, hPutStr)
+
+import qualified System.Process as Process
 
 data FileInfo = FileInfo String String -- ^ path, description
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
 
 -- | A list of files that should be documented in the manual page.
 files :: [FileInfo]
@@ -30,6 +45,33 @@ files =
   [ (FileInfo "~/.cabal/config" "The defaults that can be overridden with command-line options.")
   , (FileInfo "~/.cabal/world"  "A list of all packages whose installation has been explicitly requested.")
   ]
+
+manpageCmd :: String -> [CommandSpec a] -> ManpageFlags -> IO ()
+manpageCmd pname commands flags
+    | fromFlagOrDefault False (manpageRaw flags)
+    = putStrLn contents
+    | otherwise
+    = do
+        let cmd  = "man"
+            args = ["-l", "-"]
+
+        (mb_in, _, _, ph) <- createProcess (Process.proc cmd args)
+            { Process.std_in  = Process.CreatePipe
+            , Process.std_out = Process.Inherit
+            , Process.std_err = Process.Inherit
+            }
+
+        -- put contents
+        for_ mb_in $ \hin -> do
+            hPutStr hin contents
+            hClose hin
+
+        -- wait for process to exit, propagate exit code
+        ec <- Process.waitForProcess ph
+        exitWith ec
+  where
+    contents :: String
+    contents = manpage pname commands
 
 -- | Produces a manual page with @troff@ markup.
 manpage :: String -> [CommandSpec a] -> String
