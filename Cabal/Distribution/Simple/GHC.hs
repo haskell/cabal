@@ -385,7 +385,7 @@ getGlobalPackageDB verbosity ghcProg =
 
 -- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB
-  :: Verbosity -> ConfiguredProgram -> Platform -> NoCallStackIO FilePath
+  :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath
 getUserPackageDB _verbosity ghcProg platform = do
     -- It's rather annoying that we have to reconstruct this, because ghc
     -- hides this information from us otherwise. But for certain use cases
@@ -1684,7 +1684,7 @@ extractRtsInfo lbi =
 
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
-checkNeedsRecompilation :: FilePath -> GhcOptions -> NoCallStackIO Bool
+checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
 checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
     where oname = getObjectFileName filename opts
 
@@ -1700,7 +1700,7 @@ getObjectFileName filename opts = oname
 -- Calculates relative RPATHs when 'relocatable' is set.
 getRPaths :: LocalBuildInfo
           -> ComponentLocalBuildInfo -- ^ Component we are building
-          -> NoCallStackIO (NubListR FilePath)
+          -> IO (NubListR FilePath)
 getRPaths lbi clbi | supportRPaths hostOS = do
     libraryPaths <- depLibraryPaths False (relocatable lbi) lbi clbi
     let hostPref = case hostOS of

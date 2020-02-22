@@ -1886,7 +1886,7 @@ checkDevelopmentOnlyFlags pkg =
 -- | Sanity check things that requires IO. It looks at the files in the
 -- package and expects to find the package unpacked in at the given file path.
 --
-checkPackageFiles :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageFiles :: Verbosity -> PackageDescription -> FilePath -> IO [PackageCheck]
 checkPackageFiles verbosity pkg root = do
   contentChecks <- checkPackageContent checkFilesIO pkg
   preDistributionChecks <- checkPackageFilesPreDistribution verbosity pkg root
@@ -2202,7 +2202,7 @@ checkTarPath path
 -- check these on the server; these checks only make sense in the development
 -- and package-creation environment. Hence we can use IO, rather than needing
 -- to pass a 'CheckPackageContentOps' dictionary around.
-checkPackageFilesPreDistribution :: Verbosity -> PackageDescription -> FilePath -> NoCallStackIO [PackageCheck]
+checkPackageFilesPreDistribution :: Verbosity -> PackageDescription -> FilePath -> IO [PackageCheck]
 -- Note: this really shouldn't return any 'Inexcusable' warnings,
 -- because that will make us say that Hackage would reject the package.
 -- But, because Hackage doesn't run these tests, that will be a lie!
@@ -2212,7 +2212,7 @@ checkPackageFilesPreDistribution = checkGlobFiles
 checkGlobFiles :: Verbosity
                -> PackageDescription
                -> FilePath
-               -> NoCallStackIO [PackageCheck]
+               -> IO [PackageCheck]
 checkGlobFiles verbosity pkg root =
   fmap concat $ for allGlobs $ \(field, dir, glob) ->
     -- Note: we just skip over parse errors here; they're reported elsewhere.

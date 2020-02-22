@@ -190,7 +190,7 @@ depLibraryPaths :: Bool -- ^ Building for inplace?
                 -> Bool -- ^ Generate prefix-relative library paths
                 -> LocalBuildInfo
                 -> ComponentLocalBuildInfo -- ^ Component that is being built
-                -> NoCallStackIO [FilePath]
+                -> IO [FilePath]
 depLibraryPaths inplace relative lbi clbi = do
     let pkgDescr    = localPkgDescr lbi
         installDirs = absoluteComponentInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest

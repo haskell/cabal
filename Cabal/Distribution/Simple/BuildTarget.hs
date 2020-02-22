@@ -154,7 +154,7 @@ readBuildTargets verbosity pkg targetStrs = do
 
     return btargets
 
-checkTargetExistsAsFile :: UserBuildTarget -> NoCallStackIO (UserBuildTarget, Bool)
+checkTargetExistsAsFile :: UserBuildTarget -> IO (UserBuildTarget, Bool)
 checkTargetExistsAsFile t = do
     fexists <- existsAsFile (fileComponentOfTarget t)
     return (t, fexists)

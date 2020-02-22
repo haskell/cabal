@@ -206,10 +206,10 @@ registrationPackageDB dbs  = case safeLast dbs of
 -- | Make package paths absolute
 
 
-absolutePackageDBPaths :: PackageDBStack -> NoCallStackIO PackageDBStack
+absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
 absolutePackageDBPaths = traverse absolutePackageDBPath
 
-absolutePackageDBPath :: PackageDB -> NoCallStackIO PackageDB
+absolutePackageDBPath :: PackageDB -> IO PackageDB
 absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB
 absolutePackageDBPath UserPackageDB          = return UserPackageDB
 absolutePackageDBPath (SpecificPackageDB db) =

@@ -702,7 +702,7 @@ renderPureArgs version comp platform args = concat
 -- HTML paths, and an optional warning for packages with missing documentation.
 haddockPackagePaths :: [InstalledPackageInfo]
                     -> Maybe (InstalledPackageInfo -> FilePath)
-                    -> NoCallStackIO ([( FilePath        -- path to interface
+                    -> IO ([( FilePath        -- path to interface
                                                          -- file
 
                                        , Maybe FilePath  -- url to html

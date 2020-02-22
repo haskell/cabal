@@ -256,7 +256,7 @@ patches = Map.fromList
     mk a b c d = ((a, b), (c, d))
 
 -- | Helper to create entries in patches
-_makePatchKey :: FilePath -> (BS.ByteString -> BS.ByteString) -> NoCallStackIO ()
+_makePatchKey :: FilePath -> (BS.ByteString -> BS.ByteString) -> IO ()
 _makePatchKey fp transform = do
     contents <- BS.readFile fp
     let output = transform contents

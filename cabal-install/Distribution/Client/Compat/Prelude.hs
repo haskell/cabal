@@ -12,9 +12,7 @@
 --
 module Distribution.Client.Compat.Prelude
   ( module Distribution.Compat.Prelude.Internal
-  , Prelude.IO
   ) where
 
-import Prelude (IO)
-import Distribution.Compat.Prelude.Internal hiding (IO)
+import Distribution.Compat.Prelude.Internal
 import Distribution.Client.Compat.Orphans ()

@@ -38,7 +38,7 @@ import Foreign.C.Error (throwErrnoIfMinus1_)
 import System.Posix.Internals ( withFilePath )
 #endif /* mingw32_HOST_OS */
 
-getEnvironment :: NoCallStackIO [(String, String)]
+getEnvironment :: IO [(String, String)]
 #ifdef mingw32_HOST_OS
 -- On Windows, the names of environment variables are case-insensitive, but are
 -- often given in mixed-case (e.g. "PATH" is "Path"), so we have to normalise

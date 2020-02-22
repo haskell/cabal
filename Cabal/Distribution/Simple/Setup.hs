@@ -348,7 +348,7 @@ instance Eq ConfigFlags where
     where
       equal f = on (==) f a b
 
-configAbsolutePaths :: ConfigFlags -> NoCallStackIO ConfigFlags
+configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
   `liftM` traverse (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
