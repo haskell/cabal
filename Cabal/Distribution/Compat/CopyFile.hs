@@ -69,16 +69,16 @@ import System.IO
 import qualified System.Win32.File as Win32 ( copyFile )
 #endif /* mingw32_HOST_OS */
 
-copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> NoCallStackIO ()
+copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
 copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
 copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
-setFileOrdinary,  setFileExecutable, setDirOrdinary  :: FilePath -> NoCallStackIO ()
+setFileOrdinary,  setFileExecutable, setDirOrdinary  :: FilePath -> IO ()
 #ifndef mingw32_HOST_OS
 setFileOrdinary   path = setFileMode path 0o644 -- file perms -rw-r--r--
 setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
-setFileMode :: FilePath -> FileMode -> NoCallStackIO ()
+setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
   withFilePath name $ \s -> do
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
@@ -91,7 +91,7 @@ setDirOrdinary = setFileExecutable
 
 -- | Copies a file to a new destination.
 -- Often you should use `copyFileChanged` instead.
-copyFile :: FilePath -> FilePath -> NoCallStackIO ()
+copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
   copy
     `catchIO` (\ioe -> throwIO (ioeSetLocation ioe "copyFile"))
@@ -229,7 +229,7 @@ emptyToCurDir path = path
 -- | Like `copyFile`, but does not touch the target if source and destination
 -- are already byte-identical. This is recommended as it is useful for
 -- time-stamp based recompilation avoidance.
-copyFileChanged :: FilePath -> FilePath -> NoCallStackIO ()
+copyFileChanged :: FilePath -> FilePath -> IO ()
 copyFileChanged src dest = do
   equal <- filesEqual src dest
   unless equal $ copyFile src dest
@@ -237,7 +237,7 @@ copyFileChanged src dest = do
 -- | Checks if two files are byte-identical.
 -- Returns False if either of the files do not exist or if files
 -- are of different size.
-filesEqual :: FilePath -> FilePath -> NoCallStackIO Bool
+filesEqual :: FilePath -> FilePath -> IO Bool
 filesEqual f1 f2 = do
   ex1 <- doesFileExist f1
   ex2 <- doesFileExist f2

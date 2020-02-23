@@ -72,7 +72,7 @@ instance Read ModTime where
 --
 -- This is a modified version of the code originally written for Shake by Neil
 -- Mitchell. See module Development.Shake.FileInfo.
-getModTime :: FilePath -> NoCallStackIO ModTime
+getModTime :: FilePath -> IO ModTime
 
 #if defined mingw32_HOST_OS
 
@@ -110,7 +110,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
 foreign import CALLCONV "windows.h GetFileAttributesExW"
   c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> Prelude.IO BOOL
 
-getFileAttributesEx :: String -> LPVOID -> NoCallStackIO BOOL
+getFileAttributesEx :: String -> LPVOID -> IO BOOL
 getFileAttributesEx path lpFileInformation =
   withTString path $ \c_path ->
       c_getFileAttributesEx c_path getFileExInfoStandard lpFileInformation
@@ -154,14 +154,14 @@ posixTimeToModTime p = ModTime $ (ceiling $ p * 1e7) -- 100 ns precision
                        + (secToUnixEpoch * windowsTick)
 
 -- | Return age of given file in days.
-getFileAge :: FilePath -> NoCallStackIO Double
+getFileAge :: FilePath -> IO Double
 getFileAge file = do
   t0 <- getModificationTime file
   t1 <- getCurrentTime
   return $ realToFrac (t1 `diffUTCTime` t0) / realToFrac posixDayLength
 
 -- | Return the current time as 'ModTime'.
-getCurTime :: NoCallStackIO ModTime
+getCurTime :: IO ModTime
 getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 
 -- | Based on code written by Neil Mitchell for Shake. See

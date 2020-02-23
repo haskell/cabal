@@ -198,7 +198,7 @@ getProgramInvocationIODataAndErrors
   where
     input = encodeToIOData encoding <$> minputStr
 
-getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> NoCallStackIO [(String, Maybe String)]
+getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> IO [(String, Maybe String)]
 getExtraPathEnv _ [] = return []
 getExtraPathEnv env extras = do
     mb_path <- case lookup "PATH" env of
@@ -215,7 +215,7 @@ getExtraPathEnv env extras = do
 -- precedence.
 --
 getEffectiveEnvironment :: [(String, Maybe String)]
-                        -> NoCallStackIO (Maybe [(String, String)])
+                        -> IO (Maybe [(String, String)])
 getEffectiveEnvironment []        = return Nothing
 getEffectiveEnvironment overrides =
     fmap (Just . Map.toList . apply overrides . Map.fromList) getEnvironment

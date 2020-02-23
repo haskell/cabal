@@ -176,7 +176,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
             | (flags', ""):_ <- reads flags -> flags'
             | otherwise -> tokenizeQuotedWords flags
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> NoCallStackIO ConfiguredProgram
+    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureGcc _v gccProg = do
       return gccProg {
         programDefaultArgs = programDefaultArgs gccProg
@@ -216,7 +216,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
         else return ldProg
 
 getLanguages :: Verbosity -> GhcImplInfo -> ConfiguredProgram
-             -> NoCallStackIO [(Language, String)]
+             -> IO [(Language, String)]
 getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
   | supportsHaskell2010 implInfo = return [(Haskell98,   "-XHaskell98")
@@ -507,7 +507,7 @@ ghcLookupProperty prop comp =
 -- Module_split directory for each module.
 getHaskellObjects :: GhcImplInfo -> Library -> LocalBuildInfo
                   -> ComponentLocalBuildInfo
-                  -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
+                  -> FilePath -> String -> Bool -> IO [FilePath]
 getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
@@ -563,7 +563,7 @@ checkPackageDbEnvVar verbosity compilerName packagePathEnvVar = do
         mcsPP <- lookupEnv "CABAL_SANDBOX_PACKAGE_PATH"
         unless (mPP == mcsPP) abort
     where
-        lookupEnv :: String -> NoCallStackIO (Maybe String)
+        lookupEnv :: String -> IO (Maybe String)
         lookupEnv name = (Just `fmap` getEnv name)
                          `catchIO` const (return Nothing)
         abort =
@@ -652,7 +652,7 @@ writeGhcEnvironmentFile :: FilePath  -- ^ directory in which to put it
                         -> Platform  -- ^ the GHC target platform
                         -> Version   -- ^ the GHC version
                         -> [GhcEnvironmentFileEntry] -- ^ the content
-                        -> NoCallStackIO FilePath
+                        -> IO FilePath
 writeGhcEnvironmentFile directory platform ghcversion entries = do
     writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile $ entries
     return envfile

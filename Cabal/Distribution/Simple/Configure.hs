@@ -253,7 +253,7 @@ maybeGetPersistBuildConfig =
 -- 'localBuildInfoFile'.
 writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                         -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
-                        -> NoCallStackIO ()
+                        -> IO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
@@ -298,7 +298,7 @@ showHeader pkgId = BLC8.unwords
 
 -- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
-checkPersistBuildConfigOutdated :: FilePath -> FilePath -> NoCallStackIO Bool
+checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file =
   pkg_descr_file `moreRecentFile` localBuildInfoFile distPref
 
@@ -316,7 +316,7 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- \"CABAL_BUILDDIR\" environment variable, or the default prefix.
 findDistPref :: FilePath  -- ^ default \"dist\" prefix
              -> Setup.Flag FilePath  -- ^ override \"dist\" prefix
-             -> NoCallStackIO FilePath
+             -> IO FilePath
 findDistPref defDistPref overrideDistPref = do
     envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
     return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
@@ -333,7 +333,7 @@ findDistPref defDistPref overrideDistPref = do
 -- set. (The @*DistPref@ flags are always set to a definite value before
 -- invoking 'UserHooks'.)
 findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
-                      -> NoCallStackIO FilePath
+                      -> IO FilePath
 findDistPrefOrDefault = findDistPref defaultDistPref
 
 -- |Perform the \"@.\/setup configure@\" action.
@@ -1660,7 +1660,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     addPkgConfigBIBench = addPkgConfigBI benchmarkBuildInfo $
                           \bench bi -> bench { benchmarkBuildInfo = bi }
 
-    pkgconfigBuildInfo :: [PkgconfigDependency] -> NoCallStackIO BuildInfo
+    pkgconfigBuildInfo :: [PkgconfigDependency] -> IO BuildInfo
     pkgconfigBuildInfo []      = return mempty
     pkgconfigBuildInfo pkgdeps = do
       let pkgs = nub [ prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps ]

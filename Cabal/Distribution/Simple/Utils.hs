@@ -382,15 +382,15 @@ topHandlerWith cont prog = do
       ]
   where
     -- Let async exceptions rise to the top for the default top-handler
-    rethrowAsyncExceptions :: Exception.AsyncException -> NoCallStackIO a
+    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
     rethrowAsyncExceptions a = throwIO a
 
     -- ExitCode gets thrown asynchronously too, and we don't want to print it
-    rethrowExitStatus :: ExitCode -> NoCallStackIO a
+    rethrowExitStatus :: ExitCode -> IO a
     rethrowExitStatus = throwIO
 
     -- Print all other exceptions
-    handle :: Exception.SomeException -> NoCallStackIO a
+    handle :: Exception.SomeException -> IO a
     handle se = do
       hFlush stdout
       pname <- getProgName
@@ -537,7 +537,7 @@ chattyTry desc action =
 
 -- | Run an IO computation, returning @e@ if it raises a "file
 -- does not exist" error.
-handleDoesNotExist :: a -> NoCallStackIO a -> NoCallStackIO a
+handleDoesNotExist :: a -> IO a -> IO a
 handleDoesNotExist e =
     Exception.handleJust
       (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
@@ -867,13 +867,13 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
 
         return (out, err, exitcode)
   where
-    reportOutputIOError :: Either Exception.SomeException a -> NoCallStackIO a
+    reportOutputIOError :: Either Exception.SomeException a -> IO a
     reportOutputIOError (Right x) = return x
     reportOutputIOError (Left exc) = case fromException exc of
         Just ioe -> throwIO (ioeSetFileName ioe ("output of " ++ path))
         Nothing  -> throwIO exc
 
-    ignoreSigPipe :: NoCallStackIO () -> NoCallStackIO ()
+    ignoreSigPipe :: IO () -> IO ()
     ignoreSigPipe = Exception.handle $ \e -> case e of
         GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
             | Errno ioe == ePIPE -> return ()
@@ -960,7 +960,7 @@ findFileEx verbosity searchPath fileName =
 findFileWithExtension :: [String]
                       -> [FilePath]
                       -> FilePath
-                      -> NoCallStackIO (Maybe FilePath)
+                      -> IO (Maybe FilePath)
 findFileWithExtension extensions searchPath baseName =
   findFirstFile id
     [ path </> baseName <.> ext
@@ -970,7 +970,7 @@ findFileWithExtension extensions searchPath baseName =
 findAllFilesWithExtension :: [String]
                           -> [FilePath]
                           -> FilePath
-                          -> NoCallStackIO [FilePath]
+                          -> IO [FilePath]
 findAllFilesWithExtension extensions searchPath basename =
   findAllFiles id
     [ path </> basename <.> ext
@@ -983,14 +983,14 @@ findAllFilesWithExtension extensions searchPath basename =
 findFileWithExtension' :: [String]
                        -> [FilePath]
                        -> FilePath
-                       -> NoCallStackIO (Maybe (FilePath, FilePath))
+                       -> IO (Maybe (FilePath, FilePath))
 findFileWithExtension' extensions searchPath baseName =
   findFirstFile (uncurry (</>))
     [ (path, baseName <.> ext)
     | path <- nub searchPath
     , ext <- nub extensions ]
 
-findFirstFile :: (a -> FilePath) -> [a] -> NoCallStackIO (Maybe a)
+findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
 findFirstFile file = findFirst
   where findFirst []     = return Nothing
         findFirst (x:xs) = do exists <- doesFileExist (file x)
@@ -998,7 +998,7 @@ findFirstFile file = findFirst
                                 then return (Just x)
                                 else findFirst xs
 
-findAllFiles :: (a -> FilePath) -> [a] -> NoCallStackIO [a]
+findAllFiles :: (a -> FilePath) -> [a] -> IO [a]
 findAllFiles file = filterM (doesFileExist . file)
 
 
@@ -1084,7 +1084,7 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
 -- Environment variables
 
 -- | Is this directory in the system search path?
-isInSearchPath :: FilePath -> NoCallStackIO Bool
+isInSearchPath :: FilePath -> IO Bool
 isInSearchPath path = fmap (elem path) getSearchPath
 
 addLibraryPath :: OS
@@ -1114,7 +1114,7 @@ addLibraryPath os paths = addEnv
 -- The expected use case is when the second file is generated using the first.
 -- In this use case, if the result is True then the second file is out of date.
 --
-moreRecentFile :: FilePath -> FilePath -> NoCallStackIO Bool
+moreRecentFile :: FilePath -> FilePath -> IO Bool
 moreRecentFile a b = do
   exists <- doesFileExist b
   if not exists
@@ -1124,7 +1124,7 @@ moreRecentFile a b = do
             return (ta > tb)
 
 -- | Like 'moreRecentFile', but also checks that the first file exists.
-existsAndIsMoreRecentThan :: FilePath -> FilePath -> NoCallStackIO Bool
+existsAndIsMoreRecentThan :: FilePath -> FilePath -> IO Bool
 existsAndIsMoreRecentThan a b = do
   exists <- doesFileExist a
   if not exists
@@ -1302,7 +1302,7 @@ copyDirectoryRecursive verbosity srcDir destDir = withFrozenCallStack $ do
 -- File permissions
 
 -- | Like 'doesFileExist', but also checks that the file is executable.
-doesExecutableExist :: FilePath -> NoCallStackIO Bool
+doesExecutableExist :: FilePath -> IO Bool
 doesExecutableExist f = do
   exists <- doesFileExist f
   if exists
@@ -1454,7 +1454,7 @@ defaultPackageDesc verbosity = tryFindPackageDesc verbosity currentDir
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
 findPackageDesc :: FilePath                    -- ^Where to look
-                -> NoCallStackIO (Either String FilePath) -- ^<pkgname>.cabal
+                -> IO (Either String FilePath) -- ^<pkgname>.cabal
 findPackageDesc dir
  = do files <- getDirectoryContents dir
       -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal

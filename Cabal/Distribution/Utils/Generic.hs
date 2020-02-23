@@ -143,7 +143,7 @@ wrapLine width = wrap 0 []
 -- The file is read lazily but if it is not fully consumed by the action then
 -- the remaining input is truncated and the file is closed.
 --
-withFileContents :: FilePath -> (String -> NoCallStackIO a) -> NoCallStackIO a
+withFileContents :: FilePath -> (String -> IO a) -> IO a
 withFileContents name action =
   withFile name ReadMode
            (\hnd -> hGetContents hnd >>= action)
@@ -156,7 +156,7 @@ withFileContents name action =
 -- On windows it is not possible to delete a file that is open by a process.
 -- This case will give an IO exception but the atomic property is not affected.
 --
-writeFileAtomic :: FilePath -> BS.ByteString -> NoCallStackIO ()
+writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
 writeFileAtomic targetPath content = do
   let (targetDir, targetFile) = splitFileName targetPath
   Exception.bracketOnError
@@ -247,7 +247,7 @@ ignoreBOM string            = string
 --
 -- Reads lazily using ordinary 'readFile'.
 --
-readUTF8File :: FilePath -> NoCallStackIO String
+readUTF8File :: FilePath -> IO String
 readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> BS.readFile f
 
 -- | Reads a UTF8 encoded text file as a Unicode String
@@ -263,7 +263,7 @@ withUTF8FileContents name action =
 --
 -- Uses 'writeFileAtomic', so provides the same guarantees.
 --
-writeUTF8File :: FilePath -> String -> NoCallStackIO ()
+writeUTF8File :: FilePath -> String -> IO ()
 writeUTF8File path = writeFileAtomic path . BS.pack . encodeStringUtf8
 
 -- | Fix different systems silly line ending conventions

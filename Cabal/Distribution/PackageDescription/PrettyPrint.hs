@@ -57,7 +57,7 @@ import Text.PrettyPrint (Doc, char, hsep, parens, text, (<+>))
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- | Writes a .cabal file from a generic package description
-writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> NoCallStackIO ()
+writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
 writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPackageDescription pkg)
 
 -- | Writes a generic package description to a string
@@ -192,7 +192,7 @@ ppIfCondition :: Condition ConfVar -> [PrettyField ()] -> PrettyField ()
 ppIfCondition c = PrettySection () "if" [ppCondition c]
 
 -- | @since 2.0.0.2
-writePackageDescription :: FilePath -> PackageDescription -> NoCallStackIO ()
+writePackageDescription :: FilePath -> PackageDescription -> IO ()
 writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
 
 --TODO: make this use section syntax
@@ -225,7 +225,7 @@ pdToGpd pd = GenericPackageDescription
     mkCondTree' f x = (f x, CondNode x [] [])
 
 -- | @since 2.0.0.2
-writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> NoCallStackIO ()
+writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
 writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
                              . showHookedBuildInfo
 

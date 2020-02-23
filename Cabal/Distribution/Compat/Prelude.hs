@@ -44,7 +44,6 @@ module Distribution.Compat.Prelude (
     IsString (..),
 
     -- * Some types
-    IO, NoCallStackIO,
     Map,
     Set,
     Identity (..),
@@ -106,7 +105,7 @@ module Distribution.Compat.Prelude (
     ) where
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-  ( IO, mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
+  ( mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
   -- partial functions
   , read
   , foldr1, foldl1
@@ -165,13 +164,7 @@ import Text.Read                     (readMaybe)
 
 import qualified Text.PrettyPrint as Disp
 
-import qualified Prelude as OrigPrelude
-import Distribution.Compat.Stack
-
 import Distribution.Utils.Structured (Structured)
-
-type IO a = WithCallStack (OrigPrelude.IO a)
-type NoCallStackIO a = OrigPrelude.IO a
 
 -- | New name for 'Text.PrettyPrint.<>'
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc

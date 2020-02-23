@@ -278,7 +278,7 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
     pkg_descr = filterAutogenModules pkg_descr0
 
 -- | Find the setup script file, if it exists.
-findSetupFile :: FilePath -> NoCallStackIO (Maybe FilePath)
+findSetupFile :: FilePath -> IO (Maybe FilePath)
 findSetupFile targetDir = do
   hsExists  <- doesFileExist setupHs
   lhsExists <- doesFileExist setupLhs
@@ -292,7 +292,7 @@ findSetupFile targetDir = do
       setupLhs = targetDir </> "Setup.lhs"
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
-maybeCreateDefaultSetupScript :: FilePath -> NoCallStackIO ()
+maybeCreateDefaultSetupScript :: FilePath -> IO ()
 maybeCreateDefaultSetupScript targetDir = do
   mSetupFile <- findSetupFile targetDir
   case mSetupFile of

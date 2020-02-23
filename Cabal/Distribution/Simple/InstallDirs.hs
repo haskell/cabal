@@ -465,7 +465,7 @@ instance Read PathTemplate where
 -- ---------------------------------------------------------------------------
 -- Internal utilities
 
-getWindowsProgramFilesDir :: NoCallStackIO FilePath
+getWindowsProgramFilesDir :: IO FilePath
 getWindowsProgramFilesDir = do
 #ifdef mingw32_HOST_OS
   m <- shGetFolderPath csidl_PROGRAM_FILES
@@ -475,7 +475,7 @@ getWindowsProgramFilesDir = do
   return (fromMaybe "C:\\Program Files" m)
 
 #ifdef mingw32_HOST_OS
-shGetFolderPath :: CInt -> NoCallStackIO (Maybe FilePath)
+shGetFolderPath :: CInt -> IO (Maybe FilePath)
 shGetFolderPath n =
   allocaArray long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath

@@ -44,7 +44,7 @@ instance Monad LogProgress where
 
 -- | Run 'LogProgress', outputting traces according to 'Verbosity',
 -- 'die' if there is an error.
-runLogProgress :: Verbosity -> LogProgress a -> NoCallStackIO a
+runLogProgress :: Verbosity -> LogProgress a -> IO a
 runLogProgress verbosity (LogProgress m) =
     foldProgress step_fn fail_fn return (m env)
   where
@@ -52,11 +52,11 @@ runLogProgress verbosity (LogProgress m) =
         le_verbosity = verbosity,
         le_context   = []
       }
-    step_fn :: LogMsg -> NoCallStackIO a -> NoCallStackIO a
+    step_fn :: LogMsg -> IO a -> IO a
     step_fn doc go = do
         putStrLn (render doc)
         go
-    fail_fn :: Doc -> NoCallStackIO a
+    fail_fn :: Doc -> IO a
     fail_fn doc = do
         dieNoWrap verbosity (render doc)
 

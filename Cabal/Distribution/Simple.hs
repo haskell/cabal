@@ -606,7 +606,7 @@ clean pkg_descr flags = do
     traverse_ (writePersistBuildConfig distPref) maybeConfig
 
   where
-        removeFileOrDirectory :: FilePath -> NoCallStackIO ()
+        removeFileOrDirectory :: FilePath -> IO ()
         removeFileOrDirectory fname = do
             isDir <- doesDirectoryExist fname
             isFile <- doesFileExist fname
@@ -740,11 +740,13 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   let configureFile' = intercalate "/" $ splitDirectories configureFile
   for_ badAutoconfCharacters $ \(c, cname) ->
     when (c `elem` dropDrive configureFile') $
-      warn verbosity $
-           "The path to the './configure' script, '" ++ configureFile'
-        ++ "', contains the character '" ++ [c] ++ "' (" ++ cname ++ ")."
-        ++ " This may cause the script to fail with an obscure error, or for"
-        ++ " building the package to fail later."
+      warn verbosity $ concat
+        [ "The path to the './configure' script, '", configureFile'
+        , "', contains the character '", [c], "' (", cname, ")."
+        , " This may cause the script to fail with an obscure error, or for"
+        , " building the package to fail later."
+        ]
+
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
                   $ lookup "CFLAGS" env
@@ -766,39 +768,39 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                  (programInvocation (sh {programOverrideEnv = overEnv}) args')
                  { progInvokeCwd = Just (buildDir lbi) }
       Nothing -> die' verbosity notFoundMsg
-
   where
     args = configureArgs backwardsCompatHack flags
-
-    badAutoconfCharacters =
-      [ (' ', "space")
-      , ('\t', "tab")
-      , ('\n', "newline")
-      , ('\0', "null")
-      , ('"', "double quote")
-      , ('#', "hash")
-      , ('$', "dollar sign")
-      , ('&', "ampersand")
-      , ('\'', "single quote")
-      , ('(', "left bracket")
-      , (')', "right bracket")
-      , ('*', "star")
-      , (';', "semicolon")
-      , ('<', "less-than sign")
-      , ('=', "equals sign")
-      , ('>', "greater-than sign")
-      , ('?', "question mark")
-      , ('[', "left square bracket")
-      , ('\\', "backslash")
-      , ('`', "backtick")
-      , ('|', "pipe")
-      ]
 
     notFoundMsg = "The package has a './configure' script. "
                ++ "If you are on Windows, This requires a "
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
                ++ "If you are not on Windows, ensure that an 'sh' command "
                ++ "is discoverable in your path."
+
+badAutoconfCharacters :: [(Char, String)]
+badAutoconfCharacters =
+  [ (' ', "space")
+  , ('\t', "tab")
+  , ('\n', "newline")
+  , ('\0', "null")
+  , ('"', "double quote")
+  , ('#', "hash")
+  , ('$', "dollar sign")
+  , ('&', "ampersand")
+  , ('\'', "single quote")
+  , ('(', "left bracket")
+  , (')', "right bracket")
+  , ('*', "star")
+  , (';', "semicolon")
+  , ('<', "less-than sign")
+  , ('=', "equals sign")
+  , ('>', "greater-than sign")
+  , ('?', "question mark")
+  , ('[', "left square bracket")
+  , ('\\', "backslash")
+  , ('`', "backtick")
+  , ('|', "pipe")
+  ]
 
 getHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
 getHookedBuildInfo verbosity build_dir = do

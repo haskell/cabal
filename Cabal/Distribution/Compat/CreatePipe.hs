@@ -44,7 +44,7 @@ createPipe = do
         hSetEncoding writeh localeEncoding
         return (readh, writeh)) `onException` (close readfd >> close writefd)
   where
-    fdToHandle :: CInt -> IOMode -> NoCallStackIO Handle
+    fdToHandle :: CInt -> IOMode -> IO Handle
     fdToHandle fd mode = do
         (fd', deviceType) <- mkFD fd mode (Just (Stream, 0, 0)) False False
         mkHandleFromFD fd' deviceType "" mode False Nothing
