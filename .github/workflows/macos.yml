@@ -22,6 +22,10 @@ jobs:
     name: validate.sh ghc-8.8.1
     runs-on: macos-latest
     steps:
+      - name: Test
+        run: |
+          aclocal --version
+
       - name: Install GHC
         run: |
           cd $(mktemp -d)
