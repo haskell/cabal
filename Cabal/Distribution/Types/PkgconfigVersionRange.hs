@@ -86,7 +86,7 @@ pkgconfigParser = P.spaces >> expr where
     factor = parens expr <|> prim
 
     prim = do
-        op <- P.munch1 (`elem` "<>=^-") P.<?> "operator"
+        op <- P.munch1 isOpChar P.<?> "operator"
         case op of
             "-"  -> anyPkgconfigVersion <$ (P.string "any" *> P.spaces)
 
@@ -97,6 +97,14 @@ pkgconfigParser = P.spaces >> expr where
             "<=" -> afterOp PcOrEarlierVersion
 
             _ -> P.unexpected $ "Unknown version operator " ++ show op
+
+    -- https://gitlab.haskell.org/ghc/ghc/issues/17752
+    isOpChar '<' = True
+    isOpChar '=' = True
+    isOpChar '>' = True
+    isOpChar '^' = True
+    isOpChar '-' = True
+    isOpChar _   = False
 
     afterOp f = do
         P.spaces

@@ -78,7 +78,13 @@ instance Pretty UnitId where
 -- GHC accepts for @-package-id@.
 --
 instance Parsec UnitId where
-    parsec = mkUnitId <$> P.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
+    parsec = mkUnitId <$> P.munch1 isUnitChar where
+        -- https://gitlab.haskell.org/ghc/ghc/issues/17752
+        isUnitChar '-' = True
+        isUnitChar '_' = True
+        isUnitChar '.' = True
+        isUnitChar '+' = True
+        isUnitChar c   = isAlphaNum c
 
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.

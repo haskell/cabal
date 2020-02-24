@@ -56,7 +56,13 @@ instance Pretty PkgconfigName where
   pretty = Disp.text . unPkgconfigName
 
 instance Parsec PkgconfigName where
-  parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+    parsec = mkPkgconfigName <$> P.munch1 isNameChar where
+        -- https://gitlab.haskell.org/ghc/ghc/issues/17752
+        isNameChar '-' = True
+        isNameChar '_' = True
+        isNameChar '.' = True
+        isNameChar '+' = True
+        isNameChar c   = isAlphaNum c
 
 instance NFData PkgconfigName where
     rnf (PkgconfigName pkg) = rnf pkg
