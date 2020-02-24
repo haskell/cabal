@@ -628,6 +628,12 @@ test-suite unit-tests
     UnitTests.Distribution.Version
     UnitTests.Distribution.PkgconfigVersion
     UnitTests.Orphans
+
+  -- Cabal-quickcheck
+  hs-source-dirs: Cabal-quickcheck/src
+  other-modules:
+    Test.QuickCheck.Instances.Cabal
+
   main-is: UnitTests.hs
   build-depends:
     array,

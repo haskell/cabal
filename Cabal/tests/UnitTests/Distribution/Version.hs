@@ -1,6 +1,5 @@
 {-# LANGUAGE StandaloneDeriving, DeriveDataTypeable #-}
-{-# OPTIONS_GHC -fno-warn-orphans
-                -fno-warn-incomplete-patterns
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
                 -fno-warn-unused-binds #-} --FIXME
 module UnitTests.Distribution.Version (versionTests) where
@@ -22,7 +21,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Laws as Laws
 
-import Test.QuickCheck.Utils
+import Test.QuickCheck.Instances.Cabal ()
 
 import Data.Maybe (fromJust)
 import Data.Function (on)
@@ -131,24 +130,6 @@ versionTests =
 --     -- , property prop_parse_disp5
 --   ]
 
-instance Arbitrary Version where
-  arbitrary = do
-      branch <- smallListOf1 $
-                  frequency [(3, return 0)
-                            ,(3, return 1)
-                            ,(2, return 2)
-                            ,(2, return 3)
-                            ,(1, return 0xfffd)
-                            ,(1, return 0xfffe) -- max fitting into packed W64
-                            ,(1, return 0xffff)
-                            ,(1, return 0x10000)]
-      return (mkVersion branch)
-    where
-      smallListOf1 = adjustSize (\n -> min 6 (n `div` 3)) . listOf1
-
-  shrink ver = [ mkVersion ns | ns <- shrink (versionNumbers ver)
-                              , not (null ns) ]
-
 newtype VersionArb = VersionArb [Int]
                    deriving (Eq,Ord,Show)
 
@@ -169,45 +150,6 @@ instance Arbitrary VersionArb where
     , length xs' > 0
     , all (>=0) xs'
     ]
-
-instance Arbitrary VersionRange where
-  arbitrary = sized verRangeExp
-    where
-      verRangeExp n = frequency $
-        [ (2, return anyVersion)
-        , (1, liftM thisVersion arbitrary)
-        , (1, liftM laterVersion arbitrary)
-        , (1, liftM orLaterVersion arbitrary)
-        , (1, liftM orLaterVersion' arbitrary)
-        , (1, liftM earlierVersion arbitrary)
-        , (1, liftM orEarlierVersion arbitrary)
-        , (1, liftM orEarlierVersion' arbitrary)
-        , (1, liftM withinVersion arbitrary)
-        , (1, liftM majorBoundVersion arbitrary)
-        , (2, liftM VersionRangeParens arbitrary)
-        ] ++ if n == 0 then [] else
-        [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
-        , (2, liftM2 intersectVersionRanges verRangeExp2 verRangeExp2)
-        ]
-        where
-          verRangeExp2 = verRangeExp (n `div` 2)
-
-      orLaterVersion'   v =
-        unionVersionRanges (LaterVersion v)   (ThisVersion v)
-      orEarlierVersion' v =
-        unionVersionRanges (EarlierVersion v) (ThisVersion v)
-
-  shrink AnyVersion                   = []
-  shrink (ThisVersion v)              = map ThisVersion (shrink v)
-  shrink (LaterVersion v)             = map LaterVersion (shrink v)
-  shrink (EarlierVersion v)           = map EarlierVersion (shrink v)
-  shrink (OrLaterVersion v)           = LaterVersion v : map OrLaterVersion (shrink v)
-  shrink (OrEarlierVersion v)         = EarlierVersion v : map OrEarlierVersion (shrink v)
-  shrink (WildcardVersion v)          = map WildcardVersion ( shrink v)
-  shrink (MajorBoundVersion v)        = map MajorBoundVersion (shrink v)
-  shrink (VersionRangeParens vr)      = vr : map VersionRangeParens (shrink vr)
-  shrink (UnionVersionRanges a b)     = a : b : map (uncurry UnionVersionRanges) (shrink (a, b))
-  shrink (IntersectVersionRanges a b) = a : b : map (uncurry IntersectVersionRanges) (shrink (a, b))
 
 ---------------------
 -- Version properties
@@ -414,43 +356,6 @@ prop_simplifyVersionRange2'' r r' =
        simplifyVersionRange r == simplifyVersionRange r'
     || isNoVersion r
     || isNoVersion r'
-
---------------------
--- VersionIntervals
---
-
--- | Generating VersionIntervals
---
--- This is a tad tricky as VersionIntervals is an abstract type, so we first
--- make a local type for generating the internal representation. Then we check
--- that this lets us construct valid 'VersionIntervals'.
---
-
-instance Arbitrary VersionIntervals where
-  arbitrary = fmap mkVersionIntervals' arbitrary
-    where
-      mkVersionIntervals' :: [(Version, Bound)] -> VersionIntervals
-      mkVersionIntervals' = mkVersionIntervals . go version0
-        where
-          go :: Version -> [(Version, Bound)] -> [VersionInterval]
-          go _ [] = []
-          go v [(lv, lb)] =
-              [(LowerBound (addVersion lv v) lb, NoUpperBound)]
-          go v ((lv, lb) : (uv, ub) : rest) =
-              (LowerBound lv' lb, UpperBound uv' ub) : go uv' rest
-            where
-              lv' = addVersion v lv
-              uv' = addVersion lv' uv
-
-          addVersion :: Version -> Version -> Version
-          addVersion xs ys = mkVersion $  z (versionNumbers xs) (versionNumbers ys)
-            where
-              z [] ys' = ys'
-              z xs' [] = xs'
-              z (x : xs') (y : ys') = x + y : z xs' ys'
-
-instance Arbitrary Bound where
-  arbitrary = elements [ExclusiveBound, InclusiveBound]
 
 -- | Check that our VersionIntervals' arbitrary instance generates intervals
 -- that satisfies the invariant.
