@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Test
         run: |
+          automake --version
+          autoreconf --version
           aclocal --version
 
       - name: Install GHC
