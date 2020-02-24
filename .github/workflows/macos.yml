@@ -22,6 +22,9 @@ jobs:
     name: validate.sh ghc-8.8.1
     runs-on: macos-latest
     steps:
+      - name: Install Autotools
+        run: |
+          brew install automake
       - name: Install GHC
         run: |
           cd $(mktemp -d)
@@ -71,6 +74,9 @@ jobs:
     runs-on: macos-latest
     needs: validate-macos-8_8_1
     steps:
+      - name: Install Autotools
+        run: |
+          brew install automake
       - name: Install GHC
         run: |
           cd $(mktemp -d)
