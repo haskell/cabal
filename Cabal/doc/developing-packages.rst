@@ -2388,7 +2388,7 @@ system-dependent values for these fields.
 .. pkg-field:: ghc-options: token list
 
     Additional options for GHC. You can often achieve the same effect
-    using the :pkg-field:`extensions` field, which is preferred.
+    using the :pkg-field:`default-extensions` field, which is preferred.
 
     Options required only by one module may be specified by placing an
     ``OPTIONS_GHC`` pragma in the source file affected.
