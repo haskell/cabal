@@ -16,6 +16,10 @@
 -- enables them to find their version number and find any installed data files
 -- at runtime. This code should probably be split off into another module.
 --
+
+-- 7.10 cannot compile this module otherwise.
+{-# OPTIONS_GHC -fsimpl-tick-factor=200 #-}
+
 module Distribution.Simple.Build.PathsModule (
     generatePathsModule, pkgPathEnvVar
   ) where
@@ -75,8 +79,8 @@ generatePathsModule pkg_descr lbi clbi =
        foreign_imports
         | absolute = ""
         | otherwise =
-          "import Foreign\n" <>
-          "import Foreign.C\n"
+          "import Foreign\n\
+          \import Foreign.C\n"
 
        reloc_imports
         | reloc =
@@ -85,111 +89,111 @@ generatePathsModule pkg_descr lbi clbi =
 
        header =
         pragmas <>
-        "module " <> s (prettyShow paths_modulename) <> " (\n" <>
-        "    version,\n" <>
-        "    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,\n" <>
-        "    getDataFileName, getSysconfDir\n" <>
-        "  ) where\n" <>
-        "\n" <>
+        "module " <> s (prettyShow paths_modulename) <> " (\n\
+        \    version,\n\
+        \    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,\n\
+        \    getDataFileName, getSysconfDir\n\
+        \  ) where\n\
+        \\n" <>
         foreign_imports <>
-        "import qualified Control.Exception as Exception\n" <>
-        "import Data.Version (Version(..))\n" <>
-        "import System.Environment (getEnv)\n" <>
+        "import qualified Control.Exception as Exception\n\
+        \import Data.Version (Version(..))\n\
+        \import System.Environment (getEnv)\n" <>
         reloc_imports <>
-        "import Prelude\n" <>
-        "\n" <>
+        "import Prelude\n\
+        \\n" <>
         (if supports_cpp
          then
-           ("#if defined(VERSION_base)\n" <>
-            "\n" <>
-            "#if MIN_VERSION_base(4,0,0)\n" <>
-            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n" <>
-            "#else\n" <>
-            "catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a\n" <>
-            "#endif\n" <>
-            "\n" <>
-            "#else\n" <>
-            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n" <>
-            "#endif\n")
+           "#if defined(VERSION_base)\n\
+           \\n\
+           \#if MIN_VERSION_base(4,0,0)\n\
+           \catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n\
+           \#else\n\
+           \catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a\n\
+           \#endif\n\
+           \\n\
+           \#else\n\
+           \catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n\
+           \#endif\n"
          else
            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n") <>
-        "catchIO = Exception.catch\n" <>
-        "\n" <>
-        "version :: Version" <>
-        "\nversion = Version " <> show' branch <> " []"
-          where branch = versionNumbers $ packageVersion pkg_descr
+         "catchIO = Exception.catch\n\
+         \\n\
+         \version :: Version\
+         \\nversion = Version " <> show' branch <> " []"
+         where
+           branch = versionNumbers $ packageVersion pkg_descr
 
        body
         | reloc =
-          "\n\nbindirrel :: FilePath\n" <>
-          "bindirrel = " <> show' flat_bindirreloc <>
-          "\n" <>
-          "\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n" <>
-          "getBinDir = " <> mkGetEnvOrReloc "bindir" flat_bindirreloc <> "\n" <>
-          "getLibDir = " <> mkGetEnvOrReloc "libdir" flat_libdirreloc <> "\n" <>
-          "getDynLibDir = " <> mkGetEnvOrReloc "libdir" flat_dynlibdirreloc <> "\n" <>
-          "getDataDir = " <> mkGetEnvOrReloc "datadir" flat_datadirreloc <> "\n" <>
-          "getLibexecDir = " <> mkGetEnvOrReloc "libexecdir" flat_libexecdirreloc <> "\n" <>
-          "getSysconfDir = " <> mkGetEnvOrReloc "sysconfdir" flat_sysconfdirreloc <> "\n" <>
-          "\n" <>
-          "getDataFileName :: FilePath -> IO FilePath\n" <>
-          "getDataFileName name = do\n" <>
-          "  dir <- getDataDir\n" <>
-          "  return (dir `joinFileName` name)\n" <>
-          "\n" <>
+          "\n\nbindirrel :: FilePath\n\
+          \bindirrel = " <> show' flat_bindirreloc <>
+          "\n\
+          \\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n\
+          \getBinDir = " <> mkGetEnvOrReloc "bindir" flat_bindirreloc <> "\n\
+          \getLibDir = " <> mkGetEnvOrReloc "libdir" flat_libdirreloc <> "\n\
+          \getDynLibDir = " <> mkGetEnvOrReloc "libdir" flat_dynlibdirreloc <> "\n\
+          \getDataDir = " <> mkGetEnvOrReloc "datadir" flat_datadirreloc <> "\n\
+          \getLibexecDir = " <> mkGetEnvOrReloc "libexecdir" flat_libexecdirreloc <> "\n\
+          \getSysconfDir = " <> mkGetEnvOrReloc "sysconfdir" flat_sysconfdirreloc <> "\n\
+          \\n\
+          \getDataFileName :: FilePath -> IO FilePath\n\
+          \getDataFileName name = do\n\
+          \  dir <- getDataDir\n\
+          \  return (dir `joinFileName` name)\n\
+          \\n" <>
           get_prefix_reloc_stuff <>
           "\n" <>
           filename_stuff
         | absolute =
-          "\nbindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath\n" <>
-          "\nbindir     = " <> show' flat_bindir <>
+          "\nbindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath\n\
+          \\nbindir     = " <> show' flat_bindir <>
           "\nlibdir     = " <> show' flat_libdir <>
           "\ndynlibdir  = " <> show' flat_dynlibdir <>
           "\ndatadir    = " <> show' flat_datadir <>
           "\nlibexecdir = " <> show' flat_libexecdir <>
           "\nsysconfdir = " <> show' flat_sysconfdir <>
-          "\n" <>
-          "\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n" <>
-          "getBinDir = " <> mkGetEnvOr "bindir" "return bindir" <> "\n" <>
-          "getLibDir = " <> mkGetEnvOr "libdir" "return libdir" <> "\n" <>
-          "getDynLibDir = " <> mkGetEnvOr "dynlibdir" "return dynlibdir" <> "\n" <>
-          "getDataDir = " <> mkGetEnvOr "datadir" "return datadir" <> "\n" <>
-          "getLibexecDir = " <> mkGetEnvOr "libexecdir" "return libexecdir" <> "\n" <>
-          "getSysconfDir = " <> mkGetEnvOr "sysconfdir" "return sysconfdir" <> "\n" <>
-          "\n" <>
-          "getDataFileName :: FilePath -> IO FilePath\n" <>
-          "getDataFileName name = do\n" <>
-          "  dir <- getDataDir\n" <>
-          "  return (dir ++ " <> path_sep <> " ++ name)\n"
+          "\n\
+          \\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n\
+          \getBinDir = " <> mkGetEnvOr "bindir" "return bindir" <> "\n\
+          \getLibDir = " <> mkGetEnvOr "libdir" "return libdir" <> "\n\
+          \getDynLibDir = " <> mkGetEnvOr "dynlibdir" "return dynlibdir" <> "\n\
+          \getDataDir = " <> mkGetEnvOr "datadir" "return datadir" <> "\n\
+          \getLibexecDir = " <> mkGetEnvOr "libexecdir" "return libexecdir" <> "\n\
+          \getSysconfDir = " <> mkGetEnvOr "sysconfdir" "return sysconfdir" <> "\n\
+          \\n\
+          \getDataFileName :: FilePath -> IO FilePath\n\
+          \getDataFileName name = do\n\
+          \  dir <- getDataDir\n\
+          \  return (dir ++ " <> path_sep <> " ++ name)\n"
         | otherwise =
-          "\nprefix, bindirrel :: FilePath" <>
-          "\nprefix        = " <> show' flat_prefix <>
+          "\nprefix, bindirrel :: FilePath\
+          \\nprefix        = " <> show' flat_prefix <>
           "\nbindirrel     = " <> show' (fromMaybe (error "PathsModule.generate") flat_bindirrel) <>
-          "\n\n" <>
-          "getBinDir :: IO FilePath\n" <>
-          "getBinDir = getPrefixDirRel bindirrel\n\n" <>
-          "getLibDir :: IO FilePath\n" <>
-          "getLibDir = " <> mkGetDir flat_libdir flat_libdirrel <> "\n\n" <>
-          "getDynLibDir :: IO FilePath\n" <>
-          "getDynLibDir = " <> mkGetDir flat_dynlibdir flat_dynlibdirrel <> "\n\n" <>
-          "getDataDir :: IO FilePath\n" <>
-          "getDataDir =  " <> mkGetEnvOr "datadir"
-                              (mkGetDir flat_datadir flat_datadirrel) <> "\n\n" <>
-          "getLibexecDir :: IO FilePath\n" <>
-          "getLibexecDir = " <> mkGetDir flat_libexecdir flat_libexecdirrel <> "\n\n" <>
-          "getSysconfDir :: IO FilePath\n" <>
-          "getSysconfDir = " <> mkGetDir flat_sysconfdir flat_sysconfdirrel <> "\n\n" <>
-          "getDataFileName :: FilePath -> IO FilePath\n" <>
-          "getDataFileName name = do\n" <>
-          "  dir <- getDataDir\n" <>
-          "  return (dir `joinFileName` name)\n" <>
-          "\n" <>
+          "\n\n\
+          \getBinDir :: IO FilePath\n\
+          \getBinDir = getPrefixDirRel bindirrel\n\n\
+          \getLibDir :: IO FilePath\n\
+          \getLibDir = " <> mkGetDir flat_libdir flat_libdirrel <> "\n\n\
+          \getDynLibDir :: IO FilePath\n\
+          \getDynLibDir = " <> mkGetDir flat_dynlibdir flat_dynlibdirrel <> "\n\n\
+          \getDataDir :: IO FilePath\n\
+          \getDataDir =  " <> mkGetEnvOr "datadir"
+                              (mkGetDir flat_datadir flat_datadirrel) <> "\n\n\
+          \getLibexecDir :: IO FilePath\n\
+          \getLibexecDir = " <> mkGetDir flat_libexecdir flat_libexecdirrel <> "\n\n\
+          \getSysconfDir :: IO FilePath\n\
+          \getSysconfDir = " <> mkGetDir flat_sysconfdir flat_sysconfdirrel <> "\n\n\
+          \getDataFileName :: FilePath -> IO FilePath\n\
+          \getDataFileName name = do\n\
+          \  dir <- getDataDir\n\
+          \  return (dir `joinFileName` name)\n\
+          \\n" <>
           get_prefix_stuff <>
           "\n" <>
           filename_stuff
    in header <> body
-
- where
+  where
         cid = componentUnitId clbi
 
         InstallDirs {
@@ -221,14 +225,16 @@ generatePathsModule pkg_descr lbi clbi =
         mkGetDir _   (Just dirrel) = "getPrefixDirRel " <> show' dirrel
         mkGetDir dir Nothing       = "return " <> show' dir
 
-        mkGetEnvOrReloc :: String -> String -> Builder
-        mkGetEnvOrReloc var dirrel = "catchIO (getEnv \"" <> var' <> "\")" <>
-                                     " (\\_ -> getPrefixDirReloc \"" <> s dirrel <>
-                                     "\")"
+        mkGetEnvOrReloc :: String -> FilePath -> Builder
+        mkGetEnvOrReloc var dirrel =
+          "catchIO (getEnv \""<> var' <>"\")\
+          \ (\\_ -> getPrefixDirReloc \"" <> s dirrel <>
+          "\")"
           where var' = s $ pkgPathEnvVar pkg_descr var
 
-        mkGetEnvOr var expr = "catchIO (getEnv \"" <> var' <> "\")" <>
-                              " (\\_ -> " <> expr <> ")"
+        mkGetEnvOr :: String -> Builder -> Builder
+        mkGetEnvOr var expr =
+          "catchIO (getEnv \"" <> var' <> "\") (\\_ -> " <> expr <> ")"
           where var' = s $ pkgPathEnvVar pkg_descr var
 
         -- In several cases we cannot make relocatable installations
@@ -280,38 +286,38 @@ pkgPathEnvVar pkg_descr var =
 
 get_prefix_reloc_stuff :: Builder
 get_prefix_reloc_stuff =
-  "getPrefixDirReloc :: FilePath -> IO FilePath\n" <>
-  "getPrefixDirReloc dirRel = do\n" <>
-  "  exePath <- getExecutablePath\n" <>
-  "  let (bindir,_) = splitFileName exePath\n" <>
-  "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"
+  "getPrefixDirReloc :: FilePath -> IO FilePath\n\
+  \getPrefixDirReloc dirRel = do\n\
+  \  exePath <- getExecutablePath\n\
+  \  let (bindir,_) = splitFileName exePath\n\
+  \  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"
 
 get_prefix_win32 :: Bool -> Arch -> Builder
 get_prefix_win32 supports_cpp arch =
-  "getPrefixDirRel :: FilePath -> IO FilePath\n" <>
-  "getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n" <>
-  "  where\n" <>
-  "    try_size size = allocaArray (fromIntegral size) $ \\buf -> do\n" <>
-  "        ret <- c_GetModuleFileName nullPtr buf size\n" <>
-  "        case ret of\n" <>
-  "          0 -> return (prefix `joinFileName` dirRel)\n" <>
-  "          _ | ret < size -> do\n" <>
-  "              exePath <- peekCWString buf\n" <>
-  "              let (bindir,_) = splitFileName exePath\n" <>
-  "              return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n" <>
-  "            | otherwise  -> try_size (size * 2)\n" <>
-  "\n" <>
+  "getPrefixDirRel :: FilePath -> IO FilePath\n\
+  \getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n\
+  \  where\n\
+  \    try_size size = allocaArray (fromIntegral size) $ \\buf -> do\n\
+  \        ret <- c_GetModuleFileName nullPtr buf size\n\
+  \        case ret of\n\
+  \          0 -> return (prefix `joinFileName` dirRel)\n\
+  \          _ | ret < size -> do\n\
+  \              exePath <- peekCWString buf\n\
+  \              let (bindir,_) = splitFileName exePath\n\
+  \              return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n\
+  \            | otherwise  -> try_size (size * 2)\n\
+  \\n" <>
   (case supports_cpp of
     False -> ""
-    True  -> "#if defined(i386_HOST_ARCH)\n" <>
-             "# define WINDOWS_CCONV stdcall\n" <>
-             "#elif defined(x86_64_HOST_ARCH)\n" <>
-             "# define WINDOWS_CCONV ccall\n" <>
-             "#else\n" <>
-             "# error Unknown mingw32 arch\n" <>
-             "#endif\n") <>
-  "foreign import " <> cconv <> " unsafe \"windows.h GetModuleFileNameW\"\n" <>
-  "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
+    True  -> "#if defined(i386_HOST_ARCH)\n\
+             \# define WINDOWS_CCONV stdcall\n\
+             \#elif defined(x86_64_HOST_ARCH)\n\
+             \# define WINDOWS_CCONV ccall\n\
+             \#else\n\
+             \# error Unknown mingw32 arch\n\
+             \#endif\n") <>
+  "foreign import " <> cconv <> " unsafe \"windows.h GetModuleFileNameW\"\n\
+  \  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
     where cconv = if supports_cpp
                      then "WINDOWS_CCONV"
                      else case arch of
@@ -321,43 +327,44 @@ get_prefix_win32 supports_cpp arch =
 
 filename_stuff :: Builder
 filename_stuff =
-  "minusFileName :: FilePath -> String -> FilePath\n" <>
-  "minusFileName dir \"\"     = dir\n" <>
-  "minusFileName dir \".\"    = dir\n" <>
-  "minusFileName dir suffix =\n" <>
-  "  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))\n" <>
-  "\n" <>
-  "joinFileName :: String -> String -> FilePath\n" <>
-  "joinFileName \"\"  fname = fname\n" <>
-  "joinFileName \".\" fname = fname\n" <>
-  "joinFileName dir \"\"    = dir\n" <>
-  "joinFileName dir fname\n" <>
-  "  | isPathSeparator (last dir) = dir++fname\n" <>
-  "  | otherwise                  = dir++pathSeparator:fname\n" <>
-  "\n" <>
-  "splitFileName :: FilePath -> (String, String)\n" <>
-  "splitFileName p = (reverse (path2++drive), reverse fname)\n" <>
-  "  where\n" <>
-  "    (path,drive) = case p of\n" <>
-  "       (c:':':p') -> (reverse p',[':',c])\n" <>
-  "       _          -> (reverse p ,\"\")\n" <>
-  "    (fname,path1) = break isPathSeparator path\n" <>
-  "    path2 = case path1 of\n" <>
-  "      []                           -> \".\"\n" <>
-  "      [_]                          -> path1   -- don't remove the trailing slash if \n" <>
-  "                                              -- there is only one character\n" <>
-  "      (c:path') | isPathSeparator c -> path'\n" <>
-  "      _                             -> path1\n" <>
-  "\n" <>
-  "pathSeparator :: Char\n" <>
+  "minusFileName :: FilePath -> String -> FilePath\n\
+  \minusFileName dir \"\"     = dir\n\
+  \minusFileName dir \".\"    = dir\n\
+  \minusFileName dir suffix =\n\
+  \  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))\n\
+  \\n\
+  \joinFileName :: String -> String -> FilePath\n\
+  \joinFileName \"\"  fname = fname\n\
+  \joinFileName \".\" fname = fname\n\
+  \joinFileName dir \"\"    = dir\n\
+  \joinFileName dir fname\n\
+  \  | isPathSeparator (last dir) = dir++fname\n\
+  \  | otherwise                  = dir++pathSeparator:fname\n\
+  \\n\
+  \splitFileName :: FilePath -> (String, String)\n\
+  \splitFileName p = (reverse (path2++drive), reverse fname)\n\
+  \  where\n\
+  \    (path,drive) = case p of\n\
+  \       (c:':':p') -> (reverse p',[':',c])\n\
+  \       _          -> (reverse p ,\"\")\n\
+  \    (fname,path1) = break isPathSeparator path\n\
+  \    path2 = case path1 of\n\
+  \      []                           -> \".\"\n\
+  \      [_]                          -> path1   -- don't remove the trailing slash if \n\
+  \                                              -- there is only one character\n\
+  \      (c:path') | isPathSeparator c -> path'\n\
+  \      _                             -> path1\n\
+  \\n\
+  \pathSeparator :: Char\n" <>
   (case buildOS of
        Windows   -> "pathSeparator = '\\\\'\n"
        _         -> "pathSeparator = '/'\n") <>
-  "\n" <>
-  "isPathSeparator :: Char -> Bool\n" <>
+  "\n\
+  \isPathSeparator :: Char -> Bool\n" <>
   (case buildOS of
        Windows   -> "isPathSeparator c = c == '/' || c == '\\\\'\n"
        _         -> "isPathSeparator c = c == '/'\n")
+
 
 s :: String -> Builder
 s = BSB.string8
