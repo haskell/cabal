@@ -22,18 +22,18 @@ data Z
 data ZPackage
     = ZPackage {zpkgName :: PackageName,
                 zpkgVersion :: Version,
-                zpkgX :: String,
-                zpkgY :: String,
-                zpkgZ :: String}
+                zpkgX :: !Int,
+                zpkgY :: !Int,
+                zpkgZ :: !Int}
 
     deriving Generic
 
 data ZTool
     = ZTool {ztoolName :: String,
              ztoolVersion :: Version,
-             ztoolX :: String,
-             ztoolY :: String,
-             ztoolZ :: String}
+             ztoolX :: !Int,
+             ztoolY :: !Int,
+             ztoolZ :: !Int}
     deriving Generic
 
 render :: Z -> BSB.Builder
@@ -64,19 +64,19 @@ render z_root = execWriter $ do
     tellS (zManglePkgName z_root (zpkgName z_var0_pkg))
     tellB "(major1,major2,minor) (\\\n"
     tellB "  (major1) <  "
-    tellS (zpkgX z_var0_pkg)
+    tellI (zpkgX z_var0_pkg)
     tellB " || \\\n"
     tellB "  (major1) == "
-    tellS (zpkgX z_var0_pkg)
+    tellI (zpkgX z_var0_pkg)
     tellB " && (major2) <  "
-    tellS (zpkgY z_var0_pkg)
+    tellI (zpkgY z_var0_pkg)
     tellB " || \\\n"
     tellB "  (major1) == "
-    tellS (zpkgX z_var0_pkg)
+    tellI (zpkgX z_var0_pkg)
     tellB " && (major2) == "
-    tellS (zpkgY z_var0_pkg)
+    tellI (zpkgY z_var0_pkg)
     tellB " && (minor) <= "
-    tellS (zpkgZ z_var0_pkg)
+    tellI (zpkgZ z_var0_pkg)
     tellB ")\n"
     tellB "#endif /* MIN_VERSION_"
     tellS (zManglePkgName z_root (zpkgName z_var0_pkg))
@@ -106,19 +106,19 @@ render z_root = execWriter $ do
     tellS (zMangleStr z_root (ztoolName z_var1_tool))
     tellB "(major1,major2,minor) (\\\n"
     tellB "  (major1) <  "
-    tellS (ztoolX z_var1_tool)
+    tellI (ztoolX z_var1_tool)
     tellB " || \\\n"
     tellB "  (major1) == "
-    tellS (ztoolX z_var1_tool)
+    tellI (ztoolX z_var1_tool)
     tellB " && (major2) <  "
-    tellS (ztoolY z_var1_tool)
+    tellI (ztoolY z_var1_tool)
     tellB " || \\\n"
     tellB "  (major1) == "
-    tellS (ztoolX z_var1_tool)
+    tellI (ztoolX z_var1_tool)
     tellB " && (major2) == "
-    tellS (ztoolY z_var1_tool)
+    tellI (ztoolY z_var1_tool)
     tellB " && (minor) <= "
-    tellS (ztoolZ z_var1_tool)
+    tellI (ztoolZ z_var1_tool)
     tellB ")\n"
     tellB "#endif /* MIN_TOOL_VERSION_"
     tellS (zMangleStr z_root (ztoolName z_var1_tool))
@@ -145,3 +145,4 @@ render z_root = execWriter $ do
     tellC = tell . BSB.char8
     tellB = tell . BSB.byteString
     tellS = tell . BSB.string8
+    tellI = tell . BSB.intDec

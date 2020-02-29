@@ -102,12 +102,12 @@ mkZPackage (PackageIdentifier name ver) = Z.ZPackage
   where
     (major1,major2,minor) = majorMinor ver
 
-majorMinor :: Version -> (String, String, String)
-majorMinor ver = case map show (versionNumbers ver) of
-        []        -> ("0", "0", "0")
-        [x]       -> (x,   "0", "0")
-        [x,y]     -> (x,   y,   "0")
-        (x:y:z:_) -> (x,   y,   z)
+majorMinor :: Version -> (Int, Int, Int)
+majorMinor ver = case versionNumbers ver of
+        []        -> (0, 0, 0)
+        [x]       -> (x, 0, 0)
+        [x,y]     -> (x, y, 0)
+        (x:y:z:_) -> (x, y, z)
 
 fixchar :: Char -> Char
 fixchar '-' = '_'
