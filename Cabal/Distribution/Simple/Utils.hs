@@ -125,6 +125,7 @@ module Distribution.Simple.Utils (
         withFileContents,
         writeFileAtomic,
         rewriteFileEx,
+        rewriteFileLBS,
 
         -- * Unicode
         fromUTF8BS,
@@ -799,7 +800,7 @@ createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallS
 --
 -- The output is assumed to be text in the locale encoding.
 --
-rawSystemStdout :: forall mode. KnownIODataMode mode => Verbosity -> FilePath -> [String] -> IO mode 
+rawSystemStdout :: forall mode. KnownIODataMode mode => Verbosity -> FilePath -> [String] -> IO mode
 rawSystemStdout verbosity path args = withFrozenCallStack $ do
   (output, errors, exitCode) <- rawSystemStdInOut verbosity path args
     Nothing Nothing Nothing (IOData.iodataMode :: IODataMode mode)
@@ -1380,20 +1381,24 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
 --     ASCII-representable. Since Cabal-3.0 the file is assumed to be
 --     UTF-8 encoded.
 rewriteFileEx :: Verbosity -> FilePath -> String -> IO ()
-rewriteFileEx verbosity path newContent =
+rewriteFileEx verbosity path =
+  rewriteFileLBS verbosity path . toUTF8LBS
+
+-- | Same as `rewriteFileEx` but for 'ByteString's.
+rewriteFileLBS :: Verbosity -> FilePath -> BS.ByteString -> IO ()
+rewriteFileLBS verbosity path newContent =
   flip catchIO mightNotExist $ do
     existingContent <- annotateIO verbosity $ BS.readFile path
     _ <- evaluate (BS.length existingContent)
-    unless (existingContent == newContent') $
+    unless (existingContent == newContent) $
       annotateIO verbosity $
-        writeFileAtomic path newContent'
+        writeFileAtomic path newContent
   where
-    newContent' = toUTF8LBS newContent
-
     mightNotExist e | isDoesNotExistError e
-                    = annotateIO verbosity $ writeFileAtomic path newContent'
+                    = annotateIO verbosity $ writeFileAtomic path newContent
                     | otherwise
                     = ioError e
+
 
 -- | The path name that represents the current directory.
 -- In Unix, it's @\".\"@, but this is system-specific.
