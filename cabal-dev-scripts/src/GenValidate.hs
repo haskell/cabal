@@ -3,15 +3,14 @@
 -- runghc -package-env=default Validate.hs validate.yml.zinza .github/workflows/validate.yml
 module Main (main) where
 
+import Data.List          (isPrefixOf)
 import GHC.Generics       (Generic)
 import System.Environment (getArgs)
 import System.Exit        (exitFailure)
-import Zinza
-       (Zinza (..), genericFromValueSFP, genericToTypeSFP, genericToValueSFP,
-       parseAndCompileTemplateIO)
+import Zinza              (Zinza (..), genericFromValueSFP, genericToTypeSFP, genericToValueSFP, parseAndCompileTemplateIO)
 
 import qualified Data.ByteString.Lazy.Char8 as LBS8
-import qualified Data.YAML             as YAML
+import qualified Data.YAML                  as YAML
 
 main :: IO ()
 main = do
@@ -22,16 +21,15 @@ main = do
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
                 { zJobs =
-                    [ GhcJob "8.8.2"  False "--solver-benchmarks" False [] defSteps
-                    , GhcJob "8.8.1"  False "--solver-benchmarks" False [] defSteps -- to be removed
-                    , GhcJob "8.6.5"  False ""                    False ["8.8.1"] defSteps
-                    , GhcJob "8.4.4"  False ""                    False ["8.8.1"] defSteps
-                    , GhcJob "8.2.2"  False ""                    False ["8.8.1"] defSteps
-                    , GhcJob "8.0.2"  False ""                    False ["8.8.1"] defSteps
-                    , GhcJob "7.10.3" False ""                    False ["8.8.1"] defSteps
-                    , GhcJob "7.8.4"  False "--lib-only"          False ["8.8.1"] libSteps
-                    , GhcJob "7.6.3"  True  "--lib-only"          False ["8.8.1"] libSteps
-                    , GhcJob "8.8.1"  True  "--lib-only"          True  ["8.8.1"] $
+                    [ GhcJob "8.8.3"  False "--solver-benchmarks" False [] defSteps
+                    , GhcJob "8.6.5"  False ""                    False ["8.8.3"] defSteps
+                    , GhcJob "8.4.4"  False ""                    False ["8.8.3"] defSteps
+                    , GhcJob "8.2.2"  False ""                    False ["8.8.3"] defSteps
+                    , GhcJob "8.0.2"  False ""                    False ["8.8.3"] defSteps
+                    , GhcJob "7.10.3" False ""                    False ["8.8.3"] defSteps
+                    , GhcJob "7.8.4"  False "--lib-only"          False ["8.8.3"] libSteps
+                    , GhcJob "7.6.3"  True  "--lib-only"          False ["8.8.3"] libSteps
+                    , GhcJob "8.8.3"  True  "--lib-only"          True  ["8.8.3"] $
                         libSteps ++
                         [ "lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4"
                         , "lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2"
@@ -39,7 +37,9 @@ main = do
                         ]
                     ]
                 , zMacosJobs =
-                    [ mkMacGhcJob "8.8.1" "https://downloads.haskell.org/~ghc/8.8.1/ghc-8.8.1-x86_64-apple-darwin.tar.xz"
+                    [ mkMacGhcJob "8.8.3" "https://downloads.haskell.org/~ghc/8.8.3/ghc-8.8.3-x86_64-apple-darwin.tar.xz"
+                    -- we have 8.8.2 job as something weird is going with 8.8.3 one.
+                    , mkMacGhcJob "8.8.2" "https://downloads.haskell.org/~ghc/8.8.2/ghc-8.8.2-x86_64-apple-darwin.tar.xz"
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
                     ]
                 , zWinJobs =
@@ -133,7 +133,7 @@ mkMacGhcJob v u = MacGhcJob
     { mgjVersion = v
     , mgjGhcUrl  = u
     , mgjFlags   = ""
-    , mgjNeeds   = ["8.8.1" | v /= "8.8.1"]
+    , mgjNeeds   = ["8.8.2" | not $ "8.8" `isPrefixOf` v ]
     , mgjSteps   = defSteps
     }
 

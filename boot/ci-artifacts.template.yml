@@ -24,7 +24,7 @@ jobs:
           echo "::add-path::$HOME/.cabal/bin"
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Release project
         run: |
           cp cabal.project.release cabal.project
@@ -70,7 +70,7 @@ jobs:
           echo "::add-path::$HOME/.cabal/bin"
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Release project
         run: |
           cp cabal.project.release cabal.project
@@ -114,7 +114,7 @@ jobs:
           cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Release project
         shell: bash
         run: |

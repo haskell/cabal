@@ -36,7 +36,7 @@ jobs:
         run: cabal v2-update
       - name: Install alex
         run: cabal v2-install alex
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Regenerate files
         run: |
           make lexer
@@ -78,6 +78,6 @@ jobs:
           cabal-env --transitive QuickCheck
           cabal-env array bytestring containers deepseq directory filepath pretty process time binary unix text parsec mtl
           cat $HOME/.ghc/*/environments/default
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Doctest
         run: make doctest

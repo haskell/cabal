@@ -54,7 +54,7 @@ jobs:
 {% endif %}
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 {% for step in job.steps %}
       - name: Validate {{step}}
         run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
