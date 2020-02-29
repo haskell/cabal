@@ -40,9 +40,11 @@ import Distribution.Pretty
 
 import qualified Distribution.Simple.Build.Macros.Z as Z
 
+import Data.ByteString.Builder (Builder)
+
 -- | The contents of the @cabal_macros.h@ for the given configured package.
 --
-generateCabalMacrosHeader :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
+generateCabalMacrosHeader :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> Builder
 generateCabalMacrosHeader pkg_descr lbi clbi = Z.render Z.Z
     { Z.zPackages        = map mkZPackage $ package pkg_descr : map getPid (componentPackageDeps clbi)
     , Z.zTools           =
@@ -77,7 +79,7 @@ generateCabalMacrosHeader pkg_descr lbi clbi = Z.render Z.Z
 -- macros for a list of package ids (usually used with the specific deps of
 -- a configured package).
 --
-generatePackageVersionMacros :: Version -> [PackageId] -> String
+generatePackageVersionMacros :: Version -> [PackageId] -> Builder
 generatePackageVersionMacros ver pkgids = Z.render Z.Z
     { Z.zPackages        = map mkZPackage pkgids
     , Z.zTools           = []

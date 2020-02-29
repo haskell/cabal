@@ -1,5 +1,6 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -85,9 +86,11 @@ import Distribution.Verbosity
 import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
+import qualified Data.ByteString.Builder as BSB
+import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Set as Set
-import System.FilePath ( (</>), (<.>), takeDirectory )
 import System.Directory ( getCurrentDirectory )
+import System.FilePath ( (</>), (<.>), takeDirectory )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -703,7 +706,9 @@ writeAutogenFiles verbosity pkg lbi clbi = do
       pathsModuleDir = takeDirectory pathsModulePath
   -- Ensure that the directory exists!
   createDirectoryIfMissingVerbose verbosity True pathsModuleDir
-  rewriteFileEx verbosity pathsModulePath (generatePathsModule pkg lbi clbi)
+  rewriteFileLBS verbosity pathsModulePath
+    $ BSB.toLazyByteString
+    $ generatePathsModule pkg lbi clbi
 
   --TODO: document what we're doing here, and move it to its own function
   case clbi of
@@ -718,11 +723,13 @@ writeAutogenFiles verbosity pkg lbi clbi = do
             let sigPath = autogenComponentModulesDir lbi clbi
                       </> ModuleName.toFilePath mod_name <.> "hsig"
             createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
-            rewriteFileEx verbosity sigPath $
-                "{-# OPTIONS_GHC -w #-}\n" ++
-                "{-# LANGUAGE NoImplicitPrelude #-}\n" ++
-                "signature " ++ prettyShow mod_name ++ " where"
+            rewriteFileLBS verbosity sigPath $
+                "{-# OPTIONS_GHC -w #-}\n" <>
+                "{-# LANGUAGE NoImplicitPrelude #-}\n" <>
+                "signature " <> BS.pack (prettyShow mod_name) <> " where"
     _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
-  rewriteFileEx verbosity cppHeaderPath (generateCabalMacrosHeader pkg lbi clbi)
+  rewriteFileLBS verbosity cppHeaderPath
+    $ BSB.toLazyByteString
+    $ generateCabalMacrosHeader pkg lbi clbi
