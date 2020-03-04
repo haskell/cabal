@@ -54,7 +54,7 @@ jobs:
           key: linux-store-meta
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: make cabal-install-dev
         run: runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
       # We cannot ask for all dependencies, but we can for Cabal.
