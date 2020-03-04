@@ -45,7 +45,7 @@ fieldDescrPretty (F m) fn = pPretty <$> Map.lookup fn m
 
 -- | Lookup a field value parser.
 fieldDescrParse :: P.CabalParsing m => FieldDescrs s a -> P.FieldName -> Maybe (s -> m s)
-fieldDescrParse (F m) fn = pParse <$> Map.lookup fn m
+fieldDescrParse (F m) fn = (\f -> pParse f) <$> Map.lookup fn m
 
 fieldDescrsToList
     :: P.CabalParsing m

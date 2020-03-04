@@ -1341,7 +1341,7 @@ withTempFileEx opts tmpDir template action =
     (\(name, handle) -> do hClose handle
                            unless (optKeepTempFiles opts) $
                              handleDoesNotExist () . removeFile $ name)
-    (withLexicalCallStack (uncurry action))
+    (withLexicalCallStack (\x -> uncurry action x))
 
 -- | Create and use a temporary directory.
 --
@@ -1356,7 +1356,7 @@ withTempFileEx opts tmpDir template action =
 withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
 withTempDirectory verbosity targetDir template f = withFrozenCallStack $
   withTempDirectoryEx verbosity defaultTempFileOptions targetDir template
-    (withLexicalCallStack f)
+    (withLexicalCallStack (\x -> f x))
 
 -- | A version of 'withTempDirectory' that additionally takes a
 -- 'TempFileOptions' argument.
@@ -1367,7 +1367,7 @@ withTempDirectoryEx _verbosity opts targetDir template f = withFrozenCallStack $
     (createTempDirectory targetDir template)
     (unless (optKeepTempFiles opts)
      . handleDoesNotExist () . removeDirectoryRecursive)
-    (withLexicalCallStack f)
+    (withLexicalCallStack (\x -> f x))
 
 -----------------------------------
 -- Safely reading and writing files
