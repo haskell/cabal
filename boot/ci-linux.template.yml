@@ -59,7 +59,7 @@ jobs:
       - name: Checkout
         run: |
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:$GITHUB_REF
+          if [ ! "$GITHUB_REF" = "refs/heads/master" ]; then git fetch origin $GITHUB_REF:$GITHUB_REF; fi
           git checkout $GITHUB_SHA
 {% for step in job.steps %}
       - name: Validate {{step}}
