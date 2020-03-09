@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric       #-}
 {-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | The only purpose of this module is to prevent the export of
@@ -37,9 +38,10 @@ import Distribution.Types.Version
 import Prelude ()
 
 import Distribution.CabalSpecVersion
+import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
-import Text.PrettyPrint              ((<+>))
+import Text.PrettyPrint                    ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList
@@ -262,6 +264,35 @@ instance Pretty VersionRange where
 
 instance Parsec VersionRange where
     parsec = versionRangeParser versionDigitParser
+
+instance Described VersionRange where
+    describe _ = RERec "version-range" $ REUnion
+        [ "-any", "-none"
+
+        , "=="  <> RESpaces <> ver
+        , ">"   <> RESpaces <> ver
+        , "<"   <> RESpaces <> ver
+        , "<="  <> RESpaces <> ver
+        , ">="  <> RESpaces <> ver
+        , "^>=" <> RESpaces <> ver
+
+        , reVar0 <> RESpaces  <> "||" <> RESpaces <> reVar0 
+        , reVar0 <> RESpaces  <> "&&" <> RESpaces <> reVar0 
+        , "(" <> RESpaces <> reVar0  <> RESpaces <> ")"
+
+        -- ==0.1.*
+        , "==" <> RESpaces <> wildVer
+
+        -- == { 0.1.2 }
+        -- silly haddock: ^>= { 0.1.2, 3.4.5 }
+        , "=="  <> RESpaces <> verSet
+        , "^>=" <> RESpaces <> verSet
+        ]
+      where
+        ver'    = describe (Proxy :: Proxy Version)
+        ver     = RENamed "version" ver'
+        wildVer = ver' <> ".*"
+        verSet  = "{" <> RESpaces <> REMunch1 reSpacedComma ver <> RESpaces <> "}"
 
 -- | 'VersionRange' parser parametrised by version digit parser
 --

@@ -11,11 +11,10 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.CabalSpecVersion (CabalSpecVersion)
-import Distribution.Compat.Newtype   (Newtype)
+import Distribution.CabalSpecVersion       (CabalSpecVersion)
+import Distribution.Compat.Newtype         (Newtype)
+import Distribution.FieldGrammar.Described (Described)
 import Distribution.Fields.Field
-import Distribution.Parsec           (Parsec)
-import Distribution.Pretty           (Pretty)
 import Distribution.Utils.ShortText
 
 -- | 'FieldGrammar' is parametrised by
@@ -33,7 +32,7 @@ class FieldGrammar g where
 
     -- | Field which should be defined, exactly once.
     uniqueFieldAla
-        :: (Parsec b, Pretty b, Newtype a b)
+        :: (Described b, Newtype a b)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'Newtype' pack
         -> ALens' s a  -- ^ lens into the field
@@ -48,7 +47,7 @@ class FieldGrammar g where
 
     -- | Optional field.
     optionalFieldAla
-        :: (Parsec b, Pretty b, Newtype a b)
+        :: (Described b, Newtype a b)
         => FieldName          -- ^ field name
         -> (a -> b)           -- ^ 'pack'
         -> ALens' s (Maybe a) -- ^ lens into the field
@@ -56,7 +55,7 @@ class FieldGrammar g where
 
     -- | Optional field with default value.
     optionalFieldDefAla
-        :: (Parsec b, Pretty b, Newtype a b, Eq a)
+        :: (Described b, Newtype a b, Eq a)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'Newtype' pack
         -> ALens' s a  -- ^ @'Lens'' s a@: lens into the field
@@ -94,7 +93,7 @@ class FieldGrammar g where
     -- /Note:/ 'optionalFieldAla' is a @monoidalField@ with 'Last' monoid.
     --
     monoidalFieldAla
-        :: (Parsec b, Pretty b, Monoid a, Newtype a b)
+        :: (Described b, Monoid a, Newtype a b)
         => FieldName   -- ^ field name
         -> (a -> b)    -- ^ 'pack'
         -> ALens' s a  -- ^ lens into the field
@@ -135,7 +134,7 @@ class FieldGrammar g where
 
 -- | Field which can be defined at most once.
 uniqueField
-    :: (FieldGrammar g, Parsec a, Pretty a)
+    :: (FieldGrammar g, Described a)
     => FieldName   -- ^ field name
     -> ALens' s a  -- ^ lens into the field
     -> g s a
@@ -143,7 +142,7 @@ uniqueField fn = uniqueFieldAla fn Identity
 
 -- | Field which can be defined at most once.
 optionalField
-    :: (FieldGrammar g, Parsec a, Pretty a)
+    :: (FieldGrammar g, Described a)
     => FieldName          -- ^ field name
     -> ALens' s (Maybe a) -- ^ lens into the field
     -> g s (Maybe a)
@@ -151,7 +150,7 @@ optionalField fn = optionalFieldAla fn Identity
 
 -- | Optional field with default value.
 optionalFieldDef
-    :: (FieldGrammar g, Functor (g s), Parsec a, Pretty a, Eq a)
+    :: (FieldGrammar g, Functor (g s), Described a, Eq a)
     => FieldName   -- ^ field name
     -> ALens' s a  -- ^ @'Lens'' s a@: lens into the field
     -> a           -- ^ default value
@@ -160,7 +159,7 @@ optionalFieldDef fn = optionalFieldDefAla fn Identity
 
 -- | Field which can be define multiple times, and the results are @mappend@ed.
 monoidalField
-    :: (FieldGrammar g, Parsec a, Pretty a, Monoid a)
+    :: (FieldGrammar g, Described a, Monoid a)
     => FieldName   -- ^ field name
     -> ALens' s a  -- ^ lens into the field
     -> g s a

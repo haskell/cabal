@@ -14,6 +14,7 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
+import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -91,6 +92,9 @@ instance Pretty MungedPackageName where
 --
 instance Parsec MungedPackageName where
     parsec = decodeCompatPackageName' <$> parsecUnqualComponentName
+
+instance Described MungedPackageName where
+    describe _ = RETodo
 
 -------------------------------------------------------------------------------
 -- ZDashCode conversions

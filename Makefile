@@ -1,6 +1,7 @@
 .PHONY : all lexer sdpx lib exe doctest
 .PHONY : gen-extra-source-files gen-extra-source-files-lib gen-extra-source-files-cli
 .PHONY : cabal-install-dev cabal-install-prod
+.PHONY : phony
 
 CABALBUILD := cabal v2-build
 CABALRUN   := cabal v2-run
@@ -51,6 +52,12 @@ templates : $(TEMPLATE_MACROS)
 
 $(TEMPLATE_MACROS) : boot/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
+
+# generated docs
+
+Cabal/doc/buildinfo-fields-reference.rst : phony
+	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
+	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
 # cabal-install.cabal file generation
 

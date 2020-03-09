@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Trustworthy #-}
 
 #ifdef MIN_VERSION_base
 #define MINVER_base_411 MIN_VERSION_base(4,11,0)
@@ -48,6 +49,7 @@ module Distribution.Compat.Prelude (
     Set,
     Identity (..),
     Proxy (..),
+    Void,
 
     -- * Data.Maybe
     catMaybes, mapMaybe,
@@ -91,6 +93,9 @@ module Distribution.Compat.Prelude (
     isSpace, isDigit, isUpper, isAlpha, isAlphaNum,
     chr, ord,
     toLower, toUpper,
+
+    -- * Data.Void
+    absurd, vacuous,
 
     -- * Data.Word & Data.Int
     Word,
@@ -160,6 +165,7 @@ import Data.Maybe
 import Data.String                   (IsString (..))
 import Data.Int
 import Data.Word
+import Data.Void                     (Void, absurd, vacuous)
 import Text.Read                     (readMaybe)
 
 import qualified Text.PrettyPrint as Disp

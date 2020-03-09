@@ -21,6 +21,7 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.FieldGrammar.Described
 
 import qualified Data.Version                    as Base
 import qualified Distribution.Compat.CharParsing as P
@@ -100,6 +101,13 @@ instance Parsec Version where
             case ts of
                 []      -> pure ()
                 (_ : _) -> parsecWarning PWTVersionTag "version with tags"
+
+instance Described Version where
+    describe _ = REMunch1 reDot reDigits where
+        reDigits = REUnion
+            [ reChar '0'
+            , reChars ['1'..'9'] <> REMunchR 8 reEps (reChars ['0'..'9'])
+            ]
 
 -- | An integral without leading zeroes.
 --

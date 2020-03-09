@@ -1,0 +1,234 @@
+.. _buildinfo-field-reference:
+
+==================================================
+ BuildInfo field reference
+==================================================
+
+Notation
+---------------
+
+Field syntax is described as they are in the latest cabal file format version.
+
+* terminals are enclosed in quotes and type set in typewriter script:
+
+  .. math::
+
+      \mathord{"}\mathtt{example}\mathord{"}
+
+* non-terminals are type set in italic:
+
+  .. math::
+
+      \mathit{version\text-range}
+
+* character sets are type set resembling regular expression notation:
+
+
+  .. math::
+
+      [ \mathord{"}\mathtt{1}\mathord{"} \cdots \mathord{"}\mathtt{9}\mathord{"} ]
+
+  Character set compelements have :math:`c` superscript:
+
+  .. math::
+
+      [ \mathord{"}\mathtt{1}\mathord{"} \cdots \mathord{"}\mathtt{9}\mathord{"} ]^c
+
+* repetition is type set using regular expression inspired notation.
+  Superscripts tell how many time to repeat:
+  The generic notation is :math:`\in[n\ldots5]`, however there
+  are common shorthands:
+  :math:`\ast` for :math:`\in[0\ldots\infty]` (``many``),
+  :math:`+` for :math:`\in[1\ldots\infty]` (``some``),
+  :math:`?` for :math:`\in[0\ldots1]` (``optional``).
+
+  Subscripts tell the used separator:
+
+  .. math::
+
+      \mathit{digit}^+_{\mathord{"}\mathtt{.}\mathord{"}}
+
+  Would be ``digit(\.digit)*`` in common regex syntax.
+
+* alternatives are listed in braces separated by vertical bar:
+
+  .. math::
+
+      \{ \mathit{foo} \mid \mathit{bar} \}
+
+  In case of multiple alternatives, the stacked notation is used
+
+  .. math::
+
+      \left\{\begin{gathered}
+      \mathit{one} \\
+      \mathit{two} \\
+      \mathit{three} \\
+      \mathit{four} \\
+      \mathit{five}
+      \end{gathered}\right\}
+
+* parenthesis are used only for grouping:
+
+  .. math::
+
+      \left(\mathit{foo} \mid \mathit{bar}\right)^+
+
+* any amount of spaces, and at least single space are type set using
+  :math:`\circ` and :math:`\bullet` respectively.
+  They may appear standalone, not only as binary operators.
+
+  .. math::
+
+      \mathit{module} \bullet \mathord{``}\mathtt{as}\mathord{"} \bullet \mathit{module}
+
+* While notation is heavily regular expression inspired, there
+  are also fixed points, which allow represent recursive grammars
+
+
+  .. math::
+      
+      \mathbf{fix}\; \mathit{expr}\; \mathbf{in}\; \mathit{digit}
+      \mid \mathit{expr} \circ \mathord{``}\mathtt{+}\mathord{"} \circ \mathit{expr}
+      \mid \mathord{``}\mathtt{(} \mathord{"} \circ \mathit{expr} \circ \mathord{``}\mathtt{)}\mathord{"} 
+
+Lists
+-----
+
+Many fields in cabal file format are lists. There are three variations:
+
+Space separated
+    Are used for lists of things with simple grammars, for example :pkg-field:`ghc-options`
+
+    .. math::
+        {{spaceList}}
+
+Comma semarted
+    Are used for lists of things with complicated grammars, for example :pkg-field:`build-depends`
+    There can be leading or trailing comma (but not both) since ``cabal-version: 2.2``.
+    Note, the comma cannot exist alone.
+
+    .. math::
+        \mathrm{commalist}(\mathit{element}) =
+        {{commaList}}
+
+Optional comma separated
+    Surprisingly many fields can have optional comma separator.
+    Since ``cabal-version: 3.0`` comma usage have to be consistent,
+    in other words either used everywhere or nowhere.
+    It's recommended to avoid using comma in these fields,
+    an example field is :pkg-field:`default-extensions`.
+
+    .. math::
+        \mathrm{optcommalist}(\mathit{element}) =
+        {{optCommaList}}
+
+Non-terminals
+-------------
+
+In the syntax definitions below the following non-terminal symbols are used:
+
+{% for production in productions %}
+{{ production.name }}
+    {{ production.description }}
+
+    .. math::
+        {{ production.syntax }}
+
+{% endfor %}
+
+Build info fields
+-----------------
+
+{% for field in buildInfoFields %}
+{{ field.name }}
+    * {{field.format}}
+{% if notNull field.default %}
+    * Default: ``{{field.default}}``
+{% endif %}
+{% if notNull field.availableSince %}
+    * Available since ``cabal-version: {{field.availableSince}}``.
+{% endif %}
+{% if notNull field.deprecatedSince.fst %}
+    * Deprecated since ``cabal-version: {{field.deprecatedSince.fst}}``: {{field.deprecatedSince.snd}}
+{% endif %}
+{% if notNull field.removedIn.fst %}
+    * Removed in ``cabal-version: {{field.removedIn.fst}}``: {{field.removedIn.snd}}
+{% endif %}
+{# We show documentation link only for non deprecated fields #}
+{% if null field.deprecatedSince.fst %}
+{% if null field.removedIn.fst %}
+    * Documentation of :pkg-field:`{{field.name}}`
+{% endif %}
+{% endif %}
+{% if notNull field.syntax %}
+
+    .. math::
+        {{field.syntax}}
+{% endif %}
+
+{% endfor %}
+
+Package description fields
+--------------------------
+
+{% for field in packageDescriptionFields %}
+{{ field.name }}
+    * {{field.format}}
+{% if notNull field.default %}
+    * Default: ``{{field.default}}``
+{% endif %}
+{% if notNull field.availableSince %}
+    * Available since ``cabal-version: {{field.availableSince}}``.
+{% endif %}
+{% if notNull field.deprecatedSince.fst %}
+    * Deprecated since ``cabal-version: {{field.deprecatedSince.fst}}``: {{field.deprecatedSince.snd}}
+{% endif %}
+{% if notNull field.removedIn.fst %}
+    * Removed in ``cabal-version: {{field.removedIn.fst}}``: {{field.removedIn.snd}}
+{% endif %}
+{# We show documentation link only for non deprecated fields #}
+{% if null field.deprecatedSince.fst %}
+{% if null field.removedIn.fst %}
+    * Documentation of :pkg-field:`{{field.name}}`
+{% endif %}
+{% endif %}
+{% if notNull field.syntax %}
+
+    .. math::
+        {{field.syntax}}
+{% endif %}
+
+{% endfor %}
+
+Test-suite fields
+-----------------
+
+{% for field in testSuiteFields %}
+{{ field.name }}
+    * {{field.format}}
+{% if notNull field.default %}
+    * Default: ``{{field.default}}``
+{% endif %}
+{% if notNull field.availableSince %}
+    * Available since ``cabal-version: {{field.availableSince}}``.
+{% endif %}
+{% if notNull field.deprecatedSince.fst %}
+    * Deprecated since ``cabal-version: {{field.deprecatedSince.fst}}``: {{field.deprecatedSince.snd}}
+{% endif %}
+{% if notNull field.removedIn.fst %}
+    * Removed in ``cabal-version: {{field.removedIn.fst}}``: {{field.removedIn.snd}}
+{% endif %}
+{# We show documentation link only for non deprecated fields #}
+{% if null field.deprecatedSince.fst %}
+{% if null field.removedIn.fst %}
+    * Documentation of :pkg-field:`{{field.name}}`
+{% endif %}
+{% endif %}
+{% if notNull field.syntax %}
+
+    .. math::
+        {{field.syntax}}
+{% endif %}
+
+{% endfor %}
