@@ -1,5 +1,6 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.SetupWrapper
@@ -87,7 +88,7 @@ import Distribution.Simple.Utils
          ( die', debug, info, infoNoWrap
          , cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
-         , copyFileVerbose, rewriteFileEx )
+         , copyFileVerbose, rewriteFileEx, rewriteFileLBS )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath, withExtraPathEnv
          , existsAndIsMoreRecentThan, moreRecentFile, withEnv, withEnvOverrides
@@ -117,6 +118,8 @@ import System.Process      ( StdStream(..), proc, waitForProcess
 import qualified System.Process as Process
 import Data.List           ( foldl1' )
 import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
+
+import qualified Data.ByteString.Lazy as BS
 
 #ifdef mingw32_HOST_OS
 import Distribution.Simple.Utils
@@ -702,17 +705,15 @@ getExternalSetupMethod verbosity options pkg bt = do
       customSetupLhs  = workingDir options </> "Setup.lhs"
 
   updateSetupScript cabalLibVersion _ =
-    rewriteFileEx verbosity setupHs (buildTypeScript cabalLibVersion)
+    rewriteFileLBS verbosity setupHs (buildTypeScript cabalLibVersion)
 
-  buildTypeScript :: Version -> String
+  buildTypeScript :: Version -> BS.ByteString
   buildTypeScript cabalLibVersion = case bt of
-    Simple    -> "import Distribution.Simple; main = defaultMain\n"
-    Configure -> "import Distribution.Simple; main = defaultMainWithHooks "
-              ++ if cabalLibVersion >= mkVersion [1,3,10]
-                   then "autoconfUserHooks\n"
-                   else "defaultUserHooks\n"
-    Make      -> "import Distribution.Make; main = defaultMain\n"
-    Custom    -> error "buildTypeScript Custom"
+    Simple                                            -> "import Distribution.Simple; main = defaultMain\n"
+    Configure | cabalLibVersion >= mkVersion [1,3,10] -> "import Distribution.Simple; main = defaultMainWithHooks autoconfUserHooks\n"
+              | otherwise                             -> "import Distribution.Simple; main = defaultMainWithHooks defaultUserHooks\n"
+    Make                                              -> "import Distribution.Make; main = defaultMain\n"
+    Custom                                            -> error "buildTypeScript Custom"
 
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
@@ -905,7 +906,7 @@ getExternalSetupMethod verbosity options pkg bt = do
       let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
         rewriteFileEx verbosity cppMacrosFile
-            (generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps))
+          $ generatePackageVersionMacros (pkgVersion $ package pkg) (map snd selectedDeps)
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 
