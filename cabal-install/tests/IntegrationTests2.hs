@@ -1442,8 +1442,11 @@ testBuildLocalTarball config = do
 
 -- | See <https://github.com/haskell/cabal/issues/3324>
 --
+-- This test just doesn't seem to work on Windows,
+-- due filesystem woes.
+--
 testRegressionIssue3324 :: ProjectConfig -> Assertion
-testRegressionIssue3324 config = do
+testRegressionIssue3324 config = when (buildOS /= Windows) $ do
     -- expected failure first time due to missing dep
     (plan1, res1) <- executePlan =<< planProject testdir config
     (_pkgq, failure) <- expectPackageFailed plan1 res1 "q-0.1"
