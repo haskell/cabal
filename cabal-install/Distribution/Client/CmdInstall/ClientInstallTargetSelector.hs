@@ -9,6 +9,8 @@ module Distribution.Client.CmdInstall.ClientInstallTargetSelector (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Network.URI (URI, parseURI)
+
 import Distribution.Client.TargetSelector
 import Distribution.Client.Types
 import Distribution.Compat.CharParsing             (char, optional)
@@ -23,14 +25,16 @@ import Distribution.Version
 data WithoutProjectTargetSelector
     = WoPackageId PackageId
     | WoPackageComponent PackageId ComponentName
-    -- | WoURI URI
+    | WoURI URI
   deriving (Show)
 
 parseWithoutProjectTargetSelector :: Verbosity -> String -> IO WithoutProjectTargetSelector
 parseWithoutProjectTargetSelector verbosity input =
     case explicitEitherParsec parser input of
         Right ts -> return ts
-        Left err -> die' verbosity $ "Invalid package ID: " ++ input ++ "\n" ++ err
+        Left err -> case parseURI input of
+            Just uri -> return (WoURI uri)
+            Nothing  -> die' verbosity $ "Invalid package ID: " ++ input ++ "\n" ++ err
   where
     parser :: ParsecParser WithoutProjectTargetSelector
     parser = do
@@ -43,16 +47,20 @@ parseWithoutProjectTargetSelector verbosity input =
 woPackageNames  :: WithoutProjectTargetSelector -> [PackageName]
 woPackageNames (WoPackageId pid)          = [pkgName pid]
 woPackageNames (WoPackageComponent pid _) = [pkgName pid]
+woPackageNames (WoURI _)                  = []
 
 woPackageTargets  :: WithoutProjectTargetSelector -> TargetSelector
 woPackageTargets (WoPackageId pid) =
     TargetPackageNamed (pkgName pid) Nothing
 woPackageTargets (WoPackageComponent pid cn) =
     TargetComponentUnknown (pkgName pid) (Right cn) WholeComponent
+woPackageTargets (WoURI _) =
+    TargetAllPackages (Just ExeKind)
 
-woPackageSpecifiers  :: WithoutProjectTargetSelector -> PackageSpecifier pkg
-woPackageSpecifiers (WoPackageId pid)          = pidPackageSpecifiers pid
-woPackageSpecifiers (WoPackageComponent pid _) = pidPackageSpecifiers pid
+woPackageSpecifiers  :: WithoutProjectTargetSelector -> Either URI (PackageSpecifier pkg)
+woPackageSpecifiers (WoPackageId pid)          = Right (pidPackageSpecifiers pid)
+woPackageSpecifiers (WoPackageComponent pid _) = Right (pidPackageSpecifiers pid)
+woPackageSpecifiers (WoURI uri)                = Left uri
 
 pidPackageSpecifiers :: PackageId -> PackageSpecifier pkg
 pidPackageSpecifiers pid
