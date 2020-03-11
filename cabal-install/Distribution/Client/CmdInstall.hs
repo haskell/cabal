@@ -28,6 +28,7 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
+import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
@@ -401,11 +402,7 @@ installAction ( configFlags, configExFlags, installFlags
 
     withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [TargetSelector], ProjectConfig)
     withoutProject globalConfig = do
-      let
-        parsePkg pkgName
-          | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
-          | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
-      packageIds <- mapM parsePkg targetStrings'
+      tss <- mapM (parseWithoutProjectTargetSelector verbosity) targetStrings'
 
       cabalDir <- getCabalDir
       let
@@ -431,25 +428,21 @@ installAction ( configFlags, configExFlags, installFlags
                                             verbosity buildSettings
                                             (getSourcePackages verbosity)
 
-      for_ targetStrings' $ \case
-            name
-              | null (lookupPackageName packageIndex (mkPackageName name))
-              , xs@(_:_) <- searchByName packageIndex name ->
-                die' verbosity . concat $
-                            [ "Unknown package \"", name, "\". "
-                            , "Did you mean any of the following?\n"
-                            , unlines (("- " ++) . unPackageName . fst <$> xs)
-                            ]
-            _ -> return ()
+      for_ (concatMap woPackageNames tss) $ \name -> do
+        when (null (lookupPackageName packageIndex name)) $ do
+          let xs = searchByName packageIndex (unPackageName name)
+          let emptyIf True  _  = []
+              emptyIf False zs = zs
+          die' verbosity $ concat $
+            [ "Unknown package \"", unPackageName name, "\". "
+            ] ++ emptyIf (null xs)
+            [ "Did you mean any of the following?\n"
+            , unlines (("- " ++) . unPackageName . fst <$> xs)
+            ]
 
       let
-        packageSpecifiers = flip fmap packageIds $ \case
-          PackageIdentifier{..}
-            | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise                 -> NamedPackage pkgName
-                                           [PackagePropertyVersion
-                                            (thisVersion pkgVersion)]
-        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
+        packageSpecifiers = woPackageSpecifiers <$> tss
+        packageTargets    = woPackageTargets <$> tss
       return (packageSpecifiers, packageTargets, projectConfig)
 
   let

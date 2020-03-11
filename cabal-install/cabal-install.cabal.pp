@@ -107,6 +107,7 @@ Version:            3.3.0.0
         Distribution.Client.CmdHaddock
         Distribution.Client.CmdInstall
         Distribution.Client.CmdInstall.ClientInstallFlags
+        Distribution.Client.CmdInstall.ClientInstallTargetSelector
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdRun.ClientRunFlags
