@@ -20,7 +20,7 @@ on:
 jobs:
 {% for job in macosJobs %}
   validate-macos-{{ mangleVersion job.version }}:
-    name: validate.sh ghc-{{job.version}}
+    name: validate.sh macos ghc-{{job.version}}
     runs-on: macos-latest
 {% for needs in job.needs %}
     needs: validate-macos-{{ mangleVersion needs }}
