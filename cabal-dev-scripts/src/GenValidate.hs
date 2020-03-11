@@ -38,8 +38,6 @@ main = do
                     ]
                 , zMacosJobs =
                     [ mkMacGhcJob "8.8.3" "https://downloads.haskell.org/~ghc/8.8.3/ghc-8.8.3-x86_64-apple-darwin.tar.xz"
-                    -- we have 8.8.2 job as something weird is going with 8.8.3 one.
-                    , mkMacGhcJob "8.8.2" "https://downloads.haskell.org/~ghc/8.8.2/ghc-8.8.2-x86_64-apple-darwin.tar.xz"
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
                     ]
                 , zWinJobs =
@@ -133,7 +131,7 @@ mkMacGhcJob v u = MacGhcJob
     { mgjVersion = v
     , mgjGhcUrl  = u
     , mgjFlags   = ""
-    , mgjNeeds   = ["8.8.2" | not $ "8.8" `isPrefixOf` v ]
+    , mgjNeeds   = ["8.8.3" | not $ "8.8" `isPrefixOf` v ]
     , mgjSteps   = defSteps
     }
 
