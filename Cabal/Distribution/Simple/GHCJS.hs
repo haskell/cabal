@@ -950,6 +950,7 @@ decodeMainIsArg arg
 -- | A collection of:
 --    * C input files
 --    * C++ input files
+--    * JS input files
 --    * GHC input files
 --    * GHC input modules
 --
@@ -957,6 +958,7 @@ decodeMainIsArg arg
 data BuildSources = BuildSources {
         cSourcesFiles      :: [FilePath],
         cxxSourceFiles     :: [FilePath],
+        jsSourceFiles      :: [FilePath],
         inputSourceFiles   :: [FilePath],
         inputSourceModules :: [ModuleName]
     }
@@ -1002,6 +1004,7 @@ gbuildSources verbosity specVer tmpDir bm =
              return BuildSources {
                         cSourcesFiles      = cSources bnfo,
                         cxxSourceFiles     = cxxSources bnfo,
+                        jsSourceFiles      = jsSources bnfo,
                         inputSourceFiles   = [main],
                         inputSourceModules = filter (/= mainModName) $ exeModules exe
                     }
@@ -1009,6 +1012,7 @@ gbuildSources verbosity specVer tmpDir bm =
           else return BuildSources {
                           cSourcesFiles      = cSources bnfo,
                           cxxSourceFiles     = cxxSources bnfo,
+                          jsSourceFiles      = jsSources bnfo,
                           inputSourceFiles   = [main],
                           inputSourceModules = exeModules exe
                       }
@@ -1022,6 +1026,7 @@ gbuildSources verbosity specVer tmpDir bm =
              in  return BuildSources {
                             cSourcesFiles      = csf,
                             cxxSourceFiles     = cxxsf,
+                            jsSourceFiles      = [],
                             inputSourceFiles   = [],
                             inputSourceModules = exeModules exe
                         }
@@ -1031,6 +1036,7 @@ gbuildSources verbosity specVer tmpDir bm =
         BuildSources {
             cSourcesFiles      = cSources bnfo,
             cxxSourceFiles     = cxxSources bnfo,
+            jsSourceFiles      = [],
             inputSourceFiles   = [],
             inputSourceModules = foreignLibModules flib
         }
@@ -1085,6 +1091,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
 
   let cSrcs               = cSourcesFiles buildSources
       cxxSrcs             = cxxSourceFiles buildSources
+      jsSrcs              = jsSourceFiles buildSources
       inputFiles          = inputSourceFiles buildSources
       inputModules        = inputSourceModules buildSources
       isGhcDynamic        = isDynamic comp
@@ -1137,8 +1144,8 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                                 PD.frameworks bnfo,
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs bnfo,
-                      ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
+                      ghcOptInputFiles     = toNubListR $
+                                             [tmpDir </> x | x <- cObjs ++ cxxObjs] ++ jsSrcs
                     }
       dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths
