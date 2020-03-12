@@ -47,7 +47,8 @@ import Distribution.Simple.Utils
          ( wrapText, warn, die', ordNub, info
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.CmdInstall
-         ( establishDummyProjectBaseContext )
+         ( establishDummyDistDirLayout
+         , establishDummyProjectBaseContext )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , withProjectOrGlobalConfigIgn )
@@ -200,13 +201,14 @@ runAction ( configFlags, configExFlags, installFlags
           , clientRunFlags )
             targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
-    tempDir <- createTempDirectory globalTmp "cabal-repl."
+    tmpDir <- createTempDirectory globalTmp "cabal-repl."
 
     let
       with =
         establishProjectBaseContext verbosity cliConfig OtherCommand
-      without config =
-        establishDummyProjectBaseContext verbosity (config <> cliConfig) tempDir [] OtherCommand
+      without config = do
+        distDirLayout <- establishDummyDistDirLayout verbosity (config <> cliConfig) tmpDir
+        establishDummyProjectBaseContext verbosity (config <> cliConfig) distDirLayout [] OtherCommand
 
     let
       ignoreProject = fromFlagOrDefault False (crunIgnoreProject clientRunFlags)
@@ -219,7 +221,7 @@ runAction ( configFlags, configExFlags, installFlags
         let pol | takeExtension script == ".lhs" = LiterateHaskell
                 | otherwise                      = PlainHaskell
         if exists
-          then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tempDir
+          then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tmpDir
           else reportTargetSelectorProblems verbosity err
 
     (baseCtx', targetSelectors) <-
@@ -337,7 +339,7 @@ runAction ( configFlags, configExFlags, installFlags
                             elaboratedPlan
       }
 
-    handleDoesNotExist () (removeDirectoryRecursive tempDir)
+    handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig
@@ -441,7 +443,7 @@ handleScriptCase
   -> FilePath
   -> BS.ByteString
   -> IO (ProjectBaseContext, [TargetSelector])
-handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
+handleScriptCase verbosity pol baseCtx tmpDir scriptContents = do
   (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
 
   -- We need to create a dummy package that lives in our dummy project.
@@ -453,7 +455,7 @@ handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
     sourcePackage = SourcePackage
       { packageInfoId         = pkgId
       , SP.packageDescription = genericPackageDescription
-      , packageSource         = LocalUnpackedPackage tempDir
+      , packageSource         = LocalUnpackedPackage tmpDir
       , packageDescrOverride  = Nothing
       }
     genericPackageDescription  = emptyGenericPackageDescription
@@ -477,8 +479,8 @@ handleScriptCase verbosity pol baseCtx tempDir scriptContents = do
       }
     pkgId = fakePackageId
 
-  writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-  BS.writeFile (tempDir </> mainName) contents'
+  writeGenericPackageDescription (tmpDir </> "fake-package.cabal") genericPackageDescription
+  BS.writeFile (tmpDir </> mainName) contents'
 
   let
     baseCtx' = baseCtx

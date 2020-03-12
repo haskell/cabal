@@ -15,6 +15,8 @@ module Distribution.Client.CmdInstall (
     TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget,
+    -- * Internals exposed for CmdRepl + CmdRun
+    establishDummyDistDirLayout,
     establishDummyProjectBaseContext
   ) where
 
@@ -28,6 +30,7 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
+import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
@@ -43,6 +46,10 @@ import Distribution.Package
          ( Package(..), PackageName, mkPackageName, unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
+import Distribution.Client.ProjectConfig
+         ( ProjectPackageLocation(..)
+         , fetchAndReadSourcePackages
+         )
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
@@ -135,6 +142,7 @@ import Data.Ord
 import qualified Data.Map as Map
 import Distribution.Utils.NubList
          ( fromNubList )
+import Network.URI (URI)
 import System.Directory
          ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
@@ -261,7 +269,7 @@ installAction ( configFlags, configExFlags, installFlags
     targetFilter   = if installLibs then Just LibKind else Just ExeKind
     targetStrings' = if null targetStrings then ["."] else targetStrings
 
-    withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector], ProjectConfig)
+    withProject :: IO ([PackageSpecifier UnresolvedSourcePackage], [URI], [TargetSelector], ProjectConfig)
     withProject = do
       let verbosity' = lessVerbose verbosity
 
@@ -291,7 +299,7 @@ installAction ( configFlags, configExFlags, installFlags
           flip TargetPackageNamed targetFilter . pkgName <$> packageIds
 
       if null targetStrings'
-        then return (packageSpecifiers, packageTargets, projectConfig localBaseCtx)
+        then return (packageSpecifiers, [], packageTargets, projectConfig localBaseCtx)
         else do
           targetSelectors <-
             either (reportTargetSelectorProblems verbosity) return
@@ -396,16 +404,13 @@ installAction ( configFlags, configExFlags, installFlags
               else return (local ++ hackagePkgs, targets' ++ hackageTargets)
 
           return ( specs ++ packageSpecifiers
+                 , []
                  , selectors ++ packageTargets
                  , projectConfig localBaseCtx )
 
-    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [TargetSelector], ProjectConfig)
+    withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [URI], [TargetSelector], ProjectConfig)
     withoutProject globalConfig = do
-      let
-        parsePkg pkgName
-          | Just (pkg :: PackageId) <- simpleParse pkgName = return pkg
-          | otherwise = die' verbosity ("Invalid package ID: " ++ pkgName)
-      packageIds <- mapM parsePkg targetStrings'
+      tss <- mapM (parseWithoutProjectTargetSelector verbosity) targetStrings'
 
       cabalDir <- getCabalDir
       let
@@ -431,31 +436,28 @@ installAction ( configFlags, configExFlags, installFlags
                                             verbosity buildSettings
                                             (getSourcePackages verbosity)
 
-      for_ targetStrings' $ \case
-            name
-              | null (lookupPackageName packageIndex (mkPackageName name))
-              , xs@(_:_) <- searchByName packageIndex name ->
-                die' verbosity . concat $
-                            [ "Unknown package \"", name, "\". "
-                            , "Did you mean any of the following?\n"
-                            , unlines (("- " ++) . unPackageName . fst <$> xs)
-                            ]
-            _ -> return ()
+      for_ (concatMap woPackageNames tss) $ \name -> do
+        when (null (lookupPackageName packageIndex name)) $ do
+          let xs = searchByName packageIndex (unPackageName name)
+          let emptyIf True  _  = []
+              emptyIf False zs = zs
+          die' verbosity $ concat $
+            [ "Unknown package \"", unPackageName name, "\". "
+            ] ++ emptyIf (null xs)
+            [ "Did you mean any of the following?\n"
+            , unlines (("- " ++) . unPackageName . fst <$> xs)
+            ]
 
       let
-        packageSpecifiers = flip fmap packageIds $ \case
-          PackageIdentifier{..}
-            | pkgVersion == nullVersion -> NamedPackage pkgName []
-            | otherwise                 -> NamedPackage pkgName
-                                           [PackagePropertyVersion
-                                            (thisVersion pkgVersion)]
-        packageTargets = flip TargetPackageNamed Nothing . pkgName <$> packageIds
-      return (packageSpecifiers, packageTargets, projectConfig)
+        (uris, packageSpecifiers) = partitionEithers $ map woPackageSpecifiers tss
+        packageTargets            = map woPackageTargets tss
+
+      return (packageSpecifiers, uris, packageTargets, projectConfig)
 
   let
     ignoreProject = fromFlagOrDefault False (cinstIgnoreProject clientInstallFlags)
 
-  (specs, selectors, config) <-
+  (specs, uris, selectors, config) <-
      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
 
   home <- getHomeDirectory
@@ -558,16 +560,21 @@ installAction ( configFlags, configExFlags, installFlags
       envSpecs' | installLibs = envSpecs
                 | otherwise   = []
 
-  withTempDirectory
-    verbosity
-    globalTmp
-    "cabal-install."
-    $ \tmpDir -> do
+  withTempDirectory verbosity globalTmp "cabal-install." $ \tmpDir -> do
+    distDirLayout <- establishDummyDistDirLayout verbosity config tmpDir
+
+    uriSpecs <- runRebuild tmpDir $ fetchAndReadSourcePackages
+      verbosity
+      distDirLayout
+      (projectConfigShared config)
+      (projectConfigBuildOnly config)
+      [ ProjectPackageRemoteTarball uri | uri <- uris ]
+
     baseCtx <- establishDummyProjectBaseContext
                  verbosity
                  config
-                 tmpDir
-                 (envSpecs' ++ specs)
+                 distDirLayout
+                 (envSpecs' ++ specs ++ uriSpecs)
                  InstallCommand
 
     buildCtx <-
@@ -874,20 +881,14 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
 establishDummyProjectBaseContext
   :: Verbosity
   -> ProjectConfig
-  -> FilePath
+  -> DistDirLayout
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
   -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig tmpDir
-                                 localPackages currentCommand = do
+establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
     cabalDir <- getCabalDir
-
-    -- Create the dist directories
-    createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout
-    createDirectoryIfMissingVerbose verbosity True $
-      distProjectCacheDirectory distDirLayout
 
     globalConfig <- runRebuild ""
                   $ readGlobalConfig verbosity
@@ -919,13 +920,21 @@ establishDummyProjectBaseContext verbosity cliConfig tmpDir
       buildSettings,
       currentCommand
     }
+
+establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
+establishDummyDistDirLayout verbosity cliConfig tmpDir = do
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory
+
+    -- Create the dist directories
+    createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout
+    createDirectoryIfMissingVerbose verbosity True $ distProjectCacheDirectory distDirLayout
+
+    return distDirLayout
   where
     mdistDirectory = flagToMaybe
                    $ projectConfigDistDir
                    $ projectConfigShared cliConfig
     projectRoot = ProjectRootImplicit tmpDir
-    distDirLayout = defaultDistDirLayout projectRoot
-                                         mdistDirectory
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

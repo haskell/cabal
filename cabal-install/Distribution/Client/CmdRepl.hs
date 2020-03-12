@@ -25,7 +25,9 @@ import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdInstall
-         ( establishDummyProjectBaseContext )
+         ( establishDummyDistDirLayout 
+         , establishDummyProjectBaseContext
+         )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
@@ -419,11 +421,12 @@ withoutProject config verbosity extraArgs = do
   cwd <- getCurrentDirectory
   writeFile ghciScriptPath (":cd " ++ cwd)
 
+  distDirLayout <- establishDummyDistDirLayout verbosity config tempDir
   baseCtx <- 
     establishDummyProjectBaseContext
       verbosity
       config
-      tempDir
+      distDirLayout
       [SpecificSourcePackage sourcePackage]
       OtherCommand
 
