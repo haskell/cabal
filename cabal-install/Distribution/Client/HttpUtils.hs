@@ -43,7 +43,7 @@ import Distribution.Simple.Utils
 import Distribution.Client.Utils
          ( withTempFileName )
 import Distribution.Client.Types
-         ( RemoteRepo(..) )
+         ( unRepoName, RemoteRepo(..) )
 import Distribution.System
          ( buildOS, buildArch )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -204,8 +204,8 @@ remoteRepoCheckHttps :: Verbosity -> HttpTransport -> RemoteRepo -> IO ()
 remoteRepoCheckHttps verbosity transport repo
   | uriScheme (remoteRepoURI repo) == "https:"
   , not (transportSupportsHttps transport)
-              = die' verbosity $ "The remote repository '" ++ remoteRepoName repo
-                   ++ "' specifies a URL that " ++ requiresHttpsErrorMessage
+  = die' verbosity $ "The remote repository '" ++ unRepoName (remoteRepoName repo)
+    ++ "' specifies a URL that " ++ requiresHttpsErrorMessage
   | otherwise = return ()
 
 transportCheckHttps :: Verbosity -> HttpTransport -> URI -> IO ()

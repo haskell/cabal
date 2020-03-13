@@ -886,7 +886,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
   [ do dotCabal <- getCabalDir
        let logFileName = prettyShow (BuildReports.package report) <.> "log"
            logFile     = logsDir </> logFileName
-           reportsDir  = dotCabal </> "reports" </> remoteRepoName remoteRepo
+           reportsDir  = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
            reportFile  = reportsDir </> logFileName
 
        handleMissingLogFile $ do

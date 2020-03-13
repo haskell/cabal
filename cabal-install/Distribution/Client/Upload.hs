@@ -1,7 +1,7 @@
 module Distribution.Client.Upload (upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
-                                 , RemoteRepo(..), maybeRepoRemote )
+                                 , RemoteRepo(..), maybeRepoRemote, unRepoName )
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 import Distribution.Client.Setup
@@ -177,7 +177,7 @@ report verbosity repoCtxt mUsername mPassword = do
       let auth        = (username, password)
 
       dotCabal <- getCabalDir
-      let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
+      let srcDir = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
       -- We don't want to bomb out just because we haven't built any packages
       -- from this repo yet.
       srcExists <- doesDirectoryExist srcDir

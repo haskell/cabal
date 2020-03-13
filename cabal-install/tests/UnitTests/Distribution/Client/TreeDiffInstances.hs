@@ -90,6 +90,7 @@ instance ToExpr RelaxedDep
 instance ToExpr RemoteRepo
 instance ToExpr ReorderGoals
 instance ToExpr RepoKind
+instance ToExpr RepoName
 instance ToExpr RepoType
 instance ToExpr ReportLevel
 instance ToExpr ShortText

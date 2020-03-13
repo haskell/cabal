@@ -17,7 +17,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), LocalRepo (..), localRepoCacheKey )
+         ( Repo(..), unRepoName, RemoteRepo(..), LocalRepo (..), localRepoCacheKey )
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -162,7 +162,7 @@ withRepoContext' verbosity remoteRepos localRepos localNoIndexRepos
                  sharedCacheDir httpTransport ignoreExpiry extraPaths = \callback -> do
     for_ localNoIndexRepos $ \local ->
         unless (FilePath.Posix.isAbsolute (localRepoPath local)) $
-            warn verbosity $ "file+noindex " ++ localRepoName local ++ " repository path is not absolute; this is fragile, and not recommended"
+            warn verbosity $ "file+noindex " ++ unRepoName (localRepoName local) ++ " repository path is not absolute; this is fragile, and not recommended"
 
     transportRef <- newMVar Nothing
     let httpLib = Sec.HTTP.transportAdapter
@@ -185,7 +185,7 @@ withRepoContext' verbosity remoteRepos localRepos localNoIndexRepos
     allRemoteRepos =
       [ (if isSecure then RepoSecure else RepoRemote) remote cacheDir
       | remote <- remoteRepos
-      , let cacheDir = sharedCacheDir </> remoteRepoName remote
+      , let cacheDir = sharedCacheDir </> unRepoName (remoteRepoName remote)
             isSecure = remoteRepoSecure remote == Just True
       ]
 

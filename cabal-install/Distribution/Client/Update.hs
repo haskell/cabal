@@ -20,7 +20,7 @@ import Distribution.Simple.Setup
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), maybeRepoRemote )
+         ( Repo(..), RemoteRepo(..), maybeRepoRemote, unRepoName )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
@@ -33,8 +33,8 @@ import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
          ( RepoContext(..), UpdateFlags(..) )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
 
 import Distribution.Simple.Utils
@@ -61,10 +61,10 @@ update verbosity updateFlags repoCtxt = do
     [] -> return ()
     [remoteRepo] ->
         notice verbosity $ "Downloading the latest package list from "
-                        ++ remoteRepoName remoteRepo
+                        ++ unRepoName (remoteRepoName remoteRepo)
     _ -> notice verbosity . unlines
             $ "Downloading the latest package lists from: "
-            : map (("- " ++) . remoteRepoName) remoteRepos
+            : map (("- " ++) . unRepoName . remoteRepoName) remoteRepos
   jobCtrl <- newParallelJobControl (length repos)
   mapM_ (spawnJob jobCtrl . updateRepo verbosity updateFlags repoCtxt) repos
   mapM_ (\_ -> collectJob jobCtrl) repos
@@ -108,4 +108,4 @@ updateRepo verbosity updateFlags repoCtxt repo = do
       when (current_ts /= nullTimestamp) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
-          "    cabal update --index-state='" ++ display current_ts ++ "'\n"
+          "    cabal update --index-state='" ++ prettyShow current_ts ++ "'\n"

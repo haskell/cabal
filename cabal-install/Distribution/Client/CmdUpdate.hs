@@ -24,7 +24,7 @@ import Distribution.Client.ProjectConfig
          , projectConfigWithSolverRepoContext
          , withProjectOrGlobalConfig )
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), isRepoRemote )
+         ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
@@ -45,12 +45,12 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp, indexBaseName )
-import Distribution.Deprecated.Text
-         ( Text(..), display, simpleParse )
+import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Parsec (Parsec (..), simpleParsec)
 
 import Data.Maybe (fromJust)
-import qualified Distribution.Deprecated.ReadP  as ReadP
-import qualified Text.PrettyPrint           as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint                as Disp
 
 import Control.Monad (mapM, mapM_)
 import qualified Data.ByteString.Lazy       as BS
@@ -100,21 +100,18 @@ updateCommand = Client.installCommand {
   }
 
 data UpdateRequest = UpdateRequest
-  { _updateRequestRepoName :: String
+  { _updateRequestRepoName  :: RepoName
   , _updateRequestRepoState :: IndexState
   } deriving (Show)
 
-instance Text UpdateRequest where
-  disp (UpdateRequest n s) = Disp.text n Disp.<> Disp.char ',' Disp.<> disp s
-  parse = parseWithState ReadP.+++ parseHEAD
-    where parseWithState = do
-            name <- ReadP.many1 (ReadP.satisfy (\c -> c /= ','))
-            _ <- ReadP.char ','
-            state <- parse
-            return (UpdateRequest name state)
-          parseHEAD = do
-            name <- ReadP.manyTill (ReadP.satisfy (\c -> c /= ',')) ReadP.eof
-            return (UpdateRequest name IndexStateHead)
+instance Pretty UpdateRequest where
+    pretty (UpdateRequest n s) = pretty n <<>> Disp.comma <<>> pretty s
+
+instance Parsec UpdateRequest where
+  parsec = do
+      name <- parsec
+      state <- P.char ',' *> parsec <|> pure IndexStateHead
+      return (UpdateRequest name state)
 
 updateAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
                 , HaddockFlags, TestFlags, BenchmarkFlags )
@@ -132,7 +129,7 @@ updateAction ( configFlags, configExFlags, installFlags
     let repos       = filter isRepoRemote $ repoContextRepos repoCtxt
         repoName    = remoteRepoName . repoRemote
         parseArg :: String -> IO UpdateRequest
-        parseArg s = case simpleParse s of
+        parseArg s = case simpleParsec s of
           Just r -> return r
           Nothing -> die' verbosity $
                      "'v2-update' unable to parse repo: \"" ++ s ++ "\""
@@ -144,9 +141,9 @@ updateAction ( configFlags, configExFlags, installFlags
                             , not (r `elem` remoteRepoNames)]
       unless (null unknownRepos) $
         die' verbosity $ "'v2-update' repo(s): \""
-                         ++ intercalate "\", \"" unknownRepos
+                         ++ intercalate "\", \"" (map unRepoName unknownRepos)
                          ++ "\" can not be found in known remote repo(s): "
-                         ++ intercalate ", " remoteRepoNames
+                         ++ intercalate ", " (map unRepoName remoteRepoNames)
 
     let reposToUpdate :: [(Repo, IndexState)]
         reposToUpdate = case updateRepoRequests of
@@ -162,10 +159,10 @@ updateAction ( configFlags, configExFlags, installFlags
       [] -> return ()
       [(remoteRepo, _)] ->
         notice verbosity $ "Downloading the latest package list from "
-                        ++ repoName remoteRepo
+                        ++ unRepoName (repoName remoteRepo)
       _ -> notice verbosity . unlines
               $ "Downloading the latest package lists from: "
-              : map (("- " ++) . repoName . fst) reposToUpdate
+              : map (("- " ++) . unRepoName . repoName . fst) reposToUpdate
 
     jobCtrl <- newParallelJobControl (length reposToUpdate)
     mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
@@ -224,5 +221,4 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       when (current_ts /= nullTimestamp) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
-          "    cabal v2-update '" ++ remoteRepoName (repoRemote repo)
-          ++ "," ++ display current_ts ++ "'\n"
+          "    cabal v2-update '" ++ prettyShow (UpdateRequest (remoteRepoName (repoRemote repo)) (IndexStateTime current_ts)) ++ "'\n"

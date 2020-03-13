@@ -1,6 +1,7 @@
 module UnitTests.Distribution.Client.IndexUtils.Timestamp (tests) where
 
-import Distribution.Deprecated.Text
+import Distribution.Parsec (simpleParsec)
+import Distribution.Pretty (prettyShow)
 import Data.Time
 import Data.Time.Clock.POSIX
 
@@ -19,24 +20,24 @@ tests =
     ]
 
 -- test unixtime format parsing
-prop_timestamp1 :: Int -> Bool
-prop_timestamp1 t0 = Just t == simpleParse ('@':show t0)
+prop_timestamp1 :: NonNegative Int -> Bool
+prop_timestamp1 (NonNegative t0) = Just t == simpleParsec ('@':show t0)
   where
     t = toEnum t0 :: Timestamp
 
--- test display/simpleParse roundtrip
+-- test prettyShow/simpleParse roundtrip
 prop_timestamp2 :: Int -> Bool
 prop_timestamp2 t0
-  | t /= nullTimestamp  = simpleParse (display t) == Just t
-  | otherwise           = display t == ""
+  | t /= nullTimestamp  = simpleParsec (prettyShow t) == Just t
+  | otherwise           = prettyShow t == ""
   where
     t = toEnum t0 :: Timestamp
 
--- test display against reference impl
+-- test prettyShow against reference impl
 prop_timestamp3 :: Int -> Bool
 prop_timestamp3 t0
-  | t /= nullTimestamp  = refDisp t == display t
-  | otherwise           = display t == ""
+  | t /= nullTimestamp  = refDisp t == prettyShow t
+  | otherwise           = prettyShow t == ""
   where
     t = toEnum t0 :: Timestamp
 

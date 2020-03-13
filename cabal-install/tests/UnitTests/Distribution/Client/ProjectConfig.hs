@@ -11,6 +11,7 @@ import Control.Applicative
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
+import Data.Char (isAlphaNum)
 
 import Distribution.Deprecated.ParseUtils
 import Distribution.Deprecated.Text as Text
@@ -819,11 +820,11 @@ instance Arbitrary PackageDB where
 instance Arbitrary RemoteRepo where
     arbitrary =
       RemoteRepo
-        <$> arbitraryShortToken `suchThat` (not . (":" `isPrefixOf`))
+        <$> arbitrary
         <*> arbitrary  -- URI
         <*> arbitrary
         <*> listOf arbitraryRootKey
-        <*> (fmap getNonNegative arbitrary)
+        <*> fmap getNonNegative arbitrary
         <*> pure False
       where
         arbitraryRootKey =
@@ -832,9 +833,13 @@ instance Arbitrary RemoteRepo where
 
 instance Arbitrary LocalRepo where
     arbitrary = LocalRepo
-        <$> arbitraryShortToken `suchThat` (not . (":" `isPrefixOf`))
+        <$> arbitrary
         <*> elements ["/tmp/foo", "/tmp/bar"] -- TODO: generate valid absolute paths
         <*> arbitrary
+
+instance Arbitrary RepoName where
+    arbitrary = RepoName <$> shortListOf1 10 (elements repochars) where
+        repochars = [ c | c <- [ '\NUL' .. '\255' ], isAlphaNum c || c `elem` ".-_" ]
 
 instance Arbitrary UserConstraintScope where
     arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary

@@ -53,6 +53,7 @@ import Distribution.Deprecated.ViewAsFieldDescr
 import Distribution.Client.Types
          ( RemoteRepo(..), LocalRepo (..), Username(..), Password(..), emptyRemoteRepo
          , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
+         , RepoName (..), unRepoName
          )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
@@ -64,8 +65,7 @@ import Distribution.Client.Setup
          , initOptions
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
-         , ReportFlags(..), reportCommand
-         , showRemoteRepo, parseRemoteRepo, readRemoteRepo )
+         , ReportFlags(..), reportCommand )
 import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
@@ -128,6 +128,8 @@ import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Compat.Semigroup
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
+import Distribution.Parsec (parsec, simpleParsec)
+import Distribution.Pretty (pretty)
 import Text.PrettyPrint
          ( ($+$) )
 import Text.PrettyPrint.HughesPJ
@@ -645,8 +647,9 @@ defaultUserInstall = True
 defaultRemoteRepo :: RemoteRepo
 defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
   where
-    name = "hackage.haskell.org"
-    uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
+    str  = "hackage.haskell.org"
+    name = RepoName str
+    uri  = URI "http:" (Just (URIAuth "" str "")) "/" "" ""
     -- Note that lots of old ~/.cabal/config files will have the old url
     -- http://hackage.haskell.org/packages/archive
     -- but new config files can use the new url (without the /packages/archive)
@@ -1037,7 +1040,7 @@ deprecatedFieldDescriptions :: [FieldDescr SavedConfig]
 deprecatedFieldDescriptions =
   [ liftGlobalFlag $
     listField "repos"
-      (Disp.text . showRemoteRepo) parseRemoteRepo
+      pretty parsec
       (fromNubList . globalRemoteRepos)
       (\rs cfg -> cfg { globalRemoteRepos = toNubList rs })
   , liftGlobalFlag $
@@ -1196,7 +1199,9 @@ parseConfig src initial = \str -> do
 
     parseSections (rs, ls, h, i, u, g, p, a)
                  (ParseUtils.Section lineno "repository" name fs) = do
-      r' <- parseFields remoteRepoFields (emptyRemoteRepo name) fs
+      name' <- maybe (ParseFailed $ NoParse "repository name" lineno) return $
+          simpleParsec name
+      r' <- parseFields remoteRepoFields (emptyRemoteRepo name') fs
       r'' <- postProcessRepo lineno name r'
       case r'' of
           Left local   -> return (rs,        local:ls, h, i, u, g, p, a)
@@ -1204,7 +1209,7 @@ parseConfig src initial = \str -> do
 
     parseSections (rs, ls, h, i, u, g, p, a)
                  (ParseUtils.F lno "remote-repo" raw) = do
-      let mr' = readRemoteRepo raw
+      let mr' = simpleParsec raw
       r' <- maybe (ParseFailed $ NoParse "remote-repo" lno) return mr'
       return (r':rs, ls, h, i, u, g, p, a)
 
@@ -1253,10 +1258,13 @@ parseConfig src initial = \str -> do
       return accum
 
 postProcessRepo :: Int -> String -> RemoteRepo -> ParseResult (Either LocalRepo RemoteRepo)
-postProcessRepo lineno reponame repo0 = do
-    when (null reponame) $
+postProcessRepo lineno reponameStr repo0 = do
+    when (null reponameStr) $
         syntaxError lineno $ "a 'repository' section requires the "
                           ++ "repository name as an argument"
+
+    reponame <- maybe (fail $ "Invalid repository name " ++ reponameStr) return $
+        simpleParsec reponameStr
 
     case uriScheme (remoteRepoURI repo0) of
         -- TODO: check that there are no authority, query or fragment
@@ -1329,7 +1337,7 @@ installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
 
 ppRemoteRepoSection :: RemoteRepo -> RemoteRepo -> Doc
-ppRemoteRepoSection def vals = ppSection "repository" (remoteRepoName vals)
+ppRemoteRepoSection def vals = ppSection "repository" (unRepoName (remoteRepoName vals))
     remoteRepoFields (Just def) vals
 
 remoteRepoFields :: [FieldDescr RemoteRepo]

@@ -223,13 +223,13 @@ getSourcePackagesAtIndexState verbosity repoCtxt _
       }
 getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
   let describeState IndexStateHead        = "most recent state"
-      describeState (IndexStateTime time) = "historical state as of " ++ display time
+      describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
   pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
       let rname =  case r of
-              RepoRemote remote _      -> remoteRepoName remote
-              RepoSecure remote _      -> remoteRepoName remote
-              RepoLocalNoIndex local _ -> localRepoName local
+              RepoRemote remote _      -> unRepoName $ remoteRepoName remote
+              RepoSecure remote _      -> unRepoName $ remoteRepoName remote
+              RepoLocalNoIndex local _ -> unRepoName $ localRepoName local
               RepoLocal _              -> ""
 
       info verbosity ("Reading available packages of " ++ rname ++ "...")
@@ -265,25 +265,24 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
 
       case idxState' of
         IndexStateHead -> do
-            info verbosity ("index-state("++rname++") = " ++
-                              display (isiHeadTime isi))
+            info verbosity ("index-state("++rname++") = " ++ prettyShow (isiHeadTime isi))
             return ()
         IndexStateTime ts0 -> do
             when (isiMaxTime isi /= ts0) $
                 if ts0 > isiMaxTime isi
                     then warn verbosity $
-                                   "Requested index-state " ++ display ts0
+                                   "Requested index-state " ++ prettyShow ts0
                                 ++ " is newer than '" ++ rname ++ "'!"
                                 ++ " Falling back to older state ("
-                                ++ display (isiMaxTime isi) ++ ")."
+                                ++ prettyShow (isiMaxTime isi) ++ ")."
                     else info verbosity $
-                                   "Requested index-state " ++ display ts0
+                                   "Requested index-state " ++ prettyShow ts0
                                 ++ " does not exist in '"++rname++"'!"
                                 ++ " Falling back to older state ("
-                                ++ display (isiMaxTime isi) ++ ")."
+                                ++ prettyShow (isiMaxTime isi) ++ ")."
             info verbosity ("index-state("++rname++") = " ++
-                              display (isiMaxTime isi) ++ " (HEAD = " ++
-                              display (isiHeadTime isi) ++ ")")
+                              prettyShow (isiMaxTime isi) ++ " (HEAD = " ++
+                              prettyShow (isiHeadTime isi) ++ ")")
 
       pure (pis,deps)
 
@@ -346,7 +345,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
             ++ "' is missing. The repo is invalid."
           RepoLocalNoIndex local _ -> warn verbosity $
               "Error during construction of local+noindex "
-              ++ localRepoName local ++ " repository index: "
+              ++ unRepoName (localRepoName local) ++ " repository index: "
               ++ show e
         return (mempty,mempty,emptyStateInfo)
       else ioError e
@@ -360,10 +359,10 @@ readRepoIndex verbosity repoCtxt repo idxState =
         RepoLocalNoIndex {} -> return ()
 
     errMissingPackageList repoRemote =
-         "The package list for '" ++ remoteRepoName repoRemote
+         "The package list for '" ++ unRepoName (remoteRepoName repoRemote)
       ++ "' does not exist. Run 'cabal update' to download it." ++ show repoRemote
     errOutdatedPackageList repoRemote dt =
-         "The package list for '" ++ remoteRepoName repoRemote
+         "The package list for '" ++ unRepoName (remoteRepoName repoRemote)
       ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
       ++ "'cabal update' to get the latest list of available packages."
 
@@ -603,7 +602,7 @@ updatePackageIndexCacheFile verbosity index = do
                           }
         writeIndexCache index cache
         info verbosity ("Index cache updated to index-state "
-                        ++ display (cacheHeadTs cache))
+                        ++ prettyShow (cacheHeadTs cache))
 
     callbackNoIndex entries = do
         writeNoIndexCache verbosity index $ NoIndexCache entries
@@ -687,14 +686,14 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
                     Just ce -> return (Just ce)
                     Nothing -> die' verbosity $ "Cannot read .cabal file inside " ++ file
 
-    info verbosity $ "Entries in file+noindex repository " ++ name
+    info verbosity $ "Entries in file+noindex repository " ++ unRepoName name
     for_ entries $ \(CacheGPD gpd _) ->
         info verbosity $ "- " ++ prettyShow (package $ Distribution.PackageDescription.packageDescription gpd)
 
     callback entries
   where
     handler :: IOException -> IO a
-    handler e = die' verbosity $ "Error while updating index for " ++ name ++ " repository " ++ show e
+    handler e = die' verbosity $ "Error while updating index for " ++ unRepoName name ++ " repository " ++ show e
 
     isTarGz :: FilePath -> Maybe PackageIdentifier
     isTarGz fp = do
@@ -924,7 +923,7 @@ writeNoIndexCache verbosity index cache = do
 -- | Write the 'IndexState' to the filesystem
 writeIndexTimestamp :: Index -> IndexState -> IO ()
 writeIndexTimestamp index st
-  = writeFile (timestampFile index) (display st)
+  = writeFile (timestampFile index) (prettyShow st)
 
 -- | Read out the "current" index timestamp, i.e., what
 -- timestamp you would use to revert to this version
@@ -940,7 +939,7 @@ currentIndexTimestamp verbosity repoCtxt r = do
 -- | Read the 'IndexState' from the filesystem
 readIndexTimestamp :: Index -> IO (Maybe IndexState)
 readIndexTimestamp index
-  = fmap simpleParse (readFile (timestampFile index))
+  = fmap simpleParsec (readFile (timestampFile index))
         `catchIO` \e ->
             if isDoesNotExistError e
                 then return Nothing
