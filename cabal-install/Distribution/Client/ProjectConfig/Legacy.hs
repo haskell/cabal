@@ -27,8 +27,8 @@ import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
-         ( RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
-         , AllowNewer(..), AllowOlder(..) )
+         ( RepoName (..), RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
+         , AllowNewer(..), AllowOlder(..), unRepoName )
 import Distribution.Client.SourceRepo (sourceRepositoryPackageGrammar, SourceRepoList)
 
 import Distribution.Client.Config
@@ -1397,7 +1397,7 @@ programDbOptions progDb showOrParseArgs get' set =
 remoteRepoSectionDescr :: SectionDescr GlobalFlags
 remoteRepoSectionDescr = SectionDescr
     { sectionName        = "repository"
-    , sectionEmpty       = emptyRemoteRepo ""
+    , sectionEmpty       = emptyRemoteRepo (RepoName "")
     , sectionFields      = remoteRepoFields
     , sectionSubsections = []
     , sectionGet         = getS
@@ -1406,9 +1406,9 @@ remoteRepoSectionDescr = SectionDescr
   where
     getS :: GlobalFlags -> [(String, RemoteRepo)]
     getS gf =
-        map (\x->(remoteRepoName x, x)) (fromNubList (globalRemoteRepos gf))
+        map (\x->(unRepoName $ remoteRepoName x, x)) (fromNubList (globalRemoteRepos gf))
         ++
-        map (\x->(localRepoName x, localToRemote x)) (fromNubList (globalLocalNoIndexRepos gf))
+        map (\x->(unRepoName $ localRepoName x, localToRemote x)) (fromNubList (globalLocalNoIndexRepos gf))
 
     setS :: Int -> String -> RemoteRepo -> GlobalFlags -> ParseResult GlobalFlags
     setS lineno reponame repo0 conf = do

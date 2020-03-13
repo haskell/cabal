@@ -60,10 +60,6 @@ module Distribution.Client.Setup
     , parsePackageArgs
     , liftOptions
     , yesNoOpt
-    --TODO: stop exporting these:
-    , showRemoteRepo
-    , parseRemoteRepo
-    , readRemoteRepo
     ) where
 
 import Prelude ()
@@ -73,7 +69,7 @@ import Distribution.Deprecated.ReadP (readP_to_E)
 
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..)
-         , LocalRepo (..), emptyLocalRepo
+         , LocalRepo (..)
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , WriteGhcEnvironmentFilesPolicy(..)
          )
@@ -89,6 +85,8 @@ import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
+import Distribution.Parsec (simpleParsec, parsec)
+import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
@@ -131,9 +129,9 @@ import Distribution.System ( Platform )
 import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), succeedReadE )
+         ( ReadE(..), succeedReadE, parsecToReadE )
 import qualified Distribution.Deprecated.ReadP as Parse
-         ( ReadP, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, char, sepBy1, (+++) )
 import Distribution.Deprecated.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
@@ -151,8 +149,6 @@ import Data.List
 import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
-import Network.URI
-         ( parseAbsoluteURI, uriToString )
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
 globalCommand commands = CommandUI {
@@ -1367,12 +1363,12 @@ updateCommand = CommandUI {
            "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
            "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD').")
           updateIndexState (\v flags -> flags { updateIndexState = v })
-          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+          (reqArg "STATE" (parsecToReadE (const $ "index-state must be a  " ++
                                        "unix-timestamps (e.g. '@1474732068'), " ++
                                        "a ISO8601 UTC timestamp " ++
                                        "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
+                                      (toFlag `fmap` parsec))
+                          (flagToList . fmap prettyShow))
     ]
   }
 
@@ -1592,12 +1588,12 @@ getCommand = CommandUI {
            "This determines which package versions are available as well as " ++
            ".cabal file revision is selected (unless --pristine is used).")
           getIndexState (\v flags -> flags { getIndexState = v })
-          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+          (reqArg "STATE" (parsecToReadE (const $ "index-state must be a  " ++
                                        "unix-timestamps (e.g. '@1474732068'), " ++
                                        "a ISO8601 UTC timestamp " ++
                                        "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
+                                      (toFlag `fmap` parsec))
+                          (flagToList . fmap prettyShow))
 
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "
@@ -2081,12 +2077,12 @@ installOptions showOrParseArgs =
            "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
            "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD').")
           installIndexState (\v flags -> flags { installIndexState = v })
-          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+          (reqArg "STATE" (parsecToReadE (const $ "index-state must be a  " ++
                                        "unix-timestamps (e.g. '@1474732068'), " ++
                                        "a ISO8601 UTC timestamp " ++
                                        "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
+                                      (toFlag `fmap` parsec))
+                          (flagToList . fmap prettyShow))
 
       , option [] ["root-cmd"]
           "(No longer supported, do not use.)"
@@ -2974,41 +2970,16 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
         | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
 
 showRemoteRepo :: RemoteRepo -> String
-showRemoteRepo repo = remoteRepoName repo ++ ":"
-             ++ uriToString id (remoteRepoURI repo) []
+showRemoteRepo = prettyShow
 
 readRemoteRepo :: String -> Maybe RemoteRepo
-readRemoteRepo = readPToMaybe parseRemoteRepo
-
-parseRemoteRepo :: Parse.ReadP r RemoteRepo
-parseRemoteRepo = do
-  name   <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
-  _      <- Parse.char ':'
-  uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
-  uri    <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
-  return RemoteRepo {
-    remoteRepoName           = name,
-    remoteRepoURI            = uri,
-    remoteRepoSecure         = Nothing,
-    remoteRepoRootKeys       = [],
-    remoteRepoKeyThreshold   = 0,
-    remoteRepoShouldTryHttps = False
-  }
+readRemoteRepo = simpleParsec
 
 showLocalRepo :: LocalRepo -> String
-showLocalRepo repo = localRepoName repo ++ ":" ++ localRepoPath repo
+showLocalRepo = prettyShow
 
 readLocalRepo :: String -> Maybe LocalRepo
-readLocalRepo = readPToMaybe parseLocalRepo
-
-parseLocalRepo :: Parse.ReadP r LocalRepo
-parseLocalRepo = do
-  name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
-  _    <- Parse.char ':'
-  path <- Parse.munch1 (const True)
-  return $ (emptyLocalRepo name)
-    { localRepoPath = path
-    }
+readLocalRepo = simpleParsec
 
 -- ------------------------------------------------------------
 -- * Helpers for Documentation

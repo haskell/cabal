@@ -68,11 +68,15 @@ import Distribution.Deprecated.ParseUtils (parseOptCommaList)
 import Distribution.Simple.Utils (ordNub, toUTF8BS)
 import Distribution.Deprecated.Text (Text(..))
 
-import Network.URI (URI(..), nullURI)
+import Network.URI (URI(..), nullURI, uriToString, parseAbsoluteURI)
 import Control.Exception (Exception, SomeException)
 
 import qualified Text.PrettyPrint as Disp
+import qualified Distribution.Compat.CharParsing as P
 import qualified Data.ByteString.Lazy.Char8 as LBS
+
+import Distribution.Pretty (Pretty (..))
+import Distribution.Parsec (Parsec (..))
 
 
 newtype Username = Username { unUsername :: String }
@@ -268,6 +272,26 @@ pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
 -- * Package locations and repositories
 -- ------------------------------------------------------------
 
+-- | Repository name.
+--
+-- May be used as path segment.
+--
+newtype RepoName = RepoName String
+  deriving (Show, Eq, Ord, Generic)
+
+unRepoName :: RepoName -> String
+unRepoName (RepoName n) = n
+
+instance Binary RepoName
+instance Structured RepoName
+
+instance Pretty RepoName where
+    pretty = Disp.text . unRepoName
+
+instance Parsec RepoName where
+    parsec = RepoName <$>
+        P.munch1 (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')
+
 type UnresolvedPkgLoc = PackageLocation (Maybe FilePath)
 
 type ResolvedPkgLoc = PackageLocation FilePath
@@ -298,7 +322,7 @@ instance Structured local => Structured (PackageLocation local)
 
 data RemoteRepo =
     RemoteRepo {
-      remoteRepoName     :: String,
+      remoteRepoName     :: RepoName,
       remoteRepoURI      :: URI,
 
       -- | Enable secure access?
@@ -329,15 +353,36 @@ data RemoteRepo =
 instance Binary RemoteRepo
 instance Structured RemoteRepo
 
+instance Pretty RemoteRepo where
+    pretty r =
+        pretty (remoteRepoName r) <<>> Disp.colon <<>>
+        Disp.text (uriToString id (remoteRepoURI r) [])
+
+-- | Note: serialised format represends 'RemoteRepo' only partially.
+instance Parsec RemoteRepo where
+    parsec = do
+        name <- parsec
+        _ <- P.char ':'
+        uriStr <- P.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
+        uri <- maybe (fail $ "Cannot parse URI:" ++ uriStr) return (parseAbsoluteURI uriStr)
+        return RemoteRepo
+            { remoteRepoName           = name
+            , remoteRepoURI            = uri
+            , remoteRepoSecure         = Nothing
+            , remoteRepoRootKeys       = []
+            , remoteRepoKeyThreshold   = 0
+            , remoteRepoShouldTryHttps = False
+            }
+
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
-emptyRemoteRepo :: String -> RemoteRepo
+emptyRemoteRepo :: RepoName -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI Nothing [] 0 False
 
 -- | /no-index/ style local repositories.
 --
 -- https://github.com/haskell/cabal/issues/6359
 data LocalRepo = LocalRepo
-    { localRepoName        :: String
+    { localRepoName        :: RepoName
     , localRepoPath        :: FilePath
     , localRepoSharedCache :: Bool
     }
@@ -346,8 +391,19 @@ data LocalRepo = LocalRepo
 instance Binary LocalRepo
 instance Structured LocalRepo
 
+-- | Note: doesn't parse 'localRepoSharedCache' field.
+instance Parsec LocalRepo where
+    parsec = do
+        n <- parsec
+        _ <- P.char ':'
+        p <- P.munch1 (const True) -- restrict what can be a path?
+        return (LocalRepo n p False)
+
+instance Pretty LocalRepo where
+    pretty (LocalRepo n p _) = pretty n <<>> Disp.colon <<>> Disp.text p
+
 -- | Construct a partial 'LocalRepo' value to fold the field parser list over.
-emptyLocalRepo :: String -> LocalRepo
+emptyLocalRepo :: RepoName -> LocalRepo
 emptyLocalRepo name = LocalRepo name "" False
 
 -- | Calculate a cache key for local-repo.
@@ -356,7 +412,7 @@ emptyLocalRepo name = LocalRepo name "" False
 -- all be named "local", so we add a bit of `localRepoPath` into the
 -- mix.
 localRepoCacheKey :: LocalRepo -> String
-localRepoCacheKey local = localRepoName local ++ "-" ++ hashPart where
+localRepoCacheKey local = unRepoName (localRepoName local) ++ "-" ++ hashPart where
     hashPart
         = showHashValue $ truncateHash 8 $ hashValue
         $ LBS.fromStrict $ toUTF8BS $ localRepoPath local
@@ -369,7 +425,7 @@ data Repo =
     RepoLocal {
         repoLocalDir :: FilePath
       }
-  
+
     -- | Local repository, without index.
     --
     -- https://github.com/haskell/cabal/issues/6359
