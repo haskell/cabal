@@ -1,5 +1,10 @@
 -- | A small prelude used in @zinza@ generated
 -- template modules.
+
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Distribution.ZinzaPrelude (
     Writer,
     execWriter,
@@ -9,7 +14,7 @@ module Distribution.ZinzaPrelude (
     Generic,
     PackageName,
     Version,
-    prettyShow
+    prettyShowBuilder
     ) where
 
 import Distribution.Compat.Prelude
@@ -17,9 +22,11 @@ import Prelude ()
 
 import Control.Monad                  (forM_)
 import Data.ByteString.Builder        (Builder)
-import Distribution.Pretty            (prettyShow)
+import Distribution.Pretty            (Pretty, prettyShow)
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Types.Version     (Version)
+
+import qualified Data.ByteString.Builder as BSB
 
 newtype Writer a = W { unW :: Builder -> (Builder, a) }
 
@@ -40,5 +47,22 @@ instance Monad Writer where
 execWriter :: Writer a -> Builder
 execWriter w = fst (unW w mempty)
 
-tell :: Builder -> Writer ()
+tell :: BSB.Builder -> Writer ()
 tell s = W $ \s' -> (s' <> s, ())
+
+prettyShowBuilder :: Pretty a => a -> BSB.Builder
+prettyShowBuilder = BSB.string8 . prettyShow
+
+-- class ToBuilder a where
+--   tell :: a -> Writer ()
+--
+-- instance {-# OVERLAPPABLE #-} a ~ Builder => ToBuilder a where
+--   tell s = W $ \s' -> (s' <> s, ())
+--
+-- -- instance {-# OVERLAPS #-} ToBuilder String where
+-- --   {-# INLINE tell #-}
+-- --   tell = tell . BSB.string8
+-- --
+-- -- instance {-# OVERLAPS #-} ToBuilder Int where
+-- --   {-# INLINE tell #-}
+-- --   tell = tell . BSB.intDec

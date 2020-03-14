@@ -38,6 +38,9 @@ import Distribution.Types.PackageId
 import Distribution.Types.PackageName (unPackageName)
 import Distribution.Pretty
 
+import qualified Data.ByteString.Builder as BSB
+import qualified Data.ByteString.Char8 as BS
+
 import qualified Distribution.Simple.Build.Macros.Z as Z
 
 import Data.ByteString.Builder (Builder)
@@ -65,8 +68,9 @@ generateCabalMacrosHeader pkg_descr lbi clbi = Z.render Z.Z
     , Z.zComponentId     = prettyShow (componentComponentId clbi)
     , Z.zPackageVersion  = pkgVersion (package pkg_descr)
     , Z.zNotNull         = not . null
-    , Z.zManglePkgName   = map fixchar . unPackageName
-    , Z.zMangleStr       = map fixchar
+    , Z.zManglePkgName   = fixString . unPackageName
+    , Z.zMangleStr       = fixString
+    , Z.zMkBuilder       = BSB.stringUtf8
     }
   where
     getPid (_, MungedPackageId (MungedPackageName pn _) v) =
@@ -87,8 +91,9 @@ generatePackageVersionMacros ver pkgids = Z.render Z.Z
     , Z.zComponentId     = ""
     , Z.zPackageVersion  = ver
     , Z.zNotNull         = not . null
-    , Z.zManglePkgName   = map fixchar . unPackageName
-    , Z.zMangleStr       = map fixchar
+    , Z.zManglePkgName   = fixString . unPackageName
+    , Z.zMangleStr       = fixString
+    , Z.zMkBuilder       = BSB.stringUtf8
     }
 
 mkZPackage :: PackageId -> Z.ZPackage
@@ -112,3 +117,6 @@ majorMinor ver = case versionNumbers ver of
 fixchar :: Char -> Char
 fixchar '-' = '_'
 fixchar c   = c
+
+fixString :: String -> BSB.Builder
+fixString = BSB.byteString . BS.map fixchar . BS.pack

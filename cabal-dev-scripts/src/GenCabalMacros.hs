@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE GADTs               #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
@@ -15,6 +16,8 @@ import Zinza
        (ModuleConfig (..), Ty (..), Zinza (..), genericFromValueSFP, genericToTypeSFP,
        genericToValueSFP, parseAndCompileModuleIO)
 
+import qualified Data.ByteString.Builder as BSB
+
 import Capture
 
 -------------------------------------------------------------------------------
@@ -29,26 +32,27 @@ $(capture "decls" [d|
         , zComponentId     :: String
         , zPackageVersion  :: Version
         , zNotNull         :: String -> Bool
-        , zManglePkgName   :: PackageName -> String
-        , zMangleStr       :: String -> String
+        , zManglePkgName   :: PackageName -> BSB.Builder
+        , zMangleStr       :: String -> BSB.Builder
+        , zMkBuilder       :: String -> BSB.Builder
         }
       deriving (Generic)
 
     data ZPackage = ZPackage
         { zpkgName    :: PackageName
         , zpkgVersion :: Version
-        , zpkgX       :: String
-        , zpkgY       :: String
-        , zpkgZ       :: String
+        , zpkgX       :: !Int
+        , zpkgY       :: !Int
+        , zpkgZ       :: !Int
         }
       deriving (Generic)
 
     data ZTool = ZTool
         { ztoolName    :: String
         , ztoolVersion :: Version
-        , ztoolX       :: String
-        , ztoolY       :: String
-        , ztoolZ       :: String
+        , ztoolX       :: !Int
+        , ztoolY       :: !Int
+        , ztoolZ       :: !Int
         }
       deriving (Generic)
     |])
@@ -77,11 +81,14 @@ config :: ModuleConfig Z
 config = ModuleConfig
     { mcRender = "render"
     , mcHeader =
-        [ "{-# LANGUAGE DeriveGeneric #-}"
+        [ "{-# LANGUAGE DeriveGeneric     #-}"
+        , "{-# LANGUAGE OverloadedStrings #-}"
         , "module Distribution.Simple.Build.Macros.Z (render, Z(..), ZPackage (..), ZTool (..)) where"
+        , "import Data.ByteString.Builder (Builder)"
+        , "import qualified Data.ByteString.Builder as BSB"
         , "import Distribution.ZinzaPrelude"
         , decls
-        , "render :: Z -> String"
+        , "render :: Z -> BSB.Builder"
         ]
     }
 
@@ -109,11 +116,26 @@ instance Zinza ZTool where
 -------------------------------------------------------------------------------
 
 instance Zinza PackageName where
-    toType _    = TyString (Just "prettyShow")
+    toType _    = TyString (Just "prettyShowBuilder")
     toValue _   = error "not needed"
     fromValue _ = error "not needed"
 
 instance Zinza Version where
-    toType _    = TyString (Just "prettyShow")
+    toType _    = TyString (Just "prettyShowBuilder")
+    toValue _   = error "not needed"
+    fromValue _ = error "not needed"
+
+instance Zinza Int where
+    toType _    = TyString (Just "BSB.intDec")
+    toValue _   = error "not needed"
+    fromValue _ = error "not needed"
+
+instance Zinza BSB.Builder where
+    toType _    = TyString (Just "id")
+    toValue _   = error "not needed"
+    fromValue _ = error "not needed"
+
+instance Zinza (Maybe BSB.Builder) where
+    toType _    = TyString (Just "fromMaybe id")
     toValue _   = error "not needed"
     fromValue _ = error "not needed"

@@ -14,7 +14,7 @@
 {% endfor %}
 
 {% for tool in tools %}
-/* tool {{ tool.name }}-{{ tool.version }} */
+/* tool {{ mkBuilder tool.name }}-{{ tool.version }} */
 #ifndef TOOL_VERSION_{{ mangleStr tool.name }}
 #define TOOL_VERSION_{{ mangleStr tool.name }} "{{ tool.version }}"
 #endif /* TOOL_VERSION_{{ mangleStr tool.name }} */
@@ -28,12 +28,12 @@
 
 {% if notNull packageKey %}
 #ifndef CURRENT_PACKAGE_KEY
-#define CURRENT_PACKAGE_KEY "{{ packageKey }}"
+#define CURRENT_PACKAGE_KEY "{{ mkBuilder packageKey }}"
 #endif /* CURRENT_packageKey */
 {% endif %}
 {% if notNull componentId %}
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "{{ componentId }}"
+#define CURRENT_COMPONENT_ID "{{ mkBuilder componentId }}"
 #endif /* CURRENT_COMPONENT_ID */
 {% endif  %}
 #ifndef CURRENT_PACKAGE_VERSION
