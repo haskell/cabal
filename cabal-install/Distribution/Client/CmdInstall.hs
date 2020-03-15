@@ -835,24 +835,26 @@ installBuiltExe
 installBuiltExe verbosity overwritePolicy
                 sourceDir exeName finalExeName
                 installdir InstallMethodSymlink = do
-  notice verbosity $ "Symlinking '" <> exeName <> "'"
+  notice verbosity $ "Symlinking '" <> exeName <> "' to '" <> destination <> "'"
   symlinkBinary
     overwritePolicy
     installdir
     sourceDir
     finalExeName
     exeName
+  where
+    destination = installdir </> finalExeName
 installBuiltExe verbosity overwritePolicy
                 sourceDir exeName finalExeName
                 installdir InstallMethodCopy = do
-  notice verbosity $ "Copying '" <> exeName <> "'"
+  notice verbosity $ "Copying '" <> exeName <> "' to '" <> destination <> "'"
   exists <- doesPathExist destination
   case (exists, overwritePolicy) of
     (True , NeverOverwrite ) -> pure False
     (True , AlwaysOverwrite) -> remove >> copy
     (False, _              ) -> copy
   where
-    source = sourceDir </> exeName
+    source      = sourceDir </> exeName
     destination = installdir </> finalExeName
     remove = do
       isDir <- doesDirectoryExist destination
