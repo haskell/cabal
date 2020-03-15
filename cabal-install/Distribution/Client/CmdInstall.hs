@@ -845,7 +845,7 @@ installBuiltExe verbosity overwritePolicy
 installBuiltExe verbosity overwritePolicy
                 sourceDir exeName finalExeName
                 installdir InstallMethodCopy = do
-  notice verbosity $ "Copying '" <> exeName <> "'"
+  notice verbosity $ "Copying '" <> exeName <> "' to '" <> installdir <> "'"
   exists <- doesPathExist destination
   case (exists, overwritePolicy) of
     (True , NeverOverwrite ) -> pure False
