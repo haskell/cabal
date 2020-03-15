@@ -835,7 +835,7 @@ installBuiltExe
 installBuiltExe verbosity overwritePolicy
                 sourceDir exeName finalExeName
                 installdir InstallMethodSymlink = do
-  notice verbosity $ "Symlinking '" <> exeName <> "'"
+  notice verbosity $ "Symlinking '" <> exeName <> "' to '" <> installdir <> "'"
   symlinkBinary
     overwritePolicy
     installdir
