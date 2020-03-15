@@ -16,6 +16,7 @@
 	  --package-env` (#6298)
 	* `cabal v2-run` works with `.lhs` files (#6134)
 	* `subdir` in source-repository-package accepts multiple entries (#5472)
+	* 'cabal install' shows the resulting executable full path (symlinking and copying) (#6575)
 
 3.0.1.0 TBW December 2019
 	* Create store incoming directory
