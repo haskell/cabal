@@ -332,7 +332,7 @@ main = join (O.execParser opts)
         putStrLn $ show n ++ " files processed"
         putStrLn $ show w ++ " files contained warnings"
         putStrLn $ show f ++ " files failed to parse"
-        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9 :: Double) "s elapsed"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9 :: Double) " seconds elapsed"
 
     roundtripP = roundtripA <$> prefixP <*> testFieldsP
     roundtripA pfx testFieldsTransform = do
@@ -343,8 +343,8 @@ main = join (O.execParser opts)
     checkA pfx = do
         CheckResult n w x a b c d e <- parseIndex pfx parseCheckTest
         putStrLn $ show n ++ " files processed"
-        putStrLn $ show w ++ " have lexer/parser warnings"
-        putStrLn $ show x ++ " have check warnings"
+        putStrLn $ show w ++ " files have lexer/parser warnings"
+        putStrLn $ show x ++ " files have check warnings"
         putStrLn $ show a ++ " build impossible"
         putStrLn $ show b ++ " build warning"
         putStrLn $ show c ++ " build dist suspicious"

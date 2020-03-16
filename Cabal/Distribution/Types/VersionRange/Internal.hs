@@ -262,8 +262,40 @@ instance Pretty VersionRange where
         punct p p' | p < p'    = Disp.parens
                    | otherwise = id
 
+-- | 
+--
+-- >>> simpleParsec "^>= 3.4" :: Maybe VersionRange
+-- Just (MajorBoundVersion (mkVersion [3,4]))
+--
+-- Small history:
+--
+-- Set operations are introduced in 3.0
+--
+-- >>> map (`simpleParsec'` "^>= { 1.2 , 1.3 }") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe VersionRange]
+-- [Nothing,Just (UnionVersionRanges (MajorBoundVersion (mkVersion [1,2])) (MajorBoundVersion (mkVersion [1,3])))]
+--
+-- @^>=@ is introduced in 2.0
+--
+-- >>> map (`simpleParsec'` "^>=1.2") [CabalSpecV1_24, CabalSpecV2_0] :: [Maybe VersionRange]
+-- [Nothing,Just (MajorBoundVersion (mkVersion [1,2]))]
+--
+-- @-none@ is introduced in 1.22
+--
+-- >>> map (`simpleParsec'` "-none") [CabalSpecV1_20, CabalSpecV1_22] :: [Maybe VersionRange]
+-- [Nothing,Just (IntersectVersionRanges (LaterVersion (mkVersion [1])) (EarlierVersion (mkVersion [1])))]
+--
+-- Operators are introduced in 1.8. Issues only a warning.
+--
+-- >>> map (`simpleParsecW'` "== 1 || ==2") [CabalSpecV1_6, CabalSpecV1_8] :: [Maybe VersionRange]
+-- [Nothing,Just (UnionVersionRanges (ThisVersion (mkVersion [1])) (ThisVersion (mkVersion [2])))]
+--
+-- Wild-version ranges are introduced in 1.6. Issues only a warning.
+--
+-- >>> map (`simpleParsecW'` "== 1.2.*") [CabalSpecV1_4, CabalSpecV1_6] :: [Maybe VersionRange]
+-- [Nothing,Just (WildcardVersion (mkVersion [1,2]))]
+--
 instance Parsec VersionRange where
-    parsec = versionRangeParser versionDigitParser
+    parsec = askCabalSpecVersion >>= versionRangeParser versionDigitParser
 
 instance Described VersionRange where
     describe _ = RERec "version-range" $ REUnion
@@ -301,13 +333,14 @@ instance Described VersionRange where
 --   versions, 'PkgConfigVersionRange'.
 --
 -- @since 3.0
-versionRangeParser :: forall m. CabalParsing m => m Int -> m VersionRange
-versionRangeParser digitParser = expr
+versionRangeParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m VersionRange
+versionRangeParser digitParser csv = expr
       where
         expr   = do P.spaces
                     t <- term
                     P.spaces
                     (do _  <- P.string "||"
+                        checkOp
                         P.spaces
                         e <- expr
                         return (unionVersionRanges t e)
@@ -316,6 +349,7 @@ versionRangeParser digitParser = expr
         term   = do f <- factor
                     P.spaces
                     (do _  <- P.string "&&"
+                        checkOp
                         P.spaces
                         t <- term
                         return (intersectVersionRanges f t)
@@ -331,6 +365,7 @@ versionRangeParser digitParser = expr
                 "==" -> do
                     P.spaces
                     (do (wild, v) <- verOrWild
+                        checkWild wild
                         pure $ (if wild then withinVersion else thisVersion) v
                      <|>
                      (verSet' thisVersion =<< verSet))
@@ -356,6 +391,27 @@ versionRangeParser digitParser = expr
                         ">"   -> pure $ laterVersion v
                         _ -> fail $ "Unknown version operator " ++ show op
 
+        -- Cannot be warning
+        -- On 2020-03-16 there was around 27400 files on Hackage failing to parse due this
+        -- For example https://hackage.haskell.org/package/haxr-3000.0.0/haxr.cabal
+        --
+        checkOp = when (csv < CabalSpecV1_8) $
+            parsecWarning PWTVersionOperator $ unwords
+                [ "version operators used."
+                , "To use version operators the package needs to specify at least 'cabal-version: >= 1.8'."
+                ]
+
+        -- Cannot be warning
+        -- On 2020-03-16 there was 46 files on Hackage failing to parse due this
+        -- For example https://hackage.haskell.org/package/derive-0.1.2/derive.cabal
+        --
+        checkWild False = pure ()
+        checkWild True  = when (csv < CabalSpecV1_6) $
+            parsecWarning PWTVersionWildcard $ unwords
+                [ "Wildcard syntax used."
+                , "To use version wildcards the package needs to specify at least 'cabal-version: >= 1.6'."
+                ]
+
         -- https://gitlab.haskell.org/ghc/ghc/issues/17752
         isOpChar '<' = True
         isOpChar '=' = True
@@ -364,13 +420,8 @@ versionRangeParser digitParser = expr
         isOpChar '-' = True
         isOpChar _   = False
 
-        -- Note: There are other features:
-        -- && and || since 1.8
-        -- x.y.* (wildcard) since 1.6
-
         -- -none version range is available since 1.22
-        noVersion' = do
-            csv <- askCabalSpecVersion
+        noVersion' =
             if csv >= CabalSpecV1_22
             then pure noVersion
             else fail $ unwords
@@ -381,8 +432,7 @@ versionRangeParser digitParser = expr
                 ]
 
         -- ^>= is available since 2.0
-        majorBoundVersion' v = do
-            csv <- askCabalSpecVersion
+        majorBoundVersion' v =
             if csv >= CabalSpecV2_0
             then pure $ majorBoundVersion v
             else fail $ unwords
@@ -398,8 +448,7 @@ versionRangeParser digitParser = expr
             embed vr = embedVersionRange vr
 
         -- version set notation (e.g. "== { 0.0.1.0, 0.0.2.0, 0.1.0.0 }")
-        verSet' op vs = do
-            csv <- askCabalSpecVersion
+        verSet' op vs =
             if csv >= CabalSpecV3_0
             then pure $ foldr1 unionVersionRanges (fmap op vs)
             else fail $ unwords

@@ -1,6 +1,6 @@
 name: bool
 version: 1
-cabal-version: >= 1.6
+cabal-version: >= 1.8
 extra-source-files:
   README.md -- we include it
 
