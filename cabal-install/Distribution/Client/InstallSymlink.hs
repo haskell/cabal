@@ -186,6 +186,10 @@ symlinkBinaries platform comp overwritePolicy
     cinfo            = compilerInfo comp
     (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
+-- | Symlink binary.
+--
+-- The paths are take in pieces, so we can make relative link when possible.
+--
 symlinkBinary ::
   OverwritePolicy        -- ^ Whether to force overwrite an existing file
   -> FilePath            -- ^ The canonical path of the public bin dir eg
