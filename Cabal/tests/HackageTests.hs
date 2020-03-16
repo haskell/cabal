@@ -6,25 +6,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
 
--- | The following RTS parameters seem to speed up running the test
---
--- @
--- +RTS -s -qg -I0 -A64M -N2 -RTS
--- @
---
--- * @-qg@ No parallel GC (you can try @-qn2@ on GHC-8.2+)
--- * @-I0@ No idle GC (shouldn't matter, but to be sure)
--- * @-A64M@ Set allocation area to about the maximum residence size tests have
--- * @-N4@ More capabilities (depends on your machine)
---
--- @-N1@ vs. @-N4@ gives
---
--- * @1m 48s@ to @1m 00s@ speedup for full Hackage @parsec@ test, and
---
--- * @6m 16s@ to @3m 30s@ speedup for full Hackage @roundtrip@ test.
---
--- i.e. not linear, but substantial improvement anyway.
---
 module Main where
 
 import Distribution.Compat.Semigroup
@@ -32,23 +13,18 @@ import Prelude ()
 import Prelude.Compat
 
 import Control.Applicative                         (many, (<**>), (<|>))
-import Control.Concurrent
-       (ThreadId, forkIO, getNumCapabilities, killThread, myThreadId, throwTo)
-import Control.Concurrent.STM
 import Control.DeepSeq                             (NFData (..), force)
-import Control.Exception
-       (AsyncException (ThreadKilled), SomeException, bracket, catch, evaluate, fromException,
-       mask, throwIO)
-import Control.Monad                               (forever, join, replicateM, unless, when)
-import Data.Foldable                               (for_, traverse_)
-import Data.IORef                                  (modifyIORef', newIORef, readIORef)
+import Control.Exception                           (evaluate)
+import Control.Monad                               (join, unless, when)
+import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
-import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS, fromUTF8BS)
+import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
+import Numeric                                     (showFFloat)
 import System.Directory                            (getAppUserDataDirectory)
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
@@ -64,11 +40,12 @@ import qualified Distribution.Fields.Parser             as Parsec
 import qualified Distribution.Fields.Pretty             as PP
 import qualified Distribution.PackageDescription.Parsec as Parsec
 import qualified Distribution.Parsec                    as Parsec
+import qualified Options.Applicative                    as O
+import qualified System.Clock                           as Clock
 
 import           Distribution.Compat.Lens
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
-import qualified Options.Applicative                               as O
 
 -- import Distribution.Types.BuildInfo                (BuildInfo (cppOptions))
 -- import qualified Distribution.Types.BuildInfo.Lens                 as L
@@ -102,7 +79,7 @@ parseIndex predicate action = do
         case mx of
             Just x  -> return x
             Nothing -> return (cabalDir </> "config")
-    
+
 
 parseIndex'
     :: (Monoid a, NFData a)
@@ -152,15 +129,37 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 -- Parsec test: whether we can parse everything
 -------------------------------------------------------------------------------
 
-parseParsecTest :: FilePath -> B.ByteString -> IO (Sum Int)
-parseParsecTest fpath bs = do
-    let (_warnings, parsec) = Parsec.runParseResult $
+parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ThreeInt
+parseParsecTest keepGoing fpath bs = do
+    let (warnings, parsec) = Parsec.runParseResult $
                               Parsec.parseGenericPackageDescription bs
+
+    let w | null warnings = 0
+          | otherwise     = 1
+
     case parsec of
-        Right _ -> return (Sum 1)
-        Left (_, errors) -> do
-            traverse_ (putStrLn . Parsec.showPError fpath) errors
-            exitFailure
+        Right _                       -> return (ThreeInt 1 w 0)
+        Left (_, errors) | keepGoing  -> return (ThreeInt 1 w 1)
+                          | otherwise -> do
+                traverse_ (putStrLn . Parsec.showPError fpath) errors
+                exitFailure
+
+-------------------------------------------------------------------------------
+-- ThreeInt
+-------------------------------------------------------------------------------
+
+data ThreeInt = ThreeInt !Int !Int !Int
+  deriving (Eq, Show)
+
+instance Semigroup ThreeInt where
+    ThreeInt x y z <> ThreeInt u v w = ThreeInt (x + u) (y + v) (z + w)
+
+instance Monoid ThreeInt where
+    mempty  = ThreeInt 0 0 0
+    mappend = (<>)
+
+instance NFData ThreeInt where
+    rnf (ThreeInt _ _ _) = ()
 
 -------------------------------------------------------------------------------
 -- Check test
@@ -178,9 +177,9 @@ parseCheckTest fpath bs = do
 
             -- Look into invalid cpp options
             -- _ <- L.traverseBuildInfos checkCppFlags gpd
-            
+
             -- one for file, many checks
-            return (CheckResult 1 (w warnings) 0 0 0 0 0 <> foldMap toCheckResult checks)
+            return (CheckResult 1 (w warnings) 0 0 0 0 0 0 <> foldMap toCheckResult checks)
         Left (_, errors) -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
@@ -190,28 +189,28 @@ parseCheckTest fpath bs = do
 --     for_ (cppOptions bi) $ \opt ->
 --         unless (any (`isPrefixOf` opt) ["-D", "-U", "-I"]) $
 --             putStrLn opt
--- 
+--
 --     return bi
 
-data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int !Int
+data CheckResult = CheckResult !Int !Int !Int !Int !Int !Int !Int !Int
 
 instance NFData CheckResult where
     rnf !_ = ()
 
 instance Semigroup CheckResult where
-    CheckResult n w a b c d e <> CheckResult n' w' a' b' c' d' e' =
-        CheckResult (n + n') (w + w') (a + a') (b + b') (c + c') (d + d') (e + e')
+    CheckResult n w a b c d e f <> CheckResult n' w' a' b' c' d' e' f' =
+        CheckResult (n + n') (w + w') (a + a') (b + b') (c + c') (d + d') (e + e') (f + f')
 
 instance Monoid CheckResult where
-    mempty = CheckResult 0 0 0 0 0 0 0
+    mempty = CheckResult 0 0 0 0 0 0 0 0
     mappend = (<>)
 
 toCheckResult :: PackageCheck -> CheckResult
-toCheckResult PackageBuildImpossible {}    = CheckResult 0 0 1 0 0 0 0
-toCheckResult PackageBuildWarning {}       = CheckResult 0 0 0 1 0 0 0
-toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 0 0 1 0 0
-toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 0 0 0 1 0
-toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 0 0 0 0 1
+toCheckResult PackageBuildImpossible {}    = CheckResult 0 0 1 1 0 0 0 0
+toCheckResult PackageBuildWarning {}       = CheckResult 0 0 1 0 1 0 0 0
+toCheckResult PackageDistSuspicious {}     = CheckResult 0 0 1 0 0 1 0 0
+toCheckResult PackageDistSuspiciousWarn {} = CheckResult 0 0 1 0 0 0 1 0
+toCheckResult PackageDistInexcusable {}    = CheckResult 0 0 1 0 0 0 0 1
 
 -------------------------------------------------------------------------------
 -- Roundtrip test
@@ -313,15 +312,27 @@ main = join (O.execParser opts)
 
     defaultA = do
         putStrLn "Default action: parsec k"
-        parsecA (mkPredicate ["k"])
+        parsecA (mkPredicate ["k"]) False
 
     readFieldsP = readFieldsA <$> prefixP
     readFieldsA pfx = parseIndex pfx readFieldTest
 
-    parsecP = parsecA <$> prefixP
-    parsecA pfx = do
-        Sum n <- parseIndex pfx parseParsecTest
+    parsecP = parsecA <$> prefixP <*> keepGoingP
+    keepGoingP =
+        O.flag' True  (O.long "keep-going") <|>
+        O.flag' False (O.long "no-keep-going") <|>
+        pure False
+
+    parsecA pfx keepGoing = do
+        begin <- Clock.getTime Clock.Monotonic
+        ThreeInt n w f <- parseIndex pfx (parseParsecTest keepGoing)
+        end <- Clock.getTime Clock.Monotonic
+        let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
+
         putStrLn $ show n ++ " files processed"
+        putStrLn $ show w ++ " files contained warnings"
+        putStrLn $ show f ++ " files failed to parse"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9 :: Double) " seconds elapsed"
 
     roundtripP = roundtripA <$> prefixP <*> testFieldsP
     roundtripA pfx testFieldsTransform = do
@@ -330,9 +341,10 @@ main = join (O.execParser opts)
 
     checkP = checkA <$> prefixP
     checkA pfx = do
-        CheckResult n w a b c d e <- parseIndex pfx parseCheckTest
+        CheckResult n w x a b c d e <- parseIndex pfx parseCheckTest
         putStrLn $ show n ++ " files processed"
-        putStrLn $ show w ++ " have lexer/parser warnings"
+        putStrLn $ show w ++ " files have lexer/parser warnings"
+        putStrLn $ show x ++ " files have check warnings"
         putStrLn $ show a ++ " build impossible"
         putStrLn $ show b ++ " build warning"
         putStrLn $ show c ++ " build dist suspicious"
@@ -396,88 +408,9 @@ fieldLinesToString fieldLines =
 --
 -- First we chunk input (as single cabal file is little work)
 foldIO :: forall a m. (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
-foldIO f = foldIO' (g mempty) . chunks
-  where
-    chunks [] = []
-    chunks xs = let ~(ys, zs) = splitAt 256 xs in ys : chunks zs
-
-    -- strict foldM
-    g :: m -> [a] -> IO m
-    g !acc []     = return acc
-    g !acc (x:xs) = f x >>= \ m -> g (mappend acc m) xs
-
--- | This 'parallelInterleaved' from @parallel-io@ but like (effectful) 'foldMap', not 'sequence'
-foldIO' :: (Monoid m, NFData m) => (a -> IO m) -> [a] -> IO m
-foldIO' f ys = do
-    cap <- getNumCapabilities
-    -- we leave one capability to do management (and read index)
-    let cap' = max 1 (pred cap)
-
-    tid <- myThreadId
-    ref <- newIORef mempty
-
-    withPool cap' $ \pool -> mask $ \restore -> do
-        for_ ys $ \y -> submitToPool pool $ reflectExceptionsTo tid $ do
-            m <- restore (f y)
-            modifyIORef' ref (force . mappend m)
-
-        readIORef ref
-  where
-    reflectExceptionsTo :: ThreadId -> IO () -> IO ()
-    reflectExceptionsTo tid act = catchNonThreadKilled act (throwTo tid)
-
-    catchNonThreadKilled :: IO a -> (SomeException -> IO a) -> IO a
-    catchNonThreadKilled act handler = act `catch` \e -> case fromException e of Just ThreadKilled -> throwIO e; _ -> handler e
-
--------------------------------------------------------------------------------
--- Worker pool
--------------------------------------------------------------------------------
-
-data Pool = Pool
-    { poolThreadsN :: Int
-    , poolThreads  :: [ThreadId]
-    , poolQueue    :: TVar Queue
-    , poolInflight :: TVar Int
-    }
-
-data Queue = Queue !Int [IO ()]
-
-submitToPool ::  Pool -> IO () -> IO ()
-submitToPool (Pool threadsN _ queue _) act = atomically $ do
-    Queue n acts <- readTVar queue
-    if n >= threadsN -- some work for every worker already in the queue
-    then retry
-    else writeTVar queue (Queue (succ n) (act : acts)) -- order is messed
-
-withPool :: Int -> (Pool -> IO a) -> IO a
-withPool n kont = do
-    queue    <- newTVarIO (Queue 0 [])
-    inflight <- newTVarIO 0
-    bracket (replicateM n $ forkIO $ worker queue inflight) cleanup $ \threads -> do
-
-        -- run work
-        x <- kont (Pool n threads queue inflight)
-
-        -- wait for jobs to complete
-        atomically $ readTVar inflight >>= \m -> check (m <= 0)
-
-        -- return
-        return x
-  where
-    cleanup threads = for_ threads killThread
-
-    -- worker pulls work from the queue in the loop
-    worker queue inflight = forever $ bracket pull cleanupW id where
-        pull = atomically $ do
-            Queue actsN acts <- readTVar queue
-            case acts of
-                []           -> retry
-                (act : acts') -> do
-                    modifyTVar' inflight succ
-                    writeTVar queue (Queue (pred actsN) acts')
-                    return act
-
-        cleanupW _ = atomically $ modifyTVar' inflight pred
+foldIO f = go mempty where
+    go !acc [] = acc
+    go !acc (x:xs) = go (mappend acc (f x)) xs
 
 -------------------------------------------------------------------------------
 -- Orphans

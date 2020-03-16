@@ -69,7 +69,7 @@ instance Parsec PkgconfigVersionRange where
         csv <- askCabalSpecVersion
         if csv >= CabalSpecV3_0
         then pkgconfigParser
-        else versionRangeToPkgconfigVersionRange <$> versionRangeParser P.integral
+        else versionRangeToPkgconfigVersionRange <$> versionRangeParser P.integral csv
 
 -- "modern" parser of @pkg-config@ package versions.
 pkgconfigParser :: CabalParsing m => m PkgconfigVersionRange

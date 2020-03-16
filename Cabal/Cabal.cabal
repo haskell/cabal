@@ -246,6 +246,7 @@ extra-source-files:
   tests/ParserTests/warnings/nbsp.cabal
   tests/ParserTests/warnings/newsyntax.cabal
   tests/ParserTests/warnings/oldsyntax.cabal
+  tests/ParserTests/warnings/operator.cabal
   tests/ParserTests/warnings/subsection.cabal
   tests/ParserTests/warnings/tab.cabal
   tests/ParserTests/warnings/trailingfield.cabal
@@ -253,6 +254,7 @@ extra-source-files:
   tests/ParserTests/warnings/unknownsection.cabal
   tests/ParserTests/warnings/utf8.cabal
   tests/ParserTests/warnings/versiontag.cabal
+  tests/ParserTests/warnings/wildcard.cabal
   tests/cbits/rpmvercmp.c
   tests/hackage/check.sh
   tests/hackage/download.sh
@@ -760,6 +762,7 @@ test-suite hackage-tests
   build-depends:
     base-compat          >=0.11.0   && <0.12,
     base-orphans         >=0.6      && <0.9,
+    clock                >=0.8      && <0.9,
     optparse-applicative >=0.13.2.0 && <0.16,
     stm                  >=2.4.5.0  && <2.6,
     tar                  >=0.5.0.3  && <0.6

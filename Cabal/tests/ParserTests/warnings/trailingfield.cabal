@@ -1,6 +1,6 @@
 name: trailingfield
 version: 1
-cabal-version: >= 1.6
+cabal-version: >= 1.8
 
 library
     build-depends: base >= 4.9 && <4.10

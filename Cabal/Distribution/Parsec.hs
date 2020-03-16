@@ -9,9 +9,12 @@ module Distribution.Parsec (
     runParsecParser,
     runParsecParser',
     simpleParsec,
+    simpleParsec',
+    simpleParsecW',
     lexemeParsec,
     eitherParsec,
     explicitEitherParsec,
+    explicitEitherParsec',
     -- * CabalParsing and and diagnostics
     CabalParsing (..),
     -- ** Warnings
@@ -171,6 +174,25 @@ simpleParsec
     . runParsecParser lexemeParsec "<simpleParsec>"
     . fieldLineStreamFromString
 
+-- | Parse a 'String' with 'lexemeParsec' using specific 'CabalSpecVersion'.
+--
+-- @since 3.4.0.0
+simpleParsec' :: Parsec a => CabalSpecVersion -> String -> Maybe a
+simpleParsec' spec
+    = either (const Nothing) Just
+    . runParsecParser' spec lexemeParsec "<simpleParsec>"
+    . fieldLineStreamFromString
+
+-- | Parse a 'String' with 'lexemeParsec' using specific 'CabalSpecVersion'.
+-- Fail if there are any warnings.
+--
+-- @since 3.4.0.0
+simpleParsecW' :: Parsec a => CabalSpecVersion -> String -> Maybe a
+simpleParsecW' spec
+    = either (const Nothing) (\(x, ws) -> if null ws then Just x else Nothing)
+    . runParsecParser' spec ((,) <$> lexemeParsec <*> liftParsec Parsec.getState) "<simpleParsec>"
+    . fieldLineStreamFromString
+
 -- | Parse a 'String' with 'lexemeParsec'.
 eitherParsec :: Parsec a => String -> Either String a
 eitherParsec = explicitEitherParsec parsec
@@ -180,6 +202,17 @@ explicitEitherParsec :: ParsecParser a -> String -> Either String a
 explicitEitherParsec parser
     = either (Left . show) Right
     . runParsecParser (parser <* P.spaces) "<eitherParsec>"
+    . fieldLineStreamFromString
+
+-- | Parse a 'String' with given 'ParsecParser' and 'CabalSpecVersion'. Trailing whitespace is accepted.
+-- See 'explicitEitherParsec'.
+--
+-- @since 3.4.0.0
+--
+explicitEitherParsec' :: CabalSpecVersion -> ParsecParser a -> String -> Either String a
+explicitEitherParsec' spec parser
+    = either (Left . show) Right
+    . runParsecParser' spec (parser <* P.spaces) "<eitherParsec>"
     . fieldLineStreamFromString
 
 -- | Run 'ParsecParser' with 'cabalSpecLatest'.

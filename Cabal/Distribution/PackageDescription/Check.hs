@@ -1253,40 +1253,6 @@ checkCabalVersion pkg =
         ++ "the 'other-extensions' field lists extensions that are used in "
         ++ "some modules, e.g. via the {-# LANGUAGE #-} pragma."
 
-    -- check use of "foo (>= 1.0 && < 1.4) || >=1.8 " version-range syntax
-  , checkVersion [1,8] (not (null versionRangeExpressions)) $
-      PackageDistInexcusable $
-           "The package uses full version-range expressions "
-        ++ "in a 'build-depends' field: "
-        ++ commaSep (map displayRawDependency versionRangeExpressions)
-        ++ ". To use this new syntax the package needs to specify at least "
-        ++ "'cabal-version: >= 1.8'. Alternatively, if broader compatibility "
-        ++ "is important, then convert to conjunctive normal form, and use "
-        ++ "multiple 'build-depends:' lines, one conjunct per line."
-
-    -- check use of "build-depends: foo == 1.*" syntax
-  , checkVersion [1,6] (not (null depsUsingWildcardSyntax)) $
-      PackageDistInexcusable $
-           "The package uses wildcard syntax in the 'build-depends' field: "
-        ++ commaSep (map prettyShow depsUsingWildcardSyntax)
-        ++ ". To use this new syntax the package need to specify at least "
-        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
-        ++ "is important then use: " ++ commaSep
-           [ prettyShow (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
-           | Dependency name versionRange _ <- depsUsingWildcardSyntax ]
-
-    -- check use of "build-depends: foo ^>= 1.2.3" syntax
-  , checkVersion [2,0] (not (null depsUsingMajorBoundSyntax)) $
-      PackageDistInexcusable $
-           "The package uses major bounded version syntax in the "
-        ++ "'build-depends' field: "
-        ++ commaSep (map prettyShow depsUsingMajorBoundSyntax)
-        ++ ". To use this new syntax the package need to specify at least "
-        ++ "'cabal-version: 2.0'. Alternatively, if broader compatibility "
-        ++ "is important then use: " ++ commaSep
-           [ prettyShow (Dependency name (eliminateMajorBoundSyntax versionRange) Set.empty)
-           | Dependency name versionRange _ <- depsUsingMajorBoundSyntax ]
-
   , checkVersion [3,0] (any (not . null)
                         (concatMap buildInfoField
                          [ asmSources
@@ -1311,26 +1277,6 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The use of 'virtual-modules' requires the package "
         ++ " to specify at least 'cabal-version: >= 2.1'."
-
-    -- check use of "tested-with: GHC (>= 1.0 && < 1.4) || >=1.8 " syntax
-  , checkVersion [1,8] (not (null testedWithVersionRangeExpressions)) $
-      PackageDistInexcusable $
-           "The package uses full version-range expressions "
-        ++ "in a 'tested-with' field: "
-        ++ commaSep (map displayRawDependency testedWithVersionRangeExpressions)
-        ++ ". To use this new syntax the package needs to specify at least "
-        ++ "'cabal-version: >= 1.8'."
-
-    -- check use of "tested-with: GHC == 6.12.*" syntax
-  , checkVersion [1,6] (not (null testedWithUsingWildcardSyntax)) $
-      PackageDistInexcusable $
-           "The package uses wildcard syntax in the 'tested-with' field: "
-        ++ commaSep (map prettyShow testedWithUsingWildcardSyntax)
-        ++ ". To use this new syntax the package need to specify at least "
-        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
-        ++ "is important then use: " ++ commaSep
-           [ prettyShow (Dependency name (eliminateWildcardSyntax versionRange) Set.empty)
-           | Dependency name versionRange _ <- testedWithUsingWildcardSyntax ]
 
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
@@ -1403,15 +1349,6 @@ checkCabalVersion pkg =
 
     buildInfoField field         = map field (allBuildInfo pkg)
 
-    versionRangeExpressions =
-        [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
-              , usesNewVersionRangeSyntax vr ]
-
-    testedWithVersionRangeExpressions =
-        [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
-        | (compiler, vr) <- testedWith pkg
-        , usesNewVersionRangeSyntax vr ]
-
     simpleSpecVersionRangeSyntax =
         either (const True) (cataVersionRange alg) (specVersionRaw pkg)
       where
@@ -1422,62 +1359,7 @@ checkCabalVersion pkg =
     simpleSpecVersionSyntax =
       either (const True) (const False) (specVersionRaw pkg)
 
-    usesNewVersionRangeSyntax :: VersionRange -> Bool
-    usesNewVersionRangeSyntax
-        = (> 2) -- uses the new syntax if depth is more than 2
-        . cataVersionRange alg
-      where
-        alg (UnionVersionRangesF a b) = a + b
-        alg (IntersectVersionRangesF a b) = a + b
-        alg (VersionRangeParensF _) = 3
-        alg _ = 1 :: Int
-
-    depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
-                                    , usesWildcardSyntax vr ]
-
-    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr _) <- allBuildDepends pkg
-                                      , usesMajorBoundSyntax vr ]
-
     usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
-
-    testedWithUsingWildcardSyntax =
-      [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
-      | (compiler, vr) <- testedWith pkg
-      , usesWildcardSyntax vr ]
-
-    usesWildcardSyntax :: VersionRange -> Bool
-    usesWildcardSyntax = cataVersionRange alg
-      where
-        alg (WildcardVersionF _)          = True
-        alg (UnionVersionRangesF a b)     = a || b
-        alg (IntersectVersionRangesF a b) = a || b
-        alg (VersionRangeParensF a)       = a
-        alg _                             = False
-
-    -- NB: this eliminates both, WildcardVersion and MajorBoundVersion
-    -- because when WildcardVersion is not support, neither is MajorBoundVersion
-    eliminateWildcardSyntax = hyloVersionRange embed projectVersionRange
-      where
-        embed (WildcardVersionF v) = intersectVersionRanges
-            (orLaterVersion v) (earlierVersion (wildcardUpperBound v))
-        embed (MajorBoundVersionF v) = intersectVersionRanges
-            (orLaterVersion v) (earlierVersion (majorUpperBound v))
-        embed vr = embedVersionRange vr
-
-    usesMajorBoundSyntax :: VersionRange -> Bool
-    usesMajorBoundSyntax = cataVersionRange alg
-      where
-        alg (MajorBoundVersionF _)        = True
-        alg (UnionVersionRangesF a b)     = a || b
-        alg (IntersectVersionRangesF a b) = a || b
-        alg (VersionRangeParensF a)       = a
-        alg _                             = False
-
-    eliminateMajorBoundSyntax = hyloVersionRange embed projectVersionRange
-      where
-        embed (MajorBoundVersionF v) = intersectVersionRanges
-            (orLaterVersion v) (earlierVersion (majorUpperBound v))
-        embed vr = embedVersionRange vr
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
                                 , ext <- allExtensions bi ]
@@ -1528,11 +1410,6 @@ checkCabalVersion pkg =
       ++ concatMap otherModules (allBuildInfo pkg)
 
     allModuleNamesAutogen = concatMap autogenModules (allBuildInfo pkg)
-
-displayRawDependency :: Dependency -> String
-displayRawDependency (Dependency pkg vr _sublibs) =
-  prettyShow pkg ++ " " ++ prettyShow vr
-
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription

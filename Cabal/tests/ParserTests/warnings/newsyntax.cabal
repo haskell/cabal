@@ -2,5 +2,5 @@ name: newsyntax
 version: 1
 
 library
-    build-depends: base >= 4.9 && <4.10
+    build-depends: base
     hs-source-dirs: .
