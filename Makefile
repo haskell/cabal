@@ -70,11 +70,6 @@ cabal-install-dev : cabal-install/cabal-install.cabal.pp
 	@echo "tell git to ignore changes to cabal-install.cabal:"
 	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
 
-cabal-install-monolithic : cabal-install/cabal-install.cabal.pp
-	runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB -f CABAL_FLAG_MONOLITHIC cabal-install/cabal-install.cabal.pp
-	@echo "tell git to ignore changes to cabal-install.cabal:"
-	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
-
 # extra-source-files generation
 
 gen-extra-source-files : gen-extra-source-files-lib gen-extra-source-files-cli
