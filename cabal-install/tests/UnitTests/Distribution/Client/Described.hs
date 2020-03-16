@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
-module UnitTests.Distribution.Described where
+module UnitTests.Distribution.Client.Described where
 
-import Distribution.Compat.Prelude.Internal
+import Distribution.Client.Compat.Prelude
 import Prelude ()
+import UnitTests.Distribution.Client.ArbitraryInstances ()
 
 import Data.Typeable         (typeOf)
 import Test.QuickCheck       (Arbitrary (..), Gen, Property, choose, counterexample)
@@ -17,10 +18,7 @@ import Distribution.Pretty                 (prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
 
-import Distribution.Types.Dependency   (Dependency)
-import Distribution.Types.PackageName  (PackageName)
-import Distribution.Types.Version      (Version)
-import Distribution.Types.VersionRange (VersionRange)
+import Distribution.Client.IndexUtils.Timestamp (IndexState, Timestamp)
 
 import qualified RERE         as RE
 import qualified RERE.CharSet as RE
@@ -30,10 +28,8 @@ import Test.QuickCheck.Instances.Cabal ()
 
 tests :: TestTree
 tests = testGroup "Described"
-    [ testDescribed (Proxy :: Proxy Dependency)
-    , testDescribed (Proxy :: Proxy PackageName)
-    , testDescribed (Proxy :: Proxy Version)
-    , testDescribed (Proxy :: Proxy VersionRange)
+    [ testDescribed (Proxy :: Proxy Timestamp)
+    , testDescribed (Proxy :: Proxy IndexState)
     ]
 
 -------------------------------------------------------------------------------
@@ -70,6 +66,7 @@ testDescribed _ = testGroup name
 
     propRoundtrip :: a -> Property
     propRoundtrip x = counterexample (show (res, str)) $ case res of
+
         Right y -> x == y
         Left _  -> False
       where

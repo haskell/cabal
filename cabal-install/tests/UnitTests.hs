@@ -13,6 +13,7 @@ import qualified UnitTests.Distribution.Solver.Modular.Builder
 import qualified UnitTests.Distribution.Solver.Modular.WeightedPSQ
 import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
+import qualified UnitTests.Distribution.Client.Described
 import qualified UnitTests.Distribution.Client.FileMonitor
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
@@ -78,6 +79,7 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.VCS.tests mtimeChange
   , testGroup "UnitTests.Distribution.Client.Get"
        UnitTests.Distribution.Client.Get.tests
+  , UnitTests.Distribution.Client.Described.tests
   ]
 
 main :: IO ()

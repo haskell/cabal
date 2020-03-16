@@ -47,7 +47,6 @@ import qualified Distribution.Types.PackageVersionConstraint as D
 import qualified Distribution.Types.SourceRepo               as D
 import qualified Distribution.Types.UnqualComponentName      as D
 import qualified Distribution.Version                        as D
-import qualified Distribution.Types.VersionRange.Internal    as D
 import qualified Language.Haskell.Extension                  as E
 
 -- | /Note:/ this class will soon be deprecated.
@@ -340,7 +339,7 @@ instance Text D.VersionRange where
                                  (Parse.char ')' >> Parse.skipSpaces)
                                  (do a <- p
                                      Parse.skipSpaces
-                                     return (D.VersionRangeParens a))
+                                     return a)
         digits = do
           firstDigit <- Parse.satisfy isDigit
           if firstDigit == '0'

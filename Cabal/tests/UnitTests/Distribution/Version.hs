@@ -15,7 +15,7 @@ import Distribution.Utils.Generic
 
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
-import Text.PrettyPrint as Disp (text, render, parens, hcat
+import Text.PrettyPrint as Disp (text, render, hcat
                                 ,punctuate, int, char, (<+>))
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -284,7 +284,6 @@ prop_foldVersionRange range =
       UnionVersionRanges (expandVR v1) (expandVR v2)
     expandVR (IntersectVersionRanges v1 v2) =
       IntersectVersionRanges (expandVR v1) (expandVR v2)
-    expandVR (VersionRangeParens v) = expandVR v
     expandVR v = v
 
     upper = alterVersion $ \numbers -> case unsnoc numbers of
@@ -598,15 +597,7 @@ prop_parse_disp vr = counterexample (show (prettyShow vr')) $
 
 prop_parse_disp1 :: VersionRange -> Bool
 prop_parse_disp1 vr =
-    fmap stripParens (simpleParsec (prettyShow vr)) == Just (normaliseVersionRange vr)
-  where
-    stripParens :: VersionRange -> VersionRange
-    stripParens (VersionRangeParens v) = stripParens v
-    stripParens (UnionVersionRanges v1 v2) =
-      UnionVersionRanges (stripParens v1) (stripParens v2)
-    stripParens (IntersectVersionRanges v1 v2) =
-      IntersectVersionRanges (stripParens v1) (stripParens v2)
-    stripParens v = v
+    simpleParsec (prettyShow vr) == Just (normaliseVersionRange vr)
 
 prop_parse_disp2 :: VersionRange -> Property
 prop_parse_disp2 vr =
@@ -662,8 +653,6 @@ displayRaw =
     alg (MajorBoundVersionF v)          = Disp.text "^>=" <<>> pretty v
     alg (UnionVersionRangesF r1 r2)     = r1 <+> Disp.text "||" <+> r2
     alg (IntersectVersionRangesF r1 r2) = r1 <+> Disp.text "&&" <+> r2
-    alg (VersionRangeParensF r)         = Disp.parens r -- parens
-
 
     dispWild v =
            Disp.hcat (Disp.punctuate (Disp.char '.')

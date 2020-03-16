@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Types.Dependency
   ( Dependency(..)
+  , mkDependency
   , depPkgName
   , depVerRange
   , depLibraries
@@ -33,6 +34,9 @@ import qualified Text.PrettyPrint as PP
 
 -- | Describes a dependency on a source package (API)
 --
+-- /Invariant:/ package name does not appear as 'LSubLibName' in
+-- set of library names.
+--
 data Dependency = Dependency
                     PackageName
                     VersionRange
@@ -51,35 +55,37 @@ depVerRange (Dependency _ vr _) = vr
 depLibraries :: Dependency -> Set LibraryName
 depLibraries (Dependency _ _ cs) = cs
 
+-- | Smart constructor of 'Dependency'.
+--
+-- If 'PackageName' is appears as 'LSubLibName' in a set of sublibraries,
+-- it is automatically converted to 'LMainLibName'.
+--
+-- @since 3.4.0.0
+--
+mkDependency :: PackageName -> VersionRange -> Set LibraryName -> Dependency
+mkDependency pn vr lb = Dependency pn vr (Set.map conv lb)
+  where
+    pn' = packageNameToUnqualComponentName pn
+
+    conv l@LMainLibName                 = l
+    conv l@(LSubLibName ln) | ln == pn' = LMainLibName
+                            | otherwise = l
+
 instance Binary Dependency
 instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
 
 instance Pretty Dependency where
-    pretty (Dependency name ver sublibs) = pretty name
-                                       <<>> optionalMonoid
-                                            (sublibs /= Set.singleton LMainLibName)
-                                            (PP.colon <<>> PP.braces prettySublibs)
-                                       <+> pretty ver
+    pretty (Dependency name ver sublibs) = withSubLibs (pretty name) <+> pretty ver
       where
-        optionalMonoid True x = x
-        optionalMonoid False _ = mempty
-        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> Set.toList sublibs
-        prettySublib LMainLibName = PP.text $ unPackageName name
-        prettySublib (LSubLibName un) = PP.text $ unUnqualComponentName un
+        withSubLibs doc
+            | sublibs == mainLib = doc
+            | otherwise          = doc <<>> PP.colon <<>> PP.braces prettySublibs
 
-versionGuardMultilibs :: (Monad m, CabalParsing m) => m a -> m a
-versionGuardMultilibs expr = do
-  csv <- askCabalSpecVersion
-  if csv < CabalSpecV3_0
-  then fail $ unwords
-    [ "Sublibrary dependency syntax used."
-    , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
-    , "Alternatively, if you are depending on an internal library, you can write"
-    , "directly the library name as it were a package."
-    ]
-  else
-    expr
+        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> Set.toList sublibs
+
+        prettySublib LMainLibName     = PP.text $ unPackageName name
+        prettySublib (LSubLibName un) = PP.text $ unUnqualComponentName un
 
 -- |
 --
@@ -98,58 +104,77 @@ versionGuardMultilibs expr = do
 -- >>> simpleParsec "mylib:{ } ^>= 42" :: Maybe Dependency
 -- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList []))
 --
+-- >>> traverse_ print (map simpleParsec ["mylib:mylib", "mylib:{mylib}", "mylib:{mylib,sublib}" ] :: [Maybe Dependency])
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName]))
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName]))
+-- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName,LSubLibName (UnqualComponentName "sublib")]))
+--
 -- Spaces around colon are not allowed:
 --
--- >>> simpleParsec "mylib: sub" :: Maybe Dependency
--- Nothing
+-- >>> map simpleParsec ["mylib: sub", "mylib :sub", "mylib: {sub1,sub2}", "mylib :{sub1,sub2}"] :: [Maybe Dependency]
+-- [Nothing,Nothing,Nothing,Nothing]
 --
--- >>> simpleParsec "mylib :sub" :: Maybe Dependency
--- Nothing
+-- Sublibrary syntax is accepted since @cabal-version: 3.0@
 --
--- >>> simpleParsec "mylib: {sub1,sub2}" :: Maybe Dependency
--- Nothing
---
--- >>> simpleParsec "mylib :{sub1,sub2}" :: Maybe Dependency
--- Nothing
+-- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
+-- [Nothing,Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub")]))]
 --
 instance Parsec Dependency where
     parsec = do
         name <- parsec
 
-        libs <- option [LMainLibName]
-              $ (char ':' *>)
-              $ versionGuardMultilibs
-              $ pure <$> parseLib name <|> parseMultipleLibs name
+        libs <- option mainLib $ do
+          _ <- char ':'
+          versionGuardMultilibs
+          Set.singleton <$> parseLib <|> parseMultipleLibs
 
         spaces -- https://github.com/haskell/cabal/issues/5846
 
         ver  <- parsec <|> pure anyVersion
-        return $ Dependency name ver $ Set.fromList libs
-      where makeLib pn ln | unPackageName pn == ln = LMainLibName
-                          | otherwise = LSubLibName $ mkUnqualComponentName ln
-            parseLib pn = makeLib pn <$> parsecUnqualComponentName
-            parseMultipleLibs pn = between (char '{' *> spaces)
-                                           (spaces <* char '}')
-                                           $ parsecCommaList $ parseLib pn
+        return $ mkDependency name ver libs
+      where
+        parseLib          = LSubLibName <$> parsec
+        parseMultipleLibs = between
+            (char '{' *> spaces)
+            (spaces *> char '}')
+            (Set.fromList <$> parsecCommaList parseLib)
+
+versionGuardMultilibs :: CabalParsing m => m ()
+versionGuardMultilibs = do
+  csv <- askCabalSpecVersion
+  when (csv < CabalSpecV3_0) $ fail $ unwords
+    [ "Sublibrary dependency syntax used."
+    , "To use this syntax the package needs to specify at least 'cabal-version: 3.0'."
+    , "Alternatively, if you are depending on an internal library, you can write"
+    , "directly the library name as it were a package."
+    ]
+
+-- | Library set with main library.
+mainLib :: Set LibraryName
+mainLib = Set.singleton LMainLibName
 
 instance Described Dependency where
     describe _ = REAppend
         [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
         , REOpt $ 
-               RESpaces
-            <> reChar ':'
-            <> RESpaces
+               reChar ':'
             <> REUnion
                 [ reUnqualComponent
                 , REAppend
                     [ reChar '{'
                     , RESpaces
-                    , RECommaList reUnqualComponent
+                    -- no leading or trailing comma
+                    , REMunch reSpacedComma reUnqualComponent
                     , RESpaces
                     , reChar '}'
                     ] 
                 ]
-        , REOpt $ RESpaces <> vr
+        -- TODO: RESpaces1 should be just RESpaces, but we are able
+        -- to generate non-parseable strings without mandatory space
+        --
+        -- https://github.com/haskell/cabal/issues/6589
+        --
+        , REOpt $ RESpaces1 <> vr
         ]
       where
         vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
@@ -157,6 +182,9 @@ instance Described Dependency where
 -- mempty should never be in a Dependency-as-dependency.
 -- This is only here until the Dependency-as-constraint problem is solved #5570.
 -- Same for below.
+--
+-- Note: parser allows for empty set!
+--
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
   Dependency n (thisVersion v) Set.empty

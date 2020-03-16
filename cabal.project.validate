@@ -1,6 +1,8 @@
 packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
 tests: True
 
+packages: Cabal/Cabal-quickcheck/
+
 write-ghc-environment-files: never
 
 package Cabal

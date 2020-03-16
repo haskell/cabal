@@ -450,6 +450,7 @@ Test-Suite unit-tests
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is UnitTests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
+    UnitTests.Distribution.Client.Described
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Get
@@ -482,6 +483,7 @@ Test-Suite unit-tests
         cabal-lib-client,
         cabal-install-solver-dsl,
         Cabal,
+        Cabal-quickcheck,
         containers,
         deepseq,
         mtl,
@@ -491,6 +493,7 @@ Test-Suite unit-tests
         tar,
         time,
         zlib,
+        rere >=0.1 && <0.2,
         network-uri < 2.6.2.0,
         network,
         tasty >= 1.2.3 && <1.3,
