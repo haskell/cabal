@@ -48,7 +48,7 @@ import Data.Monoid                                 (Sum (..))
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
-import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
+import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS, fromUTF8BS)
 import System.Directory                            (getAppUserDataDirectory)
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
@@ -238,9 +238,9 @@ roundtripTest testFieldsTransform fpath bs = do
 
     -- fromParsecField, "shallow" parser/pretty roundtrip
     when testFieldsTransform $
-        if checkUTF8 bs
+        if checkUTF8 patchedBs
         then do
-            parsecFields <- assertRight $ Parsec.readFields $ snd $ patchQuirks bs
+            parsecFields <- assertRight $ Parsec.readFields patchedBs
             let prettyFields = PP.fromParsecFields parsecFields
             let bs'' = PP.showFields (return []) prettyFields
             z0 <- parse "3rd" (toUTF8BS bs'')
@@ -252,6 +252,8 @@ roundtripTest testFieldsTransform fpath bs = do
 
     return (Sum 1)
   where
+    patchedBs = snd (patchQuirks bs)
+
     checkUTF8 bs' = replacementChar `notElem` fromUTF8BS bs' where
         replacementChar = '\xfffd'
 
@@ -265,6 +267,7 @@ roundtripTest testFieldsTransform fpath bs = do
     assertEqual' bs' x y = unless (x == y || fpath == "ixset/1.0.4/ixset.cabal") $ do
         putStrLn fpath
 #ifdef MIN_VERSION_tree_diff
+        putStrLn "====== tree-diff:"
         print $ ansiWlEditExprCompact $ ediff x y
 #else
         putStrLn "<<<<<<"
@@ -273,6 +276,7 @@ roundtripTest testFieldsTransform fpath bs = do
         print y
         putStrLn ">>>>>>"
 #endif
+        putStrLn "====== contents:"
         putStrLn bs'
         exitFailure
 

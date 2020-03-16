@@ -250,7 +250,11 @@ patches = Map.fromList
          (Fingerprint 12475837388692175691 18053834261188158945)
          (Fingerprint 16279938253437334942 15753349540193002309)
          (bsReplace "9223372036854775807" "999")
-
+    -- Not UTF8
+    , mk "Name:                     nat\nVersion:                  0.1\nDescription:            Implementation of natural numbers and integers by a binary\n                                representation. The implementation is supposed to be lazy and\n                   "
+         (Fingerprint 9222512268705577108 13085311382746579495)
+         (Fingerprint 17468921266614378430 13221316288008291892)
+         (bsReplace "\xf6" "\xc3\xb6")
     ]
   where
     mk a b c d = ((a, b), (c, d))
