@@ -58,7 +58,6 @@ data VersionRange
   | MajorBoundVersion      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRanges     VersionRange VersionRange
   | IntersectVersionRanges VersionRange VersionRange
-  | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
   deriving ( Data, Eq, Generic, Read, Show, Typeable )
 
 instance Binary VersionRange
@@ -180,7 +179,6 @@ data VersionRangeF a
   | MajorBoundVersionF      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRangesF     a a
   | IntersectVersionRangesF a a
-  | VersionRangeParensF     a
   deriving ( Data, Eq, Generic, Read, Show, Typeable
            , Functor, Foldable, Traversable )
 
@@ -196,7 +194,6 @@ projectVersionRange (WildcardVersion v)          = WildcardVersionF v
 projectVersionRange (MajorBoundVersion v)        = MajorBoundVersionF v
 projectVersionRange (UnionVersionRanges a b)     = UnionVersionRangesF a b
 projectVersionRange (IntersectVersionRanges a b) = IntersectVersionRangesF a b
-projectVersionRange (VersionRangeParens a)       = VersionRangeParensF a
 
 -- | Fold 'VersionRange'.
 --
@@ -216,7 +213,6 @@ embedVersionRange (WildcardVersionF v)          = WildcardVersion v
 embedVersionRange (MajorBoundVersionF v)        = MajorBoundVersion v
 embedVersionRange (UnionVersionRangesF a b)     = UnionVersionRanges a b
 embedVersionRange (IntersectVersionRangesF a b) = IntersectVersionRanges a b
-embedVersionRange (VersionRangeParensF a)       = VersionRangeParens a
 
 -- | Unfold 'VersionRange'.
 --
@@ -251,8 +247,6 @@ instance Pretty VersionRange where
             (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2)
         alg (IntersectVersionRangesF (r1, p1) (r2, p2)) =
             (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1)
-        alg (VersionRangeParensF (r, _))         =
-            (Disp.parens r, 0)
 
         dispWild ver =
             Disp.hcat (Disp.punctuate (Disp.char '.')
@@ -492,9 +486,10 @@ versionRangeParser digitParser csv = expr
         parens p = P.between
             ((P.char '(' P.<?> "opening paren") >> P.spaces)
             (P.char ')' >> P.spaces)
-            (do a <- p
+            $ do
+                a <- p
                 P.spaces
-                return (VersionRangeParens a))
+                return a
 
         tags :: CabalParsing m => m ()
         tags = do

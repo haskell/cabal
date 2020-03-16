@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.ArbitraryInstances (
@@ -12,23 +11,10 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
     NoShrink(..),
   ) where
 
-import Data.Char
-import Data.List
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-import Control.Applicative
-#endif
-import Control.Monad
+import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import Distribution.Version
-import Distribution.Types.VersionRange.Internal
-import Distribution.Types.Dependency
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.LibraryName
-import Distribution.Package
-import Distribution.System
-import Distribution.Verbosity
 
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
@@ -39,7 +25,7 @@ import Distribution.Client.Types
 import Distribution.Client.IndexUtils.Timestamp
 
 import Test.QuickCheck
-
+import Test.QuickCheck.Instances.Cabal ()
 
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
@@ -68,110 +54,20 @@ instance Arbitrary ShortToken where
     -- accepting Haskell list syntax [], ['a'] etc, just allow String syntax.
     -- Workaround, don't generate [] as this does not round trip.
 
-
   shrink (ShortToken cs) =
     [ ShortToken cs' | cs' <- shrink cs, not (null cs') ]
 
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
 
-instance Arbitrary Version where
-  arbitrary = do
-    branch <- shortListOf1 4 $
-                frequency [(3, return 0)
-                          ,(3, return 1)
-                          ,(2, return 2)
-                          ,(1, return 3)]
-    return (mkVersion branch)
-    where
-
-  shrink ver = [ mkVersion branch' | branch' <- shrink (versionNumbers ver)
-                                   , not (null branch') ]
-
-instance Arbitrary VersionRange where
-  arbitrary = canonicaliseVersionRange <$> sized verRangeExp
-    where
-      verRangeExp n = frequency $
-        [ (2, return anyVersion)
-        , (1, liftM thisVersion arbitrary)
-        , (1, liftM laterVersion arbitrary)
-        , (1, liftM orLaterVersion arbitrary)
-        , (1, liftM orLaterVersion' arbitrary)
-        , (1, liftM earlierVersion arbitrary)
-        , (1, liftM orEarlierVersion arbitrary)
-        , (1, liftM orEarlierVersion' arbitrary)
-        , (1, liftM withinVersion arbitrary)
-        , (2, liftM VersionRangeParens arbitrary)
-        ] ++ if n == 0 then [] else
-        [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
-        , (2, liftM2 intersectVersionRanges verRangeExp2 verRangeExp2)
-        ]
-        where
-          verRangeExp2 = verRangeExp (n `div` 2)
-
-      orLaterVersion'   v =
-        unionVersionRanges (laterVersion v)   (thisVersion v)
-      orEarlierVersion' v =
-        unionVersionRanges (earlierVersion v) (thisVersion v)
-
-      canonicaliseVersionRange = fromVersionIntervals . toVersionIntervals
-
-instance Arbitrary PackageName where
-    arbitrary = mkPackageName . intercalate "-" <$> shortListOf1 2 nameComponent
-      where
-        nameComponent = shortListOf1 5 (elements packageChars)
-                        `suchThat` (not . all isDigit)
-        packageChars  = filter isAlphaNum ['\0'..'\127']
-
-instance Arbitrary Dependency where
-    arbitrary = Dependency
-                <$> arbitrary
-                <*> arbitrary
-                <*> fmap getNonMEmpty arbitrary
-
 instance Arbitrary PackageVersionConstraint where
     arbitrary = PackageVersionConstraint <$> arbitrary <*> arbitrary
-
-instance Arbitrary UnqualComponentName where
-    -- same rules as package names
-    arbitrary = packageNameToUnqualComponentName <$> arbitrary
-
-instance Arbitrary LibraryName where
-    arbitrary =
-      elements
-      =<< sequenceA [ LSubLibName <$> arbitrary
-                    , pure LMainLibName ]
-
-instance Arbitrary OS where
-    arbitrary = elements knownOSs
-
-instance Arbitrary Arch where
-    arbitrary = elements knownArches
-
-instance Arbitrary Platform where
-    arbitrary = Platform <$> arbitrary <*> arbitrary
-
-instance Arbitrary a => Arbitrary (Flag a) where
-    arbitrary = arbitraryFlag arbitrary
-    shrink NoFlag   = []
-    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
-
-arbitraryFlag :: Gen a -> Gen (Flag a)
-arbitraryFlag genA =
-    sized $ \sz ->
-      case sz of
-        0 -> pure NoFlag
-        _ -> frequency [ (1, pure NoFlag)
-                       , (3, Flag <$> genA) ]
-
 
 instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
     arbitrary = toNubList <$> arbitrary
     shrink xs = [ toNubList [] | (not . null) (fromNubList xs) ]
     -- try empty, otherwise don't shrink as it can loop
 
-instance Arbitrary Verbosity where
-    arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken
@@ -195,7 +91,12 @@ instance Arbitrary a => Arbitrary (NoShrink a) where
     shrink _  = []
 
 instance Arbitrary Timestamp where
-    arbitrary = (maybe (toEnum 0) id . epochTimeToTimestamp) <$> arbitrary
+    -- note: no negative timestamps
+    --
+    -- >>> utcTimeToPOSIXSeconds $ UTCTime (fromGregorian 100000 01 01) 0
+    -- >>> 3093527980800s
+    --
+    arbitrary = maybe (toEnum 0) id . epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
 
 instance Arbitrary IndexState where
     arbitrary = frequency [ (1, pure IndexStateHead)
@@ -204,3 +105,6 @@ instance Arbitrary IndexState where
 
 instance Arbitrary WriteGhcEnvironmentFilesPolicy where
     arbitrary = arbitraryBoundedEnum
+
+arbitraryFlag :: Gen a -> Gen (Flag a)
+arbitraryFlag = liftArbitrary

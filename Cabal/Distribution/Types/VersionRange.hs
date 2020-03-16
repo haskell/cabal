@@ -71,7 +71,6 @@ foldVersionRange anyv this later earlier union intersect = fold
     alg (MajorBoundVersionF v)          = fold (majorBound v)
     alg (UnionVersionRangesF v1 v2)     = union v1 v2
     alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
-    alg (VersionRangeParensF v)         = v
 
     wildcard v = intersectVersionRanges
                    (orLaterVersion v)
@@ -104,12 +103,11 @@ normaliseVersionRange = hyloVersionRange embed projectVersionRange
 
 -- |  Remove 'VersionRangeParens' constructors.
 --
+-- Since version 3.4 this function is 'id', there aren't 'VersionRangeParens' constructor in 'VersionRange' anymore.
+--
 -- @since 2.2
 stripParensVersionRange :: VersionRange -> VersionRange
-stripParensVersionRange = hyloVersionRange embed projectVersionRange
-  where
-    embed (VersionRangeParensF vr) = vr
-    embed vr = embedVersionRange vr
+stripParensVersionRange = id
 
 -- | Does this version fall within the given range?
 --

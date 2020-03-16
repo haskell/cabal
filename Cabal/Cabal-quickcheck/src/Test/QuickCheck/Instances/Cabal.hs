@@ -9,8 +9,14 @@ import Test.QuickCheck
 
 import Distribution.SPDX
 import Distribution.Version
+import Distribution.Types.Dependency
+import Distribution.Types.UnqualComponentName
+import Distribution.Simple.Flag (Flag (..))
+import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.VersionRange.Internal
+import Distribution.System
+import Distribution.Verbosity
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
@@ -64,7 +70,6 @@ instance Arbitrary VersionRange where
         , (1, fmap orEarlierVersion' arbitrary)
         , (1, fmap withinVersion arbitrary)
         , (1, fmap majorBoundVersion arbitrary)
-        , (2, fmap VersionRangeParens arbitrary)
         ] ++ if n == 0 then [] else
         [ (2, liftA2 unionVersionRanges     verRangeExp2 verRangeExp2)
         , (2, liftA2 intersectVersionRanges verRangeExp2 verRangeExp2)
@@ -85,7 +90,6 @@ instance Arbitrary VersionRange where
   shrink (OrEarlierVersion v)         = EarlierVersion v : map OrEarlierVersion (shrink v)
   shrink (WildcardVersion v)          = map WildcardVersion ( shrink v)
   shrink (MajorBoundVersion v)        = map MajorBoundVersion (shrink v)
-  shrink (VersionRangeParens vr)      = vr : map VersionRangeParens (shrink vr)
   shrink (UnionVersionRanges a b)     = a : b : map (uncurry UnionVersionRanges) (shrink (a, b))
   shrink (IntersectVersionRanges a b) = a : b : map (uncurry IntersectVersionRanges) (shrink (a, b))
 
@@ -121,6 +125,71 @@ instance Arbitrary VersionIntervals where
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
+
+-------------------------------------------------------------------------------
+-- Dependency
+-------------------------------------------------------------------------------
+
+instance Arbitrary Dependency where
+    arbitrary = mkDependency
+        <$> arbitrary
+        <*> arbitrary
+        <*> (arbitrary `suchThat` const True) -- should be (not . null)
+
+    shrink (Dependency pn vr lb) =
+        [ mkDependency pn' vr' lb'
+        | (pn', vr', lb') <- shrink (pn, vr, lb)
+        ]
+
+-------------------------------------------------------------------------------
+-- System
+-------------------------------------------------------------------------------
+
+instance Arbitrary OS where
+    arbitrary = elements knownOSs
+
+instance Arbitrary Arch where
+    arbitrary = elements knownArches
+
+instance Arbitrary Platform where
+    arbitrary = Platform <$> arbitrary <*> arbitrary
+
+-------------------------------------------------------------------------------
+-- Various names
+-------------------------------------------------------------------------------
+
+instance Arbitrary UnqualComponentName where
+    -- same rules as package names
+    arbitrary = packageNameToUnqualComponentName <$> arbitrary
+
+instance Arbitrary LibraryName where
+    arbitrary = oneof
+        [ LSubLibName <$> arbitrary
+        , pure LMainLibName
+        ]
+    
+    shrink (LSubLibName _) = [LMainLibName]
+    shrink _               = []
+
+instance Arbitrary a => Arbitrary (Flag a) where
+    arbitrary = arbitrary1
+
+    shrink NoFlag   = []
+    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
+
+instance Arbitrary1 Flag where
+    liftArbitrary genA = sized $ \sz ->
+        if sz <= 0
+        then pure NoFlag
+        else frequency [ (1, pure NoFlag)
+                       , (3, Flag <$> genA) ]
+
+-------------------------------------------------------------------------------
+-- Verbosity
+-------------------------------------------------------------------------------
+
+instance Arbitrary Verbosity where
+    arbitrary = elements [minBound..maxBound]
 
 -------------------------------------------------------------------------------
 -- SPDX
