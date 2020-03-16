@@ -760,6 +760,7 @@ test-suite hackage-tests
   build-depends:
     base-compat          >=0.11.0   && <0.12,
     base-orphans         >=0.6      && <0.9,
+    clock                >=0.8      && <0.9,
     optparse-applicative >=0.13.2.0 && <0.16,
     stm                  >=2.4.5.0  && <2.6,
     tar                  >=0.5.0.3  && <0.6
