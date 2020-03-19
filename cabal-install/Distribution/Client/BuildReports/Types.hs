@@ -29,9 +29,8 @@ import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Utils.Structured (Structured)
 
-
 data ReportLevel = NoReports | AnonymousReports | DetailedReports
-  deriving (Eq, Ord, Enum, Show, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance Binary ReportLevel
 instance Structured ReportLevel

@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 -----------------------------------------------------------------------------
 -- |
@@ -77,6 +77,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBS
 
 import Distribution.Pretty (Pretty (..))
 import Distribution.Parsec (Parsec (..))
+import Distribution.FieldGrammar.Described (Described (..), reMunch1CS, csAlphaNum)
 
 
 newtype Username = Username { unUsername :: String }
@@ -292,6 +293,9 @@ instance Parsec RepoName where
     parsec = RepoName <$>
         P.munch1 (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')
 
+instance Described RepoName where
+    describe _ = reMunch1CS $ csAlphaNum <> "_-."
+
 type UnresolvedPkgLoc = PackageLocation (Maybe FilePath)
 
 type ResolvedPkgLoc = PackageLocation FilePath
@@ -363,7 +367,7 @@ instance Parsec RemoteRepo where
     parsec = do
         name <- parsec
         _ <- P.char ':'
-        uriStr <- P.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
+        uriStr <- P.munch1 (\c -> isAlphaNum c || c `elem` ("+-=._/*()@'$:;&!?~" :: String))
         uri <- maybe (fail $ "Cannot parse URI:" ++ uriStr) return (parseAbsoluteURI uriStr)
         return RemoteRepo
             { remoteRepoName           = name
