@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module UnitTests.Distribution.Client.Described where
 
 import Distribution.Client.Compat.Prelude
@@ -19,6 +18,7 @@ import Distribution.Pretty                 (prettyShow)
 import qualified Distribution.Utils.CharSet as CS
 
 import Distribution.Client.IndexUtils.Timestamp (IndexState, Timestamp)
+import Distribution.Client.Types                (RepoName)
 
 import qualified RERE         as RE
 import qualified RERE.CharSet as RE
@@ -30,6 +30,7 @@ tests :: TestTree
 tests = testGroup "Described"
     [ testDescribed (Proxy :: Proxy Timestamp)
     , testDescribed (Proxy :: Proxy IndexState)
+    , testDescribed (Proxy :: Proxy RepoName)
     ]
 
 -------------------------------------------------------------------------------

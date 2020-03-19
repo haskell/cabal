@@ -16,16 +16,54 @@ import Prelude ()
 
 import Distribution.Types.PackageVersionConstraint
 
-import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
+import Distribution.Simple.Setup
 
 import Distribution.Utils.NubList
 
-import Distribution.Client.Types
-import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.BuildReports.Types            (ReportLevel (..))
+import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
+import Distribution.Client.IndexUtils.Timestamp          (IndexState (..), Timestamp, epochTimeToTimestamp)
+import Distribution.Client.InstallSymlink                (OverwritePolicy)
+import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Cabal ()
+
+import Network.URI (URI (..), URIAuth (..), isUnreserved)
+
+-- note: there are plenty of instances defined in ProjectConfig test file.
+-- they should be moved here or into Cabal-quickcheck
+
+-------------------------------------------------------------------------------
+-- Non-Cabal instances
+-------------------------------------------------------------------------------
+
+instance Arbitrary URI where
+    arbitrary =
+      URI <$> elements ["file:", "http:", "https:"]
+          <*> (Just <$> arbitrary)
+          <*> (('/':) <$> arbitraryURIToken)
+          <*> (('?':) <$> arbitraryURIToken)
+          <*> pure ""
+
+instance Arbitrary URIAuth where
+    arbitrary =
+      URIAuth <$> pure ""   -- no password as this does not roundtrip
+              <*> arbitraryURIToken
+              <*> arbitraryURIPort
+
+arbitraryURIToken :: Gen String
+arbitraryURIToken =
+    shortListOf1 6 (elements (filter isUnreserved ['\0'..'\255']))
+
+arbitraryURIPort :: Gen String
+arbitraryURIPort =
+    oneof [ pure "", (':':) <$> shortListOf1 4 (choose ('0','9')) ]
+
+-------------------------------------------------------------------------------
+-- cabal-install (and Cabal) types
+-------------------------------------------------------------------------------
 
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
@@ -108,3 +146,16 @@ instance Arbitrary WriteGhcEnvironmentFilesPolicy where
 
 arbitraryFlag :: Gen a -> Gen (Flag a)
 arbitraryFlag = liftArbitrary
+
+instance Arbitrary RepoName where
+    arbitrary = RepoName <$> listOf1 (elements
+        [ c | c <- [ '\NUL' .. '\255' ], isAlphaNum c || c `elem` "_-."])
+
+instance Arbitrary ReportLevel where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary OverwritePolicy where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary InstallMethod where
+    arbitrary = arbitraryBoundedEnum

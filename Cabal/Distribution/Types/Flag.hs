@@ -27,6 +27,7 @@ import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.FieldGrammar.Described
 
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
@@ -106,6 +107,12 @@ instance Parsec FlagName where
         parsec' = (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
         rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
+
+instance Described FlagName where
+    describe _ = lead <> rest
+      where
+        lead = RECharSet $ csAlphaNum <> fromString "_"
+        rest = reMunchCS $ csAlphaNum <> fromString "_-"
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or

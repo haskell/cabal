@@ -11,7 +11,7 @@ import Control.Applicative
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
-import Data.Char (isAlphaNum)
+import Network.URI (URI)
 
 import Distribution.Deprecated.ParseUtils
 import Distribution.Deprecated.Text as Text
@@ -24,20 +24,16 @@ import Distribution.Version
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
-import Distribution.Simple.Utils
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Client.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
-import Distribution.Client.InstallSymlink
 import Distribution.Client.Dependency.Types
-import Distribution.Client.BuildReports.Types
 import Distribution.Client.Targets
 import Distribution.Client.SourceRepo
 import Distribution.Utils.NubList
-import Network.URI
 
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.ConstraintSource
@@ -357,12 +353,6 @@ arbitraryGlobLikeStr = outerTerm
     braces s   = "{" ++ s ++ "}"
 
 
-instance Arbitrary OverwritePolicy where
-    arbitrary = arbitraryBoundedEnum
-
-instance Arbitrary InstallMethod where
-    arbitrary = arbitraryBoundedEnum
-
 instance Arbitrary ClientInstallFlags where
     arbitrary =
       ClientInstallFlags
@@ -562,9 +552,6 @@ projectConfigConstraintSource =
 
 instance Arbitrary ProjectConfigProvenance where
     arbitrary = elements [Implicit, Explicit "cabal.project"]
-
-instance Arbitrary FlagAssignment where
-    arbitrary = mkFlagAssignment <$> arbitrary
 
 instance Arbitrary PackageConfig where
     arbitrary =
@@ -794,12 +781,6 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
           (x1, ShortToken x2, fmap ShortToken x3, fmap ShortToken x4, fmap ShortToken x5)
         ]
 
-instance Arbitrary RepoType where
-    arbitrary = elements knownRepoTypes
-
-instance Arbitrary ReportLevel where
-    arbitrary = elements [NoReports .. DetailedReports]
-
 instance Arbitrary CompilerFlavor where
     arbitrary = elements knownCompilerFlavors
 
@@ -837,10 +818,6 @@ instance Arbitrary LocalRepo where
         <*> elements ["/tmp/foo", "/tmp/bar"] -- TODO: generate valid absolute paths
         <*> arbitrary
 
-instance Arbitrary RepoName where
-    arbitrary = RepoName <$> shortListOf1 10 (elements repochars) where
-        repochars = [ c | c <- [ '\NUL' .. '\255' ], isAlphaNum c || c `elem` ".-_" ]
-
 instance Arbitrary UserConstraintScope where
     arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
                       , UserAnySetupQualifier <$> arbitrary
@@ -868,13 +845,6 @@ instance Arbitrary PackageProperty where
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
-
-instance Arbitrary FlagName where
-    arbitrary = mkFlagName <$> flagident
-      where
-        flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
-                      `suchThat` (("-" /=) . take 1)
-        flagChars   = "-_" ++ ['a'..'z']
 
 instance Arbitrary PreSolver where
     arbitrary = elements [minBound..maxBound]
@@ -942,25 +912,3 @@ instance Arbitrary OptimisationLevel where
 
 instance Arbitrary DebugInfoLevel where
     arbitrary = elements [minBound..maxBound]
-
-instance Arbitrary URI where
-    arbitrary =
-      URI <$> elements ["file:", "http:", "https:"]
-          <*> (Just <$> arbitrary)
-          <*> (('/':) <$> arbitraryURIToken)
-          <*> (('?':) <$> arbitraryURIToken)
-          <*> pure ""
-
-instance Arbitrary URIAuth where
-    arbitrary =
-      URIAuth <$> pure ""   -- no password as this does not roundtrip
-              <*> arbitraryURIToken
-              <*> arbitraryURIPort
-
-arbitraryURIToken :: Gen String
-arbitraryURIToken =
-    shortListOf1 6 (elements (filter isUnreserved ['\0'..'\255']))
-
-arbitraryURIPort :: Gen String
-arbitraryURIPort =
-    oneof [ pure "", (':':) <$> shortListOf1 4 (choose ('0','9')) ]

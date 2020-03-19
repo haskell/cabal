@@ -2,21 +2,24 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
 
-import Control.Applicative (liftA2)
-import Data.Char (isAlphaNum, isDigit)
-import Data.List (intercalate)
+import Control.Applicative        (liftA2)
+import Data.Char                  (isAlphaNum, isDigit)
+import Data.List                  (intercalate)
+import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
 
+import Distribution.Simple.Flag                 (Flag (..))
 import Distribution.SPDX
-import Distribution.Version
+import Distribution.System
 import Distribution.Types.Dependency
-import Distribution.Types.UnqualComponentName
-import Distribution.Simple.Flag (Flag (..))
+import Distribution.Types.Flag                  (FlagAssignment, FlagName, mkFlagName, mkFlagAssignment)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
+import Distribution.Types.SourceRepo
+import Distribution.Types.UnqualComponentName
 import Distribution.Types.VersionRange.Internal
-import Distribution.System
 import Distribution.Verbosity
+import Distribution.Version
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
@@ -167,9 +170,13 @@ instance Arbitrary LibraryName where
         [ LSubLibName <$> arbitrary
         , pure LMainLibName
         ]
-    
+
     shrink (LSubLibName _) = [LMainLibName]
     shrink _               = []
+
+-------------------------------------------------------------------------------
+-- option flags
+-------------------------------------------------------------------------------
 
 instance Arbitrary a => Arbitrary (Flag a) where
     arbitrary = arbitrary1
@@ -185,11 +192,35 @@ instance Arbitrary1 Flag where
                        , (3, Flag <$> genA) ]
 
 -------------------------------------------------------------------------------
+-- GPD flags
+-------------------------------------------------------------------------------
+
+instance Arbitrary FlagName where
+    arbitrary = mkFlagName <$> flagident
+      where
+        flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
+                      `suchThat` (("-" /=) . take 1)
+        flagChars   = "-_" ++ ['a'..'z']
+
+instance Arbitrary FlagAssignment where
+    arbitrary = mkFlagAssignment <$> arbitrary
+
+-------------------------------------------------------------------------------
 -- Verbosity
 -------------------------------------------------------------------------------
 
 instance Arbitrary Verbosity where
     arbitrary = elements [minBound..maxBound]
+
+-------------------------------------------------------------------------------
+-- SourceRepo
+-------------------------------------------------------------------------------
+
+instance Arbitrary RepoType where
+    arbitrary = elements knownRepoTypes
+
+instance Arbitrary RepoKind where
+    arbitrary = elements [RepoHead, RepoThis]
 
 -------------------------------------------------------------------------------
 -- SPDX

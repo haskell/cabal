@@ -18,6 +18,7 @@ import Distribution.Pretty                 (prettyShow)
 import qualified Distribution.Utils.CharSet as CS
 
 import Distribution.Types.Dependency   (Dependency)
+import Distribution.Types.Flag         (FlagName)
 import Distribution.Types.PackageName  (PackageName)
 import Distribution.Types.Version      (Version)
 import Distribution.Types.VersionRange (VersionRange)
@@ -34,6 +35,7 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy PackageName)
     , testDescribed (Proxy :: Proxy Version)
     , testDescribed (Proxy :: Proxy VersionRange)
+    , testDescribed (Proxy :: Proxy FlagName)
     ]
 
 -------------------------------------------------------------------------------
