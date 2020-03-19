@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE GADTs               #-}
@@ -56,6 +57,7 @@ import Numeric                             (showIntAtBase)
 import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.DList       as DList
 import qualified Distribution.Compat.MonadFail   as Fail
 import qualified Text.Parsec                     as Parsec
 
@@ -342,15 +344,65 @@ parsecQuoted = P.between (P.char '"') (P.char '"')
 parsecMaybeQuoted :: CabalParsing m => m a -> m a
 parsecMaybeQuoted p = parsecQuoted p <|> p
 
-parsecUnqualComponentName :: CabalParsing m => m String
-parsecUnqualComponentName = intercalate "-" <$> toList <$> P.sepByNonEmpty component (P.char '-')
-  where
-    component :: CabalParsing m => m String
-    component = do
-      cs <- P.munch1 isAlphaNum
-      if all isDigit cs
-        then fail "all digits in portion of unqualified component name"
-        else return cs
+parsecUnqualComponentName :: forall m. CabalParsing m => m String
+parsecUnqualComponentName = state0 DList.empty where
+    --
+    -- using @kleene@ package we can easily see that
+    -- we need only two states to recognize
+    -- unqual-component-name
+    --
+    -- Compare with declarative
+    -- 'Distribution.FieldGrammar.Described.reUnqualComponent'.
+    --
+    -- @
+    -- import Kleene
+    -- import Kleene.Internal.Pretty
+    -- import Algebra.Lattice
+    -- import Data.Char
+    --
+    -- import qualified Data.RangeSet.Map as RSet
+    --
+    -- main = do
+    --     -- this is an approximation, to get an idea.
+    --     let component :: RE Char
+    --         component = star alphaNum <> alpha <> star alphaNum
+    --
+    --         alphaNum = alpha \/ num
+    --         alpha    = unions $ map char ['a'..'z']
+    --         num      = unions $ map char ['0'..'9']
+    --
+    --         re :: RE Char
+    --         re = component <> star (char '-' <> component)
+    --
+    --     putPretty re
+    --     putPretty $ fromTM re
+    -- @
+
+    state0 :: DList.DList Char -> m String
+    state0 acc = do
+        c <- ch -- <|> fail ("Invalid component, after " ++ DList.toList acc)
+        case () of
+            _ | isDigit c    -> state0 (DList.snoc acc c)
+              | isAlphaNum c -> state1 (DList.snoc acc c)
+              | c == '-'     -> fail ("Empty component, after " ++ DList.toList acc)
+              | otherwise    -> fail ("Internal error, after " ++ DList.toList acc)
+
+    state1 :: DList.DList Char -> m String
+    state1 acc = state1' acc `alt` return (DList.toList acc)
+
+    state1' :: DList.DList Char -> m String
+    state1' acc = do
+        c <- ch
+        case () of
+            _ | isAlphaNum c -> state1 (DList.snoc acc c)
+              | c == '-'     -> state0 (DList.snoc acc c)
+              | otherwise    -> fail ("Internal error, after " ++ DList.toList acc)
+
+    ch :: m Char
+    !ch = P.satisfy (\c -> isAlphaNum c || c == '-')
+
+    alt :: m String -> m String -> m String
+    !alt = (<|>)
 
 stringLiteral :: forall m. P.CharParsing m => m String
 stringLiteral = lit where
