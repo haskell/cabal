@@ -59,7 +59,8 @@ instance Parsec ModuleName where
             return (c:cs)
 
 instance Described ModuleName where
-    describe _ = RETodo
+    describe _ = REMunch1 (reChar '.') component where
+        component = RECharSet csUpper <> reMunchCS (csAlphaNum <> fromString "_'")
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

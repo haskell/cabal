@@ -29,6 +29,7 @@ module Distribution.FieldGrammar.Described (
     -- * Character Sets
     csChar,
     csAlphaNum,
+    csUpper,
     csNotSpace,
     csNotSpaceOrComma,
     ) where
@@ -127,6 +128,9 @@ csChar = CS.singleton
 
 csAlphaNum :: CS.CharSet
 csAlphaNum = CS.alphanum
+
+csUpper :: CS.CharSet
+csUpper = CS.upper
 
 csNotSpace :: CS.CharSet
 csNotSpace = CS.difference CS.universe $ CS.singleton ' '
