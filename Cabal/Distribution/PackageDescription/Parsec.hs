@@ -60,7 +60,7 @@ import Distribution.Parsec.Newtypes                  (CommaFSep, List, SpecVersi
 import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
-import Distribution.Simple.Utils                     (fromUTF8BS)
+import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                 (Dependency)
 import Distribution.Types.ForeignLib
@@ -109,12 +109,12 @@ parseGenericPackageDescription bs = do
             "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
         _ -> pure ()
 
-    case readFields' bs' of
+    case readFields' bs'' of
         Right (fs, lexWarnings) -> do
             when patched $
                 parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
             -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-            parseGenericPackageDescription' ver lexWarnings (validateUTF8 bs') fs
+            parseGenericPackageDescription' ver lexWarnings invalidUtf8 fs
         -- TODO: better marshalling of errors
         Left perr -> parseFatalFailure pos (show perr) where
             ppos = P.errorPos perr
@@ -122,6 +122,14 @@ parseGenericPackageDescription bs = do
   where
     (patched, bs') = patchQuirks bs
     ver = scanSpecVersion bs'
+
+    invalidUtf8 = validateUTF8 bs'
+
+    -- if there are invalid utf8 characters, we make the bytestring valid.
+    bs'' = case invalidUtf8 of
+        Nothing -> bs'
+        Just _  -> toUTF8BS (fromUTF8BS bs')
+
 
 -- | 'Maybe' variant of 'parseGenericPackageDescription'
 parseGenericPackageDescriptionMaybe :: BS.ByteString -> Maybe GenericPackageDescription
