@@ -3,6 +3,7 @@ packages: cabal-install/ solver-benchmarks/
 tests: True
 
 packages: Cabal/Cabal-quickcheck/
+packages: cabal-benchmarks/
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */

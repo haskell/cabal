@@ -30,14 +30,14 @@ GenericPackageDescription
                                                AnyVersion
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["LeadingComma"]`,
-                                                          `ModuleName ["LeadingComma2"]`,
-                                                          `ModuleName ["TrailingComma"]`,
-                                                          `ModuleName ["TrailingComma"]`,
-                                                          `ModuleName ["Comma"]`,
-                                                          `ModuleName ["InBetween"]`,
-                                                          `ModuleName ["NoCommas"]`,
-                                                          `ModuleName ["NoCommas"]`],
+                                       {exposedModules = [`ModuleName "LeadingComma"`,
+                                                          `ModuleName "LeadingComma2"`,
+                                                          `ModuleName "TrailingComma"`,
+                                                          `ModuleName "TrailingComma"`,
+                                                          `ModuleName "Comma"`,
+                                                          `ModuleName "InBetween"`,
+                                                          `ModuleName "NoCommas"`,
+                                                          `ModuleName "NoCommas"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

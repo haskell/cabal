@@ -117,7 +117,7 @@ instance Pretty OpenUnitId where
 --Right (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "foobar"}))
 --
 -- >>> eitherParsec "foo[Str=text-1.2.3:Data.Text.Text]" :: Either String OpenUnitId
--- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName ["Str"],OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName ["Data","Text","Text"]))]))
+-- Right (IndefFullUnitId (ComponentId "foo") (fromList [(ModuleName "Str",OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "text-1.2.3"})) (ModuleName "Data.Text.Text"))]))
 --
 instance Parsec OpenUnitId where
     parsec = P.try parseOpenUnitId <|> fmap DefiniteUnitId parsec
@@ -180,7 +180,7 @@ instance Pretty OpenModule where
 -- |
 --
 -- >>> eitherParsec "Includes2-0.1.0.0-inplace-mysql:Database.MySQL" :: Either String OpenModule
--- Right (OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "Includes2-0.1.0.0-inplace-mysql"})) (ModuleName ["Database","MySQL"]))
+-- Right (OpenModule (DefiniteUnitId (DefUnitId {unDefUnitId = UnitId "Includes2-0.1.0.0-inplace-mysql"})) (ModuleName "Database.MySQL"))
 --
 instance Parsec OpenModule where
     parsec = parsecModuleVar <|> parsecOpenModule

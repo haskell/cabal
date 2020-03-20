@@ -497,8 +497,8 @@ GenericPackageDescription
                                                   (EarlierVersion `mkVersion [0,11]`))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Database","PostgreSQL","LibPQ"]`,
-                                                          `ModuleName ["Database","PostgreSQL","LibPQ","Internal"]`],
+                                       {exposedModules = [`ModuleName "Database.PostgreSQL.LibPQ"`,
+                                                          `ModuleName "Database.PostgreSQL.LibPQ.Internal"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

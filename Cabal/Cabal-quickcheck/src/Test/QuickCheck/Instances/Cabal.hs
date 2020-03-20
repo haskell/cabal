@@ -17,6 +17,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.SourceRepo
 import Distribution.Types.UnqualComponentName
+import Distribution.ModuleName
 import Distribution.Types.VersionRange.Internal
 import Distribution.Verbosity
 import Distribution.Version
@@ -128,6 +129,16 @@ instance Arbitrary VersionIntervals where
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
+
+-------------------------------------------------------------------------------
+-- ModuleName
+-------------------------------------------------------------------------------
+
+instance Arbitrary ModuleName where
+  arbitrary = fromString . intercalate "." <$> shortListOf1 4 comp where
+    comp = (:) <$> elements upper <*> shortListOf1 10 (elements moduleChar)
+    upper = ['A'..'Z']
+    moduleChar = [ c | c <- ['\0' .. '\255'], isAlphaNum c || c `elem` "_'" ]
 
 -------------------------------------------------------------------------------
 -- Dependency

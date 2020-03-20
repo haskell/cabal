@@ -7,7 +7,7 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Issue"]`],
+                                       {exposedModules = [`ModuleName "Issue"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

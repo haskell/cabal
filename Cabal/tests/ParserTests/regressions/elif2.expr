@@ -275,7 +275,7 @@ GenericPackageDescription
                                                                                        signatures = []}}}],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["ElseIf"]`],
+                                       {exposedModules = [`ModuleName "ElseIf"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

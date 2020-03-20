@@ -28,6 +28,7 @@ module Distribution.Utils.CharSet (
     -- * Special lists
     alpha,
     alphanum,
+    upper,
     ) where
 
 import Distribution.Compat.Prelude hiding (empty, null, toList)
@@ -228,3 +229,9 @@ alpha = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlpha 
 alphanum :: CharSet
 alphanum = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isAlphaNum c ]
 {-# NOINLINE alphanum #-}
+
+-- | Note: this set varies depending on @base@ version.
+--
+upper :: CharSet
+upper = foldl' (flip insert) empty [ c | c <- [ minBound .. maxBound ], isUpper c ]
+{-# NOINLINE upper #-}

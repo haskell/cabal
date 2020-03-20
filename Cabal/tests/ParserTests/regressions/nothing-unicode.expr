@@ -71,7 +71,7 @@ GenericPackageDescription
                                                                                        signatures = []}}}],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["\\937"]`],
+                                       {exposedModules = [`ModuleName "\\937"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

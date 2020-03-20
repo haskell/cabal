@@ -22,6 +22,7 @@ import Distribution.Types.Flag         (FlagName)
 import Distribution.Types.PackageName  (PackageName)
 import Distribution.Types.Version      (Version)
 import Distribution.Types.VersionRange (VersionRange)
+import Distribution.ModuleName (ModuleName)
 
 import qualified RERE         as RE
 import qualified RERE.CharSet as RE
@@ -36,6 +37,7 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy Version)
     , testDescribed (Proxy :: Proxy VersionRange)
     , testDescribed (Proxy :: Proxy FlagName)
+    , testDescribed (Proxy :: Proxy ModuleName)
     ]
 
 -------------------------------------------------------------------------------

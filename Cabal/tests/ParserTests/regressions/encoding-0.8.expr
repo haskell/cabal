@@ -12,7 +12,7 @@ GenericPackageDescription
                                                   (ThisVersion `mkVersion [4,4]`))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Data","Encoding"]`],
+                                       {exposedModules = [`ModuleName "Data.Encoding"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
