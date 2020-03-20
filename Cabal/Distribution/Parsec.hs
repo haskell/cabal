@@ -10,6 +10,7 @@ module Distribution.Parsec (
     runParsecParser,
     runParsecParser',
     simpleParsec,
+    simpleParsecBS,
     simpleParsec',
     simpleParsecW',
     lexemeParsec,
@@ -50,7 +51,8 @@ import Data.List                           (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Error           (PError (..), showPError)
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString)
+import Data.ByteString (ByteString)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString, fieldLineStreamFromBS)
 import Distribution.Parsec.Position        (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning         (PWarnType (..), PWarning (..), showPWarning)
 import Numeric                             (showIntAtBase)
@@ -175,6 +177,13 @@ simpleParsec
     = either (const Nothing) Just
     . runParsecParser lexemeParsec "<simpleParsec>"
     . fieldLineStreamFromString
+
+-- | Like 'simpleParsec' but for 'ByteString'
+simpleParsecBS :: Parsec a => ByteString -> Maybe a
+simpleParsecBS
+    = either (const Nothing) Just
+    . runParsecParser lexemeParsec "<simpleParsec>"
+    . fieldLineStreamFromBS
 
 -- | Parse a 'String' with 'lexemeParsec' using specific 'CabalSpecVersion'.
 --

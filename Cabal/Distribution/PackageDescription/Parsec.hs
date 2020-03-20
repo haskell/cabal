@@ -54,7 +54,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration (freeVars)
 import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks        (patchQuirks)
-import Distribution.Parsec                           (parsec, simpleParsec)
+import Distribution.Parsec                           (parsec, simpleParsecBS)
 import Distribution.Parsec.FieldLineStream           (fieldLineStreamFromBS)
 import Distribution.Parsec.Newtypes                  (CommaFSep, List, SpecVersion (..), Token)
 import Distribution.Parsec.Position                  (Position (..), zeroPos)
@@ -859,7 +859,7 @@ scanSpecVersion bs = do
     --
     -- This is currently more tolerant regarding leading 0 digits.
     --
-    ver <- simpleParsec (BS8.unpack vers)
+    ver <- simpleParsecBS vers
     guard $ case versionNumbers ver of
               [_,_]   -> True
               [_,_,_] -> True
