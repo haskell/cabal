@@ -49,7 +49,7 @@ GenericPackageDescription
                                                             installIncludes = [],
                                                             jsSources = [],
                                                             ldOptions = [],
-                                                            mixins = [`Mixin {mixinPackageName = PackageName "str", mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = HidingRenaming [ModuleName ["Foo"]], includeRequiresRn = DefaultRenaming}}`],
+                                                            mixins = [`Mixin {mixinPackageName = PackageName "str", mixinIncludeRenaming = IncludeRenaming {includeProvidesRn = HidingRenaming [ModuleName "Foo"], includeRequiresRn = DefaultRenaming}}`],
                                                             oldExtensions = [],
                                                             options = PerCompilerFlavor [] [],
                                                             otherExtensions = [],

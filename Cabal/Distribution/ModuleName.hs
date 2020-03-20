@@ -1,6 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE DeriveDataTypeable  #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ModuleName
@@ -13,7 +14,7 @@
 -- Data type for Haskell module names.
 
 module Distribution.ModuleName (
-        ModuleName (..), -- TODO: move Parsec instance here, don't export constructor
+        ModuleName,
         fromString,
         fromComponents,
         components,
@@ -33,12 +34,16 @@ import Distribution.Utils.ShortText        (ShortText, fromShortText, toShortTex
 import System.FilePath                     (pathSeparator)
 
 import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.Compat.DList       as DList
 import qualified Text.PrettyPrint                as Disp
 
 -- | A valid Haskell module name.
 --
-newtype ModuleName = ModuleName ShortTextLst
+newtype ModuleName = ModuleName ShortText
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
+
+unModuleName :: ModuleName -> String
+unModuleName (ModuleName s) = fromShortText s
 
 instance Binary ModuleName
 instance Structured ModuleName
@@ -47,16 +52,36 @@ instance NFData ModuleName where
     rnf (ModuleName ms) = rnf ms
 
 instance Pretty ModuleName where
-  pretty (ModuleName ms) =
-    Disp.hcat (intersperse (Disp.char '.') (map Disp.text $ stlToStrings ms))
+  pretty = Disp.text . unModuleName
 
 instance Parsec ModuleName where
-    parsec = fromComponents <$> toList <$> P.sepByNonEmpty component (P.char '.')
-      where
-        component = do
-            c  <- P.satisfy isUpper
-            cs <- P.munch validModuleChar
-            return (c:cs)
+    parsec = parsecModuleName
+
+parsecModuleName :: forall m. CabalParsing m => m ModuleName
+parsecModuleName = state0 DList.empty where
+    upper :: m Char
+    !upper = P.satisfy isUpper
+
+    ch :: m Char
+    !ch = P.satisfy (\c -> validModuleChar c || c == '.')
+
+    alt :: m ModuleName -> m ModuleName -> m ModuleName
+    !alt = (<|>)
+
+    state0 :: DList.DList Char -> m ModuleName
+    state0 acc = do
+        c <- upper
+        state1 (DList.snoc acc c)
+
+    state1 :: DList.DList Char -> m ModuleName
+    state1 acc = state1' acc `alt` return (fromString (DList.toList acc))
+
+    state1' :: DList.DList Char -> m ModuleName
+    state1' acc = do
+        c <- ch
+        case c of
+            '.' -> state0 (DList.snoc acc c)
+            _   -> state1 (DList.snoc acc c)
 
 instance Described ModuleName where
     describe _ = REMunch1 (reChar '.') component where
@@ -67,8 +92,7 @@ validModuleChar c = isAlphaNum c || c == '_' || c == '\''
 
 validModuleComponent :: String -> Bool
 validModuleComponent []     = False
-validModuleComponent (c:cs) = isUpper c
-                           && all validModuleChar cs
+validModuleComponent (c:cs) = isUpper c && all validModuleChar cs
 
 -- | Construct a 'ModuleName' from a valid module name 'String'.
 --
@@ -77,34 +101,29 @@ validModuleComponent (c:cs) = isUpper c
 -- are parsing user input then use 'Distribution.Text.simpleParse' instead.
 --
 instance IsString ModuleName where
-    fromString string = fromComponents (split string)
-      where
-        split cs = case break (=='.') cs of
-          (chunk,[])     -> chunk : []
-          (chunk,_:rest) -> chunk : split rest
+    fromString = ModuleName . toShortText
 
 -- | Construct a 'ModuleName' from valid module components, i.e. parts
 -- separated by dots.
 fromComponents :: [String] -> ModuleName
-fromComponents components'
-    | null components'                     = error zeroComponents
-    | all validModuleComponent components' = ModuleName (stlFromStrings components')
-    | otherwise                            = error badName
-  where
-    zeroComponents = "ModuleName.fromComponents: zero components"
-    badName        = "ModuleName.fromComponents: invalid components " ++ show components'
+fromComponents comps = fromString (intercalate "." comps)
+{-# DEPRECATED fromComponents "Exists for cabal-install only" #-}
 
 -- | The module name @Main@.
 --
 main :: ModuleName
-main = ModuleName (stlFromStrings ["Main"])
+main = ModuleName (fromString "Main")
 
 -- | The individual components of a hierarchical module name. For example
 --
 -- > components (fromString "A.B.C") = ["A", "B", "C"]
 --
 components :: ModuleName -> [String]
-components (ModuleName ms) = stlToStrings ms
+components mn = split (unModuleName mn)
+  where
+    split cs = case break (=='.') cs of
+      (chunk,[])     -> chunk : []
+      (chunk,_:rest) -> chunk : split rest
 
 -- | Convert a module name to a file path, but without any file extension.
 -- For example:
@@ -112,42 +131,6 @@ components (ModuleName ms) = stlToStrings ms
 -- > toFilePath (fromString "A.B.C") = "A/B/C"
 --
 toFilePath :: ModuleName -> FilePath
-toFilePath = intercalate [pathSeparator] . components
-
-----------------------------------------------------------------------------
--- internal helper
-
--- | Strict/unpacked representation of @[ShortText]@
-data ShortTextLst = STLNil
-                  | STLCons !ShortText !ShortTextLst
-                  deriving (Eq, Generic, Ord, Typeable, Data)
-
-instance NFData ShortTextLst where
-    rnf = flip seq ()
-
-instance Show ShortTextLst where
-    showsPrec p = showsPrec p . stlToList
-
-
-instance Read ShortTextLst where
-    readsPrec p = map (first stlFromList) . readsPrec p
-
-instance Binary ShortTextLst where
-    put = put . stlToList
-    get = stlFromList <$> get
-
-instance Structured ShortTextLst
-
-stlToList :: ShortTextLst -> [ShortText]
-stlToList STLNil = []
-stlToList (STLCons st next) = st : stlToList next
-
-stlToStrings :: ShortTextLst -> [String]
-stlToStrings = map fromShortText . stlToList
-
-stlFromList :: [ShortText] -> ShortTextLst
-stlFromList [] = STLNil
-stlFromList (x:xs) = STLCons x (stlFromList xs)
-
-stlFromStrings :: [String] -> ShortTextLst
-stlFromStrings = stlFromList . map toShortText
+toFilePath = map f . unModuleName where
+    f '.' = pathSeparator
+    f c   = c

@@ -154,7 +154,7 @@ GenericPackageDescription
                                                (MajorBoundVersion `mkVersion [2,12,6,1]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Interval"]`],
+                                       {exposedModules = [`ModuleName "Interval"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -290,7 +290,7 @@ GenericPackageDescription
                                                                            [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
-                                                               otherModules = [`ModuleName ["IntervalTest"]`],
+                                                               otherModules = [`ModuleName "IntervalTest"`],
                                                                pkgconfigDepends = [],
                                                                profOptions = PerCompilerFlavor
                                                                                [] [],

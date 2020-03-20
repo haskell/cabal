@@ -54,7 +54,7 @@ GenericPackageDescription
                                                             options = PerCompilerFlavor [] [],
                                                             otherExtensions = [],
                                                             otherLanguages = [],
-                                                            otherModules = [`ModuleName ["StringImpl"]`],
+                                                            otherModules = [`ModuleName "StringImpl"`],
                                                             pkgconfigDepends = [],
                                                             profOptions = PerCompilerFlavor [] [],
                                                             sharedOptions = PerCompilerFlavor [] [],
@@ -93,7 +93,7 @@ GenericPackageDescription
                                                (OrLaterVersion `mkVersion [0,1,0,0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Text","PrettyPrint","Leijen"]`],
+                                       {exposedModules = [`ModuleName "Text.PrettyPrint.Leijen"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

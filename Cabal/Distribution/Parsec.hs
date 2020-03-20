@@ -46,13 +46,13 @@ module Distribution.Parsec (
     parsecUnqualComponentName,
     ) where
 
+import Data.ByteString                     (ByteString)
 import Data.Char                           (digitToInt, intToDigit)
 import Data.List                           (transpose)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Prelude
 import Distribution.Parsec.Error           (PError (..), showPError)
-import Data.ByteString (ByteString)
-import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromString, fieldLineStreamFromBS)
+import Distribution.Parsec.FieldLineStream (FieldLineStream, fieldLineStreamFromBS, fieldLineStreamFromString)
 import Distribution.Parsec.Position        (Position (..), incPos, retPos, showPos, zeroPos)
 import Distribution.Parsec.Warning         (PWarnType (..), PWarning (..), showPWarning)
 import Numeric                             (showIntAtBase)

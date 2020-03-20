@@ -10,7 +10,7 @@ GenericPackageDescription
                                                AnyVersion
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["ElseIf"]`],
+                                       {exposedModules = [`ModuleName "ElseIf"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -73,7 +73,7 @@ GenericPackageDescription
                                                      AnyVersion
                                                      (Set.fromList [LMainLibName])],
                             condTreeData = Library
-                                             {exposedModules = [`ModuleName ["ElseIf2"]`],
+                                             {exposedModules = [`ModuleName "ElseIf2"`],
                                               libBuildInfo = BuildInfo
                                                                {asmOptions = [],
                                                                 asmSources = [],

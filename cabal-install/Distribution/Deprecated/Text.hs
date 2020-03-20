@@ -1,4 +1,5 @@
 {-# LANGUAGE DefaultSignatures #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Deprecated.Text

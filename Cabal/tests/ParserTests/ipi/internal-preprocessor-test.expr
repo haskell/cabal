@@ -11,7 +11,7 @@ InstalledPackageInfo
    depends = [`UnitId "base-4.8.2.0-0d6d1084fbc041e1cded9228e80e264d"`],
    description = "See https://github.com/haskell/cabal/issues/1541#issuecomment-30155513",
    exposed = True,
-   exposedModules = [`ExposedModule {exposedName = ModuleName ["A"], exposedReexport = Nothing}`],
+   exposedModules = [`ExposedModule {exposedName = ModuleName "A", exposedReexport = Nothing}`],
    extraGHCiLibraries = [],
    extraLibraries = [],
    frameworkDirs = [],

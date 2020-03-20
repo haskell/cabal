@@ -12,7 +12,7 @@ GenericPackageDescription
                                                   (EarlierVersion `mkVersion [1]`))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["ElseIf"]`],
+                                       {exposedModules = [`ModuleName "ElseIf"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],

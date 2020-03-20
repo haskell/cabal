@@ -20,7 +20,7 @@ GenericPackageDescription
                                                (OrLaterVersion `mkVersion [2,4,0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Data","Octree"]`],
+                                       {exposedModules = [`ModuleName "Data.Octree"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -59,7 +59,7 @@ GenericPackageDescription
                                                           options = PerCompilerFlavor [] [],
                                                           otherExtensions = [],
                                                           otherLanguages = [],
-                                                          otherModules = [`ModuleName ["Data","Octree","Internal"]`],
+                                                          otherModules = [`ModuleName "Data.Octree.Internal"`],
                                                           pkgconfigDepends = [],
                                                           profOptions = PerCompilerFlavor [] [],
                                                           sharedOptions = PerCompilerFlavor [] [],

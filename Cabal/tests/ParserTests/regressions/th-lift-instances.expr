@@ -44,7 +44,7 @@ GenericPackageDescription
                                                   (EarlierVersion `mkVersion [0,11]`))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName ["Instances","TH","Lift"]`],
+                                       {exposedModules = [`ModuleName "Instances.TH.Lift"`],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -237,7 +237,7 @@ GenericPackageDescription
                                                                otherExtensions = [EnableExtension
                                                                                     TemplateHaskell],
                                                                otherLanguages = [],
-                                                               otherModules = [`ModuleName ["Data"]`],
+                                                               otherModules = [`ModuleName "Data"`],
                                                                pkgconfigDepends = [],
                                                                profOptions = PerCompilerFlavor
                                                                                [] [],

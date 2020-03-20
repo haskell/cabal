@@ -13,7 +13,7 @@ InstalledPackageInfo
               `UnitId "Includes2-0.1.0.0-inplace-mysql"`],
    description = "",
    exposed = False,
-   exposedModules = [`ExposedModule {exposedName = ModuleName ["Mine"], exposedReexport = Nothing}`],
+   exposedModules = [`ExposedModule {exposedName = ModuleName "Mine", exposedReexport = Nothing}`],
    extraGHCiLibraries = [],
    extraLibraries = [],
    frameworkDirs = [],
@@ -30,11 +30,11 @@ InstalledPackageInfo
    installedComponentId_ = `ComponentId ""`,
    installedUnitId = `UnitId "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"`,
    instantiatedWith = [_×_
-                         `ModuleName ["Database"]`
+                         `ModuleName "Database"`
                          (OpenModule
                             (DefiniteUnitId
                                (DefUnitId `UnitId "Includes2-0.1.0.0-inplace-mysql"`))
-                            `ModuleName ["Database","MySQL"]`)],
+                            `ModuleName "Database.MySQL"`)],
    ldOptions = [],
    libVisibility = LibraryVisibilityPrivate,
    libraryDirs = ["/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
