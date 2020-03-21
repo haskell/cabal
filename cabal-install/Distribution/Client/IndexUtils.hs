@@ -199,7 +199,7 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
 getSourcePackages verbosity repoCtxt =
-    getSourcePackagesAtIndexState verbosity repoCtxt Nothing
+    fst <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing
 
 -- | Variant of 'getSourcePackages' which allows getting the source
 -- packages at a particular 'IndexState'.
@@ -207,14 +207,14 @@ getSourcePackages verbosity repoCtxt =
 -- Current choices are either the latest (aka HEAD), or the index as
 -- it was at a particular time.
 --
--- TODO: Enhance to allow specifying per-repo 'IndexState's and also
--- report back per-repo 'IndexStateInfo's (in order for @v2-freeze@
--- to access it)
+-- Returns also the total index where repositories'
+-- RepoIndexState's are not HEAD. This is used in v2-freeze.
+--
 getSourcePackagesAtIndexState
     :: Verbosity
     -> RepoContext
     -> Maybe TotalIndexState
-    -> IO SourcePackageDb -- TODO: return TotalIndexState
+    -> IO (SourcePackageDb, TotalIndexState)
 getSourcePackagesAtIndexState verbosity repoCtxt _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
@@ -222,21 +222,23 @@ getSourcePackagesAtIndexState verbosity repoCtxt _
       warn (verboseUnmarkOutput verbosity) $
         "No remote package servers have been specified. Usually " ++
         "you would have one specified in the config file."
-      return SourcePackageDb {
+      return (SourcePackageDb {
         packageIndex       = mempty,
         packagePreferences = mempty
-      }
+      }, headTotalIndexState)
 getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
   let describeState IndexStateHead        = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
   pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
-      let rname :: RepoName
-          rname =  case r of
-              RepoRemote remote _      -> remoteRepoName remote
-              RepoSecure remote _      -> remoteRepoName remote
-              RepoLocalNoIndex local _ -> localRepoName local
-              RepoLocal _              -> RepoName "__local-repository" -- TODO...
+      let mrname :: Maybe RepoName
+          mrname = case r of
+              RepoRemote remote _      -> Just $ remoteRepoName remote
+              RepoSecure remote _      -> Just $ remoteRepoName remote
+              RepoLocalNoIndex local _ -> Just $ localRepoName local
+              RepoLocal _              -> Nothing
+
+      let rname = fromMaybe (RepoName "__local-repository") mrname
 
       info verbosity ("Reading available packages of " ++ unRepoName rname ++ "...")
 
@@ -291,17 +293,40 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
                               prettyShow (isiMaxTime isi) ++ " (HEAD = " ++
                               prettyShow (isiHeadTime isi) ++ ")")
 
-      pure (pis,deps)
+      pure RepoData
+          { rdIndexStates = maybe [] (\n -> [(n, isiMaxTime isi)]) mrname
+          , rdIndex       = pis
+          , rdPreferences = deps
+          }
 
-  let (pkgs, prefs) = mconcat pkgss
+  let RepoData indexStates pkgs prefs = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range _ <- prefs ]
+      totalIndexState = foldl'
+          (\acc (rn, ts) -> insertIndexState rn (IndexStateTime ts) acc)
+          headTotalIndexState
+          indexStates
   _ <- evaluate pkgs
   _ <- evaluate prefs'
-  return SourcePackageDb {
+  _ <- evaluate totalIndexState
+  return (SourcePackageDb {
     packageIndex       = pkgs,
     packagePreferences = prefs'
-  }
+  }, totalIndexState)
+
+-- auxiliary data used in getSourcePackagesAtIndexState
+data RepoData = RepoData
+    { rdIndexStates :: [(RepoName, Timestamp)]
+    , rdIndex       :: PackageIndex UnresolvedSourcePackage
+    , rdPreferences :: [Dependency]
+    }
+
+instance Semigroup RepoData where
+    RepoData x y z <> RepoData u v w = RepoData (x <> u) (y <> v) (z <> w)
+
+instance Monoid RepoData where
+    mempty  = RepoData mempty mempty mempty
+    mappend = (<>)
 
 readCacheStrict :: NFData pkg => Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
 readCacheStrict verbosity index mkPkg = do

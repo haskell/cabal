@@ -396,7 +396,8 @@ rebuildInstallPlan :: Verbosity
                    -> [PackageSpecifier UnresolvedSourcePackage]
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
-                         , ElaboratedSharedConfig )
+                         , ElaboratedSharedConfig
+                         , IndexUtils.TotalIndexState )
                       -- ^ @(improvedPlan, elaboratedPlan, _, _)@
 rebuildInstallPlan verbosity
                    distDirLayout@DistDirLayout {
@@ -417,14 +418,14 @@ rebuildInstallPlan verbosity
                    (projectConfigMonitored, localPackages, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
-      (elaboratedPlan, elaboratedShared) <-
+      (elaboratedPlan, elaboratedShared, totalIndexState) <-
         rerunIfChanged verbosity fileMonitorElaboratedPlan
                        (projectConfigMonitored, localPackages,
                         progsearchpath) $ do
 
           compilerEtc   <- phaseConfigureCompiler projectConfig
           _             <- phaseConfigurePrograms projectConfig compilerEtc
-          (solverPlan, pkgConfigDB)
+          (solverPlan, pkgConfigDB, totalIndexState)
                         <- phaseRunSolver         projectConfig
                                                   compilerEtc
                                                   localPackages
@@ -435,14 +436,14 @@ rebuildInstallPlan verbosity
                                                    localPackages
 
           phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-          return (elaboratedPlan, elaboratedShared)
+          return (elaboratedPlan, elaboratedShared, totalIndexState)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
 
-      return (improvedPlan, elaboratedPlan, elaboratedShared)
+      return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState)
 
   where
     fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
@@ -543,10 +544,11 @@ rebuildInstallPlan verbosity
     -- Run the solver to get the initial install plan.
     -- This is expensive so we cache it independently.
     --
-    phaseRunSolver :: ProjectConfig
-                   -> (Compiler, Platform, ProgramDb)
-                   -> [PackageSpecifier UnresolvedSourcePackage]
-                   -> Rebuild (SolverInstallPlan, PkgConfigDb)
+    phaseRunSolver
+        :: ProjectConfig
+        -> (Compiler, Platform, ProgramDb)
+        -> [PackageSpecifier UnresolvedSourcePackage]
+        -> Rebuild (SolverInstallPlan, PkgConfigDb, IndexUtils.TotalIndexState)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
@@ -561,7 +563,7 @@ rebuildInstallPlan verbosity
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
-          sourcePkgDb       <- getSourcePackages verbosity withRepoCtx
+          (sourcePkgDb, tis)<- getSourcePackages verbosity withRepoCtx
                                  (solverSettingIndexState solverSettings)
           pkgConfigDB       <- getPkgConfigDb verbosity progdb
 
@@ -580,7 +582,7 @@ rebuildInstallPlan verbosity
               planPackages verbosity compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
-            return (plan, pkgConfigDB)
+            return (plan, pkgConfigDB, tis)
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
@@ -757,20 +759,23 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
                                  packagedb progdb
 -}
 
-getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
-                  -> Maybe IndexUtils.TotalIndexState -> Rebuild SourcePackageDb
+getSourcePackages
+    :: Verbosity
+    -> (forall a. (RepoContext -> IO a) -> IO a)
+    -> Maybe IndexUtils.TotalIndexState
+    -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState)
 getSourcePackages verbosity withRepoCtx idxState = do
-    (sourcePkgDb, repos) <-
+    (sourcePkgDbWithTIS, repos) <-
       liftIO $
         withRepoCtx $ \repoctx -> do
-          sourcePkgDb <- IndexUtils.getSourcePackagesAtIndexState verbosity
+          sourcePkgDbWithTIS <- IndexUtils.getSourcePackagesAtIndexState verbosity
                                                                   repoctx idxState
-          return (sourcePkgDb, repoContextRepos repoctx)
+          return (sourcePkgDbWithTIS, repoContextRepos repoctx)
 
     mapM_ needIfExists
         . IndexUtils.getSourcePackagesMonitorFiles
         $ repos
-    return sourcePkgDb
+    return sourcePkgDbWithTIS
 
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb

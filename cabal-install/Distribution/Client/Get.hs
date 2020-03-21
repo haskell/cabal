@@ -89,7 +89,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   let idxState :: Maybe TotalIndexState
       idxState = flagToMaybe $ getIndexState getFlags
 
-  sourcePkgDb <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
+  (sourcePkgDb, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)

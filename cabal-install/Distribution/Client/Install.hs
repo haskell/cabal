@@ -289,7 +289,7 @@ makeInstallContext verbosity
     let idxState = flagToMaybe (installIndexState installFlags)
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
-    sourcePkgDb       <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
+    (sourcePkgDb, _)  <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
     pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     checkConfigExFlags verbosity installedPkgIndex

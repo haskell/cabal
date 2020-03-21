@@ -14,6 +14,7 @@ module Distribution.Client.IndexUtils.IndexState (
     headTotalIndexState,
     makeTotalIndexState,
     lookupIndexState,
+    insertIndexState,
 ) where
 
 import Distribution.Client.Compat.Prelude
@@ -105,6 +106,12 @@ makeTotalIndexState def m = normalise (TIS def m)
 -- | Lookup a 'RepoIndexState' for an individual repository from 'TotalIndexState'.
 lookupIndexState :: RepoName -> TotalIndexState -> RepoIndexState
 lookupIndexState rn (TIS def m) = Map.findWithDefault def rn m
+
+-- | Insert a 'RepoIndexState' to 'TotalIndexState'.
+insertIndexState :: RepoName -> RepoIndexState -> TotalIndexState -> TotalIndexState
+insertIndexState rn idx (TIS def m)
+    | idx == def = TIS def (Map.delete rn m)
+    | otherwise  = TIS def (Map.insert rn idx m)
 
 -------------------------------------------------------------------------------
 -- Repository index state
