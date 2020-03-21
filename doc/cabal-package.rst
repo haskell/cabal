@@ -6,7 +6,7 @@ Quickstart
 Starting from scratch, we're going to walk you through creating a simple
 Haskell project.
 
-**TL;DR;** ``mkdir proglet && cd proglet && cabal init --non-interactive && cabal run``
+**TL;DR;** ``mkdir proglet && cd proglet && cabal init && cabal run proglet``
 
 
 Introduction
@@ -27,7 +27,7 @@ Using ``cabal init``
 --------------------
 
 The ``cabal init`` command creates the necessary files for a Cabal package,
-it has both an ``--interactive`` (default) and ``--non-interactive``
+it has both an ``--interactive`` and ``--non-interactive`` (default)
 mode. The interactive mode will walk you through many of the package
 options and metadata, the non-interactive mode will simply pick reasonable
 defaults which is sufficient if you're just spinning up a small project to
@@ -79,7 +79,7 @@ Running the program
 -------------------
 
 Now that we have our Haskell code and the extra files that Cabal needs we
-can build and run our project.
+can build and run our application.
 
 ::
 
@@ -88,24 +88,25 @@ can build and run our project.
    ...
    Linking /path/to/proglet ...
 
-   $ cabal run
-   <Stuff about resolving dependencies, build profile, compliling, linking>
+   $ cabal run proglet
+   ...
    Hello, Haskell!
 
-Since we have an executable we can use ``cabal run`` which will build our
-executable (and re-build it if we've made any changes) and then run the
-binary.
+Since we have an executable we can use ``cabal run proglet`` which will build
+our executable (and re-build it if we've made any changes) and then run the
+binary. The ``cabal run`` command works for any ``component-name`` (tests for
+example), not just the main executable.
 
 
 About the Cabal package structure
 ---------------------------------
 
 It is assumed that all the files that make up a package live under a common
-project root directory (apart from external dependencies). This simple
-example will have all the project files in one directory, but most packages
-will use one or more subdirectories.
+root directory (apart from external dependencies). This simple example will
+have all the package files in one directory, but most packages will use one
+or more subdirectories.
 
-Cabal needs two extra files in the project's root directory:
+Cabal needs two extra files in the package's root directory:
 
 -  ``proglet.cabal``: contains package metadata and build information.
 
