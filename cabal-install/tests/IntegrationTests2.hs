@@ -1541,7 +1541,7 @@ planProject testdir cliConfig = do
        localPackages,
        _buildSettings) <- configureProject testdir cliConfig
 
-    (elaboratedPlan, _, elaboratedShared) <-
+    (elaboratedPlan, _, elaboratedShared, _) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig

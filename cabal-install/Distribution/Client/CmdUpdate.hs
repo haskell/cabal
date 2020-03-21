@@ -102,7 +102,7 @@ updateCommand = Client.installCommand {
 
 data UpdateRequest = UpdateRequest
   { _updateRequestRepoName  :: RepoName
-  , _updateRequestRepoState :: IndexState
+  , _updateRequestRepoState :: RepoIndexState
   } deriving (Show)
 
 instance Pretty UpdateRequest where
@@ -146,7 +146,7 @@ updateAction ( configFlags, configExFlags, installFlags
                          ++ "\" can not be found in known remote repo(s): "
                          ++ intercalate ", " (map unRepoName remoteRepoNames)
 
-    let reposToUpdate :: [(Repo, IndexState)]
+    let reposToUpdate :: [(Repo, RepoIndexState)]
         reposToUpdate = case updateRepoRequests of
           -- If we are not given any specific repository, update all
           -- repositories to HEAD.
@@ -179,7 +179,7 @@ updateAction ( configFlags, configExFlags, installFlags
                   haddockFlags testFlags benchmarkFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
-updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, IndexState)
+updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, RepoIndexState)
            -> IO ()
 updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt

@@ -26,10 +26,11 @@ module Distribution.Client.IndexUtils (
   getSourcePackages,
   getSourcePackagesMonitorFiles,
 
-  IndexState(..),
+  TotalIndexState,
   getSourcePackagesAtIndexState,
 
   Index(..),
+  RepoIndexState (..),
   PackageEntry(..),
   parsePackageIndex,
   updateRepoIndexCache,
@@ -177,7 +178,7 @@ emptyStateInfo = IndexStateInfo nullTimestamp nullTimestamp
 -- resulting index cache.
 --
 -- Note: 'filterCache' is idempotent in the 'Cache' value
-filterCache :: IndexState -> Cache -> (Cache, IndexStateInfo)
+filterCache :: RepoIndexState -> Cache -> (Cache, IndexStateInfo)
 filterCache IndexStateHead cache = (cache, IndexStateInfo{..})
   where
     isiMaxTime  = cacheHeadTs cache
@@ -198,7 +199,7 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
 getSourcePackages verbosity repoCtxt =
-    getSourcePackagesAtIndexState verbosity repoCtxt Nothing
+    fst <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing
 
 -- | Variant of 'getSourcePackages' which allows getting the source
 -- packages at a particular 'IndexState'.
@@ -206,11 +207,14 @@ getSourcePackages verbosity repoCtxt =
 -- Current choices are either the latest (aka HEAD), or the index as
 -- it was at a particular time.
 --
--- TODO: Enhance to allow specifying per-repo 'IndexState's and also
--- report back per-repo 'IndexStateInfo's (in order for @v2-freeze@
--- to access it)
-getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> Maybe IndexState
-                           -> IO SourcePackageDb
+-- Returns also the total index where repositories'
+-- RepoIndexState's are not HEAD. This is used in v2-freeze.
+--
+getSourcePackagesAtIndexState
+    :: Verbosity
+    -> RepoContext
+    -> Maybe TotalIndexState
+    -> IO (SourcePackageDb, TotalIndexState)
 getSourcePackagesAtIndexState verbosity repoCtxt _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
@@ -218,25 +222,29 @@ getSourcePackagesAtIndexState verbosity repoCtxt _
       warn (verboseUnmarkOutput verbosity) $
         "No remote package servers have been specified. Usually " ++
         "you would have one specified in the config file."
-      return SourcePackageDb {
+      return (SourcePackageDb {
         packageIndex       = mempty,
         packagePreferences = mempty
-      }
+      }, headTotalIndexState)
 getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
   let describeState IndexStateHead        = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
   pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
-      let rname =  case r of
-              RepoRemote remote _      -> unRepoName $ remoteRepoName remote
-              RepoSecure remote _      -> unRepoName $ remoteRepoName remote
-              RepoLocalNoIndex local _ -> unRepoName $ localRepoName local
-              RepoLocal _              -> ""
+      let mrname :: Maybe RepoName
+          mrname = case r of
+              RepoRemote remote _      -> Just $ remoteRepoName remote
+              RepoSecure remote _      -> Just $ remoteRepoName remote
+              RepoLocalNoIndex local _ -> Just $ localRepoName local
+              RepoLocal _              -> Nothing
 
-      info verbosity ("Reading available packages of " ++ rname ++ "...")
+      let rname = fromMaybe (RepoName "__local-repository") mrname
+
+      info verbosity ("Reading available packages of " ++ unRepoName rname ++ "...")
 
       idxState <- case mb_idxState of
-        Just idxState -> do
+        Just totalIdxState -> do
+          let idxState = lookupIndexState rname totalIdxState
           info verbosity $ "Using " ++ describeState idxState ++
             " as explicitly requested (via command line / project configuration)"
           return idxState
@@ -255,7 +263,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
           case r of
             RepoLocal path -> warn verbosity ("index-state ignored for old-format repositories (local repository '" ++ path ++ "')")
             RepoLocalNoIndex {} -> warn verbosity "index-state ignored for file+noindex repositories"
-            RepoRemote {} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ rname ++ "')")
+            RepoRemote {} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ unRepoName rname ++ "')")
             RepoSecure {} -> pure ()
 
       let idxState' = case r of
@@ -266,36 +274,59 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
 
       case idxState' of
         IndexStateHead -> do
-            info verbosity ("index-state("++rname++") = " ++ prettyShow (isiHeadTime isi))
+            info verbosity ("index-state("++ unRepoName rname ++") = " ++ prettyShow (isiHeadTime isi))
             return ()
         IndexStateTime ts0 -> do
             when (isiMaxTime isi /= ts0) $
                 if ts0 > isiMaxTime isi
                     then warn verbosity $
                                    "Requested index-state " ++ prettyShow ts0
-                                ++ " is newer than '" ++ rname ++ "'!"
+                                ++ " is newer than '" ++ unRepoName rname ++ "'!"
                                 ++ " Falling back to older state ("
                                 ++ prettyShow (isiMaxTime isi) ++ ")."
                     else info verbosity $
                                    "Requested index-state " ++ prettyShow ts0
-                                ++ " does not exist in '"++rname++"'!"
+                                ++ " does not exist in '"++ unRepoName rname ++"'!"
                                 ++ " Falling back to older state ("
                                 ++ prettyShow (isiMaxTime isi) ++ ")."
-            info verbosity ("index-state("++rname++") = " ++
+            info verbosity ("index-state("++ unRepoName rname ++") = " ++
                               prettyShow (isiMaxTime isi) ++ " (HEAD = " ++
                               prettyShow (isiHeadTime isi) ++ ")")
 
-      pure (pis,deps)
+      pure RepoData
+          { rdIndexStates = maybe [] (\n -> [(n, isiMaxTime isi)]) mrname
+          , rdIndex       = pis
+          , rdPreferences = deps
+          }
 
-  let (pkgs, prefs) = mconcat pkgss
+  let RepoData indexStates pkgs prefs = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range _ <- prefs ]
+      totalIndexState = foldl'
+          (\acc (rn, ts) -> insertIndexState rn (IndexStateTime ts) acc)
+          headTotalIndexState
+          indexStates
   _ <- evaluate pkgs
   _ <- evaluate prefs'
-  return SourcePackageDb {
+  _ <- evaluate totalIndexState
+  return (SourcePackageDb {
     packageIndex       = pkgs,
     packagePreferences = prefs'
-  }
+  }, totalIndexState)
+
+-- auxiliary data used in getSourcePackagesAtIndexState
+data RepoData = RepoData
+    { rdIndexStates :: [(RepoName, Timestamp)]
+    , rdIndex       :: PackageIndex UnresolvedSourcePackage
+    , rdPreferences :: [Dependency]
+    }
+
+instance Semigroup RepoData where
+    RepoData x y z <> RepoData u v w = RepoData (x <> u) (y <> v) (z <> w)
+
+instance Monoid RepoData where
+    mempty  = RepoData mempty mempty mempty
+    mappend = (<>)
 
 readCacheStrict :: NFData pkg => Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
 readCacheStrict verbosity index mkPkg = do
@@ -311,7 +342,7 @@ readCacheStrict verbosity index mkPkg = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> RepoContext -> Repo -> IndexState
+readRepoIndex :: Verbosity -> RepoContext -> Repo -> RepoIndexState
               -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
@@ -729,7 +760,7 @@ readPackageIndexCacheFile :: Package pkg
                           => Verbosity
                           -> (PackageEntry -> pkg)
                           -> Index
-                          -> IndexState
+                          -> RepoIndexState
                           -> IO (PackageIndex pkg, [Dependency], IndexStateInfo)
 readPackageIndexCacheFile verbosity mkPkg index idxState
     | localNoIndex index = do
@@ -922,7 +953,7 @@ writeNoIndexCache verbosity index cache = do
     structuredEncodeFile path cache
 
 -- | Write the 'IndexState' to the filesystem
-writeIndexTimestamp :: Index -> IndexState -> IO ()
+writeIndexTimestamp :: Index -> RepoIndexState -> IO ()
 writeIndexTimestamp index st
   = writeFile (timestampFile index) (prettyShow st)
 
@@ -938,7 +969,7 @@ currentIndexTimestamp verbosity repoCtxt r = do
         return (isiHeadTime isi)
 
 -- | Read the 'IndexState' from the filesystem
-readIndexTimestamp :: Index -> IO (Maybe IndexState)
+readIndexTimestamp :: Index -> IO (Maybe RepoIndexState)
 readIndexTimestamp index
   = fmap simpleParsec (readFile (timestampFile index))
         `catchIO` \e ->

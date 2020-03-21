@@ -78,7 +78,7 @@ import Distribution.Client.BuildReports.Types
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
 import Distribution.Client.IndexUtils.IndexState
-         ( IndexState(..) )
+         ( TotalIndexState, headTotalIndexState )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -1334,14 +1334,14 @@ outdatedCommand = CommandUI {
 data UpdateFlags
     = UpdateFlags {
         updateVerbosity  :: Flag Verbosity,
-        updateIndexState :: Flag IndexState
+        updateIndexState :: Flag TotalIndexState
     } deriving Generic
 
 defaultUpdateFlags :: UpdateFlags
 defaultUpdateFlags
     = UpdateFlags {
         updateVerbosity  = toFlag normal,
-        updateIndexState = toFlag IndexStateHead
+        updateIndexState = toFlag headTotalIndexState
     }
 
 updateCommand  :: CommandUI UpdateFlags
@@ -1534,7 +1534,7 @@ instance Semigroup ReportFlags where
 data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
     getPristine         :: Flag Bool,
-    getIndexState       :: Flag IndexState,
+    getIndexState       :: Flag TotalIndexState,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
   } deriving Generic
@@ -1765,7 +1765,7 @@ data InstallFlags = InstallFlags {
     installUpgradeDeps      :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
-    installIndexState       :: Flag IndexState,
+    installIndexState       :: Flag TotalIndexState,
     installRootCmd          :: Flag String,
     installSummaryFile      :: NubList PathTemplate,
     installLogFile          :: Flag PathTemplate,

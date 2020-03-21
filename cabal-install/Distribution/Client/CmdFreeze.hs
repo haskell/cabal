@@ -12,6 +12,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , writeProjectLocalFreezeConfig )
+import Distribution.Client.IndexUtils (TotalIndexState)
 import Distribution.Client.Targets
          ( UserQualifier(..), UserConstraintScope(..), UserConstraint(..) )
 import Distribution.Solver.Types.PackageConstraint
@@ -34,12 +35,12 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+import Distribution.Simple.Flag (Flag (..))
 import Distribution.Simple.Utils
          ( die', notice, wrapText )
 import Distribution.Verbosity
          ( normal )
 
-import Data.Monoid as Monoid
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad (unless)
@@ -119,13 +120,13 @@ freezeAction ( configFlags, configExFlags, installFlags
       localPackages
     } <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
-    (_, elaboratedPlan, _) <-
+    (_, elaboratedPlan, _, totalIndexState) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
 
-    let freezeConfig = projectFreezeConfig elaboratedPlan
+    let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState
     writeProjectLocalFreezeConfig distDirLayout freezeConfig
     notice verbosity $
       "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
@@ -143,13 +144,13 @@ freezeAction ( configFlags, configExFlags, installFlags
 -- | Given the install plan, produce a config value with constraints that
 -- freezes the versions of packages used in the plan.
 --
-projectFreezeConfig :: ElaboratedInstallPlan -> ProjectConfig
-projectFreezeConfig elaboratedPlan =
-    Monoid.mempty {
-      projectConfigShared = Monoid.mempty {
-        projectConfigConstraints =
+projectFreezeConfig :: ElaboratedInstallPlan -> TotalIndexState -> ProjectConfig
+projectFreezeConfig elaboratedPlan totalIndexState = mempty
+    { projectConfigShared = mempty
+        { projectConfigConstraints =
           concat (Map.elems (projectFreezeConstraints elaboratedPlan))
-      }
+        , projectConfigIndexState = Flag totalIndexState
+        }
     }
 
 -- | Given the install plan, produce solver constraints that will ensure the
