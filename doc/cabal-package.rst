@@ -143,7 +143,7 @@ out. Cabal files use "``--``" Haskell-style comment syntax.
       main-is: Main.hs
       -- other-modules:
       -- other-extensions:
-      build-depends: base >=4.xx && <4.yy
+      build-depends: base >=4.11 && <4.12
       -- hs-source-dirs:
       default-language: Haskell2010
 
@@ -157,7 +157,7 @@ file will have a section that looks like this:
       exposed-modules: MyLib
       -- other-modules:
       -- build-depends:
-      build-depends: base >=4.xx && <4.yy
+      build-depends: base >=4.11 && <4.12
       -- hs-source-dirs:
       default-language: Haskell2010
 
@@ -216,13 +216,13 @@ package, so we must list it:
     library
       exposed-modules:     Proglet
       other-modules:
-      build-depends:       containers, base >=4.xx && <4.yy
+      build-depends:       containers, base >=4.11 && <4.12
 
 In addition, almost every package also depends on the ``base`` library
 package because it exports the standard ``Prelude`` module plus other
 basic modules like ``Data.List``.
 
-You will notice that we have listed ``base >=4.xx && <4.yy``. This gives a
+You will notice that we have listed ``base >=4.11 && <4.12``. This gives a
 constraint on the version of the base package that our package will work
 with. The most common kinds of constraints are:
 
@@ -274,6 +274,8 @@ As mentioned above, if you have an executable you can also run it with:
    $ cabal run
 
 Assuming those two steps worked then you can also install the package:
+
+.. todo:: this might or might not work with v2-install.
 
 .. code-block:: console
 
