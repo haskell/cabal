@@ -131,18 +131,25 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 
 parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ThreeInt
 parseParsecTest keepGoing fpath bs = do
-    let (warnings, parsec) = Parsec.runParseResult $
-                              Parsec.parseGenericPackageDescription bs
+    let (warnings, result) = Parsec.runParseResult $
+                             Parsec.parseGenericPackageDescription bs
 
     let w | null warnings = 0
           | otherwise     = 1
 
-    case parsec of
-        Right _                       -> return (ThreeInt 1 w 0)
-        Left (_, errors) | keepGoing  -> return (ThreeInt 1 w 1)
-                          | otherwise -> do
+    case result of
+        Right gpd                    -> do
+            forEachGPD fpath bs gpd
+            return (ThreeInt 1 w 0)
+
+        Left (_, errors) | keepGoing -> return (ThreeInt 1 w 1)
+                         | otherwise -> do
                 traverse_ (putStrLn . Parsec.showPError fpath) errors
                 exitFailure
+
+-- | A hook to make queries on Hackage
+forEachGPD :: FilePath -> B8.ByteString -> L.GenericPackageDescription -> IO ()
+forEachGPD _ _ _ = return ()
 
 -------------------------------------------------------------------------------
 -- ThreeInt
