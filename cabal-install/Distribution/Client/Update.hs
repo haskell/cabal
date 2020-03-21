@@ -20,12 +20,13 @@ import Distribution.Simple.Setup
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), maybeRepoRemote, unRepoName )
+         ( Repo(..), RepoName (..), RemoteRepo(..), maybeRepoRemote, unRepoName )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
          ( downloadIndex )
 import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp, indexBaseName )
@@ -84,13 +85,20 @@ updateRepo verbosity updateFlags repoCtxt repo = do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                   =<< BS.readFile indexPath
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-    RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
+    RepoSecure remote _ -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
       let index = RepoIndex repoCtxt repo
       -- NB: This may be a nullTimestamp if we've never updated before
       current_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+
       -- NB: always update the timestamp, even if we didn't actually
       -- download anything
-      writeIndexTimestamp index (fromFlag (updateIndexState updateFlags))
+      let rname :: RepoName
+          rname = remoteRepoName remote
+
+      let repoIndexState :: RepoIndexState
+          repoIndexState = lookupIndexState rname (fromFlag (updateIndexState updateFlags))
+      writeIndexTimestamp index repoIndexState
+
       ce <- if repoContextIgnoreExpiry repoCtxt
               then Just `fmap` getCurrentTime
               else return Nothing

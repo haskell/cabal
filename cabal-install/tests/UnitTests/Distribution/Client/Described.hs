@@ -17,7 +17,7 @@ import Distribution.Pretty                 (prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
 
-import Distribution.Client.IndexUtils.IndexState (IndexState)
+import Distribution.Client.IndexUtils.IndexState (RepoIndexState, TotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp  (Timestamp)
 import Distribution.Client.Types                 (RepoName)
 
@@ -30,7 +30,8 @@ import Test.QuickCheck.Instances.Cabal ()
 tests :: TestTree
 tests = testGroup "Described"
     [ testDescribed (Proxy :: Proxy Timestamp)
-    , testDescribed (Proxy :: Proxy IndexState)
+    , testDescribed (Proxy :: Proxy RepoIndexState)
+    , testDescribed (Proxy :: Proxy TotalIndexState)
     , testDescribed (Proxy :: Proxy RepoName)
     ]
 

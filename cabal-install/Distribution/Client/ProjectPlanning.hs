@@ -758,7 +758,7 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
 -}
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
-                  -> Maybe IndexUtils.IndexState -> Rebuild SourcePackageDb
+                  -> Maybe IndexUtils.TotalIndexState -> Rebuild SourcePackageDb
 getSourcePackages verbosity withRepoCtx idxState = do
     (sourcePkgDb, repos) <-
       liftIO $

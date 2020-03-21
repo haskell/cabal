@@ -23,7 +23,7 @@ import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
-import Distribution.Client.IndexUtils.IndexState         (IndexState (..))
+import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.InstallSymlink                (OverwritePolicy)
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
@@ -137,10 +137,13 @@ instance Arbitrary Timestamp where
     --
     arbitrary = maybe (toEnum 0) id . epochTimeToTimestamp . (`mod` 3093527980800) . abs <$> arbitrary
 
-instance Arbitrary IndexState where
+instance Arbitrary RepoIndexState where
     arbitrary = frequency [ (1, pure IndexStateHead)
                           , (50, IndexStateTime <$> arbitrary)
                           ]
+
+instance Arbitrary TotalIndexState where
+    arbitrary = makeTotalIndexState <$> arbitrary <*> arbitrary
 
 instance Arbitrary WriteGhcEnvironmentFilesPolicy where
     arbitrary = arbitraryBoundedEnum

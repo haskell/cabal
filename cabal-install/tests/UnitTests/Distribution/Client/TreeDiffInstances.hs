@@ -48,6 +48,8 @@ instance (ToExpr k, ToExpr v) => ToExpr (MapLast k v)
 instance (ToExpr a) => ToExpr (NubList a)
 instance (ToExpr a) => ToExpr (Flag a)
 
+instance ToExpr (f FilePath) => ToExpr (SourceRepositoryPackage f)
+
 instance ToExpr AllowBootLibInstalls
 instance ToExpr AllowNewer
 instance ToExpr AllowOlder
@@ -61,7 +63,6 @@ instance ToExpr FlagAssignment
 instance ToExpr FlagName where toExpr = defaultExprViaShow
 instance ToExpr HaddockTarget
 instance ToExpr IndependentGoals
-instance ToExpr IndexState
 instance ToExpr InstallMethod
 instance ToExpr LocalRepo
 instance ToExpr MinimizeConflictSet
@@ -84,22 +85,23 @@ instance ToExpr ProjectConfigBuildOnly
 instance ToExpr ProjectConfigProvenance
 instance ToExpr ProjectConfigShared
 instance ToExpr RelaxDepMod
+instance ToExpr RelaxDeps
 instance ToExpr RelaxDepScope
 instance ToExpr RelaxDepSubject
-instance ToExpr RelaxDeps
 instance ToExpr RelaxedDep
 instance ToExpr RemoteRepo
 instance ToExpr ReorderGoals
+instance ToExpr RepoIndexState
 instance ToExpr RepoKind
 instance ToExpr RepoName
-instance ToExpr RepoType
 instance ToExpr ReportLevel
+instance ToExpr RepoType
 instance ToExpr ShortText
 instance ToExpr SourceRepo
-instance ToExpr (f FilePath) => ToExpr (SourceRepositoryPackage f)
 instance ToExpr StrongFlags
 instance ToExpr TestShowDetails
 instance ToExpr Timestamp
+instance ToExpr TotalIndexState
 instance ToExpr URI
 instance ToExpr URIAuth
 instance ToExpr UserConstraint
