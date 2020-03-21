@@ -77,7 +77,7 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
-import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.IndexUtils.IndexState
          ( IndexState(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )

@@ -34,7 +34,7 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SourceRepo (SourceRepoList)
 
-import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.IndexUtils.IndexState
          ( IndexState )
 
 import Distribution.Client.CmdInstall.ClientInstallFlags

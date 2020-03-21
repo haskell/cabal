@@ -17,8 +17,9 @@ import Distribution.Pretty                 (prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
 
-import Distribution.Client.IndexUtils.Timestamp (IndexState, Timestamp)
-import Distribution.Client.Types                (RepoName)
+import Distribution.Client.IndexUtils.IndexState (IndexState)
+import Distribution.Client.IndexUtils.Timestamp  (Timestamp)
+import Distribution.Client.Types                 (RepoName)
 
 import qualified RERE         as RE
 import qualified RERE.CharSet as RE
