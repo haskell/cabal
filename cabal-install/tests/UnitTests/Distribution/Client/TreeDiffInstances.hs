@@ -30,6 +30,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
+import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.InstallSymlink
 import Distribution.Client.ProjectConfig.Types

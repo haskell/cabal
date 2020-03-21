@@ -42,6 +42,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
+import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp, indexBaseName )

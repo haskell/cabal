@@ -23,7 +23,8 @@ import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
-import Distribution.Client.IndexUtils.Timestamp          (IndexState (..), Timestamp, epochTimeToTimestamp)
+import Distribution.Client.IndexUtils.IndexState         (IndexState (..))
+import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.InstallSymlink                (OverwritePolicy)
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 
