@@ -35,7 +35,7 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.SourceRepo
          ( RepoType(..) )
-import Distribution.Client.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..), srpToProxy)
+import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..), srpToProxy)
 import Distribution.Client.RebuildMonad
          ( Rebuild, monitorFiles, MonitorFilePath, monitorDirectoryExistence )
 import Distribution.Verbosity as Verbosity

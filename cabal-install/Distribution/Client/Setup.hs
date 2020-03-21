@@ -67,12 +67,11 @@ import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Deprecated.ReadP (readP_to_E)
 
-import Distribution.Client.Types
-         ( Username(..), Password(..), RemoteRepo(..)
-         , LocalRepo (..)
-         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
-         , WriteGhcEnvironmentFilesPolicy(..)
-         )
+import Distribution.Client.Types.Credentials (Username (..), Password (..))
+import Distribution.Client.Types.Repo (RemoteRepo(..), LocalRepo (..))
+import Distribution.Client.Types.AllowNewer (AllowNewer(..), AllowOlder(..), RelaxDeps(..))
+import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
+
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types

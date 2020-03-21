@@ -35,7 +35,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.InstallSymlink
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Targets
-import Distribution.Client.SourceRepo (SourceRepositoryPackage)
+import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage)
 import Distribution.Client.Types
 
 import UnitTests.Distribution.Client.GenericInstances ()

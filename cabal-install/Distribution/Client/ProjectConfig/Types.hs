@@ -23,16 +23,16 @@ module Distribution.Client.ProjectConfig.Types (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Types
-         ( RemoteRepo, LocalRepo, AllowNewer(..), AllowOlder(..)
-         , WriteGhcEnvironmentFilesPolicy )
+import Distribution.Client.Types.Repo ( RemoteRepo, LocalRepo )
+import Distribution.Client.Types.AllowNewer ( AllowNewer(..), AllowOlder(..) )
+import Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy ( WriteGhcEnvironmentFilesPolicy )
 import Distribution.Client.Dependency.Types
          ( PreSolver )
 import Distribution.Client.Targets
          ( UserConstraint )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
-import Distribution.Client.SourceRepo (SourceRepoList)
+import Distribution.Client.Types.SourceRepo (SourceRepoList)
 
 import Distribution.Client.IndexUtils.IndexState
          ( TotalIndexState )

@@ -5,7 +5,16 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Distribution.Client.SourceRepo where
+module Distribution.Client.Types.SourceRepo (
+    SourceRepositoryPackage (..),
+    SourceRepoList,
+    SourceRepoMaybe,
+    SourceRepoProxy,
+    srpHoist,
+    srpToProxy,
+    srpFanOut,
+    sourceRepositoryPackageGrammar,
+) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()

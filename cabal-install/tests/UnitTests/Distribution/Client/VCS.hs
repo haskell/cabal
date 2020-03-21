@@ -7,7 +7,7 @@ import Distribution.Client.RebuildMonad
          ( execRebuild )
 import Distribution.Simple.Program
 import Distribution.Verbosity as Verbosity
-import Distribution.Client.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy)
+import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy)
 
 import Data.List
 import Data.Tuple

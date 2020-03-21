@@ -41,7 +41,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )
 import Distribution.Types.SourceRepo (RepoKind (..))
-import Distribution.Client.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy, srpToProxy)
+import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy, srpToProxy)
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..), RepoContext(..) )

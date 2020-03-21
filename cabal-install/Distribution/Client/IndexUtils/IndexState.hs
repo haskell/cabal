@@ -19,14 +19,14 @@ module Distribution.Client.IndexUtils.IndexState (
 
 import Distribution.Client.Compat.Prelude
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
-import Distribution.Client.Types                (RepoName (..))
+import Distribution.Client.Types.RepoName       (RepoName (..))
 
 import Distribution.FieldGrammar.Described
 import Distribution.Parsec                 (Parsec (..))
 import Distribution.Pretty                 (Pretty (..))
 
+import qualified Data.Map.Strict                 as Map
 import qualified Distribution.Compat.CharParsing as P
-import qualified Data.Map.Strict as Map
 import qualified Text.PrettyPrint                as Disp
 
 -------------------------------------------------------------------------------

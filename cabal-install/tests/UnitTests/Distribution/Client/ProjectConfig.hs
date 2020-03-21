@@ -32,7 +32,7 @@ import Distribution.Client.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Targets
-import Distribution.Client.SourceRepo
+import Distribution.Client.Types.SourceRepo
 import Distribution.Utils.NubList
 
 import Distribution.Solver.Types.PackageConstraint

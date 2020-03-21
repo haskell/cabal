@@ -6,7 +6,7 @@ import Distribution.Client.Get
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.SourceRepo (SourceRepo (..), emptySourceRepo, RepoKind (..), RepoType (..))
-import Distribution.Client.SourceRepo (SourceRepositoryPackage (..))
+import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..))
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
 

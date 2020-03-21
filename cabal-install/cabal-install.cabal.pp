@@ -182,13 +182,25 @@ Version:            3.3.0.0
         Distribution.Client.SetupWrapper
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
-        Distribution.Client.SourceRepo
         Distribution.Client.SrcDist
         Distribution.Client.Store
         Distribution.Client.Tar
         Distribution.Client.TargetSelector
         Distribution.Client.Targets
         Distribution.Client.Types
+        Distribution.Client.Types.AllowNewer
+        Distribution.Client.Types.BuildResults
+        Distribution.Client.Types.Credentials
+        Distribution.Client.Types.ConfiguredId
+        Distribution.Client.Types.ConfiguredPackage
+        Distribution.Client.Types.PackageLocation
+        Distribution.Client.Types.PackageSpecifier
+        Distribution.Client.Types.ReadyPackage
+        Distribution.Client.Types.Repo
+        Distribution.Client.Types.RepoName
+        Distribution.Client.Types.SourcePackageDb
+        Distribution.Client.Types.SourceRepo
+        Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
