@@ -4,7 +4,7 @@ Quickstart
 ==========
 
 Starting from scratch, we're going to walk you through creating a simple
-Haskell project.
+Haskell application.
 
 **TL;DR;** ``mkdir proglet && cd proglet && cabal init && cabal run proglet``
 
@@ -12,7 +12,7 @@ Haskell project.
 Introduction
 ------------
 
-Every project needs a name, we'll call ours "proglet" and start by
+Every application needs a name, we'll call ours "proglet" and start by
 creating an empty directory.
 
 .. highlight:: console
@@ -30,8 +30,7 @@ The ``cabal init`` command creates the necessary files for a Cabal package,
 it has both an ``--interactive`` and ``--non-interactive`` (default)
 mode. The interactive mode will walk you through many of the package
 options and metadata, the non-interactive mode will simply pick reasonable
-defaults which is sufficient if you're just spinning up a small project to
-try something out.
+defaults which is sufficient if you're just trying something out.
 
 .. highlight:: console
 
@@ -58,7 +57,7 @@ If you want, you can also try out the interactive mode, for now chose
 
 This will create the ``Main.hs`` Haskell file and a few others that are
 part of all Cabal packages. By default ``cabal init`` will create an
-executable in the top level project directory.
+executable in the top level directory.
 
 ::
 
