@@ -51,10 +51,11 @@ import Distribution.Deprecated.ViewAsFieldDescr
          ( viewAsFieldDescr )
 
 import Distribution.Client.Types
-         ( RemoteRepo(..), LocalRepo (..), Username(..), Password(..), emptyRemoteRepo
+         ( RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
          , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
          , RepoName (..), unRepoName
          )
+import Distribution.Client.Types.Credentials (Username (..), Password (..))
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import qualified Distribution.Client.Init.Types as IT

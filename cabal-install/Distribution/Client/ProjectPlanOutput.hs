@@ -18,9 +18,11 @@ module Distribution.Client.ProjectPlanOutput (
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding.Types
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.Types (Repo(..), RemoteRepo(..), PackageLocation(..), confInstId)
+import           Distribution.Client.Types.Repo (Repo(..), RemoteRepo(..))
+import           Distribution.Client.Types.PackageLocation (PackageLocation(..))
+import           Distribution.Client.Types.ConfiguredId (confInstId)
+import           Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 import           Distribution.Client.HashValue (showHashValue, hashValue)
-import           Distribution.Client.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J

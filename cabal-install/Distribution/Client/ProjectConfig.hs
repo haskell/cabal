@@ -103,7 +103,7 @@ import Distribution.Fields
 import Distribution.Pretty (prettyShow)
 import Distribution.Types.SourceRepo
          ( RepoType(..) )
-import Distribution.Client.SourceRepo
+import Distribution.Client.Types.SourceRepo
          ( SourceRepoList, SourceRepositoryPackage (..), srpFanOut )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )

@@ -26,10 +26,10 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
-import Distribution.Client.Types
-         ( RepoName (..), RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
-         , AllowNewer(..), AllowOlder(..), unRepoName )
-import Distribution.Client.SourceRepo (sourceRepositoryPackageGrammar, SourceRepoList)
+import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
+import Distribution.Client.Types.Repo (RemoteRepo(..), LocalRepo (..), emptyRemoteRepo)
+import Distribution.Client.Types.AllowNewer (AllowNewer(..), AllowOlder(..))
+import Distribution.Client.Types.SourceRepo (sourceRepositoryPackageGrammar, SourceRepoList)
 
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields, postProcessRepo )
