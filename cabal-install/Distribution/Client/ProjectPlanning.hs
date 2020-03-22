@@ -3129,14 +3129,18 @@ legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
 legacyCustomSetupPkgs compiler (Platform _ os) =
     map mkPackageName $
         [ "array", "base", "binary", "bytestring", "containers"
-        , "deepseq", "directory", "filepath", "old-time", "pretty"
+        , "deepseq", "directory", "filepath", "pretty"
         , "process", "time", "transformers" ]
      ++ [ "Win32" | os == Windows ]
      ++ [ "unix"  | os /= Windows ]
      ++ [ "ghc-prim"         | isGHC ]
      ++ [ "template-haskell" | isGHC ]
+     ++ [ "old-time" | notGHC710 ]
   where
     isGHC = compilerCompatFlavor GHC compiler
+    notGHC710 = case compilerCompatVersion GHC compiler of
+        Nothing -> False
+        Just v  -> v <= mkVersion [7,9]
 
 -- The other aspects of our Setup.hs policy lives here where we decide on
 -- the 'SetupScriptOptions'.
