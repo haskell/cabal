@@ -40,6 +40,8 @@ checkTests = testGroup "regressions"
     , checkTest "ghc-option-j.cabal"
     , checkTest "multiple-libs-2.cabal"
     , checkTest "assoc-cpp-options.cabal"
+    , checkTest "public-multilib-1.cabal"
+    , checkTest "public-multilib-2.cabal"
     ]
 
 checkTest :: FilePath -> TestTree

@@ -38,6 +38,8 @@ data PWarnType
 
     | PWTVersionOperator       -- ^ Version operators used (without cabal-version: 1.8)
     | PWTVersionWildcard       -- ^ Version wildcard used (without cabal-version: 1.6)
+
+    | PWTExperimental          -- ^ Experimental feature
     deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 
 instance Binary PWarnType

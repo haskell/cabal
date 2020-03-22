@@ -1,3 +1,4 @@
+issue-6083-pkg-pkg.cabal:9:27: colon specifier is experimental feature (issue #5660)
 cabal-version: 3.0
 name:          issue
 version:       6083
