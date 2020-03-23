@@ -4,9 +4,11 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - d-0.1.0.0 (lib:privatelib) (first run)
  - p-0.1.0.0 (lib) (first run)
+Warning: d.cabal:10:22: visibility is experimental feature (issue #5660)
 Configuring library 'privatelib' for d-0.1.0.0..
 Preprocessing library 'privatelib' for d-0.1.0.0..
 Building library 'privatelib' for d-0.1.0.0..
+Warning: p.cabal:6:20: colon specifier is experimental feature (issue #5660)
 Configuring library for p-0.1.0.0..
 cabal: Encountered missing or private dependencies:
     d:{privatelib} ==0.1.0.0

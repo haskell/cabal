@@ -1,0 +1,3 @@
+public-multilib-2.cabal:12:15: colon specifier is experimental feature (issue #5660)
+No 'maintainer' field.
+No 'description' field.
