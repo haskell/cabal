@@ -2201,7 +2201,7 @@ uploadCommand = CommandUI {
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n"
-      ++ relevantConfigValuesText ["username", "password"],
+      ++ relevantConfigValuesText ["username", "password", "password-command"],
     commandUsage        = \pname ->
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
