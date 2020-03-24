@@ -5,7 +5,7 @@ import Distribution.Client.Get
 
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
-import Distribution.Types.SourceRepo (SourceRepo (..), emptySourceRepo, RepoKind (..), RepoType (..))
+import Distribution.Types.SourceRepo (SourceRepo (..), emptySourceRepo, RepoKind (..), RepoType (..), KnownRepoType (..))
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..))
 import Distribution.Verbosity as Verbosity
 import Distribution.Version
@@ -120,7 +120,7 @@ testNoRepoLocation = do
     repo     = (emptySourceRepo RepoHead) {
                  repoType = Just repotype
                }
-    repotype = Darcs
+    repotype = KnownRepoType Darcs
 
 
 testSelectRepoKind :: Assertion
@@ -165,7 +165,7 @@ testRepoDestinationExists =
   where
     pkgrepos = [(pkgidfoo, [repo])]
     repo     = (emptySourceRepo RepoHead) {
-                 repoType     = Just Darcs,
+                 repoType     = Just (KnownRepoType Darcs),
                  repoLocation = Just ""
                }
 
@@ -175,11 +175,11 @@ testGitFetchFailed =
     withTestDir verbosity "repos" $ \tmpdir -> do
       let srcdir   = tmpdir </> "src"
           repo     = (emptySourceRepo RepoHead) {
-                       repoType     = Just Git,
+                       repoType     = Just (KnownRepoType Git),
                        repoLocation = Just srcdir
                      }
           repo'    = SourceRepositoryPackage
-                     { srpType     = Git
+                     { srpType     = KnownRepoType Git
                      , srpLocation = srcdir
                      , srpTag      = Nothing
                      , srpBranch   = Nothing
@@ -195,7 +195,7 @@ testNetworkGitClone :: Assertion
 testNetworkGitClone =
     withTestDir verbosity "repos" $ \tmpdir -> do
       let repo1 = (emptySourceRepo RepoHead) {
-                    repoType     = Just Git,
+                    repoType     = Just (KnownRepoType Git),
                     repoLocation = Just "https://github.com/haskell/zlib.git"
                   }
       clonePackagesFromSourceRepo verbosity tmpdir Nothing
@@ -203,7 +203,7 @@ testNetworkGitClone =
       assertFileContains (tmpdir </> "zlib1/zlib.cabal") ["name:", "zlib"]
 
       let repo2 = (emptySourceRepo RepoHead) {
-                    repoType     = Just Git,
+                    repoType     = Just (KnownRepoType Git),
                     repoLocation = Just (tmpdir </> "zlib1")
                   }
       clonePackagesFromSourceRepo verbosity tmpdir Nothing
@@ -211,7 +211,7 @@ testNetworkGitClone =
       assertFileContains (tmpdir </> "zlib2/zlib.cabal") ["name:", "zlib"]
 
       let repo3 = (emptySourceRepo RepoHead) {
-                    repoType     = Just Git,
+                    repoType     = Just (KnownRepoType Git),
                     repoLocation = Just (tmpdir </> "zlib1"),
                     repoTag      = Just "0.5.0.0"
                   }

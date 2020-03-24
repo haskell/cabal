@@ -228,7 +228,7 @@ instance Arbitrary Verbosity where
 -------------------------------------------------------------------------------
 
 instance Arbitrary RepoType where
-    arbitrary = elements knownRepoTypes
+    arbitrary = elements (KnownRepoType <$> knownRepoTypes)
 
 instance Arbitrary RepoKind where
     arbitrary = elements [RepoHead, RepoThis]
