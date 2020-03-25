@@ -193,10 +193,13 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             J.object [ "type" J..= J.String "repo-tar"
                      , "repo" J..= repoToJ repo
                      ]
-          RemoteSourceRepoPackage srcRepo _ ->
-            J.object [ "type" J..= J.String "source-repo"
-                     , "source-repo" J..= sourceRepoToJ srcRepo
-                     ]
+          RemoteSourceRepoPackage srcRepo local ->
+            J.object $
+              [ "type" J..= J.String "source-repo"
+              , "source-repo" J..= sourceRepoToJ srcRepo
+              ] ++
+              [ "path" J..= J.String path | path <- maybeToList local ]
+
 
       repoToJ :: Repo -> J.Value
       repoToJ repo =
