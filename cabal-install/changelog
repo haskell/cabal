@@ -1,6 +1,9 @@
 -*-change-log-*-
 
 3.2.0.0 Herbert Valerio Riedel <hvr@gnu.org> April 2020
+3.2.0.0 Someone <mailto:somewhere@example.com> February 2020
+	* Add `--exact` flag to `cabal list` command that enables exact match on the
+	  search package name (#4267)
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
 	  (analogous to how `--test-option(s)` works). (#6209)

@@ -1624,6 +1624,7 @@ instance Semigroup GetFlags where
 data ListFlags = ListFlags {
     listInstalled    :: Flag Bool,
     listSimpleOutput :: Flag Bool,
+    listExactMatch   :: Flag Bool,
     listVerbosity    :: Flag Verbosity,
     listPackageDBs   :: [Maybe PackageDB]
   } deriving Generic
@@ -1632,6 +1633,7 @@ defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
     listInstalled    = Flag False,
     listSimpleOutput = Flag False,
+    listExactMatch   = Flag False,
     listVerbosity    = toFlag normal,
     listPackageDBs   = []
   }
@@ -1666,6 +1668,10 @@ listCommand = CommandUI {
         , option [] ["simple-output"]
             "Print in a easy-to-parse format"
             listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
+            trueArg
+        , option [] ["exact"]
+            "Print only exact match"
+            listExactMatch (\v flags -> flags { listExactMatch = v })
             trueArg
 
         , option "" ["package-db"]

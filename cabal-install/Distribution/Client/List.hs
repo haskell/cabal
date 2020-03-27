@@ -112,12 +112,12 @@ getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
           [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfoMatching =
           let matchingInstalled = matchingPackages
-                                  InstalledPackageIndex.searchByNameSubstring
+                                  ipiSearch
                                   installedPkgIndex
               matchingSource   = matchingPackages
                                  (\ idx n ->
                                    concatMap snd
-                                   (PackageIndex.searchByNameSubstring idx n))
+                                   (piSearch idx n))
                                  sourcePkgIndex
           in mergePackages matchingInstalled matchingSource
 
@@ -131,6 +131,11 @@ getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
     return matches
   where
     onlyInstalled = fromFlag (listInstalled listFlags)
+    exactMatch = fromFlag (listExactMatch listFlags)
+    ipiSearch | exactMatch = InstalledPackageIndex.searchByNameExact
+              | otherwise  = InstalledPackageIndex.searchByNameSubstring
+    piSearch  | exactMatch = PackageIndex.searchByNameExact
+              | otherwise  = PackageIndex.searchByNameSubstring
     matchingPackages search index =
       [ pkg
       | pat <- pats
