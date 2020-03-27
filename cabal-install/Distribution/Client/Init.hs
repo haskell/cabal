@@ -278,9 +278,8 @@ getLicense flags = do
                   (maybePrompt flags
                     (promptList "Please choose a license" listedLicenses
                      (Just BSD3) displayLicense True))
-
   case checkLicenseInvalid lic of
-    Just msg -> putStrLn msg >> getLicense flags
+    Just msg -> putStrLn msg >> return (flags { license = maybeToFlag lic })
     Nothing  -> return $ flags { license = maybeToFlag lic }
 
   where
