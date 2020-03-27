@@ -96,6 +96,7 @@ instance ToExpr RepoKind
 instance ToExpr RepoName
 instance ToExpr ReportLevel
 instance ToExpr RepoType
+instance ToExpr KnownRepoType
 instance ToExpr ShortText
 instance ToExpr SourceRepo
 instance ToExpr StrongFlags
