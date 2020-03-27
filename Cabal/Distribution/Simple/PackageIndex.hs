@@ -77,6 +77,7 @@ module Distribution.Simple.PackageIndex (
   searchByName,
   SearchResult(..),
   searchByNameSubstring,
+  searchByNameExact,
 
   -- ** Bulk queries
   allPackages,
@@ -526,15 +527,24 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 -- That is, all packages that contain the given string in their name.
 --
 searchByNameSubstring :: PackageIndex a -> String -> [a]
-searchByNameSubstring index searchterm =
+searchByNameSubstring =
+  searchByNameInternal False
+
+searchByNameExact :: PackageIndex a -> String -> [a]
+searchByNameExact =
+  searchByNameInternal True
+
+searchByNameInternal :: Bool -> PackageIndex a -> String -> [a]
+searchByNameInternal exactMatch index searchterm =
   [ pkg
   -- Don't match internal packages
   | ((pname, LMainLibName), pvers) <- Map.toList (packageIdIndex index)
-  , lsearchterm `isInfixOf` lowercase (unPackageName pname)
+  , if exactMatch
+      then searchterm == unPackageName pname
+      else lsearchterm `isInfixOf` lowercase (unPackageName pname)
   , pkgs <- Map.elems pvers
   , pkg <- pkgs ]
   where lsearchterm = lowercase searchterm
-
 
 --
 -- * Special queries

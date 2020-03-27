@@ -1,0 +1,4 @@
+synopsis: Add --exact flag to the list command
+packages: cabal-install
+prs: #6618
+issues: #4267
