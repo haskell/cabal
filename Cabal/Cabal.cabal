@@ -447,6 +447,7 @@ library
     Distribution.Types.MungedPackageId
     Distribution.Types.PackageId
     Distribution.Types.UnitId
+    Distribution.Types.CommonStanza
     Distribution.Types.Executable
     Distribution.Types.ExecutableScope
     Distribution.Types.Library
@@ -474,6 +475,7 @@ library
     Distribution.Types.TestSuiteInterface
     Distribution.Types.TestType
     Distribution.Types.GenericPackageDescription
+    Distribution.Types.PackageSourceDescription
     Distribution.Types.Condition
     Distribution.Types.CondTree
     Distribution.Types.HookedBuildInfo
@@ -543,9 +545,11 @@ library
     Distribution.Types.Lens
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BuildInfo.Lens
+    Distribution.Types.CommonStanza.Lens
     Distribution.Types.Executable.Lens
     Distribution.Types.ForeignLib.Lens
     Distribution.Types.GenericPackageDescription.Lens
+    Distribution.Types.PackageSourceDescription.Lens
     Distribution.Types.InstalledPackageInfo.Lens
     Distribution.Types.Library.Lens
     Distribution.Types.PackageDescription.Lens
