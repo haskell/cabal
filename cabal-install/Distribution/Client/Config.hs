@@ -26,6 +26,7 @@ module Distribution.Client.Config (
     defaultConfigFile,
     defaultCacheDir,
     defaultCompiler,
+    defaultInstallPath,
     defaultLogsDir,
     defaultUserInstall,
 

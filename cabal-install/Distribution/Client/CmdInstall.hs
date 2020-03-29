@@ -64,7 +64,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
-         ( getCabalDir, loadConfig, SavedConfig(..) )
+         ( defaultInstallPath, getCabalDir, loadConfig, SavedConfig(..) )
 import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Solver.Types.PackageIndex
          ( lookupPackageName, searchByName )
@@ -642,6 +642,7 @@ installExes
   -> IO ()
 installExes verbosity baseCtx buildCtx platform compiler
             configFlags clientInstallFlags = do
+  installPath <- defaultInstallPath
   let storeDirLayout = cabalStoreDirLayout $ cabalDirLayout baseCtx
 
       prefix = fromFlagOrDefault "" (fmap InstallDirs.fromPathTemplate (configProgPrefix configFlags))
@@ -659,9 +660,10 @@ installExes verbosity baseCtx buildCtx platform compiler
       mkFinalExeName exe = prefix <> unUnqualComponentName exe <> suffix <.> exeExtension platform
       installdirUnknown =
         "installdir is not defined. Set it in your cabal config file "
-        ++ "or use --installdir=<path>"
+        ++ "or use --installdir=<path>. Using default installdir: " ++ show installPath
 
-  installdir <- fromFlagOrDefault (die' verbosity installdirUnknown) $
+  installdir <- fromFlagOrDefault
+                (warn verbosity installdirUnknown >> pure installPath) $
                 pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
   warnIfNoExes verbosity buildCtx
