@@ -541,7 +541,7 @@ checkCommonStanzaImports v commonStanzas fs@(Field (Name pos name) fls : fields)
 
         -- If the Cabal spec version declared in the file does not support
         -- common stanzas than emit a warning.
-        when (hasCommonStanzas == NoCommonStanzas) $
+        when ((specHasCommonStanzas v) == NoCommonStanzas) $
           parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
 
         -- Verify that all imported common pragmas have been defined in the file.
@@ -563,13 +563,10 @@ checkCommonStanzaImports v commonStanzas fs@(Field (Name pos name) fls : fields)
         pure fs
 
   where
-    hasCommonStanzas = specHasCommonStanzas v
-
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
 checkCommonStanzaImports _ _ fs = pure fs
-
 
 
 -- | Warn on "import" fields, also map to Maybe, so errorneous fields can be filtered

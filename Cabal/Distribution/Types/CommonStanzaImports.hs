@@ -50,7 +50,7 @@ instance Pretty CommonStanzaImports where
     Disp.fsep (Disp.punctuate Disp.comma (map pretty imports))
 
 instance Parsec CommonStanzaImports where
-  parsec = CommonStanzaImports <$> parsecCommaList parsec
+  parsec = CommonStanzaImports <$> parsecLeadingCommaList parsec
 
 instance Described CommonStanzaImports where
   describe _ = RETodo

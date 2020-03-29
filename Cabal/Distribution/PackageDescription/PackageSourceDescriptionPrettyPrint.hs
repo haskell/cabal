@@ -28,7 +28,7 @@ import Prelude ()
 
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency
-import Distribution.Types.ForeignLib          (ForeignLib (foreignLibName))
+import Distribution.Types.ForeignLib          (ForeignLib)
 import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 

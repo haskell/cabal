@@ -150,6 +150,10 @@ import Distribution.PackageDescription
          ( BuildType(..), Executable(..), buildable )
 import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
 
+import Distribution.PackageDescription.PackageSourceDescriptionParser
+         ( readPackageSourceDescription)
+import Distribution.PackageDescription.PackageSourceDescriptionPrettyPrint
+         ( writePackageSourceDescription)
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import qualified Distribution.Simple as Simple
@@ -1034,9 +1038,9 @@ formatAction verbosityFlag extraArgs _globalFlags = do
     [] -> do cwd <- getCurrentDirectory
              tryFindPackageDesc verbosity cwd
     (p:_) -> return p
-  pkgDesc <- readGenericPackageDescription verbosity path
+  pkgDesc <- readPackageSourceDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.
-  writeGenericPackageDescription path pkgDesc
+  writePackageSourceDescription path pkgDesc
 
 uninstallAction :: Flag Verbosity -> [String] -> Action
 uninstallAction verbosityFlag extraArgs _globalFlags = do

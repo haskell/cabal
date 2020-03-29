@@ -480,6 +480,7 @@ compToExe comp =
     CTest test@TestSuite { testInterface = TestSuiteExeV10 _ f } ->
       Just Executable {
         exeName    = testName test,
+        exeImports = mempty,
         modulePath = f,
         exeScope   = ExecutablePublic,
         buildInfo  = testBuildInfo test
@@ -487,6 +488,7 @@ compToExe comp =
     CBench bench@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f } ->
       Just Executable {
         exeName    = benchmarkName bench,
+        exeImports = mempty,
         modulePath = f,
         exeScope   = ExecutablePublic,
         buildInfo  = benchmarkBuildInfo bench
