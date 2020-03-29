@@ -5,6 +5,7 @@ cabal-version: >= 1.2
 
 library
   exposed-modules: QQ
+  other-modules: Q
   build-depends: base
 
 executable qexe
