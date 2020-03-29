@@ -22,7 +22,7 @@ import Distribution.FieldGrammar.Described
 --   of sections in a cabal file.
 data CommonStanzaImports = CommonStanzaImports {
   -- | The names of common stanzas to be imported.
-  commonStanzaImports :: [UnqualComponentName]
+  getCommonStanzaImports :: [UnqualComponentName]
   }
   deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -32,13 +32,13 @@ instance NFData CommonStanzaImports where rnf = genericRnf
 
 instance Monoid CommonStanzaImports where
   mempty = CommonStanzaImports {
-    commonStanzaImports = []
+    getCommonStanzaImports = []
     }
   mappend = (<>)
 
 instance Semigroup CommonStanzaImports where
   a <> b = CommonStanzaImports {
-    commonStanzaImports = commonStanzaImports a <> commonStanzaImports b
+    getCommonStanzaImports = getCommonStanzaImports a <> getCommonStanzaImports b
     }
 
 emptyCommonStanzaImports :: CommonStanzaImports

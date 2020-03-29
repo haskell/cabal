@@ -10,15 +10,21 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 data CommonStanza = CommonStanza
     { commonStanzaName      :: UnqualComponentName
+    , commonStanzaRecursiveImports:: CommonStanzaImports
     , commonStanzaBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
+
+instance L.HasCommonStanzaImports CommonStanza where
+    commonStanzaImports f l = (\x -> l { commonStanzaRecursiveImports = x }) <$> f (commonStanzaRecursiveImports l)
 
 instance L.HasBuildInfo CommonStanza where
     buildInfo f l = (\x -> l { commonStanzaBuildInfo = x }) <$> f (commonStanzaBuildInfo l)
@@ -34,6 +40,7 @@ instance Monoid CommonStanza where
 instance Semigroup CommonStanza where
   a <> b = CommonStanza{
     commonStanzaName = combine' commonStanzaName,
+    commonStanzaRecursiveImports = combine commonStanzaRecursiveImports,
     commonStanzaBuildInfo = combine commonStanzaBuildInfo
   }
     where combine field = field a `mappend` field b

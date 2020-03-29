@@ -129,7 +129,8 @@ commonStanzaFieldGrammar
     :: (FieldGrammar g, Applicative (g CommonStanza), Applicative (g BuildInfo))
     => UnqualComponentName -> g CommonStanza CommonStanza
 commonStanzaFieldGrammar n = CommonStanza n
-    <$> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
+    <$> optionalFieldDef  "import"  L.commonStanzaRecursiveImports emptyCommonStanzaImports
+    <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
 {-# SPECIALIZE commonStanzaFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CommonStanza #-}
 {-# SPECIALIZE commonStanzaFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' CommonStanza #-}
 
