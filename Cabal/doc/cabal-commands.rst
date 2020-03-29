@@ -86,6 +86,12 @@ A target can take any of the following forms:
      - ``tests``,
      - ``benches``, ``benchmarks``.
 
+-  A module target: ``[package:][ctype:]module``, which specifies that the
+   component of which the given module is a part of will be built.
+
+-  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
+   component of which the given filepath is a part of will be built.
+
 In component targets, ``package:`` and ``ctype:`` (valid component types
 are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
 disambiguate when multiple packages define the same component, or the
@@ -99,9 +105,12 @@ Some example targets:
 
     $ cabal v2-build lib:foo-pkg       # build the library named foo-pkg
     $ cabal v2-build foo-pkg:foo-tests # build foo-tests in foo-pkg
-
-(There is also syntax for specifying module and file targets, but it
-doesn't currently do anything.)
+    $ cabal v2-build src/Lib.s         # build the library component to
+                                       # which "src/Lib.hs" belongs
+    $ cabal v2-build app/Main.hs       # build the executable component of
+                                       # "app/Main.hs"
+    $ cabal v2-build Lib               # build the library component to
+                                       # which the module "Lib" belongs
 
 Beyond a list of targets, ``cabal v2-build`` accepts all the flags that
 ``cabal v2-configure`` takes. Most of these flags are only taken into
