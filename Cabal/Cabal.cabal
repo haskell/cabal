@@ -448,6 +448,7 @@ library
     Distribution.Types.PackageId
     Distribution.Types.UnitId
     Distribution.Types.CommonStanza
+    Distribution.Types.CommonStanzaImports
     Distribution.Types.Executable
     Distribution.Types.ExecutableScope
     Distribution.Types.Library
@@ -522,6 +523,8 @@ library
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar
+    Distribution.PackageDescription.PackageSourceDescriptionParser
+    Distribution.PackageDescription.PackageSourceDescriptionPrettyPrint
     Distribution.PackageDescription.Parsec
     Distribution.PackageDescription.Quirks
     Distribution.Parsec
@@ -546,6 +549,7 @@ library
     Distribution.Types.Benchmark.Lens
     Distribution.Types.BuildInfo.Lens
     Distribution.Types.CommonStanza.Lens
+    Distribution.Types.CommonStanzaImports.Lens
     Distribution.Types.Executable.Lens
     Distribution.Types.ForeignLib.Lens
     Distribution.Types.GenericPackageDescription.Lens

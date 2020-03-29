@@ -3,6 +3,8 @@
 module Distribution.PackageDescription.FieldGrammar (
     -- * Package description
     packageDescriptionFieldGrammar,
+    -- * Common Stanza
+    commonStanzaFieldGrammar,
     -- * Library
     libraryFieldGrammar,
     -- * Foreign library
@@ -53,6 +55,8 @@ import Distribution.Parsec
 import Distribution.Parsec.Newtypes
 import Distribution.Fields
 import Distribution.Pretty                    (prettyShow)
+import Distribution.Types.CommonStanza
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports, emptyCommonStanzaImports)
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
@@ -118,6 +122,19 @@ packageDescriptionFieldGrammar = PackageDescription
             ^^^ hiddenField
 
 -------------------------------------------------------------------------------
+-- Common Stanza
+-------------------------------------------------------------------------------
+
+commonStanzaFieldGrammar
+    :: (FieldGrammar g, Applicative (g CommonStanza), Applicative (g BuildInfo))
+    => UnqualComponentName -> g CommonStanza CommonStanza
+commonStanzaFieldGrammar n = CommonStanza n
+    <$> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
+{-# SPECIALIZE commonStanzaFieldGrammar :: UnqualComponentName -> ParsecFieldGrammar' CommonStanza #-}
+{-# SPECIALIZE commonStanzaFieldGrammar :: UnqualComponentName -> PrettyFieldGrammar' CommonStanza #-}
+
+
+-------------------------------------------------------------------------------
 -- Library
 -------------------------------------------------------------------------------
 
@@ -126,7 +143,8 @@ libraryFieldGrammar
     => LibraryName
     -> g Library Library
 libraryFieldGrammar n = Library n
-    <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
+    <$> optionalFieldDef  "import"  L.libImports emptyCommonStanzaImports
+    <*> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
     <*> monoidalFieldAla  "reexported-modules" (alaList  CommaVCat)    L.reexportedModules
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
         ^^^ availableSince CabalSpecV2_0 []
@@ -153,7 +171,8 @@ foreignLibFieldGrammar
     :: (FieldGrammar g, Applicative (g ForeignLib), Applicative (g BuildInfo))
     => UnqualComponentName -> g ForeignLib ForeignLib
 foreignLibFieldGrammar n = ForeignLib n
-    <$> optionalFieldDef "type"                                         L.foreignLibType ForeignLibTypeUnknown
+    <$> optionalFieldDef "import"  L.foreignLibImports emptyCommonStanzaImports
+    <*> optionalFieldDef "type"                                         L.foreignLibType ForeignLibTypeUnknown
     <*> monoidalFieldAla "options"           (alaList FSep)             L.foreignLibOptions
     <*> blurFieldGrammar L.foreignLibBuildInfo buildInfoFieldGrammar
     <*> optionalField    "lib-version-info"                             L.foreignLibVersionInfo
@@ -171,7 +190,8 @@ executableFieldGrammar
     => UnqualComponentName -> g Executable Executable
 executableFieldGrammar n = Executable n
     -- main-is is optional as conditional blocks don't have it
-    <$> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
+    <$> optionalFieldDef    "import"  L.exeImports emptyCommonStanzaImports
+    <*> optionalFieldDefAla "main-is" FilePathNT L.modulePath ""
     <*> optionalFieldDef    "scope"              L.exeScope ExecutablePublic
         ^^^ availableSince CabalSpecV2_0 ExecutablePublic
     <*> blurFieldGrammar L.buildInfo buildInfoFieldGrammar
@@ -185,14 +205,22 @@ executableFieldGrammar n = Executable n
 -- | An intermediate type just used for parsing the test-suite stanza.
 -- After validation it is converted into the proper 'TestSuite' type.
 data TestSuiteStanza = TestSuiteStanza
-    { _testStanzaTestType   :: Maybe TestType
+    { _testStanzaImports    :: CommonStanzaImports
+    , _testStanzaTestType   :: Maybe TestType
     , _testStanzaMainIs     :: Maybe FilePath
     , _testStanzaTestModule :: Maybe ModuleName
     , _testStanzaBuildInfo  :: BuildInfo
     }
 
+instance L.HasCommonStanzaImports TestSuiteStanza where
+    commonStanzaImports = testStanzaImports
+
 instance L.HasBuildInfo TestSuiteStanza where
     buildInfo = testStanzaBuildInfo
+
+testStanzaImports :: Lens' TestSuiteStanza CommonStanzaImports
+testStanzaImports f s = fmap (\x -> s { _testStanzaImports = x }) (f (_testStanzaImports s))
+{-# INLINE testStanzaImports #-}
 
 testStanzaTestType :: Lens' TestSuiteStanza (Maybe TestType)
 testStanzaTestType f s = fmap (\x -> s { _testStanzaTestType = x }) (f (_testStanzaTestType s))
@@ -214,7 +242,8 @@ testSuiteFieldGrammar
     :: (FieldGrammar g, Applicative (g TestSuiteStanza), Applicative (g BuildInfo))
     => g TestSuiteStanza TestSuiteStanza
 testSuiteFieldGrammar = TestSuiteStanza
-    <$> optionalField    "type"                   testStanzaTestType
+    <$> optionalFieldDef "import"                 testStanzaImports emptyCommonStanzaImports
+    <*> optionalField    "type"                   testStanzaTestType
     <*> optionalFieldAla "main-is"     FilePathNT testStanzaMainIs
     <*> optionalField    "test-module"            testStanzaTestModule
     <*> blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
@@ -269,7 +298,8 @@ validateTestSuite pos stanza = case _testStanzaTestType stanza of
 
 unvalidateTestSuite :: TestSuite -> TestSuiteStanza
 unvalidateTestSuite t = TestSuiteStanza
-    { _testStanzaTestType   = ty
+    { _testStanzaImports    = view L.testImports t
+    , _testStanzaTestType   = ty
     , _testStanzaMainIs     = ma
     , _testStanzaTestModule = mo
     , _testStanzaBuildInfo  = testBuildInfo t
@@ -287,14 +317,22 @@ unvalidateTestSuite t = TestSuiteStanza
 -- | An intermediate type just used for parsing the benchmark stanza.
 -- After validation it is converted into the proper 'Benchmark' type.
 data BenchmarkStanza = BenchmarkStanza
-    { _benchmarkStanzaBenchmarkType   :: Maybe BenchmarkType
+    { _benchmarkStanzaImports         :: CommonStanzaImports
+    , _benchmarkStanzaBenchmarkType   :: Maybe BenchmarkType
     , _benchmarkStanzaMainIs          :: Maybe FilePath
     , _benchmarkStanzaBenchmarkModule :: Maybe ModuleName
     , _benchmarkStanzaBuildInfo       :: BuildInfo
     }
 
+instance L.HasCommonStanzaImports BenchmarkStanza where
+    commonStanzaImports = benchmarkStanzaImports
+
 instance L.HasBuildInfo BenchmarkStanza where
     buildInfo = benchmarkStanzaBuildInfo
+
+benchmarkStanzaImports :: Lens' BenchmarkStanza CommonStanzaImports
+benchmarkStanzaImports f s = fmap (\x -> s { _benchmarkStanzaImports = x }) (f (_benchmarkStanzaImports s))
+{-# INLINE benchmarkStanzaImports #-}
 
 benchmarkStanzaBenchmarkType :: Lens' BenchmarkStanza (Maybe BenchmarkType)
 benchmarkStanzaBenchmarkType f s = fmap (\x -> s { _benchmarkStanzaBenchmarkType = x }) (f (_benchmarkStanzaBenchmarkType s))
@@ -316,7 +354,8 @@ benchmarkFieldGrammar
     :: (FieldGrammar g, Applicative (g BenchmarkStanza), Applicative (g BuildInfo))
     => g BenchmarkStanza BenchmarkStanza
 benchmarkFieldGrammar = BenchmarkStanza
-    <$> optionalField    "type"                        benchmarkStanzaBenchmarkType
+    <$> optionalFieldDef "import"                      benchmarkStanzaImports emptyCommonStanzaImports
+    <*> optionalField    "type"                        benchmarkStanzaBenchmarkType
     <*> optionalFieldAla "main-is"          FilePathNT benchmarkStanzaMainIs
     <*> optionalField    "benchmark-module"            benchmarkStanzaBenchmarkModule
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
@@ -357,7 +396,8 @@ validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
 
 unvalidateBenchmark :: Benchmark -> BenchmarkStanza
 unvalidateBenchmark b = BenchmarkStanza
-    { _benchmarkStanzaBenchmarkType   = ty
+    { _benchmarkStanzaImports         = view L.benchmarkImports b
+    , _benchmarkStanzaBenchmarkType   = ty
     , _benchmarkStanzaMainIs          = ma
     , _benchmarkStanzaBenchmarkModule = mo
     , _benchmarkStanzaBuildInfo       = benchmarkBuildInfo b

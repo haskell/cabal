@@ -25,6 +25,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.UnqualComponentName
@@ -35,12 +36,15 @@ import qualified Text.PrettyPrint                as Disp
 import qualified Text.Read                       as Read
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 -- | A foreign library stanza is like a library stanza, except that
 -- the built code is intended for consumption by a non-Haskell client.
 data ForeignLib = ForeignLib {
       -- | Name of the foreign library
       foreignLibName       :: UnqualComponentName
+      -- | Common stanza imports
+    , foreignLibImports    :: CommonStanzaImports
       -- | What kind of foreign library is this (static or dynamic).
     , foreignLibType       :: ForeignLibType
       -- | What options apply to this foreign library (e.g., are we
@@ -136,6 +140,9 @@ libVersionNumberShow v =
 libVersionMajor :: LibVersionInfo -> Int
 libVersionMajor (LibVersionInfo c _ a) = c-a
 
+instance L.HasCommonStanzaImports ForeignLib where
+    commonStanzaImports f l = (\x -> l { foreignLibImports = x }) <$> f (foreignLibImports l)
+
 instance L.HasBuildInfo ForeignLib where
     buildInfo f l = (\x -> l { foreignLibBuildInfo = x }) <$> f (foreignLibBuildInfo l)
 
@@ -146,6 +153,7 @@ instance NFData ForeignLib where rnf = genericRnf
 instance Semigroup ForeignLib where
   a <> b = ForeignLib {
       foreignLibName         = combine'  foreignLibName
+    , foreignLibImports      = combine   foreignLibImports
     , foreignLibType         = combine   foreignLibType
     , foreignLibOptions      = combine   foreignLibOptions
     , foreignLibBuildInfo    = combine   foreignLibBuildInfo
@@ -165,6 +173,7 @@ instance Semigroup ForeignLib where
 instance Monoid ForeignLib where
   mempty = ForeignLib {
       foreignLibName         = mempty
+    , foreignLibImports      = mempty
     , foreignLibType         = ForeignLibTypeUnknown
     , foreignLibOptions      = []
     , foreignLibBuildInfo    = mempty

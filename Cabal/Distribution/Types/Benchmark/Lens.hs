@@ -10,6 +10,7 @@ import Prelude ()
 import Distribution.Types.Benchmark           (Benchmark)
 import Distribution.Types.BenchmarkInterface  (BenchmarkInterface)
 import Distribution.Types.BuildInfo           (BuildInfo)
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 
 import qualified Distribution.Types.Benchmark as T
@@ -17,6 +18,10 @@ import qualified Distribution.Types.Benchmark as T
 benchmarkName :: Lens' Benchmark UnqualComponentName
 benchmarkName f s = fmap (\x -> s { T.benchmarkName = x }) (f (T.benchmarkName s))
 {-# INLINE benchmarkName #-}
+
+benchmarkImports :: Lens' Benchmark CommonStanzaImports
+benchmarkImports f s = fmap (\x -> s { T.benchmarkImports = x }) (f (T.benchmarkImports s))
+{-# INLINE benchmarkImports #-}
 
 benchmarkInterface :: Lens' Benchmark BenchmarkInterface
 benchmarkInterface f s = fmap (\x -> s { T.benchmarkInterface = x }) (f (T.benchmarkInterface s))

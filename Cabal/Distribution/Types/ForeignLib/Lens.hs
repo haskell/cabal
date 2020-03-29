@@ -8,6 +8,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo           (BuildInfo)
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports)
 import Distribution.Types.ForeignLib          (ForeignLib, LibVersionInfo)
 import Distribution.Types.ForeignLibOption    (ForeignLibOption)
 import Distribution.Types.ForeignLibType      (ForeignLibType)
@@ -19,6 +20,10 @@ import qualified Distribution.Types.ForeignLib as T
 foreignLibName :: Lens' ForeignLib UnqualComponentName
 foreignLibName f s = fmap (\x -> s { T.foreignLibName = x }) (f (T.foreignLibName s))
 {-# INLINE foreignLibName #-}
+
+foreignLibImports :: Lens' ForeignLib CommonStanzaImports
+foreignLibImports f s = fmap (\x -> s { T.foreignLibImports = x }) (f (T.foreignLibImports s))
+{-# INLINE foreignLibImports #-}
 
 foreignLibType :: Lens' ForeignLib ForeignLibType
 foreignLibType f s = fmap (\x -> s { T.foreignLibType = x }) (f (T.foreignLibType s))

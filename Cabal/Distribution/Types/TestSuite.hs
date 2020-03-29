@@ -13,6 +13,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.TestType
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.UnqualComponentName
@@ -20,15 +21,20 @@ import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 -- | A \"test-suite\" stanza in a cabal file.
 --
 data TestSuite = TestSuite {
         testName      :: UnqualComponentName,
+        testImports   :: CommonStanzaImports,
         testInterface :: TestSuiteInterface,
         testBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance L.HasCommonStanzaImports TestSuite where
+    commonStanzaImports f l = (\x -> l { testImports = x }) <$> f (testImports l)
 
 instance L.HasBuildInfo TestSuite where
     buildInfo f l = (\x -> l { testBuildInfo = x }) <$> f (testBuildInfo l)
@@ -41,6 +47,7 @@ instance NFData TestSuite where rnf = genericRnf
 instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,
+        testImports   = mempty,
         testInterface = mempty,
         testBuildInfo = mempty
     }
@@ -49,6 +56,7 @@ instance Monoid TestSuite where
 instance Semigroup TestSuite where
     a <> b = TestSuite {
         testName      = combine' testName,
+        testImports   = combine  testImports,
         testInterface = combine  testInterface,
         testBuildInfo = combine  testBuildInfo
     }
