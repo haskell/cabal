@@ -60,14 +60,11 @@ import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
-import Distribution.Types.CommonStanza               (CommonStanza, emptyCommonStanza)
-import Distribution.Types.CommonStanzaImports        (CommonStanzaImports(..), emptyCommonStanzaImports)
 import Distribution.Types.CondTree
 import Distribution.Types.Dependency                 (Dependency)
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType             (knownForeignLibTypes)
 import Distribution.Types.PackageSourceDescription   (PackageSourceDescription, emptyPackageSourceDescription)
-import Distribution.Types.LibraryVisibility          (LibraryVisibility (..))
 import Distribution.Types.PackageDescription         (specVersion')
 import Distribution.Types.UnqualComponentName        (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
@@ -80,10 +77,6 @@ import qualified Data.Map.Strict                                   as Map
 import qualified Data.Set                                          as Set
 import qualified Distribution.Compat.Newtype                       as Newtype
 import qualified Distribution.Types.BuildInfo.Lens                 as L
-import qualified Distribution.Types.CommonStanza.Lens              as L
-import qualified Distribution.Types.CommonStanzaImports.Lens       as L
-import qualified Distribution.Types.Executable.Lens                as L
-import qualified Distribution.Types.ForeignLib.Lens                as L
 import qualified Distribution.Types.PackageSourceDescription.Lens  as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Text.Parsec                                       as P
@@ -255,7 +248,7 @@ goSections specVer = traverse_ process
 
     -- we need signature, because this is polymorphic, but not-closed
     parseCondTree'
-        :: (L.HasCommonStanzaImports a, L.HasBuildInfo a)
+        :: L.HasBuildInfo a
         => ParsecFieldGrammar' a       -- ^ grammar
         -> Set String  -- ^ common stanzas
         -> [Field Position]
@@ -444,21 +437,20 @@ warnInvalidSubsection (MkSection (Name pos name) _ _) =
     void $ parseFailure pos $ "invalid subsection " ++ show name
 
 parseCondTree
-    :: forall a. (L.HasCommonStanzaImports a, L.HasBuildInfo a)
-    => CabalSpecVersion
+    :: forall a.
+       CabalSpecVersion
     -> HasElif                        -- ^ accept @elif@
     -> ParsecFieldGrammar' a          -- ^ grammar
-    -> Set String   -- ^ common stanzas
+    -> Set String                     -- ^ common stanzas
     -> (a -> [Dependency])            -- ^ condition extractor
     -> [Field Position]
     -> ParseResult (CondTree ConfVar [Dependency] a)
 parseCondTree v hasElif grammar commonStanzas cond = go
   where
     go fields0 = do
---        fields' <- catMaybes <$> traverse (warnImport v) fields0
         fields <-
             if v >= CabalSpecV3_0
-            then processImports v commonStanzas fields0
+            then checkCommonStanzaImports v commonStanzas fields0
             else traverse (warnImport v) fields0 >>= \fields1 -> return (catMaybes fields1)
 
         let (fs, ss) = partitionFields fields
@@ -524,120 +516,61 @@ When/if we re-implement the parser to support formatting preservging roundtrip
 with new AST, this all need to be rewritten.
 -}
 
--------------------------------------------------------------------------------
--- Common stanzas
--------------------------------------------------------------------------------
-
--- $commonStanzas
---
--- [Note: Common stanzas]
---
--- In Cabal 2.2 we support simple common stanzas:
---
--- * Commons stanzas define 'BuildInfo'
---
--- * import "fields" can only occur at top of other stanzas (think: imports)
---
--- In particular __there aren't__
---
--- * implicit stanzas
---
--- * More specific common stanzas (executable, test-suite).
---
---
--- The approach uses the fact that 'BuildInfo' is a 'Monoid':
---
--- @
--- mergeCommonStanza' :: HasBuildInfo comp => BuildInfo -> comp -> comp
--- mergeCommonStanza' bi = over L.BuildInfo (bi <>)
--- @
---
--- Real 'mergeCommonStanza' is more complicated as we have to deal with
--- conditional trees.
---
--- The approach is simple, and have good properties:
---
--- * Common stanzas are parsed exactly once, even if not-used. Thus we report errors in them.
---
-type CondTreeBuildInfo = CondTree ConfVar [Dependency] BuildInfo
-
--- | Create @a@ from 'BuildInfo'.
--- This class is used to implement common stanza parsing.
---
--- Law: @view buildInfo . fromBuildInfo = id@
---
--- This takes name, as 'FieldGrammar's take names too.
-class L.HasBuildInfo a => FromBuildInfo a where
-    fromBuildInfo' :: UnqualComponentName -> BuildInfo -> a
-
-libraryFromBuildInfo :: LibraryName -> BuildInfo -> Library
-libraryFromBuildInfo n bi = emptyLibrary
-    { libName       = n
-    , libVisibility = case n of
-        LMainLibName  -> LibraryVisibilityPublic
-        LSubLibName _ -> LibraryVisibilityPrivate
-    , libBuildInfo  = bi
-    }
-
-instance FromBuildInfo BuildInfo  where fromBuildInfo' _ = id
-instance FromBuildInfo CommonStanza where fromBuildInfo' n bi = set L.commonStanzaName n $ set L.commonStanzaBuildInfo bi emptyCommonStanza
-instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibName n $ set L.buildInfo bi emptyForeignLib
-instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName        n $ set L.buildInfo bi emptyExecutable
-
-instance FromBuildInfo TestSuiteStanza where
-    fromBuildInfo' _ bi = TestSuiteStanza emptyCommonStanzaImports Nothing Nothing Nothing bi
-
-instance FromBuildInfo BenchmarkStanza where
-    fromBuildInfo' _ bi = BenchmarkStanza emptyCommonStanzaImports Nothing Nothing Nothing bi
-
 parseCondTreeWithCommonStanzas
-    :: forall a. (L.HasCommonStanzaImports a, L.HasBuildInfo a)
+    :: forall a. L.HasBuildInfo a
     => CabalSpecVersion
     -> ParsecFieldGrammar' a       -- ^ grammar
     -> Set String  -- ^ common stanzas
     -> [Field Position]
     -> ParseResult (CondTree ConfVar [Dependency] a)
 parseCondTreeWithCommonStanzas v grammar commonStanzas fields = do
-    fields' <- processImports v commonStanzas fields
+    fields' <- checkCommonStanzaImports v commonStanzas fields
     parseCondTree v hasElif grammar commonStanzas (view L.targetBuildDepends) fields'
---    return (endo x)
   where
     hasElif = specHasElif v
 
-processImports
+checkCommonStanzaImports
     :: CabalSpecVersion
     -> Set String  -- ^ common stanzas
     -> [Field Position]
     -> ParseResult [Field Position]
-processImports v commonStanzas = go []
+checkCommonStanzaImports _ _ [] =
+    pure []
+checkCommonStanzaImports v commonStanzas fs@(Field (Name pos name) fls : fields)
+    | name == "import" = do
+
+        -- If the Cabal spec version declared in the file does not support
+        -- common stanzas than emit a warning.
+        when (hasCommonStanzas == NoCommonStanzas) $
+          parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
+
+        -- Verify that all imported common pragmas have been defined in the file.
+        names <- getList' <$> runFieldParser pos parsec v fls
+        for_ names $ \commonName ->
+            case Set.member commonName commonStanzas of
+                False -> parseFailure pos $ "Undefined common stanza imported: " ++ commonName
+                True -> pure ()
+
+        -- Check that all remaining fields are not 'import' since common stanza
+        -- import directives must be first in the section.
+        for_ fields (warnImport v)
+        pure fs
+
+    | otherwise = do
+        -- Check that all remaining fields are not 'import' since common stanza
+        -- import directives must be first in the section.
+        for_ fields (warnImport v)
+        pure fs
+
   where
     hasCommonStanzas = specHasCommonStanzas v
 
     getList' :: List CommaFSep Token String -> [String]
     getList' = Newtype.unpack
 
-    go :: [String] -> [Field Position]
-       -> ParseResult [Field Position]
-    go acc (Field (Name pos name) _ : fields) | name == "import", hasCommonStanzas == NoCommonStanzas = do
-        parseWarning pos PWTUnknownField "Unknown field: import. You should set cabal-version: 2.2 or larger to use common stanzas"
-        go acc fields
-    -- supported:
-    go acc fs@(Field (Name pos name) fls : fields) | name == "import" = do
-        names <- getList' <$> runFieldParser pos parsec v fls
-        names' <- for names $ \commonName ->
-            case Set.member commonName commonStanzas of
-                False -> do
-                    parseFailure pos $ "Undefined common stanza imported: " ++ commonName
-                    pure Nothing
-                True ->
-                    pure (Just commonName)
-        fields' <- catMaybes <$> traverse (warnImport v) fields
-        pure fs
+checkCommonStanzaImports _ _ fs = pure fs
 
-    -- parse actual CondTree
-    go _ fields = catMaybes <$> traverse (warnImport v) fields
---        pure fields'
---        pure $ (fields', \x -> setImports (CommonStanzaImports $ map mkUnqualComponentName acc) x)
+
 
 -- | Warn on "import" fields, also map to Maybe, so errorneous fields can be filtered
 warnImport :: CabalSpecVersion -> Field Position -> ParseResult (Maybe (Field Position))
