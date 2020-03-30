@@ -1,9 +1,4 @@
-# 3.2.0.0 [Someone](mailto:somewhere@example.com) February 2020
-  * `cabal check` verifies `cpp-options` more pedantically, allowing only
-    options starting with `-D` and `-U`.
-  * Don’t rebuild world when new ghc flags that affect how error
-    messages are presented is specified.
-  * Fix multilib build-depends parsing (#5846)
+# 3.2.0.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
   * Change free text `String` fields to use `ShortText` in package description
     and installed packge info.
   * Split `Distribution.Types.Flag` and `Distribution.Types.ConfVar`
@@ -19,16 +14,20 @@
   * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`
   * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
   * Add `Distribution.Compat.Async`
-  * Disallow spaces around colon `:` in Dependency (`build-depends` syntax
-  * Make `configure` accept any `pkg-config --modversion` output
 
-# 3.0.1.0 TBW
-  * Add GHC-8.8 flags to normaliseGhcFlags
+# 3.0.2.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Disallow spaces around colon `:` in Dependency `build-depends` syntax
+    ([#6538](https://github.com/haskell/cabal/pull/6538))
+  * Make `configure` accept any `pkg-config --modversion` output
+    ([#6541](https://github.com/haskell/cabal/pull/6541))
+
+# 3.0.1.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Add GHC-8.8 flags to `normaliseGhcFlags`
     ([#6379](https://github.com/haskell/cabal/pull/6379))
   * Typo fixes
     ([#6372](https://github.com/haskell/cabal/pull/6372))
   * Limit version number parts to contain at most 9 digits
-    ([#6386](https://github.com/haskell/cabal/pull/6386)
+    ([#6386](https://github.com/haskell/cabal/pull/6386))
   * Fix boundless sublibrary depedency parse failure
     ([#5846](https://github.com/haskell/cabal/issues/5846))
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
