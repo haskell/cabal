@@ -247,9 +247,15 @@ testTargetSelectors reportSubCase = do
                                  ":pkg:p:lib:p:file:P.y"
                      , "q/QQ.hs", "q:QQ.lhs", "lib:q:QQ.hsc", "q:q:QQ.hsc",
                                   ":pkg:q:lib:q:file:QQ.y"
+                     , "q/Q.hs", "q:Q.lhs", "lib:q:Q.hsc", "q:q:Q.hsc",
+                                  ":pkg:q:lib:q:file:Q.y"
+                     , "app/Main.hs", "p:app/Main.hs", "exe:ppexe:app/Main.hs", "p:ppexe:app/Main.hs",
+                                  ":pkg:p:exe:ppexe:file:app/Main.hs"
                      ]
        ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
+           ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget "app/Main.hs"))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
@@ -1330,7 +1336,7 @@ testExceptionInConfigureStep config = do
     (_pkga1, failure) <- expectPackageFailed plan res pkgidA1
     case buildFailureReason failure of
       ConfigureFailed _ -> return ()
-      _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure 
+      _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure
     cleanProject testdir
   where
     testdir = "exception/configure"
