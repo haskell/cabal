@@ -106,7 +106,6 @@ module Distribution.PackageDescription (
         SourceRepo(..),
         RepoKind(..),
         RepoType(..),
-        KnownRepoType (..),
         knownRepoTypes,
         emptySourceRepo,
 

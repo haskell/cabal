@@ -34,7 +34,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.SourceRepo
-         ( RepoType(..), KnownRepoType (..) )
+         ( RepoType(..) )
 import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..), srpToProxy)
 import Distribution.Client.RebuildMonad
          ( Rebuild, monitorFiles, MonitorFilePath, monitorDirectoryExistence )
@@ -234,7 +234,7 @@ knownVCSs = Map.fromList [ (vcsRepoType vcs, vcs) | vcs <- vcss ]
 vcsBzr :: VCS Program
 vcsBzr =
     VCS {
-      vcsRepoType = KnownRepoType Bazaar,
+      vcsRepoType = Bazaar,
       vcsProgram  = bzrProgram,
       vcsCloneRepo,
       vcsSyncRepos
@@ -280,7 +280,7 @@ bzrProgram = (simpleProgram "bzr") {
 vcsDarcs :: VCS Program
 vcsDarcs =
     VCS {
-      vcsRepoType = KnownRepoType Darcs,
+      vcsRepoType = Darcs,
       vcsProgram  = darcsProgram,
       vcsCloneRepo,
       vcsSyncRepos
@@ -325,7 +325,7 @@ darcsProgram = (simpleProgram "darcs") {
 vcsGit :: VCS Program
 vcsGit =
     VCS {
-      vcsRepoType = KnownRepoType Git,
+      vcsRepoType = Git,
       vcsProgram  = gitProgram,
       vcsCloneRepo,
       vcsSyncRepos
@@ -418,7 +418,7 @@ gitProgram = (simpleProgram "git") {
 vcsHg :: VCS Program
 vcsHg =
     VCS {
-      vcsRepoType = KnownRepoType Mercurial,
+      vcsRepoType = Mercurial,
       vcsProgram  = hgProgram,
       vcsCloneRepo,
       vcsSyncRepos
@@ -464,7 +464,7 @@ hgProgram = (simpleProgram "hg") {
 vcsSvn :: VCS Program
 vcsSvn =
     VCS {
-      vcsRepoType = KnownRepoType SVN,
+      vcsRepoType = SVN,
       vcsProgram  = svnProgram,
       vcsCloneRepo,
       vcsSyncRepos
