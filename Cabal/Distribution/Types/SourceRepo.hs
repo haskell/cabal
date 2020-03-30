@@ -5,6 +5,7 @@ module Distribution.Types.SourceRepo (
     SourceRepo(..),
     RepoKind(..),
     RepoType(..),
+    KnownRepoType (..),
     knownRepoTypes,
     emptySourceRepo,
     classifyRepoType,
@@ -22,6 +23,7 @@ import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
+import qualified Data.Map.Strict as M
 
 -- ------------------------------------------------------------
 -- * Source repos
@@ -123,8 +125,26 @@ instance NFData RepoKind where rnf = genericRnf
 -- 'SourceRepo' depend on the type of repo. The tools and methods used to
 -- obtain and track the repo depend on the repo type.
 --
-data RepoType = Darcs | Git | SVN | CVS
-              | Mercurial | GnuArch | Bazaar | Monotone
+data KnownRepoType = Darcs | Git | SVN | CVS
+                   | Mercurial | GnuArch | Bazaar | Monotone
+  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data, Enum, Bounded)
+
+instance Binary KnownRepoType
+instance Structured KnownRepoType
+instance NFData KnownRepoType where rnf = genericRnf
+
+instance Parsec KnownRepoType where
+  parsec = do
+    str <- P.munch1 isIdent
+    maybe
+      (P.unexpected $ "Could not parse KnownRepoType from " ++ str)
+      return
+      (M.lookup str knownRepoTypeMap)
+
+instance Pretty KnownRepoType where
+  pretty = Disp.text . lowercase . show
+
+data RepoType = KnownRepoType KnownRepoType
               | OtherRepoType String
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
@@ -132,11 +152,10 @@ instance Binary RepoType
 instance Structured RepoType
 instance NFData RepoType where rnf = genericRnf
 
-knownRepoTypes :: [RepoType]
-knownRepoTypes = [Darcs, Git, SVN, CVS
-                 ,Mercurial, GnuArch, Bazaar, Monotone]
+knownRepoTypes :: [KnownRepoType]
+knownRepoTypes = [minBound .. maxBound]
 
-repoTypeAliases :: RepoType -> [String]
+repoTypeAliases :: KnownRepoType -> [String]
 repoTypeAliases Bazaar    = ["bzr"]
 repoTypeAliases Mercurial = ["hg"]
 repoTypeAliases GnuArch   = ["arch"]
@@ -156,23 +175,30 @@ classifyRepoKind name = case lowercase name of
   "this" -> RepoThis
   _      -> RepoKindUnknown name
 
-instance Pretty RepoType where
-  pretty (OtherRepoType other) = Disp.text other
-  pretty other                 = Disp.text (lowercase (show other))
-
 instance Parsec RepoType where
   parsec = classifyRepoType <$> P.munch1 isIdent
 
 instance Described RepoType where
   describe _ = reMunch1CS $ csAlphaNum <> csChar '_' <> csChar '-'
 
+instance Pretty RepoType where
+  pretty (OtherRepoType other) = Disp.text other
+  pretty (KnownRepoType t) = pretty t
+
 classifyRepoType :: String -> RepoType
 classifyRepoType s =
-    fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
-  where
-    repoTypeMap = [ (name, repoType')
-                  | repoType' <- knownRepoTypes
-                  , name <- prettyShow repoType' : repoTypeAliases repoType' ]
+  maybe
+    (OtherRepoType s)
+    KnownRepoType
+    (M.lookup (lowercase s) knownRepoTypeMap)
+
+knownRepoTypeMap :: Map String KnownRepoType
+knownRepoTypeMap =
+  M.fromList
+    [ (name, repoType')
+      | repoType' <- knownRepoTypes
+      , name <- prettyShow repoType' : repoTypeAliases repoType'
+    ]
 
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c == '_' || c == '-'

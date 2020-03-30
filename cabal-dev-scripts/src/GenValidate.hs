@@ -21,7 +21,8 @@ main = do
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
                 { zJobs =
-                    [ GhcJob "8.8.3"  False "--solver-benchmarks" False [] defSteps
+                    [ GhcJob "8.10.1" False "--lib-only"          False ["8.8.3"] libSteps -- Note: only library atm.
+                    , GhcJob "8.8.3"  False "--solver-benchmarks" False [] defSteps
                     , GhcJob "8.6.5"  False ""                    False ["8.8.3"] defSteps
                     , GhcJob "8.4.4"  False ""                    False ["8.8.3"] defSteps
                     , GhcJob "8.2.2"  False ""                    False ["8.8.3"] defSteps

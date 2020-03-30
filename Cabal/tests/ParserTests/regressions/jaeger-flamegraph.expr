@@ -382,7 +382,7 @@ GenericPackageDescription
                                              repoModule = Nothing,
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
-                                             repoType = Just Git}],
+                                             repoType = Just (KnownRepoType Git)}],
                            specVersionRaw = Left `mkVersion [2,2]`,
                            stability = "",
                            subLibraries = [],

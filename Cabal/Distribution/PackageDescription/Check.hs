@@ -760,7 +760,7 @@ checkSourceRepos pkg =
       PackageDistInexcusable
         "The source-repository 'location' is a required field."
 
-  , check (repoType repo == Just CVS && isNothing (repoModule repo)) $
+  , check (repoType repo == Just (KnownRepoType CVS) && isNothing (repoModule repo)) $
       PackageDistInexcusable
         "For a CVS source-repository, the 'module' is a required field."
 
@@ -1955,7 +1955,7 @@ checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
       else return []
   where
     repoDirnames = [ dirname | repo    <- knownRepoTypes
-                             , dirname <- repoTypeDirname repo ]
+                             , dirname <- repoTypeDirname repo]
     message  = "When distributing packages it is encouraged to specify source "
             ++ "control information in the .cabal file using one or more "
             ++ "'source-repository' sections. See the Cabal user guide for "
@@ -1963,17 +1963,15 @@ checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
 
 checkMissingVcsInfo _ _ = return []
 
-repoTypeDirname :: RepoType -> [FilePath]
-repoTypeDirname Darcs      = ["_darcs"]
-repoTypeDirname Git        = [".git"]
-repoTypeDirname SVN        = [".svn"]
-repoTypeDirname CVS        = ["CVS"]
-repoTypeDirname Mercurial  = [".hg"]
-repoTypeDirname GnuArch    = [".arch-params"]
-repoTypeDirname Bazaar     = [".bzr"]
-repoTypeDirname Monotone   = ["_MTN"]
-repoTypeDirname _          = []
-
+repoTypeDirname :: KnownRepoType -> [FilePath]
+repoTypeDirname Darcs     = ["_darcs"]
+repoTypeDirname Git       = [".git"]
+repoTypeDirname SVN       = [".svn"]
+repoTypeDirname CVS       = ["CVS"]
+repoTypeDirname Mercurial = [".hg"]
+repoTypeDirname GnuArch   = [".arch-params"]
+repoTypeDirname Bazaar    = [".bzr"]
+repoTypeDirname Monotone  = ["_MTN"]
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package

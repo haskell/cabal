@@ -87,6 +87,7 @@ instance ToExpr PackageIdentifier
 instance ToExpr PackageName where toExpr = defaultExprViaShow
 instance ToExpr PkgconfigDependency where toExpr = defaultExprViaShow
 instance ToExpr RepoKind
+instance ToExpr KnownRepoType
 instance ToExpr RepoType
 instance ToExpr SetupBuildInfo
 instance ToExpr SourceRepo

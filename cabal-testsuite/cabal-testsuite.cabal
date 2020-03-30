@@ -26,7 +26,7 @@ common shared
   default-language: Haskell2010
 
   build-depends:
-    , base >= 4.6 && <4.14
+    , base >= 4.6 && <4.15
     -- this needs to match the in-tree lib:Cabal version
     , Cabal == 3.3.0.0
 
@@ -107,5 +107,5 @@ executable setup
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
-  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.*,
+  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.* || ==3.2.*,
                  base, filepath, directory

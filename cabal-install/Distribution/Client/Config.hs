@@ -588,7 +588,7 @@ initialSavedConfig = do
     },
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
-      installBuildReports= toFlag AnonymousReports,
+      installBuildReports= toFlag NoReports,
       installNumJobs     = toFlag Nothing
     },
     savedClientInstallFlags = mempty {

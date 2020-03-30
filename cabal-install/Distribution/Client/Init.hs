@@ -130,7 +130,6 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
   case license initFlags' of
     Flag PublicDomain -> return ()
     _                 -> writeLicense initFlags'
-  writeSetupFile initFlags'
   writeChangeLog initFlags'
   createDirectories (sourceDirs initFlags')
   createLibHs initFlags'
@@ -860,16 +859,6 @@ getYear = do
   let l = utcToLocalTime z u
       (y, _, _) = toGregorian $ localDay l
   return y
-
-writeSetupFile :: InitFlags -> IO ()
-writeSetupFile flags = do
-  message flags "Generating Setup.hs..."
-  writeFileSafe flags "Setup.hs" setupFile
- where
-  setupFile = unlines
-    [ "import Distribution.Simple"
-    , "main = defaultMain"
-    ]
 
 writeChangeLog :: InitFlags -> IO ()
 writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc flags)) $ do
