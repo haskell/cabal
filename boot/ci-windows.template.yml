@@ -59,7 +59,7 @@ jobs:
         run: runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
       # We cannot ask for all dependencies, but we can for Cabal.
       - name: cabal v2-build Cabal --only-dependencies
-        run: cabal v2-build Cabal --only-dependencies -j1
+        run: cabal v2-build Cabal --only-dependencies -j1 -v3
       - name: cabal v2-build
         run: cabal v2-build all
       - name: cabal-install memory-usage-tests
