@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-3.0.1.0 TBW December 2019
+3.0.1.0 Herbert Valerio Riedel <hvr@gnu.org> April 2020
 	* Create store incoming directory
 	  ([#4130](https://github.com/haskell/cabal/issues/4130))
 	* `fetchRepoTarball` output is not marked

@@ -1,22 +1,24 @@
-# 3.0.2.0
-  * Disallow spaces around colon `:` in Dependency (`build-depends` syntax
+# 3.0.2.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Disallow spaces around colon `:` in Dependency `build-depends` syntax
+    ([#6538](https://github.com/haskell/cabal/pull/6538)).
   * Make `configure` accept any `pkg-config --modversion` output
+    ([#6541](https://github.com/haskell/cabal/pull/6541)).
 
-# 3.0.1.0 TBW
-  * Add GHC-8.8 flags to normaliseGhcFlags
-    ([#6379](https://github.com/haskell/cabal/pull/6379))
+# 3.0.1.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Add GHC-8.8 flags to `normaliseGhcFlags`
+    ([#6379](https://github.com/haskell/cabal/pull/6379)).
   * Typo fixes
-    ([#6372](https://github.com/haskell/cabal/pull/6372))
+    ([#6372](https://github.com/haskell/cabal/pull/6372)).
   * Limit version number parts to contain at most 9 digits
-    ([#6386](https://github.com/haskell/cabal/pull/6386)
+    ([#6386](https://github.com/haskell/cabal/pull/6386)).
   * Fix boundless sublibrary depedency parse failure
-    ([#5846](https://github.com/haskell/cabal/issues/5846))
+    ([#5846](https://github.com/haskell/cabal/issues/5846)).
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
   * Don’t rebuild world when new ghc flags that affect how error
     messages are presented is specified.
   * Fix dropExeExtension behaviour on Windows
-    ([#6287](https://github.com/haskell/cabal/pull/6287)
+    ([#6287](https://github.com/haskell/cabal/pull/6287)).
 
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * The 3.0 migration guide gives advice on adapting Custom setup
