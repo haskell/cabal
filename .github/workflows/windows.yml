@@ -54,7 +54,7 @@ jobs:
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies -j1 -v3
       - name: cabal v2-build
-        run: cabal v2-build all
+        run: cabal v2-build all -j1 -v3
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
@@ -109,7 +109,7 @@ jobs:
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies -j1 -v3
       - name: cabal v2-build
-        run: cabal v2-build all
+        run: cabal v2-build all -j1 -v3
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
@@ -164,7 +164,7 @@ jobs:
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies -j1 -v3
       - name: cabal v2-build
-        run: cabal v2-build all
+        run: cabal v2-build all -j1 -v3
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
