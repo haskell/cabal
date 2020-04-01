@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-3.2.0.0 Someone <mailto:somewhere@example.com> February 2020
+3.2.0.0 Herbert Valerio Riedel <hvr@gnu.org> April 2020
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
 	  (analogous to how `--test-option(s)` works). (#6209)
@@ -17,7 +17,7 @@
 	* `cabal v2-run` works with `.lhs` files (#6134)
 	* `subdir` in source-repository-package accepts multiple entries (#5472)
 
-3.0.1.0 TBW December 2019
+3.0.1.0 Herbert Valerio Riedel <hvr@gnu.org> April 2020
 	* Create store incoming directory
 	  ([#4130](https://github.com/haskell/cabal/issues/4130))
 	* `fetchRepoTarball` output is not marked
@@ -34,7 +34,6 @@
 	* Use `hackage-security-0.6`
 	  ([#6388](https://github.com/haskell/cabal/pull/6388))
 	* Other dependency upgrades
-	* On windows use copy as the default install method for executables
 
 3.0.0.0 Mikhail Glushenkov <mikhail.glushenkov@gmail.com> August 2019
 	* `v2-haddock` fails on `haddock` failures (#5977)
