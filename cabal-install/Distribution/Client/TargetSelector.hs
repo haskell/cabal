@@ -2124,6 +2124,7 @@ matchComponentOtherFile cs =
                ++ cinfoCFiles  c
                ++ cinfoJsFiles c
       ]
+      . normalise
 
 
 matchComponentModuleFile :: [KnownComponent] -> String

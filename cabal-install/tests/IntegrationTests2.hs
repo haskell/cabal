@@ -255,7 +255,7 @@ testTargetSelectors reportSubCase = do
        ts @?= replicate 5 (TargetComponent "p-0.1" (CLibName LMainLibName) (FileTarget "P"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "QQ"))
            ++ replicate 5 (TargetComponent "q-0.1" (CLibName LMainLibName) (FileTarget "Q"))
-           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget "app/Main.hs"))
+           ++ replicate 5 (TargetComponent "p-0.1" (CExeName "ppexe") (FileTarget ("app" </> "Main.hs")))
        -- Note there's a bit of an inconsistency here: for the single-part
        -- syntax the target has to point to a file that exists, whereas for
        -- all the other forms we don't require that.
