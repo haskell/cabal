@@ -39,7 +39,6 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
-         , SDistFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
          , SandboxFlags(..), sandboxCommand
@@ -107,7 +106,6 @@ import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
 import Distribution.Client.Run                (run, splitRunArgs)
-import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
 import Distribution.Client.Reconfigure        (Check(..), reconfigure)
 import Distribution.Client.Nix                (nixInstantiate
@@ -309,7 +307,6 @@ mainWorker args = do
       , legacyCmd benchmarkCommand benchmarkAction
       , legacyCmd execCommand execAction
       , legacyCmd cleanCommand cleanAction
-      , legacyCmd sdistCommand sdistAction
       , legacyCmd doctestCommand doctestAction
       , legacyWrapperCmd copyCommand copyVerbosity copyDistPref
       , legacyWrapperCmd registerCommand regVerbosity regDistPref
@@ -1049,17 +1046,6 @@ uninstallAction verbosityFlag extraArgs _globalFlags = do
     ++ "It will likely be implemented at some point in the future; "
     ++ "in the meantime you're advised to use either 'ghc-pkg unregister "
     ++ package ++ "' or 'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
-
-
-sdistAction :: SDistFlags -> [String] -> Action
-sdistAction sdistFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (sDistVerbosity sdistFlags)
-  unless (null extraArgs) $
-    die' verbosity $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
-  load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
-  let config = either (\(SomeException _) -> mempty) snd load
-  distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
-  sdist sdistFlags { sDistDistPref = toFlag distPref }
 
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
