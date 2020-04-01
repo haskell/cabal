@@ -1,3 +1,13 @@
+{-|
+Module        :  Distribution.Client.Init.Licenses
+
+Description   :  Factory functions for producing known license types.
+
+License       :  BSD-like
+Maintainer    :  cabal-devel@haskell.org
+Stability     :  provisional
+Portability   :  portable
+-}
 module Distribution.Client.Init.Licenses
   ( License
   , bsd2
