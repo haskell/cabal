@@ -1,0 +1,4 @@
+synopsis: Allow cabal v2-install pkgname:exename
+packages: cabal-install
+prs: #6576
+issues: #6369
