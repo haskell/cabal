@@ -850,7 +850,7 @@ commentSavedConfig = do
             },
         savedInitFlags       = mempty {
             IT.interactive     = toFlag False,
-            IT.cabalVersion    = toFlag (mkVersion [1,10]),
+            IT.cabalVersion    = toFlag (mkVersion [2,4]),
             IT.language        = toFlag Haskell2010,
             IT.license         = toFlag BSD3,
             IT.sourceDirs      = Nothing,
