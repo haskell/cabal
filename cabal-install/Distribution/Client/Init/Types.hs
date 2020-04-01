@@ -103,7 +103,7 @@ instance Monoid InitFlags where
 instance Semigroup InitFlags where
   (<>) = gmappend
 
--- | Some common package categories.
+-- | Some common package categories (non-exhaustive list).
 data Category
     = Codec
     | Concurrency

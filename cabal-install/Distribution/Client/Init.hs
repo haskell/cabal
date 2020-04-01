@@ -148,8 +148,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 --  Flag acquisition  -----------------------------------------------------
 ---------------------------------------------------------------------------
 
--- | Fill in more details by guessing, discovering, or prompting the
---   user.
+-- | Fill in more details in InitFlags by guessing, discovering, or prompting
+-- the user.
 extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
 extendFlags pkgIx sourcePkgDb =
       getSimpleProject
@@ -188,14 +188,6 @@ maybeToFlag = maybe NoFlag Flag
 defaultCabalVersion :: Version
 defaultCabalVersion = mkVersion [1,10]
 
-displayCabalVersion :: Version -> String
-displayCabalVersion v = case versionNumbers v of
-  [1,10] -> "1.10   (legacy)"
-  [2,0]  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
-  [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
-  [2,4]  -> "2.4    (+ support for '**' globbing)"
-  _      -> display v
-
 -- | Ask if a simple project with sensible defaults should be created.
 getSimpleProject :: InitFlags -> IO InitFlags
 getSimpleProject flags = do
@@ -215,7 +207,11 @@ getSimpleProject flags = do
       flags { simpleProject = simpleProjFlag }
 
 
--- | Ask which version of the cabal spec to use.
+-- | Get the version of the cabal spec to use.
+--
+-- The spec version can be specified by the InitFlags cabalVersion field. If
+-- none is specified then the user is prompted to pick from a list of
+-- supported versions (see code below).
 getCabalVersion :: InitFlags -> IO InitFlags
 getCabalVersion flags = do
   cabVer <-     return (flagToMaybe $ cabalVersion flags)
@@ -226,6 +222,16 @@ getCabalVersion flags = do
             ?>> return (Just defaultCabalVersion)
 
   return $  flags { cabalVersion = maybeToFlag cabVer }
+
+  where
+    displayCabalVersion :: Version -> String
+    displayCabalVersion v = case versionNumbers v of
+      [1,10] -> "1.10   (legacy)"
+      [2,0]  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
+      [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
+      [2,4]  -> "2.4    (+ support for '**' globbing)"
+      _      -> display v
+
 
 
 -- | Get the package name: use the package directory (supplied, or the current
@@ -269,7 +275,10 @@ getVersion flags = do
         ?>> return v
   return $ flags { version = maybeToFlag v' }
 
--- | Choose a license.
+-- | Choose a license for the package.
+--
+-- The license can come from Initflags (license field), if it is not present
+-- then prompt the user from a predefined list of licenses.
 getLicense :: InitFlags -> IO InitFlags
 getLicense flags = do
   lic <-     return (flagToMaybe $ license flags)
@@ -324,7 +333,7 @@ getAuthorInfo flags = do
                  , email  = maybeToFlag authorEmail'
                  }
 
--- | Prompt for a homepage URL.
+-- | Prompt for a homepage URL for the package.
 getHomepage :: InitFlags -> IO InitFlags
 getHomepage flags = do
   hp  <- queryHomepage
@@ -435,7 +444,7 @@ getGenTests flags = do
                     (Just True))
   return $ flags { initializeTestSuite = maybeToFlag genTests }
 
--- | Ask for the test root directory.
+-- | Ask for the test suite root directory.
 getTestDir :: InitFlags -> IO InitFlags
 getTestDir flags = do
   dirs <- return (testDirs flags)
@@ -447,7 +456,7 @@ getTestDir flags = do
 
   return $ flags { testDirs = dirs }
 
--- | Ask for the base language of the package.
+-- | Ask for the Haskell base language of the package.
 getLanguage :: InitFlags -> IO InitFlags
 getLanguage flags = do
   lang <-     return (flagToMaybe $ language flags)
@@ -600,6 +609,8 @@ getModulesBuildToolsAndDeps pkgIx flags = do
                  , otherExts      = exts
                  }
 
+-- | Given a list of imported modules, retrieve the list of dependencies that
+-- provide those modules.
 importsToDeps :: InitFlags -> [ModuleName] -> InstalledPackageIndex -> IO [P.Dependency]
 importsToDeps flags mods pkgIx = do
 
@@ -705,8 +716,9 @@ promptStr :: String -> Maybe String -> IO String
 promptStr = promptDefault' Just id
 
 -- | Create a yes/no prompt with optional default value.
---
-promptYesNo :: String -> Maybe Bool -> IO Bool
+promptYesNo :: String      -- ^ prompt message
+            -> Maybe Bool  -- ^ optional default value
+            -> IO Bool
 promptYesNo =
     promptDefault' recogniseYesNo showYesNo
   where
@@ -746,6 +758,8 @@ mkDefPrompt pr def = pr ++ "?" ++ defStr def
   where defStr Nothing  = " "
         defStr (Just s) = " [default: " ++ s ++ "] "
 
+-- | Create a prompt from a list of items, where no selected items is
+--   valid and will be represented as a return value of 'Nothing'.
 promptListOptional :: (Text t, Eq t)
                    => String            -- ^ prompt
                    -> [t]               -- ^ choices
@@ -806,10 +820,18 @@ promptList' displayItem numChoices choices def other = do
 --  File generation  ------------------------------------------------------
 ---------------------------------------------------------------------------
 
+-- | Write the LICENSE file, as specified in the InitFlags license field.
+--
+-- For licences that contain the author's name(s), the values are taken
+-- from the 'authors' field of 'InitFlags', and if not specified will
+-- be the string "???".
+--
+-- If the license type is unknown no license file will be created and
+-- a warning will be raised.
 writeLicense :: InitFlags -> IO ()
 writeLicense flags = do
   message flags "\nGenerating LICENSE..."
-  year <- show <$> getYear
+  year <- show <$> getCurrentYear
   let authors = fromMaybe "???" . flagToMaybe . author $ flags
   let licenseFile =
         case license flags of
@@ -852,14 +874,16 @@ writeLicense flags = do
     Just licenseText -> writeFileSafe flags "LICENSE" licenseText
     Nothing -> message flags "Warning: unknown license type, you must put a copy in LICENSE yourself."
 
-getYear :: IO Integer
-getYear = do
+-- | Returns the current calendar year.
+getCurrentYear :: IO Integer
+getCurrentYear = do
   u <- getCurrentTime
   z <- getCurrentTimeZone
   let l = utcToLocalTime z u
       (y, _, _) = toGregorian $ localDay l
   return y
 
+-- | Writes the changelog to the current directory.
 writeChangeLog :: InitFlags -> IO ()
 writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc flags)) $ do
   message flags ("Generating "++ defaultChangeLog ++"...")
@@ -875,8 +899,9 @@ writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc 
   pname = maybe "" display $ flagToMaybe $ packageName flags
   pver = maybe "" display $ flagToMaybe $ version flags
 
-
-
+-- | Creates and writes the initialized .cabal file.
+--
+-- Returns @False@ if no package name is specified, @True@ otherwise.
 writeCabalFile :: InitFlags -> IO Bool
 writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
   message flags "Error: no package name provided."
@@ -944,7 +969,7 @@ createMainHs flags =
       Flag x -> x
       NoFlag -> error "createMainHs: no mainIs"
 
---- | Write a main file if it doesn't already exist.
+-- | Write a main file if it doesn't already exist.
 writeMainHs :: InitFlags -> FilePath -> IO ()
 writeMainHs flags mainPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -954,7 +979,7 @@ writeMainHs flags mainPath = do
       message flags $ "Generating " ++ mainPath ++ "..."
       writeFileSafe flags mainFullPath (mainHs flags)
 
--- | Check that a main file exists.
+-- | Returns true if a main file exists.
 hasMainHs :: InitFlags -> Bool
 hasMainHs flags = case mainIs flags of
   Flag _ -> (packageType flags == Flag Executable
@@ -991,6 +1016,7 @@ mainHs flags = (unlines . map prependPrefix) $ case packageType flags of
       Flag mainPath -> takeExtension mainPath == ".lhs"
       _             -> False
 
+-- | The name of the test file to generate (if --tests is specified).
 testFile :: String
 testFile = "MyLibTest.hs"
 
@@ -1003,7 +1029,7 @@ createTestHs flags =
       Just (testPath:_) -> writeTestHs flags (testPath </> testFile)
       _ -> writeMainHs flags testFile
 
---- | Write a test file.
+-- | Write a test file.
 writeTestHs :: InitFlags -> FilePath -> IO ()
 writeTestHs flags testPath = do
   dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
@@ -1034,6 +1060,9 @@ moveExistingFile flags fileName =
       message flags $ "Warning: " ++ fileName ++ " already exists, backing up old version in " ++ newName
       copyFile fileName newName
 
+
+-- | Given a file path find a new name for the file that does not
+--   already exist.
 findNewName :: FilePath -> IO FilePath
 findNewName oldName = findNewName' 0
   where
