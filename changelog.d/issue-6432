@@ -1,0 +1,4 @@
+synopsis: Split `KnownRepoType` out of `RepoType`
+packages: Cabal
+issues: #6432
+prs: #6612

@@ -1,0 +1,4 @@
+synopsis: Allow cabal v2-install http://
+packages: cabal-install
+prs: #6576
+issues: #6393

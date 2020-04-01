@@ -1,0 +1,2 @@
+synopsis: `cabal init` defaults to `cabal-version: 2.4`
+prs: #6607

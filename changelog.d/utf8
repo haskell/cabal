@@ -1,0 +1,3 @@
+synopsis: Better UTF8 handling, parsed ShortText should be valid now
+packages: Cabal
+prs: #6588

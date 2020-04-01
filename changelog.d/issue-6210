@@ -1,0 +1,3 @@
+synopsis: Default to 'NoReports' for remote build reporting
+issues: #6210
+prs: #6625
