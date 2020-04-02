@@ -263,14 +263,23 @@ or
 
     $ runhaskell Setup.hs --help
 
+
+Installing libraries locally
+----------------------------
+
+If you are developing a Haskell package and you need to use a library from
+Hackage_ all you need to do is add it to the ``build-depends`` attribute in
+your cabal file.
+
+
 Building and installing a system package
 ----------------------------------------
 
 ::
 
-    $ runhaskell Setup.hs configure --ghc
-    $ runhaskell Setup.hs build
-    $ runhaskell Setup.hs install
+    $ cabal configure --ghc
+    $ cabal build
+    $ cabal install
 
 The first line readies the system to build the tool using GHC; for
 example, it checks that GHC exists on the system. The second line
@@ -282,26 +291,24 @@ Building and installing a user package
 
 ::
 
-    $ runhaskell Setup.hs configure --user
-    $ runhaskell Setup.hs build
-    $ runhaskell Setup.hs install
+    $ cabal configure --user
+    $ cabal build
+    $ cabal install
 
 The package is installed under the user's home directory and is
-registered in the user's package database (:option:`setup configure --user`).
+registered in the user's package database (:option:`cabal configure --user`).
 
-Installing packages from Hackage
---------------------------------
+Installing executable packages from Hackage
+-------------------------------------------
 
 The ``cabal`` tool also can download, configure, build and install a
-Hackage_ package and all of its
-dependencies in a single step. To do this, run:
+Hackage_ package and all of its dependencies in a single step:
 
 ::
 
    $ cabal install [PACKAGE...]
 
-To browse the list of available packages, visit the
-Hackage_ web site.
+To browse the list of available packages, visit the Hackage_ web site.
 
 
 Creating a binary package
@@ -313,17 +320,17 @@ root directory:
 
 ::
 
-    $ runhaskell Setup.hs configure --prefix=/usr
-    $ runhaskell Setup.hs build
-    $ runhaskell Setup.hs copy --destdir=/tmp/mypkg
+    $ cabal configure --prefix=/usr
+    $ cabal build
+    $ cabal v1-copy --destdir=/tmp/mypkg
     $ tar -czf mypkg.tar.gz /tmp/mypkg/
 
 If the package contains a library, you need two additional steps:
 
 ::
 
-    $ runhaskell Setup.hs register --gen-script
-    $ runhaskell Setup.hs unregister --gen-script
+    $ cabal v1-register --gen-script
+    $ cabal v1-unregister --gen-script
 
 This creates shell scripts ``register.sh`` and ``unregister.sh``, which
 must also be sent to the target system. After unpacking there, the
@@ -358,12 +365,12 @@ The various commands and the additional options they support are
 described below. In the simple build infrastructure, any other options
 will be reported as errors.
 
-.. _setup-configure:
+.. _cabal-configure:
 
-setup configure
+cabal configure
 ---------------
 
-.. program:: setup configure
+.. program:: cabal configure
 
 Prepare to build the package. Typically, this step checks that the
 target platform is capable of building the package, and discovers
@@ -393,7 +400,7 @@ and all options specified with :option:`--configure-option` are passed on.
    detect and warn in this situation, but it is not perfect.
 
 In Cabal 2.0, support for a single positional argument was added to
-``setup configure`` This makes Cabal configure the specific component to
+``cabal configure`` This makes Cabal configure the specific component to
 be configured. Specified names can be qualified with ``lib:`` or
 ``exe:`` in case just a name is ambiguous (as would be the case for a
 package named ``p`` which has a library and an executable named ``p``.)
@@ -444,7 +451,7 @@ files of a package:
 
     This flag also sets the default value of the :option:`--with-hc-pkg`
     option to the package tool for this compiler. Check the output of
-    ``setup configure -v`` to ensure that it finds the right package
+    ``cabal configure -v`` to ensure that it finds the right package
     tool (or use :option:`--with-hc-pkg` explicitly).
 
 .. option:: --with-hc-pkg=path
@@ -1314,9 +1321,9 @@ Miscellaneous options
     Windows the ``cabal`` should do the right thing and hence should
     normally not require this flag.
 
-.. _setup-build:
+.. _cabal-build:
 
-setup build
+cabal build
 -----------
 
 Perform any preprocessing or compilation needed to make this package
@@ -1324,7 +1331,7 @@ ready for installation.
 
 This command takes the following options:
 
-.. program:: setup build
+.. program:: cabal build
 
 .. option:: --prog-options=options, --prog-option=option
 
@@ -1335,12 +1342,12 @@ This command takes the following options:
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
 
-.. _setup-haddock:
+.. _cabal-haddock:
 
-setup haddock
+cabal haddock
 -------------
 
-.. program:: setup haddock
+.. program:: cabal haddock
 
 Build the documentation for the package using Haddock_.
 By default, only the documentation for the exposed modules is generated
@@ -1364,7 +1371,7 @@ This command takes the following options:
     by hyperlinks in the generated documentation. For example, the
     following command generates links pointing at Hackage_ pages:
 
-        setup haddock
+        cabal haddock
         --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
 
     Here the argument is quoted to prevent substitution by the shell. If
@@ -1404,9 +1411,9 @@ This command takes the following options:
 
         runhaskell Setup.hs hscolour --css=*path*
 
-.. _setup-hscolour:
+.. _cabal-hscolour:
 
-setup hscolour
+cabal hscolour
 --------------
 
 Produce colourised code in HTML format using HsColour_. Colourised code for
@@ -1414,7 +1421,7 @@ exported modules is put in ``dist/doc/html/``\ *pkgid*\ ``/src``.
 
 This command takes the following options:
 
-.. program:: setup hscolour
+.. program:: cabal hscolour
 
 .. option:: --executables
 
@@ -1428,37 +1435,37 @@ This command takes the following options:
     the given CSS file to the directory with the generated HTML files
     (renamed to ``hscolour.css``) rather than linking to it.
 
-.. _setup-install:
+.. _cabal-install:
 
-setup install
+cabal install
 -------------
 
-.. program:: setup install
+.. program:: cabal install
 
 Copy the files into the install locations and (for library packages)
 register the package with the compiler, i.e. make the modules it
 contains available to programs.
 
 The `install locations <#installation-paths>`__ are determined by
-options to `setup configure`_.
+options to `cabal configure`_.
 
 This command takes the following options:
 
 .. option:: --global
 
     Register this package in the system-wide database. (This is the
-    default, unless the :option:`setup configure --user` option was supplied
+    default, unless the :option:`cabal configure --user` option was supplied
     to the ``configure`` command.)
 
 .. option:: --user
 
     Register this package in the user's local package database. (This is
-    the default if the :option:`setup configure --user` option was supplied
+    the default if the :option:`cabal configure --user` option was supplied
     to the ``configure`` command.)
 
-.. _setup-copy:
+.. _cabal-copy:
 
-setup copy
+cabal copy
 ----------
 
 Copy the files without registering them. This command is mainly of use
@@ -1466,16 +1473,16 @@ to those creating binary packages.
 
 This command takes the following option:
 
-.. program:: setup copy
+.. program:: cabal v1-copy
 
 .. option:: --destdir=path
 
    Specify the directory under which to place installed files. If this is
    not given, then the root directory is assumed.
 
-.. _setup-register:
+.. _cabal-register:
 
-setup register
+cabal register
 --------------
 
 Register this package with the compiler, i.e. make the modules it
@@ -1486,7 +1493,7 @@ for a binary package.
 
 This command takes the following options:
 
-.. program:: setup register
+.. program:: cabal v1-register
 
 .. option:: --global
 
@@ -1538,12 +1545,12 @@ This command takes the following options:
     supplemental files installed --- plain Haskell libraries should be
     fine.
 
-.. _setup-unregister:
+.. _cabal-unregister:
 
-setup unregister
+cabal unregister
 ----------------
 
-.. program:: setup unregister
+.. program:: cabal v1-unregister
 
 Deregister this package with the compiler.
 
@@ -1565,9 +1572,9 @@ This command takes the following options:
     ``unregister.sh``, on Windows, ``unregister.bat``. This script might
     be included in a binary bundle, to be run on the target system.
 
-.. _setup-clean:
+.. _cabal-clean:
 
-setup clean
+cabal clean
 -----------
 
 Remove any local files created during the ``configure``, ``build``,
@@ -1576,16 +1583,16 @@ and directories listed in the :pkg-field:`extra-tmp-files` field.
 
 This command takes the following options:
 
-.. program:: setup clean
+.. program:: cabal clean
 
 .. option:: --save-configure, -s
 
     Keeps the configuration information so it is not necessary to run
     the configure step again before building.
 
-.. _setup-test:
+.. _cabal-test:
 
-setup test
+cabal test
 ----------
 
 Run the test suites specified in the package description file. Aside
@@ -1594,7 +1601,7 @@ suites on the command line after ``test``. When supplied, Cabal will run
 only the named test suites, otherwise, Cabal will run all test suites in
 the package.
 
-.. program:: setup test
+.. program:: cabal test
 
 .. option:: --builddir=dir
 
@@ -1640,9 +1647,9 @@ the package.
    passed as arguments to the wrapper and it is expected that the wrapper
    will return the test's return code, as well as a copy of stdout/stderr.
 
-.. _setup-bench:
+.. _cabal-bench:
 
-setup bench
+cabal bench
 -----------
 
 Run the benchmarks specified in the package description file. Aside
@@ -1660,9 +1667,9 @@ the package.
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
 
-.. _setup-sdist:
+.. _cabal-sdist:
 
-setup sdist
+cabal sdist
 -----------
 
 Create a system- and compiler-independent source distribution in a file
@@ -1678,7 +1685,7 @@ description file, and files named in the ``license-file``, ``main-is``,
 
 This command takes the following option:
 
-.. program:: setup sdist
+.. program:: cabal sdist
 
 .. option:: --snapshot
 
