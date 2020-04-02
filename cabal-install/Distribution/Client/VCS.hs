@@ -28,6 +28,7 @@ module Distribution.Client.VCS (
     vcsGit,
     vcsHg,
     vcsSvn,
+    vcsPijul,
   ) where
 
 import Prelude ()
@@ -498,3 +499,84 @@ svnProgram = (simpleProgram "svn") {
         _ -> ""
   }
 
+
+-- | VCS driver for Pijul.
+-- Documentation for Pijul can be found at <https://pijul.org/manual/introduction.html>
+--
+vcsPijul :: VCS Program
+vcsPijul =
+    VCS {
+      vcsRepoType = KnownRepoType Pijul,
+      vcsProgram  = pijulProgram,
+      vcsCloneRepo,
+      vcsSyncRepos
+    }
+  where
+    vcsCloneRepo :: Verbosity -- ^ it seams that pijul does not have verbose flag
+                 -> ConfiguredProgram
+                 -> SourceRepositoryPackage f
+                 -> FilePath
+                 -> FilePath
+                 -> [ProgramInvocation]
+    vcsCloneRepo _verbosity prog repo srcuri destdir =
+        [ programInvocation prog cloneArgs ]
+        -- And if there's a tag, we have to do that in a second step:
+     ++ [ (programInvocation prog (checkoutArgs tag)) {
+            progInvokeCwd = Just destdir
+          }
+        | tag <- maybeToList (srpTag repo) ]
+      where
+        cloneArgs  = ["clone", srcuri, destdir]
+                     ++ branchArgs
+        branchArgs = case srpBranch repo of
+          Just b  -> ["--from-branch", b]
+          Nothing -> []
+        checkoutArgs tag = "checkout" : [tag]
+
+    vcsSyncRepos :: Verbosity
+                 -> ConfiguredProgram
+                 -> [(SourceRepositoryPackage f, FilePath)]
+                 -> IO [MonitorFilePath]
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity pijulProg
+                 ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
+
+      vcsSyncRepo verbosity pijulProg primaryRepo primaryLocalDir Nothing
+      sequence_
+        [ vcsSyncRepo verbosity pijulProg repo localDir (Just primaryLocalDir)
+        | (repo, localDir) <- secondaryRepos ]
+      return [ monitorDirectoryExistence dir
+             | dir <- (primaryLocalDir : map snd secondaryRepos) ]
+
+    vcsSyncRepo verbosity pijulProg SourceRepositoryPackage{..} localDir peer = do
+        exists <- doesDirectoryExist localDir
+        if exists
+          then pijul localDir                 ["pull"]
+          else pijul (takeDirectory localDir) cloneArgs
+        pijul localDir checkoutArgs
+      where
+        pijul :: FilePath -> [String] -> IO ()
+        pijul cwd args = runProgramInvocation verbosity $
+                         (programInvocation pijulProg args) {
+                           progInvokeCwd = Just cwd
+                         }
+
+        cloneArgs      = ["clone", loc, localDir]
+                      ++ case peer of
+                           Nothing           -> []
+                           Just peerLocalDir -> [peerLocalDir]
+                         where loc = srpLocation
+        checkoutArgs   = "checkout" :  ["--force", checkoutTarget, "--" ]
+        checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
+
+pijulProgram :: Program
+pijulProgram = (simpleProgram "pijul") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      case words str of
+        -- "pijul version 2.5.5"
+        (_:_:ver:_) | all isTypical ver -> ver
+        _ -> ""
+  }
+  where
+    isNum     c = c >= '0' && c <= '9'
+    isTypical c = isNum c || c == '.'

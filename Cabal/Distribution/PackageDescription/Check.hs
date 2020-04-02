@@ -1922,6 +1922,7 @@ repoTypeDirname Mercurial = [".hg"]
 repoTypeDirname GnuArch   = [".arch-params"]
 repoTypeDirname Bazaar    = [".bzr"]
 repoTypeDirname Monotone  = ["_MTN"]
+repoTypeDirname Pijul     = [".pijul"]
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
