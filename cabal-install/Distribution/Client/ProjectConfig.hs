@@ -470,7 +470,7 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 withProjectOrGlobalConfigIgn
     :: Bool -- ^ whether to ignore local project
     -> Verbosity
-    -> Flag FilePath
+    -> Flag FilePath  -- ^ global config file
     -> IO a
     -> (ProjectConfig -> IO a)
     -> IO a

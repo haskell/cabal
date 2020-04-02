@@ -55,7 +55,7 @@ import Distribution.Client.ProjectConfig.Types
          , ProjectConfigBuildOnly(..), PackageConfig(..)
          , getMapLast, getMapMappend, projectConfigLogsDir
          , projectConfigStoreDir, projectConfigBuildOnly
-         , projectConfigDistDir, projectConfigConfigFile )
+         , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
          , modifyProgramSearchPath, ProgramDb )
@@ -79,14 +79,13 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
-         ( readGlobalConfig, projectConfigWithBuilderRepoContext
+         ( projectConfigWithBuilderRepoContext
          , resolveBuildTimeSettings, withProjectOrGlobalConfigIgn )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Client.DistDirLayout
-         ( defaultDistDirLayout, DistDirLayout(..), mkCabalDirLayout
-         , ProjectRoot(ProjectRootImplicit)
+         ( DistDirLayout(..), mkCabalDirLayout
          , cabalStoreDirLayout
          , CabalDirLayout(..), StoreDirLayout(..) )
 import Distribution.Client.RebuildMonad
@@ -877,66 +876,6 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]
       | otherwise          = []
-
--- | Create a dummy project context, without a .cabal or a .cabal.project file
--- (a place where to put a temporary dist directory is still needed)
-establishDummyProjectBaseContext
-  :: Verbosity
-  -> ProjectConfig
-  -> DistDirLayout
-     -- ^ Where to put the dist directory
-  -> [PackageSpecifier UnresolvedSourcePackage]
-     -- ^ The packages to be included in the project
-  -> CurrentCommand
-  -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
-    cabalDir <- getCabalDir
-
-    globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
-                  $ projectConfigConfigFile
-                  $ projectConfigShared cliConfig
-    let projectConfig = globalConfig <> cliConfig
-
-    let ProjectConfigBuildOnly {
-          projectConfigLogsDir
-        } = projectConfigBuildOnly projectConfig
-
-        ProjectConfigShared {
-          projectConfigStoreDir
-        } = projectConfigShared projectConfig
-
-        mlogsDir = flagToMaybe projectConfigLogsDir
-        mstoreDir = flagToMaybe projectConfigStoreDir
-        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
-
-        buildSettings = resolveBuildTimeSettings
-                          verbosity cabalDirLayout
-                          projectConfig
-
-    return ProjectBaseContext {
-      distDirLayout,
-      cabalDirLayout,
-      projectConfig,
-      localPackages,
-      buildSettings,
-      currentCommand
-    }
-
-establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
-establishDummyDistDirLayout verbosity cliConfig tmpDir = do
-    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory
-
-    -- Create the dist directories
-    createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout
-    createDirectoryIfMissingVerbose verbosity True $ distProjectCacheDirectory distDirLayout
-
-    return distDirLayout
-  where
-    mdistDirectory = flagToMaybe
-                   $ projectConfigDistDir
-                   $ projectConfigShared cliConfig
-    projectRoot = ProjectRootImplicit tmpDir
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

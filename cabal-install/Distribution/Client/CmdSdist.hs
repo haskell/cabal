@@ -15,12 +15,10 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
 import Distribution.Client.ProjectOrchestration
-    ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext )
+    ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext, establishProjectBaseContextWithRoot)
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
-import Distribution.Client.RebuildMonad
-    ( runRebuild )
 import Distribution.Client.Setup
     ( GlobalFlags(..) )
 import Distribution.Solver.Types.SourcePackage
@@ -28,9 +26,9 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Client.Types
     ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import Distribution.Client.DistDirLayout
-    ( DistDirLayout(..), defaultDistDirLayout )
+    ( DistDirLayout(..), ProjectRoot (..) )
 import Distribution.Client.ProjectConfig
-    ( findProjectRoot, readProjectConfig )
+    ( ProjectConfig, withProjectOrGlobalConfigIgn, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
 
 import Distribution.Package
     ( Package(packageId) )
@@ -46,7 +44,7 @@ import Distribution.Simple.PreProcess
     ( knownSuffixHandlers )
 import Distribution.Simple.Setup
     ( Flag(..), toFlag, fromFlagOrDefault, flagToList, flagToMaybe
-    , optionVerbosity, optionDistPref, trueArg
+    , optionVerbosity, optionDistPref, trueArg, configVerbosity, configDistPref
     )
 import Distribution.Simple.SrcDist
     ( listPackageSources )
@@ -62,8 +60,6 @@ import Distribution.Verbosity
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Compression.GZip  as GZip
-import Control.Exception
-    ( throwIO )
 import Control.Monad.Trans
     ( liftIO )
 import Control.Monad.State.Lazy
@@ -103,15 +99,19 @@ sdistCommand = CommandUI
             "Set the name of the cabal.project file to search for in parent directories"
             sdistProjectFile (\pf flags -> flags { sdistProjectFile = pf })
             (reqArg "FILE" (succeedReadE Flag) flagToList)
+        , option ['z'] ["ignore-project"]
+            "Ignore local project configuration"
+            sdistIgnoreProject (\v flags -> flags { sdistIgnoreProject = v })
+            trueArg
         , option ['l'] ["list-only"]
             "Just list the sources, do not make a tarball"
             sdistListSources (\v flags -> flags { sdistListSources = v })
             trueArg
-        , option ['z'] ["null-sep"]
+        , option [] ["null-sep"]
             "Separate the source files with NUL bytes rather than newlines."
             sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
             trueArg
-        , option ['o'] ["output-dir", "outputdir"]
+        , option ['o'] ["output-directory", "outputdir"]
             "Choose the output directory of this command. '-' sends all output to stdout"
             sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
             (reqArg "PATH" (succeedReadE Flag) flagToList)
@@ -122,6 +122,7 @@ data SdistFlags = SdistFlags
     { sdistVerbosity     :: Flag Verbosity
     , sdistDistDir       :: Flag FilePath
     , sdistProjectFile   :: Flag FilePath
+    , sdistIgnoreProject :: Flag Bool
     , sdistListSources   :: Flag Bool
     , sdistNulSeparated  :: Flag Bool
     , sdistOutputPath    :: Flag FilePath
@@ -132,6 +133,7 @@ defaultSdistFlags = SdistFlags
     { sdistVerbosity     = toFlag normal
     , sdistDistDir       = mempty
     , sdistProjectFile   = mempty
+    , sdistIgnoreProject = toFlag False
     , sdistListSources   = toFlag False
     , sdistNulSeparated  = toFlag False
     , sdistOutputPath    = mempty
@@ -141,30 +143,25 @@ defaultSdistFlags = SdistFlags
 
 sdistAction :: SdistFlags -> [String] -> GlobalFlags -> IO ()
 sdistAction SdistFlags{..} targetStrings globalFlags = do
-    let verbosity = fromFlagOrDefault normal sdistVerbosity
-        mDistDirectory = flagToMaybe sdistDistDir
-        mProjectFile = flagToMaybe sdistProjectFile
-        globalConfig = globalConfigFile globalFlags
-        listSources = fromFlagOrDefault False sdistListSources
-        nulSeparated = fromFlagOrDefault False sdistNulSeparated
-        mOutputPath = flagToMaybe sdistOutputPath
+    (baseCtx, distDirLayout) <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
 
-    projectRoot <- either throwIO return =<< findProjectRoot Nothing mProjectFile
-    let distLayout = defaultDistDirLayout projectRoot mDistDirectory
-    dir <- getCurrentDirectory
-    projectConfig <- runRebuild dir $ readProjectConfig verbosity globalConfig distLayout
-    baseCtx <- establishProjectBaseContext verbosity projectConfig OtherCommand
     let localPkgs = localPackages baseCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
         =<< readTargetSelectors localPkgs Nothing targetStrings
 
+    -- elaborate path, create target directory
     mOutputPath' <- case mOutputPath of
         Just "-"  -> return (Just "-")
-        Just path -> Just <$> makeAbsolute path
-        Nothing   -> return Nothing
+        Just path -> do
+            abspath <- makeAbsolute path
+            createDirectoryIfMissing True abspath
+            return (Just abspath)
+        Nothing   -> do
+            createDirectoryIfMissing True (distSdistDirectory distDirLayout)
+            return Nothing
 
-    let
+    let format :: OutputFormat
         format =
             if | listSources, nulSeparated -> SourceList '\0'
                | listSources               -> SourceList '\n'
@@ -180,9 +177,8 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
                 | otherwise   -> path </> prettyShow (packageId pkg) <.> ext
             Nothing
                 | listSources -> "-"
-                | otherwise   -> distSdistFile distLayout (packageId pkg)
+                | otherwise   -> distSdistFile distDirLayout (packageId pkg)
 
-    createDirectoryIfMissing True (distSdistDirectory distLayout)
 
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
@@ -190,7 +186,37 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
             | length pkgs > 1, not listSources, Just "-" <- mOutputPath' ->
                 die' verbosity "Can't write multiple tarballs to standard output!"
             | otherwise ->
-                traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distLayout) format (outputPath pkg) pkg) pkgs
+                traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distDirLayout) format (outputPath pkg) pkg) pkgs
+  where
+    verbosity      = fromFlagOrDefault normal sdistVerbosity
+    listSources    = fromFlagOrDefault False sdistListSources
+    nulSeparated   = fromFlagOrDefault False sdistNulSeparated
+    mOutputPath    = flagToMaybe sdistOutputPath
+    ignoreProject  = fromFlagOrDefault False sdistIgnoreProject
+
+    prjConfig :: ProjectConfig
+    prjConfig = commandLineFlagsToProjectConfig
+        globalFlags
+        mempty { configVerbosity = sdistVerbosity, configDistPref = sdistDistDir }
+        mempty
+        mempty
+        mempty
+        mempty
+        mempty
+        mempty
+
+    globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
+
+    withProject :: IO (ProjectBaseContext, DistDirLayout)
+    withProject = do
+        baseCtx <- establishProjectBaseContext verbosity prjConfig OtherCommand
+        return (baseCtx, distDirLayout baseCtx)
+
+    withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
+    withoutProject config = do
+        cwd <- getCurrentDirectory
+        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
+        return (baseCtx, distDirLayout baseCtx)
 
 data IsExec = Exec | NoExec
             deriving (Show, Eq)
@@ -237,10 +263,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
         (norm NoExec -> nonexec, norm Exec -> exec) <-
            listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
-        print $ map snd exec
-        print $ map snd nonexec
         let files =  nub . sortOn snd $ nonexec ++ exec
-        print files
 
         case format of
             SourceList nulSep -> do

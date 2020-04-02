@@ -46,9 +46,6 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, warn, die', ordNub, info
          , createTempDirectory, handleDoesNotExist )
-import Distribution.Client.CmdInstall
-         ( establishDummyDistDirLayout
-         , establishDummyProjectBaseContext )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , withProjectOrGlobalConfigIgn )

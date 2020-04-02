@@ -1,2 +1,2 @@
-# cabal v1-sdist
+# cabal v2-sdist
 cabal: filepath wildcard './actually-a-directory' does not match any files.
