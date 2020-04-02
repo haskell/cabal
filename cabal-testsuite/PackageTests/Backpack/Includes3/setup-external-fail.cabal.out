@@ -1,5 +1,4 @@
 # Setup configure
-Resolving dependencies...
 Configuring sigs-0.1.0.0...
 # Setup build
 Preprocessing library for sigs-0.1.0.0..
@@ -11,7 +10,6 @@ Installing library in <PATH>
 Registering library instantiated with Data.Map = <Data.Map>
 for sigs-0.1.0.0..
 # Setup configure
-Resolving dependencies...
 Configuring indef-0.1.0.0...
 # Setup build
 Preprocessing library for indef-0.1.0.0..

@@ -162,48 +162,31 @@ setup'' prefix cmd args = do
         full_args = cmd :| [marked_verbose, "--distdir", rel_dist_dir] ++ args'
     defaultRecordMode RecordMarked $ do
     recordHeader ["Setup", cmd]
+
+    -- We test `cabal act-act-setup` when running cabal-tests.
+    --
+    -- `cabal` and `Setup.hs` do have different interface.
+    --
+
+    pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env) (testCurrentDir env </> prefix)
+    pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
     if testCabalInstallAsSetup env
-        then
-            -- `cabal` and `Setup` no longer have the same interface.
-            -- A bit of fettling is required to hide this fact.
-            let
-                legacyCmds =
-                    [ "build"
-                    , "configure"
-                    , "repl"
-                    , "freeze"
-                    , "run"
-                    , "test"
-                    , "bench"
-                    , "haddock"
-                    , "exec"
-                    , "update"
-                    , "install"
-                    , "clean"
-                    , "register"
-                    , "copy"
-                    , "sdist"
-                    , "reconfigure"
-                    , "doctest"
-                    ]
-                (a:|as) = full_args
-                full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
-            in runProgramM cabalProgram full_args'
-        else do
-            pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env)
-                      (testCurrentDir env </> prefix)
-            pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
-            if buildType (packageDescription pdesc) == Simple
-                then runM (testSetupPath env) (NE.toList full_args)
-                -- Run the Custom script!
-                else do
-                  r <- liftIO $ runghc (testScriptEnv env)
-                                       (Just (testCurrentDir env))
-                                       (testEnvironment env)
-                                       (testCurrentDir env </> prefix </> "Setup.hs")
-                                       (NE.toList full_args)
-                  recordLog r
-                  requireSuccess r
+    then if buildType (packageDescription pdesc) == Simple
+         then runProgramM cabalProgram ("act-as-setup" : "--" : NE.toList full_args)
+         else fail "Using act-as-setup for not 'build-type: Simple' package"
+    else do
+        if buildType (packageDescription pdesc) == Simple
+            then runM (testSetupPath env) (NE.toList full_args)
+            -- Run the Custom script!
+            else do
+              r <- liftIO $ runghc (testScriptEnv env)
+                                   (Just (testCurrentDir env))
+                                   (testEnvironment env)
+                                   (testCurrentDir env </> prefix </> "Setup.hs")
+                                   (NE.toList full_args)
+              recordLog r
+              requireSuccess r
+
     -- This code is very tempting (and in principle should be quick:
     -- after all we are loading the built version of Cabal), but
     -- actually it costs quite a bit in wallclock time (e.g. 54sec to

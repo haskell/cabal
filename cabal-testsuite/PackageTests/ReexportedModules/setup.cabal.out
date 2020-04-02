@@ -1,5 +1,4 @@
 # Setup configure
-Resolving dependencies...
 Configuring p-0.1.0.0...
 # Setup build
 Preprocessing library for p-0.1.0.0..
@@ -9,7 +8,6 @@ Installing library in <PATH>
 # Setup register
 Registering library for p-0.1.0.0..
 # Setup configure
-Resolving dependencies...
 Configuring q-0.1.0.0...
 # Setup build
 Preprocessing library for q-0.1.0.0..
