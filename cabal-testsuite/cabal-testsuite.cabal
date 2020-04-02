@@ -36,6 +36,7 @@ common shared
 library
   import: shared
 
+  hs-source-dirs: src
   exposed-modules:
     Test.Cabal.CheckArMetadata
     Test.Cabal.Monad
