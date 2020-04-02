@@ -47,29 +47,26 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 --
 tests :: MTimeChange -> [TestTree]
 tests mtimeChange =
-  [ testGroup "check VCS test framework" $
-    [ testProperty "git"    prop_framework_git
-    ] ++
-    [ testProperty "darcs" (prop_framework_darcs mtimeChange)
-    | enableDarcsTests
+  [ testGroup "git"
+    [ testProperty "check VCS test framework"    prop_framework_git
+    , testProperty "cloneSourceRepo"             prop_cloneRepo_git
+    , testProperty "syncSourceRepos"             prop_syncRepos_git
     ]
-  , testGroup "cloneSourceRepo" $
-    [ testProperty "git"    prop_cloneRepo_git
-    ] ++
-    [ testProperty "darcs" (prop_cloneRepo_darcs mtimeChange)
-    | enableDarcsTests
-    ]
-  , testGroup "syncSourceRepos" $
-    [ testProperty "git"    prop_syncRepos_git
-    ] ++
-    [ testProperty "darcs" (prop_syncRepos_darcs mtimeChange)
-    | enableDarcsTests
-    ]
-  ]
-  where
-    -- for the moment they're not yet working
-    enableDarcsTests = False
 
+    -- for the moment they're not yet working
+  , testGroup "darcs" $ const []
+    [ testProperty "check VCS test framework"    $ prop_framework_darcs mtimeChange
+    , testProperty "cloneSourceRepo"             $ prop_cloneRepo_darcs mtimeChange
+    , testProperty "syncSourceRepos"             $ prop_syncRepos_darcs mtimeChange
+    ]
+
+  , testGroup "pijul" $ const []
+    [ testProperty "check VCS test framework"    prop_framework_pijul
+    , testProperty "cloneSourceRepo"             prop_cloneRepo_pijul
+    , testProperty "syncSourceRepos"             prop_syncRepos_pijul
+    ]
+
+  ]
 
 prop_framework_git :: BranchingRepoRecipe -> Property
 prop_framework_git =
@@ -83,6 +80,12 @@ prop_framework_darcs mtimeChange =
   . prop_framework vcsDarcs (vcsTestDriverDarcs mtimeChange)
   . WithoutBranchingSupport
 
+prop_framework_pijul :: BranchingRepoRecipe -> Property
+prop_framework_pijul =
+    ioProperty
+  . prop_framework vcsPijul vcsTestDriverPijul
+  . WithBranchingSupport
+
 prop_cloneRepo_git :: BranchingRepoRecipe -> Property
 prop_cloneRepo_git =
     ioProperty
@@ -95,6 +98,12 @@ prop_cloneRepo_darcs mtimeChange =
     ioProperty
   . prop_cloneRepo vcsDarcs (vcsTestDriverDarcs mtimeChange)
   . WithoutBranchingSupport
+
+prop_cloneRepo_pijul :: BranchingRepoRecipe -> Property
+prop_cloneRepo_pijul =
+    ioProperty
+  . prop_cloneRepo vcsPijul vcsTestDriverPijul
+  . WithBranchingSupport
 
 prop_syncRepos_git :: RepoDirSet -> SyncTargetIterations -> PrngSeed
                    -> BranchingRepoRecipe -> Property
@@ -113,6 +122,13 @@ prop_syncRepos_darcs  mtimeChange destRepoDirs syncTargetSetIterations seed =
                    destRepoDirs syncTargetSetIterations seed
   . WithoutBranchingSupport
 
+prop_syncRepos_pijul :: RepoDirSet -> SyncTargetIterations -> PrngSeed
+                   -> BranchingRepoRecipe -> Property
+prop_syncRepos_pijul destRepoDirs syncTargetSetIterations seed =
+    ioProperty
+  . prop_syncRepos vcsPijul vcsTestDriverPijul
+                   destRepoDirs syncTargetSetIterations seed
+  . WithBranchingSupport
 
 -- ------------------------------------------------------------
 -- * General test setup
@@ -693,3 +709,47 @@ vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
                            }
     darcs = runProgramInvocation verbosity . darcsInvocation
 
+
+vcsTestDriverPijul :: Verbosity -> VCS ConfiguredProgram
+                 -> FilePath -> VCSTestDriver
+vcsTestDriverPijul verbosity vcs repoRoot =
+    VCSTestDriver {
+      vcsVCS = vcs
+
+    , vcsRepoRoot = repoRoot
+
+    , vcsIgnoreFiles = Set.empty
+
+    , vcsInit =
+        pijul $ ["init"]
+
+    , vcsAddFile = \_ filename ->
+        pijul ["add", filename]
+
+    , vcsCommitChanges = \_state -> do
+        pijul $ ["record", "-a", "-m 'a patch'"
+                , "-A 'A <a@example.com>'"
+                ]
+        commit <- pijul' ["log"]
+        let commit' = takeWhile (not . isSpace) commit
+        return (Just commit')
+
+    -- tags work differently in pijul...
+    -- so this is wrong
+    , vcsTagState = \_ tagname ->
+        pijul ["tag", tagname]
+
+    , vcsSwitchBranch = \_ branchname -> do
+--        unless (branchname `Map.member` allBranches) $
+--          pijul ["from-branch", branchname]
+        pijul $ ["checkout", branchname]
+
+    , vcsCheckoutTag = Left $ \tagname ->
+        pijul $ ["checkout", tagname]
+    }
+  where
+    gitInvocation args = (programInvocation (vcsProgram vcs) args) {
+                           progInvokeCwd = Just repoRoot
+                         }
+    pijul  = runProgramInvocation       verbosity . gitInvocation
+    pijul' = getProgramInvocationOutput verbosity . gitInvocation
