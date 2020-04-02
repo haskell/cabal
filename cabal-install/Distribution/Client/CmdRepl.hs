@@ -24,10 +24,6 @@ import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.CmdErrorMessages
-import Distribution.Client.CmdInstall
-         ( establishDummyDistDirLayout 
-         , establishDummyProjectBaseContext
-         )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )

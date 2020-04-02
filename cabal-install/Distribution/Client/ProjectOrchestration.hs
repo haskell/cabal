@@ -43,6 +43,7 @@ module Distribution.Client.ProjectOrchestration (
     -- * Discovery phase: what is in the project?
     CurrentCommand(..),
     establishProjectBaseContext,
+    establishProjectBaseContextWithRoot,
     ProjectBaseContext(..),
     BuildTimeSettings(..),
     commandLineFlagsToProjectConfig,
@@ -95,6 +96,10 @@ module Distribution.Client.ProjectOrchestration (
 
     -- * Shared CLI utils
     cmdCommonHelpTextNewBuildBeta,
+
+    -- * Dummy projects
+    establishDummyProjectBaseContext,
+    establishDummyDistDirLayout,
   ) where
 
 import Prelude ()
@@ -110,6 +115,7 @@ import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
+import           Distribution.Client.RebuildMonad ( runRebuild )
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
@@ -142,13 +148,13 @@ import           Distribution.PackageDescription
 import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), pkgComponents )
 import           Distribution.Simple.Flag
-                   ( fromFlagOrDefault )
+                   ( fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
-                   ( die', warn, notice, noticeNoWrap, debugNoWrap )
+                   ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose )
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
@@ -187,18 +193,29 @@ data ProjectBaseContext = ProjectBaseContext {
        currentCommand :: CurrentCommand
      }
 
-establishProjectBaseContext :: Verbosity
-                            -> ProjectConfig
-                            -> CurrentCommand
-                            -> IO ProjectBaseContext
+establishProjectBaseContext
+    :: Verbosity
+    -> ProjectConfig
+    -> CurrentCommand
+    -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig currentCommand = do
+    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
+  where
+    mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
+    ProjectConfigShared { projectConfigProjectFile } = projectConfigShared cliConfig
 
+-- | Like 'establishProjectBaseContext' but doesn't search for project root.
+establishProjectBaseContextWithRoot
+    :: Verbosity
+    -> ProjectConfig
+    -> ProjectRoot
+    -> CurrentCommand
+    -> IO ProjectBaseContext
+establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
     cabalDir <- getCabalDir
-    projectRoot <- either throwIO return =<<
-                   findProjectRoot Nothing mprojectFile
 
-    let distDirLayout  = defaultDistDirLayout projectRoot
-                                              mdistDirectory
+    let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
 
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
@@ -236,11 +253,7 @@ establishProjectBaseContext verbosity cliConfig currentCommand = do
     }
   where
     mdistDirectory = Setup.flagToMaybe projectConfigDistDir
-    mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
-    ProjectConfigShared {
-      projectConfigDistDir,
-      projectConfigProjectFile
-    } = projectConfigShared cliConfig
+    ProjectConfigShared { projectConfigDistDir } = projectConfigShared cliConfig
 
 
 -- | This holds the context between the pre-build, build and post-build phases.
@@ -1227,3 +1240,67 @@ cmdCommonHelpTextNewBuildBeta =
  ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
  ++ "to get involved and help with testing, fixing bugs etc then\nthat "
  ++ "is very much appreciated.\n"
+
+-------------------------------------------------------------------------------
+-- Dummy projects
+-------------------------------------------------------------------------------
+
+-- | Create a dummy project context, without a .cabal or a .cabal.project file
+-- (a place where to put a temporary dist directory is still needed)
+establishDummyProjectBaseContext
+  :: Verbosity
+  -> ProjectConfig
+  -> DistDirLayout
+     -- ^ Where to put the dist directory
+  -> [PackageSpecifier UnresolvedSourcePackage]
+     -- ^ The packages to be included in the project
+  -> CurrentCommand
+  -> IO ProjectBaseContext
+establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
+    cabalDir <- getCabalDir
+
+    globalConfig <- runRebuild ""
+                  $ readGlobalConfig verbosity
+                  $ projectConfigConfigFile
+                  $ projectConfigShared cliConfig
+    let projectConfig = globalConfig <> cliConfig
+
+    let ProjectConfigBuildOnly {
+          projectConfigLogsDir
+        } = projectConfigBuildOnly projectConfig
+
+        ProjectConfigShared {
+          projectConfigStoreDir
+        } = projectConfigShared projectConfig
+
+        mlogsDir = flagToMaybe projectConfigLogsDir
+        mstoreDir = flagToMaybe projectConfigStoreDir
+        cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
+
+        buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          projectConfig
+
+    return ProjectBaseContext {
+      distDirLayout,
+      cabalDirLayout,
+      projectConfig,
+      localPackages,
+      buildSettings,
+      currentCommand
+    }
+
+establishDummyDistDirLayout :: Verbosity -> ProjectConfig -> FilePath -> IO DistDirLayout
+establishDummyDistDirLayout verbosity cliConfig tmpDir = do
+    let distDirLayout = defaultDistDirLayout projectRoot mdistDirectory
+
+    -- Create the dist directories
+    createDirectoryIfMissingVerbose verbosity True $ distDirectory distDirLayout
+    createDirectoryIfMissingVerbose verbosity True $ distProjectCacheDirectory distDirLayout
+
+    return distDirLayout
+  where
+    mdistDirectory = flagToMaybe
+                   $ projectConfigDistDir
+                   $ projectConfigShared cliConfig
+    projectRoot = ProjectRootImplicit tmpDir
