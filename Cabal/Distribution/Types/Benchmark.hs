@@ -13,6 +13,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BenchmarkInterface
 import Distribution.Types.UnqualComponentName
@@ -20,11 +21,13 @@ import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 -- | A \"benchmark\" stanza in a cabal file.
 --
 data Benchmark = Benchmark {
         benchmarkName      :: UnqualComponentName,
+        benchmarkImports   :: CommonStanzaImports,
         benchmarkInterface :: BenchmarkInterface,
         benchmarkBuildInfo :: BuildInfo
     }
@@ -34,12 +37,16 @@ instance Binary Benchmark
 instance Structured Benchmark
 instance NFData Benchmark where rnf = genericRnf
 
+instance L.HasCommonStanzaImports Benchmark where
+    commonStanzaImports f (Benchmark x1 x2 x3 x4) = fmap (\i1 -> Benchmark x1 i1 x3 x4) (f x2)
+
 instance L.HasBuildInfo Benchmark where
-    buildInfo f (Benchmark x1 x2 x3) = fmap (\y1 -> Benchmark x1 x2 y1) (f x3)
+    buildInfo f (Benchmark x1 x2 x3 x4) = fmap (\y1 -> Benchmark x1 x2 x3 y1) (f x4)
 
 instance Monoid Benchmark where
     mempty = Benchmark {
         benchmarkName      = mempty,
+        benchmarkImports   = mempty,
         benchmarkInterface = mempty,
         benchmarkBuildInfo = mempty
     }
@@ -48,6 +55,7 @@ instance Monoid Benchmark where
 instance Semigroup Benchmark where
     a <> b = Benchmark {
         benchmarkName      = combine' benchmarkName,
+        benchmarkImports   = combine  benchmarkImports,
         benchmarkInterface = combine  benchmarkInterface,
         benchmarkBuildInfo = combine  benchmarkBuildInfo
     }

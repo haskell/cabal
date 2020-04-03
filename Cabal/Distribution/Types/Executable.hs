@@ -12,19 +12,25 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ExecutableScope
 import Distribution.ModuleName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 data Executable = Executable {
         exeName    :: UnqualComponentName,
+        exeImports :: CommonStanzaImports,
         modulePath :: FilePath,
         exeScope   :: ExecutableScope,
         buildInfo  :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance L.HasCommonStanzaImports Executable where
+    commonStanzaImports f l = (\x -> l { exeImports = x }) <$> f (exeImports l)
 
 instance L.HasBuildInfo Executable where
     buildInfo f l = (\x -> l { buildInfo = x }) <$> f (buildInfo l)
@@ -40,6 +46,7 @@ instance Monoid Executable where
 instance Semigroup Executable where
   a <> b = Executable{
     exeName    = combine' exeName,
+    exeImports = combine exeImports,
     modulePath = combine modulePath,
     exeScope   = combine exeScope,
     buildInfo  = combine buildInfo

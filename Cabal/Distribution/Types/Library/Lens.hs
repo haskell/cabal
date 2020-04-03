@@ -9,6 +9,7 @@ import Prelude ()
 
 import Distribution.ModuleName              (ModuleName)
 import Distribution.Types.BuildInfo         (BuildInfo)
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports)
 import Distribution.Types.Library           (Library)
 import Distribution.Types.LibraryName       (LibraryName)
 import Distribution.Types.LibraryVisibility (LibraryVisibility)
@@ -19,6 +20,10 @@ import qualified Distribution.Types.Library as T
 libName :: Lens' Library LibraryName
 libName f s = fmap (\x -> s { T.libName = x }) (f (T.libName s))
 {-# INLINE libName #-}
+
+libImports :: Lens' Library CommonStanzaImports
+libImports f s = fmap (\x -> s { T.libImports = x }) (f (T.libImports s))
+{-# INLINE libImports #-}
 
 exposedModules :: Lens' Library [ModuleName]
 exposedModules f s = fmap (\x -> s { T.exposedModules = x }) (f (T.exposedModules s))

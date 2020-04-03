@@ -8,6 +8,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo           (BuildInfo)
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports)
 import Distribution.Types.TestSuite           (TestSuite)
 import Distribution.Types.TestSuiteInterface  (TestSuiteInterface)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
@@ -17,6 +18,10 @@ import qualified Distribution.Types.TestSuite as T
 testName :: Lens' TestSuite UnqualComponentName
 testName f s = fmap (\x -> s { T.testName = x }) (f (T.testName s))
 {-# INLINE testName #-}
+
+testImports :: Lens' TestSuite CommonStanzaImports
+testImports f s = fmap (\x -> s { T.testImports = x }) (f (T.testImports s))
+{-# INLINE testImports #-}
 
 testInterface :: Lens' TestSuite TestSuiteInterface
 testInterface f s = fmap (\x -> s { T.testInterface = x }) (f (T.testInterface s))

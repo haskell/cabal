@@ -22,6 +22,8 @@ import Distribution.ModuleName                (ModuleName)
 import Distribution.Package                   (Dependency, PackageIdentifier, PackageName)
 import Distribution.PackageDescription
 import Distribution.Types.AbiHash             (AbiHash)
+import Distribution.Types.CommonStanza
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.ComponentId         (ComponentId)
 import Distribution.Types.CondTree
 import Distribution.Types.ExecutableScope
@@ -55,6 +57,8 @@ instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo
 instance ToExpr BuildType
+instance ToExpr CommonStanza
+instance ToExpr CommonStanzaImports
 instance ToExpr CompilerFlavor
 instance ToExpr ComponentId where toExpr = defaultExprViaShow
 instance ToExpr DefUnitId

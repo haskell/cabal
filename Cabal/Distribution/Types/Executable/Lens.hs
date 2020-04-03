@@ -8,6 +8,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Types.BuildInfo           (BuildInfo)
+import Distribution.Types.CommonStanzaImports (CommonStanzaImports)
 import Distribution.Types.Executable          (Executable)
 import Distribution.Types.ExecutableScope     (ExecutableScope)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
@@ -17,6 +18,9 @@ import qualified Distribution.Types.Executable as T
 exeName :: Lens' Executable UnqualComponentName
 exeName f s = fmap (\x -> s { T.exeName = x }) (f (T.exeName s))
 {-# INLINE exeName #-}
+
+exeImports :: Lens' Executable CommonStanzaImports
+exeImports f s = fmap (\x -> s { T.exeImports = x }) (f (T.exeImports s))
 
 modulePath :: Lens' Executable String
 modulePath f s = fmap (\x -> s { T.modulePath = x }) (f (T.modulePath s))

@@ -13,14 +13,17 @@ import Prelude ()
 
 import Distribution.ModuleName
 import Distribution.Types.BuildInfo
+import Distribution.Types.CommonStanzaImports
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.ModuleReexport
 import Distribution.Types.LibraryName
 
 import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.CommonStanzaImports.Lens as L
 
 data Library = Library
     { libName           :: LibraryName
+    , libImports        :: CommonStanzaImports
     , exposedModules    :: [ModuleName]
     , reexportedModules :: [ModuleReexport]
     , signatures        :: [ModuleName]       -- ^ What sigs need implementations?
@@ -29,6 +32,9 @@ data Library = Library
     , libBuildInfo      :: BuildInfo
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
+
+instance L.HasCommonStanzaImports Library where
+    commonStanzaImports f l = (\x -> l { libImports = x }) <$> f (libImports l)
 
 instance L.HasBuildInfo Library where
     buildInfo f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)
@@ -40,6 +46,7 @@ instance NFData Library where rnf = genericRnf
 emptyLibrary :: Library
 emptyLibrary = Library
     { libName           = LMainLibName
+    , libImports        = mempty
     , exposedModules    = mempty
     , reexportedModules = mempty
     , signatures        = mempty
@@ -63,6 +70,7 @@ instance Monoid Library where
 instance Semigroup Library where
   a <> b = Library
     { libName           = combineLibraryName (libName a) (libName b)
+    , libImports        = combine libImports
     , exposedModules    = combine exposedModules
     , reexportedModules = combine reexportedModules
     , signatures        = combine signatures

@@ -470,6 +470,7 @@ testSuiteExeV10AsExe :: TestSuite -> Executable
 testSuiteExeV10AsExe test@TestSuite { testInterface = TestSuiteExeV10 _ mainFile } =
     Executable {
       exeName    = testName test,
+      exeImports = mempty,
       modulePath = mainFile,
       exeScope   = ExecutablePublic,
       buildInfo  = testBuildInfo test
@@ -481,6 +482,7 @@ benchmarkExeV10asExe :: Benchmark -> Executable
 benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ mainFile } =
     Executable {
       exeName    = benchmarkName bm,
+      exeImports = mempty,
       modulePath = mainFile,
       exeScope   = ExecutablePublic,
       buildInfo  = benchmarkBuildInfo bm
@@ -507,6 +509,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     bi  = testBuildInfo test
     lib = Library {
             libName = LMainLibName,
+            libImports = mempty,
             exposedModules = [ m ],
             reexportedModules = [],
             signatures = [],
@@ -547,6 +550,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     testLibDep = thisPackageVersion $ package pkg
     exe = Executable {
             exeName    = mkUnqualComponentName $ stubName test,
+            exeImports = mempty,
             modulePath = stubFilePath test,
             exeScope   = ExecutablePublic,
             buildInfo  = (testBuildInfo test) {
