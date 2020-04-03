@@ -413,11 +413,14 @@ mkNormalizerEnv = do
     -- to remember what it is
     list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
                       ["list", "--global", "--simple-output"] ""
+    tmpDir <- liftIO $ getTemporaryDirectory
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
         normalizerTmpDir
             = addTrailingPathSeparator (testTmpDir env),
+        normalizerGblTmpDir
+            = addTrailingPathSeparator tmpDir,
         normalizerGhcVersion
             = compilerVersion (testCompiler env),
         normalizerKnownPackages

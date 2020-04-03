@@ -1,5 +1,4 @@
 # Setup configure
-Resolving dependencies...
 Configuring InternalLibrary2-0.1...
 # Setup build
 Preprocessing library for InternalLibrary2-0.1..
@@ -9,7 +8,6 @@ Installing library in <PATH>
 # Setup register
 Registering library for InternalLibrary2-0.1..
 # Setup configure
-Resolving dependencies...
 Configuring InternalLibrary2-0.1...
 # Setup build
 Preprocessing library for InternalLibrary2-0.1..

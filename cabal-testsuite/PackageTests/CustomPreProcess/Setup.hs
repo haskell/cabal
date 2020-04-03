@@ -1,4 +1,13 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
+
+-- The logic here is tricky.
+-- If this is compiled by cabal-install, then the MIN_VERSION_Cabal is set
+-- otherwise, we are compiling against Cabal library under test,
+-- which is new!
+#ifndef MIN_VERSION_Cabal
+#define MIN_VERSION_Cabal(x,y,z) 1
+#endif
 
 import Distribution.PackageDescription
 import Distribution.Simple
@@ -13,8 +22,13 @@ main :: IO ()
 main = defaultMainWithHooks
        simpleUserHooks { hookedPreProcessors = [("pre", myCustomPreprocessor)] }
   where
+#if MIN_VERSION_Cabal(2,0,0)
     myCustomPreprocessor :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
     myCustomPreprocessor _bi lbi _clbi =
+#else
+    myCustomPreprocessor :: BuildInfo -> LocalBuildInfo -> PreProcessor
+    myCustomPreprocessor _bi lbi =
+#endif
       PreProcessor {
         platformIndependent = True,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->

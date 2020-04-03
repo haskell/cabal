@@ -30,6 +30,7 @@ normalizeOutput nenv =
     -- This is dumb but I don't feel like pulling in another dep for
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
+  . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
   . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
@@ -61,6 +62,7 @@ normalizeOutput nenv =
 data NormalizerEnv = NormalizerEnv
     { normalizerRoot          :: FilePath
     , normalizerTmpDir        :: FilePath
+    , normalizerGblTmpDir     :: FilePath
     , normalizerGhcVersion    :: Version
     , normalizerKnownPackages :: [PackageId]
     , normalizerPlatform      :: Platform
