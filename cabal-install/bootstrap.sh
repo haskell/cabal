@@ -11,6 +11,9 @@ set -e
 # you don't want profiling and dynamic versions of libraries to be installed in
 # addition to vanilla, run 'EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh'
 
+echo "DON'T USE THIS SCRIPT IF YOU HAVE other recent cabal-install INSTALLED"
+echo "THIS SCRIPT IS MADE FOR BOOTSTRAPPING cabal-install ON NEW ARCHITECTURES"
+
 #VERBOSE
 DEFAULT_CONFIGURE_OPTS="--enable-library-profiling --enable-shared"
 EXTRA_CONFIGURE_OPTS=${EXTRA_CONFIGURE_OPTS-$DEFAULT_CONFIGURE_OPTS}
