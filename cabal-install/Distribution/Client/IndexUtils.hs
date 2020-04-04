@@ -439,8 +439,8 @@ localNoIndex _ = False
 --
 
 -- | An index entry is either a normal package, or a local build tree reference.
-data PackageEntry =
-  NormalPackage  PackageId GenericPackageDescription ByteString BlockNo
+data PackageEntry
+  = NormalPackage  PackageId GenericPackageDescription ByteString BlockNo
   | BuildTreeRef BuildTreeRefType
                  PackageId GenericPackageDescription FilePath   BlockNo
 
@@ -866,10 +866,10 @@ packageListFromCache verbosity mkPkg hnd Cache{..} = accum mempty [] mempty cach
         dummyPackageDescription :: Version -> GenericPackageDescription
         dummyPackageDescription specVer = GenericPackageDescription
             { packageDescription = emptyPackageDescription
-                                   { specVersionRaw = Left specVer
-                                   , package        = pkgid
-                                   , synopsis       = dummySynopsis
+                                   { package     = pkgid
+                                   , synopsis    = dummySynopsis
                                    }
+            , gpdScannedVersion = Just specVer -- tells index scanner to skip this file.
             , genPackageFlags  = []
             , condLibrary      = Nothing
             , condSubLibraries = []

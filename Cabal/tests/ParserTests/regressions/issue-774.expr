@@ -65,6 +65,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -99,7 +100,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,12]`),
+                           specVersion = CabalSpecV1_12,
                            stability = "",
                            subLibraries = [],
                            synopsis = "Package description parser interprets curly braces in the description field",

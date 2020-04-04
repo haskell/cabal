@@ -1,7 +1,7 @@
 name: DeterministicAr
 version: 0
 license: BSD3
-cabal-version: >= 1.9.1
+cabal-version: >= 1.10
 author: Liyang HU
 stability: stable
 category: PackageTests
@@ -12,6 +12,7 @@ description:
     all metadata in the resulting .a archive match the default.
 
 Library
+    default-language: Haskell2010
     exposed-modules: Lib
     build-depends: base
 

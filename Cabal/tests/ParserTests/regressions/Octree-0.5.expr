@@ -284,6 +284,7 @@ GenericPackageDescription
                                                               `mkVersion [1,0]` "README.lhs",
                                             testName = `UnqualComponentName ""`}}],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Michal J. Gajda",
                            benchmarks = [],
@@ -318,7 +319,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,8]`),
+                           specVersion = CabalSpecV1_8,
                            stability = "beta",
                            subLibraries = [],
                            synopsis = "Simple unbalanced Octree for storing data about 3D points",

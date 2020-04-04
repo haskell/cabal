@@ -328,6 +328,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -362,7 +363,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Left `mkVersion [2,1]`,
+                           specVersion = CabalSpecV2_2,
                            stability = "",
                            subLibraries = [],
                            synopsis = "The elif demo",

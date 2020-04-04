@@ -5,7 +5,7 @@ description:         no type in all branches.
 license:             BSD3
 category:            Test
 build-type:          Simple
-cabal-version:       >=2.0
+cabal-version:       2.0
 
 executable flag-test-exe
   main-is: FirstMain.hs

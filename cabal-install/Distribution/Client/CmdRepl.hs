@@ -95,6 +95,8 @@ import Distribution.Simple.Utils
          ( wrapText, die', debugNoWrap, ordNub, createTempDirectory, handleDoesNotExist )
 import Language.Haskell.Extension
          ( Language(..) )
+import Distribution.CabalSpecVersion
+         ( CabalSpecVersion (..) )
 
 import Data.List
          ( (\\) )
@@ -400,7 +402,7 @@ withoutProject config verbosity extraArgs = do
       & L.condLibrary        .~ Just (CondNode library [baseDep] [])
     packageDescription = emptyPackageDescription
       { package = pkgId
-      , specVersionRaw = Left (mkVersion [2, 2])
+      , specVersion = CabalSpecV2_2
       , licenseRaw = Left SPDX.NONE
       }
     library = emptyLibrary { libBuildInfo = buildInfo }

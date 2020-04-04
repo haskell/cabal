@@ -26,6 +26,7 @@ module Distribution.Client.SetupWrapper (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.CabalSpecVersion (cabalSpecMinimumLibraryVersion)
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
@@ -305,7 +306,7 @@ getSetup verbosity options mpkg = do
   let options'    = options {
                       useCabalVersion = intersectVersionRanges
                                           (useCabalVersion options)
-                                          (orLaterVersion (specVersion pkg))
+                                          (orLaterVersion (mkVersion (cabalSpecMinimumLibraryVersion (specVersion pkg))))
                     }
       buildType'  = buildType pkg
   (version, method, options'') <-

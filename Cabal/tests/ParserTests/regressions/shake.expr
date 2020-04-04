@@ -2051,6 +2051,7 @@ GenericPackageDescription
                          flagDescription = "Obtain FileTime using portable functions",
                          flagManual = True,
                          flagName = `FlagName "portable"`}],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Neil Mitchell <ndmitchell@gmail.com>",
                            benchmarks = [],
@@ -2133,7 +2134,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,18]`),
+                           specVersion = CabalSpecV1_18,
                            stability = "",
                            subLibraries = [],
                            synopsis = "Build system library, like Make, but more accurate dependencies.",

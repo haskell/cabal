@@ -1,4 +1,4 @@
-cabal-version: >=2.0
+cabal-version: 2.0
 name:          issue
 version:       5055
 license:       BSD3

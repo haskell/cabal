@@ -1,7 +1,7 @@
 name: InternalLibrary1
 version: 0.1
 license: BSD3
-cabal-version: >= 1.7.1
+cabal-version: >= 1.8
 author: Stephen Blackheath
 stability: stable
 category: PackageTests

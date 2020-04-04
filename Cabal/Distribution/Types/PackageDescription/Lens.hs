@@ -9,6 +9,7 @@ import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.CabalSpecVersion         (CabalSpecVersion)
 import Distribution.Compiler                 (CompilerFlavor)
 import Distribution.License                  (License)
 import Distribution.ModuleName               (ModuleName)
@@ -30,7 +31,7 @@ import Distribution.Types.SourceRepo         (SourceRepo)
 import Distribution.Types.TestSuite          (TestSuite, testModules)
 import Distribution.Types.TestSuite.Lens     (testBuildInfo, testName)
 import Distribution.Utils.ShortText          (ShortText)
-import Distribution.Version                  (Version, VersionRange)
+import Distribution.Version                  (VersionRange)
 
 import qualified Distribution.SPDX                     as SPDX
 import qualified Distribution.Types.PackageDescription as T
@@ -99,9 +100,9 @@ customFieldsPD :: Lens' PackageDescription [(String,String)]
 customFieldsPD f s = fmap (\x -> s { T.customFieldsPD = x }) (f (T.customFieldsPD s))
 {-# INLINE customFieldsPD #-}
 
-specVersionRaw :: Lens' PackageDescription (Either Version VersionRange)
-specVersionRaw f s = fmap (\x -> s { T.specVersionRaw = x }) (f (T.specVersionRaw s))
-{-# INLINE specVersionRaw #-}
+specVersion :: Lens' PackageDescription CabalSpecVersion
+specVersion f s = fmap (\x -> s { T.specVersion = x }) (f (T.specVersion s))
+{-# INLINE specVersion #-}
 
 buildTypeRaw :: Lens' PackageDescription (Maybe BuildType)
 buildTypeRaw f s = fmap (\x -> s { T.buildTypeRaw = x }) (f (T.buildTypeRaw s))

@@ -1,2 +1,2 @@
-VERSION: Just (mkVersion [2,1])
+VERSION: Just (mkVersion [2,2])
 common2.cabal:13:3: Undefined common stanza imported: windows

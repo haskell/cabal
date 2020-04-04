@@ -28,6 +28,7 @@ import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.UnqualComponentName
 import Distribution.Package
+import Distribution.Version
 
 -- ---------------------------------------------------------------------------
 -- The 'GenericPackageDescription' type
@@ -35,6 +36,15 @@ import Distribution.Package
 data GenericPackageDescription =
   GenericPackageDescription
   { packageDescription :: PackageDescription
+  , gpdScannedVersion  :: Maybe Version
+    -- ^ This is a version as specified in source.
+    --   We populate this field in index reading for dummy GPDs,
+    --   only when GPD reading failed, but scanning haven't.
+    --
+    --   Cabal-the-library never produces GPDs with Just as gpdScannedVersion.
+    --
+    --   Perfectly, PackageIndex should have sum type, so we don't need to
+    --   have dummy GPDs.
   , genPackageFlags    :: [Flag]
   , condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries   :: [( UnqualComponentName
@@ -58,15 +68,16 @@ instance Structured GenericPackageDescription
 instance NFData GenericPackageDescription where rnf = genericRnf
 
 emptyGenericPackageDescription :: GenericPackageDescription
-emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
+emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescription Nothing [] Nothing [] [] [] [] []
 
 -- -----------------------------------------------------------------------------
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
+  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
         <$> L.traverseBuildInfos f p
+        <*> pure v
         <*> pure a1
         <*> (traverse . traverse . L.buildInfo) f x1
         <*> (traverse . L._2 . traverse . L.buildInfo) f x2

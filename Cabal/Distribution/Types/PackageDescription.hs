@@ -28,8 +28,6 @@
 
 module Distribution.Types.PackageDescription (
     PackageDescription(..),
-    specVersion,
-    specVersion',
     license,
     license',
     buildType,
@@ -84,6 +82,7 @@ import Distribution.Types.BuildType
 import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
 
+import Distribution.CabalSpecVersion
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
@@ -106,11 +105,7 @@ data PackageDescription
         -- the following are required by all packages:
 
         -- | The version of the Cabal spec that this package description uses.
-        -- For historical reasons this is specified with a version range but
-        -- only ranges of the form @>= v@ make sense. We are in the process of
-        -- transitioning to specifying just a single version, not a range.
-        -- See also 'specVersion'.
-        specVersionRaw :: Either Version VersionRange,
+        specVersion    :: CabalSpecVersion,
         package        :: PackageIdentifier,
         licenseRaw     :: Either SPDX.License License,
         licenseFiles   :: [FilePath],
@@ -160,25 +155,6 @@ instance NFData PackageDescription where rnf = genericRnf
 instance Package PackageDescription where
   packageId = package
 
--- | The version of the Cabal spec that this package should be interpreted
--- against.
---
--- Historically we used a version range but we are switching to using a single
--- version. Currently we accept either. This function converts into a single
--- version by ignoring upper bounds in the version range.
---
-specVersion :: PackageDescription -> Version
-specVersion = specVersion' . specVersionRaw
-
--- |
---
--- @since 2.2.0.0
-specVersion' :: Either Version VersionRange -> Version
-specVersion' (Left version) = version
-specVersion' (Right versionRange) = case asVersionIntervals versionRange of
-    []                            -> mkVersion [0]
-    ((LowerBound version _, _):_) -> version
-
 -- | The SPDX 'LicenseExpression' of the package.
 --
 -- @since 2.2.0.0
@@ -208,7 +184,7 @@ license' = either id licenseToSPDX
 -- @since 2.2
 buildType :: PackageDescription -> BuildType
 buildType pkg
-  | specVersion pkg >= mkVersion [2,1]
+  | specVersion pkg >= CabalSpecV2_2
     = fromMaybe newDefault (buildTypeRaw pkg)
   | otherwise -- cabal-version < 2.1
     = fromMaybe Custom (buildTypeRaw pkg)
@@ -223,7 +199,7 @@ emptyPackageDescription
                                                        nullVersion,
                       licenseRaw   = Right UnspecifiedLicense, -- TODO:
                       licenseFiles = [],
-                      specVersionRaw = Right anyVersion,
+                      specVersion  = CabalSpecV1_0,
                       buildTypeRaw = Nothing,
                       copyright    = mempty,
                       maintainer   = mempty,

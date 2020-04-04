@@ -5,15 +5,17 @@ author: Benno Fünfstück
 stability: stable
 category: PackageTests
 build-type: Simple
-cabal-version: >= 1.9.2
+cabal-version: >= 1.10
 
 description: Check type detailed-0.9 test suites with dynamic linking.
 
 library
+  default-language: Haskell2010
   exposed-modules: Lib
   build-depends: base
 
 test-suite test
+  default-language: Haskell2010
   type: detailed-0.9
   test-module: Test
   build-depends: base, Cabal, T4270

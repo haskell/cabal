@@ -67,11 +67,10 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType             (knownForeignLibTypes)
 import Distribution.Types.GenericPackageDescription  (emptyGenericPackageDescription)
 import Distribution.Types.LibraryVisibility          (LibraryVisibility (..))
-import Distribution.Types.PackageDescription         (specVersion')
 import Distribution.Types.UnqualComponentName        (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
-import Distribution.Version                          (LowerBound (..), Version, asVersionIntervals, mkVersion, orLaterVersion, version0, versionNumbers)
+import Distribution.Version                          (Version, mkVersion, versionNumbers)
 
 import qualified Data.ByteString                                   as BS
 import qualified Data.ByteString.Char8                             as BS8
@@ -103,18 +102,21 @@ parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDes
 parseGenericPackageDescription bs = do
     -- set scanned version
     setCabalSpecVersion ver
-    -- if we get too new version, fail right away
-    case ver of
-        Just v | v > mkVersion [3,0] -> parseFailure zeroPos
-            "Unsupported cabal-version. See https://github.com/haskell/cabal/issues/4899."
-        _ -> pure ()
+
+    csv <- case ver of
+        -- if we get too new version, fail right away
+        Just v -> case cabalSpecFromVersionDigits (versionNumbers v) of
+            Just csv -> return (Just csv)
+            Nothing  -> parseFatalFailure zeroPos $
+                "Unsupported cabal-version " ++ prettyShow v ++ ". See https://github.com/haskell/cabal/issues/4899."
+        _ -> pure Nothing
 
     case readFields' bs'' of
         Right (fs, lexWarnings) -> do
             when patched $
                 parseWarning zeroPos PWTQuirkyCabalFile "Legacy cabal file"
             -- UTF8 is validated in a prepass step, afterwards parsing is lenient.
-            parseGenericPackageDescription' ver lexWarnings invalidUtf8 fs
+            parseGenericPackageDescription' csv lexWarnings invalidUtf8 fs
         -- TODO: better marshalling of errors
         Left perr -> parseFatalFailure pos (show perr) where
             ppos = P.errorPos perr
@@ -162,12 +164,12 @@ stateCommonStanzas f (SectionS gpd cs) = SectionS gpd <$> f cs
 -- * first we parse fields of PackageDescription
 -- * then we parse sections (libraries, executables, etc)
 parseGenericPackageDescription'
-    :: Maybe Version
+    :: Maybe CabalSpecVersion
     -> [LexWarning]
     -> Maybe Int
     -> [Field Position]
     -> ParseResult GenericPackageDescription
-parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
+parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
     parseWarnings (toPWarnings lexWarnings)
     for_ utf8WarnPos $ \pos ->
         parseWarning zeroPos PWTUTF $ "UTF8 encoding problem at byte offset " ++ show pos
@@ -175,35 +177,40 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     let (fields, sectionFields) = takeFields fs'
 
     -- cabal-version
-    cabalVer <- case cabalVerM of
+    specVer <- case scannedVer of
         Just v  -> return v
         Nothing -> case Map.lookup "cabal-version" fields >>= safeLast of
-            Nothing                        -> return version0
+            Nothing                        -> return CabalSpecV1_0
             Just (MkNamelessField pos fls) -> do
-                v <- specVersion' . Newtype.unpack' SpecVersion <$> runFieldParser pos parsec cabalSpecLatest fls
-                when (v >= mkVersion [2,1]) $ parseFailure pos $
+                -- version will be parsed twice, therefore we parse without warnings.
+                v <- withoutWarnings $
+                    Newtype.unpack' SpecVersion <$>
+                    runFieldParser pos parsec cabalSpecLatest fls
+
+                -- if it were at the beginning, scanner would found it
+                when (v >= CabalSpecV2_2) $ parseFailure pos $
                     "cabal-version should be at the beginning of the file starting with spec version 2.2. " ++
                     "See https://github.com/haskell/cabal/issues/4899"
 
                 return v
 
-    let specVer = cabalSpecFromVersionDigits (versionNumbers cabalVer)
-
-    -- reset cabal version
-    setCabalSpecVersion (Just cabalVer)
+    -- reset cabal version, it might not be set
+    let specVer' = mkVersion (cabalSpecToVersionDigits specVer)
+    setCabalSpecVersion (Just specVer')
 
     -- Package description
     pd <- parseFieldGrammar specVer fields packageDescriptionFieldGrammar
 
     -- Check that scanned and parsed versions match.
-    unless (cabalVer == specVersion pd) $ parseFailure zeroPos $
+    unless (specVer == specVersion pd) $ parseFailure zeroPos $
         "Scanned and parsed cabal-versions don't match " ++
-        prettyShow cabalVer ++ " /= " ++ prettyShow (specVersion pd)
+        prettyShow (SpecVersion specVer) ++ " /= " ++ prettyShow (SpecVersion (specVersion pd))
 
     maybeWarnCabalVersion syntax pd
 
     -- Sections
-    let gpd = emptyGenericPackageDescription & L.packageDescription .~ pd
+    let gpd = emptyGenericPackageDescription
+            & L.packageDescription .~ pd
     gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
     checkForUndefinedFlags gpd1
@@ -212,8 +219,8 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
 
-    newSyntaxVersion :: Version
-    newSyntaxVersion = mkVersion [1, 2]
+    newSyntaxVersion :: CabalSpecVersion
+    newSyntaxVersion = CabalSpecV1_2
 
     maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
     maybeWarnCabalVersion syntax pkg
@@ -226,14 +233,8 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
       | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
       = parseWarning zeroPos PWTOldSyntax $
              "A package using 'cabal-version: "
-          ++ displaySpecVersion (specVersionRaw pkg)
+          ++ prettyShow (SpecVersion (specVersion pkg))
           ++ "' must use section syntax. See the Cabal user guide for details."
-      where
-        displaySpecVersion (Left version)       = prettyShow version
-        displaySpecVersion (Right versionRange) =
-          case asVersionIntervals versionRange of
-            [] {- impossible -}           -> prettyShow versionRange
-            ((LowerBound version _, _):_) -> prettyShow (orLaterVersion version)
 
     maybeWarnCabalVersion _ _ = return ()
 

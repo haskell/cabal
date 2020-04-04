@@ -49,6 +49,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 -- Cabal
+import qualified Distribution.CabalSpecVersion          as C
 import qualified Distribution.Compiler                  as C
 import qualified Distribution.InstalledPackageInfo      as IPI
 import           Distribution.License (License(..))
@@ -375,8 +376,9 @@ exAvSrcPkg ex =
                   , C.synopsis = "synopsis"
                   , C.licenseFiles = ["LICENSE"]
                     -- Version 2.0 is required for internal libraries.
-                  , C.specVersionRaw = Left $ C.mkVersion [2,0]
+                  , C.specVersion = C.CabalSpecV2_0
                   }
+              , C.gpdScannedVersion = Nothing
               , C.genPackageFlags = flags
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }

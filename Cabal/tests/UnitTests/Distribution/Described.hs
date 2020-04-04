@@ -17,12 +17,12 @@ import Distribution.Pretty                 (prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
 
+import Distribution.ModuleName         (ModuleName)
 import Distribution.Types.Dependency   (Dependency)
 import Distribution.Types.Flag         (FlagName)
 import Distribution.Types.PackageName  (PackageName)
 import Distribution.Types.Version      (Version)
 import Distribution.Types.VersionRange (VersionRange)
-import Distribution.ModuleName (ModuleName)
 
 import qualified RERE         as RE
 import qualified RERE.CharSet as RE

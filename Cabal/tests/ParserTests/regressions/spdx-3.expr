@@ -60,6 +60,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -88,7 +89,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [2,4]`,
+                           specVersion = CabalSpecV2_4,
                            stability = "",
                            subLibraries = [],
                            synopsis = "testing positive parsing of spdx identifiers",

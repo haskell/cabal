@@ -468,6 +468,7 @@ GenericPackageDescription
                                                               `mkVersion [1,0]` "doctests.hs",
                                             testName = `UnqualComponentName ""`}}],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Benno F\252nfst\252ck",
                            benchmarks = [],
@@ -509,7 +510,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           specVersion = CabalSpecV1_10,
                            stability = "experimental",
                            subLibraries = [],
                            synopsis = "Lift instances for template-haskell for common data types.",

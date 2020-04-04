@@ -430,6 +430,7 @@ testTargetSelectorAmbiguous reportSubCase = do
         packageDescrOverride  = Nothing,
         SP.packageDescription = GenericPackageDescription {
           GPG.packageDescription = emptyPackageDescription { package = pkgid },
+          gpdScannedVersion  = Nothing,
           genPackageFlags    = [],
           condLibrary        = Nothing,
           condSubLibraries   = [],

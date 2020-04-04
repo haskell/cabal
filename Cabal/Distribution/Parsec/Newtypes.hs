@@ -43,8 +43,9 @@ import Distribution.FieldGrammar.Described
 import Distribution.License                (License)
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Version          (LowerBound (..), Version, VersionRange, anyVersion, asVersionIntervals, mkVersion)
-import Text.PrettyPrint              (Doc, comma, fsep, punctuate, vcat, (<+>))
+import Distribution.Version
+       (LowerBound (..), Version, VersionRange, VersionRangeF (..), cataVersionRange, anyVersion, asVersionIntervals, mkVersion, version0, versionNumbers)
+import Text.PrettyPrint                    (Doc, comma, fsep, punctuate, vcat, (<+>), text)
 
 import qualified Data.Set                        as Set
 import qualified Distribution.Compat.CharParsing as P
@@ -223,30 +224,87 @@ instance Described a => Described (MQuoted a) where
 --   @>= 2.2@, we fail.
 --   See <https://github.com/haskell/cabal/issues/4899>
 --
-newtype SpecVersion = SpecVersion { getSpecVersion :: Either Version VersionRange }
+-- We have this newtype, as writing Parsec and Pretty instances
+-- for CabalSpecVersion would cause cycle in modules:
+--     Version -> CabalSpecVersion -> Parsec -> ...
+--
+newtype SpecVersion = SpecVersion { getSpecVersion :: CabalSpecVersion }
+  deriving (Eq, Show) -- instances needed for tests
 
-instance Newtype (Either Version VersionRange) SpecVersion
+instance Newtype CabalSpecVersion SpecVersion
 
 instance Parsec SpecVersion where
-    parsec = pack <$> parsecSpecVersion
+    parsec = do
+        e <- parsecSpecVersion
+        let ver    :: Version
+            ver    = either id specVersionFromRange e
+
+            digits :: [Int]
+            digits = versionNumbers ver
+
+        case cabalSpecFromVersionDigits digits of
+            Nothing  -> fail $ "Unknown cabal spec version specified: " ++ prettyShow ver
+            Just csv -> do
+                -- Check some warnings:
+                case e of
+                    -- example:   cabal-version: 1.10
+                    -- should be  cabal-version: >=1.10
+                    Left _v | csv < CabalSpecV1_12 -> parsecWarning PWTSpecVersion $ concat
+                        [ "With 1.10 or earlier, the 'cabal-version' field must use "
+                        , "range syntax rather than a simple version number. Use "
+                        , "'cabal-version: >= " ++ prettyShow ver ++ "'."
+                        ]
+
+                    -- example:   cabal-version: >=1.12
+                    -- should be  cabal-version: 1.12
+                    Right _vr | csv >= CabalSpecV1_12 -> parsecWarning PWTSpecVersion $ concat
+                        [ "Packages with 'cabal-version: 1.12' or later should specify a "
+                        , "specific version of the Cabal spec of the form "
+                        , "'cabal-version: x.y'. "
+                        , "Use 'cabal-version: " ++ prettyShow ver ++ "'."
+                        ]
+
+                    -- example:   cabal-version: >=1.10 && <1.12
+                    -- should be  cabal-version: >=1.10
+                    Right vr | csv < CabalSpecV1_12
+                            , not (simpleSpecVersionRangeSyntax vr) -> parsecWarning PWTSpecVersion $ concat
+                        [ "It is recommended that the 'cabal-version' field only specify a "
+                        , "version range of the form '>= x.y' for older cabal versions. Use "
+                        , "'cabal-version: >= " ++ prettyShow ver ++ "'. "
+                        , "Tools based on Cabal 1.10 and later will ignore upper bounds."
+                        ]
+
+                    -- otherwise no warnings
+                    _ -> pure ()
+
+                return (pack csv)
       where
         parsecSpecVersion = Left <$> parsec <|> Right <$> range
+
         range = do
             vr <- parsec
             if specVersionFromRange vr >= mkVersion [2,1]
             then fail "cabal-version higher than 2.2 cannot be specified as a range. See https://github.com/haskell/cabal/issues/4899"
             else return vr
 
+        specVersionFromRange :: VersionRange -> Version
+        specVersionFromRange versionRange = case asVersionIntervals versionRange of
+            []                            -> version0
+            ((LowerBound version _, _):_) -> version
+
+        simpleSpecVersionRangeSyntax = cataVersionRange alg where
+            alg (OrLaterVersionF _) = True
+            alg _                   = False
+
+
 instance Pretty SpecVersion where
-    pretty = either pretty pretty . unpack
+    pretty (SpecVersion csv)
+        | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
+        | otherwise             = text ">=" <<>> text (showCabalSpecVersion csv)
 
 instance Described SpecVersion where
     describe _ = "3.0" -- :)
 
-specVersionFromRange :: VersionRange -> Version
-specVersionFromRange versionRange = case asVersionIntervals versionRange of
-    []                            -> mkVersion [0]
-    ((LowerBound version _, _):_) -> version
 
 -- | SPDX License expression or legacy license
 newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }

@@ -14,7 +14,6 @@ module Distribution.PackageDescription (
         -- * Package descriptions
         PackageDescription(..),
         emptyPackageDescription,
-        specVersion,
         buildType,
         license,
         BuildType(..),

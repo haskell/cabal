@@ -41,6 +41,7 @@ import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Deprecated.Text
          ( display )
+import Distribution.CabalSpecVersion (CabalSpecVersion (..))
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -93,8 +94,6 @@ import Distribution.Types.GenericPackageDescription as GPD
          ( GenericPackageDescription(..), emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.Version
-         ( mkVersion )
 import Distribution.Types.PackageName.Magic
          ( fakePackageId )
 import Language.Haskell.Extension
@@ -471,7 +470,7 @@ handleScriptCase verbosity pol baseCtx tmpDir scriptContents = do
     binfo@BuildInfo{..} = buildInfo executable
     packageDescription = emptyPackageDescription
       { package = pkgId
-      , specVersionRaw = Left (mkVersion [2, 2])
+      , specVersion = CabalSpecV2_2
       , licenseRaw = Left SPDX.NONE
       }
     pkgId = fakePackageId

@@ -128,6 +128,7 @@ GenericPackageDescription
                          flagDescription = "\28961",
                          flagManual = False,
                          flagName = `FlagName "\\28961"`}],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -162,7 +163,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           specVersion = CabalSpecV1_10,
                            stability = "",
                            subLibraries = [],
                            synopsis = "The canonical non-package \28961",

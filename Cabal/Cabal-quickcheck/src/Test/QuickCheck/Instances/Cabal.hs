@@ -8,6 +8,7 @@ import Data.List                  (intercalate)
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
 
+import Distribution.CabalSpecVersion
 import Distribution.Simple.Flag                 (Flag (..))
 import Distribution.SPDX
 import Distribution.System
@@ -21,10 +22,21 @@ import Distribution.ModuleName
 import Distribution.Types.VersionRange.Internal
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Parsec.Newtypes
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
 #endif
+
+-------------------------------------------------------------------------------
+-- CabalSpecVersion
+-------------------------------------------------------------------------------
+
+instance Arbitrary CabalSpecVersion where
+    arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary SpecVersion where
+    arbitrary = fmap SpecVersion arbitrary
 
 -------------------------------------------------------------------------------
 -- PackageName

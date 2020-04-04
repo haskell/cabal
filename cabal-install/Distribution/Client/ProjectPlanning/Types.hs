@@ -307,6 +307,9 @@ data ElaboratedConfiguredPackage
        -- | The version of the Cabal command line interface that we are using
        -- for this package. This is typically the version of the Cabal lib
        -- that the Setup.hs is built against.
+       --
+       -- TODO: We might want to turn this into a enum,
+       -- yet different enum than 'CabalSpecVersion'.
        elabSetupScriptCliVersion :: Version,
 
        -- Build time related:

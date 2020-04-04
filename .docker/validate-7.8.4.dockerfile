@@ -37,16 +37,21 @@ RUN     cabal v2-install -w ghc-7.8.4 --lib \
           HTTP \
           network \
           optparse-applicative \
+          parsec \
           pretty-show \
           regex-compat-tdfa \
           regex-tdfa \
+          rere \
+          semigroups \
           statistics \
           tar \
           tasty \
           tasty-golden \
           tasty-hunit \
           tasty-quickcheck \
+          text \
           tree-diff \
+          unordered-containers \
           zlib \
       --constraint="bytestring installed" \
       --constraint="binary     installed" \

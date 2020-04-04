@@ -67,6 +67,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -94,7 +95,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [2,5]`,
+                           specVersion = CabalSpecV3_0,
                            stability = "",
                            subLibraries = [],
                            synopsis = "main lib have to be visible",

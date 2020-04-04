@@ -58,7 +58,6 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.LibraryVisibility
 import Distribution.Types.UnqualComponentName
-import Distribution.Version                   (anyVersion)
 
 import qualified Distribution.SPDX as SPDX
 
@@ -72,7 +71,7 @@ packageDescriptionFieldGrammar
     :: (FieldGrammar g, Applicative (g PackageDescription), Applicative (g PackageIdentifier))
     => g PackageDescription PackageDescription
 packageDescriptionFieldGrammar = PackageDescription
-    <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersionRaw (Right anyVersion)
+    <$> optionalFieldDefAla "cabal-version" SpecVersion                L.specVersion CabalSpecV1_0
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar

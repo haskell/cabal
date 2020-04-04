@@ -64,6 +64,7 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.CabalSpecVersion
 import Distribution.Version
 import Distribution.System
 import Distribution.Verbosity
@@ -963,7 +964,7 @@ data BuildSources = BuildSources {
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
-              -> Version -- ^ specVersion
+              -> CabalSpecVersion
               -> FilePath
               -> GBuildMode
               -> IO BuildSources
@@ -982,7 +983,7 @@ gbuildSources verbosity specVer tmpDir bm =
 
       if isHaskell main
         then
-          if specVer < mkVersion [2] && (mainModName `elem` otherModNames)
+          if specVer < CabalSpecV2_0 && (mainModName `elem` otherModNames)
           then do
              -- The cabal manual clearly states that `other-modules` is
              -- intended for non-main modules.  However, there's at least one

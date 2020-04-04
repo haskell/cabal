@@ -13,7 +13,6 @@ import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
-import Distribution.Simple.Utils (cabalVersion)      -- from Cabal
 import Distribution.Types.ExeDependency              -- from Cabal
 import Distribution.Types.PkgconfigDependency        -- from Cabal
 import Distribution.Types.ComponentName              -- from Cabal
@@ -170,7 +169,7 @@ convGPD :: OS -> Arch -> CompilerInfo -> [LabeledPackageConstraint]
         -> StrongFlags -> SolveExecutables -> PN -> GenericPackageDescription
         -> PInfo
 convGPD os arch cinfo constraints strfl solveExes pn
-        (GenericPackageDescription pkg flags mlib sub_libs flibs exes tests benchs) =
+        (GenericPackageDescription pkg scannedVersion flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -207,34 +206,12 @@ convGPD os arch cinfo constraints strfl solveExes pn
     addStanza :: Stanza -> DependencyReason pn -> DependencyReason pn
     addStanza s (DependencyReason pn' fs ss) = DependencyReason pn' fs (S.insert s ss)
 
-    -- | We infer the maximally supported spec-version from @lib:Cabal@'s version
-    --
-    -- As we cannot predict the future, we can only properly support
-    -- spec-versions predating (and including) the @lib:Cabal@ version
-    -- used by @cabal-install@.
-    --
-    -- This relies on 'cabalVersion' having always at least 3 components to avoid
-    -- comparisons like @2.0.0 > 2.0@ which would result in confusing results.
-    --
-    -- NOTE: Before we can switch to a /normalised/ spec-version
-    -- comparison (e.g. by truncating to 3 components, and removing
-    -- trailing zeroes) we'd have to make sure all other places where
-    -- the spec-version is compared against a bound do it
-    -- consistently.
-    maxSpecVer = cabalVersion
-
-    -- | Required/declared spec-version of the package
-    --
-    -- We don't truncate patch-levels, as specifying a patch-level
-    -- spec-version is discouraged and not supported anymore starting
-    -- with spec-version 2.2.
-    reqSpecVer = specVersion pkg
-
     -- | A too-new specVersion is turned into a global 'FailReason'
     -- which prevents the solver from selecting this release (and if
     -- forced to, emit a meaningful solver error message).
-    fr | reqSpecVer > maxSpecVer = Just (UnsupportedSpecVer reqSpecVer)
-       | otherwise               = Nothing
+    fr = case scannedVersion of
+        Just ver -> Just (UnsupportedSpecVer ver)
+        Nothing  -> Nothing
 
     components :: Map ExposedComponent IsBuildable
     components = M.fromList $ libComps ++ exeComps
