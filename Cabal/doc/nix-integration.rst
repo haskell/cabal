@@ -1,6 +1,11 @@
 Nix Integration
 ===============
 
+.. note::
+
+    This functionality doesn't work with nix-style builds.
+    Nix-style builds are not related to Nix integration.
+
 `Nix <http://nixos.org/nix/>`_ is a package manager popular with some Haskell developers due to its focus on reliability and reproducibility. ``cabal`` now has the ability to integrate with Nix for dependency management during local package development.
 
 Enabling Nix Integration

@@ -9,8 +9,12 @@ Welcome to the Cabal User Guide
    intro
    config-and-install
    concepts-and-development
-   bugs-and-stability
    nix-local-build-overview
-   nix-integration
+   cabal-commands
+   cabal-package
+   cabal-project
+   setup-commands
    file-format-changelog
    buildinfo-fields-reference
+   bugs-and-stability
+   nix-integration

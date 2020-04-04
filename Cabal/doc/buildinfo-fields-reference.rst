@@ -1,8 +1,7 @@
 .. _buildinfo-field-reference:
 
-==================================================
- BuildInfo field reference
-==================================================
+Field Syntax Reference
+======================
 
 Notation
 ---------------
