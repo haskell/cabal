@@ -49,10 +49,11 @@ import Distribution.Client.Init.Utils
 import Distribution.Client.Init.Types
   ( InitFlags(..), BuildType(..), PackageType(..) )
 
+import Distribution.CabalSpecVersion
 import Distribution.Deprecated.Text
   ( display, Text(..) )
 import Distribution.License
-  ( License(..), licenseToSPDX )
+  ( licenseFromSPDX )
 import qualified Distribution.ModuleName as ModuleName
   ( toFilePath )
 import qualified Distribution.Package as P
@@ -63,8 +64,8 @@ import Distribution.Simple.Utils
   ( dropWhileEndLE )
 import Distribution.Pretty
   ( prettyShow )
-import Distribution.Version
-  ( mkVersion, orLaterVersion )
+
+import qualified Distribution.SPDX as SPDX
 
 
 ---------------------------------------------------------------------------
@@ -84,40 +85,31 @@ writeLicense flags = do
   message flags "\nGenerating LICENSE..."
   year <- show <$> getCurrentYear
   let authors = fromMaybe "???" . flagToMaybe . author $ flags
+  let isSimpleLicense :: SPDX.License -> Maybe SPDX.LicenseId
+      isSimpleLicense (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)) = Just lid
+      isSimpleLicense _                                                            = Nothing
   let licenseFile =
-        case license flags of
-          Flag BSD2
-            -> Just $ bsd2 authors year
+        case flagToMaybe (license flags) >>= isSimpleLicense of
+          Just SPDX.BSD_2_Clause  -> Just $ bsd2 authors year
+          Just SPDX.BSD_3_Clause  -> Just $ bsd3 authors year
+          Just SPDX.Apache_2_0    -> Just apache20
+          Just SPDX.MIT           -> Just $ mit authors year
+          Just SPDX.MPL_2_0       -> Just mpl20
+          Just SPDX.ISC           -> Just $ isc authors year
 
-          Flag BSD3
-            -> Just $ bsd3 authors year
+          -- GNU license come in "only" and "or-later" flavours
+          -- license file used are the same.
+          Just SPDX.GPL_2_0_only  -> Just gplv2
+          Just SPDX.GPL_3_0_only  -> Just gplv3
+          Just SPDX.LGPL_2_1_only -> Just lgpl21
+          Just SPDX.LGPL_3_0_only -> Just lgpl3
+          Just SPDX.AGPL_3_0_only -> Just agplv3
 
-          Flag (GPL (Just v)) | v == mkVersion [2]
-            -> Just gplv2
-
-          Flag (GPL (Just v)) | v == mkVersion [3]
-            -> Just gplv3
-
-          Flag (LGPL (Just v)) | v == mkVersion [2,1]
-            -> Just lgpl21
-
-          Flag (LGPL (Just v)) | v == mkVersion [3]
-            -> Just lgpl3
-
-          Flag (AGPL (Just v)) | v == mkVersion [3]
-            -> Just agplv3
-
-          Flag (Apache (Just v)) | v == mkVersion [2,0]
-            -> Just apache20
-
-          Flag MIT
-            -> Just $ mit authors year
-
-          Flag (MPL v) | v == mkVersion [2,0]
-            -> Just mpl20
-
-          Flag ISC
-            -> Just $ isc authors year
+          Just SPDX.GPL_2_0_or_later  -> Just gplv2
+          Just SPDX.GPL_3_0_or_later  -> Just gplv3
+          Just SPDX.LGPL_2_1_or_later -> Just lgpl21
+          Just SPDX.LGPL_3_0_or_later -> Just lgpl3
+          Just SPDX.AGPL_3_0_or_later -> Just agplv3
 
           _ -> Nothing
 
@@ -345,11 +337,11 @@ generateCabalFile fileName c = trimTrailingWS $
   (++ "\n") .
   renderStyle style { lineLength = 79, ribbonsPerLine = 1.1 } $
   -- Starting with 2.2 the `cabal-version` field needs to be the first line of the PD
-  (if specVer < mkVersion [1,12]
-   then field "cabal-version" (Flag $ orLaterVersion specVer) -- legacy
-   else field "cabal-version" (Flag $ specVer))
-              Nothing -- NB: the first line must be the 'cabal-version' declaration
-              False
+  (if specVer < CabalSpecV1_12
+   then fieldS "cabal-version" (Flag $ ">=" ++ showCabalSpecVersion specVer)
+   else fieldS "cabal-version" (Flag $ showCabalSpecVersion specVer))
+      Nothing
+      False
   $$
   (if minimal c /= Flag True
     then showComment (Just $ "Initial package description '" ++ fileName ++ "' generated "
@@ -389,8 +381,9 @@ generateCabalFile fileName c = trimTrailingWS $
                 (Just "The license under which the package is released.")
                 True
 
-       , case (license c) of
-           Flag PublicDomain -> empty
+       , case license c of
+           NoFlag         -> empty
+           Flag SPDX.NONE -> empty
            _ -> fieldS "license-file" (Flag "LICENSE")
                        (Just "The file containing the license text.")
                        True
@@ -403,17 +396,15 @@ generateCabalFile fileName c = trimTrailingWS $
                 (Just "An email address to which users can send suggestions, bug reports, and patches.")
                 True
 
-       , case (license c) of
-           Flag PublicDomain -> empty
-           _ -> fieldS "copyright"     NoFlag
-                       (Just "A copyright notice.")
-                       True
+       , fieldS "copyright"     NoFlag
+                (Just "A copyright notice.")
+                True
 
        , fieldS "category"      (either id display `fmap` category c)
                 Nothing
                 True
 
-       , fieldS "build-type"    (if specVer >= mkVersion [2,2] then NoFlag else Flag "Simple")
+       , fieldS "build-type"    (if specVer >= CabalSpecV2_2 then NoFlag else Flag "Simple")
                 Nothing
                 False
 
@@ -432,11 +423,8 @@ generateCabalFile fileName c = trimTrailingWS $
  where
    specVer = fromMaybe defaultCabalVersion $ flagToMaybe (cabalVersion c)
 
-   licenseStr | specVer < mkVersion [2,2] = prettyShow `fmap` license c
-              | otherwise                 = go `fmap` license c
-     where
-       go (UnknownLicense s) = s
-       go l                  = prettyShow (licenseToSPDX l)
+   licenseStr | specVer < CabalSpecV2_2 = prettyShow . licenseFromSPDX <$> license c
+              | otherwise               = prettyShow                   <$> license c
 
    generateBuildInfo :: BuildType -> InitFlags -> Doc
    generateBuildInfo buildType c' = vcat

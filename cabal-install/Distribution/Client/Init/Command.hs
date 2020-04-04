@@ -31,8 +31,6 @@ import System.Directory
 import System.FilePath
   ( (</>), takeBaseName, equalFilePath )
 
-import Data.List
-  ( (\\) )
 import qualified Data.List.NonEmpty as NE
 import Data.Function
   ( on )
@@ -43,8 +41,10 @@ import Control.Monad
 import Control.Arrow
   ( (&&&), (***) )
 
+import Distribution.CabalSpecVersion
+  ( CabalSpecVersion (..), showCabalSpecVersion )
 import Distribution.Version
-  ( Version, mkVersion, alterVersion, versionNumbers, majorBoundVersion
+  ( Version, mkVersion, alterVersion, majorBoundVersion
   , orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
 import Distribution.Verbosity
   ( Verbosity )
@@ -53,6 +53,7 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
+import qualified Distribution.SPDX as SPDX
 import Distribution.Types.LibraryName
   ( LibraryName(..) )
 import Language.Haskell.Extension ( Language(..) )
@@ -74,10 +75,6 @@ import Distribution.Client.Init.Heuristics
   ( guessPackageName, guessAuthorNameMail, guessMainFileCandidates,
     SourceFileEntry(..),
     scanForModules, neededBuildPrograms )
-
-import Distribution.License
-  ( License(..), knownLicenses, licenseToSPDX )
-import qualified Distribution.SPDX as SPDX
 
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
@@ -123,8 +120,8 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
   initFlags' <- extendFlags installedPkgIndex sourcePkgDb initFlags
 
   case license initFlags' of
-    Flag PublicDomain -> return ()
-    _                 -> writeLicense initFlags'
+    Flag SPDX.NONE -> return ()
+    _              -> writeLicense initFlags'
   writeChangeLog initFlags'
   createDirectories (sourceDirs initFlags')
   createLibHs initFlags'
@@ -189,7 +186,7 @@ getSimpleProject flags = do
       flags { interactive = Flag False
             , simpleProject = Flag True
             , packageType = Flag LibraryAndExecutable
-            , cabalVersion = Flag (mkVersion [2,4])
+            , cabalVersion = Flag defaultCabalVersion
             }
     simpleProjFlag@_ ->
       flags { simpleProject = simpleProjFlag }
@@ -205,20 +202,21 @@ getCabalVersion flags = do
   cabVer <-     return (flagToMaybe $ cabalVersion flags)
             ?>> maybePrompt flags (either (const defaultCabalVersion) id `fmap`
                                   promptList "Please choose version of the Cabal specification to use"
-                                  [mkVersion [1,10], mkVersion [2,0], mkVersion [2,2], mkVersion [2,4]]
+                                  [CabalSpecV1_10, CabalSpecV2_0, CabalSpecV2_2, CabalSpecV2_4, CabalSpecV3_0]
                                   (Just defaultCabalVersion) displayCabalVersion False)
             ?>> return (Just defaultCabalVersion)
 
   return $  flags { cabalVersion = maybeToFlag cabVer }
 
   where
-    displayCabalVersion :: Version -> String
-    displayCabalVersion v = case versionNumbers v of
-      [1,10] -> "1.10   (legacy)"
-      [2,0]  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
-      [2,2]  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
-      [2,4]  -> "2.4    (+ support for '**' globbing)"
-      _      -> display v
+    displayCabalVersion :: CabalSpecVersion -> String
+    displayCabalVersion v = case v of
+      CabalSpecV1_10 -> "1.10   (legacy)"
+      CabalSpecV2_0  -> "2.0    (+ support for Backpack, internal sub-libs, '^>=' operator)"
+      CabalSpecV2_2  -> "2.2    (+ support for 'common', 'elif', redundant commas, SPDX)"
+      CabalSpecV2_4  -> "2.4    (+ support for '**' globbing)"
+      CabalSpecV3_0  -> "3.0    (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
+      _              -> showCabalSpecVersion v
 
 
 
@@ -269,39 +267,44 @@ getVersion flags = do
 -- then prompt the user from a predefined list of licenses.
 getLicense :: InitFlags -> IO InitFlags
 getLicense flags = do
-  lic <-     return (flagToMaybe $ license flags)
-         ?>> fmap (fmap (either UnknownLicense id))
-                  (maybePrompt flags
-                    (promptList "Please choose a license" listedLicenses
-                     (Just BSD3) displayLicense True))
+  elic <- return (fmap Right $ flagToMaybe $ license flags)
+      ?>> maybePrompt flags (promptList "Please choose a license" listedLicenses Nothing prettyShow True)
 
-  case checkLicenseInvalid lic of
-    Just msg -> putStrLn msg >> getLicense flags
-    Nothing  -> return $ flags { license = maybeToFlag lic }
-
+  case elic of
+      Nothing          -> return flags { license = NoFlag }
+      Just (Right lic) -> return flags { license = Flag lic }
+      Just (Left str)  -> case eitherParsec str of
+          Right lic -> return flags { license = Flag lic }
+          -- on error, loop
+          Left err -> do
+              putStrLn "The license must be a valid SPDX expression."
+              putStrLn err
+              getLicense flags
   where
-    displayLicense l | needSpdx  = prettyShow (licenseToSPDX l)
-                     | otherwise = display l
-
-    checkLicenseInvalid (Just (UnknownLicense t))
-      | needSpdx  = case eitherParsec t :: Either String SPDX.License of
-                      Right _ -> Nothing
-                      Left _  -> Just "\nThe license must be a valid SPDX expression."
-      | otherwise = if any (not . isAlphaNum) t
-                    then Just promptInvalidOtherLicenseMsg
-                    else Nothing
-    checkLicenseInvalid _ = Nothing
-
-    promptInvalidOtherLicenseMsg = "\nThe license must be alphanumeric. " ++
-                                   "If your license name has many words, " ++
-                                   "the convention is to use camel case (e.g. PublicDomain). " ++
-                                   "Please choose a different license."
-
+    -- perfectly we'll have this and writeLicense (in FileCreators)
+    -- in a single file
     listedLicenses =
-      knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
-                       , Apache Nothing, OtherLicense]
+      SPDX.NONE :
+      map (\lid -> SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing))
+      [ SPDX.BSD_2_Clause
+      , SPDX.BSD_3_Clause
+      , SPDX.Apache_2_0
+      , SPDX.MIT
+      , SPDX.MPL_2_0
+      , SPDX.ISC
 
-    needSpdx = maybe False (>= mkVersion [2,2]) $ flagToMaybe (cabalVersion flags)
+      , SPDX.GPL_2_0_only
+      , SPDX.GPL_3_0_only
+      , SPDX.LGPL_2_1_only
+      , SPDX.LGPL_3_0_only
+      , SPDX.AGPL_3_0_only
+
+      , SPDX.GPL_2_0_or_later
+      , SPDX.GPL_3_0_or_later
+      , SPDX.LGPL_2_1_or_later
+      , SPDX.LGPL_3_0_or_later
+      , SPDX.AGPL_3_0_or_later
+      ]
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
@@ -641,7 +644,7 @@ chooseDep flags (m, Just ps)
   where
     pkgGroups = NE.groupBy ((==) `on` P.pkgName) (map P.packageId ps)
 
-    desugar = maybe True (< mkVersion [2]) $ flagToMaybe (cabalVersion flags)
+    desugar = maybe True (< CabalSpecV2_0) $ flagToMaybe (cabalVersion flags)
 
     -- Given a list of available versions of the same package, pick a dependency.
     toDep :: NonEmpty P.PackageIdentifier -> IO P.Dependency
