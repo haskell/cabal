@@ -5,16 +5,18 @@ author: Thomas Tuegel
 stability: stable
 category: PackageTests
 build-type: Simple
-cabal-version: >= 1.9.2
+cabal-version: >= 1.10
 
 description:
     Check that Cabal passes the correct test options to test suites.
 
 executable dummy
+    default-language: Haskell2010
     main-is: test-TestOptions.hs
     build-depends: base
 
 test-suite test-TestOptions
+    default-language: Haskell2010
     main-is: test-TestOptions.hs
     type: exitcode-stdio-1.0
     build-depends: base

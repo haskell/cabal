@@ -591,6 +591,7 @@ GenericPackageDescription
                          flagDescription = "",
                          flagManual = True,
                          flagName = `FlagName "foo"`}],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -625,7 +626,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Left `mkVersion [2,6]`,
+                           specVersion = CabalSpecV3_0,
                            stability = "",
                            subLibraries = [],
                            synopsis = "Common-stanza demo demo",

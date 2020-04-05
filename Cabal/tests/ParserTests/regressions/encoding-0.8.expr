@@ -79,6 +79,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -116,7 +117,7 @@ GenericPackageDescription
                                                                    AnyVersion
                                                                    (Set.fromList [LMainLibName])]},
                            sourceRepos = [],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,12]`),
+                           specVersion = CabalSpecV1_12,
                            stability = "",
                            subLibraries = [],
                            synopsis = "",

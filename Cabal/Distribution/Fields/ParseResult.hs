@@ -15,7 +15,8 @@ module Distribution.Fields.ParseResult (
     getCabalSpecVersion,
     setCabalSpecVersion,
     readAndParseFile,
-    parseString
+    parseString,
+    withoutWarnings,
     ) where
 
 import qualified Data.ByteString.Char8        as BS
@@ -42,10 +43,20 @@ newtype ParseResult a = PR
         -> r
     }
 
+-- Note: we have version here, as we could get any version.
 data PRState = PRState ![PWarning] ![PError] !(Maybe Version)
 
 emptyPRState :: PRState
 emptyPRState = PRState [] [] Nothing
+
+-- | Forget 'ParseResult's warnings.
+--
+-- @since 3.4.0.0
+withoutWarnings :: ParseResult a -> ParseResult a
+withoutWarnings m = PR $ \s failure success ->
+    unPR m s failure $ \ !s1 -> success (s1 `withWarningsOf` s)
+  where
+    withWarningsOf (PRState _ e v) (PRState w _ _) = PRState w e v
 
 -- | Destruct a 'ParseResult' into the emitted warnings and either
 -- a successful value or

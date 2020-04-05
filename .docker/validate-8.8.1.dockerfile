@@ -42,6 +42,7 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
           pretty-show \
           regex-compat-tdfa \
           regex-tdfa \
+          rere \
           resolv \
           statistics \
           tar \
@@ -50,6 +51,7 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
           tasty-hunit \
           tasty-quickcheck \
           tree-diff \
+          unordered-containers \
           zlib \
         && rm -rf $HOME/.ghc
 

@@ -1,4 +1,5 @@
-cabal-version: >=1.12
+issue-774.cabal:13:22: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.12'.
+cabal-version: 1.12
 name:          issue
 version:       744
 synopsis:

@@ -73,6 +73,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -100,7 +101,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [1,22]`,
+                           specVersion = CabalSpecV1_22,
                            stability = "",
                            subLibraries = [],
                            synopsis = "-none in build-depends",

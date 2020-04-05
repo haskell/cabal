@@ -647,6 +647,7 @@ GenericPackageDescription
                                                               `mkVersion [1,0]` "Example.hs",
                                             testName = `UnqualComponentName ""`}}],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Edsko de Vries <edsko@well-typed.com>, Andres L\246h <andres@well-typed.com>",
                            benchmarks = [],
@@ -726,7 +727,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [1,10]`),
+                           specVersion = CabalSpecV1_10,
                            stability = "",
                            subLibraries = [],
                            synopsis = "Generic Programming using True Sums of Products",

@@ -202,6 +202,7 @@ GenericPackageDescription
                                                               `mkVersion [1,0]` "SecondMain.hs",
                                             testName = `UnqualComponentName ""`}}],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -229,7 +230,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Right (OrLaterVersion `mkVersion [2,0]`),
+                           specVersion = CabalSpecV2_0,
                            stability = "",
                            subLibraries = [],
                            synopsis = "no type in all branches",

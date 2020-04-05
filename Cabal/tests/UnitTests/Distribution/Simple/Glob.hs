@@ -9,7 +9,7 @@ import Data.List (sort)
 import Data.Maybe (mapMaybe)
 import Distribution.Simple.Glob
 import qualified Distribution.Verbosity as Verbosity
-import Distribution.Version
+import Distribution.CabalSpecVersion
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath ((</>), splitFileName, normalise)
 import System.IO.Temp (withSystemTempDirectory)
@@ -49,7 +49,7 @@ makeSampleFiles dir = for_ sampleFileNames $ \filename -> do
   createDirectoryIfMissing True (dir </> dir')
   writeFile (dir </> dir' </> name) $ "This is " ++ filename
 
-compatibilityTests :: Version -> [TestTree]
+compatibilityTests :: CabalSpecVersion -> [TestTree]
 compatibilityTests version =
   [ testCase "literal match" $
       testMatches "foo/a" [GlobMatch "foo/a"]
@@ -91,7 +91,7 @@ compatibilityTests version =
 --
 -- TODO: Work out how to construct the sample tree once for all tests,
 -- rather than once for each test.
-testMatchesVersion :: Version -> FilePath -> [GlobResult FilePath] -> Assertion
+testMatchesVersion :: CabalSpecVersion -> FilePath -> [GlobResult FilePath] -> Assertion
 testMatchesVersion version pat expected = do
   globPat <- case parseFileGlob version pat of
     Left _ -> assertFailure "Couldn't compile the pattern."
@@ -111,7 +111,7 @@ testMatchesVersion version pat expected = do
         unless (isEqual actual expected) $
           assertFailure $ "Unexpected result (impure matcher): " ++ show actual
 
-testFailParseVersion :: Version -> FilePath -> GlobSyntaxError -> Assertion
+testFailParseVersion :: CabalSpecVersion -> FilePath -> GlobSyntaxError -> Assertion
 testFailParseVersion version pat expected =
   case parseFileGlob version pat of
     Left err -> unless (expected == err) $
@@ -121,7 +121,7 @@ testFailParseVersion version pat expected =
 globstarTests :: [TestTree]
 globstarTests =
   [ testCase "fails to parse on early spec version" $
-      testFailParseVersion (mkVersion [2,2]) "**/*.html" VersionDoesNotSupportGlobStar
+      testFailParseVersion CabalSpecV2_2 "**/*.html" VersionDoesNotSupportGlobStar
   , testCase "out-of-place double star" $
       testFailParse "blah/**/blah/*.foo" StarInDirectory
   , testCase "multiple double star" $
@@ -134,13 +134,13 @@ globstarTests =
       testMatches "foo/**/*.html" [GlobMatch "foo/a.html", GlobMatch "foo/b.html", GlobMatch "foo/bar/a.html", GlobMatch "foo/bar/b.html"]
   ]
   where
-    testFailParse = testFailParseVersion (mkVersion [2,4])
-    testMatches = testMatchesVersion (mkVersion [2,4])
+    testFailParse = testFailParseVersion CabalSpecV2_4
+    testMatches = testMatchesVersion CabalSpecV2_4
 
 multiDotTests :: [TestTree]
 multiDotTests =
   [ testCase "pre-2.4 single extension not matching multiple" $
-      testMatchesVersion (mkVersion [2,2]) "foo/*.gz" [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"]
+      testMatchesVersion CabalSpecV2_2 "foo/*.gz" [GlobWarnMultiDot "foo/a.html.gz", GlobWarnMultiDot "foo/a.tex.gz", GlobWarnMultiDot "foo/b.html.gz", GlobMatch "foo/x.gz"]
   , testCase "doesn't match literal" $
       testMatches "foo/a.tex" [GlobMatch "foo/a.tex"]
   , testCase "works" $
@@ -149,16 +149,16 @@ multiDotTests =
       testMatches "foo/**/*.gz" [GlobMatch "foo/a.html.gz", GlobMatch "foo/a.tex.gz", GlobMatch "foo/b.html.gz", GlobMatch "foo/x.gz", GlobMatch "foo/bar/a.html.gz", GlobMatch "foo/bar/a.tex.gz", GlobMatch "foo/bar/b.html.gz"]
   ]
   where
-    testMatches = testMatchesVersion (mkVersion [2,4])
+    testMatches = testMatchesVersion CabalSpecV2_4
 
 tests :: [TestTree]
 tests =
   [ testGroup "pre-2.4 compatibility" $
-      compatibilityTests (mkVersion [2,2])
+      compatibilityTests CabalSpecV2_2
   , testGroup "post-2.4 compatibility" $
-      compatibilityTests (mkVersion [2,4])
+      compatibilityTests CabalSpecV2_4
   , testGroup "globstar" globstarTests
   , testCase "pre-1.6 rejects globbing" $
-      testFailParseVersion (mkVersion [1,4]) "foo/*.bar" VersionDoesNotSupportGlob
+      testFailParseVersion CabalSpecV1_4 "foo/*.bar" VersionDoesNotSupportGlob
   , testGroup "multi-dot globbing" multiDotTests
   ]

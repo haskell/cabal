@@ -42,7 +42,6 @@ import Distribution.Fields.Pretty
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Utils
-import Distribution.Types.Version (versionNumbers)
 
 import Distribution.FieldGrammar                    (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.FieldGrammar
@@ -64,10 +63,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 showGenericPackageDescription :: GenericPackageDescription -> String
 showGenericPackageDescription gpd = showFields (const []) $ ppGenericPackageDescription v gpd
   where
-    v = cabalSpecFromVersionDigits
-      $ versionNumbers
-      $ specVersion
-      $ packageDescription gpd
+    v = specVersion $ packageDescription gpd
 
 -- | Convert a generic package description to 'PrettyField's.
 ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField ()]
@@ -205,6 +201,7 @@ showPackageDescription = showGenericPackageDescription . pdToGpd
 pdToGpd :: PackageDescription -> GenericPackageDescription
 pdToGpd pd = GenericPackageDescription
     { packageDescription = pd
+    , gpdScannedVersion  = Nothing
     , genPackageFlags    = []
     , condLibrary        = mkCondTree <$> library pd
     , condSubLibraries   = mkCondTreeL <$> subLibraries pd

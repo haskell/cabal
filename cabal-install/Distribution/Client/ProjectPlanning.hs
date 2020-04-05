@@ -110,6 +110,7 @@ import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Solver.Types.Settings
 
+import           Distribution.CabalSpecVersion
 import           Distribution.ModuleName
 import           Distribution.Package
 import           Distribution.Types.AnnotatedId
@@ -1345,7 +1346,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- for now it's easier to just fallback to legacy-mode when specVersion < 1.8
             -- see, https://github.com/haskell/cabal/issues/4121
             cuz_spec
-                | PD.specVersion pd >= mkVersion [1,8] = []
+                | PD.specVersion pd >= CabalSpecV1_8 = []
                 | otherwise = cuz "cabal-version is less than 1.8"
             -- In the odd corner case that a package has no components at all
             -- then keep it as a whole package, since otherwise it turns into
@@ -2980,9 +2981,10 @@ newtype CannotPruneDependencies =
 -- less than 1.23.
 --
 -- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API. In case 3 we also have
--- to build an external Setup.hs script because the package needs a later
--- Cabal lib version than we can support internally.
+-- while in case 4 we can use the internal library API. 
+--
+-- TODO:In case 3 we should fail. We don't know how to talk to 
+-- newer ./Setup.hs
 --
 -- data SetupScriptStyle = ...  -- see ProjectPlanning.Types
 
@@ -3004,7 +3006,8 @@ packageSetupScriptStyle pkg
   , Nothing <- PD.setupBuildInfo pkg      -- we get this case pre-solver
   = SetupCustomImplicitDeps
 
-  | PD.specVersion pkg > cabalVersion -- one cabal-install is built against
+  -- here we should fail.
+  | PD.specVersion pkg > cabalSpecLatest  -- one cabal-install is built against
   = SetupNonCustomExternalLib
 
   | otherwise
@@ -3055,7 +3058,7 @@ defaultSetupDeps compiler platform pkg =
           -- Note: we also add a global constraint to require Cabal >= 1.20
           -- for Setup scripts (see use addSetupCabalMinVersionConstraint).
           --
-          cabalConstraint   = orLaterVersion (PD.specVersion pkg)
+          cabalConstraint   = orLaterVersion (csvToVersion (PD.specVersion pkg))
                                 `intersectVersionRanges`
                               earlierVersion cabalCompatMaxVer
           -- The idea here is that at some point we will make significant
@@ -3071,7 +3074,7 @@ defaultSetupDeps compiler platform pkg =
         Just [ Dependency cabalPkgname cabalConstraint (Set.singleton LMainLibName)
              , Dependency basePkgname  anyVersion (Set.singleton LMainLibName)]
         where
-          cabalConstraint = orLaterVersion (PD.specVersion pkg)
+          cabalConstraint = orLaterVersion (csvToVersion (PD.specVersion pkg))
 
       -- The internal setup wrapper method has no deps at all.
       SetupNonCustomInternalLib -> Just []
@@ -3081,9 +3084,14 @@ defaultSetupDeps compiler platform pkg =
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
              ++ "setup deps: " ++ display (packageId pkg)
+  where
+    -- we require one less
+    --
+    -- This maps e.g. CabalSpecV3_0 to mkVersion [2,5]
+    csvToVersion :: CabalSpecVersion -> Version
+    csvToVersion = mkVersion . cabalSpecMinimumLibraryVersion
 
-
--- | Work out which version of the Cabal spec we will be using to talk to the
+-- | Work out which version of the Cabal we will be using to talk to the
 -- Setup.hs interface for this package.
 --
 -- This depends somewhat on the 'SetupScriptStyle' but most cases are a result
@@ -3114,7 +3122,7 @@ packageSetupScriptSpecVersion SetupCustomImplicitDeps pkg _ _
 packageSetupScriptSpecVersion _ pkg libDepGraph deps =
     case find ((cabalPkgname ==) . packageName) setupLibDeps of
       Just dep -> packageVersion dep
-      Nothing  -> PD.specVersion pkg
+      Nothing  -> mkVersion (cabalSpecMinimumLibraryVersion (PD.specVersion pkg))
   where
     setupLibDeps = map packageId $ fromMaybe [] $
                    Graph.closure libDepGraph (CD.setupDeps deps)

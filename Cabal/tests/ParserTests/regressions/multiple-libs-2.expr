@@ -132,6 +132,7 @@ GenericPackageDescription
                                               signatures = []}}],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -159,7 +160,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [2,0]`,
+                           specVersion = CabalSpecV2_0,
                            stability = "",
                            subLibraries = [],
                            synopsis = "visible flag only since 3.0",

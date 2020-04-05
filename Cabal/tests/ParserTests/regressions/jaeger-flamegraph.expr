@@ -335,6 +335,7 @@ GenericPackageDescription
                                                               `mkVersion [1,0]` "Driver.hs",
                                             testName = `UnqualComponentName ""`}}],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Sam Halliday",
                            benchmarks = [],
@@ -383,7 +384,7 @@ GenericPackageDescription
                                              repoSubdir = Nothing,
                                              repoTag = Nothing,
                                              repoType = Just (KnownRepoType Git)}],
-                           specVersionRaw = Left `mkVersion [2,2]`,
+                           specVersion = CabalSpecV2_2,
                            stability = "",
                            subLibraries = [],
                            synopsis = "Generate flamegraphs from Jaeger .json dumps.",

@@ -30,6 +30,7 @@ import qualified UnitTests.Distribution.Version (versionTests)
 import qualified UnitTests.Distribution.PkgconfigVersion (pkgconfigVersionTests)
 import qualified UnitTests.Distribution.SPDX (spdxTests)
 import qualified UnitTests.Distribution.Described
+import qualified UnitTests.Distribution.CabalSpecVersion
 import qualified UnitTests.Distribution.Types.GenericPackageDescription
 
 tests :: Int -> TestTree
@@ -73,6 +74,7 @@ tests mtimeChangeCalibrated =
     , UnitTests.Distribution.Utils.CharSet.tests
     , UnitTests.Distribution.Utils.Structured.tests
     , UnitTests.Distribution.Described.tests
+    , UnitTests.Distribution.CabalSpecVersion.tests
     ]
 
 extraOptions :: [OptionDescription]

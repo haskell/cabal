@@ -112,6 +112,7 @@ GenericPackageDescription
    condSubLibraries = [],
    condTestSuites = [],
    genPackageFlags = [],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
                            benchmarks = [],
@@ -139,7 +140,7 @@ GenericPackageDescription
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [2,1]`,
+                           specVersion = CabalSpecV2_2,
                            stability = "",
                            subLibraries = [],
                            synopsis = "leading comma, trailing comma, or ordinary",

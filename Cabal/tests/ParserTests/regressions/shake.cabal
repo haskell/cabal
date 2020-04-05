@@ -1,4 +1,4 @@
-cabal-version:      >= 1.18
+cabal-version:      1.18
 build-type:         Simple
 name:               shake
 version:            0.15.11

@@ -21,6 +21,7 @@ import Distribution.Compat.Prelude hiding ((<>))
 
 import Distribution.Backpack.Id
 
+import Distribution.CabalSpecVersion
 import Distribution.Types.AnnotatedId
 import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
@@ -38,7 +39,6 @@ import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Version
 import Distribution.Utils.LogProgress
 import Distribution.Utils.MapAccum
 import Distribution.Utils.Generic
@@ -292,8 +292,8 @@ toConfiguredComponents
                         m component
         return (extendConfiguredComponentMap cc m, cc)
 
-newPackageDepsBehaviourMinVersion :: Version
-newPackageDepsBehaviourMinVersion = mkVersion [1,7,1]
+newPackageDepsBehaviourMinVersion :: CabalSpecVersion
+newPackageDepsBehaviourMinVersion = CabalSpecV1_8
 
 
 -- In older cabal versions, there was only one set of package dependencies for

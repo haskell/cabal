@@ -5,12 +5,13 @@ author: Oleksandr Manzyuk
 stability: stable
 category: PackageTests
 build-type: Simple
-cabal-version: >=1.9.2
+cabal-version: >=1.10
 
 description:
     Check that Cabal correctly orders flags that are passed to GHC.
 
 library
+    default-language: Haskell2010
     exposed-modules: Foo
     build-depends: base
 

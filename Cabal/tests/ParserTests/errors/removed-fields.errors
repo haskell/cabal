@@ -1,3 +1,3 @@
-VERSION: Just (mkVersion [2,5])
+VERSION: Just (mkVersion [3,0])
 removed-fields.cabal:13:3: The field "extensions" is removed in the Cabal specification version 3.0. Please use 'default-extensions' or 'other-extensions' fields.
 removed-fields.cabal:14:3: The field "extensions" is removed in the Cabal specification version 3.0. Please use 'default-extensions' or 'other-extensions' fields.

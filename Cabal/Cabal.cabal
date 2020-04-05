@@ -251,6 +251,9 @@ extra-source-files:
   tests/ParserTests/warnings/newsyntax.cabal
   tests/ParserTests/warnings/oldsyntax.cabal
   tests/ParserTests/warnings/operator.cabal
+  tests/ParserTests/warnings/specversion-a.cabal
+  tests/ParserTests/warnings/specversion-b.cabal
+  tests/ParserTests/warnings/specversion-c.cabal
   tests/ParserTests/warnings/subsection.cabal
   tests/ParserTests/warnings/tab.cabal
   tests/ParserTests/warnings/trailingfield.cabal
@@ -623,6 +626,7 @@ test-suite unit-tests
   other-modules:
     Test.Laws
     Test.QuickCheck.Utils
+    UnitTests.Distribution.CabalSpecVersion
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time

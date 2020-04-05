@@ -572,6 +572,7 @@ GenericPackageDescription
                          flagDescription = "",
                          flagManual = True,
                          flagName = `FlagName "use-pkg-config"`}],
+   gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "Grant Monroe, Leon P Smith, Joey Adams",
                            benchmarks = [],
@@ -625,7 +626,7 @@ GenericPackageDescription
                                                                          `mkVersion [2,5]`))
                                                                    (Set.fromList [LMainLibName])]},
                            sourceRepos = [],
-                           specVersionRaw = Left `mkVersion [3,0]`,
+                           specVersion = CabalSpecV3_0,
                            stability = "",
                            subLibraries = [],
                            synopsis = "low-level binding to libpq",

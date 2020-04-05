@@ -29,7 +29,7 @@ import Distribution.Types.TestSuite (TestSuite)
 import Distribution.Types.UnqualComponentName (UnqualComponentName)
 import Distribution.System (Arch, OS)
 import Distribution.Compiler (CompilerFlavor)
-import Distribution.Version (VersionRange)
+import Distribution.Version (Version, VersionRange)
 
 -------------------------------------------------------------------------------
 -- GenericPackageDescription
@@ -38,6 +38,10 @@ import Distribution.Version (VersionRange)
 packageDescription :: Lens' GenericPackageDescription PackageDescription
 packageDescription f s = fmap (\x -> s { T.packageDescription = x }) (f (T.packageDescription s))
 {-# INLINE packageDescription #-}
+
+gpdScannedVersion :: Lens' GenericPackageDescription (Maybe Version)
+gpdScannedVersion f s = fmap (\x -> s { T.gpdScannedVersion = x }) (f (T.gpdScannedVersion s))
+{-# INLINE gpdScannedVersion #-}
 
 genPackageFlags :: Lens' GenericPackageDescription [Flag]
 genPackageFlags f s = fmap (\x -> s { T.genPackageFlags = x }) (f (T.genPackageFlags s))
@@ -73,9 +77,10 @@ allCondTrees
           -> f (CondTree ConfVar [Dependency] a))
   -> GenericPackageDescription
   -> f GenericPackageDescription
-allCondTrees f (GenericPackageDescription p a1 x1 x2 x3 x4 x5 x6) =
+allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
     GenericPackageDescription
         <$> pure p
+        <*> pure v
         <*> pure a1
         <*> traverse f x1
         <*> (traverse . _2) f x2

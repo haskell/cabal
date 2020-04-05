@@ -16,6 +16,7 @@ import Instances.TreeDiff.Version ()
 -------------------------------------------------------------------------------
 
 import Distribution.Backpack                  (OpenModule, OpenUnitId)
+import Distribution.CabalSpecVersion          (CabalSpecVersion)
 import Distribution.Compiler                  (CompilerFlavor, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo      (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                (ModuleName)
@@ -55,6 +56,7 @@ instance ToExpr BenchmarkInterface
 instance ToExpr BenchmarkType
 instance ToExpr BuildInfo
 instance ToExpr BuildType
+instance ToExpr CabalSpecVersion
 instance ToExpr CompilerFlavor
 instance ToExpr ComponentId where toExpr = defaultExprViaShow
 instance ToExpr DefUnitId

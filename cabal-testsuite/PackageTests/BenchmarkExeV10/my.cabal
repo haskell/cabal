@@ -1,14 +1,16 @@
 name:           my
 version:        0.1
 license:        BSD3
-cabal-version:  >= 1.9.2
+cabal-version:  >= 1.10
 build-type:     Simple
 
 library
+    default-language: Haskell2010
     exposed-modules:    Foo
     build-depends:      base
 
 benchmark bench-Foo
+    default-language: Haskell2010
     type:   exitcode-stdio-1.0
     hs-source-dirs: benchmarks
     main-is:    bench-Foo.hs

@@ -73,6 +73,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.Internal as Internal
+import Distribution.CabalSpecVersion
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Simple.GHC.EnvironmentParser
 import Distribution.PackageDescription.Utils (cabalBug)
@@ -1175,7 +1176,7 @@ data BuildSources = BuildSources {
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
-              -> Version -- ^ specVersion
+              -> CabalSpecVersion
               -> FilePath
               -> GBuildMode
               -> IO BuildSources
@@ -1194,7 +1195,7 @@ gbuildSources verbosity specVer tmpDir bm =
 
       if isHaskell main
         then
-          if specVer < mkVersion [2] && (mainModName `elem` otherModNames)
+          if specVer < CabalSpecV2_0 && (mainModName `elem` otherModNames)
           then do
              -- The cabal manual clearly states that `other-modules` is
              -- intended for non-main modules.  However, there's at least one
@@ -1941,7 +1942,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     whenShared $ if
       -- The behavior for "extra-bundled-libraries" changed in version 2.5.0.
       -- See ghc issue #15837 and Cabal PR #5855.
-      | specVersion pkg < mkVersion [2,5] -> do
+      | specVersion pkg < CabalSpecV3_0 -> do
         sequence_ [ installShared builtDir dynlibTargetDir
               (mkGenericSharedLibName platform compiler_id (l ++ f))
           | l <- getHSLibraryName uid : extraBundledLibs (libBuildInfo lib)

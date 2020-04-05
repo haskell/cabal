@@ -68,6 +68,9 @@ warningTests = testGroup "warnings triggered"
     , warningTest PWTMultipleSingularField "multiplesingular.cabal"
     , warningTest PWTVersionWildcard   "wildcard.cabal"
     , warningTest PWTVersionOperator   "operator.cabal"
+    , warningTest PWTSpecVersion       "specversion-a.cabal"
+    , warningTest PWTSpecVersion       "specversion-b.cabal"
+    , warningTest PWTSpecVersion       "specversion-c.cabal"
     -- TODO: not implemented yet
     -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]
