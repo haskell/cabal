@@ -129,7 +129,7 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 -- Parsec test: whether we can parse everything
 -------------------------------------------------------------------------------
 
-parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ThreeInt
+parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
 parseParsecTest keepGoing fpath bs = do
     let (warnings, result) = Parsec.runParseResult $
                              Parsec.parseGenericPackageDescription bs
@@ -140,33 +140,35 @@ parseParsecTest keepGoing fpath bs = do
     case result of
         Right gpd                    -> do
             forEachGPD fpath bs gpd
-            return (ThreeInt 1 w 0)
+            return (ParsecResult 1 w 0)
 
-        Left (_, errors) | keepGoing -> return (ThreeInt 1 w 1)
+        Left (_, errors) | keepGoing -> do
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            return (ParsecResult 1 w 1)
                          | otherwise -> do
-                traverse_ (putStrLn . Parsec.showPError fpath) errors
-                exitFailure
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            exitFailure
 
 -- | A hook to make queries on Hackage
 forEachGPD :: FilePath -> B8.ByteString -> L.GenericPackageDescription -> IO ()
 forEachGPD _ _ _ = return ()
 
 -------------------------------------------------------------------------------
--- ThreeInt
+-- ParsecResult
 -------------------------------------------------------------------------------
 
-data ThreeInt = ThreeInt !Int !Int !Int
+data ParsecResult = ParsecResult !Int !Int !Int
   deriving (Eq, Show)
 
-instance Semigroup ThreeInt where
-    ThreeInt x y z <> ThreeInt u v w = ThreeInt (x + u) (y + v) (z + w)
+instance Semigroup ParsecResult where
+    ParsecResult x y z <> ParsecResult u v w = ParsecResult (x + u) (y + v) (z + w)
 
-instance Monoid ThreeInt where
-    mempty  = ThreeInt 0 0 0
+instance Monoid ParsecResult where
+    mempty  = ParsecResult 0 0 0
     mappend = (<>)
 
-instance NFData ThreeInt where
-    rnf (ThreeInt _ _ _) = ()
+instance NFData ParsecResult where
+    rnf (ParsecResult _ _ _) = ()
 
 -------------------------------------------------------------------------------
 -- Check test
@@ -332,7 +334,7 @@ main = join (O.execParser opts)
 
     parsecA pfx keepGoing = do
         begin <- Clock.getTime Clock.Monotonic
-        ThreeInt n w f <- parseIndex pfx (parseParsecTest keepGoing)
+        ParsecResult n w f <- parseIndex pfx (parseParsecTest keepGoing)
         end <- Clock.getTime Clock.Monotonic
         let diff = Clock.toNanoSecs $ Clock.diffTimeSpec end begin
 

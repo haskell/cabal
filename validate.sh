@@ -16,6 +16,7 @@ DEPSONLY=false
 DOCTEST=false
 BENCHMARKS=false
 VERBOSE=false
+HACKAGETESTSALL=false
 
 TARGETS=""
 STEPS=""
@@ -47,6 +48,8 @@ Available options:
       --extra-hc HC                 Extra compiler to run test-suite with
       --(no-)doctest                Run doctest on library
       --(no-)solver-benchmarks      Build and trial run solver-benchmarks
+      --complete-hackage-tests      Run hackage-tests on complete Hackage data
+      --partial-hackage-tests       Run hackage-tests on parts of Hackage data
   -v, --verbose                     Verbose output
   -q, --quiet                       Less output
   -s, --step STEP                   Run only specific step (can be specified mutliple times)
@@ -211,6 +214,14 @@ while [ $# -gt 0 ]; do
             ;;
         --no-solver-benchmarks)
             BENCHMARKS=false
+            shift
+            ;;
+        --complete-hackage-tests)
+            HACKAGETESTSALL=true
+            shift
+            ;;
+        --partial-hackage-tests)
+            HACKAGETESTSALL=false
             shift
             ;;
         -v|--verbose)
@@ -383,8 +394,14 @@ CMD="$($CABALPLANLISTBIN Cabal:test:parser-tests) $TESTSUITEJOBS --hide-successe
 
 CMD=$($CABALPLANLISTBIN Cabal:test:hackage-tests)
 (cd Cabal && timed $CMD read-fields) || exit 1
-(cd Cabal && timed $CMD parsec d)    || exit 1
-(cd Cabal && timed $CMD roundtrip k) || exit 1
+
+if $HACKAGETESTSALL; then
+  (cd Cabal && timed $CMD parsec)    || exit 1
+  (cd Cabal && timed $CMD roundtrip) || exit 1
+else
+  (cd Cabal && timed $CMD parsec d)    || exit 1
+  (cd Cabal && timed $CMD roundtrip k) || exit 1
+fi
 }
 
 # Cabal cabal-testsuite
