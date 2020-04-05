@@ -1,0 +1,16 @@
+cabal-version: 2.2
+name: CabalMacros
+version: 0.1
+license: BSD-3-Clause
+author: Oleg Grenrus
+stability: stable
+category: PackageTests
+build-type: Simple
+
+description:
+    Check that the generated cabal_macros.h is intact.
+
+Library
+    exposed-modules: Mdl
+    build-depends: base
+    default-language: Haskell2010

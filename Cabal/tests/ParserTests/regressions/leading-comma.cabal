@@ -1,4 +1,4 @@
-cabal-version:       2.1
+cabal-version:       2.2
 name:                leading-comma
 version:             0
 synopsis:            leading comma, trailing comma, or ordinary

@@ -1,2 +1,2 @@
-VERSION: Just (mkVersion [2,1])
+VERSION: Just (mkVersion [2,2])
 common3.cabal:22:1: Duplicate common stanza: deps

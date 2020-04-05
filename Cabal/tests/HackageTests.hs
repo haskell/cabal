@@ -152,15 +152,46 @@ readFieldTest fpath bs = case Parsec.readFields bs' of
 -- Parsec test: whether we can parse everything
 -------------------------------------------------------------------------------
 
-parseParsecTest :: FilePath -> B.ByteString -> IO (Sum Int)
-parseParsecTest fpath bs = do
-    let (_warnings, parsec) = Parsec.runParseResult $
-                              Parsec.parseGenericPackageDescription bs
-    case parsec of
-        Right _ -> return (Sum 1)
-        Left (_, errors) -> do
+parseParsecTest :: Bool -> FilePath -> B.ByteString -> IO ParsecResult
+parseParsecTest keepGoing fpath bs = do
+    let (warnings, result) = Parsec.runParseResult $
+                             Parsec.parseGenericPackageDescription bs
+
+    let w | null warnings = 0
+          | otherwise     = 1
+
+    case result of
+        Right gpd                    -> do
+            forEachGPD fpath bs gpd
+            return (ParsecResult 1 w 0)
+
+        Left (_, errors) | keepGoing -> do
+            traverse_ (putStrLn . Parsec.showPError fpath) errors
+            return (ParsecResult 1 w 1)
+                         | otherwise -> do
             traverse_ (putStrLn . Parsec.showPError fpath) errors
             exitFailure
+
+-- | A hook to make queries on Hackage
+forEachGPD :: FilePath -> B8.ByteString -> L.GenericPackageDescription -> IO ()
+forEachGPD _ _ _ = return ()
+
+-------------------------------------------------------------------------------
+-- ParsecResult
+-------------------------------------------------------------------------------
+
+data ParsecResult = ParsecResult !Int !Int !Int
+  deriving (Eq, Show)
+
+instance Semigroup ParsecResult where
+    ParsecResult x y z <> ParsecResult u v w = ParsecResult (x + u) (y + v) (z + w)
+
+instance Monoid ParsecResult where
+    mempty  = ParsecResult 0 0 0
+    mappend = (<>)
+
+instance NFData ParsecResult where
+    rnf (ParsecResult _ _ _) = ()
 
 -------------------------------------------------------------------------------
 -- Check test
@@ -309,15 +340,22 @@ main = join (O.execParser opts)
 
     defaultA = do
         putStrLn "Default action: parsec k"
-        parsecA (mkPredicate ["k"])
+        parsecA (mkPredicate ["k"]) False
 
     readFieldsP = readFieldsA <$> prefixP
     readFieldsA pfx = parseIndex pfx readFieldTest
 
-    parsecP = parsecA <$> prefixP
-    parsecA pfx = do
-        Sum n <- parseIndex pfx parseParsecTest
+    parsecP = parsecA <$> prefixP <*> keepGoingP
+    keepGoingP =
+        O.flag' True  (O.long "keep-going") <|>
+        O.flag' False (O.long "no-keep-going") <|>
+        pure False
+
+    parsecA pfx keepGoing = do
+        ParsecResult n w f <- parseIndex pfx (parseParsecTest keepGoing)
         putStrLn $ show n ++ " files processed"
+        putStrLn $ show w ++ " files contained warnings"
+        putStrLn $ show f ++ " files failed to parse"
 
     roundtripP = roundtripA <$> prefixP <*> testFieldsP
     roundtripA pfx testFieldsTransform = do

@@ -2,7 +2,7 @@ name:                common
 version:             0
 synopsis:            Common-stanza demo demo
 build-type:          Simple
-cabal-version:       2.1
+cabal-version:       2.2
 
 source-repository head
   Type:     git

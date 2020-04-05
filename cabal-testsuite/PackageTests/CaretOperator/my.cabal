@@ -4,7 +4,7 @@ license: BSD3
 author: HVR
 category: PackageTests
 build-type: Simple
-cabal-version: >= 1.25
+cabal-version: 2.0
 
 description:
     Check that Cabal recognizes the caret operator
