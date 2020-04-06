@@ -27,12 +27,14 @@ data SPDXLicenseListVersion
     = SPDXLicenseListVersion_3_0
     | SPDXLicenseListVersion_3_2
     | SPDXLicenseListVersion_3_6
+    | SPDXLicenseListVersion_3_8
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 allVers :: Set.Set SPDXLicenseListVersion
 allVers =  Set.fromList [minBound .. maxBound]
 
 prettyVer :: SPDXLicenseListVersion -> Text
+prettyVer SPDXLicenseListVersion_3_8 = "SPDX License List 3.8"
 prettyVer SPDXLicenseListVersion_3_6 = "SPDX License List 3.6"
 prettyVer SPDXLicenseListVersion_3_2 = "SPDX License List 3.2"
 prettyVer SPDXLicenseListVersion_3_0 = "SPDX License List 3.0"
@@ -41,7 +43,7 @@ prettyVer SPDXLicenseListVersion_3_0 = "SPDX License List 3.0"
 -- Per version
 -------------------------------------------------------------------------------
 
-data PerV a = PerV a a a
+data PerV a = PerV a a a a
   deriving (Functor, Foldable, Traversable)
 
 -------------------------------------------------------------------------------
@@ -141,6 +143,7 @@ data Input = Input
     , inputLicenseList_3_0 :: Text
     , inputLicenseList_3_2 :: Text
     , inputLicenseList_3_6 :: Text
+    , inputLicenseList_3_8 :: Text
     }
   deriving (Show, Generic)
 
