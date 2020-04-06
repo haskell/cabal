@@ -15,16 +15,16 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Init.Types where
 
-import Distribution.Simple.Setup
-  ( Flag(..) )
+import Distribution.Simple.Setup (Flag(..), toFlag )
 
 import Distribution.Types.Dependency as P
 import Distribution.Compat.Semigroup
 import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Package as P
-import Distribution.License
+import Distribution.SPDX.License (License)
 import Distribution.ModuleName
+import Distribution.CabalSpecVersion
 import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified Text.PrettyPrint as Disp
@@ -48,7 +48,7 @@ data InitFlags =
 
               , packageName  :: Flag P.PackageName
               , version      :: Flag Version
-              , cabalVersion :: Flag Version
+              , cabalVersion :: Flag CabalSpecVersion
               , license      :: Flag License
               , author       :: Flag String
               , email        :: Flag String
@@ -102,6 +102,11 @@ instance Monoid InitFlags where
 
 instance Semigroup InitFlags where
   (<>) = gmappend
+
+defaultInitFlags :: InitFlags
+defaultInitFlags  = mempty
+    { initVerbosity = toFlag normal
+    }
 
 -- | Some common package categories (non-exhaustive list).
 data Category

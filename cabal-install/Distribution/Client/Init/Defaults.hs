@@ -21,11 +21,11 @@ import Distribution.ModuleName
   ( ModuleName )  -- And for the Text instance
 import qualified Distribution.ModuleName as ModuleName
   ( fromString )
-import Distribution.Version
-  ( Version, mkVersion )
+import Distribution.CabalSpecVersion
+  ( CabalSpecVersion (..))
 
-defaultCabalVersion :: Version
-defaultCabalVersion = mkVersion [1,10]
+defaultCabalVersion :: CabalSpecVersion
+defaultCabalVersion = CabalSpecV2_4
 
 myLibModule :: ModuleName
 myLibModule = ModuleName.fromString "MyLib"

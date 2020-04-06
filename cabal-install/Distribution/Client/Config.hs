@@ -61,6 +61,7 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..) )
+import qualified Distribution.Client.Init.Defaults as IT
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, defaultGlobalFlags
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -74,8 +75,6 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Utils.NubList
          ( NubList, fromNubList, toNubList, overNubList )
 
-import Distribution.License
-         ( License(BSD3) )
 import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
@@ -114,8 +113,6 @@ import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
          ( Verbosity, normal )
-import Distribution.Version
-         ( mkVersion )
 
 import Distribution.Solver.Types.ConstraintSource
 
@@ -851,9 +848,9 @@ commentSavedConfig = do
             },
         savedInitFlags       = mempty {
             IT.interactive     = toFlag False,
-            IT.cabalVersion    = toFlag (mkVersion [2,4]),
+            IT.cabalVersion    = toFlag IT.defaultCabalVersion,
             IT.language        = toFlag Haskell2010,
-            IT.license         = toFlag BSD3,
+            IT.license         = NoFlag,
             IT.sourceDirs      = Nothing,
             IT.applicationDirs = Nothing
             },

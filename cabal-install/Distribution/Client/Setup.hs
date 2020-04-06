@@ -79,7 +79,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.IndexUtils.IndexState
          ( TotalIndexState, headTotalIndexState )
 import qualified Distribution.Client.Init.Types as IT
-         ( InitFlags(..), PackageType(..) )
+         ( InitFlags(..), PackageType(..), defaultInitFlags )
 import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
@@ -142,6 +142,7 @@ import Distribution.Client.GlobalFlags
          , RepoContext(..), withRepoContext
          )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
+import Distribution.Parsec.Newtypes (SpecVersion (..))
 
 import Data.List
          ( deleteFirstsBy )
@@ -2251,12 +2252,6 @@ instance Semigroup UploadFlags where
 -- * Init flags
 -- ------------------------------------------------------------
 
-emptyInitFlags :: IT.InitFlags
-emptyInitFlags  = mempty
-
-defaultInitFlags :: IT.InitFlags
-defaultInitFlags  = emptyInitFlags { IT.initVerbosity = toFlag normal }
-
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
@@ -2274,7 +2269,7 @@ initCommand = CommandUI {
     commandNotes = Nothing,
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",
-    commandDefaultFlags = defaultInitFlags,
+    commandDefaultFlags = IT.defaultInitFlags,
     commandOptions = initOptions
   }
 
@@ -2313,30 +2308,30 @@ initOptions _ =
   , option ['p'] ["package-name"]
     "Name of the Cabal package to create."
     IT.packageName (\v flags -> flags { IT.packageName = v })
-    (reqArg "PACKAGE" (readP_to_E ("Cannot parse package name: "++)
-                                  (toFlag `fmap` parse))
-                      (flagToList . fmap display))
+    (reqArg "PACKAGE" (parsecToReadE ("Cannot parse package name: "++)
+                                  (toFlag `fmap` parsec))
+                      (flagToList . fmap prettyShow))
 
   , option [] ["version"]
     "Initial version of the package."
     IT.version (\v flags -> flags { IT.version = v })
-    (reqArg "VERSION" (readP_to_E ("Cannot parse package version: "++)
-                                  (toFlag `fmap` parse))
-                      (flagToList . fmap display))
+    (reqArg "VERSION" (parsecToReadE ("Cannot parse package version: "++)
+                                  (toFlag `fmap` parsec))
+                      (flagToList . fmap prettyShow))
 
   , option [] ["cabal-version"]
     "Version of the Cabal specification."
     IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
-    (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal specification version: "++)
-                                        (toFlag `fmap` parse))
-                            (flagToList . fmap display))
+    (reqArg "CABALSPECVERSION" (parsecToReadE ("Cannot parse Cabal specification version: "++)
+                                        (fmap (toFlag . getSpecVersion) parsec))
+                            (flagToList . fmap (prettyShow . SpecVersion)))
 
   , option ['l'] ["license"]
     "Project license."
     IT.license (\v flags -> flags { IT.license = v })
-    (reqArg "LICENSE" (readP_to_E ("Cannot parse license: "++)
-                                  (toFlag `fmap` parse))
-                      (flagToList . fmap display))
+    (reqArg "LICENSE" (parsecToReadE ("Cannot parse license: "++)
+                                  (toFlag `fmap` parsec))
+                      (flagToList . fmap prettyShow))
 
   , option ['a'] ["author"]
     "Name of the project's author."
