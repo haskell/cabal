@@ -453,7 +453,7 @@ sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv = do
       when dirExists $
         removeDirectoryRecursive targetDir
       createDirectory targetTmpDir
-      prepareTree verbosity pkg Nothing targetTmpDir knownSuffixHandlers
+      prepareTree verbosity pkg targetTmpDir knownSuffixHandlers
       return (targetTmpDir, targetDir)
 
   -- Now rename the "snapshots/$PKGNAME-$VERSION-tmp" dirs to

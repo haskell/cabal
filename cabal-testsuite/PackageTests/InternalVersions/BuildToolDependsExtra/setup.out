@@ -10,6 +10,4 @@ No 'description' field.
 A 'license-file' is not specified.
 Note: the public hackage server would reject this package.
 Building source dist for build-tool-depends-extra-version-0.1.0.0...
-Preprocessing executable 'hello-world' for build-tool-depends-extra-version-0.1.0.0..
-Preprocessing library for build-tool-depends-extra-version-0.1.0.0..
 Source tarball created: setup.dist/work/dist/build-tool-depends-extra-version-0.1.0.0.tar.gz

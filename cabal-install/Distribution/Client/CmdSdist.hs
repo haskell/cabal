@@ -70,13 +70,11 @@ import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import Data.Either
     ( partitionEithers )
-import Data.List
-    ( sortOn )
 import qualified Data.Set as Set
 import System.Directory
-    ( getCurrentDirectory, setCurrentDirectory
+    ( getCurrentDirectory
     , createDirectoryIfMissing, makeAbsolute
-    , getPermissions, executable )
+    )
 import System.FilePath
     ( (</>), (<.>), makeRelative, normalise, takeDirectory )
 
@@ -219,9 +217,6 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
         baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
         return (baseCtx, distDirLayout baseCtx)
 
-data IsExec = Exec | NoExec
-            deriving (Show, Eq)
-
 data OutputFormat = SourceList Char
                   | TarGzArchive
                   deriving (Show, Eq)
@@ -257,19 +252,13 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
           _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
 
       Right dir -> do
-        oldPwd <- getCurrentDirectory
-        setCurrentDirectory dir
-
-        let norm flag = fmap ((flag, ) . normalise)
-        (norm NoExec -> nonexec, norm Exec -> exec) <-
-           listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
-
-        let files =  nub . sortOn snd $ nonexec ++ exec
+        files' <- listPackageSources verbosity dir (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
+        let files = nub $ sort $ map normalise files'
 
         case format of
             SourceList nulSep -> do
                 let prefix = makeRelative projectRootDir dir
-                write $ concat [prefix </> i ++ [nulSep] | (_, i) <- files]
+                write $ concat [prefix </> i ++ [nulSep] | i <- files]
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
             TarGzArchive -> do
@@ -281,12 +270,8 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                             Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                             Right path -> tell [Tar.directoryEntry path]
 
-                        for_ files $ \(perm, file) -> do
-                            realPerm <- getPermissions file
+                        for_ files $ \file -> do
                             let fileDir = takeDirectory (prefix </> file)
-                                perm' = case perm of
-                                    Exec | executable realPerm -> Tar.executableFilePermissions
-                                    _                          -> Tar.ordinaryFilePermissions
                             needsEntry <- gets (Set.notMember fileDir)
 
                             when needsEntry $ do
@@ -295,10 +280,10 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                                     Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
                                     Right path -> tell [Tar.directoryEntry path]
 
-                            contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ file
+                            contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ dir </> file
                             case Tar.toTarPath False (prefix </> file) of
                                 Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                                Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = perm' }]
+                                Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = Tar.ordinaryFilePermissions }]
 
                 entries <- execWriterT (evalStateT entriesM mempty)
                 let -- Pretend our GZip file is made on Unix.
@@ -315,8 +300,6 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
                 writeLBS . normalize . GZip.compress . Tar.write $ fmap setModTime entries
                 when (outputFile /= "-") $
                     notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
-
-        setCurrentDirectory oldPwd
 
 --
 

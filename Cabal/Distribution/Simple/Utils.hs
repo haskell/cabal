@@ -93,10 +93,13 @@ module Distribution.Simple.Utils (
 
         -- * finding files
         findFileEx,
+        findFileCwd,
         findFirstFile,
         findFileWithExtension,
+        findFileCwdWithExtension,
         findFileWithExtension',
         findAllFilesWithExtension,
+        findAllFilesCwdWithExtension,
         findModuleFileEx,
         findModuleFilesEx,
         getDirectoryContentsRecursive,
@@ -118,7 +121,9 @@ module Distribution.Simple.Utils (
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
         findPackageDesc,
+        findPackageDescCwd,
         tryFindPackageDesc,
+        tryFindPackageDescCwd,
         findHookedPackageDesc,
 
         -- * reading and writing files safely
@@ -944,6 +949,21 @@ findFile = findFileEx normal
 
 -- | Find a file by looking in a search path. The file path must match exactly.
 --
+-- @since 3.4.0.0
+findFileCwd
+    :: Verbosity
+    -> FilePath      -- ^ cwd
+    -> [FilePath]    -- ^ relative search location
+    -> FilePath      -- ^ File Name
+    -> IO FilePath
+findFileCwd verbosity cwd searchPath fileName =
+  findFirstFile (cwd </>)
+    [ path </> fileName
+    | path <- nub searchPath]
+  >>= maybe (die' verbosity $ fileName ++ " doesn't exist") return
+
+-- | Find a file by looking in a search path. The file path must match exactly.
+--
 findFileEx :: Verbosity
            -> [FilePath]    -- ^search locations
            -> FilePath      -- ^File Name
@@ -965,6 +985,32 @@ findFileWithExtension :: [String]
 findFileWithExtension extensions searchPath baseName =
   findFirstFile id
     [ path </> baseName <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+-- | @since 3.4.0.0
+findFileCwdWithExtension
+    :: FilePath
+    -> [String]
+    -> [FilePath]
+    -> FilePath
+    -> IO (Maybe FilePath)
+findFileCwdWithExtension cwd extensions searchPath baseName =
+  findFirstFile (cwd </>)
+    [ path </> baseName <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+-- | @since 3.4.0.0
+findAllFilesCwdWithExtension
+    :: FilePath       -- ^ cwd
+    -> [String]       -- ^ extensions
+    -> [FilePath]     -- ^ relative search locations
+    -> FilePath       -- ^ basename
+    -> IO [FilePath]
+findAllFilesCwdWithExtension cwd extensions searchPath basename =
+  findAllFiles (cwd </>)
+    [ path </> basename <.> ext
     | path <- nub searchPath
     , ext <- nub extensions ]
 
@@ -1460,16 +1506,23 @@ defaultPackageDesc verbosity = tryFindPackageDesc verbosity currentDir
 -- @.cabal@ files.
 findPackageDesc :: FilePath                    -- ^Where to look
                 -> IO (Either String FilePath) -- ^<pkgname>.cabal
-findPackageDesc dir
- = do files <- getDirectoryContents dir
+findPackageDesc = findPackageDescCwd "."
+
+-- | @since 3.4.0.0
+findPackageDescCwd
+    :: FilePath                    -- ^ project root
+    -> FilePath                    -- ^ relative directory
+    -> IO (Either String FilePath) -- ^ <pkgname>.cabal relative to the project root
+findPackageDescCwd cwd dir
+ = do files <- getDirectoryContents (cwd </> dir)
       -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
       -- file we filter to exclude dirs and null base file names:
-      cabalFiles <- filterM doesFileExist
-                       [ dir </> file
+      cabalFiles <- filterM (doesFileExist . snd)
+                       [ (dir </> file, cwd </> dir </> file)
                        | file <- files
                        , let (name, ext) = splitExtension file
                        , not (null name) && ext == ".cabal" ]
-      case cabalFiles of
+      case map fst cabalFiles of
         []          -> return (Left  noDesc)
         [cabalFile] -> return (Right cabalFile)
         multiple    -> return (Left  $ multiDesc multiple)
@@ -1488,6 +1541,13 @@ findPackageDesc dir
 tryFindPackageDesc :: Verbosity -> FilePath -> IO FilePath
 tryFindPackageDesc verbosity dir =
   either (die' verbosity) return =<< findPackageDesc dir
+
+-- | Like 'findPackageDescCwd', but calls 'die' in case of error.
+--
+-- @since 3.4.0.0
+tryFindPackageDescCwd :: Verbosity -> FilePath -> FilePath -> IO FilePath
+tryFindPackageDescCwd verbosity cwd dir =
+  either (die' verbosity) return =<< findPackageDescCwd cwd dir
 
 -- |Find auxiliary package information in the given directory.
 -- Looks for @.buildinfo@ files.

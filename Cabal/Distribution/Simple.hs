@@ -413,31 +413,12 @@ installAction hooks flags args = do
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
 
+-- Since Cabal-3.4 UserHooks are completely ignored
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
-sdistAction hooks flags _args = do
-    distPref <- findDistPrefOrDefault (sDistDistPref flags)
-    let pbi   = emptyHookedBuildInfo
-
-    mlbi <- maybeGetPersistBuildConfig distPref
-
-    -- NB: It would be TOTALLY WRONG to use the 'PackageDescription'
-    -- store in the 'LocalBuildInfo' for the rest of @sdist@, because
-    -- that would result in only the files that would be built
-    -- according to the user's configure being packaged up.
-    -- In fact, it is not obvious why we need to read the
-    -- 'LocalBuildInfo' in the first place, except that we want
-    -- to do some architecture-independent preprocessing which
-    -- needs to be configured.  This is totally awful, see
-    -- GH#130.
-
-    (_, ppd) <- confPkgDescr hooks verbosity Nothing
-
-    let pkg_descr0 = flattenPackageDescription ppd
-    sanityCheckHookedBuildInfo verbosity pkg_descr0 pbi
-    let pkg_descr = updatePackageDescription pbi pkg_descr0
-        mlbi' = fmap (\lbi -> lbi { localPkgDescr = pkg_descr }) mlbi
-
-    sdist pkg_descr mlbi' flags srcPref (allSuffixHandlers hooks)
+sdistAction _hooks flags _args = do
+    (_, ppd) <- confPkgDescr emptyUserHooks verbosity Nothing
+    let pkg_descr = flattenPackageDescription ppd
+    sdist pkg_descr flags srcPref knownSuffixHandlers
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
