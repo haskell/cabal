@@ -24,6 +24,14 @@ module Distribution.PackageDescription.FieldGrammar (
     benchmarkFieldGrammar,
     validateBenchmark,
     unvalidateBenchmark,
+    -- * Field grammars
+    formatDependencyList,
+    formatExposedModules,
+    formatExtraSourceFiles,
+    formatHsSourceDirs,
+    formatMixinList,
+    formatOtherExtensions,
+    formatOtherModules,
     -- ** Lenses
     benchmarkStanzaBenchmarkType,
     benchmarkStanzaMainIs,
@@ -41,6 +49,7 @@ module Distribution.PackageDescription.FieldGrammar (
 
 import Distribution.Compat.Lens
 import Distribution.Compat.Prelude
+import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
@@ -57,6 +66,7 @@ import Distribution.Types.ExecutableScope
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.LibraryVisibility
+import Distribution.Types.Mixin
 import Distribution.Types.UnqualComponentName
 
 import qualified Distribution.SPDX as SPDX
@@ -100,7 +110,7 @@ packageDescriptionFieldGrammar = PackageDescription
     --  * Files
     <*> monoidalFieldAla    "data-files"         (alaList' VCat FilePathNT) L.dataFiles
     <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir ""
-    <*> monoidalFieldAla    "extra-source-files" (alaList' VCat FilePathNT) L.extraSrcFiles
+    <*> monoidalFieldAla    "extra-source-files" formatExtraSourceFiles     L.extraSrcFiles
     <*> monoidalFieldAla    "extra-tmp-files"    (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla    "extra-doc-files"    (alaList' VCat FilePathNT) L.extraDocFiles
   where
@@ -125,7 +135,7 @@ libraryFieldGrammar
     => LibraryName
     -> g Library Library
 libraryFieldGrammar n = Library n
-    <$> monoidalFieldAla  "exposed-modules"    (alaList' VCat MQuoted) L.exposedModules
+    <$> monoidalFieldAla  "exposed-modules"    formatExposedModules    L.exposedModules
     <*> monoidalFieldAla  "reexported-modules" (alaList  CommaVCat)    L.reexportedModules
     <*> monoidalFieldAla  "signatures"         (alaList' VCat MQuoted) L.signatures
         ^^^ availableSince CabalSpecV2_0 []
@@ -408,14 +418,14 @@ buildInfoFieldGrammar = BuildInfo
         ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "js-sources"           (alaList' VCat FilePathNT)    L.jsSources
     <*> hsSourceDirsGrammar
-    <*> monoidalFieldAla "other-modules"        (alaList' VCat MQuoted)       L.otherModules
+    <*> monoidalFieldAla "other-modules"        formatOtherModules            L.otherModules
     <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
         ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
     <*> monoidalFieldAla "default-extensions"   (alaList' FSep MQuoted)       L.defaultExtensions
-    <*> monoidalFieldAla "other-extensions"     (alaList' FSep MQuoted)       L.otherExtensions
+    <*> monoidalFieldAla "other-extensions"     formatOtherExtensions         L.otherExtensions
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."
@@ -438,8 +448,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> sharedOptionsFieldGrammar
     <*> pure mempty -- static-options ???
     <*> prefixedFields   "x-"                                                 L.customFieldsBI
-    <*> monoidalFieldAla "build-depends"        (alaList  CommaVCat)          L.targetBuildDepends
-    <*> monoidalFieldAla "mixins"               (alaList  CommaVCat)          L.mixins
+    <*> monoidalFieldAla "build-depends"        formatDependencyList          L.targetBuildDepends
+    <*> monoidalFieldAla "mixins"               formatMixinList               L.mixins
         ^^^ availableSince CabalSpecV2_0 []
 {-# SPECIALIZE buildInfoFieldGrammar :: ParsecFieldGrammar' BuildInfo #-}
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
@@ -448,7 +458,7 @@ hsSourceDirsGrammar
     :: (FieldGrammar g, Applicative (g BuildInfo))
     => g BuildInfo [FilePath]
 hsSourceDirsGrammar = (++)
-    <$> monoidalFieldAla "hs-source-dirs" (alaList' FSep FilePathNT) L.hsSourceDirs
+    <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
     <*> monoidalFieldAla "hs-source-dir"  (alaList' FSep FilePathNT) wrongLens
         --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
         ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
@@ -542,3 +552,28 @@ setupBInfoFieldGrammar def = flip SetupBuildInfo def
     <$> monoidalFieldAla "setup-depends" (alaList CommaVCat) L.setupDepends
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool -> ParsecFieldGrammar' SetupBuildInfo #-}
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}
+
+-------------------------------------------------------------------------------
+-- Define how field values should be formatted for 'pretty'.
+-------------------------------------------------------------------------------
+
+formatDependencyList :: [Dependency] -> List CommaVCat (Identity Dependency) Dependency
+formatDependencyList = alaList CommaVCat
+
+formatMixinList :: [Mixin] -> List CommaVCat (Identity Mixin) Mixin
+formatMixinList = alaList CommaVCat
+
+formatExtraSourceFiles :: [FilePath] -> List VCat FilePathNT FilePath
+formatExtraSourceFiles = alaList' VCat FilePathNT
+
+formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
+formatExposedModules = alaList' VCat MQuoted
+
+formatHsSourceDirs :: [FilePath] -> List FSep FilePathNT FilePath
+formatHsSourceDirs = alaList' FSep FilePathNT
+
+formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
+formatOtherExtensions = alaList' FSep MQuoted
+
+formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
+formatOtherModules = alaList' VCat MQuoted
