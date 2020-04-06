@@ -178,3 +178,8 @@ validate-via-docker-8.10.1:
 
 validate-via-docker-old:
 	docker build -t cabal-validate -f .docker/validate-old.dockerfile .
+
+# tags
+.PHONY : tags
+tags :
+	hasktags -c Cabal/Distribution Cabal/Language cabal-install/Distribution
