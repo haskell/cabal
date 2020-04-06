@@ -133,6 +133,12 @@ cabal-install-test:
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
 
+# This doesn't run build, as you first need to test with cabal-install-test :)
+cabal-install-test-accept:
+	@which cabal-plan
+	rm -rf .ghc.environment.*
+	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 --accept ${TEST}
+
 # Docker validation
 
 # Use this carefully, on big machine you can say
