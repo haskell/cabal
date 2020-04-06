@@ -1,2 +1,13 @@
-synopsis: `cabal init` defaults to `cabal-version: 2.4`
-prs: #6607
+synopsis: Various `cabal init` improvements
+packages: cabal-install
+prs: #6619 #6661 #6641 #6650 #6603 #6632 #6607
+
+description: {
+- Default to `cabal-version: 2.4`
+- `cabal` doesn't force a default license choice anymore
+- Licenses are always asked using SPDX expression
+- Fix an infinite loop when invalid license was passed on command line
+- `Setup.hs` is not written anymore
+
+TODO: complete the description
+}
