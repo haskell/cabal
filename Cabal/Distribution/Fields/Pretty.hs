@@ -34,6 +34,7 @@ import qualified Text.PrettyPrint as PP
 
 data PrettyField ann
     = PrettyField ann FieldName PP.Doc
+    | PrettyFieldCommentedOut ann FieldName
     | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   deriving (Functor, Foldable, Traversable)
 
@@ -72,6 +73,7 @@ renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
 
     maxNameLength !acc []                            = acc
     maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
+    maxNameLength !acc (PrettyFieldCommentedOut _ _ : rest) = maxNameLength acc rest
     maxNameLength !acc (PrettySection {}   : rest)   = maxNameLength acc rest
 
 -- | Block of lines,
@@ -114,6 +116,12 @@ renderField (Opts rann indent) fw (PrettyField ann name doc) =
 
     narrowStyle :: PP.Style
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
+
+renderField (Opts rann _) _ (PrettyFieldCommentedOut ann name) =
+  Block NoMargin NoMargin $ comments ++ fieldLine
+  where
+    comments = rann ann
+    fieldLine = [ "-- " ++ fromUTF8BS name ++ ":" ]
 
 renderField opts@(Opts rann indent) _ (PrettySection ann name args fields) = Block Margin Margin $
     rann ann

@@ -67,7 +67,7 @@ import Distribution.Client.Init.Prompt
   ( prompt, promptYesNo, promptStr, promptList, maybePrompt
   , promptListOptional )
 import Distribution.Client.Init.Utils
-  ( eligibleForTestSuite, message )
+  ( eligibleForTestSuite,  message )
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..)
   , displayPackageType )
@@ -76,6 +76,8 @@ import Distribution.Client.Init.Heuristics
     SourceFileEntry(..),
     scanForModules, neededBuildPrograms )
 
+import Distribution.Simple.Flag
+  ( maybeToFlag )
 import Distribution.Simple.Setup
   ( Flag(..), flagToMaybe )
 import Distribution.Simple.Configure
@@ -168,10 +170,6 @@ f ?>> g = do
   if isJust ma
     then return ma
     else g
-
--- | Witness the isomorphism between Maybe and Flag.
-maybeToFlag :: Maybe a -> Flag a
-maybeToFlag = maybe NoFlag Flag
 
 -- | Ask if a simple project with sensible defaults should be created.
 getSimpleProject :: InitFlags -> IO InitFlags
