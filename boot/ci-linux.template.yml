@@ -60,7 +60,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
           git fetch origin $GITHUB_REF:temporary-ci-branch
-          git checkout $GITHUB_SHA
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 {% for step in job.steps %}
       - name: Validate {{step}}
         run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
