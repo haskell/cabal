@@ -33,6 +33,7 @@ main = generate =<< O.execParser opts where
         <$> licenses "3.0"
         <*> licenses "3.2"
         <*> licenses "3.6"
+        <*> licenses "3.8"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"
@@ -71,14 +72,17 @@ generate' lss template = template $ Input
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
     , inputLicenseList_3_6 = mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
+    , inputLicenseList_3_8 = mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_8 vers)
     }
   where
-    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) = lss
+    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) (LL ls_3_8) = lss
 
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
         $ combine licenseId $ \ver -> case ver of
+            SPDXLicenseListVersion_3_8 -> filterDeprecated ls_3_8
             SPDXLicenseListVersion_3_6 -> filterDeprecated ls_3_6
             SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
             SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
