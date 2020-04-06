@@ -370,16 +370,17 @@ and two archives of the same format built from the same source will hash to the 
   Output is to ``stdout`` by default. The file paths are relative to the project's root
   directory.
 
-- ``-o``, ``--output-dir``: Sets the output dir, if a non-default one is desired. The default is
-  ``dist-newstyle/sdist/``. ``--output-dir -`` will send output to ``stdout``
+- ``-o``, ``--output-directory``: Sets the output dir, if a non-default one is desired. The default is
+  ``dist-newstyle/sdist/``. ``--output-directory -`` will send output to ``stdout``
   unless multiple archives are being created.
 
-- ``-z``, ``--null``: Only used with ``--list-only``. Separates filenames with a NUL
+- ``--null-sep``: Only used with ``--list-only``. Separates filenames with a NUL
   byte instead of newlines.
 
-``v2-sdist`` is inherently incompatible with sdist hooks, not due to implementation but due
-to fundamental core invariants (same source code should result in the same tarball, byte for
-byte) that must be satisfied for it to function correctly in the larger v2-build ecosystem.
+``v2-sdist`` is inherently incompatible with sdist hooks (which were removed in `Cabal-3.0`),
+not due to implementation but due to fundamental core invariants
+(same source code should result in the same tarball, byte for byte)
+that must be satisfied for it to function correctly in the larger v2-build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
 
