@@ -1226,7 +1226,7 @@ buildInplaceUnpackedPackage verbosity
                 execRebuild srcdir (needElaboratedConfiguredPackage pkg)
               listSdist =
                 fmap (map monitorFileHashed) $
-                    allPackageSourceFiles verbosity scriptOptions srcdir
+                    allPackageSourceFiles verbosity srcdir
               ifNullThen m m' = do xs <- m
                                    if null xs then m' else return xs
           monitors <- case PD.buildType (elabPkgDescription pkg) of
