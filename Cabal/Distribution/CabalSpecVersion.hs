@@ -26,11 +26,8 @@ data CabalSpecVersion
     | CabalSpecV2_2
     | CabalSpecV2_4
     | CabalSpecV3_0
-      -- ^ we need this value for solver
-      --   to represent GPDs which it should skip
-      --
-      --   We could filter the files already in package reading phase,
-      --   but then files would be silently omitted.
+    -- 3.2: no changes
+    | CabalSpecV3_4
   deriving (Eq, Ord, Show, Read, Enum, Bounded, Typeable, Data, Generic)
 
 instance Binary CabalSpecVersion
@@ -41,6 +38,7 @@ instance NFData CabalSpecVersion where rnf = genericRnf
 --
 -- @since 3.0.0.0
 showCabalSpecVersion :: CabalSpecVersion -> String
+showCabalSpecVersion CabalSpecV3_4  = "3.4"
 showCabalSpecVersion CabalSpecV3_0  = "3.0"
 showCabalSpecVersion CabalSpecV2_4  = "2.4"
 showCabalSpecVersion CabalSpecV2_2  = "2.2"
@@ -58,7 +56,7 @@ showCabalSpecVersion CabalSpecV1_2  = "1.2"
 showCabalSpecVersion CabalSpecV1_0  = "1.0"
 
 cabalSpecLatest :: CabalSpecVersion
-cabalSpecLatest = CabalSpecV3_0
+cabalSpecLatest = CabalSpecV3_4
 
 -- | Parse 'CabalSpecVersion' from version digits.
 --
@@ -66,6 +64,7 @@ cabalSpecLatest = CabalSpecV3_0
 --
 cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
 cabalSpecFromVersionDigits v
+    | v == [3,4]  = Just CabalSpecV3_4
     | v == [3,0]  = Just CabalSpecV3_0
     | v >= [3]    = Nothing
     | v >= [2,3]  = Just CabalSpecV2_4
@@ -85,6 +84,7 @@ cabalSpecFromVersionDigits v
 
 -- | @since 3.4.0.0
 cabalSpecToVersionDigits :: CabalSpecVersion -> [Int]
+cabalSpecToVersionDigits CabalSpecV3_4   = [3,4]
 cabalSpecToVersionDigits CabalSpecV3_0   = [3,0]
 cabalSpecToVersionDigits CabalSpecV2_4   = [2,4]
 cabalSpecToVersionDigits CabalSpecV2_2   = [2,2]
