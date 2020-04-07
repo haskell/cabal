@@ -1,0 +1,7 @@
+version: 2
+
+sphinx:
+  configuration: Cabal/doc/conf.py
+
+python:
+  version: 2.7
