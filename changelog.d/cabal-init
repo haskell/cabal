@@ -8,6 +8,7 @@ description: {
 - Licenses are always asked using SPDX expression
 - Fix an infinite loop when invalid license was passed on command line
 - `Setup.hs` is not written anymore
+- Default to --source-dir=src and --application-dir=app
 
 TODO: complete the description
 }

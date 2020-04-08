@@ -13,7 +13,9 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.Init.Defaults (
-    defaultCabalVersion
+    defaultApplicationDir
+  , defaultSourceDir
+  , defaultCabalVersion
   , myLibModule
   ) where
 
@@ -23,6 +25,12 @@ import qualified Distribution.ModuleName as ModuleName
   ( fromString )
 import Distribution.CabalSpecVersion
   ( CabalSpecVersion (..))
+
+defaultApplicationDir :: String
+defaultApplicationDir = "app"
+
+defaultSourceDir :: String
+defaultSourceDir = "src"
 
 defaultCabalVersion :: CabalSpecVersion
 defaultCabalVersion = CabalSpecV2_4

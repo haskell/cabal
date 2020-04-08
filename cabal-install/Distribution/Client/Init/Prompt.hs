@@ -20,7 +20,6 @@ module Distribution.Client.Init.Prompt (
   , promptStr
   , promptList
   , promptListOptional
-  , promptListOptional'
   , maybePrompt
   ) where
 

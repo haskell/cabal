@@ -59,13 +59,13 @@ import Distribution.Types.LibraryName
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Defaults
-  ( defaultCabalVersion, myLibModule )
+  ( defaultApplicationDir, defaultCabalVersion, myLibModule, defaultSourceDir )
 import Distribution.Client.Init.FileCreators
   ( writeLicense, writeChangeLog, createDirectories, createLibHs, createMainHs
   , createTestSuiteIfEligible, writeCabalFile )
 import Distribution.Client.Init.Prompt
   ( prompt, promptYesNo, promptStr, promptList, maybePrompt
-  , promptListOptional, promptListOptional')
+  , promptListOptional )
 import Distribution.Client.Init.Utils
   ( eligibleForTestSuite, message )
 import Distribution.Client.Init.Types
@@ -482,56 +482,108 @@ getGenComments flags = do
 -- | Ask for the application root directory.
 getAppDir :: InitFlags -> IO InitFlags
 getAppDir flags = do
-  appDirs <- return (applicationDirs flags)
-             -- No application dir if this is a 'Library'.
-             ?>> if (packageType flags) == Flag Library then return (Just []) else return Nothing
-             ?>> fmap (:[]) `fmap` guessAppDir flags
-             ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
-                      flags
-                      (promptListOptional'
-                       ("Application " ++ mainFile ++ "directory")
-                       ["src-exe", "app"] id))
-
+  appDirs <-
+    return (applicationDirs flags)
+    ?>> noAppDirIfLibraryOnly
+    ?>> guessAppDir flags
+    ?>> promptUserForApplicationDir
+    ?>> setDefault
   return $ flags { applicationDirs = appDirs }
 
   where
+    -- If the packageType==Library, then there is no application dir.
+    noAppDirIfLibraryOnly :: IO (Maybe [String])
+    noAppDirIfLibraryOnly =
+      if (packageType flags) == Flag Library
+      then return (Just [])
+      else return Nothing
+
+    -- Set the default application directory.
+    setDefault :: IO (Maybe [String])
+    setDefault = pure (Just [defaultApplicationDir])
+
+    -- Prompt the user for the application directory (defaulting to "app").
+    -- Returns 'Nothing' if in non-interactive mode, otherwise will always
+    -- return a 'Just' value ('Just []' if no separate application directory).
+    promptUserForApplicationDir :: IO (Maybe [String])
+    promptUserForApplicationDir = fmap (either (:[]) id) <$> maybePrompt
+      flags
+      (promptList
+       ("Application " ++ mainFile ++ "directory")
+       [[defaultApplicationDir], ["src-exe"], []]
+        (Just [defaultApplicationDir])
+       showOption True)
+
+    showOption :: [String] -> String
+    showOption [] = "(none)"
+    showOption (x:_) = x
+
+    -- The name
+    mainFile :: String
     mainFile = case mainIs flags of
       Flag mainPath -> "(" ++ mainPath ++ ") "
       _             -> ""
 
 -- | Try to guess app directory. Could try harder; for the
 --   moment just looks to see whether there is a directory called 'app'.
-guessAppDir :: InitFlags -> IO (Maybe String)
+guessAppDir :: InitFlags -> IO (Maybe [String])
 guessAppDir flags = do
   dir      <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   appIsDir <- doesDirectoryExist (dir </> "app")
   return $ if appIsDir
-             then Just "app"
+             then Just ["app"]
              else Nothing
 
 -- | Ask for the source (library) root directory.
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
-  srcDirs <- return (sourceDirs flags)
-             -- source dir if this is an 'Executable'.
-             ?>> if (packageType flags) == Flag Executable then return (Just []) else return Nothing
-             ?>> fmap (:[]) `fmap` guessSourceDir flags
-             ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
-                      flags
-                      (promptListOptional' "Library source directory"
-                       ["src", "lib", "src-lib"] id))
+  srcDirs <-
+    return (sourceDirs flags)
+    ?>> noSourceDirIfExecutableOnly
+    ?>> guessSourceDir flags
+    ?>> promptUserForSourceDir
+    ?>> setDefault
 
   return $ flags { sourceDirs = srcDirs }
 
+  where
+    -- If the packageType==Executable, then there is no source dir.
+    noSourceDirIfExecutableOnly :: IO (Maybe [String])
+    noSourceDirIfExecutableOnly =
+      if (packageType flags) == Flag Executable
+      then return (Just [])
+      else return Nothing
+
+    -- Set the default source directory.
+    setDefault :: IO (Maybe [String])
+    setDefault = pure (Just [defaultSourceDir])
+
+    -- Prompt the user for the source directory (defaulting to "app").
+    -- Returns 'Nothing' if in non-interactive mode, otherwise will always
+    -- return a 'Just' value ('Just []' if no separate application directory).
+    promptUserForSourceDir :: IO (Maybe [String])
+    promptUserForSourceDir = fmap (either (:[]) id) <$> maybePrompt
+      flags
+      (promptList
+       ("Library source directory")
+       [[defaultSourceDir], ["lib"], ["src-lib"], []]
+        (Just [defaultSourceDir])
+       showOption True)
+
+    showOption :: [String] -> String
+    showOption [] = "(none)"
+    showOption (x:_) = x
+
+
 -- | Try to guess source directory. Could try harder; for the
 --   moment just looks to see whether there is a directory called 'src'.
-guessSourceDir :: InitFlags -> IO (Maybe String)
+guessSourceDir :: InitFlags -> IO (Maybe [String])
 guessSourceDir flags = do
   dir      <-
     maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   srcIsDir <- doesDirectoryExist (dir </> "src")
   return $ if srcIsDir
-             then Just "src"
+             then Just ["src"]
              else Nothing
 
 -- | Check whether a potential source file is located in one of the
