@@ -6,6 +6,7 @@ Welcome to the Cabal User Guide
    :maxdepth: 2
    :numbered:
 
+   getting-started
    intro
    config-and-install
    concepts-and-development
