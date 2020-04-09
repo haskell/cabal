@@ -268,7 +268,7 @@ getVersion flags = do
 getLicense :: InitFlags -> IO InitFlags
 getLicense flags = do
   elic <- return (fmap Right $ flagToMaybe $ license flags)
-      ?>> maybePrompt flags (promptList "Please choose a license" listedLicenses Nothing prettyShow True)
+      ?>> maybePrompt flags (promptList "Please choose a license" listedLicenses (Just SPDX.NONE) prettyShow True)
 
   case elic of
       Nothing          -> return flags { license = NoFlag }
