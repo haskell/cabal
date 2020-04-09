@@ -28,6 +28,7 @@ module Distribution.Client.VCS (
     vcsGit,
     vcsHg,
     vcsSvn,
+    vcsPijul,
   ) where
 
 import Prelude ()
@@ -498,3 +499,147 @@ svnProgram = (simpleProgram "svn") {
         _ -> ""
   }
 
+
+-- | VCS driver for Pijul.
+-- Documentation for Pijul can be found at <https://pijul.org/manual/introduction.html>
+--
+-- 2020-04-09 Oleg:
+--
+--    As far as I understand pijul, there are branches and "tags" in pijul,
+--    but there aren't a "commit hash" identifying an arbitrary state.
+--
+--    One can create `a pijul tag`, which will make a patch hash,
+--    which depends on everything currently in the repository.
+--    I guess if you try to apply that patch, you'll be forced to apply
+--    all the dependencies too. In other words, there are no named tags.
+--
+--    It's not clear to me whether there is an option to
+--    "apply this patch *and* all of its dependencies".
+--    And relatedly, whether how to make sure that there are no other
+--    patches applied.
+--
+--    With branches it's easier, as you can `pull` and `checkout` them,
+--    and they seem to be similar enough. Yet, pijul documentations says
+--
+--    > Note that the purpose of branches in Pijul is quite different from Git,
+--      since Git's "feature branches" can usually be implemented by just
+--      patches.
+--
+--    I guess it means that indeed instead of creating a branch and making PR
+--    in "GitHub" workflow, you'd just create a patch and offer it.
+--    You can do that with `git` too. Push (a branch with) commit to remote
+--    and ask other to cherry-pick that commit. Yet, in git identity of commit
+--    changes when it applied to other trees, where patches in pijul have
+--    will continue to have the same hash.
+--
+--    Unfortunately pijul doesn't talk about conflict resolution.
+--    It seems that you get something like:
+--
+--        % pijul status
+--        On branch merge
+--
+--        Unresolved conflicts:
+--          (fix conflicts and record the resolution with "pijul record ...")
+--
+--                foo
+--
+--        % cat foo
+--        first line
+--        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+--        branch BBB
+--        ================================
+--        branch AAA
+--        <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+--        last line
+--
+--    And then the `pijul dependencies` would draw you a graph like
+--
+--
+--                    ----->  foo on branch B ----->
+--    resolve confict                                  Initial patch
+--                    ----->  foo on branch A ----->
+--
+--    Which is seems reasonable.
+--
+--    So currently, pijul support is very experimental, and most likely
+--    won't work, even the basics are in place. Tests are also written
+--    but disabled, as the branching model differs from `git` one,
+--    for which tests are written.
+--
+vcsPijul :: VCS Program
+vcsPijul =
+    VCS {
+      vcsRepoType = KnownRepoType Pijul,
+      vcsProgram  = pijulProgram,
+      vcsCloneRepo,
+      vcsSyncRepos
+    }
+  where
+    vcsCloneRepo :: Verbosity -- ^ it seems that pijul does not have verbose flag
+                 -> ConfiguredProgram
+                 -> SourceRepositoryPackage f
+                 -> FilePath
+                 -> FilePath
+                 -> [ProgramInvocation]
+    vcsCloneRepo _verbosity prog repo srcuri destdir =
+        [ programInvocation prog cloneArgs ]
+        -- And if there's a tag, we have to do that in a second step:
+     ++ [ (programInvocation prog (checkoutArgs tag)) {
+            progInvokeCwd = Just destdir
+          }
+        | tag <- maybeToList (srpTag repo) ]
+      where
+        cloneArgs  = ["clone", srcuri, destdir]
+                     ++ branchArgs
+        branchArgs = case srpBranch repo of
+          Just b  -> ["--from-branch", b]
+          Nothing -> []
+        checkoutArgs tag = "checkout" : [tag] -- TODO: this probably doesn't work either
+
+    vcsSyncRepos :: Verbosity
+                 -> ConfiguredProgram
+                 -> [(SourceRepositoryPackage f, FilePath)]
+                 -> IO [MonitorFilePath]
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity pijulProg
+                 ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
+
+      vcsSyncRepo verbosity pijulProg primaryRepo primaryLocalDir Nothing
+      sequence_
+        [ vcsSyncRepo verbosity pijulProg repo localDir (Just primaryLocalDir)
+        | (repo, localDir) <- secondaryRepos ]
+      return [ monitorDirectoryExistence dir
+             | dir <- (primaryLocalDir : map snd secondaryRepos) ]
+
+    vcsSyncRepo verbosity pijulProg SourceRepositoryPackage{..} localDir peer = do
+        exists <- doesDirectoryExist localDir
+        if exists
+        then pijul localDir                 ["pull"] -- TODO: this probably doesn't work.
+        else pijul (takeDirectory localDir) cloneArgs
+        pijul localDir checkoutArgs
+      where
+        pijul :: FilePath -> [String] -> IO ()
+        pijul cwd args = runProgramInvocation verbosity $
+                         (programInvocation pijulProg args) {
+                           progInvokeCwd = Just cwd
+                         }
+
+        cloneArgs      = ["clone", loc, localDir]
+                      ++ case peer of
+                           Nothing           -> []
+                           Just peerLocalDir -> [peerLocalDir]
+                         where loc = srpLocation
+        checkoutArgs   = "checkout" :  ["--force", checkoutTarget, "--" ]
+        checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag) -- TODO: this is definitely wrong.
+
+pijulProgram :: Program
+pijulProgram = (simpleProgram "pijul") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      case words str of
+        -- "pijul 0.12.2
+        (_:ver:_) | all isTypical ver -> ver
+        _ -> ""
+  }
+  where
+    isNum     c = c >= '0' && c <= '9'
+    isTypical c = isNum c || c == '.'

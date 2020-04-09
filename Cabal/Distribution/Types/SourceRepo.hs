@@ -126,7 +126,7 @@ instance NFData RepoKind where rnf = genericRnf
 -- obtain and track the repo depend on the repo type.
 --
 data KnownRepoType = Darcs | Git | SVN | CVS
-                   | Mercurial | GnuArch | Bazaar | Monotone
+                   | Mercurial | GnuArch | Bazaar | Monotone | Pijul
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data, Enum, Bounded)
 
 instance Binary KnownRepoType
