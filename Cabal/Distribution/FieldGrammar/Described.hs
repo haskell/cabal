@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveFoldable      #-}
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.FieldGrammar.Described (
@@ -28,6 +25,7 @@ module Distribution.FieldGrammar.Described (
     reOptCommaList,
     -- * Character Sets
     csChar,
+    csAlpha,
     csAlphaNum,
     csUpper,
     csNotSpace,
@@ -125,6 +123,9 @@ reSpacedComma = RESpaces <> reComma <> RESpaces
 
 csChar :: Char -> CS.CharSet
 csChar = CS.singleton
+
+csAlpha :: CS.CharSet
+csAlpha = CS.alpha
 
 csAlphaNum :: CS.CharSet
 csAlphaNum = CS.alphanum

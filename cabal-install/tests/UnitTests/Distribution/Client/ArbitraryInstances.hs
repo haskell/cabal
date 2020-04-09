@@ -152,7 +152,11 @@ arbitraryFlag :: Gen a -> Gen (Flag a)
 arbitraryFlag = liftArbitrary
 
 instance Arbitrary RepoName where
-    arbitrary = RepoName <$> listOf1 (elements
+    arbitrary = RepoName <$> mk where
+      mk = (:) <$> lead <*> rest
+      lead = elements
+        [ c | c <- [ '\NUL' .. '\255' ], isAlpha c || c `elem` "_-."]
+      rest = listOf (elements
         [ c | c <- [ '\NUL' .. '\255' ], isAlphaNum c || c `elem` "_-."])
 
 instance Arbitrary ReportLevel where
