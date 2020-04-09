@@ -1,0 +1,3 @@
+synopsis: `upload --help` now includes `password-command` as a config file option (#5224)
+issues: #5224
+prs: #6609 #6313 #6680
