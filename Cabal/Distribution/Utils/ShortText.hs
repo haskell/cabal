@@ -8,7 +8,7 @@
 --
 -- @
 -- import Distribution.Utils.ShortText (ShortText)
--- import qualifeid Distribution.Utils.ShortText as ShortText
+-- import qualified Distribution.Utils.ShortText as ShortText
 -- @
 module Distribution.Utils.ShortText
     ( -- * 'ShortText' type
