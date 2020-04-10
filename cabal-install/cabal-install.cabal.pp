@@ -475,6 +475,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.GenericInstances
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
+    UnitTests.Distribution.Client.Init.FileCreators
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Store
@@ -515,6 +516,7 @@ Test-Suite unit-tests
         network-uri < 2.6.2.0,
         network,
         tasty >= 1.2.3 && <1.3,
+        tasty-golden >=2.3.1.1 && <2.4,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,

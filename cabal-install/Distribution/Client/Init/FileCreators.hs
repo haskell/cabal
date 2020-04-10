@@ -22,6 +22,9 @@ module Distribution.Client.Init.FileCreators (
   , createMainHs
   , createTestSuiteIfEligible
   , writeCabalFile
+
+  -- * For testing
+  , generateCabalFile
   ) where
 
 import Prelude ()

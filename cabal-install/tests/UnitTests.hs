@@ -17,6 +17,7 @@ import qualified UnitTests.Distribution.Client.Described
 import qualified UnitTests.Distribution.Client.FileMonitor
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
+import qualified UnitTests.Distribution.Client.Init.FileCreators
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.Sandbox.Timestamp
 import qualified UnitTests.Distribution.Client.Store
@@ -55,6 +56,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Client.Glob.tests
   , testGroup "Distribution.Client.GZipUtils"
        UnitTests.Distribution.Client.GZipUtils.tests
+  , testGroup "Distribution.Client.Init.FileCreators"
+       UnitTests.Distribution.Client.Init.FileCreators.tests
   , testGroup "Distribution.Client.Sandbox"
        UnitTests.Distribution.Client.Sandbox.tests
   , testGroup "Distribution.Client.Sandbox.Timestamp"
@@ -95,4 +98,3 @@ main = do
   defaultMainWithIngredients
          (includingOptions extraOptions : defaultIngredients)
          (tests mtimeChange')
-
