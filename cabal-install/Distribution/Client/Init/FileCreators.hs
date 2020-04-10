@@ -496,7 +496,7 @@ generateCabalFile fileName c = trimTrailingWS $
                         (False, _, _)     -> ($$ text "")
                       $
                       comment f <<>> text s <<>> colon
-                                <<>> text (replicate (20 - length s) ' ')
+                                <<>> text (replicate (19 - length s) ' ')
                                 <<>> text (fromMaybe "" . flagToMaybe $ f)
    comment NoFlag    = text "-- "
    comment (Flag "") = text "-- "
