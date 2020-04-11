@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+      xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>1.00</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/getting-started.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/intro.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/config-and-install.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/concepts-and-development.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/cabal-commands.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/cabal-package.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/cabal-project.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/setup-commands.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.50</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/file-format-changelog.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/buildinfo-fields-reference.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/bugs-and-stability.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/nix-integration.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/cabal-projectindex.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.70</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/stable/</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/latest/index.html</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.64</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/cabal-v3.0.0.0/</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.30</priority>
+</url>
+<url>
+  <loc>https://cabal.readthedocs.io/en/cabal-v2.4.1.0/</loc>
+  <lastmod>2020-04-11T12:00:00+00:00</lastmod>
+  <priority>0.30</priority>
+</url>
+</urlset>
