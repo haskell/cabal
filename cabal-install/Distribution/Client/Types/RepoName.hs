@@ -7,7 +7,7 @@ module Distribution.Client.Types.RepoName (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described (Described (..), Regex (..), csAlpha, csAlphaNum, reMunchCS)
+import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..), csAlpha, csAlphaNum, reMunchCS)
 import Distribution.Parsec                 (Parsec (..))
 import Distribution.Pretty                 (Pretty (..))
 

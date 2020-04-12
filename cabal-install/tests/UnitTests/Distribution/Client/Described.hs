@@ -11,7 +11,7 @@ import Test.QuickCheck       (Arbitrary (..), Gen, Property, choose, counterexam
 import Test.Tasty            (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 
-import Distribution.FieldGrammar.Described (Described (..), Regex (..), reComma, reSpacedComma, reSpacedList)
+import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..), reComma, reSpacedComma, reSpacedList)
 import Distribution.Parsec                 (eitherParsec)
 import Distribution.Pretty                 (prettyShow)
 
@@ -97,9 +97,9 @@ genInt lo hi = choose (lo, hi)
 -- Conversion
 -------------------------------------------------------------------------------
 
-convert :: Regex Void -> RE.RE Void
+convert :: GrammarRegex Void -> RE.RE Void
 convert = go id . vacuous where
-    go :: Ord b => (a -> b) -> Regex a -> RE.RE b
+    go :: Ord b => (a -> b) -> GrammarRegex a -> RE.RE b
     go f (REAppend rs)      = foldr (\r acc -> go f r <> acc) RE.Eps rs
     go f (REUnion rs)       = foldr (\r acc -> go f r RE.\/ acc) RE.Null rs
     go _ (RECharSet cs)     = RE.Ch (convertCS cs)
@@ -136,17 +136,17 @@ convert = go id . vacuous where
 
     go _ RETodo             = RE.Null
 
-expandedCommaList :: Regex a -> Regex a
+expandedCommaList :: GrammarRegex a -> GrammarRegex a
 expandedCommaList = REUnion . expandedCommaList'
 
-expandedCommaList' :: Regex a -> [Regex a]
+expandedCommaList' :: GrammarRegex a -> [GrammarRegex a]
 expandedCommaList' r =
     [ REMunch reSpacedComma r
     , reComma <> RESpaces <> REMunch1 reSpacedComma r
     , REMunch1 reSpacedComma r <> RESpaces <> reComma
     ]
 
-expandedOptCommaList :: Regex a -> Regex a
+expandedOptCommaList :: GrammarRegex a -> GrammarRegex a
 expandedOptCommaList r = REUnion $ reSpacedList r : expandedCommaList' r
 
 convertCS :: CS.CharSet -> RE.CharSet

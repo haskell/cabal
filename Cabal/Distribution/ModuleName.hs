@@ -85,7 +85,7 @@ parsecModuleName = state0 DList.empty where
 
 instance Described ModuleName where
     describe _ = REMunch1 (reChar '.') component where
-        component = RECharSet csUpper <> reMunchCS (csAlphaNum <> fromString "_'")
+        component = RECharSet csUpper <> REMunch reEps (REUnion [RECharSet csAlphaNum, RECharSet (fromString "_'")])
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

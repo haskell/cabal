@@ -3,9 +3,9 @@
 {-# LANGUAGE DeriveTraversable   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Distribution.Utils.Regex (
+module Distribution.Utils.GrammarRegex (
     -- * Regular expressions
-    Regex (..),
+    GrammarRegex (..),
     reEps,
     reChar,
     reChars,
@@ -26,31 +26,31 @@ import qualified Distribution.Utils.CharSet as CS
 import qualified Text.PrettyPrint           as PP
 
 -------------------------------------------------------------------------------
--- Regex
+-- GrammarRegex
 -------------------------------------------------------------------------------
 
 -- | Recursive regular expressions tuned for 'Described' use-case.
-data Regex a
-    = REAppend  [Regex a]                 -- ^ append @ab@
-    | REUnion   [Regex a]                 -- ^ union @a|b@
+data GrammarRegex a
+    = REAppend  [GrammarRegex a]          -- ^ append @ab@
+    | REUnion   [GrammarRegex a]          -- ^ union @a|b@
 
     -- repetition
-    | REMunch   (Regex a) (Regex a)       -- ^ star @a*@, with a separator
-    | REMunch1  (Regex a) (Regex a)       -- ^ plus @a+@, with a separator
-    | REMunchR Int (Regex a) (Regex a)    -- ^ 1-n, with a separator
-    | REOpt     (Regex a)                 -- ^ optional @r?@
+    | REMunch   (GrammarRegex a) (GrammarRegex a)       -- ^ star @a*@, with a separator
+    | REMunch1  (GrammarRegex a) (GrammarRegex a)       -- ^ plus @a+@, with a separator
+    | REMunchR Int (GrammarRegex a) (GrammarRegex a)    -- ^ 1-n, with a separator
+    | REOpt     (GrammarRegex a)                        -- ^ optional @r?@
 
-    | REString  String                    -- ^ literal string @abcd@
-    | RECharSet CS.CharSet           -- ^ charset @[:alnum:]@
-    | REVar     a                         -- ^ variable
-    | RENamed   String (Regex a)          -- ^ named expression
-    | RERec     String (Regex (Maybe a))  -- ^ recursive expressions
+    | REString  String                           -- ^ literal string @abcd@
+    | RECharSet CS.CharSet                       -- ^ charset @[:alnum:]@
+    | REVar     a                                -- ^ variable
+    | RENamed   String (GrammarRegex a)          -- ^ named expression
+    | RERec     String (GrammarRegex (Maybe a))  -- ^ recursive expressions
 
     -- cabal syntax specifics
     | RESpaces                            -- ^ zero-or-more spaces
     | RESpaces1                           -- ^ one-or-more spaces
-    | RECommaList (Regex a)               -- ^ comma list (note, leading or trailing commas)
-    | REOptCommaList (Regex a)            -- ^ opt comma list
+    | RECommaList (GrammarRegex a)        -- ^ comma list (note, leading or trailing commas)
+    | REOptCommaList (GrammarRegex a)     -- ^ opt comma list
 
     | RETodo                              -- ^ unspecified
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
@@ -59,15 +59,15 @@ data Regex a
 -- Instances
 -------------------------------------------------------------------------------
 
-instance IsString (Regex a)  where
+instance IsString (GrammarRegex a)  where
     fromString = REString
 
-instance Semigroup (Regex a) where
+instance Semigroup (GrammarRegex a) where
     x <> y = REAppend (unAppend x ++ unAppend y) where
         unAppend (REAppend rs) = rs
         unAppend r             = [r]
 
-instance Monoid (Regex a) where
+instance Monoid (GrammarRegex a) where
     mempty = REAppend []
     mappend = (<>)
 
@@ -75,29 +75,29 @@ instance Monoid (Regex a) where
 -- Smart constructors
 -------------------------------------------------------------------------------
 
-reEps :: Regex a
+reEps :: GrammarRegex a
 reEps = REAppend []
 
-reChar :: Char -> Regex a
+reChar :: Char -> GrammarRegex a
 reChar = RECharSet . CS.singleton
 
-reChars :: [Char] -> Regex a
+reChars :: [Char] -> GrammarRegex a
 reChars = RECharSet . CS.fromList
 
-reMunch1CS :: CS.CharSet -> Regex a
+reMunch1CS :: CS.CharSet -> GrammarRegex a
 reMunch1CS = REMunch1 reEps . RECharSet
 
-reMunchCS :: CS.CharSet -> Regex a
+reMunchCS :: CS.CharSet -> GrammarRegex a
 reMunchCS = REMunch reEps . RECharSet
 
 -------------------------------------------------------------------------------
 -- Variables
 -------------------------------------------------------------------------------
 
-reVar0 :: Regex (Maybe a)
+reVar0 :: GrammarRegex (Maybe a)
 reVar0 = REVar Nothing
 
-reVar1 :: Regex (Maybe (Maybe a))
+reVar1 :: GrammarRegex (Maybe (Maybe a))
 reVar1 = REVar (Just Nothing)
 
 -------------------------------------------------------------------------------
@@ -114,9 +114,9 @@ reVar1 = REVar (Just Nothing)
 -- >>> regexDoc $ REString "foo" <> REString "bar"
 -- \mathop{\mathord{``}\mathtt{foo}\mathord{"}}\mathop{\mathord{``}\mathtt{bar}\mathord{"}}
 --
-regexDoc :: Regex Void -> PP.Doc
+regexDoc :: GrammarRegex Void -> PP.Doc
 regexDoc = go 0 . vacuous where
-    go :: Int -> Regex PP.Doc -> PP.Doc
+    go :: Int -> GrammarRegex PP.Doc -> PP.Doc
     go _ (REAppend [])    = ""
     go d (REAppend rs)    = parensIf (d > 2) $ PP.hcat (map (go 2) rs)
     go d (REUnion [r])    = go d r
@@ -186,6 +186,7 @@ charsetDoc :: CS.CharSet -> PP.Doc
 charsetDoc acs
     | acs == CS.alpha    = terminalDoc "alpha"
     | acs == CS.alphanum = terminalDoc "alpha-num"
+    | acs == CS.upper    = terminalDoc "upper"
 charsetDoc acs = case CS.toIntervalList acs of
     []               -> "\\emptyset"
     [(x,y)] | x == y -> inquotes $ mathtt $ charDoc x
