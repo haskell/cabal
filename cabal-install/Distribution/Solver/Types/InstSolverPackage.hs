@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Distribution.Solver.Types.InstSolverPackage 
+module Distribution.Solver.Types.InstSolverPackage
     ( InstSolverPackage(..)
     ) where
 

@@ -145,7 +145,7 @@ showPackageConstraint pc@(PackageConstraint scope prop) =
 packageConstraintToDependency :: PackageConstraint -> Maybe Dependency
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
-    toDep (PackagePropertyVersion vr) = 
+    toDep (PackagePropertyVersion vr) =
         Just $ Dependency (scopeToPackageName scope) vr (Set.singleton LMainLibName)
     toDep (PackagePropertyInstalled)  = Nothing
     toDep (PackagePropertySource)     = Nothing

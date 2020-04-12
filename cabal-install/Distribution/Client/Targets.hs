@@ -515,7 +515,7 @@ readPackageTarget verbosity = traverse modifyLocation
           _                 -> False
 
     parsePackageDescription' :: BS.ByteString -> Maybe GenericPackageDescription
-    parsePackageDescription' bs = 
+    parsePackageDescription' bs =
         parseGenericPackageDescriptionMaybe (BS.toStrict bs)
 
 -- ------------------------------------------------------------
@@ -703,7 +703,7 @@ fromUserConstraintScope (UserAnyQualifier pn) = ScopeAnyQualifier pn
 data UserConstraint =
     UserConstraint UserConstraintScope PackageProperty
   deriving (Eq, Show, Generic)
-           
+
 instance Binary UserConstraint
 instance Structured UserConstraint
 
@@ -732,7 +732,7 @@ readUserConstraint str =
 instance Text UserConstraint where
   disp (UserConstraint scope prop) =
     dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
-  
+
   parse =
     let parseConstraintScope :: Parse.ReadP a UserConstraintScope
         parseConstraintScope =
@@ -765,7 +765,7 @@ instance Text UserConstraint where
               --    return (UserQualExe pn pn2, pn3)
     in do
       scope <- parseConstraintScope
-                       
+
       -- Package property
       let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
       prop <- ((parse >>= return . PackagePropertyVersion)
@@ -783,6 +783,6 @@ instance Text UserConstraint where
               <++
                 (Parse.skipSpaces1 >> parseFlagAssignment
                >>= return . PackagePropertyFlags)
-    
+
       -- Result
       return (UserConstraint scope prop)

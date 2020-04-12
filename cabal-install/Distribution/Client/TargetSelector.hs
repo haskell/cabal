@@ -87,7 +87,7 @@ import qualified Data.Map.Lazy   as Map.Lazy
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Control.Arrow ((&&&))
-import Control.Monad 
+import Control.Monad
   hiding ( mfilter )
 import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Deprecated.ReadP

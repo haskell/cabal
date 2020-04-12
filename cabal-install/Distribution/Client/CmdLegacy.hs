@@ -16,7 +16,7 @@ import qualified Distribution.Simple.Setup as Setup
 import Distribution.Simple.Command
 import Distribution.Simple.Utils
     ( wrapText )
-import Distribution.Verbosity 
+import Distribution.Verbosity
     ( Verbosity, normal )
 
 import Control.Exception
@@ -50,7 +50,7 @@ wrapperAction command verbosityFlag distPrefFlag =
 
 --
 
-class HasVerbosity a where 
+class HasVerbosity a where
     verbosity :: a -> Verbosity
 
 instance HasVerbosity (Setup.Flag Verbosity) where
@@ -140,7 +140,7 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
         cmd ui = CommandSpec ui (flip commandAddAction action) NormalCommand
 
         newMsg = T.unpack . T.replace "v2-" "new-" . T.pack
-        newUi = origUi 
+        newUi = origUi
             { commandName = newMsg commandName
             , commandUsage = newMsg . commandUsage
             , commandDescription = (newMsg .) <$> commandDescription
@@ -148,7 +148,7 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             }
 
         defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
-        defaultUi = origUi 
+        defaultUi = origUi
             { commandName = defaultMsg commandName
             , commandUsage = defaultMsg . commandUsage
             , commandDescription = (defaultMsg .) <$> commandDescription

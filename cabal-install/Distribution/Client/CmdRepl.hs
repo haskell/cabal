@@ -31,7 +31,7 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), withProjectOrGlobalConfigIgn
          , projectConfigConfigFile )
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.ProjectPlanning 
+import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
@@ -109,7 +109,7 @@ import System.FilePath
 
 type ReplFlags = [String]
 
-data EnvFlags = EnvFlags 
+data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
   , envIgnoreProject :: Flag Bool
@@ -234,7 +234,7 @@ replAction ( configFlags, configExFlags, installFlags
       ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
-    
+
     (baseCtx, targetSelectors, finalizer, replType) <-
       withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
 
@@ -252,38 +252,38 @@ replAction ( configFlags, configExFlags, installFlags
         withInstallPlan (lessVerbose verbosity) baseCtx $ \elaboratedPlan _ -> do
           -- targets should be non-empty map, but there's no NonEmptyMap yet.
           targets <- validatedTargets elaboratedPlan targetSelectors
-          
+
           let
             (unitId, _) = fromMaybe (error "panic: targets should be non-empty") $ safeHead $ Map.toList targets
             originalDeps = installedUnitId <$> InstallPlan.directDeps elaboratedPlan unitId
             oci = OriginalComponentInfo unitId originalDeps
-            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId 
+            pkgId = fromMaybe (error $ "cannot find " ++ prettyShow unitId) $ packageId <$> InstallPlan.lookup elaboratedPlan unitId
             baseCtx' = addDepsToProjectTarget (envPackages envFlags) pkgId baseCtx
 
           return (Just oci, baseCtx')
-          
-    -- Now, we run the solver again with the added packages. While the graph 
+
+    -- Now, we run the solver again with the added packages. While the graph
     -- won't actually reflect the addition of transitive dependencies,
     -- they're going to be available already and will be offered to the REPL
     -- and that's good enough.
     --
-    -- In addition, to avoid a *third* trip through the solver, we are 
+    -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
     (buildCtx, replFlags'') <- withInstallPlan verbosity baseCtx' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx'
-          
+
         -- Recalculate with updated project.
         targets <- validatedTargets elaboratedPlan targetSelectors
 
-        let 
+        let
           elaboratedPlan' = pruneInstallPlanToTargets
                               TargetActionRepl
                               targets
                               elaboratedPlan
           includeTransitive = fromFlagOrDefault True (envIncludeTransitive envFlags)
-        
+
         pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared'
                                           elaboratedPlan'
 
@@ -291,26 +291,26 @@ replAction ( configFlags, configExFlags, installFlags
                                 pkgsBuildStatus elaboratedPlan'
         debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
-        let 
-          buildCtx = ProjectBuildContext 
+        let
+          buildCtx = ProjectBuildContext
             { elaboratedPlanOriginal = elaboratedPlan
             , elaboratedPlanToExecute = elaboratedPlan''
             , elaboratedShared = elaboratedShared'
             , pkgsBuildStatus
             , targetsMap = targets
             }
-          
+
           ElaboratedSharedConfig { pkgConfigCompiler = compiler } = elaboratedShared'
-          
+
           -- First version of GHC where GHCi supported the flag we need.
           -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
           minGhciScriptVersion = mkVersion [7, 6]
 
-          replFlags' = case originalComponent of 
+          replFlags' = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing  -> []
           replFlags'' = case replType of
-            GlobalRepl scriptPath 
+            GlobalRepl scriptPath
               | Just version <- compilerCompatVersion GHC compiler
               , version >= minGhciScriptVersion -> ("-ghci-script" ++ scriptPath) : replFlags'
             _                                   -> replFlags'
@@ -334,7 +334,7 @@ replAction ( configFlags, configExFlags, installFlags
                   mempty -- ClientInstallFlags, not needed here
                   haddockFlags testFlags benchmarkFlags
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
-    
+
     validatedTargets elaboratedPlan targetSelectors = do
       -- Interpret the targets on the command line as repl targets
       -- (as opposed to say build or haddock targets).
@@ -363,7 +363,7 @@ data OriginalComponentInfo = OriginalComponentInfo
   deriving (Show)
 
 -- | Tracks what type of GHCi instance we're creating.
-data ReplType = ProjectRepl 
+data ReplType = ProjectRepl
               | GlobalRepl FilePath -- ^ The 'FilePath' argument is path to a GHCi
                                     --   script responsible for changing to the
                                     --   correct directory. Only works on GHC geq
@@ -397,7 +397,7 @@ withoutProject config verbosity extraArgs = do
       , packageSource        = LocalUnpackedPackage tempDir
       , packageDescrOverride = Nothing
       }
-    genericPackageDescription = emptyGenericPackageDescription 
+    genericPackageDescription = emptyGenericPackageDescription
       & L.packageDescription .~ packageDescription
       & L.condLibrary        .~ Just (CondNode library [baseDep] [])
     packageDescription = emptyPackageDescription
@@ -414,13 +414,13 @@ withoutProject config verbosity extraArgs = do
     pkgId = fakePackageId
 
   writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-  
+
   let ghciScriptPath = tempDir </> "setcwd.ghci"
   cwd <- getCurrentDirectory
   writeFile ghciScriptPath (":cd " ++ cwd)
 
   distDirLayout <- establishDummyDistDirLayout verbosity config tempDir
-  baseCtx <- 
+  baseCtx <-
     establishDummyProjectBaseContext
       verbosity
       config
@@ -438,7 +438,7 @@ addDepsToProjectTarget :: [Dependency]
                        -> PackageId
                        -> ProjectBaseContext
                        -> ProjectBaseContext
-addDepsToProjectTarget deps pkgId ctx = 
+addDepsToProjectTarget deps pkgId ctx =
     (\p -> ctx { localPackages = p }) . fmap addDeps . localPackages $ ctx
   where
     addDeps :: PackageSpecifier UnresolvedSourcePackage
@@ -446,7 +446,7 @@ addDepsToProjectTarget deps pkgId ctx =
     addDeps (SpecificSourcePackage pkg)
       | packageId pkg /= pkgId = SpecificSourcePackage pkg
       | SourcePackage{..} <- pkg =
-        SpecificSourcePackage $ pkg { packageDescription = 
+        SpecificSourcePackage $ pkg { packageDescription =
           packageDescription & (\f -> L.allCondTrees $ traverseCondTreeC f)
                             %~ (deps ++)
         }
@@ -456,8 +456,8 @@ generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> R
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
     exeDeps :: [UnitId]
-    exeDeps = 
-      foldMap 
+    exeDeps =
+      foldMap
         (InstallPlan.foldPlanPackage (const []) elabOrderExeDependencies)
         (InstallPlan.dependencyClosure elaboratedPlan [ociUnitId])
 

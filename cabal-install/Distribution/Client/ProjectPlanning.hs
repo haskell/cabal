@@ -2981,9 +2981,9 @@ newtype CannotPruneDependencies =
 -- less than 1.23.
 --
 -- In cases 1 and 2 we obviously have to build an external Setup.hs script,
--- while in case 4 we can use the internal library API. 
+-- while in case 4 we can use the internal library API.
 --
--- TODO:In case 3 we should fail. We don't know how to talk to 
+-- TODO:In case 3 we should fail. We don't know how to talk to
 -- newer ./Setup.hs
 --
 -- data SetupScriptStyle = ...  -- see ProjectPlanning.Types
