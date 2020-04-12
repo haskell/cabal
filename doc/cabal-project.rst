@@ -17,7 +17,7 @@ project or can be referenced as a unit):
 
 In general, the accepted field names coincide with the accepted command
 line flags that ``cabal install`` and other commands take. For example,
-``cabal v2-configure --enable-profiling`` will write out a project
+``cabal configure --enable-profiling`` will write out a project
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
@@ -28,9 +28,9 @@ options):
 
 2. ``cabal.project`` (the project configuration)
 
-3. ``cabal.project.freeze`` (the output of ``cabal v2-freeze``)
+3. ``cabal.project.freeze`` (the output of ``cabal freeze``)
 
-4. ``cabal.project.local`` (the output of ``cabal v2-configure``)
+4. ``cabal.project.local`` (the output of ``cabal configure``)
 
 Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
 directories when there is none in the current directory.
@@ -112,7 +112,7 @@ directory layout::
     foo-helper/     # local package
     unix/           # vendored external package
 
-All of these options support globs. ``cabal v2-build`` has its own glob
+All of these options support globs. ``cabal build`` has its own glob
 format:
 
 -  Anywhere in a path, as many times as you like, you can specify an
@@ -393,7 +393,7 @@ The following settings control the behavior of the dependency solver:
     dependency solver runtime.
 
     One way to use :cfg-field:`preferences` is to take a known working set of
-    constraints (e.g., via ``cabal v2-freeze``) and record them as
+    constraints (e.g., via ``cabal freeze``) and record them as
     preferences. In this case, the solver will first attempt to use this
     configuration, and if this violates hard constraints, it will try to
     find the minimal number of upgrades to satisfy the hard constraints
@@ -527,7 +527,7 @@ The following settings control the behavior of the dependency solver:
       index-state: @1474739268
 
       -- ISO8601 UTC timestamp format example
-      -- This format is used by 'cabal v2-configure'
+      -- This format is used by 'cabal configure'
       -- for storing `--index-state` values.
       index-state: 2016-09-24T17:47:48Z
 
@@ -680,7 +680,7 @@ feature was added.
     The command line variant of this flag is ``--flags``. There is also
     a shortened form ``-ffoo -f-bar``.
 
-    A common mistake is to say ``cabal v2-build -fhans``, where
+    A common mistake is to say ``cabal build -fhans``, where
     ``hans`` is a flag for a transitive dependency that is not in the
     local package; in this case, the flag will be silently ignored. If
     ``haskell-tor`` is the package you want this flag to apply to, try
@@ -705,7 +705,7 @@ feature was added.
     ``ghc-pkg`` in the same directory as the ``ghc`` directory. If this
     heuristic does not work, set :cfg-field:`with-hc-pkg` explicitly.
 
-    For inplace packages, ``cabal v2-build`` maintains a separate build
+    For inplace packages, ``cabal build`` maintains a separate build
     directory for each version of GHC, so you can maintain multiple
     build trees for different versions of GHC without clobbering each
     other.
@@ -1142,7 +1142,7 @@ Profiling options
     Build libraries and executables with profiling enabled (for
     compilers that support profiling as a separate mode). It is only
     necessary to specify :cfg-field:`profiling` for the specific package you
-    want to profile; ``cabal v2-build`` will ensure that all of its
+    want to profile; ``cabal build`` will ensure that all of its
     transitive dependencies are built with profiling enabled.
 
     To enable profiling for only libraries or executables, see
