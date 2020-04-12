@@ -125,9 +125,9 @@ defaultEnvFlags = EnvFlags
 envOptions :: ShowOrParseArgs -> [OptionField EnvFlags]
 envOptions _ =
   [ option ['b'] ["build-depends"]
-    "Include an additional package in the environment presented to GHCi."
+    "Include additional packages in the environment presented to GHCi."
     envPackages (\p flags -> flags { envPackages = p ++ envPackages flags })
-    (reqArg "DEPENDENCY" dependencyReadE (fmap prettyShow :: [Dependency] -> [String]))
+    (reqArg "DEPENDENCIES" dependenciesReadE (fmap prettyShow :: [Dependency] -> [String]))
   , option [] ["no-transitive-deps"]
     "Don't automatically include transitive dependencies of requested packages."
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
@@ -138,10 +138,10 @@ envOptions _ =
     trueArg
   ]
   where
-    dependencyReadE :: ReadE [Dependency]
-    dependencyReadE =
+    dependenciesReadE :: ReadE [Dependency]
+    dependenciesReadE =
       parsecToReadE
-        ("couldn't parse dependency: " ++)
+        ("couldn't parse dependencies: " ++)
         (parsecCommaList parsec)
 
 replCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
@@ -621,4 +621,3 @@ explanationSingleComponentLimitation =
     "The reason for this limitation is that current versions of ghci do not "
  ++ "support loading multiple components as source. Load just one component "
  ++ "and when you make changes to a dependent component then quit and reload."
-
