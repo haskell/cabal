@@ -66,10 +66,10 @@ cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
 cabalSpecFromVersionDigits v
     | v == [3,4]  = Just CabalSpecV3_4
     | v == [3,0]  = Just CabalSpecV3_0
-    | v >= [3]    = Nothing
-    | v >= [2,3]  = Just CabalSpecV2_4
-    | v >= [2,1]  = Just CabalSpecV2_2
-    | v >= [1,25] = Just CabalSpecV2_0
+    | v == [2,4]  = Just CabalSpecV2_4
+    | v == [2,2]  = Just CabalSpecV2_2
+    | v == [2,0]  = Just CabalSpecV2_0
+    | v >= [1,25] = Nothing
     | v >= [1,23] = Just CabalSpecV1_24
     | v >= [1,21] = Just CabalSpecV1_22
     | v >= [1,19] = Just CabalSpecV1_20

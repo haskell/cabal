@@ -255,6 +255,19 @@ patches = Map.fromList
          (Fingerprint 9222512268705577108 13085311382746579495)
          (Fingerprint 17468921266614378430 13221316288008291892)
          (bsReplace "\xf6" "\xc3\xb6")
+    -- cabal-version: 2
+    , mk "name:                streaming-bracketed\nversion:             0.1.0.0\nsynopsis:            A resource management decorator for \"streaming\".        \ndescription:         This package provides a decorator for the Stream type from\n                     the \"st"
+         (Fingerprint 14670044663153191927 1427497586294143829)
+         (Fingerprint 9233007756654759985 6571998449003682006)
+         (bsReplace "cabal-version:       2" "cabal-version: 2.0")
+    , mk "name:                streaming-bracketed\nversion:             0.1.0.1\nsynopsis:            A resource management decorator for \"streaming\".        \ndescription:         This package provides a decorator for the Stream type from\n                     \"stream"
+         (Fingerprint 7298738862909203815 10141693276062967842)
+         (Fingerprint 1349949738792220441 3593683359695349293)
+         (bsReplace "cabal-version:       2" "cabal-version: 2.0")
+    , mk "name:           zsyntax\nversion:        0.2.0.0\ndescription:    An automated theorem prover for Zsyntax, a\n                logical calculus for molecular biology inspired by linear logic,\n                that can be used to automatically verify biological\n"
+         (Fingerprint 17812331267506881875 3005293725141563863)
+         (Fingerprint 3445957263137759540 12472369104312474458)
+         (bsReplace "cabal-version:  2" "cabal-version: 2.0")
     ]
   where
     mk a b c d = ((a, b), (c, d))

@@ -21,16 +21,16 @@ main = do
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
                 { zJobs =
-                    [ GhcJob "8.10.1" False "--lib-only"          False ["8.8.3"] libSteps -- Note: only library atm.
-                    , GhcJob "8.8.3"  False "--solver-benchmarks" False [] defSteps
-                    , GhcJob "8.6.5"  False ""                    False ["8.8.3"] defSteps
-                    , GhcJob "8.4.4"  False ""                    False ["8.8.3"] defSteps
-                    , GhcJob "8.2.2"  False ""                    False ["8.8.3"] defSteps
-                    , GhcJob "8.0.2"  False ""                    False ["8.8.3"] defSteps
-                    , GhcJob "7.10.3" False ""                    False ["8.8.3"] defSteps
-                    , GhcJob "7.8.4"  False "--lib-only"          False ["8.8.3"] libSteps
-                    , GhcJob "7.6.3"  True  "--lib-only"          False ["8.8.3"] libSteps
-                    , GhcJob "8.8.3"  True  "--lib-only"          True  ["8.8.3"] $
+                    [ GhcJob "8.10.1" False "--lib-only"                False ["8.8.3"] libSteps -- Note: only library atm.
+                    , GhcJob "8.8.3"  False "--solver-benchmarks"       False []        defSteps
+                    , GhcJob "8.6.5"  False "--complete-hackage-tests"  False ["8.8.3"] defSteps
+                    , GhcJob "8.4.4"  False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "8.2.2"  False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "8.0.2"  False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "7.10.3" False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "7.8.4"  False "--lib-only"                False ["8.8.3"] libSteps
+                    , GhcJob "7.6.3"  True  "--lib-only"                False ["8.8.3"] libSteps
+                    , GhcJob "8.8.3"  True  "--lib-only"                True  ["8.8.3"] $
                         libSteps ++
                         [ "lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4"
                         , "lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2"
