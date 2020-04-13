@@ -30,8 +30,6 @@ module Distribution.Client.Setup
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
-    , upgradeCommand
-    , uninstallCommand
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
@@ -45,7 +43,6 @@ module Distribution.Client.Setup
     , runCommand
     , initCommand, initOptions, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..)
-    , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..), defaultExecFlags
@@ -1376,18 +1373,6 @@ updateCommand = CommandUI {
 -- * Other commands
 -- ------------------------------------------------------------
 
-upgradeCommand  :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                             , HaddockFlags, TestFlags, BenchmarkFlags
-                             )
-upgradeCommand = configureCommand {
-    commandName         = "upgrade",
-    commandSynopsis     = "(command disabled, use install instead)",
-    commandDescription  = Nothing,
-    commandUsage        = usageFlagsOrPackages "upgrade",
-    commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty),
-    commandOptions      = commandOptions installCommand
-  }
-
 cleanCommand :: CommandUI CleanFlags
 cleanCommand = Cabal.cleanCommand
   { commandUsage = \pname ->
@@ -1417,17 +1402,6 @@ formatCommand = CommandUI {
     commandDescription  = Nothing,
     commandNotes        = Nothing,
     commandUsage        = usageAlternatives "format" ["[FILE]"],
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> []
-  }
-
-uninstallCommand  :: CommandUI (Flag Verbosity)
-uninstallCommand = CommandUI {
-    commandName         = "uninstall",
-    commandSynopsis     = "Warn about 'uninstall' not being implemented.",
-    commandDescription  = Nothing,
-    commandNotes        = Nothing,
-    commandUsage        = usageAlternatives "uninstall" ["PACKAGES"],
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
   }
@@ -2511,41 +2485,6 @@ registerCommand = Cabal.registerCommand
  { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-register [FLAGS]\n" }
 
 -- ------------------------------------------------------------
--- * Win32SelfUpgrade flags
--- ------------------------------------------------------------
-
-data Win32SelfUpgradeFlags = Win32SelfUpgradeFlags {
-  win32SelfUpgradeVerbosity :: Flag Verbosity
-} deriving Generic
-
-defaultWin32SelfUpgradeFlags :: Win32SelfUpgradeFlags
-defaultWin32SelfUpgradeFlags = Win32SelfUpgradeFlags {
-  win32SelfUpgradeVerbosity = toFlag normal
-}
-
-win32SelfUpgradeCommand :: CommandUI Win32SelfUpgradeFlags
-win32SelfUpgradeCommand = CommandUI {
-  commandName         = "win32selfupgrade",
-  commandSynopsis     = "Self-upgrade the executable on Windows",
-  commandDescription  = Nothing,
-  commandNotes        = Nothing,
-  commandUsage        = \pname ->
-    "Usage: " ++ pname ++ " win32selfupgrade PID PATH\n",
-  commandDefaultFlags = defaultWin32SelfUpgradeFlags,
-  commandOptions      = \_ ->
-      [optionVerbosity win32SelfUpgradeVerbosity
-       (\v flags -> flags { win32SelfUpgradeVerbosity = v})
-      ]
-}
-
-instance Monoid Win32SelfUpgradeFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup Win32SelfUpgradeFlags where
-  (<>) = gmappend
-
--- ------------------------------------------------------------
 -- * ActAsSetup flags
 -- ------------------------------------------------------------
 
@@ -2935,11 +2874,6 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
          (flagToList . fmap display))
 
   ]
-
-usageFlagsOrPackages :: String -> String -> String
-usageFlagsOrPackages name pname =
-     "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
-  ++ "   or: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n"
 
 usagePackages :: String -> String -> String
 usagePackages name pname =

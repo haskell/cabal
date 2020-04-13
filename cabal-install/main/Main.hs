@@ -24,7 +24,7 @@ import Distribution.Client.Setup
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
          , buildCommand, replCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
-         , installCommand, upgradeCommand, uninstallCommand
+         , installCommand
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , genBoundsCommand
@@ -39,7 +39,6 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
-         , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , ActAsSetupFlags(..), actAsSetupCommand
          , SandboxFlags(..), sandboxCommand
          , ExecFlags(..), execCommand
@@ -138,7 +137,6 @@ import Distribution.Client.Types.Credentials  (Password (..))
 import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
-import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
                                               ,relaxEncodingErrors
                                               )
@@ -273,10 +271,7 @@ mainWorker args = do
       , regularCmd genBoundsCommand genBoundsAction
       , regularCmd outdatedCommand outdatedAction
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
-      , hiddenCmd  uninstallCommand uninstallAction
       , hiddenCmd  formatCommand formatAction
-      , hiddenCmd  upgradeCommand upgradeAction
-      , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
@@ -865,24 +860,6 @@ updateAction updateFlags extraArgs globalFlags = do
   withRepoContext verbosity globalFlags' $ \repoContext ->
     update verbosity updateFlags repoContext
 
-upgradeAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                 , HaddockFlags, TestFlags, BenchmarkFlags )
-              -> [String] -> Action
-upgradeAction (configFlags, _, _, _, _, _) _ _ = die' verbosity $
-    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
- ++ "You can install the latest version of a package using 'cabal install'. "
- ++ "The 'cabal upgrade' command has been removed because people found it "
- ++ "confusing and it often led to broken packages.\n"
- ++ "If you want the old upgrade behaviour then use the install command "
- ++ "with the --upgrade-dependencies flag (but check first with --dry-run "
- ++ "to see what would happen). This will try to pick the latest versions "
- ++ "of all dependencies, rather than the usual behaviour of trying to pick "
- ++ "installed versions of all dependencies. If you do use "
- ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
- ++ "packages (e.g. by using appropriate --constraint= flags)."
- where
-  verbosity = fromFlag (configVerbosity configFlags)
-
 fetchAction :: FetchFlags -> [String] -> Action
 fetchAction fetchFlags extraArgs globalFlags = do
   let verbosity = fromFlag (fetchVerbosity fetchFlags)
@@ -1035,18 +1012,6 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   -- Uses 'writeFileAtomic' under the hood.
   writeGenericPackageDescription path pkgDesc
 
-uninstallAction :: Flag Verbosity -> [String] -> Action
-uninstallAction verbosityFlag extraArgs _globalFlags = do
-  let verbosity = fromFlag verbosityFlag
-      package = case extraArgs of
-        p:_ -> p
-        _   -> "PACKAGE_NAME"
-  die' verbosity $ "This version of 'cabal-install' does not support the 'uninstall' "
-    ++ "operation. "
-    ++ "It will likely be implemented at some point in the future; "
-    ++ "in the meantime you're advised to use either 'ghc-pkg unregister "
-    ++ package ++ "' or 'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
-
 reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
   let verbosity = fromFlag (reportVerbosity reportFlags)
@@ -1186,14 +1151,6 @@ userConfigAction ucflags extraArgs globalFlags = do
     [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"
     _  -> die' verbosity $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
   where configFile = getConfigFilePath (globalConfigFile globalFlags)
-
--- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
---
-win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> Action
-win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
-  let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
-  Win32SelfUpgrade.deleteOldExeFile verbosity (fromMaybe (error $ "panic! read pid=" ++ show pid) $ readMaybe pid) path -- TODO: eradicateNoParse
-win32SelfUpgradeAction _ _ _ = return ()
 
 -- | Used as an entry point when cabal-install needs to invoke itself
 -- as a setup script. This can happen e.g. when doing parallel builds.
