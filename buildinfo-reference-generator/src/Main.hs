@@ -25,7 +25,7 @@ import qualified Text.PrettyPrint as PP
 import qualified Zinza as Z
 
 import Distribution.FieldGrammar.Described
-import Distribution.Utils.Regex
+import Distribution.Utils.GrammarRegex
 
 import Distribution.ModuleName         (ModuleName)
 import Distribution.Types.Version      (Version)
@@ -78,7 +78,7 @@ main = do
           putStrLn "Usage: generator <tmpl>"
           exitFailure
 
-zproduction :: String -> Regex Void -> String -> ZProduction
+zproduction :: String -> GrammarRegex Void -> String -> ZProduction
 zproduction name re desc = ZProduction
     { zprodName        = name
     , zprodSyntax      = show (regexDoc re')
@@ -90,17 +90,17 @@ zproduction name re desc = ZProduction
         _           -> re
 
 -- also in UnitTests.Distribution.Described
-expandedCommaList :: Regex a -> Regex a
+expandedCommaList :: GrammarRegex a -> GrammarRegex a
 expandedCommaList = REUnion . expandedCommaList'
 
-expandedCommaList' :: Regex a -> [Regex a]
+expandedCommaList' :: GrammarRegex a -> [GrammarRegex a]
 expandedCommaList' r =
     [ REMunch reSpacedComma r
     , reComma <> RESpaces <> REMunch1 reSpacedComma r
     , REMunch1 reSpacedComma r <> RESpaces <> reComma
     ]
 
-expandedOptCommaList :: Regex a -> Regex a
+expandedOptCommaList :: GrammarRegex a -> GrammarRegex a
 expandedOptCommaList r = REUnion $ reSpacedList r : expandedCommaList' r
 
 -------------------------------------------------------------------------------

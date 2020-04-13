@@ -143,7 +143,7 @@ module-name
     Haskell module name as recognized by Cabal parser.
 
     .. math::
-        \mathsf{\color{red}{TODO}}
+        {\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 version
     Version is to first approximation numbers separated by dots, where leading zero is not allowed and each version digit is consists at most of nine characters.
@@ -190,14 +190,14 @@ autogen-modules
     * Documentation of :pkg-field:`autogen-modules`
 
     .. math::
-        \mathrm{commalist}\mathsf{\color{red}{TODO}}
+        \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 build-depends
     * Monoidal field
     * Documentation of :pkg-field:`build-depends`
 
     .. math::
-        \mathrm{commalist}\left(\mathop{\mathit{pkg\text{-}name}}{\left(\circ\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\circ\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ\mathrm{commalist}\mathop{\mathit{unqual\text{-}name}}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\circ\mathop{\mathit{version\text{-}range}}\right)}^?\right)
+        \mathrm{commalist}\left(\mathop{\mathit{pkg\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{unqual\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\bullet\mathop{\mathit{version\text{-}range}}\right)}^?\right)
 
 build-tool-depends
     * Monoidal field
@@ -473,7 +473,7 @@ other-modules
     * Documentation of :pkg-field:`other-modules`
 
     .. math::
-        \mathrm{commalist}\mathsf{\color{red}{TODO}}
+        \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 pkgconfig-depends
     * Monoidal field
@@ -488,7 +488,7 @@ virtual-modules
     * Documentation of :pkg-field:`virtual-modules`
 
     .. math::
-        \mathrm{commalist}\mathsf{\color{red}{TODO}}
+        \mathrm{commalist}\left({\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}\right)
 
 
 Package description fields
@@ -511,7 +511,7 @@ build-type
 
 cabal-version
     * Optional field
-    * Default: ``-any``
+    * Default: ``>=1.0``
     * Documentation of :pkg-field:`cabal-version`
 
     .. math::
@@ -637,7 +637,7 @@ test-module
     * Documentation of :pkg-field:`test-module`
 
     .. math::
-        \mathsf{\color{red}{TODO}}
+        {\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 type
     * Optional field

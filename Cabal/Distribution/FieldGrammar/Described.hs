@@ -4,7 +4,7 @@ module Distribution.FieldGrammar.Described (
     Described (..),
     describeDoc,
     -- * Regular expressions
-    Regex (..),
+    GrammarRegex (..),
     reEps,
     reChar,
     reChars,
@@ -38,7 +38,7 @@ import Prelude ()
 import Distribution.Parsec (Parsec)
 import Distribution.Pretty (Pretty)
 
-import Distribution.Utils.Regex
+import Distribution.Utils.GrammarRegex
 
 import qualified Distribution.Utils.CharSet as CS
 import qualified Text.PrettyPrint           as PP
@@ -46,7 +46,7 @@ import qualified Text.PrettyPrint           as PP
 -- | Class describing the pretty/parsec format of a.
 class (Pretty a, Parsec a) => Described a where
     -- | A pretty document of "regex" describing the field format
-    describe :: proxy a -> Regex void
+    describe :: proxy a -> GrammarRegex void
 
 -- | Pretty-print description.
 --
@@ -66,20 +66,20 @@ instance Described a => Described (Identity a) where
 -- Lists
 ------------------------------------------------------------------------------
 
-reSpacedList :: Regex a -> Regex a
+reSpacedList :: GrammarRegex a -> GrammarRegex a
 reSpacedList = REMunch RESpaces1
 
-reCommaList :: Regex a -> Regex a
+reCommaList :: GrammarRegex a -> GrammarRegex a
 reCommaList = RECommaList
 
-reOptCommaList :: Regex a -> Regex a
+reOptCommaList :: GrammarRegex a -> GrammarRegex a
 reOptCommaList = REOptCommaList
 
 -------------------------------------------------------------------------------
 -- Specific grammars
 -------------------------------------------------------------------------------
 
-reHsString :: Regex a
+reHsString :: GrammarRegex a
 reHsString = RENamed "hs-string" impl  where
     impl = reChar '"' <> REMunch reEps (REUnion [strChar, escChar]) <> reChar '"'
     strChar = RECharSet $ CS.difference CS.universe (CS.fromList "\"\\")
@@ -95,7 +95,7 @@ reHsString = RENamed "hs-string" impl  where
         , REUnion ["\\NUL", RENamed "ascii" "\\NUL"] -- TODO
         ]
 
-reUnqualComponent :: Regex a
+reUnqualComponent :: GrammarRegex a
 reUnqualComponent = RENamed "unqual-name" $
     REMunch1 (reChar '-') component
   where
@@ -108,13 +108,13 @@ reUnqualComponent = RENamed "unqual-name" $
         <> RECharSet CS.alpha
         <> REMunch reEps (RECharSet csAlphaNum)
 
-reDot :: Regex a
+reDot :: GrammarRegex a
 reDot = reChar '.'
 
-reComma :: Regex a
+reComma :: GrammarRegex a
 reComma = reChar ','
 
-reSpacedComma :: Regex a
+reSpacedComma :: GrammarRegex a
 reSpacedComma = RESpaces <> reComma <> RESpaces
 
 -------------------------------------------------------------------------------

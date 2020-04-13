@@ -71,7 +71,7 @@ class    Sep sep  where
 
     parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
 
-    describeSep :: Proxy sep -> Regex a -> Regex a
+    describeSep :: Proxy sep -> GrammarRegex a -> GrammarRegex a
 
 instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
