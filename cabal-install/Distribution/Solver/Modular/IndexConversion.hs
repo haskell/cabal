@@ -2,12 +2,12 @@ module Distribution.Solver.Modular.IndexConversion
     ( convPIs
     ) where
 
-import Data.List as L
+import qualified Data.List as L
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe
+import Data.Maybe (mapMaybe, fromMaybe, maybeToList)
 import Data.Monoid as Mon
-import Data.Set as S
+import qualified Data.Set as S
 
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
@@ -307,7 +307,7 @@ flagInfo (StrongFlags strfl) =
 
 -- | Internal package names, which should not be interpreted as true
 -- dependencies.
-type IPNs = Set PN
+type IPNs = S.Set PN
 
 -- | Convenience function to delete a 'Dependency' if it's
 -- for a 'PN' that isn't actually real.

@@ -47,15 +47,21 @@ jobs:
           git fetch origin $GITHUB_REF:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.10.1 -v --lib-only -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.10.1 -v --lib-only -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s print-tool-versions
+      - name: Validate make-cabal-install-dev
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s make-cabal-install-dev
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.10.1 -v --lib-only -s build
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.10.1 -v --lib-only -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.10.1 -v --lib-only -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s lib-suite
+      - name: Validate cli-tests
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s cli-tests
+      - name: Validate cli-suite
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s cli-suite
   validate-8_8_3:
     name: validate.sh ghc-8.8.3
     runs-on: ubuntu-18.04

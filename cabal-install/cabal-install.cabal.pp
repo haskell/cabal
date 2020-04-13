@@ -18,7 +18,7 @@ Version:            3.3.0.0
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.14,
+        base       >= 4.8      && < 4.15,
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
@@ -43,7 +43,7 @@ Version:            3.3.0.0
         time       >= 1.5.0.1  && < 1.10,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.6.0.0 && < 0.7,
+        hackage-security >= 0.6.0.1 && < 0.7,
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2
 

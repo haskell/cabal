@@ -5,7 +5,8 @@ cabal-version: >= 1.2
 
 library
   exposed-modules: Q
-  build-depends: base, filepath
+  -- we rely that filepath has filepath-tests component
+  build-depends: base, filepath >=1.4.0.0
 
 executable buildable-false
   main-is: Main.hs

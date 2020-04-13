@@ -57,4 +57,4 @@ RUN     cabal v2-install -w ghc-8.10.1 --lib \
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh --lib-only -w ghc-8.10.1 -v
+RUN     sh ./validate.sh -w ghc-8.10.1 -v
