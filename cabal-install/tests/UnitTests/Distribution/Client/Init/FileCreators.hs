@@ -39,6 +39,7 @@ import Language.Haskell.Extension ( Language(..) )
 tests :: [TestTree]
 tests = [ testGroup "cabal init goldens"
           [ checkCabalFileGolden exeFlags "exe-only-golden.cabal"
+          , checkCabalFileGolden libAndExeFlags "lib-and-exe-golden.cabal"
           , checkCabalFileGolden libExeAndTestFlags "lib-exe-and-test-golden.cabal"
           ]
         ]
@@ -106,6 +107,29 @@ exeFlags = baseFlags {
     packageType = Flag Executable
   , mainIs = Flag "Main.hs"
   , applicationDirs = Just ["app"]
+  }
+
+
+-- ==================================================
+-- Simple lib and exe (as created by `cabal init --libandexe`).
+--
+-- Specifically, having 'exposedModules = Just ["MyLib"]' is a special
+-- case which results in the executable depending on the library from
+-- the same package, i.e. 'build-depends = foo' with no version
+-- constraints.
+
+libAndExeFlags :: InitFlags
+libAndExeFlags = baseFlags {
+  -- Create a library and executable
+    packageType = Flag LibraryAndExecutable
+
+  -- Main living in app/Main.hs.
+  , mainIs = Flag "Main.hs"
+  , applicationDirs = Just ["app"]
+
+  -- Library sources live in src/ and expose the module MyLib.
+  , sourceDirs = Just ["src"]
+  , exposedModules = Just (map ModuleName.fromString ["MyLib"])
   }
 
 
