@@ -15,12 +15,9 @@ module Distribution.Client.Utils.Json
     )
     where
 
-import Data.Char
-import Data.Int
-import Data.String
-import Data.Word
-import Data.List
-import Data.Monoid
+import Distribution.Client.Compat.Prelude
+
+import Data.Char (intToDigit)
 
 import Data.ByteString.Builder (Builder)
 import qualified Data.ByteString.Builder as BB
@@ -135,13 +132,13 @@ encodeArrayBB :: [Value] -> Builder
 encodeArrayBB [] = "[]"
 encodeArrayBB jvs = BB.char8 '[' <> go jvs <> BB.char8 ']'
   where
-    go = Data.Monoid.mconcat . intersperse (BB.char8 ',') . map encodeValueBB
+    go = mconcat . intersperse (BB.char8 ',') . map encodeValueBB
 
 encodeObjectBB :: Object -> Builder
 encodeObjectBB [] = "{}"
 encodeObjectBB jvs = BB.char8 '{' <> go jvs <> BB.char8 '}'
   where
-    go = Data.Monoid.mconcat . intersperse (BB.char8 ',') . map encPair
+    go = mconcat . intersperse (BB.char8 ',') . map encPair
     encPair (l,x) = encodeStringBB l <> BB.char8 ':' <> encodeValueBB x
 
 encodeStringBB :: String -> Builder

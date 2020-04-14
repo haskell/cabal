@@ -665,7 +665,7 @@ withIndexEntries
     -> ([IndexCacheEntry] -> IO a)
     -> ([NoIndexCacheEntry] -> IO a)
     -> IO a
-withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{..}) callback _ =
+withIndexEntries _ (RepoIndex repoCtxt repo@RepoSecure{}) callback _ =
     repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
       Sec.withIndex repoSecure $ \Sec.IndexCallbacks{..} -> do
         -- Incrementally (lazily) read all the entries in the tar file in order,

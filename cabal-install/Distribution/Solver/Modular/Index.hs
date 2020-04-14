@@ -6,9 +6,11 @@ module Distribution.Solver.Modular.Index
     , mkIndex
     ) where
 
-import Data.List as L
-import Data.Map as M
 import Prelude hiding (pi)
+
+import Data.Map (Map)
+import qualified Data.List as L
+import qualified Data.Map as M
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
