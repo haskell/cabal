@@ -9,9 +9,9 @@ module Distribution.Solver.Modular.Solver
     , PruneAfterFirstSuccess(..)
     ) where
 
-import Data.Map as M
-import Data.List as L
-import Data.Set as S
+import qualified Data.Map as M
+import qualified Data.List as L
+import qualified Data.Set as S
 import Distribution.Verbosity
 
 import Distribution.Compiler (CompilerInfo)
@@ -91,8 +91,8 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> Index                                -- ^ all available packages as an index
       -> PkgConfigDb                          -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
-      -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
-      -> Set PN                               -- ^ global goals
+      -> M.Map PN [LabeledPackageConstraint]  -- ^ global constraints
+      -> S.Set PN                             -- ^ global goals
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
@@ -232,7 +232,7 @@ instance GSimpleTree (Tree d c) where
 
       -- Show conflict set
       goCS :: ConflictSet -> String
-      goCS cs = "{" ++ (intercalate "," . L.map showVar . CS.toList $ cs) ++ "}"
+      goCS cs = "{" ++ (L.intercalate "," . L.map showVar . CS.toList $ cs) ++ "}"
 #endif
 
 -- | Replace all goal reasons with a dummy goal reason in the tree

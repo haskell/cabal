@@ -19,11 +19,12 @@ on:
       - created
 
 jobs:
-  validate-8_8_2:
-    name: validate.sh ghc-8.8.2
+  validate-8_10_1:
+    name: validate.sh ghc-8.10.1
     runs-on: ubuntu-18.04
+    needs: validate-8_8_3
     container:
-      image: phadej/ghc:8.8.2-bionic
+      image: phadej/ghc:8.10.1-bionic
     steps:
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
@@ -39,28 +40,34 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s print-tool-versions
       - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s make-cabal-install-dev
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s make-cabal-install-dev
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s build
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s lib-suite
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s cli-tests
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s cli-tests
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.2 -v --solver-benchmarks -s cli-suite
-  validate-8_8_1:
-    name: validate.sh ghc-8.8.1
+        run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s cli-suite
+  validate-8_8_3:
+    name: validate.sh ghc-8.8.3
     runs-on: ubuntu-18.04
     container:
-      image: phadej/ghc:8.8.1-bionic
+      image: phadej/ghc:8.8.3-bionic
     steps:
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
@@ -76,27 +83,33 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s print-tool-versions
       - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s make-cabal-install-dev
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s make-cabal-install-dev
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s build
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s lib-suite
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s cli-tests
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s cli-tests
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --solver-benchmarks -s cli-suite
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s cli-suite
   validate-8_6_5:
     name: validate.sh ghc-8.6.5
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:8.6.5-bionic
     steps:
@@ -114,27 +127,33 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s print-tool-versions
       - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s make-cabal-install-dev
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s make-cabal-install-dev
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s build
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s lib-suite
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s cli-tests
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s cli-tests
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s cli-suite
+        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s cli-suite
   validate-8_4_4:
     name: validate.sh ghc-8.4.4
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:8.4.4-bionic
     steps:
@@ -152,7 +171,13 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s print-config
       - name: Validate print-tool-versions
@@ -172,7 +197,7 @@ jobs:
   validate-8_2_2:
     name: validate.sh ghc-8.2.2
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:8.2.2-bionic
     steps:
@@ -190,7 +215,13 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s print-config
       - name: Validate print-tool-versions
@@ -210,7 +241,7 @@ jobs:
   validate-8_0_2:
     name: validate.sh ghc-8.0.2
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:8.0.2-bionic
     steps:
@@ -228,7 +259,13 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.0.2 -v  -s print-config
       - name: Validate print-tool-versions
@@ -248,7 +285,7 @@ jobs:
   validate-7_10_3:
     name: validate.sh ghc-7.10.3
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:7.10.3-bionic
     steps:
@@ -266,7 +303,13 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.10.3 -v  -s print-config
       - name: Validate print-tool-versions
@@ -286,7 +329,7 @@ jobs:
   validate-7_8_4:
     name: validate.sh ghc-7.8.4
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:7.8.4-bionic
     steps:
@@ -304,7 +347,13 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s print-config
       - name: Validate print-tool-versions
@@ -318,7 +367,7 @@ jobs:
   validate-7_6_3:
     name: validate.sh ghc-7.6.3
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
       image: phadej/ghc:7.6.3-xenial
     steps:
@@ -340,7 +389,13 @@ jobs:
         run: apt-get install -y ghc-7.6.3-dyn
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s print-config
       - name: Validate print-tool-versions
@@ -351,12 +406,12 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s lib-tests
       - name: Validate lib-suite
         run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s lib-suite
-  validate-8_8_1-old:
+  validate-8_8_3-old:
     name: validate.sh old GHCs
     runs-on: ubuntu-18.04
-    needs: validate-8_8_1
+    needs: validate-8_8_3
     container:
-      image: phadej/ghc:8.8.1-xenial
+      image: phadej/ghc:8.8.3-xenial
     steps:
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
@@ -373,25 +428,31 @@ jobs:
       - name: apt-get update
         run: apt-get update
       - name: Install dynamic libraries
-        run: apt-get install -y ghc-8.8.1-dyn
+        run: apt-get install -y ghc-8.8.3-dyn
       - name: Install extra compilers
         run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s print-tool-versions
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s build
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s lib-suite
       - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4
       - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2
       - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2
-        run: sh validate.sh -j 2 -w ghc-8.8.1 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2
+        run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2

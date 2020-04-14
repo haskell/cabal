@@ -666,7 +666,7 @@ reinstallAddSourceDeps :: Verbosity
                           -> FilePath
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity configFlags' configExFlags
-                       installFlags globalFlags sandboxDir = topHandler' $ do
+                       installFlags globalFlags sandboxDir = topHandlerWith errorMsg $ do
   let sandboxDistPref     = sandboxBuildDir sandboxDir
       configFlags         = configFlags'
                             { configDistPref  = Flag sandboxDistPref }
@@ -710,7 +710,8 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
         ++ "offending packages or recreating the sandbox."
       logMsg message rest = debugNoWrap verbosity message >> rest
 
-      topHandler' = topHandlerWith $ \_ -> do
+      errorMsg :: a -> IO WereDepsReinstalled
+      errorMsg _ = do
         warn verbosity "Couldn't reinstall some add-source dependencies."
         -- Here we can't know whether any deps have been reinstalled, so we have
         -- to be conservative.

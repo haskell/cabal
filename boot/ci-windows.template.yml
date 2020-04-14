@@ -36,13 +36,13 @@ jobs:
       - name: Install msys2
         run: choco install -y msys2
       - name: Install Cabal
-        run: choco install -y cabal --version 3.0.0.0
+        run: choco install -y cabal --version 3.2.0.0
       - name: Install GHC
-        run: choco install -y ghc --version 8.6.5
+        run: choco install -y ghc --version {{ job.version }}
       - name: Set PATH
         run: |
           [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0"
+          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.2.0.0"
           Write-Host "::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-{{ job.version }}\bin"
       - name: Print versions
         run: |
@@ -55,7 +55,7 @@ jobs:
           key: linux-store-meta
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: make cabal-install-dev
         run: runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
       # We cannot ask for all dependencies, but we can for Cabal.
