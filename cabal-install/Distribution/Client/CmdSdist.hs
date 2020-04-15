@@ -237,7 +237,10 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
         (norm NoExec -> nonexec, norm Exec -> exec) <-
            listPackageSources verbosity (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
 
+        print $ map snd exec
+        print $ map snd nonexec
         let files =  nub . sortOn snd $ nonexec ++ exec
+        print files
 
         case format of
             SourceList nulSep -> do

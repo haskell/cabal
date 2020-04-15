@@ -15,10 +15,11 @@ module Distribution.Solver.Modular.Validate (validateTree) where
 import Control.Applicative
 import Control.Monad.Reader hiding (sequence)
 import Data.Function (on)
-import Data.List as L
-import Data.Set as S
 import Data.Traversable
 import Prelude hiding (sequence)
+
+import qualified Data.List as L
+import qualified Data.Set as S
 
 import Language.Haskell.Extension (Extension, Language)
 

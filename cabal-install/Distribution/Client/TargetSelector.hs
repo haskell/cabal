@@ -222,7 +222,7 @@ readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
                         -> Maybe ComponentKindFilter
                         -> [String]
                         -> m (Either [TargetSelectorProblem] [TargetSelector])
-readTargetSelectorsWith dirActions@DirActions{..} pkgs mfilter targetStrs =
+readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter targetStrs =
     case parseTargetStrings targetStrs of
       ([], usertargets) -> do
         usertargets' <- mapM (getTargetStringFileStatus dirActions) usertargets

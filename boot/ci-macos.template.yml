@@ -21,12 +21,15 @@ on:
 jobs:
 {% for job in macosJobs %}
   validate-macos-{{ mangleVersion job.version }}:
-    name: validate.sh ghc-{{job.version}}
+    name: validate.sh macos ghc-{{job.version}}
     runs-on: macos-latest
 {% for needs in job.needs %}
     needs: validate-macos-{{ mangleVersion needs }}
 {% endfor %}
     steps:
+      - name: Install Autotools
+        run: |
+          brew install automake
       - name: Install GHC
         run: |
           cd $(mktemp -d)
@@ -55,7 +58,7 @@ jobs:
           cd $(mktemp -d)
 {# aeson +fast, so we don't wait for -O2 #}
           cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 {% for step in job.steps %}
       - name: Validate {{step}}
         run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}

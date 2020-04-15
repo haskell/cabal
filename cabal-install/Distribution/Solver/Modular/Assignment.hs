@@ -9,10 +9,11 @@ module Distribution.Solver.Modular.Assignment
 import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (pi)
 
-import Data.Array as A
-import Data.List as L
-import Data.Map as M
-import Data.Maybe
+import qualified Data.Array as A
+import qualified Data.List as L
+import qualified Data.Map as M
+
+import Data.Maybe (fromJust)
 
 import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment) -- from Cabal
 
@@ -79,7 +80,7 @@ toCPs (A pa fa sa) rdm =
     -- Dependencies per package.
     depp :: QPN -> [(Component, PI QPN)]
     depp qpn = let v :: Vertex
-                   v   = fromJust (cvm qpn)
+                   v   = fromJust (cvm qpn) -- TODO: why this is safe?
                    dvs :: [(Component, Vertex)]
                    dvs = tg A.! v
                in L.map (\ (comp, dv) -> case vm dv of (_, x, _) -> (comp, PI x (pa M.! x))) dvs

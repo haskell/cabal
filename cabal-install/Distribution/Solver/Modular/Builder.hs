@@ -19,10 +19,10 @@ module Distribution.Solver.Modular.Builder (
 -- flag-guarded dependencies, we cannot introduce them immediately. Instead, we
 -- store the entire dependency.
 
-import Data.List as L
-import Data.Map as M
-import Data.Set as S
-import Prelude hiding (sequence, mapM)
+import qualified Data.List as L
+import qualified Data.Map as M
+import qualified Data.Set as S
+import Prelude
 
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
@@ -55,7 +55,7 @@ data BuildState = BS {
 }
 
 -- | Map of available linking targets.
-type LinkingState = Map (PN, I) [PackagePath]
+type LinkingState = M.Map (PN, I) [PackagePath]
 
 -- | Extend the set of open goals with the new goals listed.
 --
