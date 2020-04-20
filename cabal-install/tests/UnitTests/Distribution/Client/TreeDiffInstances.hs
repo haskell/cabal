@@ -30,6 +30,7 @@ import Distribution.Solver.Types.Settings
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.Dependency.Types
+import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.InstallSymlink
@@ -50,10 +51,13 @@ instance (ToExpr a) => ToExpr (Flag a)
 
 instance ToExpr (f FilePath) => ToExpr (SourceRepositoryPackage f)
 
+instance ToExpr ActiveRepos
+instance ToExpr ActiveRepoEntry
 instance ToExpr AllowBootLibInstalls
 instance ToExpr AllowNewer
 instance ToExpr AllowOlder
 instance ToExpr ClientInstallFlags
+instance ToExpr CombineStrategy
 instance ToExpr CompilerFlavor
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts

@@ -140,6 +140,7 @@ Version:            3.3.0.0
         Distribution.Client.HashValue
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
+        Distribution.Client.IndexUtils.ActiveRepos
         Distribution.Client.IndexUtils.IndexState
         Distribution.Client.IndexUtils.Timestamp
         Distribution.Client.Init

@@ -28,6 +28,7 @@ module Distribution.Client.IndexUtils (
 
   TotalIndexState,
   getSourcePackagesAtIndexState,
+  ActiveRepos,
 
   Index(..),
   RepoIndexState (..),
@@ -48,6 +49,7 @@ import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Archive.Tar.Index as Tar
 import qualified Distribution.Client.Tar as Tar
+import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
@@ -69,8 +71,9 @@ import Distribution.Simple.Program
          ( ProgramDb )
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
+import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
-         ( Version, mkVersion, intersectVersionRanges )
+         ( Version, VersionRange, mkVersion, intersectVersionRanges )
 import Distribution.Deprecated.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
@@ -197,7 +200,7 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
 getSourcePackages verbosity repoCtxt =
-    fst <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing
+    fst <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing Nothing
 
 -- | Variant of 'getSourcePackages' which allows getting the source
 -- packages at a particular 'IndexState'.
@@ -212,8 +215,9 @@ getSourcePackagesAtIndexState
     :: Verbosity
     -> RepoContext
     -> Maybe TotalIndexState
+    -> Maybe ActiveRepos
     -> IO (SourcePackageDb, TotalIndexState)
-getSourcePackagesAtIndexState verbosity repoCtxt _
+getSourcePackagesAtIndexState verbosity repoCtxt _ _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
       -- servers, so don't bleat about it
@@ -224,7 +228,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt _
         packageIndex       = mempty,
         packagePreferences = mempty
       }, headTotalIndexState)
-getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
+getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   let describeState IndexStateHead        = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
@@ -288,39 +292,58 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
                               prettyShow (isiHeadTime isi) ++ ")")
 
       pure RepoData
-          { rdIndexStates = [(rname, isiMaxTime isi)]
+          { rdRepoName    = rname
+          , rdTimeStamp   = isiMaxTime isi
           , rdIndex       = pis
           , rdPreferences = deps
           }
 
-  let RepoData indexStates pkgs prefs = mconcat pkgss
-      prefs' = Map.fromListWith intersectVersionRanges
-                 [ (name, range) | Dependency name range _ <- prefs ]
-      totalIndexState = foldl'
-          (\acc (rn, ts) -> insertIndexState rn (IndexStateTime ts) acc)
-          headTotalIndexState
-          indexStates
+  let activeRepos :: ActiveRepos
+      activeRepos = fromMaybe defaultActiveRepos mb_activeRepos
+
+  pkgss' <- case organizeByRepos activeRepos rdRepoName pkgss of
+    Right x  -> return x
+    Left err -> warn verbosity err >> return (map (\x -> (x, CombineStrategyMerge)) pkgss)
+
+  let totalIndexState :: TotalIndexState
+      totalIndexState = makeTotalIndexState IndexStateHead $ Map.fromList
+          [ (n, IndexStateTime ts)
+          | (RepoData n ts _idx _prefs, _strategy) <- pkgss'
+          ]
+
+  let addIndex
+          :: PackageIndex UnresolvedSourcePackage
+          -> (RepoData, CombineStrategy)
+          -> PackageIndex UnresolvedSourcePackage
+      addIndex acc (RepoData _ _ idx _, CombineStrategyMerge)    = PackageIndex.merge acc idx
+      addIndex acc (RepoData _ _ idx _, CombineStrategyOverride) = PackageIndex.override acc idx
+
+  let pkgs :: PackageIndex UnresolvedSourcePackage
+      pkgs = foldl' addIndex mempty pkgss'
+
+  -- Note: preferences combined without using CombineStrategy
+  let prefs :: Map PackageName VersionRange
+      prefs = Map.fromListWith intersectVersionRanges
+          [ (name, range)
+          | (RepoData _n _ts _idx prefs', _strategy) <- pkgss'
+          , Dependency name range _ <- prefs'
+          ]
+
   _ <- evaluate pkgs
-  _ <- evaluate prefs'
+  _ <- evaluate prefs
   _ <- evaluate totalIndexState
   return (SourcePackageDb {
     packageIndex       = pkgs,
-    packagePreferences = prefs'
+    packagePreferences = prefs
   }, totalIndexState)
 
 -- auxiliary data used in getSourcePackagesAtIndexState
 data RepoData = RepoData
-    { rdIndexStates :: [(RepoName, Timestamp)]
+    { rdRepoName    :: RepoName
+    , rdTimeStamp   :: Timestamp
     , rdIndex       :: PackageIndex UnresolvedSourcePackage
     , rdPreferences :: [Dependency]
     }
-
-instance Semigroup RepoData where
-    RepoData x y z <> RepoData u v w = RepoData (x <> u) (y <> v) (z <> w)
-
-instance Monoid RepoData where
-    mempty  = RepoData mempty mempty mempty
-    mappend = (<>)
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.

@@ -21,6 +21,7 @@ module Distribution.Solver.Types.PackageIndex (
 
   -- * Updates
   merge,
+  override,
   insert,
   deletePackageName,
   deletePackageId,
@@ -159,6 +160,7 @@ merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
   assert (invariant i1 && invariant i2) $
     mkPackageIndex (Map.unionWith mergeBuckets m1 m2)
 
+
 -- | Elements in the second list mask those in the first.
 mergeBuckets :: Package pkg => [pkg] -> [pkg] -> [pkg]
 mergeBuckets []     ys     = ys
@@ -168,6 +170,16 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
         GT -> y : mergeBuckets xs  ys'
         EQ -> y : mergeBuckets xs' ys'
         LT -> x : mergeBuckets xs' ys
+
+-- | Override-merge oftwo indexes.
+--
+-- Packages from the second mask packages of the same exact name
+-- (case-sensitively) from the first.
+--
+override :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
+override i1@(PackageIndex m1) i2@(PackageIndex m2) =
+  assert (invariant i1 && invariant i2) $
+    mkPackageIndex (Map.unionWith (\_l r -> r) m1 m2)
 
 -- | Inserts a single package into the index.
 --

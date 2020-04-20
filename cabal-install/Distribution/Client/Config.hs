@@ -251,6 +251,7 @@ instance Semigroup SavedConfig where
         globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
         globalCacheDir          = combine globalCacheDir,
         globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
+        globalActiveRepos       = combine globalActiveRepos,
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
         globalIgnoreExpiry      = combine globalIgnoreExpiry,

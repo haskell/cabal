@@ -29,6 +29,9 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( info, warn )
 
+import Distribution.Client.IndexUtils.ActiveRepos
+         ( ActiveRepos )
+
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
 import Control.Exception
@@ -55,47 +58,50 @@ import qualified System.FilePath.Posix as FilePath.Posix
 -- ------------------------------------------------------------
 
 -- | Flags that apply at the top level, not to any sub-command.
-data GlobalFlags = GlobalFlags {
-    globalVersion           :: Flag Bool,
-    globalNumericVersion    :: Flag Bool,
-    globalConfigFile        :: Flag FilePath,
-    globalConstraintsFile   :: Flag FilePath,
-    globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
-    globalCacheDir          :: Flag FilePath,
-    globalLocalNoIndexRepos :: NubList LocalRepo,
-    globalLogsDir           :: Flag FilePath,
-    globalWorldFile         :: Flag FilePath,
-    globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
-    globalHttpTransport     :: Flag String,
-    globalNix               :: Flag Bool,  -- ^ Integrate with Nix
-    globalStoreDir          :: Flag FilePath,
-    globalProgPathExtra     :: NubList FilePath -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
-  } deriving Generic
+
+data GlobalFlags = GlobalFlags
+    { globalVersion           :: Flag Bool
+    , globalNumericVersion    :: Flag Bool
+    , globalConfigFile        :: Flag FilePath
+    , globalConstraintsFile   :: Flag FilePath
+    , globalRemoteRepos       :: NubList RemoteRepo     -- ^ Available Hackage servers.
+    , globalCacheDir          :: Flag FilePath
+    , globalLocalNoIndexRepos :: NubList LocalRepo
+    , globalActiveRepos       :: Flag ActiveRepos
+    , globalLogsDir           :: Flag FilePath
+    , globalWorldFile         :: Flag FilePath
+    , globalIgnoreExpiry      :: Flag Bool    -- ^ Ignore security expiry dates
+    , globalHttpTransport     :: Flag String
+    , globalNix               :: Flag Bool  -- ^ Integrate with Nix
+    , globalStoreDir          :: Flag FilePath
+    , globalProgPathExtra     :: NubList FilePath -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
+    } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
-defaultGlobalFlags  = GlobalFlags {
-    globalVersion           = Flag False,
-    globalNumericVersion    = Flag False,
-    globalConfigFile        = mempty,
-    globalConstraintsFile   = mempty,
-    globalRemoteRepos       = mempty,
-    globalCacheDir          = mempty,
-    globalLocalNoIndexRepos = mempty,
-    globalLogsDir           = mempty,
-    globalWorldFile         = mempty,
-    globalIgnoreExpiry      = Flag False,
-    globalHttpTransport     = mempty,
-    globalNix               = Flag False,
-    globalStoreDir          = mempty,
-    globalProgPathExtra     = mempty
-  }
+defaultGlobalFlags  = GlobalFlags
+    { globalVersion           = Flag False
+    , globalNumericVersion    = Flag False
+    , globalConfigFile        = mempty
+    , globalConstraintsFile   = mempty
+    , globalRemoteRepos       = mempty
+    , globalCacheDir          = mempty
+    , globalLocalNoIndexRepos = mempty
+    , globalActiveRepos       = mempty
+    , globalLogsDir           = mempty
+    , globalWorldFile         = mempty
+    , globalIgnoreExpiry      = Flag False
+    , globalHttpTransport     = mempty
+    , globalNix               = Flag False
+    , globalStoreDir          = mempty
+    , globalProgPathExtra     = mempty
+    }
 
 instance Monoid GlobalFlags where
-  mempty = gmempty
-  mappend = (<>)
+    mempty = gmempty
+    mappend = (<>)
 
 instance Semigroup GlobalFlags where
-  (<>) = gmappend
+    (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Repo context

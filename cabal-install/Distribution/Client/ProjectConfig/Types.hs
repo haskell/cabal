@@ -36,6 +36,8 @@ import Distribution.Client.Types.SourceRepo (SourceRepoList)
 
 import Distribution.Client.IndexUtils.IndexState
          ( TotalIndexState )
+import Distribution.Client.IndexUtils.ActiveRepos
+         ( ActiveRepos )
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..) )
@@ -180,6 +182,7 @@ data ProjectConfigShared
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalNoIndexRepos :: NubList LocalRepo,
+       projectConfigActiveRepos       :: Flag ActiveRepos,
        projectConfigIndexState        :: Flag TotalIndexState,
        projectConfigStoreDir          :: Flag FilePath,
 
@@ -406,6 +409,7 @@ data SolverSettings
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
        solverSettingOnlyConstrained   :: OnlyConstrained,
        solverSettingIndexState        :: Maybe TotalIndexState,
+       solverSettingActiveRepos       :: Maybe ActiveRepos,
        solverSettingIndependentGoals  :: IndependentGoals
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!

@@ -335,6 +335,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
       globalConfigFile        = projectConfigConfigFile,
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
+      globalActiveRepos       = projectConfigActiveRepos,
       globalProgPathExtra     = projectConfigProgPathExtra,
       globalStoreDir          = projectConfigStoreDir
     } = globalFlags
@@ -569,6 +570,7 @@ convertToLegacySharedConfig
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalCacheDir          = projectConfigCacheDir,
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
+      globalActiveRepos       = projectConfigActiveRepos,
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
@@ -939,6 +941,7 @@ legacySharedConfigFieldDescrs =
   . filterFields
       [ "remote-repo-cache"
       , "logs-dir", "store-dir", "ignore-expiry", "http-transport"
+      , "active-repositories"
       ]
   . commandOptionsToFields
   ) (commandOptions (globalCommand []) ParseArgs)
