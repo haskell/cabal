@@ -107,6 +107,10 @@ ghcid-cli :
 doctest :
 	doctest --fast Cabal/Distribution Cabal/Language
 
+# This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
+doctest-cli :
+	doctest -D__DOCTEST__ --fast cabal-install/Distribution
+
 # tests
 
 check-tests :

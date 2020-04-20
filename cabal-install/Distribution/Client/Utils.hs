@@ -19,7 +19,8 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , tryFindPackageDesc
                                  , relaxEncodingErrors
                                  , ProgressPhase (..)
-                                 , progressMessage)
+                                 , progressMessage
+                                 , cabalInstallVersion)
        where
 
 import Prelude ()
@@ -29,6 +30,7 @@ import Distribution.Compat.Environment
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
+import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Simple.Utils       ( die', findPackageDesc, noticeNoWrap )
 import qualified Data.ByteString.Lazy as BS
@@ -59,6 +61,10 @@ import GHC.IO.Encoding.Failure
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
+#endif
+
+#ifndef __DOCTEST__
+import qualified Paths_cabal_install (version)
 #endif
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
@@ -356,3 +362,10 @@ progressMessage verbosity phase subject = do
         ProgressHaddock     -> "Haddock      "
         ProgressInstalling  -> "Installing   "
         ProgressCompleted   -> "Completed    "
+
+cabalInstallVersion :: Version
+#ifdef __DOCTEST__
+cabalInstallVersion = mkVersion [3,3]
+#else
+cabalInstallVersion = mkVersion' Paths_cabal_install.version
+#endif

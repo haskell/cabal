@@ -24,6 +24,10 @@ import Distribution.Client.Compat.Prelude
 import Codec.Compression.Zlib.Internal
 import Data.ByteString.Lazy.Internal as BS (ByteString(Empty, Chunk))
 
+#ifndef MIN_VERSION_zlib
+#define MIN_VERSION_zlib(x,y,z) 1
+#endif
+
 #if MIN_VERSION_zlib(0,6,0)
 import Control.Exception (throw)
 import Control.Monad.ST.Lazy (ST, runST)
