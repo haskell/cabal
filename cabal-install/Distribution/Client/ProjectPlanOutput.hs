@@ -23,6 +23,7 @@ import           Distribution.Client.Types.PackageLocation (PackageLocation(..))
 import           Distribution.Client.Types.ConfiguredId (confInstId)
 import           Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPackage (..))
 import           Distribution.Client.HashValue (showHashValue, hashValue)
+import           Distribution.Client.Utils (cabalInstallVersion)
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -49,7 +50,6 @@ import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
 import           Distribution.Simple.Utils
 import           Distribution.Verbosity
-import qualified Paths_cabal_install as Our (version)
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
@@ -90,7 +90,7 @@ encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedCo
 encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     --TODO: [nice to have] include all of the sharedPackageConfig and all of
     --      the parts of the elaboratedInstallPlan
-    J.object [ "cabal-version"     J..= jdisplay Our.version
+    J.object [ "cabal-version"     J..= jdisplay cabalInstallVersion
              , "cabal-lib-version" J..= jdisplay cabalVersion
              , "compiler-id"       J..= (J.String . showCompilerId . pkgConfigCompiler)
                                         elaboratedSharedConfig

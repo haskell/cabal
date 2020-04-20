@@ -545,7 +545,7 @@ svnProgram = (simpleProgram "svn") {
 --
 --        % cat foo
 --        first line
---        >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+--        >> >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 --        branch BBB
 --        ================================
 --        branch AAA

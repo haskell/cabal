@@ -34,14 +34,13 @@ import Control.DeepSeq
          ( force )
 import Control.Monad
          ( guard )
-import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile, IOData (..) )
 import Distribution.Client.Utils
-         ( withTempFileName )
+         ( withTempFileName, cabalInstallVersion )
 import Distribution.Client.Types
          ( unRepoName, RemoteRepo(..) )
 import Distribution.System
@@ -72,7 +71,6 @@ import Distribution.Simple.Program.Run
 import Numeric (showHex)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
-import Data.Version (showVersion)
 
 import qualified Crypto.Hash.SHA256         as SHA256
 import qualified Data.ByteString.Base16     as Base16
@@ -872,7 +870,7 @@ plainHttpTransport =
 --
 
 userAgent :: String
-userAgent = concat [ "cabal-install/", showVersion Paths_cabal_install.version
+userAgent = concat [ "cabal-install/", prettyShow cabalInstallVersion
                    , " (", prettyShow buildOS, "; ", prettyShow buildArch, ")"
                    ]
 

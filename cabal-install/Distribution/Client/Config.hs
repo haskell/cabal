@@ -109,6 +109,8 @@ import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
          ( die', notice, warn, lowercase, cabalVersion )
+import Distribution.Client.Utils
+         ( cabalInstallVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
@@ -145,10 +147,6 @@ import Distribution.Compat.Environment
          ( getEnvironment, lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
-import qualified Paths_cabal_install
-         ( version )
-import Data.Version
-         ( showVersion )
 import Data.Char
          ( isSpace )
 import qualified Data.Map as M
@@ -829,7 +827,7 @@ writeConfigFile file comments vals = do
       ,"-- This config file was generated using the following versions"
       ,"-- of Cabal and cabal-install:"
       ,"-- Cabal library version: " ++ Text.display cabalVersion
-      ,"-- cabal-install version: " ++ showVersion Paths_cabal_install.version
+      ,"-- cabal-install version: " ++ Text.display cabalInstallVersion
       ,"",""
       ]
 

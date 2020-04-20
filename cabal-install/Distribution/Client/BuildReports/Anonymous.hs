@@ -33,16 +33,13 @@ import qualified Distribution.Client.Types as BR
          ( BuildOutcome, BuildFailure(..), BuildResult(..)
          , DocsResult(..), TestsResult(..) )
 import Distribution.Client.Utils
-         ( mergeBy, MergeResult(..) )
-import qualified Paths_cabal_install (version)
+         ( mergeBy, MergeResult(..), cabalInstallVersion )
 
 import Distribution.Package
          ( PackageIdentifier(..), mkPackageName )
 import Distribution.PackageDescription
          ( FlagName, mkFlagName, unFlagName
          , FlagAssignment, mkFlagAssignment, unFlagAssignment )
-import Distribution.Version
-         ( mkVersion' )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
@@ -159,8 +156,7 @@ new os' arch' comp pkgid flags deps result =
 
 cabalInstallID :: PackageIdentifier
 cabalInstallID =
-  PackageIdentifier (mkPackageName "cabal-install")
-                    (mkVersion' Paths_cabal_install.version)
+  PackageIdentifier (mkPackageName "cabal-install") cabalInstallVersion
 
 -- ------------------------------------------------------------
 -- * External format
