@@ -41,6 +41,7 @@ tests = [ testGroup "cabal init goldens"
           [ checkCabalFileGolden exeFlags "exe-only-golden.cabal"
           , checkCabalFileGolden libAndExeFlags "lib-and-exe-golden.cabal"
           , checkCabalFileGolden libExeAndTestFlags "lib-exe-and-test-golden.cabal"
+          , checkCabalFileGolden libExeAndTestWithCommentsFlags "lib-exe-and-test-with-comments-golden.cabal"
           ]
         ]
 
@@ -153,6 +154,17 @@ libExeAndTestFlags = baseFlags {
   , initializeTestSuite = Flag True
   , testDirs = Just ["tests"]
   }
+
+-- ==================================================
+-- Lib, exe, and test suite with comments.
+
+libExeAndTestWithCommentsFlags :: InitFlags
+libExeAndTestWithCommentsFlags = libExeAndTestFlags {
+    minimal = Flag False
+  , noComments = Flag False
+  , quiet = Flag False
+  }
+
 
 
 -- ==================================================
