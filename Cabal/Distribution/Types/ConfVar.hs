@@ -15,7 +15,7 @@ import Distribution.System
 -- | A @ConfVar@ represents the variable type used.
 data ConfVar = OS OS
              | Arch Arch
-             | Flag FlagName
+             | PackageFlag FlagName
              | Impl CompilerFlavor VersionRange
     deriving (Eq, Show, Typeable, Data, Generic)
 

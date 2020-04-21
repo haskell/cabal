@@ -88,10 +88,10 @@ import Distribution.Pretty
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.Utils
 import Distribution.Simple.Program

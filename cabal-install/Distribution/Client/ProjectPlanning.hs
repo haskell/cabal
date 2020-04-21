@@ -126,7 +126,7 @@ import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import           Distribution.Simple.Compiler hiding (Flag)
+import           Distribution.Simple.Compiler
 import qualified Distribution.Simple.GHC   as GHC   --TODO: [code cleanup] eliminate
 import qualified Distribution.Simple.GHCJS as GHCJS --TODO: [code cleanup] eliminate
 import           Distribution.Simple.Program

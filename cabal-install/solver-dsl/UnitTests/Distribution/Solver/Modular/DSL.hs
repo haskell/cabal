@@ -332,15 +332,15 @@ exAvSrcPkg :: ExampleAvailable -> UnresolvedSourcePackage
 exAvSrcPkg ex =
     let pkgId = exAvPkgId ex
 
-        flags :: [C.Flag]
+        flags :: [C.PackageFlag]
         flags =
-          let declaredFlags :: Map ExampleFlagName C.Flag
+          let declaredFlags :: Map ExampleFlagName C.PackageFlag
               declaredFlags =
                   Map.fromListWith
                       (\f1 f2 -> error $ "duplicate flag declarations: " ++ show [f1, f2])
                       [(exFlagName flag, mkFlag flag) | flag <- exAvFlags ex]
 
-              usedFlags :: Map ExampleFlagName C.Flag
+              usedFlags :: Map ExampleFlagName C.PackageFlag
               usedFlags = Map.fromList [(fn, mkDefaultFlag fn) | fn <- names]
                 where
                   names = concatMap extractFlags $ CD.flatDeps (exAvDeps ex)
@@ -557,7 +557,7 @@ exAvSrcPkg ex =
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo
     mkFlagged (f, a, b) =
-        C.CondBranch (C.Var (C.Flag (C.mkFlagName f)))
+        C.CondBranch (C.Var (C.PackageFlag (C.mkFlagName f)))
                      (mkBuildInfoTree a)
                      (Just (mkBuildInfoTree b))
 
@@ -604,8 +604,8 @@ mkVersionRange v1 v2 =
     C.intersectVersionRanges (C.orLaterVersion $ mkSimpleVersion v1)
                              (C.earlierVersion $ mkSimpleVersion v2)
 
-mkFlag :: ExFlag -> C.Flag
-mkFlag flag = C.MkFlag {
+mkFlag :: ExFlag -> C.PackageFlag
+mkFlag flag = C.MkPackageFlag {
     C.flagName        = C.mkFlagName $ exFlagName flag
   , C.flagDescription = ""
   , C.flagDefault     = exFlagDefault flag
@@ -615,8 +615,8 @@ mkFlag flag = C.MkFlag {
         Automatic -> False
   }
 
-mkDefaultFlag :: ExampleFlagName -> C.Flag
-mkDefaultFlag flag = C.MkFlag {
+mkDefaultFlag :: ExampleFlagName -> C.PackageFlag
+mkDefaultFlag flag = C.MkPackageFlag {
     C.flagName        = C.mkFlagName flag
   , C.flagDescription = ""
   , C.flagDefault     = True

@@ -25,8 +25,8 @@ import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
-import Distribution.PackageDescription as PD hiding (Flag)
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.PackageDescription
+import Distribution.Simple.Compiler
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program
 import Distribution.Simple.PreProcess

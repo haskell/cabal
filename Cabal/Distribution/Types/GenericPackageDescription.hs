@@ -45,7 +45,7 @@ data GenericPackageDescription =
     --
     --   Perfectly, PackageIndex should have sum type, so we don't need to
     --   have dummy GPDs.
-  , genPackageFlags    :: [Flag]
+  , genPackageFlags    :: [PackageFlag]
   , condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library)
   , condSubLibraries   :: [( UnqualComponentName
                            , CondTree ConfVar [Dependency] Library )]

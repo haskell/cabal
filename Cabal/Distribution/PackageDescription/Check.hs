@@ -1500,12 +1500,12 @@ checkUnusedFlags gpd
 
     used :: Set.Set FlagName
     used = mconcat
-        [ toSetOf (L.condLibrary      . traverse      . traverseCondTreeV . L._Flag) gpd
-        , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._Flag) gpd
-        , toSetOf (L.condForeignLibs  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
-        , toSetOf (L.condExecutables  . traverse . _2 . traverseCondTreeV . L._Flag) gpd
-        , toSetOf (L.condTestSuites   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
-        , toSetOf (L.condBenchmarks   . traverse . _2 . traverseCondTreeV . L._Flag) gpd
+        [ toSetOf (L.condLibrary      . traverse      . traverseCondTreeV . L._PackageFlag) gpd
+        , toSetOf (L.condSubLibraries . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+        , toSetOf (L.condForeignLibs  . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+        , toSetOf (L.condExecutables  . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+        , toSetOf (L.condTestSuites   . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
+        , toSetOf (L.condBenchmarks   . traverse . _2 . traverseCondTreeV . L._PackageFlag) gpd
         ]
 
 checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
@@ -1650,14 +1650,14 @@ checkDevelopmentOnlyFlags pkg =
 
     -- We've basically got three-values logic here: True, False or unknown
     -- hence this pattern to propagate the unknown cases properly.
-    definitelyFalse (Var (Flag n)) = maybe False not (Map.lookup n manualFlags)
+    definitelyFalse (Var (PackageFlag n)) = maybe False not (Map.lookup n manualFlags)
     definitelyFalse (Var _)        = False
     definitelyFalse (Lit  b)       = not b
     definitelyFalse (CNot c)       = definitelyTrue c
     definitelyFalse (COr  c1 c2)   = definitelyFalse c1 && definitelyFalse c2
     definitelyFalse (CAnd c1 c2)   = definitelyFalse c1 || definitelyFalse c2
 
-    definitelyTrue (Var (Flag n)) = fromMaybe False (Map.lookup n manualFlags)
+    definitelyTrue (Var (PackageFlag n)) = fromMaybe False (Map.lookup n manualFlags)
     definitelyTrue (Var _)        = False
     definitelyTrue (Lit  b)       = b
     definitelyTrue (CNot c)       = definitelyFalse c

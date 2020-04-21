@@ -100,11 +100,11 @@ ppSetupBInfo v (Just sbi)
     | otherwise = pure $ PrettySection () "custom-setup" [] $
         prettyFieldGrammar v (setupBInfoFieldGrammar False) sbi
 
-ppGenPackageFlags :: CabalSpecVersion -> [Flag] -> [PrettyField ()]
+ppGenPackageFlags :: CabalSpecVersion -> [PackageFlag] -> [PrettyField ()]
 ppGenPackageFlags = map . ppFlag
 
-ppFlag :: CabalSpecVersion -> Flag -> PrettyField ()
-ppFlag v flag@(MkFlag name _ _ _)  = PrettySection () "flag" [ppFlagName name] $
+ppFlag :: CabalSpecVersion -> PackageFlag -> PrettyField ()
+ppFlag v flag@(MkPackageFlag name _ _ _)  = PrettySection () "flag" [ppFlagName name] $
     prettyFieldGrammar v (flagFieldGrammar name) flag
 
 ppCondTree2 :: CabalSpecVersion -> PrettyFieldGrammar' s -> CondTree ConfVar [Dependency] s -> [PrettyField ()]
@@ -176,10 +176,10 @@ ppCondition (COr c1 c2)                  = parens (hsep [ppCondition c1, text "|
 ppCondition (CAnd c1 c2)                 = parens (hsep [ppCondition c1, text "&&"
                                                          <+> ppCondition c2])
 ppConfVar :: ConfVar -> Doc
-ppConfVar (OS os)                        = text "os"   <<>> parens (pretty os)
-ppConfVar (Arch arch)                    = text "arch" <<>> parens (pretty arch)
-ppConfVar (Flag name)                    = text "flag" <<>> parens (ppFlagName name)
-ppConfVar (Impl c v)                     = text "impl" <<>> parens (pretty c <+> pretty v)
+ppConfVar (OS os)            = text "os"   <<>> parens (pretty os)
+ppConfVar (Arch arch)        = text "arch" <<>> parens (pretty arch)
+ppConfVar (PackageFlag name) = text "flag" <<>> parens (ppFlagName name)
+ppConfVar (Impl c v)         = text "impl" <<>> parens (pretty c <+> pretty v)
 
 ppFlagName :: FlagName -> Doc
 ppFlagName                               = text . unFlagName

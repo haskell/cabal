@@ -5,7 +5,7 @@ GenericPackageDescription
    condLibrary = Just
                    CondNode
                      {condTreeComponents = [CondBranch
-                                              {condBranchCondition = `Var (Flag (FlagName "foo"))`,
+                                              {condBranchCondition = `Var (PackageFlag (FlagName "foo"))`,
                                                condBranchIfFalse = Nothing,
                                                condBranchIfTrue = CondNode
                                                                     {condTreeComponents = [CondBranch
@@ -295,7 +295,7 @@ GenericPackageDescription
                                                                                                                 `mkVersion []`),
                                                                                            testName = `UnqualComponentName ""`}}},
                                                 CondBranch
-                                                  {condBranchCondition = `Var (Flag (FlagName "foo"))`,
+                                                  {condBranchCondition = `Var (PackageFlag (FlagName "foo"))`,
                                                    condBranchIfFalse = Nothing,
                                                    condBranchIfTrue = CondNode
                                                                         {condTreeComponents = [CondBranch
@@ -586,7 +586,7 @@ GenericPackageDescription
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "Tests.hs",
                                             testName = `UnqualComponentName ""`}}],
-   genPackageFlags = [MkFlag
+   genPackageFlags = [MkPackageFlag
                         {flagDefault = True,
                          flagDescription = "",
                          flagManual = True,

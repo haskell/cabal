@@ -9,8 +9,8 @@ import Data.Maybe (mapMaybe, fromMaybe, maybeToList)
 import Data.Monoid as Mon
 import qualified Data.Set as S
 
+import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Compiler
-import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.Simple.BuildToolDepends          -- from Cabal
 import Distribution.Types.ExeDependency              -- from Cabal
@@ -20,8 +20,8 @@ import Distribution.Types.UnqualComponentName        -- from Cabal
 import Distribution.Types.CondTree                   -- from Cabal
 import Distribution.Types.MungedPackageId            -- from Cabal
 import Distribution.Types.MungedPackageName          -- from Cabal
-import Distribution.PackageDescription as PD         -- from Cabal
-import Distribution.PackageDescription.Configuration as PDC
+import Distribution.PackageDescription               -- from Cabal
+import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 import Distribution.Types.ForeignLib
@@ -81,14 +81,14 @@ convIPI' (ShadowPkgs sip) idx =
     shadow x                                     = x
 
 -- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
-convId :: InstalledPackageInfo -> (PN, I)
+convId :: IPI.InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi
         -- HACK. See Note [Index conversion with internal libraries]
         pn = encodeCompatPackageName mpn
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
+convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case mapM (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] M.empty M.empty (Just Broken))
@@ -99,7 +99,7 @@ convIP idx ipi =
   (pn, i) = convId ipi
   -- 'sourceLibName' is unreliable, but for now we only really use this for
   -- primary libs anyways
-  comp = componentNameToComponent $ CLibName $ sourceLibName ipi
+  comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
 -- TODO: Installed packages should also store their encapsulations!
 
 -- Note [Index conversion with internal libraries]
@@ -186,7 +186,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
     conv comp getInfo dr =
         convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .
-        PDC.addBuildableCondition getInfo
+        addBuildableCondition getInfo
 
     initDR = DependencyReason pn M.empty S.empty
 
@@ -264,7 +264,7 @@ isBuildableComponent os arch cinfo constraints getInfo tree =
         | otherwise = Lit False
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
-    simplifyCondition (Var (Flag f))
+    simplifyCondition (Var (PackageFlag f))
         | Just b <- L.lookup f flagAssignment = Lit b
     simplifyCondition (Var v) = Var v
     simplifyCondition (Lit b) = Lit b
@@ -298,9 +298,9 @@ prefix f fds = [f (concat fds)]
 
 -- | Convert flag information. Automatic flags are now considered weak
 -- unless strong flags have been selected explicitly.
-flagInfo :: StrongFlags -> [PD.Flag] -> FlagInfo
+flagInfo :: StrongFlags -> [PackageFlag] -> FlagInfo
 flagInfo (StrongFlags strfl) =
-    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b (flagType m) (weak m)))
+    M.fromList . L.map (\ (MkPackageFlag fn _ b m) -> (fn, FInfo b (flagType m) (weak m)))
   where
     weak m = WeakOrTrivial $ not (strfl || m)
     flagType m = if m then Manual else Automatic
@@ -334,9 +334,9 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
              mergeSimpleDeps $
                  L.map (\d -> D.Simple (convLibDep dr d) comp)
                        (mapMaybe (filterIPNs ipns) ds)                                -- unconditional package dependencies
-              ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (PD.allExtensions bi) -- unconditional extension dependencies
-              ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (PD.allLanguages  bi) -- unconditional language dependencies
-              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
+              ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
+              ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
+              ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables
@@ -472,7 +472,7 @@ convBranch flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes (CondBr
     go (CNot c)    t f = go c f t
     go (CAnd c d)  t f = go c (go d t f) f
     go (COr  c d)  t f = go c t (go d t f)
-    go (Var (Flag fn)) t f = \flags' ->
+    go (Var (PackageFlag fn)) t f = \flags' ->
         case M.lookup fn flags' of
           Just True  -> t flags'
           Just False -> f flags'
@@ -549,4 +549,4 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (Expose
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
     L.map (\d -> D.Simple (convLibDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
-          (PD.setupDepends nfo)
+          (setupDepends nfo)

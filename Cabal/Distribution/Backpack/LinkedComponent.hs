@@ -35,7 +35,7 @@ import Distribution.Types.ComponentInclude
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 import Distribution.Package
-import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Verbosity

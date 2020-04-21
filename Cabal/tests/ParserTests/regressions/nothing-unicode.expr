@@ -5,7 +5,7 @@ GenericPackageDescription
    condLibrary = Just
                    CondNode
                      {condTreeComponents = [CondBranch
-                                              {condBranchCondition = `CNot (Var (Flag (FlagName "\\28961")))`,
+                                              {condBranchCondition = `CNot (Var (PackageFlag (FlagName "\\28961")))`,
                                                condBranchIfFalse = Nothing,
                                                condBranchIfTrue = CondNode
                                                                     {condTreeComponents = [],
@@ -123,7 +123,7 @@ GenericPackageDescription
                                         signatures = []}},
    condSubLibraries = [],
    condTestSuites = [],
-   genPackageFlags = [MkFlag
+   genPackageFlags = [MkPackageFlag
                         {flagDefault = True,
                          flagDescription = "\28961",
                          flagManual = False,
