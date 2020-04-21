@@ -47,7 +47,7 @@ module Distribution.Simple.SrcDist (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Package
 import Distribution.ModuleName

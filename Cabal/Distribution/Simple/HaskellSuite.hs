@@ -12,7 +12,7 @@ import qualified Data.Map as Map (empty)
 import qualified Data.List.NonEmpty as NE
 
 import Distribution.Simple.Program
-import Distribution.Simple.Compiler as Compiler
+import Distribution.Simple.Compiler
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
@@ -79,7 +79,7 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
       let
         comp = Compiler {
           compilerId             = CompilerId (HaskellSuite compName) compVersion,
-          compilerAbiTag         = Compiler.NoAbiTag,
+          compilerAbiTag         = NoAbiTag,
           compilerCompat         = [],
           compilerLanguages      = languages,
           compilerExtensions     = extensions,
@@ -106,7 +106,7 @@ getCompilerVersion verbosity prog = do
       simpleParsec versionStr
   return (name, version)
 
-getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe Compiler.Flag)]
+getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Maybe CompilerFlag)]
 getExtensions verbosity prog = do
   extStrs <-
     lines `fmap`
@@ -114,7 +114,7 @@ getExtensions verbosity prog = do
   return
     [ (ext, Just $ "-X" ++ prettyShow ext) | Just ext <- map simpleParsec extStrs ]
 
-getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Compiler.Flag)]
+getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, CompilerFlag)]
 getLanguages verbosity prog = do
   langStrs <-
     lines `fmap`

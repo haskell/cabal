@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Distribution.Types.Flag (
-    Flag(..),
+    PackageFlag(..),
     emptyFlag,
     FlagName,
     mkFlagName,
@@ -38,7 +38,7 @@ import qualified Distribution.Compat.CharParsing as P
 
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
-data Flag = MkFlag
+data PackageFlag = MkPackageFlag
     { flagName        :: FlagName
     , flagDescription :: String
     , flagDefault     :: Bool
@@ -46,14 +46,13 @@ data Flag = MkFlag
     }
     deriving (Show, Eq, Typeable, Data, Generic)
 
-instance Binary Flag
-instance Structured Flag
+instance Binary PackageFlag
+instance Structured PackageFlag
+instance NFData PackageFlag where rnf = genericRnf
 
-instance NFData Flag where rnf = genericRnf
-
--- | A 'Flag' initialized with default parameters.
-emptyFlag :: FlagName -> Flag
-emptyFlag name = MkFlag
+-- | A 'PackageFlag' initialized with default parameters.
+emptyFlag :: FlagName -> PackageFlag
+emptyFlag name = MkPackageFlag
     { flagName        = name
     , flagDescription = ""
     , flagDefault     = True
@@ -118,6 +117,8 @@ instance Described FlagName where
 -- 'Bool' flag values. It represents the flags chosen by the user or
 -- discovered during configuration. For example @--flags=foo --flags=-bar@
 -- becomes @[("foo", True), ("bar", False)]@
+--
+-- TODO: Why we record the multiplicity of the flag?
 --
 newtype FlagAssignment
   = FlagAssignment { getFlagAssignment :: Map.Map FlagName (Int, Bool) }

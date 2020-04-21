@@ -505,14 +505,14 @@ lookupLens k f p@(PerCompilerFlavor ghc ghcjs)
 -------------------------------------------------------------------------------
 
 flagFieldGrammar
-    :: (FieldGrammar g, Applicative (g Flag))
-    =>  FlagName -> g Flag Flag
-flagFieldGrammar name = MkFlag name
+    :: (FieldGrammar g, Applicative (g PackageFlag))
+    =>  FlagName -> g PackageFlag PackageFlag
+flagFieldGrammar name = MkPackageFlag name
     <$> freeTextFieldDef    "description"          L.flagDescription
     <*> booleanFieldDef     "default"              L.flagDefault     True
     <*> booleanFieldDef     "manual"               L.flagManual      False
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' Flag #-}
-{-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' Flag #-}
+{-# SPECIALIZE flagFieldGrammar :: FlagName -> ParsecFieldGrammar' PackageFlag #-}
+{-# SPECIALIZE flagFieldGrammar :: FlagName -> PrettyFieldGrammar' PackageFlag #-}
 
 -------------------------------------------------------------------------------
 -- SourceRepo

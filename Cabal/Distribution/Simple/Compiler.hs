@@ -47,7 +47,7 @@ module Distribution.Simple.Compiler (
         flagToDebugInfoLevel,
 
         -- * Support for language extensions
-        Flag,
+        CompilerFlag,
         languageToFlags,
         unsupportedLanguages,
         extensionsToFlags,
@@ -93,9 +93,9 @@ data Compiler = Compiler {
         compilerCompat          :: [CompilerId],
         -- ^ Other implementations that this compiler claims to be
         -- compatible with.
-        compilerLanguages       :: [(Language, Flag)],
+        compilerLanguages       :: [(Language, CompilerFlag)],
         -- ^ Supported language standards.
-        compilerExtensions      :: [(Extension, Maybe Flag)],
+        compilerExtensions      :: [(Extension, Maybe CompilerFlag)],
         -- ^ Supported extensions.
         compilerProperties      :: Map String String
         -- ^ A key-value map for properties not covered by the above fields.
@@ -279,12 +279,12 @@ unsupportedLanguages comp langs =
   [ lang | lang <- langs
          , isNothing (languageToFlag comp lang) ]
 
-languageToFlags :: Compiler -> Maybe Language -> [Flag]
+languageToFlags :: Compiler -> Maybe Language -> [CompilerFlag]
 languageToFlags comp = filter (not . null)
                      . catMaybes . map (languageToFlag comp)
                      . maybe [Haskell98] (\x->[x])
 
-languageToFlag :: Compiler -> Language -> Maybe Flag
+languageToFlag :: Compiler -> Language -> Maybe CompilerFlag
 languageToFlag comp ext = lookup ext (compilerLanguages comp)
 
 
@@ -294,16 +294,16 @@ unsupportedExtensions comp exts =
   [ ext | ext <- exts
         , isNothing (extensionToFlag' comp ext) ]
 
-type Flag = String
+type CompilerFlag = String
 
 -- |For the given compiler, return the flags for the supported extensions.
-extensionsToFlags :: Compiler -> [Extension] -> [Flag]
+extensionsToFlags :: Compiler -> [Extension] -> [CompilerFlag]
 extensionsToFlags comp = nub . filter (not . null)
                        . catMaybes . map (extensionToFlag comp)
 
 -- | Looks up the flag for a given extension, for a given compiler.
 -- Ignores the subtlety of extensions which lack associated flags.
-extensionToFlag :: Compiler -> Extension -> Maybe Flag
+extensionToFlag :: Compiler -> Extension -> Maybe CompilerFlag
 extensionToFlag comp ext = join (extensionToFlag' comp ext)
 
 -- | Looks up the flag for a given extension, for a given compiler.
@@ -315,7 +315,7 @@ extensionToFlag comp ext = join (extensionToFlag' comp ext)
 -- the inner layer indicates whether it has a flag.
 -- When building strings, it is often more convenient to use 'extensionToFlag',
 -- which ignores the difference.
-extensionToFlag' :: Compiler -> Extension -> Maybe (Maybe Flag)
+extensionToFlag' :: Compiler -> Extension -> Maybe (Maybe CompilerFlag)
 extensionToFlag' comp ext = lookup ext (compilerExtensions comp)
 
 -- | Does this compiler support parallel --make mode?

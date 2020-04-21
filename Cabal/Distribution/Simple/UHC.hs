@@ -29,7 +29,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.Package hiding (installedUnitId)
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
-import Distribution.Simple.Compiler as C
+import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
@@ -60,7 +60,7 @@ configure verbosity hcPath _hcPkgPath progdb = do
 
   let comp = Compiler {
                compilerId         =  CompilerId UHC uhcVersion,
-               compilerAbiTag     =  C.NoAbiTag,
+               compilerAbiTag     =  NoAbiTag,
                compilerCompat     =  [],
                compilerLanguages  =  uhcLanguages,
                compilerExtensions =  uhcLanguageExtensions,
@@ -69,11 +69,11 @@ configure verbosity hcPath _hcPkgPath progdb = do
       compPlatform = Nothing
   return (comp, compPlatform, progdb')
 
-uhcLanguages :: [(Language, C.Flag)]
+uhcLanguages :: [(Language, CompilerFlag)]
 uhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions.
-uhcLanguageExtensions :: [(Extension, Maybe C.Flag)]
+uhcLanguageExtensions :: [(Extension, Maybe CompilerFlag)]
 uhcLanguageExtensions =
     let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
                                          (DisableExtension f, disable)]

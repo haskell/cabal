@@ -60,15 +60,15 @@ import Distribution.Compat.Prelude
 import Distribution.Compiler
 import Distribution.Types.IncludeRenaming
 import Distribution.Utils.NubList
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Simple.PreProcess
 import Distribution.Package
-import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.PackageDescription as PD hiding (Flag)
-import Distribution.Types.PackageDescription as PD
+import Distribution.PackageDescription
+import Distribution.Types.PackageDescription
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
@@ -902,7 +902,7 @@ getInternalPackages pkg_descr0 =
 
 -- | Returns true if a dependency is satisfiable.  This function may
 -- report a dependency satisfiable even when it is not, but not vice
--- versa. This is to be passed to finalizePD.
+-- versa. This is to be passed to finalize
 dependencySatisfiable
     :: Bool -- ^ use external internal deps?
     -> Bool -- ^ exact configuration?
@@ -977,7 +977,7 @@ dependencySatisfiable
     -- library yet, so we just return a bool and later report a generic error.
     visible lib = maybe
                     False -- Does not even exist (wasn't in the depsMap)
-                    (\ipi -> Installed.libVisibility ipi == LibraryVisibilityPublic
+                    (\ipi -> IPI.libVisibility ipi == LibraryVisibilityPublic
                           -- If the override is enabled, the visibility does
                           -- not matter (it's handled externally)
                           || allow_private_deps
@@ -986,7 +986,7 @@ dependencySatisfiable
                           -- This is only triggered when passing a component
                           -- of the same package as --dependency, such as in:
                           -- cabal-testsuite/PackageTests/ConfigureComponent/SubLib/setup-explicit.test.hs
-                          || pkgName (Installed.sourcePackageId ipi) == pn)
+                          || pkgName (IPI.sourcePackageId ipi) == pn)
                     maybeIPI
       where maybeIPI = Map.lookup (depName, CLibName lib) requiredDepsMap
 
@@ -1040,7 +1040,7 @@ configureFinalizedPackage verbosity cfg enabled
     addExtraIncludeLibDirs pkg_descr =
         let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                              , extraFrameworkDirs = configExtraFrameworkDirs cfg
-                             , PD.includeDirs = configExtraIncludeDirs cfg}
+                             , includeDirs = configExtraIncludeDirs cfg}
             modifyLib l        = l{ libBuildInfo        = libBuildInfo l
                                                           `mappend` extraBi }
             modifyExecutable e = e{ buildInfo           = buildInfo e
@@ -1072,13 +1072,13 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
            ++ "package flags.  To use this feature you must use "
            ++ "GHC 7.9 or later."
 
-    when (any (not.null.PD.reexportedModules) (PD.allLibraries pkg_descr)
+    when (any (not.null.reexportedModules) (allLibraries pkg_descr)
           && not (reexportedModulesSupported comp)) $
         die' verbosity $
              "Your compiler does not support module re-exports. To use "
           ++ "this feature you must use GHC 7.9 or later."
 
-    when (any (not.null.PD.signatures) (PD.allLibraries pkg_descr)
+    when (any (not.null.signatures) (allLibraries pkg_descr)
           && not (backpackSupported comp)) $
         die' verbosity $
                "Your compiler does not support Backpack. To use "
@@ -1684,11 +1684,11 @@ ccLdOptionsBuildInfo cflags ldflags =
       (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
   in mempty {
-       PD.includeDirs  = map (drop 2) includeDirs',
-       PD.extraLibs    = map (drop 2) extraLibs',
-       PD.extraLibDirs = map (drop 2) extraLibDirs',
-       PD.ccOptions    = cflags',
-       PD.ldOptions    = ldflags''
+       includeDirs  = map (drop 2) includeDirs',
+       extraLibs    = map (drop 2) extraLibs',
+       extraLibDirs = map (drop 2) extraLibDirs',
+       ccOptions    = cflags',
+       ldOptions    = ldflags''
      }
 
 -- -----------------------------------------------------------------------------
@@ -1734,8 +1734,8 @@ checkForeignDeps pkg lbi verbosity =
                missingHdr  <- findOffendingHdr
                explainErrors missingHdr missingLibs)
       where
-        allHeaders = collectField PD.includes
-        allLibs    = collectField PD.extraLibs
+        allHeaders = collectField includes
+        allLibs    = collectField extraLibs
 
         ifBuildsWith headers args success failure = do
             checkDuplicateHeaders
@@ -1755,7 +1755,7 @@ checkForeignDeps pkg lbi verbosity =
         -- including file.  As such we need to take drastic measures
         -- and delete the offending file in the source directory.
         checkDuplicateHeaders = do
-          let relIncDirs = filter (not . isAbsolute) (collectField PD.includeDirs)
+          let relIncDirs = filter (not . isAbsolute) (collectField includeDirs)
               isHeader   = isSuffixOf ".h"
           genHeaders <- forM relIncDirs $ \dir ->
             fmap (dir </>) . filter isHeader <$>
@@ -1808,42 +1808,42 @@ checkForeignDeps pkg lbi verbosity =
                      ++ [ "-I" ++ buildDir lbi </> "autogen" ]
                      -- `configure' may generate headers in the build directory
                      ++ [ "-I" ++ buildDir lbi </> dir
-                        | dir <- ordNub (collectField PD.includeDirs)
+                        | dir <- ordNub (collectField includeDirs)
                         , not (isAbsolute dir)]
                      -- we might also reference headers from the
                      -- packages directory.
                      ++ [ "-I" ++ baseDir lbi </> dir
-                        | dir <- ordNub (collectField PD.includeDirs)
+                        | dir <- ordNub (collectField includeDirs)
                         , not (isAbsolute dir)]
-                     ++ [ "-I" ++ dir | dir <- ordNub (collectField PD.includeDirs)
+                     ++ [ "-I" ++ dir | dir <- ordNub (collectField includeDirs)
                                       , isAbsolute dir]
                      ++ ["-I" ++ baseDir lbi]
-                     ++ collectField PD.cppOptions
-                     ++ collectField PD.ccOptions
+                     ++ collectField cppOptions
+                     ++ collectField ccOptions
                      ++ [ "-I" ++ dir
                         | dir <- ordNub [ dir
                                         | dep <- deps
-                                        , dir <- Installed.includeDirs dep ]
+                                        , dir <- IPI.includeDirs dep ]
                                  -- dedupe include dirs of dependencies
                                  -- to prevent quadratic blow-up
                         ]
                      ++ [ opt
                         | dep <- deps
-                        , opt <- Installed.ccOptions dep ]
+                        , opt <- IPI.ccOptions dep ]
 
         commonCcArgs  = commonCppArgs
-                     ++ collectField PD.ccOptions
+                     ++ collectField ccOptions
                      ++ [ opt
                         | dep <- deps
-                        , opt <- Installed.ccOptions dep ]
+                        , opt <- IPI.ccOptions dep ]
 
         commonLdArgs  = [ "-L" ++ dir
-                        | dir <- ordNub (collectField PD.extraLibDirs) ]
-                     ++ collectField PD.ldOptions
+                        | dir <- ordNub (collectField extraLibDirs) ]
+                     ++ collectField ldOptions
                      ++ [ "-L" ++ dir
                         | dir <- ordNub [ dir
                                         | dep <- deps
-                                        , dir <- Installed.libraryDirs dep ]
+                                        , dir <- IPI.libraryDirs dep ]
                         ]
                      --TODO: do we also need dependent packages' ld options?
         makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
@@ -2012,8 +2012,8 @@ checkRelocatable verbosity pkg lbi
         traverse_ (doCheck pkgr) ipkgs
       where
         doCheck pkgr ipkg
-          | maybe False (== pkgr) (Installed.pkgRoot ipkg)
-          = forM_ (Installed.libraryDirs ipkg) $ \libdir -> do
+          | maybe False (== pkgr) (IPI.pkgRoot ipkg)
+          = forM_ (IPI.libraryDirs ipkg) $ \libdir -> do
               -- When @prefix@ is not under @pkgroot@,
               -- @shortRelativePath prefix pkgroot@ will return a path with
               -- @..@s and following check will fail without @canonicalizePath@.

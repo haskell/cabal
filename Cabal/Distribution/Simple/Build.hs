@@ -57,8 +57,8 @@ import Distribution.Simple.Build.Macros      (generateCabalMacrosHeader)
 import Distribution.Simple.Build.PathsModule (generatePathsModule)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
-import Distribution.Simple.Compiler hiding (Flag)
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.Simple.Compiler
+import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.ModuleName as ModuleName

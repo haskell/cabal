@@ -18,7 +18,7 @@ import Distribution.Deprecated.Text as Text
 import qualified Distribution.Deprecated.ReadP as Parse
 
 import Distribution.Package
-import Distribution.PackageDescription hiding (Flag, SourceRepo)
+import Distribution.PackageDescription
 import Distribution.Compiler
 import Distribution.Version
 import Distribution.Simple.Compiler

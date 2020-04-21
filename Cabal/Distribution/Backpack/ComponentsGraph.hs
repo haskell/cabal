@@ -12,7 +12,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Package
-import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec

@@ -155,7 +155,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( PackageDescription, GenericPackageDescription(..), Flag(..)
+         ( PackageDescription, GenericPackageDescription(..), PackageFlag(..)
          , FlagAssignment, mkFlagAssignment, unFlagAssignment
          , showFlagValue, diffFlagAssignment, nullFlagAssignment )
 import Distribution.PackageDescription.Configuration
@@ -713,7 +713,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                            (packageIndex sourcePkgDb)
                            (packageName pkg)
 
-    toFlagAssignment :: [Flag] -> FlagAssignment
+    toFlagAssignment :: [PackageFlag] -> FlagAssignment
     toFlagAssignment =  mkFlagAssignment . map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment

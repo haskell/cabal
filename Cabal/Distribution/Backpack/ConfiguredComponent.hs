@@ -35,7 +35,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
-import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo

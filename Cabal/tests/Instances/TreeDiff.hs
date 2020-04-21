@@ -65,7 +65,6 @@ instance ToExpr ExeDependency where toExpr = defaultExprViaShow
 instance ToExpr Executable
 instance ToExpr ExecutableScope where toExpr = defaultExprViaShow
 instance ToExpr ExposedModule where toExpr = defaultExprViaShow
-instance ToExpr Flag
 instance ToExpr FlagName where toExpr = defaultExprViaShow
 instance ToExpr ForeignLib
 instance ToExpr ForeignLibOption
@@ -85,6 +84,7 @@ instance ToExpr ModuleRenaming
 instance ToExpr OpenModule
 instance ToExpr OpenUnitId
 instance ToExpr PackageDescription
+instance ToExpr PackageFlag
 instance ToExpr PackageIdentifier
 instance ToExpr PackageName where toExpr = defaultExprViaShow
 instance ToExpr PkgconfigDependency where toExpr = defaultExprViaShow

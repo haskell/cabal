@@ -91,7 +91,7 @@ module Distribution.PackageDescription (
 
         -- * package configuration
         GenericPackageDescription(..),
-        Flag(..), emptyFlag,
+        PackageFlag(..), emptyFlag,
         FlagName, mkFlagName, unFlagName,
         FlagAssignment, mkFlagAssignment, unFlagAssignment,
         nullFlagAssignment, showFlagValue,
