@@ -42,8 +42,8 @@ import Distribution.Types.TargetInfo
 import Distribution.Types.ExposedModule
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.PackageDescription as PD hiding (Flag)
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.PackageDescription
+import Distribution.Simple.Compiler
 import Distribution.Simple.Glob
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Program.ResponseFile
@@ -365,7 +365,7 @@ fromPackageDescription haddockTarget pkg_descr = mempty
     , argTitle = Flag $ showPkg ++ subtitle
     }
   where
-    desc = PD.description pkg_descr
+    desc = description pkg_descr
     showPkg = prettyShow (packageId pkg_descr)
     subtitle
         | ShortText.null (synopsis pkg_descr) = ""

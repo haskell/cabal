@@ -67,7 +67,7 @@ GenericPackageDescription
                                                                                             exeScope = ExecutablePublic,
                                                                                             modulePath = ""}}},
                                                  CondBranch
-                                                   {condBranchCondition = `Var (Flag (FlagName "portable"))`,
+                                                   {condBranchCondition = `Var (PackageFlag (FlagName "portable"))`,
                                                     condBranchIfFalse = Just
                                                                           CondNode
                                                                             {condTreeComponents = [CondBranch
@@ -667,7 +667,7 @@ GenericPackageDescription
    condLibrary = Just
                    CondNode
                      {condTreeComponents = [CondBranch
-                                              {condBranchCondition = `Var (Flag (FlagName "portable"))`,
+                                              {condBranchCondition = `Var (PackageFlag (FlagName "portable"))`,
                                                condBranchIfFalse = Just
                                                                      CondNode
                                                                        {condTreeComponents = [CondBranch
@@ -1395,7 +1395,7 @@ GenericPackageDescription
                                                                                                                 `mkVersion []`),
                                                                                            testName = `UnqualComponentName ""`}}},
                                                 CondBranch
-                                                  {condBranchCondition = `Var (Flag (FlagName "portable"))`,
+                                                  {condBranchCondition = `Var (PackageFlag (FlagName "portable"))`,
                                                    condBranchIfFalse = Just
                                                                          CondNode
                                                                            {condTreeComponents = [CondBranch
@@ -2046,7 +2046,7 @@ GenericPackageDescription
                                             testInterface = TestSuiteExeV10
                                                               `mkVersion [1,0]` "Test.hs",
                                             testName = `UnqualComponentName ""`}}],
-   genPackageFlags = [MkFlag
+   genPackageFlags = [MkPackageFlag
                         {flagDefault = False,
                          flagDescription = "Obtain FileTime using portable functions",
                          flagManual = True,

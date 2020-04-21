@@ -88,7 +88,7 @@ simplifyWithSysParams os arch cinfo cond = (cond', flags)
           Just compat -> Right (any matchImpl compat)
           where
             matchImpl (CompilerId c v) = comp == c && v `withinRange` vr
-    interp (Flag f) = Left f
+    interp (PackageFlag f) = Left f
 
 -- TODO: Add instances and check
 --
@@ -125,7 +125,7 @@ parseCondition = condOr
     boolLiteral   = fmap Lit  parsec
     archIdent     = fmap Arch parsec
     osIdent       = fmap OS   parsec
-    flagIdent     = fmap (Flag . mkFlagName . lowercase) (munch1 isIdentChar)
+    flagIdent     = fmap (PackageFlag . mkFlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
     sp            = spaces 
@@ -327,7 +327,7 @@ fromDepMapUnion :: DepMapUnion -> [Dependency]
 fromDepMapUnion m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDepMapUnion m) ]
 
 freeVars :: CondTree ConfVar c a  -> [FlagName]
-freeVars t = [ f | Flag f <- freeVars' t ]
+freeVars t = [ f | PackageFlag f <- freeVars' t ]
   where
     freeVars' (CondNode _ _ ifs) = concatMap compfv ifs
     compfv (CondBranch c ct mct) = condfv c ++ freeVars' ct ++ maybe [] freeVars' mct
@@ -478,7 +478,7 @@ finalizePD userflags enabled satisfyDep
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CTest) tree) tests0
                 ++ map (\(name,tree) -> mapTreeData (SubComp name . CBench) tree) bms0
 
-    flagChoices    = map (\(MkFlag n _ d manual) -> (n, d2c manual n d)) flags
+    flagChoices    = map (\(MkPackageFlag n _ d manual) -> (n, d2c manual n d)) flags
     d2c manual n b = case lookupFlagAssignment n userflags of
                      Just val -> [val]
                      Nothing

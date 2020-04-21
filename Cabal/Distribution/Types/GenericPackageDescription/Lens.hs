@@ -1,7 +1,7 @@
 {-# LANGUAGE Rank2Types #-}
 module Distribution.Types.GenericPackageDescription.Lens (
     GenericPackageDescription,
-    Flag,
+    PackageFlag,
     FlagName,
     ConfVar (..),
     module Distribution.Types.GenericPackageDescription.Lens,
@@ -22,7 +22,7 @@ import Distribution.Types.PackageDescription (PackageDescription)
 import Distribution.Types.Benchmark (Benchmark)
 import Distribution.Types.ForeignLib (ForeignLib)
 import Distribution.Types.GenericPackageDescription (GenericPackageDescription(GenericPackageDescription) )
-import Distribution.Types.Flag (Flag(MkFlag), FlagName)
+import Distribution.Types.Flag (PackageFlag(MkPackageFlag), FlagName)
 import Distribution.Types.ConfVar (ConfVar (..))
 import Distribution.Types.Library (Library)
 import Distribution.Types.TestSuite (TestSuite)
@@ -43,7 +43,7 @@ gpdScannedVersion :: Lens' GenericPackageDescription (Maybe Version)
 gpdScannedVersion f s = fmap (\x -> s { T.gpdScannedVersion = x }) (f (T.gpdScannedVersion s))
 {-# INLINE gpdScannedVersion #-}
 
-genPackageFlags :: Lens' GenericPackageDescription [Flag]
+genPackageFlags :: Lens' GenericPackageDescription [PackageFlag]
 genPackageFlags f s = fmap (\x -> s { T.genPackageFlags = x }) (f (T.genPackageFlags s))
 {-# INLINE genPackageFlags #-}
 
@@ -94,20 +94,20 @@ allCondTrees f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
 -- Flag
 -------------------------------------------------------------------------------
 
-flagName :: Lens' Flag FlagName
-flagName f (MkFlag x1 x2 x3 x4) = fmap (\y1 -> MkFlag y1 x2 x3 x4) (f x1)
+flagName :: Lens' PackageFlag FlagName
+flagName f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag y1 x2 x3 x4) (f x1)
 {-# INLINE flagName #-}
 
-flagDescription :: Lens' Flag String
-flagDescription f (MkFlag x1 x2 x3 x4) = fmap (\y1 -> MkFlag x1 y1 x3 x4) (f x2)
+flagDescription :: Lens' PackageFlag String
+flagDescription f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag x1 y1 x3 x4) (f x2)
 {-# INLINE flagDescription #-}
 
-flagDefault :: Lens' Flag Bool
-flagDefault f (MkFlag x1 x2 x3 x4) = fmap (\y1 -> MkFlag x1 x2 y1 x4) (f x3)
+flagDefault :: Lens' PackageFlag Bool
+flagDefault f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag x1 x2 y1 x4) (f x3)
 {-# INLINE flagDefault #-}
 
-flagManual :: Lens' Flag Bool
-flagManual f (MkFlag x1 x2 x3 x4) = fmap (\y1 -> MkFlag x1 x2 x3 y1) (f x4)
+flagManual :: Lens' PackageFlag Bool
+flagManual f (MkPackageFlag x1 x2 x3 x4) = fmap (\y1 -> MkPackageFlag x1 x2 x3 y1) (f x4)
 {-# INLINE flagManual #-}
 
 -------------------------------------------------------------------------------
@@ -122,9 +122,9 @@ _Arch :: Traversal' ConfVar Arch
 _Arch f (Arch arch) = Arch <$> f arch
 _Arch _ x           = pure x
 
-_Flag :: Traversal' ConfVar FlagName
-_Flag f (Flag flag) = Flag <$> f flag
-_Flag _ x           = pure x
+_PackageFlag :: Traversal' ConfVar FlagName
+_PackageFlag f (PackageFlag flag) = PackageFlag <$> f flag
+_PackageFlag _ x                  = pure x
 
 _Impl :: Traversal' ConfVar (CompilerFlavor, VersionRange)
 _Impl f (Impl cf vr) = uncurry Impl <$> f (cf, vr)

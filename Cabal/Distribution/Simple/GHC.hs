@@ -99,7 +99,7 @@ import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Version
 import Distribution.System
 import Distribution.Verbosity

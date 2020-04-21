@@ -27,14 +27,14 @@ import Distribution.Backpack.ReadyComponent
 import Distribution.Backpack.ComponentsGraph
 import Distribution.Backpack.Id
 
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Package
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo
                                          ,emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.LocalBuildInfo

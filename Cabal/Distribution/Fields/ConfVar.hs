@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Distribution.Fields.ConfVar (parseConditionConfVar) where
 
-import Distribution.Compat.CharParsing              (char, integral)
+import Distribution.Compat.CharParsing     (char, integral)
 import Distribution.Compat.Prelude
-import Distribution.Parsec                    (Parsec (..), runParsecParser, Position (..))
-import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
-import Distribution.Fields.Field                    (SectionArg (..))
+import Distribution.Fields.Field           (SectionArg (..))
 import Distribution.Fields.ParseResult
+import Distribution.Parsec                 (Parsec (..), Position (..), runParsecParser)
+import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Types.Condition
-import Distribution.Types.ConfVar (ConfVar (..))
+import Distribution.Types.ConfVar          (ConfVar (..))
 import Distribution.Version
        (anyVersion, earlierVersion, intersectVersionRanges, laterVersion, majorBoundVersion,
        mkVersion, noVersion, orEarlierVersion, orLaterVersion, thisVersion, unionVersionRanges,
@@ -52,7 +52,7 @@ parser = condOr
 
     boolLiteral  = Lit <$> boolLiteral'
     osCond       = Var . OS   <$ string "os"   <*> parens fromParsec
-    flagCond     = Var . Flag <$ string "flag" <*> parens fromParsec
+    flagCond     = Var . PackageFlag <$ string "flag" <*> parens fromParsec
     archCond     = Var . Arch <$ string "arch" <*> parens fromParsec
     implCond     = Var        <$ string "impl" <*> parens implCond'
 

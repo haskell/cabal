@@ -167,7 +167,7 @@ GenericPackageDescription
                                                                                        reexportedModules = [],
                                                                                        signatures = []}}},
                                             CondBranch
-                                              {condBranchCondition = `Var (Flag (FlagName "use-pkg-config"))`,
+                                              {condBranchCondition = `Var (PackageFlag (FlagName "use-pkg-config"))`,
                                                condBranchIfFalse = Just
                                                                      CondNode
                                                                        {condTreeComponents = [CondBranch
@@ -567,7 +567,7 @@ GenericPackageDescription
                                         signatures = []}},
    condSubLibraries = [],
    condTestSuites = [],
-   genPackageFlags = [MkFlag
+   genPackageFlags = [MkPackageFlag
                         {flagDefault = False,
                          flagDescription = "",
                          flagManual = True,

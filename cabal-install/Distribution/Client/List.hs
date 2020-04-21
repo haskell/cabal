@@ -23,7 +23,7 @@ import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription   as Source
 import Distribution.PackageDescription
-         ( Flag(..), unFlagName )
+         ( PackageFlag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Pretty (pretty)
@@ -295,7 +295,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
     author            :: ShortText,
     maintainer        :: ShortText,
     dependencies      :: [ExtDependency],
-    flags             :: [Flag],
+    flags             :: [PackageFlag],
     hasLib            :: Bool,
     hasExe            :: Bool,
     executables       :: [UnqualComponentName],

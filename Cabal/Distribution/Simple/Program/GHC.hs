@@ -27,10 +27,9 @@ import Distribution.Compat.Prelude
 import Distribution.Backpack
 import Distribution.Compat.Semigroup (First'(..), Last'(..), Option'(..))
 import Distribution.Simple.GHC.ImplInfo
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.ModuleName
-import Distribution.Simple.Compiler hiding (Flag)
-import qualified Distribution.Simple.Compiler as Compiler (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Simple.Flag
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
@@ -457,7 +456,7 @@ data GhcOptions = GhcOptions {
 
   -- | A GHC version-dependent mapping of extensions to flags. This must be
   -- set to be able to make use of the 'ghcOptExtensions'.
-  ghcOptExtensionMap    :: Map Extension (Maybe Compiler.Flag),
+  ghcOptExtensionMap    :: Map Extension (Maybe CompilerFlag),
 
   ----------------
   -- Compilation

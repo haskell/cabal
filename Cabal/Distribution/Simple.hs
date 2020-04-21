@@ -61,10 +61,10 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 -- local
-import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.Compiler
 import Distribution.Simple.UserHooks
 import Distribution.Package
-import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
