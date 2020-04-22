@@ -140,7 +140,6 @@ indexBaseName repo = repoLocalDir repo </> fn
     fn = case repo of
            RepoSecure {}       -> "01-index"
            RepoRemote {}       -> "00-index"
-           RepoLocal  {}       -> "00-index"
            RepoLocalNoIndex {} -> "noindex"
 
 ------------------------------------------------------------------------
@@ -230,14 +229,11 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
   pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
-      let mrname :: Maybe RepoName
-          mrname = case r of
-              RepoRemote remote _      -> Just $ remoteRepoName remote
-              RepoSecure remote _      -> Just $ remoteRepoName remote
-              RepoLocalNoIndex local _ -> Just $ localRepoName local
-              RepoLocal _              -> Nothing
-
-      let rname = fromMaybe (RepoName "__local-repository") mrname
+      let rname :: RepoName
+          rname = case r of
+              RepoRemote remote _      -> remoteRepoName remote
+              RepoSecure remote _      -> remoteRepoName remote
+              RepoLocalNoIndex local _ -> localRepoName local
 
       info verbosity ("Reading available packages of " ++ unRepoName rname ++ "...")
 
@@ -260,7 +256,6 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
 
       unless (idxState == IndexStateHead) $
           case r of
-            RepoLocal path -> warn verbosity ("index-state ignored for old-format repositories (local repository '" ++ path ++ "')")
             RepoLocalNoIndex {} -> warn verbosity "index-state ignored for file+noindex repositories"
             RepoRemote {} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ unRepoName rname ++ "')")
             RepoSecure {} -> pure ()
@@ -293,7 +288,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState = do
                               prettyShow (isiHeadTime isi) ++ ")")
 
       pure RepoData
-          { rdIndexStates = maybe [] (\n -> [(n, isiMaxTime isi)]) mrname
+          { rdIndexStates = [(rname, isiMaxTime isi)]
           , rdIndex       = pis
           , rdPreferences = deps
           }
@@ -364,9 +359,6 @@ readRepoIndex verbosity repoCtxt repo idxState =
         case repo of
           RepoRemote{..} -> warn verbosity $ errMissingPackageList repoRemote
           RepoSecure{..} -> warn verbosity $ errMissingPackageList repoRemote
-          RepoLocal{..}  -> warn verbosity $
-               "The package list for the local repo '" ++ repoLocalDir
-            ++ "' is missing. The repo is invalid."
           RepoLocalNoIndex local _ -> warn verbosity $
               "Error during construction of local+noindex "
               ++ unRepoName (localRepoName local) ++ " repository index: "
@@ -379,7 +371,6 @@ readRepoIndex verbosity repoCtxt repo idxState =
       when (dt >= isOldThreshold) $ case repo of
         RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
         RepoSecure{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
-        RepoLocal{} -> return ()
         RepoLocalNoIndex {} -> return ()
 
     errMissingPackageList repoRemote =
@@ -609,7 +600,6 @@ is01Index :: Index -> Bool
 is01Index (RepoIndex _ repo) = case repo of
                                  RepoSecure {} -> True
                                  RepoRemote {} -> False
-                                 RepoLocal  {} -> False
                                  RepoLocalNoIndex {} -> True
 is01Index (SandboxIndex _)   = False
 

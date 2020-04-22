@@ -179,7 +179,6 @@ data ProjectConfigShared
 
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
-       projectConfigLocalRepos        :: NubList FilePath,
        projectConfigLocalNoIndexRepos :: NubList LocalRepo,
        projectConfigIndexState        :: Flag TotalIndexState,
        projectConfigStoreDir          :: Flag FilePath,
@@ -389,7 +388,6 @@ instance Semigroup PackageConfig where
 data SolverSettings
    = SolverSettings {
        solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
-       solverSettingLocalRepos        :: [FilePath],
        solverSettingLocalNoIndexRepos :: [LocalRepo],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
        solverSettingPreferences       :: [PackageVersionConstraint],
@@ -450,7 +448,6 @@ data BuildTimeSettings
        buildSettingOfflineMode           :: Bool,
        buildSettingKeepTempFiles         :: Bool,
        buildSettingRemoteRepos           :: [RemoteRepo],
-       buildSettingLocalRepos            :: [FilePath],
        buildSettingLocalNoIndexRepos     :: [LocalRepo],
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,

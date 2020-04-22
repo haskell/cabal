@@ -201,10 +201,6 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
       repoToJ :: Repo -> J.Value
       repoToJ repo =
         case repo of
-          RepoLocal{..} ->
-            J.object [ "type" J..= J.String "local-repo"
-                     , "path" J..= J.String repoLocalDir
-                     ]
           RepoLocalNoIndex{..} ->
             J.object [ "type" J..= J.String "local-repo-no-index"
                      , "path" J..= J.String repoLocalDir

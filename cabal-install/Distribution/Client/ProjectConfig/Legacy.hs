@@ -334,7 +334,6 @@ convertLegacyAllPackageFlags globalFlags configFlags
     GlobalFlags {
       globalConfigFile        = projectConfigConfigFile,
       globalRemoteRepos       = projectConfigRemoteRepos,
-      globalLocalRepos        = projectConfigLocalRepos,
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalProgPathExtra     = projectConfigProgPathExtra,
       globalStoreDir          = projectConfigStoreDir
@@ -569,7 +568,6 @@ convertToLegacySharedConfig
       globalConstraintsFile   = mempty,
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalCacheDir          = projectConfigCacheDir,
-      globalLocalRepos        = projectConfigLocalRepos,
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = mempty,
@@ -933,11 +931,7 @@ legacySharedConfigFieldDescrs =
       legacyGlobalFlags
       (\flags conf -> conf { legacyGlobalFlags = flags })
   . addFields
-      [ newLineListField "local-repo"
-          showTokenQ parseTokenQ
-          (fromNubList . globalLocalRepos)
-          (\v conf -> conf { globalLocalRepos = toNubList v }),
-         newLineListField "extra-prog-path-shared-only"
+      [ newLineListField "extra-prog-path-shared-only"
           showTokenQ parseTokenQ
           (fromNubList . globalProgPathExtra)
           (\v conf -> conf { globalProgPathExtra = toNubList v })

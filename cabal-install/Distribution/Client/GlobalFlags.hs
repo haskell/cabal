@@ -62,7 +62,6 @@ data GlobalFlags = GlobalFlags {
     globalConstraintsFile   :: Flag FilePath,
     globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
-    globalLocalRepos        :: NubList FilePath,
     globalLocalNoIndexRepos :: NubList LocalRepo,
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
@@ -81,7 +80,6 @@ defaultGlobalFlags  = GlobalFlags {
     globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
-    globalLocalRepos        = mempty,
     globalLocalNoIndexRepos = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
@@ -140,19 +138,18 @@ withRepoContext verbosity globalFlags =
     withRepoContext'
       verbosity
       (fromNubList (globalRemoteRepos       globalFlags))
-      (fromNubList (globalLocalRepos        globalFlags))
       (fromNubList (globalLocalNoIndexRepos globalFlags))
       (fromFlag    (globalCacheDir          globalFlags))
       (flagToMaybe (globalHttpTransport     globalFlags))
       (flagToMaybe (globalIgnoreExpiry      globalFlags))
       (fromNubList (globalProgPathExtra     globalFlags))
 
-withRepoContext' :: Verbosity -> [RemoteRepo] -> [FilePath] -> [LocalRepo]
+withRepoContext' :: Verbosity -> [RemoteRepo] -> [LocalRepo]
                  -> FilePath  -> Maybe String -> Maybe Bool
                  -> [FilePath]
                  -> (RepoContext -> IO a)
                  -> IO a
-withRepoContext' verbosity remoteRepos localRepos localNoIndexRepos
+withRepoContext' verbosity remoteRepos localNoIndexRepos
                  sharedCacheDir httpTransport ignoreExpiry extraPaths = \callback -> do
     for_ localNoIndexRepos $ \local ->
         unless (FilePath.Posix.isAbsolute (localRepoPath local)) $
@@ -166,7 +163,6 @@ withRepoContext' verbosity remoteRepos localRepos localNoIndexRepos
       callback RepoContext {
           repoContextRepos          = allRemoteRepos
                                    ++ allLocalNoIndexRepos
-                                   ++ map RepoLocal localRepos
         , repoContextGetTransport   = getTransport transportRef
         , repoContextWithSecureRepo = withSecureRepo secureRepos'
         , repoContextIgnoreExpiry   = fromMaybe False ignoreExpiry

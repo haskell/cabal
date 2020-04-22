@@ -250,7 +250,6 @@ instance Semigroup SavedConfig where
         globalConstraintsFile   = combine globalConstraintsFile,
         globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
         globalCacheDir          = combine globalCacheDir,
-        globalLocalRepos        = lastNonEmptyNL globalLocalRepos,
         globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,

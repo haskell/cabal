@@ -186,7 +186,6 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
     withRepoContext'
       verbosity
       buildSettingRemoteRepos
-      buildSettingLocalRepos
       buildSettingLocalNoIndexRepos
       buildSettingCacheDir
       buildSettingHttpTransport
@@ -209,7 +208,6 @@ projectConfigWithSolverRepoContext verbosity
     withRepoContext'
       verbosity
       (fromNubList projectConfigRemoteRepos)
-      (fromNubList projectConfigLocalRepos)
       (fromNubList projectConfigLocalNoIndexRepos)
       (fromFlagOrDefault
                    (error
@@ -234,7 +232,6 @@ resolveSolverSettings ProjectConfig{
     --TODO: [required eventually] some of these settings need validation, e.g.
     -- the flag assignments need checking.
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
-    solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
     solverSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
@@ -300,7 +297,6 @@ resolveBuildTimeSettings verbosity
                          ProjectConfig {
                            projectConfigShared = ProjectConfigShared {
                              projectConfigRemoteRepos,
-                             projectConfigLocalRepos,
                              projectConfigLocalNoIndexRepos,
                              projectConfigProgPathExtra
                            },
@@ -321,7 +317,6 @@ resolveBuildTimeSettings verbosity
     buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
     buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
     buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
-    buildSettingLocalRepos    = fromNubList projectConfigLocalRepos
     buildSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
     buildSettingCacheDir      = fromFlag    projectConfigCacheDir
     buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport

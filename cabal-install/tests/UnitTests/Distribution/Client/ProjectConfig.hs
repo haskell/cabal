@@ -370,11 +370,11 @@ instance Arbitrary ProjectConfigBuildOnly where
         <$> arbitrary
         <*> arbitrary
         <*> arbitrary
-        <*> (toNubList <$> shortListOf 2 arbitrary)             --  4
+        <*> (toNubList <$> shortListOf 2 arbitrary)
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
-        <*> (fmap getShortToken <$> arbitrary)                  --  8
+        <*> (fmap getShortToken <$> arbitrary)
         <*> arbitrary
         <*> arbitraryNumJobs
         <*> arbitrary
@@ -449,7 +449,6 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
-        <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitrary
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
@@ -480,7 +479,6 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigRemoteRepos
-        <*> shrinker projectConfigLocalRepos
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigIndexState
         <*> shrinker projectConfigStoreDir
