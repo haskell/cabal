@@ -57,7 +57,7 @@ import qualified Prelude (foldr1)
 -- >    , v == v'   = Just v
 -- >    | otherwise = Nothing
 --
-asVersionIntervals :: VersionRange -> [VersionInterval]
+asVersionIntervals :: VersionRange -> ([Version], [VersionInterval])
 asVersionIntervals = versionIntervals . toVersionIntervals
 
 
@@ -77,13 +77,13 @@ asVersionIntervals = versionIntervals . toVersionIntervals
 -- predicates for translation into foreign packaging systems that do not
 -- support complex version range expressions.
 --
-newtype VersionIntervals = VersionIntervals [VersionInterval]
+data VersionIntervals = VersionIntervals [Version] [VersionInterval]
   deriving (Eq, Show, Typeable)
 
 -- | Inspect the list of version intervals.
 --
-versionIntervals :: VersionIntervals -> [VersionInterval]
-versionIntervals (VersionIntervals is) = is
+versionIntervals :: VersionIntervals -> ([Version], [VersionInterval])
+versionIntervals (VersionIntervals ms is) = (ms, is)
 
 type VersionInterval = (LowerBound, UpperBound)
 data LowerBound =                LowerBound Version !Bound deriving (Eq, Show)
@@ -111,8 +111,11 @@ instance Ord UpperBound where
     GT -> False
 
 invariant :: VersionIntervals -> Bool
-invariant (VersionIntervals intervals) = all validInterval intervals
-                                      && all doesNotTouch' adjacentIntervals
+invariant (VersionIntervals _ms intervals) = and
+    [ all validInterval intervals
+    , all doesNotTouch' adjacentIntervals
+    -- TODO: ms
+    ]
   where
     doesNotTouch' :: (VersionInterval, VersionInterval) -> Bool
     doesNotTouch' ((_,u), (l',_)) = doesNotTouch u l'
@@ -131,15 +134,16 @@ checkInvariant is = assert (invariant is) is
 --
 mkVersionIntervals :: [VersionInterval] -> VersionIntervals
 mkVersionIntervals intervals
-    | invariant (VersionIntervals intervals) = VersionIntervals intervals
+    | invariant (VersionIntervals [] intervals)
+    = VersionIntervals [] intervals
     | otherwise
-        = checkInvariant
-        . foldl' (flip insertInterval) (VersionIntervals [])
-        . filter validInterval
-        $ intervals
+    = checkInvariant
+    . foldl' (flip insertInterval) (VersionIntervals [] [])
+    . filter validInterval
+    $ intervals
 
 insertInterval :: VersionInterval -> VersionIntervals -> VersionIntervals
-insertInterval i is = unionVersionIntervals (VersionIntervals [i]) is
+insertInterval i is = unionVersionIntervals (VersionIntervals [] [i]) is
 
 validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
@@ -186,10 +190,15 @@ doesNotIntersect (UpperBound u ub) (LowerBound l lb) =
 -- > withinIntervals v ivs = withinRange v (fromVersionIntervals ivs)
 --
 withinIntervals :: Version -> VersionIntervals -> Bool
-withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
+withinIntervals v (VersionIntervals ms intervals) = 
+    any withinInterval intervals ||
+    any withinMajorInterval ms
   where
+    withinMajorInterval m = m >= v && v < majorUpperBound m
+
     withinInterval (lowerBound, upperBound)    = withinLower lowerBound
                                               && withinUpper upperBound
+
     withinLower (LowerBound v' ExclusiveBound) = v' <  v
     withinLower (LowerBound v' InclusiveBound) = v' <= v
 
@@ -204,19 +213,19 @@ toVersionIntervals = foldVersionRange
   (         chkIvl (minLowerBound,               NoUpperBound))
   (\v    -> chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound))
   (\v    -> chkIvl (LowerBound v ExclusiveBound, NoUpperBound))
-  (\v    -> if isVersion0 v then VersionIntervals [] else
+  (\v    -> if isVersion0 v then VersionIntervals [] [] else
             chkIvl (minLowerBound,               UpperBound v ExclusiveBound))
   unionVersionIntervals
   intersectVersionIntervals
   where
-    chkIvl interval = checkInvariant (VersionIntervals [interval])
+    chkIvl interval = checkInvariant (VersionIntervals [] [interval])
 
 -- | Convert a 'VersionIntervals' value back into a 'VersionRange' expression
 -- representing the version intervals.
 --
 fromVersionIntervals :: VersionIntervals -> VersionRange
-fromVersionIntervals (VersionIntervals []) = noVersion
-fromVersionIntervals (VersionIntervals intervals) =
+fromVersionIntervals (VersionIntervals [] []) = noVersion
+fromVersionIntervals (VersionIntervals _ms intervals) = -- TODO
     Prelude.foldr1 unionVersionRanges [ interval l u | (l, u) <- intervals ]
 
   where
@@ -244,8 +253,8 @@ fromVersionIntervals (VersionIntervals intervals) =
 
 unionVersionIntervals :: VersionIntervals -> VersionIntervals
                       -> VersionIntervals
-unionVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
-  checkInvariant (VersionIntervals (union is0 is'0))
+unionVersionIntervals (VersionIntervals ms is0) (VersionIntervals ns is'0) =
+  checkInvariant (VersionIntervals (ms ++ ns) {- TODO -} (union is0 is'0))
   where
     union is []  = is
     union [] is' = is'
@@ -277,8 +286,8 @@ unionInterval (lower , upper ) (lower', upper')
 
 intersectVersionIntervals :: VersionIntervals -> VersionIntervals
                           -> VersionIntervals
-intersectVersionIntervals (VersionIntervals is0) (VersionIntervals is'0) =
-  checkInvariant (VersionIntervals (intersect is0 is'0))
+intersectVersionIntervals (VersionIntervals ms is0) (VersionIntervals ns is'0) =
+  checkInvariant (VersionIntervals [] {- TODO -} (intersect is0 is'0))
   where
     intersect _  [] = []
     intersect [] _  = []
@@ -310,18 +319,20 @@ intersectInterval (lower , upper ) (lower', upper')
 
 invertVersionIntervals :: VersionIntervals
                        -> VersionIntervals
-invertVersionIntervals (VersionIntervals xs) =
+invertVersionIntervals (VersionIntervals ms is) =
     case xs of
       -- Empty interval set
-      [] -> VersionIntervals [(noLowerBound, NoUpperBound)]
+      [] -> VersionIntervals [] [(noLowerBound, NoUpperBound)]
       -- Interval with no lower bound
       ((lb, ub) : more) | lb == noLowerBound ->
-        VersionIntervals $ invertVersionIntervals' ub more
+        VersionIntervals [] $ invertVersionIntervals' ub more
       -- Interval with a lower bound
       ((lb, ub) : more) ->
-          VersionIntervals $ (noLowerBound, invertLowerBound lb)
+          VersionIntervals [] $ (noLowerBound, invertLowerBound lb)
           : invertVersionIntervals' ub more
     where
+      xs = is -- TODO: ms
+
       -- Invert subsequent version intervals given the upper bound of
       -- the intervals already inverted.
       invertVersionIntervals' :: UpperBound
@@ -349,16 +360,21 @@ invertVersionIntervals (VersionIntervals xs) =
       noLowerBound :: LowerBound
       noLowerBound = LowerBound (mkVersion [0]) InclusiveBound
 
+-------------------------------------------------------------------------------
+-- Relaxation
+-------------------------------------------------------------------------------
+
+-- TODO
 
 relaxLastInterval :: VersionIntervals -> VersionIntervals
-relaxLastInterval (VersionIntervals xs) = VersionIntervals (relaxLastInterval' xs)
+relaxLastInterval (VersionIntervals ms xs) = VersionIntervals ms (relaxLastInterval' xs)
   where
     relaxLastInterval' []      = []
     relaxLastInterval' [(l,_)] = [(l, NoUpperBound)]
     relaxLastInterval' (i:is)  = i : relaxLastInterval' is
 
 relaxHeadInterval :: VersionIntervals -> VersionIntervals
-relaxHeadInterval (VersionIntervals xs) = VersionIntervals (relaxHeadInterval' xs)
+relaxHeadInterval (VersionIntervals ms xs) = VersionIntervals ms (relaxHeadInterval' xs)
   where
     relaxHeadInterval' []         = []
     relaxHeadInterval' ((_,u):is) = (minLowerBound,u) : is
