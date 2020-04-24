@@ -22,7 +22,7 @@ import Distribution.Client.IndexUtils.Timestamp (Timestamp)
 import Distribution.Client.Types.RepoName       (RepoName (..))
 
 import Distribution.FieldGrammar.Described
-import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaList)
+import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaNonEmpty)
 import Distribution.Pretty                 (Pretty (..))
 
 import qualified Data.Map.Strict                 as Map
@@ -60,7 +60,7 @@ instance Pretty TotalIndexState where
 -- Just (TIS IndexStateHead (fromList []))
 --
 -- >>> simpleParsec "" :: Maybe TotalIndexState
--- Just (TIS IndexStateHead (fromList []))
+-- Nothing
 --
 -- >>> simpleParsec "hackage.haskell.org HEAD" :: Maybe TotalIndexState
 -- Just (TIS IndexStateHead (fromList []))
@@ -72,7 +72,7 @@ instance Pretty TotalIndexState where
 -- Just (TIS IndexStateHead (fromList [(RepoName "hackage.haskell.org",IndexStateTime (TS 1580819696))]))
 --
 instance Parsec TotalIndexState where
-    parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaList single0 where
+    parsec = normalise . foldl' add headTotalIndexState <$> parsecLeadingCommaNonEmpty single0 where
         single0 = startsWithRepoName <|> TokTimestamp <$> parsec
         startsWithRepoName = do
             reponame <- parsec
@@ -89,7 +89,7 @@ instance Parsec TotalIndexState where
         add (TIS def m) (TokRepo rn idx)  = TIS def (Map.insert rn idx m)
 
 instance Described TotalIndexState where
-    describe _ = reCommaList $ REUnion
+    describe _ = reCommaNonEmpty $ REUnion
         [ describe (Proxy :: Proxy RepoName) <> RESpaces1 <> ris
         , ris
         ]

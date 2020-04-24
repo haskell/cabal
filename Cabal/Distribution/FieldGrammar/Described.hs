@@ -22,6 +22,7 @@ module Distribution.FieldGrammar.Described (
     -- * Lists
     reSpacedList,
     reCommaList,
+    reCommaNonEmpty,
     reOptCommaList,
     -- * Character Sets
     csChar,
@@ -71,6 +72,9 @@ reSpacedList = REMunch RESpaces1
 
 reCommaList :: GrammarRegex a -> GrammarRegex a
 reCommaList = RECommaList
+
+reCommaNonEmpty :: GrammarRegex a -> GrammarRegex a
+reCommaNonEmpty = RECommaNonEmpty
 
 reOptCommaList :: GrammarRegex a -> GrammarRegex a
 reOptCommaList = REOptCommaList

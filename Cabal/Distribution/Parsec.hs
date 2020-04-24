@@ -40,6 +40,7 @@ module Distribution.Parsec (
     parsecMaybeQuoted,
     parsecCommaList,
     parsecLeadingCommaList,
+    parsecLeadingCommaNonEmpty,
     parsecOptCommaList,
     parsecLeadingOptCommaList,
     parsecStandard,
@@ -305,6 +306,19 @@ parsecLeadingCommaList p = do
     case c of
         Nothing -> toList <$> P.sepEndByNonEmpty lp comma <|> pure []
         Just _  -> toList <$> P.sepByNonEmpty lp comma
+  where
+    lp = p <* P.spaces
+    comma = P.char ',' *> P.spaces P.<?> "comma"
+
+-- |
+--
+-- @since 3.4.0.0
+parsecLeadingCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
+parsecLeadingCommaNonEmpty p = do
+    c <- P.optional comma
+    case c of
+        Nothing -> P.sepEndByNonEmpty lp comma
+        Just _  -> P.sepByNonEmpty lp comma
   where
     lp = p <* P.spaces
     comma = P.char ',' *> P.spaces P.<?> "comma"
