@@ -125,8 +125,8 @@ computeCompatPackageKey
     -> UnitId
     -> String
 computeCompatPackageKey comp pkg_name pkg_version uid
-    | not (packageKeySupported comp) =
-        prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
+    | not (packageKeySupported comp || unitIdSupported comp)
+    = prettyShow pkg_name ++ "-" ++ prettyShow pkg_version
     | not (unifiedIPIDRequired comp) =
         let str = unUnitId uid -- assume no Backpack support
             mb_verbatim_key
