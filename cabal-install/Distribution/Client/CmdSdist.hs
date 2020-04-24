@@ -6,7 +6,6 @@
 {-# LANGUAGE ViewPatterns      #-}
 module Distribution.Client.CmdSdist
     ( sdistCommand, sdistAction, packageToSdist
-    , SdistFlags(..), defaultSdistFlags
     , OutputFormat(..)) where
 
 import Prelude ()
@@ -20,7 +19,7 @@ import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
 import Distribution.Client.Setup
-    ( GlobalFlags(..) )
+    ( GlobalFlags(..), InstallFlags (installProjectFileName) )
 import Distribution.Solver.Types.SourcePackage
     ( SourcePackage(..) )
 import Distribution.Client.Types
@@ -29,7 +28,11 @@ import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), ProjectRoot (..) )
 import Distribution.Client.ProjectConfig
     ( ProjectConfig, withProjectOrGlobalConfigIgn, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
+import Distribution.Client.ProjectFlags
+     ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 
+import Distribution.Compat.Lens
+    ( _1, _2 )
 import Distribution.Package
     ( Package(packageId) )
 import Distribution.PackageDescription.Configuration
@@ -39,7 +42,7 @@ import Distribution.Pretty
 import Distribution.ReadE
     ( succeedReadE )
 import Distribution.Simple.Command
-    ( CommandUI(..), option, reqArg )
+    ( CommandUI(..), OptionField, option, reqArg, liftOptionL, ShowOrParseArgs )
 import Distribution.Simple.PreProcess
     ( knownSuffixHandlers )
 import Distribution.Simple.Setup
@@ -78,7 +81,11 @@ import System.Directory
 import System.FilePath
     ( (</>), (<.>), makeRelative, normalise, takeDirectory )
 
-sdistCommand :: CommandUI SdistFlags
+-------------------------------------------------------------------------------
+-- Command
+-------------------------------------------------------------------------------
+
+sdistCommand :: CommandUI (ProjectFlags, SdistFlags)
 sdistCommand = CommandUI
     { commandName = "v2-sdist"
     , commandSynopsis = "Generate a source distribution file (.tar.gz)."
@@ -87,41 +94,19 @@ sdistCommand = CommandUI
     , commandDescription  = Just $ \_ -> wrapText
         "Generates tarballs of project packages suitable for upload to Hackage."
     , commandNotes = Nothing
-    , commandDefaultFlags = defaultSdistFlags
+    , commandDefaultFlags = (defaultProjectFlags, defaultSdistFlags)
     , commandOptions = \showOrParseArgs ->
-        [ optionVerbosity
-            sdistVerbosity (\v flags -> flags { sdistVerbosity = v })
-        , optionDistPref
-            sdistDistDir (\dd flags -> flags { sdistDistDir = dd })
-            showOrParseArgs
-        , option [] ["project-file"]
-            "Set the name of the cabal.project file to search for in parent directories"
-            sdistProjectFile (\pf flags -> flags { sdistProjectFile = pf })
-            (reqArg "FILE" (succeedReadE Flag) flagToList)
-        , option ['z'] ["ignore-project"]
-            "Ignore local project configuration"
-            sdistIgnoreProject (\v flags -> flags { sdistIgnoreProject = v })
-            trueArg
-        , option ['l'] ["list-only"]
-            "Just list the sources, do not make a tarball"
-            sdistListSources (\v flags -> flags { sdistListSources = v })
-            trueArg
-        , option [] ["null-sep"]
-            "Separate the source files with NUL bytes rather than newlines."
-            sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
-            trueArg
-        , option ['o'] ["output-directory", "outputdir"]
-            "Choose the output directory of this command. '-' sends all output to stdout"
-            sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
-            (reqArg "PATH" (succeedReadE Flag) flagToList)
-        ]
+        map (liftOptionL _1) projectFlagsOptions ++
+        map (liftOptionL _2) (sdistOptions showOrParseArgs)
     }
+
+-------------------------------------------------------------------------------
+-- Flags
+-------------------------------------------------------------------------------
 
 data SdistFlags = SdistFlags
     { sdistVerbosity     :: Flag Verbosity
     , sdistDistDir       :: Flag FilePath
-    , sdistProjectFile   :: Flag FilePath
-    , sdistIgnoreProject :: Flag Bool
     , sdistListSources   :: Flag Bool
     , sdistNulSeparated  :: Flag Bool
     , sdistOutputPath    :: Flag FilePath
@@ -131,17 +116,38 @@ defaultSdistFlags :: SdistFlags
 defaultSdistFlags = SdistFlags
     { sdistVerbosity     = toFlag normal
     , sdistDistDir       = mempty
-    , sdistProjectFile   = mempty
-    , sdistIgnoreProject = toFlag False
     , sdistListSources   = toFlag False
     , sdistNulSeparated  = toFlag False
     , sdistOutputPath    = mempty
     }
 
---
+sdistOptions :: ShowOrParseArgs -> [OptionField SdistFlags]
+sdistOptions showOrParseArgs =
+    [ optionVerbosity
+        sdistVerbosity (\v flags -> flags { sdistVerbosity = v })
+    , optionDistPref
+        sdistDistDir (\dd flags -> flags { sdistDistDir = dd })
+        showOrParseArgs
+    , option ['l'] ["list-only"]
+        "Just list the sources, do not make a tarball"
+        sdistListSources (\v flags -> flags { sdistListSources = v })
+        trueArg
+    , option [] ["null-sep"]
+        "Separate the source files with NUL bytes rather than newlines."
+        sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
+        trueArg
+    , option ['o'] ["output-directory", "outputdir"]
+        "Choose the output directory of this command. '-' sends all output to stdout"
+        sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
+        (reqArg "PATH" (succeedReadE Flag) flagToList)
+    ]
 
-sdistAction :: SdistFlags -> [String] -> GlobalFlags -> IO ()
-sdistAction SdistFlags{..} targetStrings globalFlags = do
+-------------------------------------------------------------------------------
+-- Action
+-------------------------------------------------------------------------------
+
+sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
+sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     (baseCtx, distDirLayout) <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
@@ -191,14 +197,14 @@ sdistAction SdistFlags{..} targetStrings globalFlags = do
     listSources    = fromFlagOrDefault False sdistListSources
     nulSeparated   = fromFlagOrDefault False sdistNulSeparated
     mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = fromFlagOrDefault False sdistIgnoreProject
+    ignoreProject  = fromFlagOrDefault False flagIgnoreProject
 
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
         globalFlags
         mempty { configVerbosity = sdistVerbosity, configDistPref = sdistDistDir }
         mempty
-        mempty
+        mempty { installProjectFileName = flagProjectFileName }
         mempty
         mempty
         mempty

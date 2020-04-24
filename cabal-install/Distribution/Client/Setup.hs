@@ -1767,7 +1767,7 @@ data InstallFlags = InstallFlags {
     -- read and written out in some cases.  If the path is not found
     -- in the current working directory, we will successively probe
     -- relative to parent directories until this name is found.
-    installProjectFileName   :: Flag FilePath
+    installProjectFileName   :: Flag FilePath -- TODO: use ProjectFlags
   }
   deriving (Eq, Generic)
 
