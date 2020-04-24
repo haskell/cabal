@@ -14,7 +14,7 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "wl-pprint-indef"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
@@ -73,7 +73,8 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "wl-pprint-indef"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName])],
                                                             virtualModules = []},

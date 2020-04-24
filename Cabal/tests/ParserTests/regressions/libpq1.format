@@ -43,7 +43,7 @@ library
         Database.PostgreSQL.LibPQ
         Database.PostgreSQL.LibPQ.Internal
 
-    build-tools:     hsc2hs -any
+    build-tools:     hsc2hs >=0
     c-sources:       cbits/noticehandlers.c
     hs-source-dirs:  src
     include-dirs:    cbits
@@ -59,7 +59,7 @@ library
         build-depends: Win32 >=2.2.0.2 && <2.7
 
     if flag(use-pkg-config)
-        pkgconfig-depends: libpq (==9 || >9) && <10
+        pkgconfig-depends: libpq >=9 && <10
 
     else
         if os(windows)

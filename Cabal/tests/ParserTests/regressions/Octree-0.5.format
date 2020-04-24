@@ -48,4 +48,4 @@ test-suite readme
         base >=4.0 && <4.7,
         AC-Vector >=2.3.0,
         QuickCheck >=2.4.0,
-        markdown-unlit -any
+        markdown-unlit

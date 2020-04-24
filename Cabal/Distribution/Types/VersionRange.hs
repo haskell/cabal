@@ -30,6 +30,8 @@ module Distribution.Types.VersionRange (
     embedVersionRange,
 
     -- ** Utilities
+    isAnyVersion,
+    isAnyVersionLight,
     wildcardUpperBound,
     majorUpperBound,
     isWildcardRange,
@@ -38,8 +40,8 @@ module Distribution.Types.VersionRange (
 
 import Distribution.Compat.Prelude
 import Distribution.Types.Version
+import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange.Internal
-import Distribution.Utils.Generic
 import Prelude ()
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
@@ -57,24 +59,18 @@ foldVersionRange :: a                         -- ^ @\"-any\"@ version
                  -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
                  -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
                  -> VersionRange -> a
-foldVersionRange anyv this later earlier union intersect = fold
+foldVersionRange _any this later earlier union intersect = fold
   where
     fold = cataVersionRange alg
 
-    alg AnyVersionF                     = anyv
     alg (ThisVersionF v)                = this v
     alg (LaterVersionF v)               = later v
     alg (OrLaterVersionF v)             = union (this v) (later v)
     alg (EarlierVersionF v)             = earlier v
     alg (OrEarlierVersionF v)           = union (this v) (earlier v)
-    alg (WildcardVersionF v)            = fold (wildcard v)
     alg (MajorBoundVersionF v)          = fold (majorBound v)
     alg (UnionVersionRangesF v1 v2)     = union v1 v2
     alg (IntersectVersionRangesF v1 v2) = intersect v1 v2
-
-    wildcard v = intersectVersionRanges
-                   (orLaterVersion v)
-                   (earlierVersion (wildcardUpperBound v))
 
     majorBound v = intersectVersionRanges
                      (orLaterVersion v)
@@ -122,16 +118,35 @@ withinRange v = foldVersionRange
                    (||)
                    (&&)
 
+-- | Does this 'VersionRange' place any restriction on the 'Version' or is it
+-- in fact equivalent to 'AnyVersion'.
+--
+-- Note this is a semantic check, not simply a syntactic check. So for example
+-- the following is @True@ (for all @v@).
+--
+-- > isAnyVersion (EarlierVersion v `UnionVersionRanges` orLaterVersion v)
+--
+isAnyVersion :: VersionRange -> Bool
+isAnyVersion vr = case asVersionIntervals vr of
+    [(LowerBound v InclusiveBound, NoUpperBound)] -> v == version0
+    _                                             -> False
+
+-- A fast and non-precise version of 'isAnyVersion',
+-- returns 'True' only for @>= 0@ 'VersionRange's.
+--
+-- /Do not use/. The "VersionIntervals don't destroy MajorBoundVersion"
+-- https://github.com/haskell/cabal/pull/6736 pull-request
+-- will change 'simplifyVersionRange' to properly preserve semantics.
+-- Then we can use it to normalise 'VersionRange's in tests.
+--
+isAnyVersionLight :: VersionRange -> Bool
+isAnyVersionLight (OrLaterVersion v) = v == version0
+isAnyVersionLight _vr                = False
+
 ----------------------------
 -- Wildcard range utilities
 --
 
--- | @since 2.2
-wildcardUpperBound :: Version -> Version
-wildcardUpperBound = alterVersion $
-    \lowerBound -> case unsnoc lowerBound of
-        Nothing      -> []
-        Just (xs, x) -> xs ++ [x + 1]
 
 isWildcardRange :: Version -> Version -> Bool
 isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)

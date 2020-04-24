@@ -9,7 +9,7 @@ author:
 
 tested-with:
     ghc ==7.8.4 ghc ==7.10.3 ghc ==8.0.1 ghc ==8.0.2 ghc ==8.2.1
-    ghc ==8.3.*
+    ghc >=8.3 && <8.4
 
 synopsis:           Generic Programming using True Sums of Products
 description:
@@ -51,8 +51,8 @@ source-repository head
 
 custom-setup
     setup-depends:
-        base -any,
-        Cabal -any,
+        base,
+        Cabal,
         cabal-doctest >=1.0.2 && <1.1
 
 library
@@ -114,7 +114,7 @@ test-suite doctests
     ghc-options:       -Wall -threaded
     x-doctest-options: --preserve-it
     build-depends:
-        base -any,
+        base,
         doctest >=0.13 && <0.14
 
 test-suite generics-sop-examples
@@ -126,4 +126,4 @@ test-suite generics-sop-examples
     ghc-options:      -Wall
     build-depends:
         base >=4.6 && <5,
-        generics-sop -any
+        generics-sop

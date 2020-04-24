@@ -12,7 +12,7 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "jaeger-flamegraph"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "bytestring"`
@@ -96,7 +96,8 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "jaeger-flamegraph"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
@@ -234,7 +235,7 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "jaeger-flamegraph"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "tasty"`
@@ -309,7 +310,8 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "jaeger-flamegraph"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency

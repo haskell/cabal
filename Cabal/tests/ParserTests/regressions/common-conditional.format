@@ -14,20 +14,20 @@ flag foo
 library
     exposed-modules:  ElseIf
     default-language: Haskell2010
-    build-depends:    ghc-prim -any
+    build-depends:    ghc-prim
 
     if flag(foo)
         build-depends:
             base >=4.10 && <4.11,
-            containers -any
+            containers
 
         if os(windows)
-            build-depends: Win32 -any
+            build-depends: Win32
 
 test-suite tests
     type:          exitcode-stdio-1.0
     main-is:       Tests.hs
-    build-depends: HUnit -any
+    build-depends: HUnit
 
     if os(windows)
         buildable: False
@@ -35,10 +35,10 @@ test-suite tests
     if flag(foo)
         build-depends:
             base >=4.10 && <4.11,
-            containers -any
+            containers
 
         if os(windows)
-            build-depends: Win32 -any
+            build-depends: Win32
 
         if os(windows)
-            build-depends: Win32 -any
+            build-depends: Win32

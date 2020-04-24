@@ -30,8 +30,8 @@ instance Structured PkgconfigDependency
 instance NFData PkgconfigDependency where rnf = genericRnf
 
 instance Pretty PkgconfigDependency where
-  pretty (PkgconfigDependency name ver) =
-    pretty name <+> pretty ver
+    pretty (PkgconfigDependency name PcAnyVersion) = pretty name
+    pretty (PkgconfigDependency name ver)          = pretty name <+> pretty ver
 
 instance Parsec PkgconfigDependency where
     parsec = do

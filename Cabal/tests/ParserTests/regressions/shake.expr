@@ -207,7 +207,8 @@ GenericPackageDescription
                                                                                                                         {condTreeComponents = [],
                                                                                                                          condTreeConstraints = [Dependency
                                                                                                                                                   `PackageName "old-time"`
-                                                                                                                                                  AnyVersion
+                                                                                                                                                  (OrLaterVersion
+                                                                                                                                                     `mkVersion [0]`)
                                                                                                                                                   (Set.fromList
                                                                                                                                                      [LMainLibName])],
                                                                                                                          condTreeData = Executable
@@ -263,7 +264,8 @@ GenericPackageDescription
                                                                                                                                                                             [],
                                                                                                                                                           targetBuildDepends = [Dependency
                                                                                                                                                                                   `PackageName "old-time"`
-                                                                                                                                                                                  AnyVersion
+                                                                                                                                                                                  (OrLaterVersion
+                                                                                                                                                                                     `mkVersion [0]`)
                                                                                                                                                                                   (Set.fromList
                                                                                                                                                                                      [LMainLibName])],
                                                                                                                                                           virtualModules = []},
@@ -334,7 +336,8 @@ GenericPackageDescription
                                                                          {condTreeComponents = [],
                                                                           condTreeConstraints = [Dependency
                                                                                                    `PackageName "unix"`
-                                                                                                   AnyVersion
+                                                                                                   (OrLaterVersion
+                                                                                                      `mkVersion [0]`)
                                                                                                    (Set.fromList
                                                                                                       [LMainLibName])],
                                                                           condTreeData = Executable
@@ -390,7 +393,8 @@ GenericPackageDescription
                                                                                                                              [],
                                                                                                            targetBuildDepends = [Dependency
                                                                                                                                    `PackageName "unix"`
-                                                                                                                                   AnyVersion
+                                                                                                                                   (OrLaterVersion
+                                                                                                                                      `mkVersion [0]`)
                                                                                                                                    (Set.fromList
                                                                                                                                       [LMainLibName])],
                                                                                                            virtualModules = []},
@@ -399,11 +403,13 @@ GenericPackageDescription
                                                                                             modulePath = ""}}}],
                            condTreeConstraints = [Dependency
                                                     `PackageName "base"`
-                                                    (WildcardVersion `mkVersion [4]`)
+                                                    (IntersectVersionRanges
+                                                       (OrLaterVersion `mkVersion [4]`)
+                                                       (EarlierVersion `mkVersion [5]`))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "directory"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "hashable"`
@@ -411,11 +417,11 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "binary"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "filepath"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "process"`
@@ -427,7 +433,7 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "bytestring"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "utf8-string"`
@@ -435,19 +441,19 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "time"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "random"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "js-jquery"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "js-flot"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "transformers"`
@@ -463,7 +469,7 @@ GenericPackageDescription
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "primitive"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
@@ -568,13 +574,17 @@ GenericPackageDescription
                                                             staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
                                                                                     `PackageName "base"`
-                                                                                    (WildcardVersion
-                                                                                       `mkVersion [4]`)
+                                                                                    (IntersectVersionRanges
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [4]`)
+                                                                                       (EarlierVersion
+                                                                                          `mkVersion [5]`))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "directory"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
@@ -585,12 +595,14 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "binary"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "filepath"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
@@ -607,7 +619,8 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "bytestring"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
@@ -618,22 +631,26 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "time"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "random"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "js-jquery"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "js-flot"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
@@ -656,7 +673,8 @@ GenericPackageDescription
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "primitive"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName])],
                                                             virtualModules = []},
@@ -813,7 +831,8 @@ GenericPackageDescription
                                                                                                                    {condTreeComponents = [],
                                                                                                                     condTreeConstraints = [Dependency
                                                                                                                                              `PackageName "old-time"`
-                                                                                                                                             AnyVersion
+                                                                                                                                             (OrLaterVersion
+                                                                                                                                                `mkVersion [0]`)
                                                                                                                                              (Set.fromList
                                                                                                                                                 [LMainLibName])],
                                                                                                                     condTreeData = Library
@@ -870,7 +889,8 @@ GenericPackageDescription
                                                                                                                                                                           [],
                                                                                                                                                         targetBuildDepends = [Dependency
                                                                                                                                                                                 `PackageName "old-time"`
-                                                                                                                                                                                AnyVersion
+                                                                                                                                                                                (OrLaterVersion
+                                                                                                                                                                                   `mkVersion [0]`)
                                                                                                                                                                                 (Set.fromList
                                                                                                                                                                                    [LMainLibName])],
                                                                                                                                                         virtualModules = []},
@@ -946,7 +966,8 @@ GenericPackageDescription
                                                                     {condTreeComponents = [],
                                                                      condTreeConstraints = [Dependency
                                                                                               `PackageName "unix"`
-                                                                                              AnyVersion
+                                                                                              (OrLaterVersion
+                                                                                                 `mkVersion [0]`)
                                                                                               (Set.fromList
                                                                                                  [LMainLibName])],
                                                                      condTreeData = Library
@@ -1003,7 +1024,8 @@ GenericPackageDescription
                                                                                                                            [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "unix"`
-                                                                                                                                 AnyVersion
+                                                                                                                                 (OrLaterVersion
+                                                                                                                                    `mkVersion [0]`)
                                                                                                                                  (Set.fromList
                                                                                                                                     [LMainLibName])],
                                                                                                          virtualModules = []},
@@ -1018,7 +1040,7 @@ GenericPackageDescription
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "directory"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "hashable"`
@@ -1026,11 +1048,11 @@ GenericPackageDescription
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "binary"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "filepath"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "process"`
@@ -1042,7 +1064,7 @@ GenericPackageDescription
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "bytestring"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "utf8-string"`
@@ -1050,19 +1072,19 @@ GenericPackageDescription
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "time"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "random"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "js-jquery"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "js-flot"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "transformers"`
@@ -1176,7 +1198,8 @@ GenericPackageDescription
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "directory"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
@@ -1187,12 +1210,14 @@ GenericPackageDescription
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "binary"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "filepath"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
@@ -1209,7 +1234,8 @@ GenericPackageDescription
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "bytestring"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
@@ -1220,22 +1246,26 @@ GenericPackageDescription
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "time"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "random"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "js-jquery"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "js-flot"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
@@ -1539,7 +1569,8 @@ GenericPackageDescription
                                                                                                                        {condTreeComponents = [],
                                                                                                                         condTreeConstraints = [Dependency
                                                                                                                                                  `PackageName "old-time"`
-                                                                                                                                                 AnyVersion
+                                                                                                                                                 (OrLaterVersion
+                                                                                                                                                    `mkVersion [0]`)
                                                                                                                                                  (Set.fromList
                                                                                                                                                     [LMainLibName])],
                                                                                                                         condTreeData = TestSuite
@@ -1595,7 +1626,8 @@ GenericPackageDescription
                                                                                                                                                                                [],
                                                                                                                                                              targetBuildDepends = [Dependency
                                                                                                                                                                                      `PackageName "old-time"`
-                                                                                                                                                                                     AnyVersion
+                                                                                                                                                                                     (OrLaterVersion
+                                                                                                                                                                                        `mkVersion [0]`)
                                                                                                                                                                                      (Set.fromList
                                                                                                                                                                                         [LMainLibName])],
                                                                                                                                                              virtualModules = []},
@@ -1670,7 +1702,8 @@ GenericPackageDescription
                                                                         {condTreeComponents = [],
                                                                          condTreeConstraints = [Dependency
                                                                                                   `PackageName "unix"`
-                                                                                                  AnyVersion
+                                                                                                  (OrLaterVersion
+                                                                                                     `mkVersion [0]`)
                                                                                                   (Set.fromList
                                                                                                      [LMainLibName])],
                                                                          condTreeData = TestSuite
@@ -1726,7 +1759,8 @@ GenericPackageDescription
                                                                                                                                 [],
                                                                                                               targetBuildDepends = [Dependency
                                                                                                                                       `PackageName "unix"`
-                                                                                                                                      AnyVersion
+                                                                                                                                      (OrLaterVersion
+                                                                                                                                         `mkVersion [0]`)
                                                                                                                                       (Set.fromList
                                                                                                                                          [LMainLibName])],
                                                                                                               virtualModules = []},
@@ -1737,11 +1771,13 @@ GenericPackageDescription
                                                                                            testName = `UnqualComponentName ""`}}}],
                           condTreeConstraints = [Dependency
                                                    `PackageName "base"`
-                                                   (WildcardVersion `mkVersion [4]`)
+                                                   (IntersectVersionRanges
+                                                      (OrLaterVersion `mkVersion [4]`)
+                                                      (EarlierVersion `mkVersion [5]`))
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "directory"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "hashable"`
@@ -1749,11 +1785,11 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "binary"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "filepath"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "process"`
@@ -1765,7 +1801,7 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "bytestring"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "utf8-string"`
@@ -1773,19 +1809,19 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "time"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "random"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "js-jquery"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "js-flot"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "transformers"`
@@ -1950,13 +1986,17 @@ GenericPackageDescription
                                                                                  [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
-                                                                                       (WildcardVersion
-                                                                                          `mkVersion [4]`)
+                                                                                       (IntersectVersionRanges
+                                                                                          (OrLaterVersion
+                                                                                             `mkVersion [4]`)
+                                                                                          (EarlierVersion
+                                                                                             `mkVersion [5]`))
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "directory"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
@@ -1967,12 +2007,14 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "binary"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "filepath"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
@@ -1989,7 +2031,8 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "bytestring"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
@@ -2000,22 +2043,26 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "time"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "random"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "js-jquery"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "js-flot"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency

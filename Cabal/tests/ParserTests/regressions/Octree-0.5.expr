@@ -202,7 +202,7 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "markdown-unlit"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -276,7 +276,8 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "markdown-unlit"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},

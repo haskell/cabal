@@ -18,6 +18,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.Version
+import Distribution.Types.VersionInterval
 import Distribution.Types.VersionRange
 
 import qualified Data.ByteString.Char8           as BS8
@@ -142,10 +143,19 @@ versionToPkgconfigVersion :: Version -> PkgconfigVersion
 versionToPkgconfigVersion = PkgconfigVersion . BS8.pack . prettyShow
 
 versionRangeToPkgconfigVersionRange :: VersionRange -> PkgconfigVersionRange
-versionRangeToPkgconfigVersionRange = foldVersionRange
-    anyPkgconfigVersion
-    (PcThisVersion . versionToPkgconfigVersion)
-    (PcLaterVersion . versionToPkgconfigVersion)
-    (PcEarlierVersion . versionToPkgconfigVersion)
-    PcUnionVersionRanges
-    PcIntersectVersionRanges
+versionRangeToPkgconfigVersionRange vr
+    | isAnyVersion vr
+    = PcAnyVersion
+    | otherwise
+    = case asVersionIntervals vr of
+        []     -> PcEarlierVersion (PkgconfigVersion (BS8.pack "0"))
+        (i:is) -> foldl (\r j -> PcUnionVersionRanges r (conv j)) (conv i) is
+  where
+    conv (LowerBound v b, NoUpperBound)   = convL v b
+    conv (LowerBound v b, UpperBound u c) = PcIntersectVersionRanges (convL v b) (convU u c)
+
+    convL v ExclusiveBound = PcLaterVersion (versionToPkgconfigVersion v)
+    convL v InclusiveBound = PcOrLaterVersion (versionToPkgconfigVersion v)
+
+    convU v ExclusiveBound = PcEarlierVersion (versionToPkgconfigVersion v)
+    convU v InclusiveBound = PcOrEarlierVersion (versionToPkgconfigVersion v)

@@ -43,7 +43,7 @@ library
         Database.PostgreSQL.LibPQ
         Database.PostgreSQL.LibPQ.Internal
 
-    build-tool-depends: hsc2hs:hsc2hs -any
+    build-tool-depends: hsc2hs:hsc2hs
     c-sources:          cbits/noticehandlers.c
     hs-source-dirs:     src
     include-dirs:       cbits

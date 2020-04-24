@@ -114,7 +114,7 @@ GenericPackageDescription
                                                                    (Set.fromList [LMainLibName]),
                                                                  Dependency
                                                                    `PackageName "ghc-prim"`
-                                                                   AnyVersion
+                                                                   (OrLaterVersion `mkVersion [0]`)
                                                                    (Set.fromList [LMainLibName])]},
                            sourceRepos = [],
                            specVersion = CabalSpecV1_12,

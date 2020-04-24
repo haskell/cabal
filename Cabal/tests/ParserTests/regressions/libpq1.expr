@@ -467,7 +467,7 @@ GenericPackageDescription
                                                                                                          otherExtensions = [],
                                                                                                          otherLanguages = [],
                                                                                                          otherModules = [],
-                                                                                                         pkgconfigDepends = [`PkgconfigDependency (PkgconfigName "libpq") (PcIntersectVersionRanges (PcUnionVersionRanges (PcThisVersion (PkgconfigVersion "9")) (PcLaterVersion (PkgconfigVersion "9"))) (PcEarlierVersion (PkgconfigVersion "10")))`],
+                                                                                                         pkgconfigDepends = [`PkgconfigDependency (PkgconfigName "libpq") (PcIntersectVersionRanges (PcOrLaterVersion (PkgconfigVersion "9")) (PcEarlierVersion (PkgconfigVersion "10")))`],
                                                                                                          profOptions = PerCompilerFlavor
                                                                                                                          []
                                                                                                                          [],
@@ -505,7 +505,7 @@ GenericPackageDescription
                                                           autogenIncludes = [],
                                                           autogenModules = [],
                                                           buildToolDepends = [],
-                                                          buildTools = [`LegacyExeDependency "hsc2hs" AnyVersion`],
+                                                          buildTools = [`LegacyExeDependency "hsc2hs" (OrLaterVersion (mkVersion [0]))`],
                                                           buildable = True,
                                                           cSources = ["cbits/noticehandlers.c"],
                                                           ccOptions = [],

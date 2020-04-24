@@ -504,7 +504,7 @@ GenericPackageDescription
                                                           asmSources = [],
                                                           autogenIncludes = [],
                                                           autogenModules = [],
-                                                          buildToolDepends = [`ExeDependency (PackageName "hsc2hs") (UnqualComponentName "hsc2hs") AnyVersion`],
+                                                          buildToolDepends = [`ExeDependency (PackageName "hsc2hs") (UnqualComponentName "hsc2hs") (OrLaterVersion (mkVersion [0]))`],
                                                           buildTools = [],
                                                           buildable = True,
                                                           cSources = ["cbits/noticehandlers.c"],

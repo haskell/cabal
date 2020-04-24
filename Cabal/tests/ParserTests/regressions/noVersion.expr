@@ -7,9 +7,7 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "bad-package"`
-                                               (IntersectVersionRanges
-                                                  (LaterVersion `mkVersion [1]`)
-                                                  (EarlierVersion `mkVersion [1]`))
+                                               (EarlierVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName "ElseIf"`],
@@ -57,11 +55,8 @@ GenericPackageDescription
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "bad-package"`
-                                                                                  (IntersectVersionRanges
-                                                                                     (LaterVersion
-                                                                                        `mkVersion [1]`)
-                                                                                     (EarlierVersion
-                                                                                        `mkVersion [1]`))
+                                                                                  (EarlierVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},

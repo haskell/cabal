@@ -15,7 +15,8 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Version
-       (VersionRange, anyVersion, notThisVersion, simplifyVersionRange, thisVersion)
+       (VersionRange, anyVersion,notThisVersion, simplifyVersionRange, thisVersion)
+import Distribution.Types.VersionRange (isAnyVersionLight)
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing        (char, spaces)
@@ -76,8 +77,12 @@ instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
 
 instance Pretty Dependency where
-    pretty (Dependency name ver sublibs) = withSubLibs (pretty name) <+> pretty ver
+    pretty (Dependency name ver sublibs) = withSubLibs (pretty name) <+> pver
       where
+        -- TODO: change to isAnyVersion after #6736
+        pver | isAnyVersionLight ver = PP.empty
+             | otherwise             = pretty ver
+
         withSubLibs doc
             | sublibs == mainLib = doc
             | otherwise          = doc <<>> PP.colon <<>> PP.braces prettySublibs
@@ -90,13 +95,13 @@ instance Pretty Dependency where
 -- |
 --
 -- >>> simpleParsec "mylib:sub" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub")]))
 --
 -- >>> simpleParsec "mylib:{sub1,sub2}" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
 --
 -- >>> simpleParsec "mylib:{ sub1 , sub2 }" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
 --
 -- >>> simpleParsec "mylib:{ sub1 , sub2 } ^>= 42" :: Maybe Dependency
 -- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
@@ -105,9 +110,9 @@ instance Pretty Dependency where
 -- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList []))
 --
 -- >>> traverse_ print (map simpleParsec ["mylib:mylib", "mylib:{mylib}", "mylib:{mylib,sublib}" ] :: [Maybe Dependency])
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName]))
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName]))
--- Just (Dependency (PackageName "mylib") AnyVersion (fromList [LMainLibName,LSubLibName (UnqualComponentName "sublib")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName,LSubLibName (UnqualComponentName "sublib")]))
 --
 -- Spaces around colon are not allowed:
 --
@@ -117,7 +122,7 @@ instance Pretty Dependency where
 -- Sublibrary syntax is accepted since @cabal-version: 3.0@
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
--- [Nothing,Just (Dependency (PackageName "mylib") AnyVersion (fromList [LSubLibName (UnqualComponentName "sub")]))]
+-- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub")]))]
 --
 instance Parsec Dependency where
     parsec = do
@@ -157,7 +162,7 @@ mainLib = Set.singleton LMainLibName
 instance Described Dependency where
     describe _ = REAppend
         [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
-        , REOpt $ 
+        , REOpt $
                reChar ':'
             <> REUnion
                 [ reUnqualComponent
@@ -168,7 +173,7 @@ instance Described Dependency where
                     , REMunch reSpacedComma reUnqualComponent
                     , RESpaces
                     , reChar '}'
-                    ] 
+                    ]
                 ]
         -- TODO: RESpaces1 should be just RESpaces, but we are able
         -- to generate non-parseable strings without mandatory space

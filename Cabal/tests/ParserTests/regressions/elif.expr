@@ -11,7 +11,8 @@ GenericPackageDescription
                                                                     {condTreeComponents = [],
                                                                      condTreeConstraints = [Dependency
                                                                                               `PackageName "unix"`
-                                                                                              AnyVersion
+                                                                                              (OrLaterVersion
+                                                                                                 `mkVersion [0]`)
                                                                                               (Set.fromList
                                                                                                  [LMainLibName])],
                                                                      condTreeData = Library
@@ -68,7 +69,8 @@ GenericPackageDescription
                                                                                                                            [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "unix"`
-                                                                                                                                 AnyVersion
+                                                                                                                                 (OrLaterVersion
+                                                                                                                                    `mkVersion [0]`)
                                                                                                                                  (Set.fromList
                                                                                                                                     [LMainLibName])],
                                                                                                          virtualModules = []},

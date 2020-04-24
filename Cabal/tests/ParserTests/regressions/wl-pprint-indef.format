@@ -34,4 +34,4 @@ executable wl-pprint-string-example
     build-depends:
         base <5,
         str-string >=0.1.0.0,
-        wl-pprint-indef -any
+        wl-pprint-indef

@@ -7,7 +7,7 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "base"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName "ElseIf"`],
@@ -55,7 +55,8 @@ GenericPackageDescription
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "base"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -70,7 +71,7 @@ GenericPackageDescription
                            {condTreeComponents = [],
                             condTreeConstraints = [Dependency
                                                      `PackageName "base"`
-                                                     AnyVersion
+                                                     (OrLaterVersion `mkVersion [0]`)
                                                      (Set.fromList [LMainLibName])],
                             condTreeData = Library
                                              {exposedModules = [`ModuleName "ElseIf2"`],
@@ -121,7 +122,8 @@ GenericPackageDescription
                                                                                   [] [],
                                                                 targetBuildDepends = [Dependency
                                                                                         `PackageName "base"`
-                                                                                        AnyVersion
+                                                                                        (OrLaterVersion
+                                                                                           `mkVersion [0]`)
                                                                                         (Set.fromList
                                                                                            [LMainLibName])],
                                                                 virtualModules = []},

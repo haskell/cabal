@@ -6,8 +6,8 @@ executable str-example
     main-is:        Main.hs
     hs-source-dirs: str-example
     build-depends:
-        base -any,
-        str-string -any,
-        str-bytestring -any
+        base,
+        str-string,
+        str-bytestring
 
     mixins:         str hiding (Foo)
