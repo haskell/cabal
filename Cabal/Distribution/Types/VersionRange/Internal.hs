@@ -235,7 +235,7 @@ hyloVersionRange f g = h where h = f . fmap h . g
 instance Pretty VersionRange where
     pretty = fst . cataVersionRange alg
       where
-        alg AnyVersionF                     = (Disp.text "-any", 0 :: Int)
+        alg AnyVersionF                     = (Disp.empty, 0 :: Int)
         alg (ThisVersionF v)                = (Disp.text "==" <<>> pretty v, 0)
         alg (LaterVersionF v)               = (Disp.char '>'  <<>> pretty v, 0)
         alg (OrLaterVersionF v)             = (Disp.text ">=" <<>> pretty v, 0)

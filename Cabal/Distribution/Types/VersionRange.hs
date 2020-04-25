@@ -50,7 +50,7 @@ import Prelude ()
 --
 -- For a semantic view use 'asVersionIntervals'.
 --
-foldVersionRange :: a                         -- ^ @\"-any\"@ version
+foldVersionRange :: a                         -- ^ "any" version
                  -> (Version -> a)            -- ^ @\"== v\"@
                  -> (Version -> a)            -- ^ @\"> v\"@
                  -> (Version -> a)            -- ^ @\"< v\"@
