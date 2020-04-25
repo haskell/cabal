@@ -763,8 +763,7 @@ filterTargetsKindWith p ts =
         , p (componentKind cname) ]
 
 selectBuildableTargets :: [AvailableTarget k] -> [k]
-selectBuildableTargets ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
+selectBuildableTargets = selectBuildableTargetsWith (const True)
 
 selectBuildableTargetsWith :: (TargetRequested -> Bool)
                           -> [AvailableTarget k] -> [k]
@@ -772,10 +771,7 @@ selectBuildableTargetsWith p ts =
     [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
 
 selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargets' ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ _) _) <- ts ]
+selectBuildableTargets' = selectBuildableTargetsWith' (const True)
 
 selectBuildableTargetsWith' :: (TargetRequested -> Bool)
                            -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
