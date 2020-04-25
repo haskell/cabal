@@ -765,20 +765,22 @@ filterTargetsKindWith p ts =
 selectBuildableTargets :: [AvailableTarget k] -> [k]
 selectBuildableTargets = selectBuildableTargetsWith (const True)
 
+zipBuildableTargetsWith :: (TargetRequested -> Bool)
+                        -> [AvailableTarget k] -> [(k, AvailableTarget k)]
+zipBuildableTargetsWith p ts =
+    [ (k, t) | t@(AvailableTarget _ _ (TargetBuildable k req) _) <- ts, p req ]
+
 selectBuildableTargetsWith :: (TargetRequested -> Bool)
                           -> [AvailableTarget k] -> [k]
-selectBuildableTargetsWith p ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
+selectBuildableTargetsWith p = map fst . zipBuildableTargetsWith p
 
 selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
 selectBuildableTargets' = selectBuildableTargetsWith' (const True)
 
 selectBuildableTargetsWith' :: (TargetRequested -> Bool)
                            -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargetsWith' p ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ req) _) <- ts, p req ]
+selectBuildableTargetsWith' p =
+  (fmap . map) forgetTargetDetail . unzip . zipBuildableTargetsWith p
 
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
