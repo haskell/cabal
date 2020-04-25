@@ -67,7 +67,7 @@ project are:
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
     :synopsis: Optional project packages.
 
-    :default: ``./*/*.cabal``
+    :default: empty
 
     Like :cfg-field:`packages`, specifies a list of package locations
     containing local packages to be built. Unlike :cfg-field:`packages`,
@@ -90,13 +90,14 @@ project are:
 
 All local packages are *vendored*, in the sense that if other packages
 (including external ones from Hackage) depend on a package with the name
-of a local package, the local package is preferentially used.  This
-motivates the default settings::
+of a local package, the local package is preferentially used.
+For subdirectories to be considered local packages, the following setting
+can be used::
 
     packages: ./*.cabal
     optional-packages: ./*/*.cabal
 
-...any package can be vendored simply by making a checkout in the
+...then any package can be vendored simply by making a checkout in the
 top-level project directory, as might be seen in this hypothetical
 directory layout::
 
