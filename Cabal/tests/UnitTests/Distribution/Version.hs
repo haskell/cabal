@@ -15,7 +15,7 @@ import Distribution.Utils.Generic
 
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
-import Text.PrettyPrint as Disp (text, render, hcat
+import Text.PrettyPrint as Disp (empty, text, render, hcat
                                 ,punctuate, int, char, (<+>))
 import Test.Tasty
 import Test.Tasty.QuickCheck
@@ -643,7 +643,7 @@ displayRaw =
 
     -- precedence:
     -- All the same as the usual pretty printer, except for the parens
-    alg AnyVersionF                     = Disp.text "-any"
+    alg AnyVersionF                     = Disp.empty
     alg (ThisVersionF v)                = Disp.text "==" <<>> pretty v
     alg (LaterVersionF v)               = Disp.char '>'  <<>> pretty v
     alg (EarlierVersionF v)             = Disp.char '<'  <<>> pretty v

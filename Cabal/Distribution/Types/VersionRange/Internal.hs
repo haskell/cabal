@@ -48,8 +48,8 @@ import qualified Distribution.Compat.DList       as DList
 import qualified Text.PrettyPrint                as Disp
 
 data VersionRange
-  = AnyVersion
-  | ThisVersion            Version -- = version
+  = AnyVersion                     -- "" (no version range)
+  | ThisVersion            Version -- == version
   | LaterVersion           Version -- > version  (NB. not >=)
   | OrLaterVersion         Version -- >= version
   | EarlierVersion         Version -- < version
@@ -293,7 +293,7 @@ instance Parsec VersionRange where
 
 instance Described VersionRange where
     describe _ = RERec "version-range" $ REUnion
-        [ "-any", "-none"
+        [ "-none"
 
         , "=="  <> RESpaces <> ver
         , ">"   <> RESpaces <> ver
@@ -302,8 +302,8 @@ instance Described VersionRange where
         , ">="  <> RESpaces <> ver
         , "^>=" <> RESpaces <> ver
 
-        , reVar0 <> RESpaces  <> "||" <> RESpaces <> reVar0 
-        , reVar0 <> RESpaces  <> "&&" <> RESpaces <> reVar0 
+        , reVar0 <> RESpaces  <> "||" <> RESpaces <> reVar0
+        , reVar0 <> RESpaces  <> "&&" <> RESpaces <> reVar0
         , "(" <> RESpaces <> reVar0  <> RESpaces <> ")"
 
         -- ==0.1.*
@@ -313,6 +313,7 @@ instance Described VersionRange where
         -- silly haddock: ^>= { 0.1.2, 3.4.5 }
         , "=="  <> RESpaces <> verSet
         , "^>=" <> RESpaces <> verSet
+        , ""
         ]
       where
         ver'    = describe (Proxy :: Proxy Version)
@@ -328,8 +329,12 @@ instance Described VersionRange where
 --
 -- @since 3.0
 versionRangeParser :: forall m. CabalParsing m => m Int -> CabalSpecVersion -> m VersionRange
-versionRangeParser digitParser csv = expr
+versionRangeParser digitParser csv = noVersionParser <|> expr
       where
+        -- If the input is empty, parse as 'AnyVersion'.
+        noVersionParser = do P.spaces
+                             return anyVersion <* P.eof
+
         expr   = do P.spaces
                     t <- term
                     P.spaces

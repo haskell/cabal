@@ -73,11 +73,11 @@ instance Arbitrary Version where
                               , not (null ns) ]
 
 instance Arbitrary VersionRange where
-  arbitrary = sized verRangeExp
+  arbitrary = oneof [sized verRangeExp, return anyVersion]
     where
+      verRangeExp :: Int -> Gen VersionRange
       verRangeExp n = frequency $
-        [ (2, return anyVersion)
-        , (1, fmap thisVersion arbitrary)
+        [ (1, fmap thisVersion arbitrary)
         , (1, fmap laterVersion arbitrary)
         , (1, fmap orLaterVersion arbitrary)
         , (1, fmap orLaterVersion' arbitrary)
