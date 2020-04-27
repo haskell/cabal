@@ -7,7 +7,7 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "ghc-prim"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName "ElseIf"`],
@@ -55,7 +55,8 @@ GenericPackageDescription
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "ghc-prim"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -71,7 +72,7 @@ GenericPackageDescription
                          {condTreeComponents = [],
                           condTreeConstraints = [Dependency
                                                    `PackageName "HUnit"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -121,7 +122,8 @@ GenericPackageDescription
                                                                                  [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "HUnit"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},

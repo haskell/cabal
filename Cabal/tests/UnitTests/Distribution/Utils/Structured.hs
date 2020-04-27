@@ -19,10 +19,10 @@ import UnitTests.Orphans ()
 tests :: TestTree
 tests = testGroup "Distribution.Utils.Structured"
     -- This test also verifies that structureHash doesn't loop.
-    [ testCase "VersionRange"   $ structureHash (Proxy :: Proxy VersionRange)   @?= Fingerprint 0x6a33c568c9307696 0xe383268b2389a958
+    [ testCase "VersionRange"   $ structureHash (Proxy :: Proxy VersionRange)   @?= Fingerprint 0x39396fc4f2d751aa 0xa1f94e6d843f03bd
     , testCase "SPDX.License"   $ structureHash (Proxy :: Proxy License)        @?= Fingerprint 0xd3d4a09f517f9f75 0xbc3d16370d5a853a
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
-    , testCase "LocalBuildInfo" $ structureHash (Proxy :: Proxy LocalBuildInfo) @?= Fingerprint 0x27de6f0a3d133e71 0x81c8d35b9e4b8bf0
+    , testCase "LocalBuildInfo" $ structureHash (Proxy :: Proxy LocalBuildInfo) @?= Fingerprint 0x779513b2e8a07958 0xd344652f7031f88f
 #endif
     ]

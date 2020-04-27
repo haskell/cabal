@@ -63,6 +63,7 @@ instance Arbitrary Version where
                             ,(1, return 0xfffd)
                             ,(1, return 0xfffe) -- max fitting into packed W64
                             ,(1, return 0xffff)
+                            ,(1, return 999999998)
                             ,(1, return 999999999)
                             ,(1, return 0x10000)]
       return (mkVersion branch)
@@ -84,7 +85,7 @@ instance Arbitrary VersionRange where
         , (1, fmap earlierVersion arbitrary)
         , (1, fmap orEarlierVersion arbitrary)
         , (1, fmap orEarlierVersion' arbitrary)
-        , (1, fmap withinVersion arbitrary)
+        , (1, fmap withinVersion arbitraryV)
         , (1, fmap majorBoundVersion arbitrary)
         ] ++ if n == 0 then [] else
         [ (2, liftA2 unionVersionRanges     verRangeExp2 verRangeExp2)
@@ -93,18 +94,19 @@ instance Arbitrary VersionRange where
         where
           verRangeExp2 = verRangeExp (n `div` 2)
 
+      arbitraryV :: Gen Version
+      arbitraryV = arbitrary `suchThat` \v -> all (< 999999999) (versionNumbers v)
+
       orLaterVersion'   v =
         unionVersionRanges (LaterVersion v)   (ThisVersion v)
       orEarlierVersion' v =
         unionVersionRanges (EarlierVersion v) (ThisVersion v)
 
-  shrink AnyVersion                   = []
   shrink (ThisVersion v)              = map ThisVersion (shrink v)
   shrink (LaterVersion v)             = map LaterVersion (shrink v)
   shrink (EarlierVersion v)           = map EarlierVersion (shrink v)
   shrink (OrLaterVersion v)           = LaterVersion v : map OrLaterVersion (shrink v)
   shrink (OrEarlierVersion v)         = EarlierVersion v : map OrEarlierVersion (shrink v)
-  shrink (WildcardVersion v)          = map WildcardVersion ( shrink v)
   shrink (MajorBoundVersion v)        = map MajorBoundVersion (shrink v)
   shrink (UnionVersionRanges a b)     = a : b : map (uncurry UnionVersionRanges) (shrink (a, b))
   shrink (IntersectVersionRanges a b) = a : b : map (uncurry IntersectVersionRanges) (shrink (a, b))

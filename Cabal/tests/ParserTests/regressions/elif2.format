@@ -13,11 +13,11 @@ library
     default-language: Haskell2010
 
     if os(linux)
-        build-depends: unix -any
+        build-depends: unix
 
     else
         if os(windows)
-            build-depends: Win32 -any
+            build-depends: Win32
 
         else
             buildable: False

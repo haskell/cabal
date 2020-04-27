@@ -26,7 +26,7 @@ import Distribution.Compat.Prelude
 import Control.Exception (assert)
 
 import Distribution.Types.Version
-import Distribution.Types.VersionRange
+import Distribution.Types.VersionRange.Internal
 
 -- NonEmpty
 import qualified Prelude (foldr1)
@@ -200,15 +200,18 @@ withinIntervals v (VersionIntervals intervals) = any withinInterval intervals
 -- | Convert a 'VersionRange' to a sequence of version intervals.
 --
 toVersionIntervals :: VersionRange -> VersionIntervals
-toVersionIntervals = foldVersionRange
-  (         chkIvl (minLowerBound,               NoUpperBound))
-  (\v    -> chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound))
-  (\v    -> chkIvl (LowerBound v ExclusiveBound, NoUpperBound))
-  (\v    -> if isVersion0 v then VersionIntervals [] else
-            chkIvl (minLowerBound,               UpperBound v ExclusiveBound))
-  unionVersionIntervals
-  intersectVersionIntervals
-  where
+toVersionIntervals = cataVersionRange alg where
+    alg (ThisVersionF v)                = chkIvl (LowerBound v InclusiveBound, UpperBound v InclusiveBound)
+    alg (LaterVersionF v)               = chkIvl (LowerBound v ExclusiveBound, NoUpperBound)
+    alg (OrLaterVersionF v)             = chkIvl (LowerBound v InclusiveBound, NoUpperBound)
+    alg (EarlierVersionF v)
+        | isVersion0 v                  = VersionIntervals []
+        | otherwise                     = chkIvl (minLowerBound,               UpperBound v ExclusiveBound)
+    alg (OrEarlierVersionF v)           = chkIvl (minLowerBound,               UpperBound v InclusiveBound)
+    alg (MajorBoundVersionF v)          = chkIvl (LowerBound v InclusiveBound, UpperBound (majorUpperBound v) ExclusiveBound)
+    alg (UnionVersionRangesF v1 v2)     = unionVersionIntervals v1 v2
+    alg (IntersectVersionRangesF v1 v2) = intersectVersionIntervals v1 v2
+
     chkIvl interval = checkInvariant (VersionIntervals [interval])
 
 -- | Convert a 'VersionIntervals' value back into a 'VersionRange' expression
@@ -223,9 +226,6 @@ fromVersionIntervals (VersionIntervals intervals) =
     interval (LowerBound v  InclusiveBound)
              (UpperBound v' InclusiveBound) | v == v'
                  = thisVersion v
-    interval (LowerBound v  InclusiveBound)
-             (UpperBound v' ExclusiveBound) | isWildcardRange v v'
-                 = withinVersion v
     interval l u = lowerBound l `intersectVersionRanges'` upperBound u
 
     lowerBound (LowerBound v InclusiveBound)

@@ -6,15 +6,15 @@ GenericPackageDescription
                           {condTreeComponents = [],
                            condTreeConstraints = [Dependency
                                                     `PackageName "base"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "str-string"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
                                                     `PackageName "str-bytestring"`
-                                                    AnyVersion
+                                                    (OrLaterVersion `mkVersion [0]`)
                                                     (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
@@ -62,17 +62,20 @@ GenericPackageDescription
                                                             staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
                                                                                     `PackageName "base"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "str-string"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
                                                                                     `PackageName "str-bytestring"`
-                                                                                    AnyVersion
+                                                                                    (OrLaterVersion
+                                                                                       `mkVersion [0]`)
                                                                                     (Set.fromList
                                                                                        [LMainLibName])],
                                                             virtualModules = []},

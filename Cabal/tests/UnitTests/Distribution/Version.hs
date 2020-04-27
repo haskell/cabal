@@ -255,10 +255,11 @@ prop_invertVersionRange vr v' =
      withinRange v' (invertVersionRange vr)
   == not (withinRange v' vr)
 
-prop_withinVersion :: Version -> Version -> Bool
+prop_withinVersion :: Version -> Version -> Property
 prop_withinVersion v v' =
-     withinRange v' (withinVersion v)
-  == (v' >= v && v' < upper v)
+    withinRange v' (withinVersion v)
+    ===
+    (v' >= v && v' < upper v)
   where
     upper = alterVersion $ \numbers -> case unsnoc numbers of
       Nothing      -> []
@@ -272,8 +273,6 @@ prop_foldVersionRange range =
                       unionVersionRanges intersectVersionRanges
                       range
   where
-    expandVR (WildcardVersion v) =
-        intersectVersionRanges (expandVR (orLaterVersion v)) (earlierVersion (wildcardUpperBound v))
     expandVR (MajorBoundVersion v) =
         intersectVersionRanges (expandVR (orLaterVersion v)) (earlierVersion (majorUpperBound v))
     expandVR (OrEarlierVersion v) =
@@ -643,13 +642,11 @@ displayRaw =
 
     -- precedence:
     -- All the same as the usual pretty printer, except for the parens
-    alg AnyVersionF                     = Disp.text "-any"
     alg (ThisVersionF v)                = Disp.text "==" <<>> pretty v
     alg (LaterVersionF v)               = Disp.char '>'  <<>> pretty v
     alg (EarlierVersionF v)             = Disp.char '<'  <<>> pretty v
     alg (OrLaterVersionF v)             = Disp.text ">=" <<>> pretty v
     alg (OrEarlierVersionF v)           = Disp.text "<=" <<>> pretty v
-    alg (WildcardVersionF v)            = Disp.text "==" <<>> dispWild v
     alg (MajorBoundVersionF v)          = Disp.text "^>=" <<>> pretty v
     alg (UnionVersionRangesF r1 r2)     = r1 <+> Disp.text "||" <+> r2
     alg (IntersectVersionRangesF r1 r2) = r1 <+> Disp.text "&&" <+> r2

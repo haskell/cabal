@@ -7,13 +7,13 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "lib1"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList
                                                   [LSubLibName `UnqualComponentName "a"`,
                                                    LSubLibName `UnqualComponentName "b"`]),
                                              Dependency
                                                `PackageName "lib2"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList
                                                   [LSubLibName `UnqualComponentName "c"`]),
                                              Dependency
@@ -73,7 +73,8 @@ GenericPackageDescription
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "lib1"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LSubLibName
                                                                                         `UnqualComponentName "a"`,
@@ -81,7 +82,8 @@ GenericPackageDescription
                                                                                         `UnqualComponentName "b"`]),
                                                                                 Dependency
                                                                                   `PackageName "lib2"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LSubLibName
                                                                                         `UnqualComponentName "c"`]),

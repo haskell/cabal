@@ -15,4 +15,4 @@ library
     default-language: Haskell2010
 
     if os(linux)
-        build-depends: unix -any
+        build-depends: unix

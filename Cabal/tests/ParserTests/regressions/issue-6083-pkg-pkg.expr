@@ -7,11 +7,11 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
                                                `PackageName "freetype"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "freetype"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [],
@@ -59,12 +59,14 @@ GenericPackageDescription
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
                                                                                   `PackageName "freetype"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "freetype"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},

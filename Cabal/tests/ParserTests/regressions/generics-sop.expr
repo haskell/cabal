@@ -491,7 +491,7 @@ GenericPackageDescription
                          {condTreeComponents = [],
                           condTreeConstraints = [Dependency
                                                    `PackageName "base"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "doctest"`
@@ -551,7 +551,8 @@ GenericPackageDescription
                                                                                  [] [],
                                                                targetBuildDepends = [Dependency
                                                                                        `PackageName "base"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
@@ -579,7 +580,7 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "generics-sop"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -639,7 +640,8 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "generics-sop"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},
@@ -704,11 +706,11 @@ GenericPackageDescription
                                                 {defaultSetupDepends = False,
                                                  setupDepends = [Dependency
                                                                    `PackageName "base"`
-                                                                   AnyVersion
+                                                                   (OrLaterVersion `mkVersion [0]`)
                                                                    (Set.fromList [LMainLibName]),
                                                                  Dependency
                                                                    `PackageName "Cabal"`
-                                                                   AnyVersion
+                                                                   (OrLaterVersion `mkVersion [0]`)
                                                                    (Set.fromList [LMainLibName]),
                                                                  Dependency
                                                                    `PackageName "cabal-doctest"`
@@ -737,4 +739,8 @@ GenericPackageDescription
                                          _×_ GHC (ThisVersion `mkVersion [8,0,1]`),
                                          _×_ GHC (ThisVersion `mkVersion [8,0,2]`),
                                          _×_ GHC (ThisVersion `mkVersion [8,2,1]`),
-                                         _×_ GHC (WildcardVersion `mkVersion [8,3]`)]}}
+                                         _×_
+                                           GHC
+                                           (IntersectVersionRanges
+                                              (OrLaterVersion `mkVersion [8,3]`)
+                                              (EarlierVersion `mkVersion [8,4]`))]}}

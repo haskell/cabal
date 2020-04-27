@@ -143,18 +143,18 @@ library
     default-language: Haskell2010
     build-depends:
         base >=4.5,
-        directory -any,
+        directory,
         hashable >=1.1.2.3,
-        binary -any,
-        filepath -any,
+        binary,
+        filepath,
         process >=1.1,
         unordered-containers >=0.2.1,
-        bytestring -any,
+        bytestring,
         utf8-string >=0.3,
-        time -any,
-        random -any,
-        js-jquery -any,
-        js-flot -any,
+        time,
+        random,
+        js-jquery,
+        js-flot,
         transformers >=0.2,
         extra >=1.4.8,
         deepseq >=1.1
@@ -163,14 +163,14 @@ library
         cpp-options: -DPORTABLE
 
         if impl(ghc <7.6)
-            build-depends: old-time -any
+            build-depends: old-time
 
     else
         if !os(windows)
             build-depends: unix >=2.5.1
 
     if !os(windows)
-        build-depends: unix -any
+        build-depends: unix
 
 executable shake
     main-is:          Run.hs
@@ -235,23 +235,23 @@ executable shake
     default-language: Haskell2010
     ghc-options:      -main-is Run.main -rtsopts
     build-depends:
-        base ==4.*,
-        directory -any,
+        base >=4 && <5,
+        directory,
         hashable >=1.1.2.3,
-        binary -any,
-        filepath -any,
+        binary,
+        filepath,
         process >=1.1,
         unordered-containers >=0.2.1,
-        bytestring -any,
+        bytestring,
         utf8-string >=0.3,
-        time -any,
-        random -any,
-        js-jquery -any,
-        js-flot -any,
+        time,
+        random,
+        js-jquery,
+        js-flot,
         transformers >=0.2,
         extra >=1.4.8,
         deepseq >=1.1,
-        primitive -any
+        primitive
 
     if impl(ghc >=7.8)
         ghc-options: -threaded "-with-rtsopts=-I0 -qg -qb"
@@ -260,14 +260,14 @@ executable shake
         cpp-options: -DPORTABLE
 
         if impl(ghc <7.6)
-            build-depends: old-time -any
+            build-depends: old-time
 
     else
         if !os(windows)
             build-depends: unix >=2.5.1
 
     if !os(windows)
-        build-depends: unix -any
+        build-depends: unix
 
 test-suite shake-test
     type:             exitcode-stdio-1.0
@@ -374,19 +374,19 @@ test-suite shake-test
     default-language: Haskell2010
     ghc-options:      -main-is Test.main -rtsopts
     build-depends:
-        base ==4.*,
-        directory -any,
+        base >=4 && <5,
+        directory,
         hashable >=1.1.2.3,
-        binary -any,
-        filepath -any,
+        binary,
+        filepath,
         process >=1.1,
         unordered-containers >=0.2.1,
-        bytestring -any,
+        bytestring,
         utf8-string >=0.3,
-        time -any,
-        random -any,
-        js-jquery -any,
-        js-flot -any,
+        time,
+        random,
+        js-jquery,
+        js-flot,
         transformers >=0.2,
         deepseq >=1.1,
         extra >=1.4.8,
@@ -402,11 +402,11 @@ test-suite shake-test
         cpp-options: -DPORTABLE
 
         if impl(ghc <7.6)
-            build-depends: old-time -any
+            build-depends: old-time
 
     else
         if !os(windows)
             build-depends: unix >=2.5.1
 
     if !os(windows)
-        build-depends: unix -any
+        build-depends: unix

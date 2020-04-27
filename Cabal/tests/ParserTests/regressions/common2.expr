@@ -11,7 +11,8 @@ GenericPackageDescription
                                                                     {condTreeComponents = [],
                                                                      condTreeConstraints = [Dependency
                                                                                               `PackageName "Win32"`
-                                                                                              AnyVersion
+                                                                                              (OrLaterVersion
+                                                                                                 `mkVersion [0]`)
                                                                                               (Set.fromList
                                                                                                  [LMainLibName])],
                                                                      condTreeData = Library
@@ -68,7 +69,8 @@ GenericPackageDescription
                                                                                                                            [],
                                                                                                          targetBuildDepends = [Dependency
                                                                                                                                  `PackageName "Win32"`
-                                                                                                                                 AnyVersion
+                                                                                                                                 (OrLaterVersion
+                                                                                                                                    `mkVersion [0]`)
                                                                                                                                  (Set.fromList
                                                                                                                                     [LMainLibName])],
                                                                                                          virtualModules = []},
@@ -85,11 +87,11 @@ GenericPackageDescription
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "containers"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName]),
                                              Dependency
                                                `PackageName "ghc-prim"`
-                                               AnyVersion
+                                               (OrLaterVersion `mkVersion [0]`)
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [`ModuleName "ElseIf"`],
@@ -146,12 +148,14 @@ GenericPackageDescription
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "containers"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
                                                                                   `PackageName "ghc-prim"`
-                                                                                  AnyVersion
+                                                                                  (OrLaterVersion
+                                                                                     `mkVersion [0]`)
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -170,7 +174,8 @@ GenericPackageDescription
                                                                           {condTreeComponents = [],
                                                                            condTreeConstraints = [Dependency
                                                                                                     `PackageName "Win32"`
-                                                                                                    AnyVersion
+                                                                                                    (OrLaterVersion
+                                                                                                       `mkVersion [0]`)
                                                                                                     (Set.fromList
                                                                                                        [LMainLibName])],
                                                                            condTreeData = Library
@@ -227,7 +232,8 @@ GenericPackageDescription
                                                                                                                                  [],
                                                                                                                targetBuildDepends = [Dependency
                                                                                                                                        `PackageName "Win32"`
-                                                                                                                                       AnyVersion
+                                                                                                                                       (OrLaterVersion
+                                                                                                                                          `mkVersion [0]`)
                                                                                                                                        (Set.fromList
                                                                                                                                           [LMainLibName])],
                                                                                                                virtualModules = []},
@@ -245,11 +251,11 @@ GenericPackageDescription
                                                      (Set.fromList [LMainLibName]),
                                                    Dependency
                                                      `PackageName "containers"`
-                                                     AnyVersion
+                                                     (OrLaterVersion `mkVersion [0]`)
                                                      (Set.fromList [LMainLibName]),
                                                    Dependency
                                                      `PackageName "ghc-prim"`
-                                                     AnyVersion
+                                                     (OrLaterVersion `mkVersion [0]`)
                                                      (Set.fromList [LMainLibName])],
                             condTreeData = Library
                                              {exposedModules = [`ModuleName "ElseIf2"`],
@@ -309,12 +315,14 @@ GenericPackageDescription
                                                                                            [LMainLibName]),
                                                                                       Dependency
                                                                                         `PackageName "containers"`
-                                                                                        AnyVersion
+                                                                                        (OrLaterVersion
+                                                                                           `mkVersion [0]`)
                                                                                         (Set.fromList
                                                                                            [LMainLibName]),
                                                                                       Dependency
                                                                                         `PackageName "ghc-prim"`
-                                                                                        AnyVersion
+                                                                                        (OrLaterVersion
+                                                                                           `mkVersion [0]`)
                                                                                         (Set.fromList
                                                                                            [LMainLibName])],
                                                                 virtualModules = []},
@@ -334,7 +342,8 @@ GenericPackageDescription
                                                                         {condTreeComponents = [],
                                                                          condTreeConstraints = [Dependency
                                                                                                   `PackageName "Win32"`
-                                                                                                  AnyVersion
+                                                                                                  (OrLaterVersion
+                                                                                                     `mkVersion [0]`)
                                                                                                   (Set.fromList
                                                                                                      [LMainLibName])],
                                                                          condTreeData = TestSuite
@@ -390,7 +399,8 @@ GenericPackageDescription
                                                                                                                                 [],
                                                                                                               targetBuildDepends = [Dependency
                                                                                                                                       `PackageName "Win32"`
-                                                                                                                                      AnyVersion
+                                                                                                                                      (OrLaterVersion
+                                                                                                                                         `mkVersion [0]`)
                                                                                                                                       (Set.fromList
                                                                                                                                          [LMainLibName])],
                                                                                                               virtualModules = []},
@@ -406,7 +416,8 @@ GenericPackageDescription
                                                                         {condTreeComponents = [],
                                                                          condTreeConstraints = [Dependency
                                                                                                   `PackageName "Win32"`
-                                                                                                  AnyVersion
+                                                                                                  (OrLaterVersion
+                                                                                                     `mkVersion [0]`)
                                                                                                   (Set.fromList
                                                                                                      [LMainLibName])],
                                                                          condTreeData = TestSuite
@@ -462,7 +473,8 @@ GenericPackageDescription
                                                                                                                                 [],
                                                                                                               targetBuildDepends = [Dependency
                                                                                                                                       `PackageName "Win32"`
-                                                                                                                                      AnyVersion
+                                                                                                                                      (OrLaterVersion
+                                                                                                                                         `mkVersion [0]`)
                                                                                                                                       (Set.fromList
                                                                                                                                          [LMainLibName])],
                                                                                                               virtualModules = []},
@@ -543,11 +555,11 @@ GenericPackageDescription
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "containers"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
                                                    `PackageName "HUnit"`
-                                                   AnyVersion
+                                                   (OrLaterVersion `mkVersion [0]`)
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -606,12 +618,14 @@ GenericPackageDescription
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "containers"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
                                                                                        `PackageName "HUnit"`
-                                                                                       AnyVersion
+                                                                                       (OrLaterVersion
+                                                                                          `mkVersion [0]`)
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},
