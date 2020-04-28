@@ -56,7 +56,7 @@ module Distribution.Simple.Command (
   option, multiOption,
 
 -- ** Liftings & Projections
-  liftOption,
+  liftOption, liftOptionL,
 
 -- * Option Descriptions
   OptDescr(..), Description, SFlags, LFlags, OptFlags, ArgPlaceHolder,
@@ -74,6 +74,7 @@ import Distribution.Compat.Prelude hiding (get)
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
 import Distribution.Simple.Utils
+import Distribution.Compat.Lens (ALens', (^#), (#~))
 
 
 data CommandUI flags = CommandUI {
@@ -250,6 +251,10 @@ getCurrentChoice _ _ = error "Command.getChoice: expected a Choice OptDescr"
 liftOption :: (b -> a) -> (a -> (b -> b)) -> OptionField a -> OptionField b
 liftOption get' set' opt =
   opt { optionDescr = liftOptDescr get' set' `map` optionDescr opt}
+
+-- | @since 3.4.0.0
+liftOptionL :: ALens' b a -> OptionField a -> OptionField b
+liftOptionL l = liftOption (^# l) (l #~)
 
 
 liftOptDescr :: (b -> a) -> (a -> (b -> b)) -> OptDescr a -> OptDescr b

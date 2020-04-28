@@ -168,6 +168,7 @@ Version:            3.3.0.0
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.ProjectConfig.Types
+        Distribution.Client.ProjectFlags
         Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning
