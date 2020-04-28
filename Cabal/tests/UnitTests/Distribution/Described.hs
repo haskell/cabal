@@ -136,12 +136,20 @@ convert = go id . vacuous where
     go _ RESpaces1          = RE.ch_ ' ' RE.\/ "  " RE.\/ "\n"
 
     go f (RECommaList r)    = go f (expandedCommaList r)
+    go f (RECommaNonEmpty r)= go f (expandedCommaNonEmpty r)
     go f (REOptCommaList r) = go f (expandedOptCommaList r)
 
     go _ RETodo             = RE.Null
 
 expandedCommaList :: GrammarRegex a -> GrammarRegex a
 expandedCommaList = REUnion . expandedCommaList'
+
+expandedCommaNonEmpty :: GrammarRegex a -> GrammarRegex a
+expandedCommaNonEmpty r = REUnion
+    [ REMunch1 reSpacedComma r
+    , reComma <> RESpaces <> REMunch1 reSpacedComma r
+    , REMunch1 reSpacedComma r <> RESpaces <> reComma
+    ]
 
 expandedCommaList' :: GrammarRegex a -> [GrammarRegex a]
 expandedCommaList' r =

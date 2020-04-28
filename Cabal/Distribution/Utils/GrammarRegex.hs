@@ -50,6 +50,7 @@ data GrammarRegex a
     | RESpaces                            -- ^ zero-or-more spaces
     | RESpaces1                           -- ^ one-or-more spaces
     | RECommaList (GrammarRegex a)        -- ^ comma list (note, leading or trailing commas)
+    | RECommaNonEmpty (GrammarRegex a)    -- ^ comma non-empty list
     | REOptCommaList (GrammarRegex a)     -- ^ opt comma list
 
     | RETodo                              -- ^ unspecified
@@ -146,6 +147,8 @@ regexDoc = go 0 . vacuous where
 
     go _ (RECommaList r)  =
         "\\mathrm{commalist}" <<>> go 4 r
+    go _ (RECommaNonEmpty r)  =
+        "\\mathrm{commanonempty}" <<>> go 4 r
     go _ (REOptCommaList r) =
         "\\mathrm{optcommalist}" <<>> go 4 r
 
