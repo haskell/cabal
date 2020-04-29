@@ -14,7 +14,7 @@ module Distribution.Client.CmdInstall (
     -- * Internals exposed for testing
     TargetProblem(..),
     selectPackageTargets,
-    InstallUtils.selectComponentTarget,
+    selectComponentTarget,
     -- * Internals exposed for CmdRepl + CmdRun
     establishDummyDistDirLayout,
     establishDummyProjectBaseContext
@@ -28,16 +28,20 @@ import Distribution.Compat.Directory
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdSdist
 
+import Distribution.Client.CmdErrorMessages
+       ( renderTargetProblemCommon
+       , renderTargetProblemNoneEnabled
+       , renderTargetProblemNoTargets )
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
-import Distribution.Client.CmdInstall.TargetProblem
-         ( TargetProblem(..), reportTargetProblems )
-import qualified Distribution.Client.CmdInstall.Utils as InstallUtils
-         ( reportCannotPruneDependencies, selectComponentTarget, warnIfNoExes )
-import qualified Distribution.Client.Env.Install as EnvInstall
+--import Distribution.Client.CmdInstall.TargetProblem
+--         ( TargetProblem(..), reportTargetProblems )
+import qualified Distribution.Client.CmdEnv.Install as EnvInstall
          ( installLibraries )
-import qualified Distribution.Client.Env.Utils as EnvUtils
+import qualified Distribution.Client.CmdEnv.Utils as EnvUtils
          ( environmentFileToSpecifiers )
+import qualified Distribution.Client.CmdInstall.Utils as InstallUtils
+         ( reportCannotPruneDependencies, warnIfNoExes )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
@@ -308,7 +312,7 @@ installAction ( configFlags, configExFlags, installFlags
             (targets, hackageNames) <- case
               resolveTargets
                 selectPackageTargets
-                InstallUtils.selectComponentTarget
+                selectComponentTarget
                 TargetProblemCommon
                 elaboratedPlan
                 (Just pkgDb)
@@ -351,7 +355,7 @@ installAction ( configFlags, configExFlags, installFlags
                   either (reportTargetProblems verbosity) return $
                   resolveTargets
                     selectPackageTargets
-                    InstallUtils.selectComponentTarget
+                    selectComponentTarget
                     TargetProblemCommon
                     elaboratedPlan
                     Nothing
@@ -580,7 +584,7 @@ installAction ( configFlags, configExFlags, installFlags
             targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
-                         InstallUtils.selectComponentTarget
+                         selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
                          Nothing
@@ -820,3 +824,41 @@ selectPackageTargets targetSelector targets
     buildable (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
     buildable (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
     buildable _ _ = True
+
+-- | For a 'TargetComponent' 'TargetSelector', check if the component can be
+-- selected.
+--
+-- For the @build@ command we just need the basic checks on being buildable etc.
+--
+selectComponentTarget
+  :: SubComponentTarget
+  -> AvailableTarget k -> Either TargetProblem k
+selectComponentTarget subtarget =
+    either (Left . TargetProblemCommon) Right
+  . selectComponentTargetBasic subtarget
+
+
+-- | The various error conditions that can occur when matching a
+-- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
+--
+data TargetProblem =
+     TargetProblemCommon       TargetProblemCommon
+
+     -- | The 'TargetSelector' matches targets but none are buildable
+   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
+
+     -- | There are no targets at all
+   | TargetProblemNoTargets   TargetSelector
+  deriving (Eq, Show)
+
+reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems verbosity =
+    die' verbosity . unlines . map renderTargetProblem
+
+renderTargetProblem :: TargetProblem -> String
+renderTargetProblem (TargetProblemCommon problem) =
+    renderTargetProblemCommon "build" problem
+renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled "build" targetSelector targets
+renderTargetProblem(TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets "build" targetSelector

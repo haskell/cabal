@@ -101,6 +101,8 @@ Version:            3.3.0.0
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdUpdate
+        Distribution.Client.CmdEnv.Install
+        Distribution.Client.CmdEnv.Utils
         Distribution.Client.CmdErrorMessages
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
@@ -108,7 +110,6 @@ Version:            3.3.0.0
         Distribution.Client.CmdInstall
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdInstall.ClientInstallTargetSelector
-        Distribution.Client.CmdInstall.TargetProblem
         Distribution.Client.CmdInstall.Utils
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
@@ -128,8 +129,6 @@ Version:            3.3.0.0
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
-        Distribution.Client.Env.Install
-        Distribution.Client.Env.Utils
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils

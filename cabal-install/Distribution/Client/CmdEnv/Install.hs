@@ -1,4 +1,4 @@
-module Distribution.Client.Env.Install
+module Distribution.Client.CmdEnv.Install
   ( installLibraries
   ) where
 
@@ -14,7 +14,7 @@ import System.Directory
 import System.FilePath
        ( takeDirectory )
 
-import qualified Distribution.Client.Env.Utils as EnvUtils
+import qualified Distribution.Client.CmdEnv.Utils as EnvUtils
        ( globalPackages )
 import Distribution.Client.IndexUtils
        ( getInstalledPackages )
