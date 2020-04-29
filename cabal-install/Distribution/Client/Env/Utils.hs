@@ -13,7 +13,7 @@ import Distribution.Client.Types
        ( PackageSpecifier(..) )
 
 import Distribution.Package
-       ( Package(..), PackageName, mkPackageName )
+       ( PackageName, mkPackageName )
 import Distribution.Simple.GHC
        ( GhcEnvironmentFileEntry(..) )
 import Distribution.Types.InstalledPackageInfo
