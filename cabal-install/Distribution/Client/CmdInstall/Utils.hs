@@ -11,10 +11,8 @@ import qualified Data.Map as Map
 import Distribution.Client.CmdErrorMessages
        ( plural, listPlural, renderCannotPruneDependencies, showTargetSelector )
 import Distribution.Client.ProjectOrchestration
-       ( CannotPruneDependencies(..), ComponentName(..), SubComponentTarget(..)
+       ( CannotPruneDependencies(..), ComponentName(..)
        , ComponentTarget(..) , ProjectBuildContext(..) )
-import Distribution.Client.ProjectPlanning
-       ( AvailableTarget(..) )
 import Distribution.Simple.Utils
        ( die', warn )
 import Distribution.Verbosity
