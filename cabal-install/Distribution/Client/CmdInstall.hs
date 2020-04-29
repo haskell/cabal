@@ -4,17 +4,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns        #-}
 
--- | cabal-install CLI command: build
+-- | cabal-install CLI command: install
 --
 module Distribution.Client.CmdInstall (
-    -- * The @build@ CLI and action
+    -- * The @install@ CLI and action
     installCommand,
     installAction,
 
     -- * Internals exposed for testing
     TargetProblem(..),
     selectPackageTargets,
-    selectComponentTarget,
+    InstallUtils.selectComponentTarget,
     -- * Internals exposed for CmdRepl + CmdRun
     establishDummyDistDirLayout,
     establishDummyProjectBaseContext
@@ -26,11 +26,18 @@ import Distribution.Compat.Directory
          ( doesPathExist )
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
+import Distribution.Client.CmdInstall.TargetProblem
+         ( TargetProblem(..), reportTargetProblems )
+import qualified Distribution.Client.CmdInstall.Utils as InstallUtils
+         ( reportCannotPruneDependencies, selectComponentTarget, warnIfNoExes )
+import qualified Distribution.Client.Env.Install as EnvInstall
+         ( installLibraries )
+import qualified Distribution.Client.Env.Utils as EnvUtils
+         ( environmentFileToSpecifiers )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
@@ -43,7 +50,7 @@ import Distribution.Client.Types
          , SourcePackageDb(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
-         ( Package(..), PackageName, mkPackageName, unPackageName )
+         ( Package(..), unPackageName )
 import Distribution.Types.PackageId
          ( PackageIdentifier(..) )
 import Distribution.Client.ProjectConfig
@@ -58,18 +65,15 @@ import Distribution.Client.ProjectConfig.Types
          , projectConfigConfigFile )
 import Distribution.Simple.Program.Db
          ( userSpecifyPaths, userSpecifyArgss, defaultProgramDb
-         , modifyProgramSearchPath, ProgramDb )
+         , modifyProgramSearchPath )
 import Distribution.Simple.BuildPaths
          ( exeExtension )
 import Distribution.Simple.Program.Find
          ( ProgramSearchPathEntry(..) )
 import Distribution.Client.Config
          ( defaultInstallPath, getCabalDir, loadConfig, SavedConfig(..) )
-import qualified Distribution.Simple.PackageIndex as PI
 import Distribution.Solver.Types.PackageIndex
          ( lookupPackageName, searchByName )
-import Distribution.Types.InstalledPackageInfo
-         ( InstalledPackageInfo(..) )
 import Distribution.Types.Version
          ( nullVersion )
 import Distribution.Types.VersionRange
@@ -103,13 +107,12 @@ import Distribution.Simple.Command
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
-         ( Compiler(..), CompilerId(..), CompilerFlavor(..)
-         , PackageDBStack )
+         ( Compiler(..), CompilerId(..), CompilerFlavor(..) )
 import Distribution.Simple.GHC
          ( ghcPlatformAndVersionString
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
-         , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
+         , readGhcEnvironmentFile, ParseErrorExc )
 import Distribution.System
          ( Platform , buildOS, OS (Windows) )
 import Distribution.Types.UnitId
@@ -120,10 +123,7 @@ import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
          ( wrapText, die', notice, warn
-         , withTempDirectory, createDirectoryIfMissingVerbose
-         , ordNub )
-import Distribution.Utils.Generic
-         ( safeHead, writeFileAtomic )
+         , withTempDirectory, createDirectoryIfMissingVerbose )
 import Distribution.Deprecated.Text
          ( simpleParse )
 import Distribution.Pretty
@@ -133,11 +133,8 @@ import Control.Exception
          ( catch )
 import Control.Monad
          ( mapM, forM_ )
-import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Either
          ( partitionEithers )
-import Data.Ord
-         ( comparing, Down(..) )
 import qualified Data.Map as Map
 import Distribution.Utils.NubList
          ( fromNubList )
@@ -147,7 +144,7 @@ import System.Directory
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
-         ( (</>), (<.>), takeDirectory, takeBaseName )
+         ( (</>), (<.>), takeBaseName )
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, TestFlags, BenchmarkFlags
@@ -311,7 +308,7 @@ installAction ( configFlags, configExFlags, installFlags
             (targets, hackageNames) <- case
               resolveTargets
                 selectPackageTargets
-                selectComponentTarget
+                InstallUtils.selectComponentTarget
                 TargetProblemCommon
                 elaboratedPlan
                 (Just pkgDb)
@@ -354,7 +351,7 @@ installAction ( configFlags, configExFlags, installFlags
                   either (reportTargetProblems verbosity) return $
                   resolveTargets
                     selectPackageTargets
-                    selectComponentTarget
+                    InstallUtils.selectComponentTarget
                     TargetProblemCommon
                     elaboratedPlan
                     Nothing
@@ -546,7 +543,7 @@ installAction ( configFlags, configExFlags, installFlags
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let (envSpecs, envEntries') =
-        environmentFileToSpecifiers installedIndex envEntries
+        EnvUtils.environmentFileToSpecifiers installedIndex envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -583,7 +580,7 @@ installAction ( configFlags, configExFlags, installFlags
             targets <- either (reportTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
-                         selectComponentTarget
+                         InstallUtils.selectComponentTarget
                          TargetProblemCommon
                          elaboratedPlan
                          Nothing
@@ -595,7 +592,7 @@ installAction ( configFlags, configExFlags, installFlags
                                     elaboratedPlan
             elaboratedPlan'' <-
               if buildSettingOnlyDeps (buildSettings baseCtx)
-                then either (reportCannotPruneDependencies verbosity) return $
+                then either (InstallUtils.reportCannotPruneDependencies verbosity) return $
                      pruneInstallPlanToDependencies (Map.keysSet targets)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
@@ -615,7 +612,7 @@ installAction ( configFlags, configExFlags, installFlags
     -- Then, install!
     when (not dryRun) $
       if installLibs
-      then installLibraries verbosity
+      then EnvInstall.installLibraries verbosity
            buildCtx compiler packageDbs progDb envFile envEntries'
       else installExes verbosity
            baseCtx buildCtx platform compiler configFlags clientInstallFlags
@@ -665,7 +662,7 @@ installExes verbosity baseCtx buildCtx platform compiler
                 (warn verbosity installdirUnknown >> pure installPath) $
                 pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
-  warnIfNoExes verbosity buildCtx
+  InstallUtils.warnIfNoExes verbosity buildCtx
 
   installMethod <- flagElim defaultMethod return $
     cinstInstallMethod clientInstallFlags
@@ -692,86 +689,6 @@ installExes verbosity baseCtx buildCtx platform compiler
         symlinks <- trySymlink verbosity
         return $ if symlinks then InstallMethodSymlink else InstallMethodCopy
       | otherwise = return InstallMethodSymlink
-
--- | Install any built library by adding it to the default ghc environment
-installLibraries
-  :: Verbosity
-  -> ProjectBuildContext
-  -> Compiler
-  -> PackageDBStack
-  -> ProgramDb
-  -> FilePath -- ^ Environment file
-  -> [GhcEnvironmentFileEntry]
-  -> IO ()
-installLibraries verbosity buildCtx compiler
-                 packageDbs programDb envFile envEntries = do
-  -- Why do we get it again? If we updated a globalPackage then we need
-  -- the new version.
-  installedIndex <- getInstalledPackages verbosity compiler packageDbs programDb
-  if supportsPkgEnvFiles $ getImplInfo compiler
-    then do
-      let
-        getLatest :: PackageName -> [InstalledPackageInfo]
-        getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
-                  . PI.lookupPackageName installedIndex
-        globalLatest = concat (getLatest <$> globalPackages)
-
-        baseEntries =
-          GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs
-        globalEntries = GhcEnvFilePackageId . installedUnitId <$> globalLatest
-        pkgEntries = ordNub $
-              globalEntries
-          ++ envEntries
-          ++ entriesForLibraryComponents (targetsMap buildCtx)
-        contents' = renderGhcEnvironmentFile (baseEntries ++ pkgEntries)
-      createDirectoryIfMissing True (takeDirectory envFile)
-      writeFileAtomic envFile (BS.pack contents')
-    else
-      warn verbosity $
-          "The current compiler doesn't support safely installing libraries, "
-        ++ "so only executables will be available. (Library installation is "
-        ++ "supported on GHC 8.0+ only)"
-
-warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
-warnIfNoExes verbosity buildCtx =
-  when noExes $
-    warn verbosity $
-    "You asked to install executables, but there are no executables in "
-    <> plural (listPlural selectors) "target" "targets" <> ": "
-    <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
-    <> "Perhaps you want to use --lib to install libraries instead."
-  where
-    targets    = concat $ Map.elems $ targetsMap buildCtx
-    components = fst <$> targets
-    selectors  = concatMap snd targets
-    noExes     = null $ catMaybes $ exeMaybe <$> components
-
-    exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
-    exeMaybe _                                  = Nothing
-
-globalPackages :: [PackageName]
-globalPackages = mkPackageName <$>
-  [ "ghc", "hoopl", "bytestring", "unix", "base", "time", "hpc", "filepath"
-  , "process", "array", "integer-gmp", "containers", "ghc-boot", "binary"
-  , "ghc-prim", "ghci", "rts", "terminfo", "transformers", "deepseq"
-  , "ghc-boot-th", "pretty", "template-haskell", "directory", "text"
-  , "bin-package-db"
-  ]
-
-environmentFileToSpecifiers
-  :: PI.InstalledPackageIndex -> [GhcEnvironmentFileEntry]
-  -> ([PackageSpecifier a], [GhcEnvironmentFileEntry])
-environmentFileToSpecifiers ipi = foldMap $ \case
-    (GhcEnvFilePackageId unitId)
-        | Just InstalledPackageInfo
-          { sourcePackageId = PackageIdentifier{..}, installedUnitId }
-          <- PI.lookupUnitId ipi unitId
-        , let pkgSpec = NamedPackage pkgName
-                        [PackagePropertyVersion (thisVersion pkgVersion)]
-        -> if pkgName `elem` globalPackages
-          then ([pkgSpec], [])
-          else ([pkgSpec], [GhcEnvFilePackageId installedUnitId])
-    _ -> ([], [])
 
 
 -- | Disables tests and benchmarks if they weren't explicitly enabled.
@@ -864,21 +781,6 @@ installBuiltExe verbosity overwritePolicy
       else removeFile      destination
     copy = copyFile source destination >> pure True
 
--- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
-entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
-entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
-  where
-    hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
-    hasLib (ComponentTarget (CLibName _) _, _) = True
-    hasLib _                                   = False
-
-    go :: UnitId
-       -> [(ComponentTarget, [TargetSelector])]
-       -> [GhcEnvironmentFileEntry]
-    go unitId targets
-      | any hasLib targets = [GhcEnvFilePackageId unitId]
-      | otherwise          = []
-
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
@@ -887,6 +789,9 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
 -- and disabled tests\/benchmarks, fail if there are no such
 -- components
 --
+-- TODO(m-renaud): Find a better home for this, the docs reference @bench@ and @build@,
+-- neither of which are related to install so it was likely copied from
+-- elsewhere.
 selectPackageTargets
   :: TargetSelector
   -> [AvailableTarget k] -> Either TargetProblem [k]
@@ -915,45 +820,3 @@ selectPackageTargets targetSelector targets
     buildable (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
     buildable (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
     buildable _ _ = True
-
--- | For a 'TargetComponent' 'TargetSelector', check if the component can be
--- selected.
---
--- For the @build@ command we just need the basic checks on being buildable etc.
---
-selectComponentTarget
-  :: SubComponentTarget
-  -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic subtarget
-
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build" problem
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build" targetSelector targets
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build" targetSelector
-
-reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
-reportCannotPruneDependencies verbosity =
-    die' verbosity . renderCannotPruneDependencies
