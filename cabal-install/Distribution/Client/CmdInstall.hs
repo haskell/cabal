@@ -33,11 +33,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
-         , configureExOptions, haddockOptions, installOptions, testOptions
-         , benchmarkOptions, configureOptions, liftOptions )
-import Distribution.Solver.Types.ConstraintSource
-         ( ConstraintSource(..) )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
          , SourcePackageDb(..) )
@@ -50,6 +46,8 @@ import Distribution.Client.ProjectConfig
          ( ProjectPackageLocation(..)
          , fetchAndReadSourcePackages
          )
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
@@ -99,7 +97,7 @@ import Distribution.Simple.Setup
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
-         ( CommandUI(..), OptionField(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Simple.Compiler
@@ -149,10 +147,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory, takeBaseName )
 
-installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                            , HaddockFlags, TestFlags, BenchmarkFlags
-                            , ClientInstallFlags
-                            )
+installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand = CommandUI
   { commandName         = "v2-install"
   , commandSynopsis     = "Install packages."
@@ -179,44 +174,9 @@ installCommand = CommandUI
       ++ "    Install the package in the ./pkgfoo directory\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
-  , commandOptions      = \showOrParseArgs ->
-        liftOptions get1 set1
-        -- Note: [Hidden Flags]
-        -- hide "constraint", "dependency", and
-        -- "exact-configuration" from the configure options.
-        (filter ((`notElem` ["constraint", "dependency"
-                            , "exact-configuration"])
-                 . optionName) $ configureOptions showOrParseArgs)
-     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs
-                               ConstraintSourceCommandlineFlag)
-     ++ liftOptions get3 set3
-        -- hide "target-package-db" and "symlink-bindir" flags from the
-        -- install options.
-        -- "symlink-bindir" is obsoleted by "installdir" in ClientInstallFlags
-        (filter ((`notElem` ["target-package-db", "symlink-bindir"])
-                 . optionName) $
-                               installOptions showOrParseArgs)
-       ++ liftOptions get4 set4
-          -- hide "verbose" and "builddir" flags from the
-          -- haddock options.
-          (filter ((`notElem` ["v", "verbose", "builddir"])
-                  . optionName) $
-                                haddockOptions showOrParseArgs)
-     ++ liftOptions get5 set5 (testOptions showOrParseArgs)
-     ++ liftOptions get6 set6 (benchmarkOptions showOrParseArgs)
-     ++ liftOptions get7 set7 (clientInstallOptions showOrParseArgs)
-  , commandDefaultFlags = ( mempty, mempty, mempty, mempty, mempty, mempty
-                          , defaultClientInstallFlags )
+  , commandOptions      = nixStyleOptions clientInstallOptions
+  , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }
-  where
-    get1 (a,_,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get2 (_,b,_,_,_,_,_) = b; set2 b (a,_,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get3 (_,_,c,_,_,_,_) = c; set3 c (a,b,_,d,e,f,g) = (a,b,c,d,e,f,g)
-    get4 (_,_,_,d,_,_,_) = d; set4 d (a,b,c,_,e,f,g) = (a,b,c,d,e,f,g)
-    get5 (_,_,_,_,e,_,_) = e; set5 e (a,b,c,d,_,f,g) = (a,b,c,d,e,f,g)
-    get6 (_,_,_,_,_,f,_) = f; set6 f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
-    get7 (_,_,_,_,_,_,g) = g; set7 g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
-
 
 -- | The @install@ command actually serves four different needs. It installs:
 -- * exes:

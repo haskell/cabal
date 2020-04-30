@@ -159,6 +159,7 @@ Version:            3.3.0.0
         Distribution.Client.Manpage
         Distribution.Client.ManpageFlags
         Distribution.Client.Nix
+        Distribution.Client.NixStyleOptions
         Distribution.Client.Outdated
         Distribution.Client.PackageHash
         Distribution.Client.PackageUtils

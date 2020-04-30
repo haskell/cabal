@@ -23,6 +23,8 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
@@ -45,7 +47,7 @@ import Distribution.Simple.Setup
          , fromFlagOrDefault, replOptions
          , Flag(..), toFlag, trueArg, falseArg )
 import Distribution.Simple.Command
-         ( CommandUI(..), liftOption, usageAlternatives, option
+         ( CommandUI(..), liftOptionL, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
 import Distribution.Compiler
          ( CompilerFlavor(GHC) )
@@ -144,10 +146,7 @@ envOptions _ =
         ("couldn't parse dependencies: " ++)
         (parsecCommaList parsec)
 
-replCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                         , HaddockFlags, TestFlags, BenchmarkFlags
-                         , ReplFlags, EnvFlags
-                         )
+replCommand :: CommandUI (NixStyleFlags (ReplFlags, EnvFlags))
 replCommand = Client.installCommand {
   commandName         = "v2-repl",
   commandSynopsis     = "Open an interactive session for the given component.",
@@ -185,31 +184,11 @@ replCommand = Client.installCommand {
         ++ "to the default component (or no component if there is no project present)\n"
 
      ++ cmdCommonHelpTextNewBuildBeta,
-  commandDefaultFlags = ( configFlags, configExFlags, installFlags
-                        , haddockFlags, testFlags, benchmarkFlags
-                        , [], defaultEnvFlags
-                        ),
-  commandOptions = \showOrParseArgs ->
-        map liftOriginal (commandOptions Client.installCommand showOrParseArgs)
-        ++ map liftReplOpts (replOptions showOrParseArgs)
-        ++ map liftEnvOpts  (envOptions  showOrParseArgs)
-   }
-  where
-    (configFlags,configExFlags,installFlags,haddockFlags,testFlags,benchmarkFlags)
-      = commandDefaultFlags Client.installCommand
-
-    liftOriginal = liftOption projectOriginal updateOriginal
-    liftReplOpts = liftOption projectReplOpts updateReplOpts
-    liftEnvOpts  = liftOption projectEnvOpts  updateEnvOpts
-
-    projectOriginal              (a,b,c,d,e,f,_,_) = (a,b,c,d,e,f)
-    updateOriginal (a,b,c,d,e,f) (_,_,_,_,_,_,g,h) = (a,b,c,d,e,f,g,h)
-
-    projectReplOpts  (_,_,_,_,_,_,g,_) = g
-    updateReplOpts g (a,b,c,d,e,f,_,h) = (a,b,c,d,e,f,g,h)
-
-    projectEnvOpts  (_,_,_,_,_,_,_,h) = h
-    updateEnvOpts h (a,b,c,d,e,f,g,_) = (a,b,c,d,e,f,g,h)
+  commandDefaultFlags = defaultNixStyleFlags ([], defaultEnvFlags),
+  commandOptions = nixStyleOptions $ \showOrParseArgs ->
+    map (liftOptionL _1) (replOptions showOrParseArgs) ++
+    map (liftOptionL _2) (envOptions showOrParseArgs)
+  }
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit
@@ -224,11 +203,11 @@ replCommand = Client.installCommand {
 --
 replAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
               , HaddockFlags, TestFlags, BenchmarkFlags
-              , ReplFlags, EnvFlags )
+              , (ReplFlags, EnvFlags) )
            -> [String] -> GlobalFlags -> IO ()
 replAction ( configFlags, configExFlags, installFlags
            , haddockFlags, testFlags, benchmarkFlags
-           , replFlags, envFlags )
+           , (replFlags, envFlags) )
            targetStrings globalFlags = do
     let
       ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)

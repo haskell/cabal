@@ -16,9 +16,10 @@ module Distribution.Client.CmdHaddock (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags(..), TestFlags, BenchmarkFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
@@ -31,10 +32,8 @@ import Distribution.Simple.Utils
 import Control.Monad (when)
 
 
-haddockCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                            , HaddockFlags, TestFlags, BenchmarkFlags
-                            )
-haddockCommand = Client.installCommand {
+haddockCommand :: CommandUI (NixStyleFlags ())
+haddockCommand = CommandUI {
   commandName         = "v2-haddock",
   commandSynopsis     = "Build Haddock documentation",
   commandUsage        = usageAlternatives "v2-haddock" [ "[FLAGS] TARGET" ],
@@ -61,7 +60,9 @@ haddockCommand = Client.installCommand {
      ++ "    Build documentation for the package named pkgname\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
-   }
+  , commandOptions      = nixStyleOptions (const [])
+  , commandDefaultFlags = defaultNixStyleFlags ()
+  }
    --TODO: [nice to have] support haddock on specific components, not just
    -- whole packages and the silly --executables etc modifiers.
 
@@ -71,10 +72,10 @@ haddockCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 haddockAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                 , HaddockFlags, TestFlags, BenchmarkFlags )
+                 , HaddockFlags, TestFlags, BenchmarkFlags, () )
                  -> [String] -> GlobalFlags -> IO ()
 haddockAction ( configFlags, configExFlags, installFlags
-              , haddockFlags, testFlags, benchmarkFlags )
+              , haddockFlags, testFlags, benchmarkFlags, () )
                 targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
