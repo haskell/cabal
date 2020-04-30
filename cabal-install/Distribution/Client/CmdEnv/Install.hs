@@ -14,7 +14,7 @@ import System.Directory
 import System.FilePath
        ( takeDirectory )
 
-import qualified Distribution.Client.CmdEnv.Utils as EnvUtils
+import qualified Distribution.Client.CmdEnv.Internal as EnvInternal
        ( globalPackages )
 import Distribution.Client.IndexUtils
        ( getInstalledPackages )
@@ -66,7 +66,7 @@ installLibraries verbosity buildCtx compiler
         getLatest :: PackageName -> [InstalledPackageInfo]
         getLatest = (=<<) (maybeToList . safeHead . snd) . take 1 . sortBy (comparing (Down . fst))
                   . PI.lookupPackageName installedIndex
-        globalLatest = concat (getLatest <$> EnvUtils.globalPackages)
+        globalLatest = concat (getLatest <$> EnvInternal.globalPackages)
 
         baseEntries =
           GhcEnvFileClearPackageDbStack : fmap GhcEnvFilePackageDb packageDbs

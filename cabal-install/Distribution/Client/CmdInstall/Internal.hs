@@ -1,4 +1,4 @@
-module Distribution.Client.CmdInstall.Utils
+module Distribution.Client.CmdInstall.Internal
   ( reportCannotPruneDependencies
   , warnIfNoExes
   ) where

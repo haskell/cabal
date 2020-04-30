@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-module Distribution.Client.CmdEnv.Utils
+module Distribution.Client.CmdEnv.Internal
   ( environmentFileToSpecifiers
   , globalPackages
   ) where

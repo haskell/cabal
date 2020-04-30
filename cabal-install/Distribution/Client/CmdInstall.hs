@@ -38,9 +38,9 @@ import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 --         ( TargetProblem(..), reportTargetProblems )
 import qualified Distribution.Client.CmdEnv.Install as EnvInstall
          ( installLibraries )
-import qualified Distribution.Client.CmdEnv.Utils as EnvUtils
+import qualified Distribution.Client.CmdEnv.Internal as EnvInternal
          ( environmentFileToSpecifiers )
-import qualified Distribution.Client.CmdInstall.Utils as InstallUtils
+import qualified Distribution.Client.CmdInstall.Internal as InstallInternal
          ( reportCannotPruneDependencies, warnIfNoExes )
 
 import Distribution.Client.Setup
@@ -547,7 +547,7 @@ installAction ( configFlags, configExFlags, installFlags
   installedIndex <- getInstalledPackages verbosity compiler packageDbs progDb
 
   let (envSpecs, envEntries') =
-        EnvUtils.environmentFileToSpecifiers installedIndex envEntries
+        EnvInternal.environmentFileToSpecifiers installedIndex envEntries
 
   -- Second, we need to use a fake project to let Cabal build the
   -- installables correctly. For that, we need a place to put a
@@ -596,7 +596,7 @@ installAction ( configFlags, configExFlags, installFlags
                                     elaboratedPlan
             elaboratedPlan'' <-
               if buildSettingOnlyDeps (buildSettings baseCtx)
-                then either (InstallUtils.reportCannotPruneDependencies verbosity) return $
+                then either (InstallInternal.reportCannotPruneDependencies verbosity) return $
                      pruneInstallPlanToDependencies (Map.keysSet targets)
                                                     elaboratedPlan'
                 else return elaboratedPlan'
@@ -666,7 +666,7 @@ installExes verbosity baseCtx buildCtx platform compiler
                 (warn verbosity installdirUnknown >> pure installPath) $
                 pure <$> cinstInstalldir clientInstallFlags
   createDirectoryIfMissingVerbose verbosity False installdir
-  InstallUtils.warnIfNoExes verbosity buildCtx
+  InstallInternal.warnIfNoExes verbosity buildCtx
 
   installMethod <- flagElim defaultMethod return $
     cinstInstallMethod clientInstallFlags
