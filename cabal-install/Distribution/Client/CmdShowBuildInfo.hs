@@ -18,7 +18,7 @@ import Distribution.Client.Setup
          )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags
+         ( HaddockFlags, TestFlags, BenchmarkFlags
          , fromFlagOrDefault
          )
 import Distribution.Simple.Command
@@ -91,14 +91,14 @@ showBuildInfoCommand = CmdInstall.installCommand {
    }
 
 data ShowBuildInfoFlags = ShowBuildInfoFlags
-    { buildInfoInstallCommandFlags :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, ClientInstallFlags)
+    { buildInfoInstallCommandFlags :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, BenchmarkFlags, ClientInstallFlags)
     , buildInfoOutputFile :: Maybe FilePath
     , buildInfoUnitIds :: Maybe [String]
     }
 
 defaultShowBuildInfoFlags :: ShowBuildInfoFlags
 defaultShowBuildInfoFlags = ShowBuildInfoFlags
-    { buildInfoInstallCommandFlags = (mempty, mempty, mempty, mempty, mempty, mempty)
+    { buildInfoInstallCommandFlags = (mempty, mempty, mempty, mempty, mempty, mempty, mempty)
     , buildInfoOutputFile = Nothing
     , buildInfoUnitIds = Nothing
     }
@@ -111,7 +111,7 @@ defaultShowBuildInfoFlags = ShowBuildInfoFlags
 -- "Distribution.Client.ProjectOrchestration"
 --
 showBuildInfoAction :: ShowBuildInfoFlags -> [String] -> GlobalFlags -> IO ()
-showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, clientInstallFlags) fileOutput unitIds)
+showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, benchmarkFlags, clientInstallFlags) fileOutput unitIds)
   targetStrings globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
   let baseCtx' = baseCtx
@@ -147,6 +147,7 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
                   installFlags clientInstallFlags
                   haddockFlags
                   testFlags
+                  benchmarkFlags
 
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
