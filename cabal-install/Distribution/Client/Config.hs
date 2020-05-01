@@ -247,7 +247,6 @@ instance Semigroup SavedConfig where
         globalVersion           = combine globalVersion,
         globalNumericVersion    = combine globalNumericVersion,
         globalConfigFile        = combine globalConfigFile,
-        globalSandboxConfigFile = combine globalSandboxConfigFile,
         globalConstraintsFile   = combine globalConstraintsFile,
         globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
         globalCacheDir          = combine globalCacheDir,
@@ -255,8 +254,6 @@ instance Semigroup SavedConfig where
         globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
-        globalRequireSandbox    = combine globalRequireSandbox,
-        globalIgnoreSandbox     = combine globalIgnoreSandbox,
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
         globalNix               = combine globalNix,
@@ -890,7 +887,7 @@ configFieldDescriptions src =
 
      toSavedConfig liftGlobalFlag
        (commandOptions (globalCommand []) ParseArgs)
-       ["version", "numeric-version", "config-file", "sandbox-config-file"] []
+       ["version", "numeric-version", "config-file"] []
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)

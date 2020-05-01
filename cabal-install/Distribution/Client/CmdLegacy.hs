@@ -39,7 +39,7 @@ wrapperAction command verbosityFlag distPrefFlag =
     let verbosity' = Setup.fromFlagOrDefault normal (verbosityFlag flags)
 
     load <- try (loadConfigOrSandboxConfig verbosity' globalFlags)
-    let config = either (\(SomeException _) -> mempty) snd load
+    let config = either (\(SomeException _) -> mempty) id load
     distPref <- findSavedDistPref config (distPrefFlag flags)
     let setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
@@ -59,8 +59,8 @@ instance HasVerbosity (Setup.Flag Verbosity) where
 instance (HasVerbosity a) => HasVerbosity (a, b) where
     verbosity (a, _) = verbosity a
 
-instance (HasVerbosity b) => HasVerbosity (a, b, c) where
-    verbosity (_ , b, _) = verbosity b
+instance (HasVerbosity a) => HasVerbosity (a, b, c) where
+    verbosity (a , _, _) = verbosity a
 
 instance (HasVerbosity a) => HasVerbosity (a, b, c, d) where
     verbosity (a, _, _, _) = verbosity a
@@ -94,12 +94,6 @@ instance HasVerbosity Client.UpdateFlags where
 
 instance HasVerbosity Setup.CleanFlags where
     verbosity = verbosity . Setup.cleanVerbosity
-
-instance HasVerbosity Client.SDistFlags where
-    verbosity = verbosity . Client.sDistVerbosity
-
-instance HasVerbosity Client.SandboxFlags where
-    verbosity = verbosity . Client.sandboxVerbosity
 
 instance HasVerbosity Setup.DoctestFlags where
     verbosity = verbosity . Setup.doctestVerbosity

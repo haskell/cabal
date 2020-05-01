@@ -23,8 +23,6 @@ import Distribution.Client.Init
          ( incVersion )
 import Distribution.Client.Freeze
          ( getFreezePkgs )
-import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), RepoContext )
 import Distribution.Package
@@ -103,13 +101,10 @@ genBounds
     -> Compiler
     -> Platform
     -> ProgramDb
-    -> Maybe SandboxPackageInfo
     -> GlobalFlags
     -> FreezeFlags
     -> IO ()
-genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
-      globalFlags freezeFlags = do
-
+genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do 
     let cinfo = compilerInfo comp
 
     cwd <- getCurrentDirectory
@@ -133,7 +128,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
      go needBounds = do
        pkgs  <- getFreezePkgs
                   verbosity packageDBs repoCtxt comp platform progdb
-                  mSandboxPkgInfo globalFlags freezeFlags
+                  globalFlags freezeFlags
 
        putStrLn boundsNeededMsg
 

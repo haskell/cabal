@@ -37,7 +37,6 @@ module Distribution.Client.IndexUtils (
   updatePackageIndexCacheFile,
   writeIndexTimestamp,
   currentIndexTimestamp,
-  readCacheStrict, -- only used by soon-to-be-obsolete sandbox code
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
@@ -327,13 +326,6 @@ instance Semigroup RepoData where
 instance Monoid RepoData where
     mempty  = RepoData mempty mempty mempty
     mappend = (<>)
-
-readCacheStrict :: NFData pkg => Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
-readCacheStrict verbosity index mkPkg = do
-    updateRepoIndexCache verbosity index
-    cache <- readIndexCache verbosity index
-    withFile (indexFile index) ReadMode $ \indexHnd ->
-      evaluate . force =<< packageListFromCache verbosity mkPkg indexHnd cache
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.

@@ -438,9 +438,6 @@ findProjectRoot mstartdir mprojectFile = do
             then return (Right (ProjectRootExplicit dir projectFileName))
             else go (takeDirectory dir)
 
-   --TODO: [nice to have] add compat support for old style sandboxes
-
-
 -- | Errors returned by 'findProjectRoot'.
 --
 data BadProjectRoot = BadProjectRootExplicitFile FilePath

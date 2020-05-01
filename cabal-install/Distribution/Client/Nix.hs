@@ -6,7 +6,6 @@ module Distribution.Client.Nix
        , inNixShell
        , nixInstantiate
        , nixShell
-       , nixShellIfSandboxed
        ) where
 
 import Distribution.Client.Compat.Prelude
@@ -36,7 +35,6 @@ import Distribution.Simple.Utils (debug, existsAndIsMoreRecentThan)
 
 import Distribution.Client.Config (SavedConfig(..))
 import Distribution.Client.GlobalFlags (GlobalFlags(..))
-import Distribution.Client.Sandbox.Types (UseSandbox(..))
 
 
 configureOneProgram :: Verbosity -> Program -> IO ProgramDb
@@ -184,19 +182,3 @@ removeGCRoots verb dist = do
   when exists $ do
     debug verb ("removing Nix gcroots from " ++ tgt)
     removeDirectoryRecursive tgt
-
-
-nixShellIfSandboxed
-  :: Verbosity
-  -> FilePath
-  -> GlobalFlags
-  -> SavedConfig
-  -> UseSandbox
-  -> IO ()
-     -- ^ The action to perform inside a nix-shell. This is also the action
-     -- that will be performed immediately if Nix is disabled.
-  -> IO ()
-nixShellIfSandboxed verb dist globalFlags config useSandbox go =
-  case useSandbox of
-    NoSandbox -> go
-    UseSandbox _ -> nixShell verb dist globalFlags config go
