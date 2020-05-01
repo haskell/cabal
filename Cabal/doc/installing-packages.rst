@@ -151,7 +151,14 @@ repository.
     repository my-local-repository
       url: file+noindex:///absolute/path/to/directory
 
-``cabal`` will construct the index automatically from the
+Given that ``/absolute/path/to/directory`` looks like
+::
+
+    /absolute/path/to/directory/
+        foo-0.1.0.0.tar.gz
+        bar-0.2.0.0.tar.gz
+
+then ``cabal`` will construct the index automatically from the
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
 
