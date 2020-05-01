@@ -155,6 +155,21 @@ repository.
 ``package-name-version.tar.gz`` files in the directory, and will use optional
 corresponding ``package-name-version.cabal`` files as new revisions.
 
+For example, if ``/absolute/path/to/directory`` looks like
+::
+
+    /absolute/path/to/directory/
+        foo-0.1.0.0.tar.gz
+        bar-0.2.0.0.tar.gz
+        bar-0.2.0.0.cabal
+
+then ``cabal`` will create an index with two packages:
+
+- ``foo-0.1.0.0`` using the source and ``.cabal`` file inside
+  ``foo-0.1.0.0.tar.gz``
+- ``bar-0.2.0.0`` using the source inside ``bar-0.2.0.0.tar.gz``
+  and ``bar-0.2.0.0.cabal``
+
 The index is cached inside the given directory. If the directory is not
 writable, you can append ``#shared-cache`` fragment to the URI,
 then the cache will be stored inside the :cfg-field:`remote-repo-cache` directory.
