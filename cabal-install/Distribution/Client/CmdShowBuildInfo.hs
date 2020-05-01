@@ -219,7 +219,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
           configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
           configureArgs = setupHsConfigureArgs pkg
 
-      -- check cabal version is corrct
+      -- check cabal version is correct
       (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
                                             (elabPkgDescription pkg) buildType'
       when (cabalVersion < mkVersion [3, 0, 0,0])
