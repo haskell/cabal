@@ -14,7 +14,7 @@ main = cabalTest $ do
       Right buildInfos -> do
         assertEqual "Build Infos, exactly one" 1  (length buildInfos)
         let [buildInfo] = buildInfos
-        assertEqual "Cabal Version" "3.1.0.0" (cabalVersion buildInfo)
+        assertEqual "Cabal Version" cabalVersionString (cabalVersion buildInfo)
         assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
         assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
         assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)

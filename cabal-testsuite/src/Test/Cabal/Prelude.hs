@@ -29,7 +29,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
-    ( withFileContents, withTempDirectory, tryFindPackageDesc )
+    ( withFileContents, withTempDirectory, tryFindPackageDesc, cabalVersion )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
@@ -39,6 +39,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parsec
 import Distribution.Verbosity (normal)
+import Distribution.Text
 
 import Distribution.Compat.Stack
 
@@ -992,3 +993,6 @@ withShorterPathForNewBuildStore test = do
              then takeDrive `fmap` getCurrentDirectory
              else getTemporaryDirectory
   withTempDirectory normal tempDir "cabal-test-store" test
+
+cabalVersionString :: String
+cabalVersionString = display cabalVersion

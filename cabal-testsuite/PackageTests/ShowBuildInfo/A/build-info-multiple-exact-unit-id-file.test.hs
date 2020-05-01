@@ -23,7 +23,7 @@ main = cabalTest $ withSourceCopy $do
     where
       assertExe :: BuildInfo -> TestM ()
       assertExe buildInfo = do
-        assertEqual "Cabal Version" "3.1.0.0" (cabalVersion buildInfo)
+        assertEqual "Cabal Version" cabalVersionString (cabalVersion buildInfo)
         assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
         assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
         assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
@@ -39,7 +39,7 @@ main = cabalTest $ withSourceCopy $do
 
       assertLib :: BuildInfo -> TestM ()
       assertLib buildInfo = do
-        assertEqual "Cabal Version" "3.1.0.0" (cabalVersion buildInfo)
+        assertEqual "Cabal Version" cabalVersionString (cabalVersion buildInfo)
         assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
         assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
         assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
