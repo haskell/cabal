@@ -13,16 +13,13 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, BenchmarkFlags
-         , fromFlagOrDefault
-         )
+         , fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), option, reqArg', usageAlternatives
-         )
+         ( CommandUI(..), option, reqArg', usageAlternatives )
 import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
@@ -39,22 +36,27 @@ import Distribution.Deprecated.Text
 import qualified Data.Map as Map
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Client.SetupWrapper
-import Distribution.Simple.Program ( defaultProgramDb )
+import Distribution.Simple.Program
+        ( defaultProgramDb )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectPlanning.Types
-import Distribution.Client.ProjectPlanning (
-  setupHsConfigureFlags, setupHsConfigureArgs,
-  setupHsBuildFlags, setupHsBuildArgs,
-  setupHsScriptOptions
-  )
-import Distribution.Client.DistDirLayout (distBuildDirectory)
-import Distribution.Client.Types ( PackageLocation(..), GenericReadyPackage(..) )
-import Distribution.Client.JobControl (newLock, Lock)
-import Distribution.Simple.Configure (tryGetPersistBuildConfig)
+import Distribution.Client.ProjectPlanning
+        ( setupHsConfigureFlags, setupHsConfigureArgs, setupHsBuildFlags
+        , setupHsBuildArgs, setupHsScriptOptions )
+import Distribution.Client.DistDirLayout
+        ( distBuildDirectory )
+import Distribution.Client.Types
+        ( PackageLocation(..), GenericReadyPackage(..) )
+import Distribution.Client.JobControl
+        ( newLock, Lock )
+import Distribution.Simple.Configure
+        ( tryGetPersistBuildConfig )
 import qualified Distribution.Client.CmdInstall as CmdInstall
 
-import System.Directory (getTemporaryDirectory)
-import System.FilePath ((</>))
+import System.Directory
+        ( getTemporaryDirectory )
+import System.FilePath
+        ( (</>) )
 
 showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
 showBuildInfoCommand = CmdInstall.installCommand {
