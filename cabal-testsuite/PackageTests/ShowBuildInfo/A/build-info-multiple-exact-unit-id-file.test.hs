@@ -1,29 +1,19 @@
-{-# LANGUAGE DeriveGeneric #-}
 import           Test.Cabal.Prelude
+import           Test.Cabal.DecodeShowBuildInfo
 
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import           Data.Aeson
-import           GHC.Generics
-
-main = cabalTest $ withSourceCopy $do
+main = cabalTest $ withSourceCopy $ do
     cwd <- fmap testCurrentDir getTestEnv
     let fp = cwd </> "unit.json"
-    r <- cabal' "show-build-info" ["--buildinfo-json-output=" ++ fp, "--unit-ids-json=A-0.1.0.0-inplace A-0.1.0.0-inplace-A", "-v0"]
-    shouldExist fp
-    buildInfoEither <- liftIO $ eitherDecodeFileStrict fp
-    case buildInfoEither of
-      Left err -> fail $ "Could not parse build-info command" ++ err
-      Right buildInfos -> do
-        assertEqual "Build Infos, exactly two " 2  (length buildInfos)
-        let [libBuildInfo, exeBuildInfo] = buildInfos
-        assertExe exeBuildInfo
-        assertLib libBuildInfo
-    return ()
+    _ <- cabal' "show-build-info" ["--buildinfo-json-output=" ++ fp, "--unit-ids-json=A-0.1.0.0-inplace A-0.1.0.0-inplace-A", "-v0"]
+    buildInfos <- decodeBuildInfoFile fp
+    assertEqual "Build Infos, exactly two " 2  (length buildInfos)
+    let [libBuildInfo, exeBuildInfo] = buildInfos
+    assertExe exeBuildInfo
+    assertLib libBuildInfo
     where
       assertExe :: BuildInfo -> TestM ()
       assertExe buildInfo = do
-        assertEqual "Cabal Version" cabalVersionString (cabalVersion buildInfo)
+        assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
         assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
         assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
         assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
@@ -39,7 +29,7 @@ main = cabalTest $ withSourceCopy $do
 
       assertLib :: BuildInfo -> TestM ()
       assertLib buildInfo = do
-        assertEqual "Cabal Version" cabalVersionString (cabalVersion buildInfo)
+        assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
         assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
         assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
         assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
@@ -52,41 +42,3 @@ main = cabalTest $ withSourceCopy $do
         assertEqual "Component modules" ["A"] (componentModules component)
         assertEqual "Component source files" [] (componentSrcFiles component)
         assertEqual "Component source directories" ["src"] (componentSrcDirs component)
-
-data BuildInfo = BuildInfo
-    { cabalVersion :: String
-    , compiler :: CompilerInfo
-    , components :: [ComponentInfo]
-    } deriving (Generic, Show)
-
-data CompilerInfo = CompilerInfo
-    { flavour :: String
-    , compilerId :: String
-    , path :: String
-    } deriving (Generic, Show)
-
-data ComponentInfo = ComponentInfo
-    { componentType :: String
-    , componentName :: String
-    , componentUnitId :: String
-    , componentCompilerArgs :: [String]
-    , componentModules :: [String]
-    , componentSrcFiles :: [String]
-    , componentSrcDirs :: [String]
-    } deriving (Generic, Show)
-
-instance ToJSON BuildInfo where
-  toEncoding = genericToEncoding defaultOptions
-instance FromJSON BuildInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = camelTo2 '-' }
-
-
-instance ToJSON CompilerInfo where
-  toEncoding = genericToEncoding defaultOptions
-instance FromJSON CompilerInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = camelTo2 '-' }
-
-instance ToJSON ComponentInfo where
-  toEncoding = genericToEncoding defaultOptions
-instance FromJSON ComponentInfo where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = drop 10 . camelTo2 '-' }
