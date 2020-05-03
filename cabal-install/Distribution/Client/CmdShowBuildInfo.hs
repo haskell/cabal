@@ -1,11 +1,10 @@
 -- | cabal-install CLI command: show-build-info
 --
-module Distribution.Client.CmdShowBuildInfo where
--- (
---     -- * The @show-build-info@ CLI and action
---     showBuildInfoCommand,
---     showBuildInfoAction
---   )
+module Distribution.Client.CmdShowBuildInfo (
+    -- * The @show-build-info@ CLI and action
+    showBuildInfoCommand,
+    showBuildInfoAction
+  ) where
 
 import Distribution.Client.Compat.Prelude
          ( when, find, fromMaybe )
@@ -219,7 +218,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
           configureFlags = setupHsConfigureFlags (ReadyPackage pkg) shared verbosity buildDir
           configureArgs = setupHsConfigureArgs pkg
 
-      -- check cabal version is correct
+      -- Check cabal version is correct
       (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
                                             (elabPkgDescription pkg) buildType'
       when (cabalVersion < mkVersion [3, 0, 0,0])
@@ -227,7 +226,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
               ++ "Found version: " ++ display cabalVersion ++ "\n"
               ++ "For component: " ++ display targetUnitId
         )
-      --Configure the package if there's no existing config
+      -- Configure the package if there's no existing config
       lbi <- tryGetPersistBuildConfig buildDir
       case lbi of
         Left _ -> setupWrapper
