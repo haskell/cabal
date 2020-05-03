@@ -2,12 +2,6 @@ cabal-version:       2.4
 name:                Complex
 version:             0.1.0.0
 license:             MIT
-license-file:        LICENSE
-author:              Bla Bla
-maintainer:          ""
-category:            Testing
-extra-source-files:  CHANGELOG.md
-
 
 library
   build-depends:       base
