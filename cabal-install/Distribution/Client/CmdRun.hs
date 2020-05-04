@@ -25,18 +25,16 @@ import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.CmdRun.ClientRunFlags
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..)
-         , configureExOptions, haddockOptions, installOptions, testOptions
-         , benchmarkOptions, configureOptions, liftOptions )
-import Distribution.Solver.Types.ConstraintSource
-         ( ConstraintSource(..) )
+         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
 import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), OptionField (..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Deprecated.Text
@@ -109,10 +107,7 @@ import System.FilePath
          ( (</>), isValid, isPathSeparator, takeExtension )
 
 
-runCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                        , HaddockFlags, TestFlags, BenchmarkFlags
-                        , ClientRunFlags
-                        )
+runCommand :: CommandUI (NixStyleFlags ClientRunFlags)
 runCommand = CommandUI
   { commandName         = "v2-run"
   , commandSynopsis     = "Run an executable."
@@ -148,37 +143,9 @@ runCommand = CommandUI
       ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
-  , commandDefaultFlags = (mempty, mempty, mempty, mempty, mempty, mempty, mempty)
-  , commandOptions      = \showOrParseArgs ->
-          liftOptions get1 set1
-          -- Note: [Hidden Flags]
-          -- hide "constraint", "dependency", and
-          -- "exact-configuration" from the configure options.
-          (filter ((`notElem` ["constraint", "dependency"
-                              , "exact-configuration"])
-                   . optionName) $
-                                 configureOptions   showOrParseArgs)
-      ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
-      ++ liftOptions get3 set3
-          -- hide "target-package-db" flag from the
-          -- install options.
-          (filter ((`notElem` ["target-package-db"])
-                   . optionName) $
-                                 installOptions     showOrParseArgs)
-      ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
-      ++ liftOptions get5 set5 (testOptions        showOrParseArgs)
-      ++ liftOptions get6 set6 (benchmarkOptions   showOrParseArgs)
-      ++ liftOptions get7 set7 (clientRunOptions showOrParseArgs)
+  , commandDefaultFlags = defaultNixStyleFlags mempty
+  , commandOptions      = nixStyleOptions clientRunOptions
   }
-  where
-    get1 (a,_,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get2 (_,b,_,_,_,_,_) = b; set2 b (a,_,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get3 (_,_,c,_,_,_,_) = c; set3 c (a,b,_,d,e,f,g) = (a,b,c,d,e,f,g)
-    get4 (_,_,_,d,_,_,_) = d; set4 d (a,b,c,_,e,f,g) = (a,b,c,d,e,f,g)
-    get5 (_,_,_,_,e,_,_) = e; set5 e (a,b,c,d,_,f,g) = (a,b,c,d,e,f,g)
-    get6 (_,_,_,_,_,f,_) = f; set6 f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
-    get7 (_,_,_,_,_,_,g) = g; set7 g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
-
 
 -- | The @run@ command runs a specified executable-like component, building it
 -- first if necessary. The component can be either an executable, a test,
