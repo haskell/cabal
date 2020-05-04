@@ -34,7 +34,6 @@ import qualified Text.PrettyPrint as PP
 
 data PrettyField ann
     = PrettyField ann FieldName PP.Doc
-    | PrettyFieldCommentedOut ann FieldName
     | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
   deriving (Functor, Foldable, Traversable)
 
@@ -46,11 +45,21 @@ data PrettyField ann
 -- between comment lines.
 --
 showFields :: (ann -> [String]) -> [PrettyField ann] -> String
-showFields rann = showFields' rann 4
+showFields rann = showFields' rann (const id) 4
 
 -- | 'showFields' with user specified indentation.
-showFields' :: (ann -> [String]) -> Int -> [PrettyField ann] -> String
-showFields' rann n = unlines . renderFields (Opts rann indent) where
+showFields'
+  :: (ann -> [String])
+     -- ^ Convert an annotation to lined to preceed the field or section.
+  -> (ann -> [String] -> [String])
+     -- ^ Post-process non-annotation produced lines.
+  -> Int
+     -- ^ Indentation level.
+  -> [PrettyField ann]
+     -- ^ Fields/sections to show.
+  -> String
+showFields' rann post n = unlines . renderFields (Opts rann indent post)
+  where
     -- few hardcoded, "unrolled"  variants.
     indent | n == 4    = indent4
            | n == 2    = indent2
@@ -64,7 +73,11 @@ showFields' rann n = unlines . renderFields (Opts rann indent) where
     indent2 [] = []
     indent2 xs = ' ' : ' ' : xs
 
-data Opts ann = Opts (ann -> [String]) (String -> String)
+data Opts ann = Opts
+  { _optAnnotation ::(ann -> [String])
+  , _optIndent ::(String -> String)
+  , _optPostprocess :: ann -> [String] -> [String]
+  }
 
 renderFields :: Opts ann -> [PrettyField ann] -> [String]
 renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
@@ -73,7 +86,6 @@ renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
 
     maxNameLength !acc []                            = acc
     maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
-    maxNameLength !acc (PrettyFieldCommentedOut _ _ : rest) = maxNameLength acc rest
     maxNameLength !acc (PrettySection {}   : rest)   = maxNameLength acc rest
 
 -- | Block of lines,
@@ -99,8 +111,8 @@ flattenBlocks = go0 where
             | otherwise                 = id
 
 renderField :: Opts ann -> Int -> PrettyField ann -> Block
-renderField (Opts rann indent) fw (PrettyField ann name doc) =
-    Block before after $ comments ++ lines'
+renderField (Opts rann indent post) fw (PrettyField ann name doc) =
+    Block before after $ comments ++ post ann lines'
   where
     comments = rann ann
     before = if null comments then NoMargin else Margin
@@ -117,16 +129,10 @@ renderField (Opts rann indent) fw (PrettyField ann name doc) =
     narrowStyle :: PP.Style
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
-renderField (Opts rann _) _ (PrettyFieldCommentedOut ann name) =
-  Block NoMargin NoMargin $ comments ++ fieldLine
-  where
-    comments = rann ann
-    fieldLine = [ "-- " ++ fromUTF8BS name ++ ":" ]
-
-renderField opts@(Opts rann indent) _ (PrettySection ann name args fields) = Block Margin Margin $
+renderField opts@(Opts rann indent post) _ (PrettySection ann name args fields) = Block Margin Margin $
     rann ann
-    ++ 
-    [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
+    ++
+    post ann [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
     ++
     (map indent $ renderFields opts fields)
 

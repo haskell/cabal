@@ -85,7 +85,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
   ( toUTF8BS )
 import Distribution.Fields.Pretty
-  ( PrettyField(..), showFields )
+  ( PrettyField(..), showFields' )
 import Distribution.Pretty
   ( prettyShow )
 
@@ -352,7 +352,7 @@ findNewName oldName = findNewName' 0
 -- | Generate a .cabal file from an InitFlags structure.
 generateCabalFile :: String -> InitFlags -> String
 generateCabalFile fileName c =
-    showFields id $ catMaybes
+    showFields' annCommentLines postProcessFieldLines 4 $ catMaybes
   [ fieldP "cabal-version" (Flag . SpecVersion $ specVer)
       []
       False
@@ -442,7 +442,7 @@ generateCabalFile fileName c =
    licenseStr | specVer < CabalSpecV2_2 = prettyShow . licenseFromSPDX <$> license c
               | otherwise               = prettyShow                   <$> license c
 
-   generateBuildInfo :: BuildType -> InitFlags -> [PrettyField [String]]
+   generateBuildInfo :: BuildType -> InitFlags -> [PrettyField FieldAnnotation]
    generateBuildInfo buildType c' = catMaybes
      [ fieldPAla "other-modules" formatOtherModules (maybeToFlag otherMods)
        [ case buildType of
@@ -504,7 +504,7 @@ generateCabalFile fileName c =
          -> Flag t
          -> [String]
          -> Bool
-         -> Maybe (PrettyField [String])
+         -> Maybe (PrettyField FieldAnnotation)
    field fieldName fieldContentsFlag = fieldS fieldName (display <$> fieldContentsFlag)
 
    -- | Construct a 'PrettyField' from a 'String' field.
@@ -512,7 +512,7 @@ generateCabalFile fileName c =
           -> Flag String -- ^ Field contents
           -> [String]    -- ^ Comment to explain the field
           -> Bool        -- ^ Should the field be included (commented out) even if blank?
-          -> Maybe (PrettyField [String])
+          -> Maybe (PrettyField FieldAnnotation)
    fieldS fieldName fieldContentsFlag = fieldD fieldName (text <$> fieldContentsFlag)
 
    -- | Construct a 'PrettyField' from a Flag which can be 'pretty'-ied.
@@ -521,7 +521,7 @@ generateCabalFile fileName c =
           -> Flag a
           -> [String]
           -> Bool
-          -> Maybe (PrettyField [String])
+          -> Maybe (PrettyField FieldAnnotation)
    fieldP fieldName fieldContentsFlag fieldComments includeField =
      fieldPAla fieldName Identity fieldContentsFlag fieldComments includeField
 
@@ -533,7 +533,7 @@ generateCabalFile fileName c =
      -> Flag a
      -> [String]
      -> Bool
-     -> Maybe (PrettyField [String])
+     -> Maybe (PrettyField FieldAnnotation)
    fieldPAla fieldName newtypeWrapper fieldContentsFlag fieldComments includeField =
      fieldD fieldName (pretty . newtypeWrapper <$> fieldContentsFlag) fieldComments includeField
 
@@ -542,7 +542,7 @@ generateCabalFile fileName c =
           -> Flag Doc    -- ^ Field contents
           -> [String]    -- ^ Comment to explain the field
           -> Bool        -- ^ Should the field be included (commented out) even if blank?
-          -> Maybe (PrettyField [String])
+          -> Maybe (PrettyField FieldAnnotation)
    fieldD fieldName fieldContentsFlag fieldComments includeField =
      case fieldContentsFlag of
        NoFlag ->
@@ -571,23 +571,23 @@ generateCabalFile fileName c =
    fieldSEmptyContents :: FieldName
                        -> [String]
                        -> Bool
-                       -> Maybe (PrettyField [String])
+                       -> Maybe (PrettyField FieldAnnotation)
    fieldSEmptyContents fieldName fieldComments includeField
      | not includeField || (minimal c == Flag True) =
          Nothing
      | otherwise =
-         Just (PrettyFieldCommentedOut (map ("-- " ++) fieldComments) fieldName)
+         Just (PrettyField (commentedOutWithComments fieldComments) fieldName empty)
 
    -- | Produce a field with content.
    fieldSWithContents :: FieldName
                       -> Doc
                       -> [String]
-                      -> PrettyField [String]
+                      -> PrettyField FieldAnnotation
    fieldSWithContents fieldName fieldContents fieldComments =
-     PrettyField (map ("-- " ++) fieldComments) fieldName fieldContents
+     PrettyField (withComments (map ("-- " ++) fieldComments)) fieldName fieldContents
 
-   executableStanza :: PrettyField [String]
-   executableStanza = PrettySection [] (toUTF8BS "executable") [exeName] $ catMaybes
+   executableStanza :: PrettyField FieldAnnotation
+   executableStanza = PrettySection annNoComments (toUTF8BS "executable") [exeName] $ catMaybes
      [ fieldS "main-is" (mainIs c)
        [".hs or .lhs file containing the Main module."]
        True
@@ -597,8 +597,8 @@ generateCabalFile fileName c =
      where
        exeName = text (maybe "" display . flagToMaybe $ packageName c)
 
-   libraryStanza :: PrettyField [String]
-   libraryStanza = PrettySection [] (toUTF8BS "library") [] $ catMaybes
+   libraryStanza :: PrettyField FieldAnnotation
+   libraryStanza = PrettySection annNoComments (toUTF8BS "library") [] $ catMaybes
      [ fieldPAla "exposed-modules" formatExposedModules (maybeToFlag (exposedModules c))
        ["Modules exported by the library."]
        True
@@ -607,8 +607,8 @@ generateCabalFile fileName c =
      generateBuildInfo LibBuild c
 
 
-   testSuiteStanza :: PrettyField [String]
-   testSuiteStanza = PrettySection [] (toUTF8BS "test-suite") [testSuiteName] $ catMaybes
+   testSuiteStanza :: PrettyField FieldAnnotation
+   testSuiteStanza = PrettySection annNoComments (toUTF8BS "test-suite") [testSuiteName] $ catMaybes
      [ field "default-language" (language c)
        ["Base language which the package is written in."]
        True
@@ -633,3 +633,29 @@ generateCabalFile fileName c =
      where
        testSuiteName =
          text (maybe "" ((++"-test") . display) . flagToMaybe $ packageName c)
+
+-- | Annotations for cabal file PrettyField.
+data FieldAnnotation = FieldAnnotation
+  { annCommentedOut :: Bool
+    -- ^ True iif the field and its contents should be commented out.
+  , annCommentLines :: [String]
+    -- ^ Comment lines to place before the field or section.
+  }
+
+-- | A field annotation instructing the pretty printer to comment out the field
+--   and any contents, with no comments.
+commentedOutWithComments :: [String] -> FieldAnnotation
+commentedOutWithComments = FieldAnnotation True . map ("-- " ++)
+
+-- | A field annotation with the specified comment lines.
+withComments :: [String] -> FieldAnnotation
+withComments = FieldAnnotation False
+
+-- | A field annotation with no comments.
+annNoComments :: FieldAnnotation
+annNoComments = FieldAnnotation False []
+
+postProcessFieldLines :: FieldAnnotation -> [String] -> [String]
+postProcessFieldLines ann
+  | annCommentedOut ann = map ("-- " ++)
+  | otherwise = id

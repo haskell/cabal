@@ -24,7 +24,7 @@ module Distribution.PackageDescription.FieldGrammar (
     benchmarkFieldGrammar,
     validateBenchmark,
     unvalidateBenchmark,
-    -- * Field formatters
+    -- * Field grammars
     formatDependencyList,
     formatExposedModules,
     formatExtraSourceFiles,
@@ -554,7 +554,7 @@ setupBInfoFieldGrammar def = flip SetupBuildInfo def
 {-# SPECIALIZE setupBInfoFieldGrammar :: Bool ->PrettyFieldGrammar' SetupBuildInfo #-}
 
 -------------------------------------------------------------------------------
--- Field formatters - Define how field values should be formatted for 'pretty'.
+-- Define how field values should be formatted for 'pretty'.
 -------------------------------------------------------------------------------
 
 formatDependencyList :: [Dependency] -> List CommaVCat (Identity Dependency) Dependency
