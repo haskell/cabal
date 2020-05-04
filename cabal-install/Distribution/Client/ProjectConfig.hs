@@ -544,9 +544,6 @@ readProjectLocalConfigOrDefault verbosity distDirLayout = do
         -- We expect a package in the current directory.
         projectPackages         = [ "./*.cabal" ],
 
-        -- This is to automatically pick up deps that we unpack locally.
-        projectPackagesOptional = [ "./*/*.cabal" ],
-
         projectConfigProvenance = Set.singleton Implicit
       }
 
