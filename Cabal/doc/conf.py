@@ -34,7 +34,7 @@ extlinks = {
 
 # General information about the project.
 project = u'Cabal'
-copyright = u'2003-2017, Cabal Team'
+copyright = u'2003-2020, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 
@@ -100,11 +100,11 @@ latex_elements = {
     'inputenc': '',
     'utf8extra': '',
     'preamble': '''
-\usepackage{fontspec}
-\usepackage{makeidx}
-\setsansfont{DejaVu Sans}
-\setromanfont{DejaVu Serif}
-\setmonofont{DejaVu Sans Mono}
+\\usepackage{fontspec}
+\\usepackage{makeidx}
+\\setsansfont{DejaVu Sans}
+\\setromanfont{DejaVu Serif}
+\\setmonofont{DejaVu Sans Mono}
 ''',
 }
 
@@ -174,7 +174,7 @@ def parse_flag(env, sig, signode):
         name = parts[0]
         names.append(name)
         sig = sep + ' '.join(parts[1:])
-        sig = re.sub(ur'<([-a-zA-Z ]+)>', ur'⟨\1⟩', sig)
+        sig = re.sub(r'<([-a-zA-Z ]+)>', r'⟨\1⟩', sig)
         if i > 0:
             signode += addnodes.desc_name(', ', ', ')
         signode += addnodes.desc_name(name, name)

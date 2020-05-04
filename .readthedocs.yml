@@ -4,4 +4,6 @@ sphinx:
   configuration: Cabal/doc/conf.py
 
 python:
-  version: 2.7
+  version: 3.7
+  install:
+    - requirements: Cabal/doc/requirements.txt

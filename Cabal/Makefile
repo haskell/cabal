@@ -53,16 +53,17 @@ $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 
 SPHINX_HTML_OUTDIR=dist/doc/users-guide
 
+# do pip install everytime so we have up to date requirements when we build
 users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. ./.python-sphinx-virtualenv/bin/activate && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
+	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
 
 docs: haddock users-guide
 
 .python-sphinx-virtualenv:
-	virtualenv .python-sphinx-virtualenv
-	(. ./.python-sphinx-virtualenv/bin/activate && pip install sphinx && pip install sphinx_rtd_theme)
+	python3 -m venv .python-sphinx-virtualenv
+	(. ./.python-sphinx-virtualenv/bin/activate)
 
 clean:
 	rm -rf dist/
