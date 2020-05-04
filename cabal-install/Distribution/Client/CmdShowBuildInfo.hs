@@ -104,13 +104,9 @@ defaultShowBuildInfoFlags = ShowBuildInfoFlags
     , buildInfoUnitIds = Nothing
     }
 
--- | The @show-build-info@ command does a lot. It brings the install plan up to date,
--- selects that part of the plan needed by the given or implicit targets and
--- then executes the plan.
---
--- For more details on how this works, see the module
--- "Distribution.Client.ProjectOrchestration"
---
+-- | The @show-build-info@ exports information about a package and the compiler
+-- configuration used to build it as JSON, that can be used by other tooling.
+-- See "Distribution.Simple.ShowBuildInfo" for more information.
 showBuildInfoAction :: ShowBuildInfoFlags -> [String] -> GlobalFlags -> IO ()
 showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, benchmarkFlags, clientInstallFlags) fileOutput unitIds)
   targetStrings globalFlags = do
