@@ -95,7 +95,7 @@ library
         Development.Shake.Rule
         Development.Shake.Util
 
-    hs-source-dirs:   src
+    hs-source-dirs:   . src
     other-modules:
         Development.Ninja.Env
         Development.Ninja.Lexer

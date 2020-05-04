@@ -1133,7 +1133,7 @@ GenericPackageDescription
                                                           extraLibFlavours = [],
                                                           extraLibs = [],
                                                           frameworks = [],
-                                                          hsSourceDirs = ["src"],
+                                                          hsSourceDirs = [".", "src"],
                                                           includeDirs = [],
                                                           includes = [],
                                                           installIncludes = [],
