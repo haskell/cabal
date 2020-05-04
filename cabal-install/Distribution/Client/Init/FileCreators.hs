@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.FileCreators
@@ -50,7 +51,7 @@ import System.Directory
   ( getCurrentDirectory, doesFileExist, copyFile
   , createDirectoryIfMissing )
 
-import Text.PrettyPrint hiding (mode, cat)
+import Text.PrettyPrint hiding ((<>), mode, cat)
 
 import Distribution.Client.Init.Defaults
   ( defaultCabalVersion, myLibModule )
@@ -62,8 +63,12 @@ import Distribution.Client.Init.Types
   ( InitFlags(..), BuildType(..), PackageType(..) )
 
 import Distribution.CabalSpecVersion
+import Distribution.Compat.Newtype
+  ( Newtype )
 import Distribution.Deprecated.Text
   ( display, Text(..) )
+import Distribution.Fields.Field
+  ( FieldName )
 import Distribution.License
   ( licenseFromSPDX )
 import qualified Distribution.ModuleName as ModuleName
@@ -417,7 +422,7 @@ generateCabalFile fileName c =
            []
            False
 
-  , fieldP "extra-source-files" (maybeToFlag $ (formatExtraSourceFiles <$> extraSrc c))
+  , fieldPAla "extra-source-files" formatExtraSourceFiles (maybeToFlag (extraSrc c))
            ["Extra files to be distributed with the package, such as examples or a README."]
            True
   ]
@@ -439,22 +444,22 @@ generateCabalFile fileName c =
 
    generateBuildInfo :: BuildType -> InitFlags -> [PrettyField [String]]
    generateBuildInfo buildType c' = catMaybes
-     [ fieldP "other-modules" (formatOtherModules <$> maybeToFlag otherMods)
+     [ fieldPAla "other-modules" formatOtherModules (maybeToFlag otherMods)
        [ case buildType of
                  LibBuild    -> "Modules included in this library but not exported."
                  ExecBuild -> "Modules included in this executable, other than Main."]
        True
 
-     , fieldP "other-extensions" (maybeToFlag (formatOtherExtensions <$> otherExts c))
+     , fieldPAla "other-extensions" formatOtherExtensions (maybeToFlag (otherExts c))
        ["LANGUAGE extensions used by modules in this package."]
        True
 
-     , fieldP "build-depends" (maybeToFlag (formatDependencyList <$> buildDependencies))
+     , fieldPAla "build-depends" formatDependencyList (maybeToFlag buildDependencies)
        ["Other library packages from which modules are imported."]
        True
 
-     , fieldP "hs-source-dirs"
-       (maybeToFlag (formatHsSourceDirs <$> case buildType of
+     , fieldPAla "hs-source-dirs" formatHsSourceDirs
+       (maybeToFlag (case buildType of
                                               LibBuild -> sourceDirs c
                                               ExecBuild -> applicationDirs c))
        ["Directories containing source files."]
@@ -494,8 +499,8 @@ generateCabalFile fileName c =
 
    -- | Construct a 'PrettyField' from a field that can be automatically
    --   converted to a 'Doc' via 'display'.
-   field :: Text t =>
-            String
+   field :: Text t
+         => FieldName
          -> Flag t
          -> [String]
          -> Bool
@@ -503,7 +508,7 @@ generateCabalFile fileName c =
    field fieldName fieldContentsFlag = fieldS fieldName (display <$> fieldContentsFlag)
 
    -- | Construct a 'PrettyField' from a 'String' field.
-   fieldS :: String      -- ^ Name of the field
+   fieldS :: FieldName   -- ^ Name of the field
           -> Flag String -- ^ Field contents
           -> [String]    -- ^ Comment to explain the field
           -> Bool        -- ^ Should the field be included (commented out) even if blank?
@@ -512,16 +517,28 @@ generateCabalFile fileName c =
 
    -- | Construct a 'PrettyField' from a Flag which can be 'pretty'-ied.
    fieldP :: Pretty a
-          => String
+          => FieldName
           -> Flag a
           -> [String]
           -> Bool
           -> Maybe (PrettyField [String])
    fieldP fieldName fieldContentsFlag fieldComments includeField =
-     fieldD fieldName (pretty <$> fieldContentsFlag) fieldComments includeField
+     fieldPAla fieldName Identity fieldContentsFlag fieldComments includeField
+
+   -- | Construct a 'PrettyField' from a flag which can be 'pretty'-ied, wrapped in newtypeWrapper.
+   fieldPAla
+     :: (Pretty b, Newtype a b)
+     => FieldName
+     -> (a -> b)
+     -> Flag a
+     -> [String]
+     -> Bool
+     -> Maybe (PrettyField [String])
+   fieldPAla fieldName newtypeWrapper fieldContentsFlag fieldComments includeField =
+     fieldD fieldName (pretty . newtypeWrapper <$> fieldContentsFlag) fieldComments includeField
 
    -- | Construct a 'PrettyField' from a 'Doc' Flag.
-   fieldD :: String     -- ^ Name of the field
+   fieldD :: FieldName   -- ^ Name of the field
           -> Flag Doc    -- ^ Field contents
           -> [String]    -- ^ Comment to explain the field
           -> Bool        -- ^ Should the field be included (commented out) even if blank?
@@ -551,7 +568,7 @@ generateCabalFile fileName c =
                fieldSWithContents fieldName fieldContents fieldComments
 
    -- | Optionally produce a field with no content (depending on flags).
-   fieldSEmptyContents :: String
+   fieldSEmptyContents :: FieldName
                        -> [String]
                        -> Bool
                        -> Maybe (PrettyField [String])
@@ -559,15 +576,15 @@ generateCabalFile fileName c =
      | not includeField || (minimal c == Flag True) =
          Nothing
      | otherwise =
-         Just (PrettyFieldCommentedOut (map ("-- " ++) fieldComments) (toUTF8BS fieldName))
+         Just (PrettyFieldCommentedOut (map ("-- " ++) fieldComments) fieldName)
 
    -- | Produce a field with content.
-   fieldSWithContents :: String
+   fieldSWithContents :: FieldName
                       -> Doc
                       -> [String]
                       -> PrettyField [String]
    fieldSWithContents fieldName fieldContents fieldComments =
-     PrettyField (map ("-- " ++) fieldComments) (toUTF8BS fieldName) fieldContents
+     PrettyField (map ("-- " ++) fieldComments) fieldName fieldContents
 
    executableStanza :: PrettyField [String]
    executableStanza = PrettySection [] (toUTF8BS "executable") [exeName] $ catMaybes
@@ -582,7 +599,7 @@ generateCabalFile fileName c =
 
    libraryStanza :: PrettyField [String]
    libraryStanza = PrettySection [] (toUTF8BS "library") [] $ catMaybes
-     [ fieldP "exposed-modules" (maybeToFlag (formatExposedModules <$> exposedModules c))
+     [ fieldPAla "exposed-modules" formatExposedModules (maybeToFlag (exposedModules c))
        ["Modules exported by the library."]
        True
      ]
@@ -600,8 +617,8 @@ generateCabalFile fileName c =
        ["The interface type and version of the test suite."]
        True
 
-     , fieldP "hs-source-dirs"
-       (maybeToFlag (formatHsSourceDirs <$> testDirs c))
+     , fieldPAla "hs-source-dirs" formatHsSourceDirs
+       (maybeToFlag (testDirs c))
        ["Directories containing source files."]
        True
 
@@ -609,7 +626,7 @@ generateCabalFile fileName c =
        ["The entrypoint to the test suite."]
        True
 
-     , fieldP "build-depends" (maybeToFlag (formatDependencyList <$> dependencies c))
+     , fieldPAla  "build-depends" formatDependencyList (maybeToFlag (dependencies c))
        ["Test dependencies."]
        True
      ]
