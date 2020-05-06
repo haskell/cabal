@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
@@ -470,78 +471,37 @@ instance Arbitrary ProjectConfigShared where
         arbitraryConstraints =
             fmap (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
 
-    shrink ProjectConfigShared { projectConfigDistDir = x00
-                               , projectConfigProjectFile = x01
-                               , projectConfigHcFlavor = x02
-                               , projectConfigHcPath = x03
-                               , projectConfigHcPkg = x04
-                               , projectConfigHaddockIndex = x05
-                               , projectConfigRemoteRepos = x06
-                               , projectConfigLocalRepos = x07
-                               , projectConfigLocalNoIndexRepos = x07b
-                               , projectConfigIndexState = x08
-                               , projectConfigConstraints = x09
-                               , projectConfigPreferences = x10
-                               , projectConfigCabalVersion = x11
-                               , projectConfigSolver = x12
-                               , projectConfigAllowOlder = x13
-                               , projectConfigAllowNewer = x14
-                               , projectConfigWriteGhcEnvironmentFilesPolicy = x15
-                               , projectConfigMaxBackjumps = x16
-                               , projectConfigReorderGoals = x17
-                               , projectConfigCountConflicts = x18
-                               , projectConfigFineGrainedConflicts = x19
-                               , projectConfigMinimizeConflictSet = x20
-                               , projectConfigStrongFlags = x21
-                               , projectConfigAllowBootLibInstalls = x22
-                               , projectConfigOnlyConstrained = x23
-                               , projectConfigPerComponent = x24
-                               , projectConfigIndependentGoals = x25
-                               , projectConfigConfigFile = x26
-                               , projectConfigProgPathExtra = x27
-                               , projectConfigStoreDir = x28 } =
-      [ ProjectConfigShared { projectConfigDistDir = x00'
-                            , projectConfigProjectFile = x01'
-                            , projectConfigHcFlavor = x02'
-                            , projectConfigHcPath = fmap getNonEmpty x03'
-                            , projectConfigHcPkg = fmap getNonEmpty x04'
-                            , projectConfigHaddockIndex = x05'
-                            , projectConfigRemoteRepos = x06'
-                            , projectConfigLocalRepos = x07'
-                            , projectConfigLocalNoIndexRepos = x07b'
-                            , projectConfigIndexState = x08'
-                            , projectConfigConstraints = postShrink_Constraints x09'
-                            , projectConfigPreferences = x10'
-                            , projectConfigCabalVersion = x11'
-                            , projectConfigSolver = x12'
-                            , projectConfigAllowOlder = x13'
-                            , projectConfigAllowNewer = x14'
-                            , projectConfigWriteGhcEnvironmentFilesPolicy = x15'
-                            , projectConfigMaxBackjumps = x16'
-                            , projectConfigReorderGoals = x17'
-                            , projectConfigCountConflicts = x18'
-                            , projectConfigFineGrainedConflicts = x19'
-                            , projectConfigMinimizeConflictSet = x20'
-                            , projectConfigStrongFlags = x21'
-                            , projectConfigAllowBootLibInstalls = x22'
-                            , projectConfigOnlyConstrained = x23'
-                            , projectConfigPerComponent = x24'
-                            , projectConfigIndependentGoals = x25'
-                            , projectConfigConfigFile = x26'
-                            , projectConfigProgPathExtra = x27'
-                            , projectConfigStoreDir = x28' }
-      | ((x00', x01', x02', x03', x04', x05'),
-         (x06', x07', x07b', x08', x09', x10'),
-         (x11', x12', x13', x14', x15', x16'),
-         (x17', x18', x19', x20', x21', x22'),
-          x23', x24', x25', x26', x27', x28')
-          <- shrink
-               ((x00, x01, x02, fmap NonEmpty x03, fmap NonEmpty x04, x05),
-                (x06, x07, x07b, x08, preShrink_Constraints x09, x10),
-                (x11, x12, x13, x14, x15, x16),
-                (x17, x18, x19, x20, x21, x22),
-                 x23, x24, x25, x26, x27, x28)
-      ]
+    shrink ProjectConfigShared {..} = runShrinker $ pure ProjectConfigShared
+        <*> shrinker projectConfigDistDir
+        <*> shrinker projectConfigConfigFile
+        <*> shrinker projectConfigProjectFile
+        <*> shrinker projectConfigHcFlavor
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
+        <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
+        <*> shrinker projectConfigHaddockIndex
+        <*> shrinker projectConfigRemoteRepos
+        <*> shrinker projectConfigLocalRepos
+        <*> shrinker projectConfigLocalNoIndexRepos
+        <*> shrinker projectConfigIndexState
+        <*> shrinker projectConfigStoreDir
+        <*> shrinkerPP preShrink_Constraints postShrink_Constraints projectConfigConstraints
+        <*> shrinker projectConfigPreferences
+        <*> shrinker projectConfigCabalVersion
+        <*> shrinker projectConfigSolver
+        <*> shrinker projectConfigAllowOlder
+        <*> shrinker projectConfigAllowNewer
+        <*> shrinker projectConfigWriteGhcEnvironmentFilesPolicy
+        <*> shrinker projectConfigMaxBackjumps
+        <*> shrinker projectConfigReorderGoals
+        <*> shrinker projectConfigCountConflicts
+        <*> shrinker projectConfigFineGrainedConflicts
+        <*> shrinker projectConfigMinimizeConflictSet
+        <*> shrinker projectConfigStrongFlags
+        <*> shrinker projectConfigAllowBootLibInstalls
+        <*> shrinker projectConfigOnlyConstrained
+        <*> shrinker projectConfigPerComponent
+        <*> shrinker projectConfigIndependentGoals
+        <*> shrinker projectConfigProgPathExtra
       where
         preShrink_Constraints  = map fst
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
