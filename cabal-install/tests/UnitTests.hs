@@ -18,8 +18,6 @@ import qualified UnitTests.Distribution.Client.FileMonitor
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Init.FileCreators
-import qualified UnitTests.Distribution.Client.Sandbox
-import qualified UnitTests.Distribution.Client.Sandbox.Timestamp
 import qualified UnitTests.Distribution.Client.Store
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
@@ -58,10 +56,6 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.GZipUtils.tests
   , testGroup "Distribution.Client.Init.FileCreators"
        UnitTests.Distribution.Client.Init.FileCreators.tests
-  , testGroup "Distribution.Client.Sandbox"
-       UnitTests.Distribution.Client.Sandbox.tests
-  , testGroup "Distribution.Client.Sandbox.Timestamp"
-       UnitTests.Distribution.Client.Sandbox.Timestamp.tests
   , testGroup "Distribution.Client.Store"
        UnitTests.Distribution.Client.Store.tests
   , testGroup "Distribution.Client.Tar"

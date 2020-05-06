@@ -252,8 +252,6 @@ packageDBParams dbs = "--package-db=clear"
 -- * Running cabal
 
 cabal :: String -> [String] -> TestM ()
-cabal "sandbox" _ =
-    error "Use cabal_sandbox instead"
 cabal cmd args = void (cabal' cmd args)
 
 cabal' :: String -> [String] -> TestM Result
@@ -263,42 +261,33 @@ cabalG :: [String] -> String -> [String] -> TestM ()
 cabalG global_args cmd args = void (cabalG' global_args cmd args)
 
 cabalG' :: [String] -> String -> [String] -> TestM Result
-cabalG' _ "sandbox" _ =
-    -- NB: We don't just auto-pass this through, because it's
-    -- possible that the first argument isn't the sub-sub-command.
-    -- So make sure the user specifies it correctly.
-    error "Use cabal_sandbox' instead"
 cabalG' global_args cmd args = do
     env <- getTestEnv
     -- Freeze writes out cabal.config to source directory, this is not
     -- overwritable
     when (cmd == "v1-freeze") requireHasSourceCopy
     let extra_args
-          -- Sandboxes manage dist dir
-          | testHaveSandbox env
-          = install_args
           | cmd `elem` ["v1-update", "outdated", "user-config", "man", "v1-freeze", "check"]
           = [ ]
+
           -- new-build commands are affected by testCabalProjectFile
-          | cmd == "v2-sdist" = [ "--project-file", testCabalProjectFile env ]
+          | cmd == "v2-sdist"
+          = [ "--project-file", testCabalProjectFile env ]
+
           | "v2-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
             , "--project-file", testCabalProjectFile env
             , "-j1" ]
+
           | otherwise
           = [ "--builddir", testDistDir env ] ++
             install_args
+
         install_args
-          | cmd == "v1-install"
-         || cmd == "v1-build" = [ "-j1" ]
-          | otherwise = []
-        extra_global_args
-          | testHaveSandbox env
-          = [ "--sandbox-config-file", testSandboxConfigFile env ]
-          | otherwise
-          = []
-        cabal_args = extra_global_args
-                  ++ global_args
+          | cmd == "v1-install" || cmd == "v1-build" = [ "-j1" ]
+          | otherwise                                = []
+
+        cabal_args = global_args
                   ++ [ cmd, marked_verbose ]
                   ++ extra_args
                   ++ args
@@ -306,29 +295,8 @@ cabalG' global_args cmd args = do
     recordHeader ["cabal", cmd]
     cabal_raw' cabal_args
 
-cabal_sandbox :: String -> [String] -> TestM ()
-cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
-
-cabal_sandbox' :: String -> [String] -> TestM Result
-cabal_sandbox' cmd args = do
-    env <- getTestEnv
-    let cabal_args = [ "--sandbox-config-file", testSandboxConfigFile env
-                     , "v1-sandbox", cmd
-                     , marked_verbose ]
-                  ++ args
-    defaultRecordMode RecordMarked $ do
-    recordHeader ["cabal", "v1-sandbox", cmd]
-    cabal_raw' cabal_args
-
 cabal_raw' :: [String] -> TestM Result
 cabal_raw' cabal_args = runProgramM cabalProgram cabal_args
-
-withSandbox :: TestM a -> TestM a
-withSandbox m = do
-    env0 <- getTestEnv
-    -- void $ cabal_raw' ["sandbox", "init", "--sandbox", testSandboxDir env0]
-    cabal_sandbox "init" ["--sandbox", testSandboxDir env0]
-    withReaderT (\env -> env { testHaveSandbox = True }) m
 
 withProjectFile :: FilePath -> TestM a -> TestM a
 withProjectFile fp m =

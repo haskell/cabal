@@ -33,8 +33,6 @@ import Distribution.Client.Setup
 import Distribution.Client.Sandbox.PackageEnvironment
          ( loadUserConfig, pkgEnvSavedConfig, showPackageEnvironment,
            userPackageEnvironmentFile )
-import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..) )
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -77,15 +75,14 @@ freeze :: Verbosity
        -> Compiler
        -> Platform
        -> ProgramDb
-       -> Maybe SandboxPackageInfo
        -> GlobalFlags
        -> FreezeFlags
        -> IO ()
-freeze verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
+freeze verbosity packageDBs repoCtxt comp platform progdb
       globalFlags freezeFlags = do
 
     pkgs  <- getFreezePkgs
-               verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
+               verbosity packageDBs repoCtxt comp platform progdb
                globalFlags freezeFlags
 
     if null pkgs
@@ -109,11 +106,10 @@ getFreezePkgs :: Verbosity
               -> Compiler
               -> Platform
               -> ProgramDb
-              -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags
               -> IO [SolverPlanPackage]
-getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
+getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb
       globalFlags freezeFlags = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
@@ -127,7 +123,7 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
 
     sanityCheck pkgSpecifiers
     planPackages
-               verbosity comp platform mSandboxPkgInfo freezeFlags
+               verbosity comp platform freezeFlags
                installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
   where
     sanityCheck pkgSpecifiers = do
@@ -141,14 +137,13 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
 planPackages :: Verbosity
              -> Compiler
              -> Platform
-             -> Maybe SandboxPackageInfo
              -> FreezeFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
              -> IO [SolverPlanPackage]
-planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
+planPackages verbosity comp platform freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
 
   solver <- chooseSolver verbosity
@@ -195,8 +190,6 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
                                        (PackagePropertyStanzas stanzas)
             in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]
-
-      . maybe id applySandboxInstallPolicy mSandboxPkgInfo
 
       $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 

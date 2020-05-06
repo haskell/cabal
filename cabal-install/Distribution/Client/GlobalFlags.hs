@@ -59,7 +59,6 @@ data GlobalFlags = GlobalFlags {
     globalVersion           :: Flag Bool,
     globalNumericVersion    :: Flag Bool,
     globalConfigFile        :: Flag FilePath,
-    globalSandboxConfigFile :: Flag FilePath,
     globalConstraintsFile   :: Flag FilePath,
     globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
@@ -67,8 +66,6 @@ data GlobalFlags = GlobalFlags {
     globalLocalNoIndexRepos :: NubList LocalRepo,
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
-    globalRequireSandbox    :: Flag Bool,
-    globalIgnoreSandbox     :: Flag Bool,
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String,
     globalNix               :: Flag Bool,  -- ^ Integrate with Nix
@@ -81,7 +78,6 @@ defaultGlobalFlags  = GlobalFlags {
     globalVersion           = Flag False,
     globalNumericVersion    = Flag False,
     globalConfigFile        = mempty,
-    globalSandboxConfigFile = mempty,
     globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
@@ -89,8 +85,6 @@ defaultGlobalFlags  = GlobalFlags {
     globalLocalNoIndexRepos = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
-    globalRequireSandbox    = Flag False,
-    globalIgnoreSandbox     = Flag False,
     globalIgnoreExpiry      = Flag False,
     globalHttpTransport     = mempty,
     globalNix               = Flag False,

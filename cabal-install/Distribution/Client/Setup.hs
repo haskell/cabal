@@ -21,7 +21,7 @@ module Distribution.Client.Setup
     , configureCommand, ConfigFlags(..), configureOptions, filterConfigureFlags
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
-    , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , buildCommand, BuildFlags(..)
     , filterTestFlags
     , replCommand, testCommand, benchmarkCommand, testOptions, benchmarkOptions
                         , configureExOptions, reconfigureCommand
@@ -42,9 +42,7 @@ module Distribution.Client.Setup
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, initOptions, IT.InitFlags(..)
-    , sdistCommand, SDistFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
-    , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..), defaultExecFlags
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
@@ -97,7 +95,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags, BenchmarkFlags
-         , SDistFlags(..), HaddockFlags(..)
+         , HaddockFlags(..)
          , CleanFlags(..), DoctestFlags(..)
          , CopyFlags(..), RegisterFlags(..)
          , readPackageDbList, showPackageDbList
@@ -133,7 +131,7 @@ import Distribution.Deprecated.ParseUtils
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
-         ( wrapText, wrapLine )
+         ( wrapText )
 import Distribution.Client.GlobalFlags
          ( GlobalFlags(..), defaultGlobalFlags
          , RepoContext(..), withRepoContext
@@ -224,7 +222,6 @@ globalCommand commands = CommandUI {
           , "v1-copy"
           , "v1-register"
           , "v1-reconfigure"
-          , "v1-sandbox"
           -- v2 commands, nix-style
           , "v2-build"
           , "v2-configure"
@@ -333,7 +330,6 @@ globalCommand commands = CommandUI {
         , addCmd "v1-copy"
         , addCmd "v1-register"
         , addCmd "v1-reconfigure"
-        , addCmd "v1-sandbox"
         ] ++ if null otherCmds then [] else par
                                            :startGroup "other"
                                            :[addCmd n | n <- otherCmds])
@@ -374,25 +370,10 @@ globalCommand commands = CommandUI {
          globalConfigFile (\v flags -> flags { globalConfigFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["sandbox-config-file"]
-         "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
-         globalSandboxConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
-         (reqArgFlag "FILE")
-
       ,option [] ["default-user-config"]
          "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
          globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
-
-      ,option [] ["require-sandbox"]
-         "requiring the presence of a sandbox for sandbox-aware commands"
-         globalRequireSandbox (\v flags -> flags { globalRequireSandbox = v })
-         (boolOpt' ([], ["require-sandbox"]) ([], ["no-require-sandbox"]))
-
-      ,option [] ["ignore-sandbox"]
-         "Ignore any existing sandbox"
-         globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
-         trueArg
 
       ,option [] ["ignore-expiry"]
          "Ignore expiry dates on signed metadata (use only in exceptional circumstances)"
@@ -777,39 +758,18 @@ reconfigureCommand
 -- * Build flags
 -- ------------------------------------------------------------
 
-data SkipAddSourceDepsCheck =
-  SkipAddSourceDepsCheck | DontSkipAddSourceDepsCheck
-  deriving Eq
-
-data BuildExFlags = BuildExFlags {
-  buildOnly     :: Flag SkipAddSourceDepsCheck
-} deriving Generic
-
-buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
-buildExOptions _showOrParseArgs =
-  option [] ["only"]
-  "Don't reinstall add-source dependencies (sandbox-only)"
-  buildOnly (\v flags -> flags { buildOnly = v })
-  (noArg (Flag SkipAddSourceDepsCheck))
-
-  : []
-
-buildCommand :: CommandUI (BuildFlags, BuildExFlags)
+buildCommand :: CommandUI BuildFlags
 buildCommand = parent {
     commandName = "build",
     commandDescription  = Just $ \_ -> wrapText $
       "Components encompass executables, tests, and benchmarks.\n"
         ++ "\n"
         ++ "Affected by configuration options, see `v1-configure`.\n",
-    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandDefaultFlags = commandDefaultFlags parent,
     commandUsage        = usageAlternatives "v1-build" $
       [ "[FLAGS]", "COMPONENTS [FLAGS]" ],
-    commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
-    , commandNotes        = Just $ \pname ->
+    commandOptions      = commandOptions parent
+    , commandNotes      = Just $ \pname ->
       "Examples:\n"
         ++ "  " ++ pname ++ " v1-build           "
         ++ "    All the components in the package\n"
@@ -818,17 +778,7 @@ buildCommand = parent {
         ++ Cabal.programFlagsDescription defaultProgramDb
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
     parent = Cabal.buildCommand defaultProgramDb
-
-instance Monoid BuildExFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup BuildExFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Test flags
@@ -865,13 +815,12 @@ filterTestFlags flags cabalLibVersion
 -- * Repl command
 -- ------------------------------------------------------------
 
-replCommand :: CommandUI (ReplFlags, BuildExFlags)
+replCommand :: CommandUI ReplFlags
 replCommand = parent {
     commandName = "repl",
     commandDescription  = Just $ \pname -> wrapText $
          "If the current directory contains no package, ignores COMPONENT "
-      ++ "parameters and opens an interactive interpreter session; if a "
-      ++ "sandbox is present, its package database will be used.\n"
+      ++ "parameters and opens an interactive interpreter session;\n"
       ++ "\n"
       ++ "Otherwise, (re)configures with the given or default flags, and "
       ++ "loads the interpreter with the relevant modules. For executables, "
@@ -887,12 +836,8 @@ replCommand = parent {
       ++ "not (re)configure and you will have to specify the location of "
       ++ "other modules, if required.\n",
     commandUsage =  \pname -> "Usage: " ++ pname ++ " v1-repl [COMPONENT] [FLAGS]\n",
-    commandDefaultFlags = (commandDefaultFlags parent, mempty),
-    commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs),
+    commandDefaultFlags = commandDefaultFlags parent,
+    commandOptions      = commandOptions parent,
     commandNotes        = Just $ \pname ->
       "Examples:\n"
     ++ "  " ++ pname ++ " v1-repl           "
@@ -903,16 +848,13 @@ replCommand = parent {
     ++ "  Specifying flags for interpreter\n"
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
     parent = Cabal.replCommand defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Test command
 -- ------------------------------------------------------------
 
-testCommand :: CommandUI (TestFlags, BuildFlags, BuildExFlags)
+testCommand :: CommandUI (BuildFlags, TestFlags)
 testCommand = parent {
   commandName = "test",
   commandDescription  = Just $ \pname -> wrapText $
@@ -927,21 +869,17 @@ testCommand = parent {
       ++ " define actions to be executed before and after running tests.\n",
   commandUsage = usageAlternatives "v1-test"
       [ "[FLAGS]", "TESTCOMPONENTS [FLAGS]" ],
-  commandDefaultFlags = (commandDefaultFlags parent,
-                         Cabal.defaultBuildFlags, mempty),
+  commandDefaultFlags = (Cabal.defaultBuildFlags, commandDefaultFlags parent),
   commandOptions      =
     \showOrParseArgs -> liftOptions get1 set1
-                        (commandOptions parent showOrParseArgs)
-                        ++
-                        liftOptions get2 set2
                         (Cabal.buildOptions progDb showOrParseArgs)
                         ++
-                        liftOptions get3 set3 (buildExOptions showOrParseArgs)
+                        liftOptions get2 set2
+                        (commandOptions parent showOrParseArgs)
   }
   where
-    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
-    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
-    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
+    get1 (a,_) = a; set1 a (_,b) = (a,b)
+    get2 (_,b) = b; set2 b (a,_) = (a,b)
 
     parent = Cabal.testCommand
     progDb = defaultProgramDb
@@ -950,7 +888,7 @@ testCommand = parent {
 -- * Bench command
 -- ------------------------------------------------------------
 
-benchmarkCommand :: CommandUI (BenchmarkFlags, BuildFlags, BuildExFlags)
+benchmarkCommand :: CommandUI (BuildFlags, BenchmarkFlags)
 benchmarkCommand = parent {
   commandName = "bench",
   commandUsage = usageAlternatives "v1-bench"
@@ -966,21 +904,17 @@ benchmarkCommand = parent {
       ++ "By defining UserHooks in a custom Setup.hs, the package can"
       ++ " define actions to be executed before and after running"
       ++ " benchmarks.\n",
-  commandDefaultFlags = (commandDefaultFlags parent,
-                         Cabal.defaultBuildFlags, mempty),
+  commandDefaultFlags = (Cabal.defaultBuildFlags, commandDefaultFlags parent),
   commandOptions      =
     \showOrParseArgs -> liftOptions get1 set1
-                        (commandOptions parent showOrParseArgs)
-                        ++
-                        liftOptions get2 set2
                         (Cabal.buildOptions progDb showOrParseArgs)
                         ++
-                        liftOptions get3 set3 (buildExOptions showOrParseArgs)
+                        liftOptions get2 set2
+                        (commandOptions parent showOrParseArgs)
   }
   where
-    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
-    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
-    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
+    get1 (a,_) = a; set1 a (_,b) = (a,b)
+    get2 (_,b) = b; set2 b (a,_) = (a,b)
 
     parent = Cabal.benchmarkCommand
     progDb = defaultProgramDb
@@ -1418,7 +1352,7 @@ manpageCommand = CommandUI {
     commandOptions      = manpageOptions
   }
 
-runCommand :: CommandUI (BuildFlags, BuildExFlags)
+runCommand :: CommandUI BuildFlags
 runCommand = CommandUI {
     commandName         = "run",
     commandSynopsis     = "Builds and runs an executable.",
@@ -1438,17 +1372,9 @@ runCommand = CommandUI {
     commandUsage        = usageAlternatives "v1-run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
-    commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd
-                          (buildExOptions showOrParseArgs)
+    commandOptions      = commandOptions parent
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
     parent = Cabal.buildCommand defaultProgramDb
 
 -- ------------------------------------------------------------
@@ -1620,9 +1546,7 @@ listCommand = CommandUI {
          "List all packages, or all packages matching one of the search"
       ++ " strings.\n"
       ++ "\n"
-      ++ "If there is a sandbox in the current directory and "
-      ++ "config:ignore-sandbox is False, use the sandbox package database. "
-      ++ "Otherwise, use the package database specified with --package-db. "
+      ++ "Use the package database specified with --package-db. "
       ++ "If not specified, use the user package database.\n",
     commandNotes        = Just $ \pname ->
          "Examples:\n"
@@ -1652,7 +1576,7 @@ listCommand = CommandUI {
           (   "Append the given package database to the list of package"
            ++ " databases used (to satisfy dependencies and register into)."
            ++ " May be a specific file, 'global' or 'user'. The initial list"
-           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " is ['global'], ['global', 'user'],"
            ++ " depending on context. Use 'clear' to reset the list to empty."
            ++ " See the user guide for details.")
           listPackageDBs (\v flags -> flags { listPackageDBs = v })
@@ -1688,9 +1612,7 @@ infoCommand = CommandUI {
     commandName         = "info",
     commandSynopsis     = "Display detailed information about a particular package.",
     commandDescription  = Just $ \_ -> wrapText $
-         "If there is a sandbox in the current directory and "
-      ++ "config:ignore-sandbox is False, use the sandbox package database. "
-      ++ "Otherwise, use the package database specified with --package-db. "
+      "Use the package database specified with --package-db. "
       ++ "If not specified, use the user package database.\n",
     commandNotes        = Nothing,
     commandUsage        = usageAlternatives "info" ["[FLAGS] PACKAGES"],
@@ -1702,7 +1624,7 @@ infoCommand = CommandUI {
           (   "Append the given package database to the list of package"
            ++ " databases used (to satisfy dependencies and register into)."
            ++ " May be a specific file, 'global' or 'user'. The initial list"
-           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " is ['global'], ['global', 'user'],"
            ++ " depending on context. Use 'clear' to reset the list to empty."
            ++ " See the user guide for details.")
           infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
@@ -1834,31 +1756,22 @@ installCommand = CommandUI {
                                                     ],
   commandDescription  = Just $ \_ -> wrapText $
         "Installs one or more packages. By default, the installed package"
-     ++ " will be registered in the user's package database or, if a sandbox"
-     ++ " is present in the current directory, inside the sandbox.\n"
+     ++ " will be registered in the user's package database."
      ++ "\n"
      ++ "If PACKAGES are specified, downloads and installs those packages."
      ++ " Otherwise, install the package in the current directory (and/or its"
      ++ " dependencies) (there must be exactly one .cabal file in the current"
      ++ " directory).\n"
      ++ "\n"
-     ++ "When using a sandbox, the flags for `v1-install` only affect the"
-     ++ " current command and have no effect on future commands. (To achieve"
-     ++ " that, `v1-configure` must be used.)\n"
-     ++ " In contrast, without a sandbox, the flags to `v1-install` are saved and"
+     ++ "The flags to `v1-install` are saved and"
      ++ " affect future commands such as `v1-build` and `v1-repl`. See the help for"
      ++ " `v1-configure` for a list of commands being affected.\n"
      ++ "\n"
-     ++ "Installed executables will by default (and without a sandbox)"
+     ++ "Installed executables will by default"
      ++ " be put into `~/.cabal/bin/`."
      ++ " If you want installed executable to be available globally, make"
      ++ " sure that the PATH environment variable contains that directory.\n"
-     ++ "When using a sandbox, executables will be put into"
-     ++ " `$SANDBOX/bin/` (by default: `./.cabal-sandbox/bin/`).\n"
-     ++ "\n"
-     ++ "When specifying --bindir, consider also specifying --datadir;"
-     ++ " this way the sandbox can be deleted and the executable should"
-     ++ " continue working as long as bindir and datadir are left untouched.",
+     ++ "\n",
   commandNotes        = Just $ \pname ->
         ( case commandNotes
                $ Cabal.configureCommand defaultProgramDb
@@ -2450,18 +2363,6 @@ initOptions _ =
 -- * SDist flags
 -- ------------------------------------------------------------
 
--- | Extra flags to @sdist@ beyond runghc Setup sdist
---
-sdistCommand :: CommandUI SDistFlags
-sdistCommand = Cabal.sdistCommand {
-    commandUsage        = \pname ->
-        "Usage: " ++ pname ++ " v1-sdist [FLAGS]\n",
-    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand)
-  }
-
-
---
-
 doctestCommand :: CommandUI DoctestFlags
 doctestCommand = Cabal.doctestCommand
   { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-doctest [FLAGS]\n" }
@@ -2521,128 +2422,6 @@ instance Monoid ActAsSetupFlags where
   mappend = (<>)
 
 instance Semigroup ActAsSetupFlags where
-  (<>) = gmappend
-
--- ------------------------------------------------------------
--- * Sandbox-related flags
--- ------------------------------------------------------------
-
-data SandboxFlags = SandboxFlags {
-  sandboxVerbosity :: Flag Verbosity,
-  sandboxSnapshot  :: Flag Bool, -- FIXME: this should be an 'add-source'-only
-                                 -- flag.
-  sandboxLocation  :: Flag FilePath
-} deriving Generic
-
-defaultSandboxLocation :: FilePath
-defaultSandboxLocation = ".cabal-sandbox"
-
-defaultSandboxFlags :: SandboxFlags
-defaultSandboxFlags = SandboxFlags {
-  sandboxVerbosity = toFlag normal,
-  sandboxSnapshot  = toFlag False,
-  sandboxLocation  = toFlag defaultSandboxLocation
-  }
-
-sandboxCommand :: CommandUI SandboxFlags
-sandboxCommand = CommandUI {
-  commandName         = "sandbox",
-  commandSynopsis     = "Create/modify/delete a sandbox.",
-  commandDescription  = Just $ \pname -> concat
-    [ paragraph $ "Sandboxes are isolated package databases that can be used"
-      ++ " to prevent dependency conflicts that arise when many different"
-      ++ " packages are installed in the same database (i.e. the user's"
-      ++ " database in the home directory)."
-    , paragraph $ "A sandbox in the current directory (created by"
-      ++ " `v1-sandbox init`) will be used instead of the user's database for"
-      ++ " commands such as `v1-install` and `v1-build`. Note that (a directly"
-      ++ " invoked) GHC will not automatically be aware of sandboxes;"
-      ++ " only if called via appropriate " ++ pname
-      ++ " commands, e.g. `v1-repl`, `v1-build`, `v1-exec`."
-    , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
-      ++ " in folders above the current one, so cabal will not see the sandbox"
-      ++ " if you are in a subfolder of a sandbox."
-    , paragraph "Subcommands:"
-    , headLine "init:"
-    , indentParagraph $ "Initialize a sandbox in the current directory."
-      ++ " An existing package database will not be modified, but settings"
-      ++ " (such as the location of the database) can be modified this way."
-    , headLine "delete:"
-    , indentParagraph $ "Remove the sandbox; deleting all the packages"
-      ++ " installed inside."
-    , headLine "add-source:"
-    , indentParagraph $ "Make one or more local packages available in the"
-      ++ " sandbox. PATHS may be relative or absolute."
-      ++ " Typical usecase is when you need"
-      ++ " to make a (temporary) modification to a dependency: You download"
-      ++ " the package into a different directory, make the modification,"
-      ++ " and add that directory to the sandbox with `add-source`."
-    , indentParagraph $ "Unless given `--snapshot`, any add-source'd"
-      ++ " dependency that was modified since the last build will be"
-      ++ " re-installed automatically."
-    , headLine "delete-source:"
-    , indentParagraph $ "Remove an add-source dependency; however, this will"
-      ++ " not delete the package(s) that have been installed in the sandbox"
-      ++ " from this dependency. You can either unregister the package(s) via"
-      ++ " `" ++ pname ++ " v1-sandbox hc-pkg unregister` or re-create the"
-      ++ " sandbox (`v1-sandbox delete; v1-sandbox init`)."
-    , headLine "list-sources:"
-    , indentParagraph $ "List the directories of local packages made"
-      ++ " available via `" ++ pname ++ " v1-sandbox add-source`."
-    , headLine "hc-pkg:"
-    , indentParagraph $ "Similar to `ghc-pkg`, but for the sandbox package"
-      ++ " database. Can be used to list specific/all packages that are"
-      ++ " installed in the sandbox. For subcommands, see the help for"
-      ++ " ghc-pkg. Affected by the compiler version specified by `v1-configure`."
-    ],
-  commandNotes        = Just $ \pname ->
-       relevantConfigValuesText ["require-sandbox"
-                                ,"ignore-sandbox"]
-    ++ "\n"
-    ++ "Examples:\n"
-    ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
-    ++ "    " ++ pname ++ " v1-sandbox init\n"
-    ++ "    " ++ pname ++ " v1-sandbox add-source ../foo\n"
-    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
-    ++ "  Reset the sandbox:\n"
-    ++ "    " ++ pname ++ " v1-sandbox delete\n"
-    ++ "    " ++ pname ++ " v1-sandbox init\n"
-    ++ "    " ++ pname ++ " v1-install --only-dependencies\n"
-    ++ "  List the packages in the sandbox:\n"
-    ++ "    " ++ pname ++ " v1-sandbox hc-pkg list\n"
-    ++ "  Unregister the `broken` package from the sandbox:\n"
-    ++ "    " ++ pname ++ " v1-sandbox hc-pkg -- --force unregister broken\n",
-  commandUsage        = usageAlternatives "v1-sandbox"
-    [ "init          [FLAGS]"
-    , "delete        [FLAGS]"
-    , "add-source    [FLAGS] PATHS"
-    , "delete-source [FLAGS] PATHS"
-    , "list-sources  [FLAGS]"
-    , "hc-pkg        [FLAGS] [--] COMMAND [--] [ARGS]"
-    ],
-
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = \_ ->
-    [ optionVerbosity sandboxVerbosity
-      (\v flags -> flags { sandboxVerbosity = v })
-
-    , option [] ["snapshot"]
-      "Take a snapshot instead of creating a link (only applies to 'add-source')"
-      sandboxSnapshot (\v flags -> flags { sandboxSnapshot = v })
-      trueArg
-
-    , option [] ["sandbox"]
-      "Sandbox location (default: './.cabal-sandbox')."
-      sandboxLocation (\v flags -> flags { sandboxLocation = v })
-      (reqArgFlag "DIR")
-    ]
-  }
-
-instance Monoid SandboxFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup SandboxFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
@@ -2918,26 +2697,6 @@ readLocalRepo = simpleParsec
 -- ------------------------------------------------------------
 -- * Helpers for Documentation
 -- ------------------------------------------------------------
-
-headLine :: String -> String
-headLine = unlines
-         . map unwords
-         . wrapLine 79
-         . words
-
-paragraph :: String -> String
-paragraph = (++"\n")
-          . unlines
-          . map unwords
-          . wrapLine 79
-          . words
-
-indentParagraph :: String -> String
-indentParagraph = unlines
-                . (flip (++)) [""]
-                . map (("  "++).unwords)
-                . wrapLine 77
-                . words
 
 relevantConfigValuesText :: [String] -> String
 relevantConfigValuesText vs =

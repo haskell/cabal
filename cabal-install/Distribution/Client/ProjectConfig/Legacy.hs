@@ -333,7 +333,6 @@ convertLegacyAllPackageFlags globalFlags configFlags
   where
     GlobalFlags {
       globalConfigFile        = projectConfigConfigFile,
-      globalSandboxConfigFile = _, -- ??
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalLocalRepos        = projectConfigLocalRepos,
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
@@ -567,7 +566,6 @@ convertToLegacySharedConfig
       globalVersion           = mempty,
       globalNumericVersion    = mempty,
       globalConfigFile        = projectConfigConfigFile,
-      globalSandboxConfigFile = mempty,
       globalConstraintsFile   = mempty,
       globalRemoteRepos       = projectConfigRemoteRepos,
       globalCacheDir          = projectConfigCacheDir,
@@ -575,8 +573,6 @@ convertToLegacySharedConfig
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = mempty,
-      globalRequireSandbox    = mempty,
-      globalIgnoreSandbox     = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,

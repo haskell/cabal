@@ -34,9 +34,6 @@ module Distribution.Client.Dependency (
     standardInstallPolicy,
     PackageSpecifier(..),
 
-    -- ** Sandbox policy
-    applySandboxInstallPolicy,
-
     -- ** Extra policy options
     upgradeDependencies,
     reinstallTargets,
@@ -83,8 +80,6 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
          , PackagesPreferenceDefault(..) )
-import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..) )
 import Distribution.Package
          ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion )
@@ -685,48 +680,6 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
                                      (null . PD.targetBuildDepends)    gpkg
           alwaysTrue (PD.Lit True) = True
           alwaysTrue _             = False
-
-
-applySandboxInstallPolicy :: SandboxPackageInfo
-                             -> DepResolverParams
-                             -> DepResolverParams
-applySandboxInstallPolicy
-  (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs _allDeps)
-  params
-
-  = addPreferences [ PackageInstalledPreference n PreferInstalled
-                   | n <- installedNotModified ]
-
-  . addTargets installedNotModified
-
-  . addPreferences
-      [ PackageVersionPreference (packageName pkg)
-        (thisVersion (packageVersion pkg)) | pkg <- otherDeps ]
-
-  . addConstraints
-      [ let pc = PackageConstraint
-                 (scopeToplevel $ packageName pkg)
-                 (PackagePropertyVersion $ thisVersion (packageVersion pkg))
-        in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
-      | pkg <- modifiedDeps ]
-
-  . addTargets [ packageName pkg | pkg <- modifiedDeps ]
-
-  . hideInstalledPackagesSpecificBySourcePackageId
-      [ packageId pkg | pkg <- modifiedDeps ]
-
-  -- We don't need to add source packages for add-source deps to the
-  -- 'installedPkgIndex' since 'getSourcePackages' did that for us.
-
-  $ params
-
-  where
-    installedPkgIds =
-      map fst . InstalledPackageIndex.allPackagesBySourcePackageId
-      $ allSandboxPkgs
-    modifiedPkgIds       = map packageId modifiedDeps
-    installedNotModified = [ packageName pkg | pkg <- installedPkgIds,
-                             pkg `notElem` modifiedPkgIds ]
 
 -- ------------------------------------------------------------
 -- * Interface to the standard resolver

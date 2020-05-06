@@ -29,8 +29,6 @@ module Test.Cabal.Monad (
     testPrefixDir,
     testDistDir,
     testPackageDbDir,
-    testSandboxDir,
-    testSandboxConfigFile,
     testRepoDir,
     testKeysDir,
     testSourceCopyDir,
@@ -331,7 +329,6 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
                     testShouldFail = False,
                     testRelativeCurrentDir = ".",
                     testHavePackageDb = False,
-                    testHaveSandbox = False,
                     testHaveRepo = False,
                     testHaveSourceCopy = False,
                     testCabalInstallAsSetup = False,
@@ -508,8 +505,6 @@ data TestEnv = TestEnv
     , testRelativeCurrentDir :: FilePath
     -- | Says if we've initialized the per-test package DB
     , testHavePackageDb  :: Bool
-    -- | Says if we're working in a sandbox
-    , testHaveSandbox :: Bool
     -- | Says if we've setup a repository
     , testHaveRepo :: Bool
     -- | Says if we've copied the source to a hermetic directory
@@ -580,14 +575,6 @@ testPackageDbDir env = testWorkDir env </> "packagedb"
 -- | The absolute prefix where our simulated HOME directory is.
 testHomeDir :: TestEnv -> FilePath
 testHomeDir env = testWorkDir env </> "home"
-
--- | The absolute prefix of our sandbox directory
-testSandboxDir :: TestEnv -> FilePath
-testSandboxDir env = testWorkDir env </> "sandbox"
-
--- | The sandbox configuration file
-testSandboxConfigFile :: TestEnv -> FilePath
-testSandboxConfigFile env = testWorkDir env </> "cabal.sandbox.config"
 
 -- | The absolute prefix of our local secure repository, which we
 -- use to simulate "external" packages

@@ -15,16 +15,11 @@ import Distribution.Simple.Utils
 import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Configure ( readConfigFlags )
 import Distribution.Client.Nix ( findNixExpr, inNixShell, nixInstantiate )
-import Distribution.Client.Sandbox
-       ( WereDepsReinstalled(..), findSavedDistPref, getSandboxConfigFilePath
-       , maybeReinstallAddSourceDeps, updateInstallDirs )
+import Distribution.Client.Sandbox ( findSavedDistPref, updateInstallDirs )
 import Distribution.Client.Sandbox.PackageEnvironment
        ( userPackageEnvironmentFile )
-import Distribution.Client.Sandbox.Types ( UseSandbox(..) )
 import Distribution.Client.Setup
-       ( ConfigFlags(..), ConfigExFlags, GlobalFlags(..)
-       , SkipAddSourceDepsCheck(..) )
-
+       ( ConfigFlags(..), ConfigExFlags, GlobalFlags(..) )
 
 -- | @Check@ represents a function to check some condition on type @a@. The
 -- returned 'Any' is 'True' if any part of the condition failed.
@@ -82,10 +77,6 @@ reconfigure
      -- ^ Verbosity setting
   -> FilePath
      -- ^ \"dist\" prefix
-  -> UseSandbox
-  -> SkipAddSourceDepsCheck
-     -- ^ Should we skip the timestamp check for modified
-     -- add-source dependencies?
   -> Flag (Maybe Int)
      -- ^ -j flag for reinstalling add-source deps.
   -> Check (ConfigFlags, ConfigExFlags)
@@ -100,9 +91,7 @@ reconfigure
   configureAction
   verbosity
   dist
-  useSandbox
-  skipAddSourceDepsCheck
-  numJobsFlag
+  _numJobsFlag
   check
   extraArgs
   globalFlags
@@ -137,13 +126,9 @@ reconfigure
             <> checkDist
             <> checkOutdated
             <> check
-            <> checkAddSourceDeps
       (Any force, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
 
-      let (_, config') =
-            updateInstallDirs
-            (configUserInstall configFlags)
-            (useSandbox, config)
+      let config' = updateInstallDirs (configUserInstall configFlags) config
 
       when force $ configureAction flags extraArgs globalFlags
       return config'
@@ -174,13 +159,6 @@ reconfigure
       configured <- doesFileExist buildConfig
       unless configured $ info verbosity "package has never been configured"
 
-      -- Is the configuration older than the sandbox configuration file?
-      -- If so, reconfiguration is required.
-      sandboxConfig <- getSandboxConfigFilePath globalFlags
-      sandboxConfigNewer <- existsAndIsMoreRecentThan sandboxConfig buildConfig
-      when sandboxConfigNewer $
-        info verbosity "sandbox was created after the package was configured"
-
       -- Is the @cabal.config@ file newer than @dist/setup.config@? Then we need
       -- to force reconfigure. Note that it's possible to use @cabal.config@
       -- even without sandboxes.
@@ -199,35 +177,5 @@ reconfigure
       let failed =
             Any outdated
             <> Any userPackageEnvironmentFileModified
-            <> Any sandboxConfigNewer
             <> Any (not configured)
       return (failed, flags)
-
-    checkAddSourceDeps = Check $ \(Any force') flags@(configFlags, _) -> do
-      let (_, config') =
-            updateInstallDirs
-            (configUserInstall configFlags)
-            (useSandbox, config)
-
-          skipAddSourceDepsCheck'
-            | force'    = SkipAddSourceDepsCheck
-            | otherwise = skipAddSourceDepsCheck
-
-      when (skipAddSourceDepsCheck' == SkipAddSourceDepsCheck) $
-        info verbosity "skipping add-source deps check"
-
-      -- Were any add-source dependencies reinstalled in the sandbox?
-      depsReinstalled <-
-        case skipAddSourceDepsCheck' of
-          DontSkipAddSourceDepsCheck ->
-            maybeReinstallAddSourceDeps
-            verbosity numJobsFlag configFlags globalFlags
-            (useSandbox, config')
-          SkipAddSourceDepsCheck -> do
-            return NoDepsReinstalled
-
-      case depsReinstalled of
-        NoDepsReinstalled -> return (mempty, flags)
-        ReinstalledSomeDeps -> do
-          info verbosity "some add-source dependencies were reinstalled"
-          return (Any True, flags)

@@ -1,8 +1,6 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
     withRepo "repo" . withSourceCopy $ do
-        -- TODO: test this with a sandbox-installed package
-        -- that is not depended upon
         cabal "v1-freeze" []
         cwd <- fmap testCurrentDir getTestEnv
         assertFileDoesNotContain (cwd </> "cabal.config") "exceptions"

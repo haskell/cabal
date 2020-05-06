@@ -178,10 +178,7 @@ Version:            3.3.0.0
         Distribution.Client.Reconfigure
         Distribution.Client.Run
         Distribution.Client.Sandbox
-        Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
-        Distribution.Client.Sandbox.Timestamp
-        Distribution.Client.Sandbox.Types
         Distribution.Client.SavedFlags
         Distribution.Client.Security.DNS
         Distribution.Client.Security.HTTP
@@ -478,8 +475,6 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Init.FileCreators
-    UnitTests.Distribution.Client.Sandbox
-    UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.TreeDiffInstances

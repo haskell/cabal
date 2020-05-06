@@ -239,10 +239,7 @@ executable cabal
         Distribution.Client.Reconfigure
         Distribution.Client.Run
         Distribution.Client.Sandbox
-        Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
-        Distribution.Client.Sandbox.Timestamp
-        Distribution.Client.Sandbox.Types
         Distribution.Client.SavedFlags
         Distribution.Client.Security.DNS
         Distribution.Client.Security.HTTP
