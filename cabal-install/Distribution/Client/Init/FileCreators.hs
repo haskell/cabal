@@ -275,6 +275,7 @@ mainHs flags = (unlines . map prependPrefix) $ case packageType flags of
     , "main = putStrLn \"Hello, Haskell!\""
     ]
   where
+    prependPrefix :: String -> String
     prependPrefix "" = ""
     prependPrefix line
       | isLiterate = "> " ++ line
