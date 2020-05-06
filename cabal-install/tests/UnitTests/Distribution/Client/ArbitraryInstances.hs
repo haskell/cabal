@@ -9,6 +9,12 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
     arbitraryShortToken,
     NonMEmpty(..),
     NoShrink(..),
+    -- * Shrinker
+    Shrinker,
+    runShrinker,
+    shrinker,
+    shrinkerPP,
+    shrinkerAla,
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -31,10 +37,38 @@ import Distribution.Client.Types                         (RepoName (..), WriteGh
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Cabal ()
 
+import Data.Coerce (Coercible, coerce)
 import Network.URI (URI (..), URIAuth (..), isUnreserved)
 
 -- note: there are plenty of instances defined in ProjectConfig test file.
 -- they should be moved here or into Cabal-quickcheck
+
+-------------------------------------------------------------------------------
+-- Utilities
+-------------------------------------------------------------------------------
+
+data Shrinker a = Shrinker a [a]
+
+instance Functor Shrinker where
+    fmap f (Shrinker x xs) = Shrinker (f x) (map f xs)
+
+instance Applicative Shrinker where
+    pure x = Shrinker x []
+
+    Shrinker f fs <*> Shrinker x xs = Shrinker (f x) (map f xs ++ map ($ x) fs)
+
+runShrinker :: Shrinker a -> [a]
+runShrinker (Shrinker _ xs) = xs
+
+shrinker :: Arbitrary a => a -> Shrinker a
+shrinker x = Shrinker x (shrink x)
+
+shrinkerAla :: (Coercible a b, Arbitrary b) => (a -> b) -> a -> Shrinker a
+shrinkerAla pack = shrinkerPP pack coerce
+
+-- | shrinker with pre and post functions.
+shrinkerPP :: Arbitrary b => (a -> b) -> (b -> a) -> a -> Shrinker a
+shrinkerPP pack unpack x = Shrinker x (map unpack (shrink (pack x)))
 
 -------------------------------------------------------------------------------
 -- Non-Cabal instances
