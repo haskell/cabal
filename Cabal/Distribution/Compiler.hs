@@ -1,5 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -122,7 +125,8 @@ defaultCompilerFlavor = case buildCompilerFlavor of
 -- Cabal parses only @ghc-options@ and @ghcjs-options@, others are omitted.
 --
 data PerCompilerFlavor v = PerCompilerFlavor v v
-  deriving (Generic, Show, Read, Eq, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Typeable, Data, Functor, Foldable
+           , Traversable)
 
 instance Binary a => Binary (PerCompilerFlavor a)
 instance Structured a => Structured (PerCompilerFlavor a)
