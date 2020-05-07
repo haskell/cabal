@@ -188,8 +188,8 @@ The part of the path will be used to determine the cache key part.
 Legacy repositories
 ^^^^^^^^^^^^^^^^^^^
 
-Currently ``cabal`` supports two kinds of “legacy” repositories. The
-first is specified using
+Currently ``cabal`` supports single kind of “legacy” repositories.
+It is specified using
 
 ::
 
@@ -205,18 +205,6 @@ This is just syntactic sugar for
 although, in (and only in) the specific case of Hackage, the URL
 ``http://hackage.haskell.org/packages/archive`` will be silently
 translated to ``http://hackage.haskell.org/``.
-
-The second kind of legacy repositories are so-called “(legacy) local”
-repositories:
-
-::
-
-    local-repo: my-local-repo:/path/to/local/repo
-
-This can be used to access repositories on the local file system.
-However, the layout of these local repositories is different from the
-layout of remote repositories, and usage of these local repositories is
-deprecated.
 
 Secure local repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^

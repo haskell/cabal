@@ -566,6 +566,7 @@ rebuildInstallPlan verbosity
                                                     corePackageDbs
           (sourcePkgDb, tis)<- getSourcePackages verbosity withRepoCtx
                                  (solverSettingIndexState solverSettings)
+                                 (solverSettingActiveRepos solverSettings)
           pkgConfigDB       <- getPkgConfigDb verbosity progdb
 
           --TODO: [code cleanup] it'd be better if the Compiler contained the
@@ -764,13 +765,13 @@ getSourcePackages
     :: Verbosity
     -> (forall a. (RepoContext -> IO a) -> IO a)
     -> Maybe IndexUtils.TotalIndexState
+    -> Maybe IndexUtils.ActiveRepos
     -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState)
-getSourcePackages verbosity withRepoCtx idxState = do
+getSourcePackages verbosity withRepoCtx idxState activeRepos = do
     (sourcePkgDbWithTIS, repos) <-
       liftIO $
         withRepoCtx $ \repoctx -> do
-          sourcePkgDbWithTIS <- IndexUtils.getSourcePackagesAtIndexState verbosity
-                                                                  repoctx idxState
+          sourcePkgDbWithTIS <- IndexUtils.getSourcePackagesAtIndexState verbosity repoctx idxState activeRepos
           return (sourcePkgDbWithTIS, repoContextRepos repoctx)
 
     mapM_ needIfExists

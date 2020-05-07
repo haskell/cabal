@@ -29,6 +29,7 @@ import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
+import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepos (..), ActiveRepoEntry (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.InstallSymlink                (OverwritePolicy)
@@ -99,6 +100,11 @@ arbitraryURIPort =
 -------------------------------------------------------------------------------
 -- cabal-install (and Cabal) types
 -------------------------------------------------------------------------------
+
+shrinkBoundedEnum :: (Eq a, Enum a, Bounded a) => a -> [a]
+shrinkBoundedEnum x
+    | x == minBound = []
+    | otherwise     = [pred x]
 
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
@@ -201,3 +207,16 @@ instance Arbitrary OverwritePolicy where
 
 instance Arbitrary InstallMethod where
     arbitrary = arbitraryBoundedEnum
+
+instance Arbitrary ActiveRepos where
+    arbitrary = ActiveRepos <$> shortListOf 5 arbitrary
+
+instance Arbitrary ActiveRepoEntry where
+    arbitrary = frequency
+        [ (10, ActiveRepo <$> arbitrary <*> arbitrary)
+        , (1, ActiveRepoRest <$> arbitrary)
+        ]
+
+instance Arbitrary CombineStrategy where
+    arbitrary = arbitraryBoundedEnum
+    shrink    = shrinkBoundedEnum

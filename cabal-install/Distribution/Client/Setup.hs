@@ -71,6 +71,8 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
+import Distribution.Client.IndexUtils.ActiveRepos
+         ( ActiveRepos )
 import Distribution.Client.IndexUtils.IndexState
          ( TotalIndexState, headTotalIndexState )
 import qualified Distribution.Client.Init.Types as IT
@@ -388,6 +390,7 @@ globalCommand commands = CommandUI {
          "Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
          globalNix (\v flags -> flags { globalNix = v })
          (boolOpt [] [])
+
       ]
 
     -- arguments we don't want shown in the help
@@ -422,6 +425,13 @@ globalCommand commands = CommandUI {
          "The location of the nix-local-build store"
          globalStoreDir (\v flags -> flags { globalStoreDir = v })
          (reqArgFlag "DIR")
+
+      , option [] ["active-repositories"]
+         "The active package repositories"
+         globalActiveRepos (\v flags ->  flags { globalActiveRepos = v })
+         (reqArg "REPOS" (parsecToReadE (\err -> "Error parsing active-repositories: " ++ err)
+                                        (toFlag `fmap` parsec))
+                         (map prettyShow . flagToList))
       ]
 
 -- ------------------------------------------------------------
@@ -1430,6 +1440,7 @@ data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
     getPristine         :: Flag Bool,
     getIndexState       :: Flag TotalIndexState,
+    getActiveRepos      :: Flag ActiveRepos,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
   } deriving Generic
@@ -1439,6 +1450,7 @@ defaultGetFlags = GetFlags {
     getDestDir          = mempty,
     getPristine         = mempty,
     getIndexState       = mempty,
+    getActiveRepos      = mempty,
     getSourceRepository = mempty,
     getVerbosity        = toFlag normal
    }

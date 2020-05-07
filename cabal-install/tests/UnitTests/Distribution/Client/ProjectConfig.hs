@@ -152,13 +152,13 @@ prop_roundtrip_legacytypes_specific config =
 
 roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
-    case (fmap convertLegacyProjectConfig
-        . parseLegacyProjectConfig
-        . showLegacyProjectConfig
-        . convertToLegacyProjectConfig)
-          config of
-      ParseOk _ x     -> x `ediffEq` config { projectConfigProvenance = mempty }
+    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig str) of
+      ParseOk _ x     -> counterexample ("shown: " ++ str) $
+          config { projectConfigProvenance = mempty } `ediffEq` x
       ParseFailed err -> counterexample (show err) False
+  where
+    str :: String
+    str = showLegacyProjectConfig (convertToLegacyProjectConfig config)
 
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Property
@@ -439,32 +439,38 @@ instance Arbitrary ProjectConfigBuildOnly where
         postShrink_NumJobs = fmap (fmap getPositive)
 
 instance Arbitrary ProjectConfigShared where
-    arbitrary =
-      ProjectConfigShared
-        <$> arbitraryFlag arbitraryShortToken
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitrary
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitraryConstraints
-        <*> shortListOf 2 arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> (toNubList <$> listOf arbitraryShortToken)
+    arbitrary = do
+        projectConfigDistDir              <- arbitraryFlag arbitraryShortToken
+        projectConfigConfigFile           <- arbitraryFlag arbitraryShortToken
+        projectConfigProjectFile          <- arbitraryFlag arbitraryShortToken
+        projectConfigHcFlavor             <- arbitrary
+        projectConfigHcPath               <- arbitraryFlag arbitraryShortToken
+        projectConfigHcPkg                <- arbitraryFlag arbitraryShortToken
+        projectConfigHaddockIndex         <- arbitrary
+        projectConfigRemoteRepos          <- arbitrary
+        projectConfigLocalNoIndexRepos    <- arbitrary
+        projectConfigActiveRepos          <- arbitrary
+        projectConfigIndexState           <- arbitrary
+        projectConfigStoreDir             <- arbitraryFlag arbitraryShortToken
+        projectConfigConstraints          <- arbitraryConstraints
+        projectConfigPreferences          <- shortListOf 2 arbitrary
+        projectConfigCabalVersion         <- arbitrary
+        projectConfigSolver               <- arbitrary
+        projectConfigAllowOlder           <- arbitrary
+        projectConfigAllowNewer           <- arbitrary
+        projectConfigWriteGhcEnvironmentFilesPolicy <- arbitrary
+        projectConfigMaxBackjumps         <- arbitrary
+        projectConfigReorderGoals         <- arbitrary
+        projectConfigCountConflicts       <- arbitrary
+        projectConfigFineGrainedConflicts <- arbitrary
+        projectConfigMinimizeConflictSet  <- arbitrary
+        projectConfigStrongFlags          <- arbitrary
+        projectConfigAllowBootLibInstalls <- arbitrary
+        projectConfigOnlyConstrained      <- arbitrary
+        projectConfigPerComponent         <- arbitrary
+        projectConfigIndependentGoals     <- arbitrary
+        projectConfigProgPathExtra        <- toNubList <$> listOf arbitraryShortToken
+        return ProjectConfigShared {..}
       where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
@@ -480,6 +486,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigHaddockIndex
         <*> shrinker projectConfigRemoteRepos
         <*> shrinker projectConfigLocalNoIndexRepos
+        <*> shrinker projectConfigActiveRepos
         <*> shrinker projectConfigIndexState
         <*> shrinker projectConfigStoreDir
         <*> shrinkerPP preShrink_Constraints postShrink_Constraints projectConfigConstraints

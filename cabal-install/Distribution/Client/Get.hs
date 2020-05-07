@@ -51,8 +51,8 @@ import Distribution.Client.Dependency
 import Distribution.Client.VCS
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
-import Distribution.Client.IndexUtils as IndexUtils
-        ( getSourcePackagesAtIndexState, TotalIndexState )
+import Distribution.Client.IndexUtils
+        ( getSourcePackagesAtIndexState, TotalIndexState, ActiveRepos )
 import Distribution.Solver.Types.SourcePackage
 
 import Control.Exception
@@ -89,7 +89,10 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   let idxState :: Maybe TotalIndexState
       idxState = flagToMaybe $ getIndexState getFlags
 
-  (sourcePkgDb, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
+      activeRepos :: Maybe ActiveRepos
+      activeRepos = flagToMaybe $ getActiveRepos getFlags
+
+  (sourcePkgDb, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState activeRepos
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)

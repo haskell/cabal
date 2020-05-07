@@ -50,7 +50,7 @@ data GrammarRegex a
     | RESpaces                            -- ^ zero-or-more spaces
     | RESpaces1                           -- ^ one-or-more spaces
     | RECommaList (GrammarRegex a)        -- ^ comma list (note, leading or trailing commas)
-    | RECommaNonEmpty (GrammarRegex a)    -- ^ comma non-empty list
+    | RECommaNonEmpty (GrammarRegex a)    -- ^ comma non-empty list (note, leading or trailing commas)
     | REOptCommaList (GrammarRegex a)     -- ^ opt comma list
 
     | RETodo                              -- ^ unspecified

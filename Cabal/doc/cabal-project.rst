@@ -433,6 +433,37 @@ The following settings control the behavior of the dependency solver:
       -- for storing `--index-state` values.
       index-state: 2016-09-24T17:47:48Z
 
+      -- Specify different index-states per package repository
+      -- Supported since 3.4
+      index-state:
+        , hackage.haskell.org 2020-05-06T22:33:27Z
+        , head.hackage 2020-04-29T04:11:05Z
+
+.. cfg-field:: active-repositories: reponame1, reponame2
+
+    :synopsis: Specify active package repositories
+    :since: 3.4
+
+    :default: ``:rest``
+
+    This allows to specify the active package repositories,
+    when multiple are specified. This is useful as you
+    can specify the order and the way active repositories are merged.
+
+    ::
+
+      -- for packages in head.hackage
+      -- only versions in head.hackage are considered
+      active-repositories:
+        , hackage.haskell.org
+        , head.hackage:override
+
+      -- Force head.hackage to be the primary repository considered
+      active-repositories: :rest, head.hackage
+
+      -- "Offline" mode
+      active-repositories: none
+
 
 .. cfg-field:: reject-unconstrained-dependencies: all, none
                --reject-unconstrained-dependencies=[all|none]
@@ -1376,15 +1407,6 @@ Advanced global configuration options
 
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
-
-.. cfg-field:: local-repo: directory
-               --local-repo=DIR
-    :deprecated:
-
-    [STRIKEOUT:The location of a local repository.] Deprecated. See
-    "Legacy repositories."
-
-    The command line variant of this flag is ``--local-repo=DIR``.
 
 .. cfg-field:: world-file: path
                --world-file=FILE
