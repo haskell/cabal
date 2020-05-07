@@ -1377,15 +1377,6 @@ Advanced global configuration options
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
 
-.. cfg-field:: local-repo: directory
-               --local-repo=DIR
-    :deprecated:
-
-    [STRIKEOUT:The location of a local repository.] Deprecated. See
-    "Legacy repositories."
-
-    The command line variant of this flag is ``--local-repo=DIR``.
-
 .. cfg-field:: world-file: path
                --world-file=FILE
     :deprecated:
