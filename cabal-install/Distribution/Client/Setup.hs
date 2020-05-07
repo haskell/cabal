@@ -408,11 +408,6 @@ globalCommand commands = CommandUI {
          globalCacheDir (\v flags -> flags { globalCacheDir = v })
          (reqArgFlag "DIR")
 
-      ,option [] ["local-repo"]
-         "The location of a local repository"
-         globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
-         (reqArg' "DIR" (\x -> toNubList [x]) fromNubList)
-
       ,option [] ["logs-dir", "logsdir"]
          "The location to put log files"
          globalLogsDir (\v flags -> flags { globalLogsDir = v })

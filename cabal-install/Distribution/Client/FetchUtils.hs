@@ -176,7 +176,6 @@ fetchRepoTarball verbosity' repoCtxt repo pkgid = do
     verbosity = verboseUnmarkOutput verbosity'
 
     downloadRepoPackage = case repo of
-      RepoLocal{} -> return (packageFile repo pkgid)
       RepoLocalNoIndex{} -> return (packageFile repo pkgid)
 
       RepoRemote{..} -> do

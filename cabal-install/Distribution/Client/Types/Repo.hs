@@ -142,16 +142,11 @@ localRepoCacheKey local = unRepoName (localRepoName local) ++ "-" ++ hashPart wh
 -- | Different kinds of repositories
 --
 -- NOTE: It is important that this type remains serializable.
-data Repo =
-    -- | Local repositories
-    RepoLocal {
-        repoLocalDir :: FilePath
-      }
-
+data Repo
     -- | Local repository, without index.
     --
     -- https://github.com/haskell/cabal/issues/6359
-  | RepoLocalNoIndex
+  = RepoLocalNoIndex
       { repoLocal    :: LocalRepo
       , repoLocalDir :: FilePath
       }
@@ -181,13 +176,11 @@ instance Structured Repo
 
 -- | Check if this is a remote repo
 isRepoRemote :: Repo -> Bool
-isRepoRemote RepoLocal{}        = False
 isRepoRemote RepoLocalNoIndex{} = False
 isRepoRemote _                  = True
 
 -- | Extract @RemoteRepo@ from @Repo@ if remote.
 maybeRepoRemote :: Repo -> Maybe RemoteRepo
-maybeRepoRemote (RepoLocal          _localDir) = Nothing
 maybeRepoRemote (RepoLocalNoIndex _ _localDir) = Nothing
 maybeRepoRemote (RepoRemote       r _localDir) = Just r
 maybeRepoRemote (RepoSecure       r _localDir) = Just r
