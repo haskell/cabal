@@ -10,7 +10,10 @@ import Prelude ()
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PackageName
-import Distribution.Types.VersionRange
+import Distribution.Types.PackageId
+import Distribution.Types.Version
+import Distribution.Types.VersionRange.Internal
+import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import           Text.PrettyPrint                ((<+>))
@@ -28,13 +31,41 @@ instance Structured PackageVersionConstraint
 instance NFData PackageVersionConstraint where rnf = genericRnf
 
 instance Pretty PackageVersionConstraint where
-  pretty (PackageVersionConstraint name ver) = pretty name <+> pretty ver
+  -- Cannot do: PackageVersionConstraint have to be parseable
+  -- as Dependency, due roundtrip problems. (e.g. talking to old ./Setup).
+  --
+  -- pretty (PackageVersionConstraint name (ThisVersion ver)) =
+  --     pretty (PackageIdentifier name ver)
+  pretty (PackageVersionConstraint name ver) =
+      pretty name <+> pretty ver
 
+-- |
+--
+-- >>> simpleParsec "foo" :: Maybe PackageVersionConstraint
+-- Just (PackageVersionConstraint (PackageName "foo") (OrLaterVersion (mkVersion [0])))
+--
+-- >>> simpleParsec "foo >=2.0" :: Maybe PackageVersionConstraint
+-- Just (PackageVersionConstraint (PackageName "foo") (OrLaterVersion (mkVersion [2,0])))
+--
+-- >>> simpleParsec "foo-2.0" :: Maybe PackageVersionConstraint
+-- Just (PackageVersionConstraint (PackageName "foo") (ThisVersion (mkVersion [2,0])))
+--
 instance Parsec PackageVersionConstraint where
   parsec = do
-      name <- parsec
-      P.spaces
-      ver <- parsec <|> return anyVersion
-      P.spaces
-      return (PackageVersionConstraint name ver)
+      PackageIdentifier name ver <- parsec
+      if ver == nullVersion
+      then do
+          P.spaces
+          vr <- parsec <|> return anyVersion
+          P.spaces
+          return (PackageVersionConstraint name vr)
+      else
+          pure (PackageVersionConstraint name (thisVersion ver))
 
+instance Described PackageVersionConstraint where
+    describe _ = describe (Proxy :: Proxy PackageName) <> REUnion
+        [ fromString "-" <> describe (Proxy :: Proxy Version)
+        -- TODO: change to RESpaces when -any and -none are removed
+        -- Related https://github.com/haskell/cabal/issues/6760
+        , RESpaces1 <> describe (Proxy :: Proxy VersionRange)
+        ]
