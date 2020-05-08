@@ -58,6 +58,7 @@ import Distribution.Types.ForeignLib
 import Distribution.Types.Component
 import Distribution.Types.Dependency
 import Distribution.Types.PackageName
+import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.CondTree
 import Distribution.Types.Condition
@@ -177,7 +178,7 @@ resolveWithFlags ::
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerInfo  -- ^ Compiler information
-  -> [Dependency]  -- ^ Additional constraints
+  -> [PackageVersionConstraint]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] PDTagged]
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
@@ -186,7 +187,10 @@ resolveWithFlags ::
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
   where
-    extraConstrs = toDepMap constrs
+    extraConstrs = toDepMap
+      [ Dependency pn ver mempty
+      | PackageVersionConstraint pn ver <- constrs
+      ]
 
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
@@ -438,7 +442,7 @@ finalizePD ::
                           -- True.
   -> Platform      -- ^ The 'Arch' and 'OS'
   -> CompilerInfo  -- ^ Compiler information
-  -> [Dependency]  -- ^ Additional constraints
+  -> [PackageVersionConstraint]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, FlagAssignment)

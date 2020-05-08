@@ -54,9 +54,8 @@ import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
 
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
-         , PackageIdentifier(..), packageName, packageVersion )
+         , packageName )
 import Distribution.Types.Dependency
-import Distribution.Types.LibraryName
 import Distribution.Client.Types
          ( PackageLocation(..), ResolvedPkgLoc, UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -76,14 +75,17 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.Utils ( tryFindPackageDesc )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
+import Distribution.Types.PackageVersionConstraint
+         ( PackageVersionConstraint (..) )
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, nullFlagAssignment)
 import Distribution.Version
-         ( nullVersion, thisVersion, anyVersion, isAnyVersion )
+         ( anyVersion, isAnyVersion )
 import Distribution.Deprecated.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
+import Distribution.Parsec (eitherParsec)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
 
@@ -94,7 +96,6 @@ import Distribution.PackageDescription.Parsec
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
@@ -125,7 +126,7 @@ data UserTarget =
      -- > cabal install foo-1.0
      -- > cabal install 'foo < 2'
      --
-     UserTargetNamed Dependency
+     UserTargetNamed PackageVersionConstraint
 
      -- | A special virtual package that refers to the collection of packages
      -- recorded in the world file that the user specifically installed.
@@ -190,14 +191,14 @@ data UserTargetProblem
 
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
-    case testNamedTargets targetstr of
-      Just (Dependency pkgn verrange _)
+    case eitherParsec targetstr of
+      Right (PackageVersionConstraint pkgn verrange)
         | pkgn == mkPackageName "world"
           -> return $ if verrange == anyVersion
                       then Right UserTargetWorld
                       else Left  UserTargetBadWorldPkg
-      Just dep -> return (Right (UserTargetNamed dep))
-      Nothing -> do
+      Right dep -> return (Right (UserTargetNamed dep))
+      Left _err -> do
         fileTarget <- testFileTargets targetstr
         case fileTarget of
           Just target -> return target
@@ -206,8 +207,6 @@ readUserTarget targetstr =
               Just target -> return target
               Nothing     -> return (Left (UserTargetUnrecognised targetstr))
   where
-    testNamedTargets = readPToMaybe parseDependencyOrPackageId
-
     testFileTargets filename = do
       isDir  <- doesDirectoryExist filename
       isFile <- doesFileExist filename
@@ -252,16 +251,6 @@ readUserTarget targetstr =
 
     extensionIsTarGz f = takeExtension f                 == ".gz"
                       && takeExtension (dropExtension f) == ".tar"
-
-    parseDependencyOrPackageId :: Parse.ReadP r Dependency
-    parseDependencyOrPackageId = parse
-                             +++ liftM pkgidToDependency parse
-      where
-        pkgidToDependency :: PackageIdentifier -> Dependency
-        pkgidToDependency p = case packageVersion p of
-          v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
-            | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
-
 
 reportUserTargetProblems :: Verbosity -> [UserTargetProblem] -> IO ()
 reportUserTargetProblems verbosity problems = do
@@ -380,7 +369,7 @@ expandUserTarget :: Verbosity
                  -> IO [PackageTarget (PackageLocation ())]
 expandUserTarget verbosity worldFile userTarget = case userTarget of
 
-    UserTargetNamed (Dependency name vrange _cs) ->
+    UserTargetNamed (PackageVersionConstraint name vrange) ->
       let props = [ PackagePropertyVersion vrange
                   | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name props userTarget]

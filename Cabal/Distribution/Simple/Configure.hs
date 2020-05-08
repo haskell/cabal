@@ -79,6 +79,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
+import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.PkgconfigVersion
 import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
@@ -450,7 +451,7 @@ configure (pkg_descr0, pbi) cfg = do
     -- NB: The fact that we bundle all the constraints together means
     -- that is not possible to configure a test-suite to use one
     -- version of a dependency, and the executable to use another.
-    (allConstraints  :: [Dependency],
+    (allConstraints  :: [PackageVersionConstraint],
      requiredDepsMap :: Map (PackageName, ComponentName) InstalledPackageInfo)
         <- either (die' verbosity) return $
               combinedConstraints (configConstraints cfg)
@@ -1000,7 +1001,7 @@ configureFinalizedPackage
     :: Verbosity
     -> ConfigFlags
     -> ComponentRequestedSpec
-    -> [Dependency]
+    -> [PackageVersionConstraint]
     -> (Dependency -> Bool) -- ^ tests if a dependency is satisfiable.
                             -- Might say it's satisfiable even when not.
     -> Compiler
@@ -1459,10 +1460,10 @@ interpretPackageDbFlags userInstall specificDBs =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints
-  :: [Dependency]
+  :: [PackageVersionConstraint]
   -> [GivenComponent]
   -> InstalledPackageIndex
-  -> Either String ([Dependency],
+  -> Either String ([PackageVersionConstraint],
                      Map (PackageName, ComponentName) InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 
@@ -1476,9 +1477,9 @@ combinedConstraints constraints dependencies installedPackages = do
     return (allConstraints, idConstraintMap)
 
   where
-    allConstraints :: [Dependency]
+    allConstraints :: [PackageVersionConstraint]
     allConstraints = constraints
-                  ++ [ thisPackageVersion (packageId pkg)
+                  ++ [ thisPackageVersionConstraint (packageId pkg)
                      | (_, _, _, Just pkg) <- dependenciesPkgInfo ]
 
     idConstraintMap :: Map (PackageName, ComponentName) InstalledPackageInfo

@@ -35,6 +35,7 @@ import Distribution.Utils.Generic(safeLast)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -140,12 +141,13 @@ import Distribution.Package
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
-         ( thisPackageVersion )
+         ( Dependency (..) )
+import Distribution.Types.LibraryName (LibraryName (..))
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Pretty ( prettyShow )
 import Distribution.Types.PackageVersionConstraint
-         ( PackageVersionConstraint(..) )
+         ( PackageVersionConstraint(..), thisPackageVersionConstraint )
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -829,8 +831,8 @@ postInstallActions verbosity
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
-      [ World.WorldPkgInfo dep mempty
-      | UserTargetNamed dep <- targets ]
+      [ World.WorldPkgInfo (Dependency pn vr (Set.singleton LMainLibName)) mempty
+      | UserTargetNamed (PackageVersionConstraint pn vr) <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)
                                                   installPlan buildOutcomes
@@ -1209,7 +1211,7 @@ installReadyPackage platform cinfo configFlags
     -- We generate the legacy constraints as well as the new style precise deps.
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
-    configConstraints  = [ thisPackageVersion srcid
+    configConstraints  = [ thisPackageVersionConstraint srcid
                          | ConfiguredId
                              srcid
                              (Just

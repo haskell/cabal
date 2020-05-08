@@ -18,23 +18,21 @@ module Distribution.Solver.Types.PackageConstraint (
     packageConstraintToDependency
   ) where
 
-import Distribution.Compat.Binary      (Binary)
-import Distribution.Package            (PackageName)
-import Distribution.PackageDescription (FlagAssignment, dispFlagAssignment)
-import Distribution.Types.Dependency   (Dependency(..))
-import Distribution.Types.LibraryName  (LibraryName(..))
-import Distribution.Version            (VersionRange, simplifyVersionRange)
-import Distribution.Utils.Structured (Structured)
+import Distribution.Compat.Binary                  (Binary)
+import Distribution.Package                        (PackageName)
+import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
+import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
+import Distribution.Utils.Structured               (Structured)
+import Distribution.Version                        (VersionRange, simplifyVersionRange)
 
-import Distribution.Solver.Compat.Prelude ((<<>>))
+import Distribution.Solver.Compat.Prelude       ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
-import Distribution.Deprecated.Text                  (disp, flatStyle)
-import GHC.Generics                       (Generic)
-import Text.PrettyPrint                   ((<+>))
-import qualified Text.PrettyPrint as Disp
-import qualified Data.Set as Set
+import           Distribution.Deprecated.Text (disp, flatStyle)
+import           GHC.Generics                 (Generic)
+import           Text.PrettyPrint             ((<+>))
+import qualified Text.PrettyPrint             as Disp
 
 
 -- | Determines to what packages and in what contexts a
@@ -142,11 +140,10 @@ showPackageConstraint pc@(PackageConstraint scope prop) =
       _ -> id
 
 -- | Lossily convert a 'PackageConstraint' to a 'Dependency'.
-packageConstraintToDependency :: PackageConstraint -> Maybe Dependency
+packageConstraintToDependency :: PackageConstraint -> Maybe PackageVersionConstraint
 packageConstraintToDependency (PackageConstraint scope prop) = toDep prop
   where
-    toDep (PackagePropertyVersion vr) =
-        Just $ Dependency (scopeToPackageName scope) vr (Set.singleton LMainLibName)
+    toDep (PackagePropertyVersion vr) = Just $ PackageVersionConstraint (scopeToPackageName scope) vr
     toDep (PackagePropertyInstalled)  = Nothing
     toDep (PackagePropertySource)     = Nothing
     toDep (PackagePropertyFlags _)    = Nothing

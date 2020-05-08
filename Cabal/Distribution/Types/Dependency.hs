@@ -6,8 +6,6 @@ module Distribution.Types.Dependency
   , depPkgName
   , depVerRange
   , depLibraries
-  , thisPackageVersion
-  , notThisPackageVersion
   , simplifyDependency
   ) where
 
@@ -15,7 +13,7 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.Version
-       (VersionRange, anyVersion,notThisVersion, simplifyVersionRange, thisVersion)
+       (VersionRange, anyVersion, simplifyVersionRange )
 import Distribution.Types.VersionRange (isAnyVersionLight)
 
 import Distribution.CabalSpecVersion
@@ -25,7 +23,6 @@ import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
-import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Text.PrettyPrint                       ((<+>))
@@ -184,20 +181,6 @@ instance Described Dependency where
         ]
       where
         vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
-
--- mempty should never be in a Dependency-as-dependency.
--- This is only here until the Dependency-as-constraint problem is solved #5570.
--- Same for below.
---
--- Note: parser allows for empty set!
---
-thisPackageVersion :: PackageIdentifier -> Dependency
-thisPackageVersion (PackageIdentifier n v) =
-  Dependency n (thisVersion v) Set.empty
-
-notThisPackageVersion :: PackageIdentifier -> Dependency
-notThisPackageVersion (PackageIdentifier n v) =
-  Dependency n (notThisVersion v) Set.empty
 
 -- | Simplify the 'VersionRange' expression in a 'Dependency'.
 -- See 'simplifyVersionRange'.

@@ -81,6 +81,7 @@ import Distribution.Simple.Utils.Json
 import Distribution.System
 import Distribution.Pretty
 import Distribution.Verbosity
+import Distribution.Version (thisVersion)
 
 import Distribution.Compat.Graph (IsNode(..))
 
@@ -535,8 +536,9 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentCompatPackageKey = compat_key
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
+    pkgName' = mkPackageName $ prettyShow compat_name
     pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = mkPackageName $ prettyShow compat_name }
+            package      = (package pkg_descr) { pkgName = pkgName' }
           , executables  = []
           , testSuites   = []
           , subLibraries = [lib]
@@ -544,7 +546,10 @@ testSuiteLibV09AsLibAndExe pkg_descr
     ipi    = inplaceInstalledPackageInfo pwd distPref pkg (mkAbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
-    testLibDep = thisPackageVersion $ package pkg
+    testLibDep = Dependency
+        pkgName'
+        (thisVersion $ pkgVersion $ package pkg_descr)
+        (Set.singleton LMainLibName)
     exe = Executable {
             exeName    = mkUnqualComponentName $ stubName test,
             modulePath = stubFilePath test,
