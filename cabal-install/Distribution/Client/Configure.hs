@@ -26,6 +26,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 import Distribution.Utils.Generic (safeHead)
 
+import Distribution.Pretty (prettyShow)
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -287,7 +288,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
     unknown pkg = null (lookupPackageName installedPkgIndex pkg)
                && not (elemByPackageName sourcePkgIndex pkg)
     showConstraint (uc, src) =
-        display uc ++ " (" ++ showConstraintSource src ++ ")"
+        prettyShow uc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.

@@ -38,6 +38,7 @@ module Distribution.Compat.CharParsing
   , CharParsing(..)
   -- * Cabal additions
   , integral
+  , signedIntegral
   , munch1
   , munch
   , skipSpaces1
@@ -330,6 +331,14 @@ integral = toNumber <$> some d <?> "integral"
     f '9' = 9
     f _   = error "panic! integral"
 {-# INLINE integral #-}
+
+-- | Accepts negative (starting with @-@) and positive (without sign) integral
+-- numbers.
+-- 
+-- @since 3.4.0.0
+signedIntegral :: (CharParsing m, Integral a) => m a
+signedIntegral = negate <$ char '-' <*> integral <|> integral
+{-# INLINE signedIntegral #-}
 
 -- | Greedily munch characters while predicate holds.
 -- Require at least one character.

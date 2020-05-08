@@ -9,9 +9,7 @@ import Distribution.Package            (mkPackageName)
 import Distribution.PackageDescription (mkFlagName, mkFlagAssignment)
 import Distribution.Version            (anyVersion, thisVersion, mkVersion)
 
-import Distribution.Deprecated.ReadP       (readP_to_S)
-import Distribution.Deprecated.ParseUtils  (parseCommaList)
-import Distribution.Deprecated.Text        (parse)
+import Distribution.Parsec (explicitEitherParsec, parsec, parsecCommaList)
 
 import Distribution.Solver.Types.PackageConstraint (PackageProperty(..))
 import Distribution.Solver.Types.OptionalStanza (OptionalStanza(..))
@@ -19,7 +17,6 @@ import Distribution.Solver.Types.OptionalStanza (OptionalStanza(..))
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Data.Char                       (isSpace)
 import Data.List                       (intercalate)
 
 -- Helper function: makes a test group by mapping each element
@@ -51,7 +48,7 @@ exampleConstraints =
      UserConstraint (UserQualified UserQualToplevel (pn "template-haskell"))
                     PackagePropertyInstalled)
 
-  , ("bytestring -any",
+  , ("bytestring >= 0",
      UserConstraint (UserQualified UserQualToplevel (pn "bytestring"))
                     (PackagePropertyVersion anyVersion))
 
@@ -67,7 +64,8 @@ exampleConstraints =
      UserConstraint (UserQualified (UserQualSetup (pn "process")) (pn "bytestring"))
                     (PackagePropertyVersion (thisVersion (mkVersion [5, 2]))))
 
-  , ("network:setup.containers +foo -bar baz",
+    -- flag MUST be prefixed with - or +
+  , ("network:setup.containers +foo -bar +baz",
      UserConstraint (UserQualified (UserQualSetup (pn "network")) (pn "containers"))
                     (PackagePropertyFlags (mkFlagAssignment
                                           [(fn "foo", True),
@@ -95,14 +93,12 @@ parseUserConstraintTest :: String -> UserConstraint -> Assertion
 parseUserConstraintTest str uc =
   assertEqual ("Couldn't parse constraint: '" ++ str ++ "'") expected actual
   where
-    expected = [uc]
-    actual   = [ x | (x, ys) <- readP_to_S parse str
-                   , all isSpace ys]
+    expected = Right uc
+    actual   = explicitEitherParsec parsec str
 
 readUserConstraintsTest :: String -> [UserConstraint] -> Assertion
 readUserConstraintsTest str ucs =
   assertEqual ("Couldn't read constraints: '" ++ str ++ "'") expected actual
   where
-    expected = [ucs]
-    actual   = [ x | (x, ys) <- readP_to_S (parseCommaList parse) str
-                   , all isSpace ys]
+    expected = Right ucs
+    actual   = explicitEitherParsec (parsecCommaList parsec) str

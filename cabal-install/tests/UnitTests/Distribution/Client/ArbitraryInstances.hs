@@ -22,6 +22,7 @@ import Prelude ()
 
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup
+import Distribution.Types.Flag         (mkFlagAssignment)
 
 import Distribution.Utils.NubList
 
@@ -31,8 +32,11 @@ import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), 
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.InstallSymlink                (OverwritePolicy)
+import Distribution.Client.Targets
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
+import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..))
+import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Cabal ()
@@ -204,6 +208,10 @@ instance Arbitrary OverwritePolicy where
 instance Arbitrary InstallMethod where
     arbitrary = arbitraryBoundedEnum
 
+-------------------------------------------------------------------------------
+-- ActiveRepos
+-------------------------------------------------------------------------------
+
 instance Arbitrary ActiveRepos where
     arbitrary = ActiveRepos <$> shortListOf 5 arbitrary
 
@@ -217,6 +225,9 @@ instance Arbitrary CombineStrategy where
     arbitrary = arbitraryBoundedEnum
     shrink    = shrinkBoundedEnum
 
+-------------------------------------------------------------------------------
+-- AllowNewer
+-------------------------------------------------------------------------------
 
 instance Arbitrary AllowNewer where
     arbitrary = AllowNewer <$> arbitrary
@@ -246,3 +257,35 @@ instance Arbitrary RelaxDepSubject where
 
 instance Arbitrary RelaxedDep where
     arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
+
+-------------------------------------------------------------------------------
+-- UserConstraint
+-------------------------------------------------------------------------------
+
+instance Arbitrary UserConstraintScope where
+    arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
+                      , UserAnySetupQualifier <$> arbitrary
+                      , UserAnyQualifier <$> arbitrary
+                      ]
+
+instance Arbitrary UserQualifier where
+    arbitrary = oneof [ pure UserQualToplevel
+                      , UserQualSetup <$> arbitrary
+
+                      -- -- TODO: Re-enable UserQualExe tests once we decide on a syntax.
+                      -- , UserQualExe <$> arbitrary <*> arbitrary
+                      ]
+
+instance Arbitrary UserConstraint where
+    arbitrary = UserConstraint <$> arbitrary <*> arbitrary
+
+instance Arbitrary PackageProperty where
+    arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
+                      , pure PackagePropertyInstalled
+                      , pure PackagePropertySource
+                      , PackagePropertyFlags  . mkFlagAssignment <$> shortListOf1 3 arbitrary
+                      , PackagePropertyStanzas . (\x->[x]) <$> arbitrary
+                      ]
+
+instance Arbitrary OptionalStanza where
+    arbitrary = elements [minBound..maxBound]

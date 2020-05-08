@@ -40,6 +40,8 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Solver.Types.ConstraintSource
 
+import Distribution.Pretty (Pretty (..))
+import Distribution.Parsec (Parsec (..))
 import Distribution.Package
 import Distribution.PackageDescription
          ( dispFlagAssignment )
@@ -79,7 +81,7 @@ import Text.PrettyPrint
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
-         , simpleField, commaNewLineListField, newLineListField, parseTokenQ
+         , simpleField, commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -87,8 +89,7 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (Parsec (..), ParsecParser)
-import Distribution.Pretty (Pretty (..))
+import Distribution.Parsec (ParsecParser)
 
 import qualified Data.Map as Map
 
@@ -860,8 +861,8 @@ legacyProjectConfigFieldDescrs =
         (Disp.text . renderPackageLocationToken) parsePackageLocationTokenQ
         legacyPackagesOptional
         (\v flags -> flags { legacyPackagesOptional = v })
-    , commaNewLineListField "extra-packages"
-        disp parse
+    , commaNewLineListFieldParsec "extra-packages"
+        pretty parsec
         legacyPackagesNamed
         (\v flags -> flags { legacyPackagesNamed = v })
     ]
@@ -959,12 +960,12 @@ legacySharedConfigFieldDescrs =
       legacyConfigureExFlags
       (\flags conf -> conf { legacyConfigureExFlags = flags })
   . addFields
-      [ commaNewLineListField "constraints"
-        (disp . fst) (fmap (\constraint -> (constraint, constraintSrc)) parse)
+      [ commaNewLineListFieldParsec "constraints"
+        (pretty . fst) (fmap (\constraint -> (constraint, constraintSrc)) parsec)
         configExConstraints (\v conf -> conf { configExConstraints = v })
 
-      , commaNewLineListField "preferences"
-        disp parse
+      , commaNewLineListFieldParsec "preferences"
+        pretty parsec
         configPreferences (\v conf -> conf { configPreferences = v })
 
       , monoidFieldParsec "allow-older"
@@ -1014,7 +1015,7 @@ legacySharedConfigFieldDescrs =
   . commandOptionsToFields
   ) (clientInstallOptions ParseArgs)
   where
-    constraintSrc = ConstraintSourceProjectConfig "TODO"
+    constraintSrc = ConstraintSourceProjectConfig "TODO" -- TODO: is a filepath
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]

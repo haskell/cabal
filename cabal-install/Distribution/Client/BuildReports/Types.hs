@@ -15,18 +15,15 @@ module Distribution.Client.BuildReports.Types (
     ReportLevel(..),
   ) where
 
-import qualified Distribution.Deprecated.Text as Text
-         ( Text(..) )
-
-import qualified Distribution.Deprecated.ReadP as Parse
-         ( pfail, munch1 )
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
-         ( text )
 
 import Data.Char as Char
          ( isAlpha, toLower )
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary)
+import Distribution.Parsec (Parsec (..))
+import Distribution.Pretty (Pretty (..))
 import Distribution.Utils.Structured (Structured)
 
 data ReportLevel = NoReports | AnonymousReports | DetailedReports
@@ -35,17 +32,19 @@ data ReportLevel = NoReports | AnonymousReports | DetailedReports
 instance Binary ReportLevel
 instance Structured ReportLevel
 
-instance Text.Text ReportLevel where
-  disp NoReports        = Disp.text "none"
-  disp AnonymousReports = Disp.text "anonymous"
-  disp DetailedReports  = Disp.text "detailed"
-  parse = do
-    name <- Parse.munch1 Char.isAlpha
+instance Pretty ReportLevel where
+  pretty NoReports        = Disp.text "none"
+  pretty AnonymousReports = Disp.text "anonymous"
+  pretty DetailedReports  = Disp.text "detailed"
+
+instance Parsec ReportLevel where
+  parsec = do
+    name <- P.munch1 Char.isAlpha
     case lowercase name of
       "none"       -> return NoReports
       "anonymous"  -> return AnonymousReports
       "detailed"   -> return DetailedReports
-      _            -> Parse.pfail
+      _            -> P.unexpected $ "ReportLevel: " ++ name
 
 lowercase :: String -> String
 lowercase = map Char.toLower

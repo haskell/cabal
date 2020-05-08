@@ -39,7 +39,7 @@ module Distribution.Deprecated.ParseUtils (
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
-        fieldParsec,
+        fieldParsec, commaNewLineListFieldParsec,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -69,7 +69,7 @@ import qualified Text.Read as Read
 import qualified Data.Map  as Map
 
 import qualified Control.Monad.Fail as Fail
-import Distribution.Parsec (ParsecParser, explicitEitherParsec)
+import Distribution.Parsec (ParsecParser, explicitEitherParsec, parsecLeadingCommaList)
 
 -- -----------------------------------------------------------------------------
 
@@ -230,6 +230,15 @@ commaListField = commaListFieldWithSep fsep
 commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaNewLineListField = commaListFieldWithSep sep
+
+commaNewLineListFieldParsec
+    :: String -> (a -> Doc) ->  ParsecParser a
+    -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaNewLineListFieldParsec name showF readF get set = liftField get set' $
+     fieldParsec name showF' (parsecLeadingCommaList readF)
+   where
+     set' xs b = set (get b ++ xs) b
+     showF'    = sep . punctuate comma . map showF
 
 spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b

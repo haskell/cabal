@@ -54,6 +54,8 @@ import System.Directory                ( doesFileExist )
 import System.FilePath                 ( (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
+import Distribution.Parsec             (Parsec (..))
+import Distribution.Pretty             (Pretty (..))
 
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) )
@@ -144,7 +146,7 @@ loadUserConfig verbosity pkgEnvDir globalConfigLocation =
 pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
 pkgEnvFieldDescrs src =
   [ commaNewLineListField "constraints"
-    (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
+    (pretty . fst) ((\pc -> (pc, src)) `fmap` parsec)
     (sortConstraints . configExConstraints
      . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
