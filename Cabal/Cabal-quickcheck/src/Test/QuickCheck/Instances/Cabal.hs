@@ -9,20 +9,22 @@ import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
 
 import Distribution.CabalSpecVersion
-import Distribution.Simple.Flag                 (Flag (..))
+import Distribution.ModuleName
+import Distribution.Parsec.Newtypes
+import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
-import Distribution.Types.Flag                  (FlagAssignment, FlagName, mkFlagName, mkFlagAssignment)
+import Distribution.Types.Flag
+       (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
+import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.SourceRepo
 import Distribution.Types.UnqualComponentName
-import Distribution.ModuleName
 import Distribution.Types.VersionRange.Internal
 import Distribution.Verbosity
 import Distribution.Version
-import Distribution.Parsec.Newtypes
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
@@ -167,6 +169,20 @@ instance Arbitrary Dependency where
     shrink (Dependency pn vr lb) =
         [ mkDependency pn' vr' lb'
         | (pn', vr', lb') <- shrink (pn, vr, lb)
+        ]
+
+-------------------------------------------------------------------------------
+-- PackageVersionConstraint
+-------------------------------------------------------------------------------
+
+instance Arbitrary PackageVersionConstraint where
+    arbitrary = PackageVersionConstraint
+        <$> arbitrary
+        <*> arbitrary
+
+    shrink (PackageVersionConstraint pn vr) =
+        [ PackageVersionConstraint pn' vr'
+        | (pn', vr') <- shrink (pn, vr)
         ]
 
 -------------------------------------------------------------------------------

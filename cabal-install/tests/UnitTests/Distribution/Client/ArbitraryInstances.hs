@@ -20,8 +20,6 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.PackageVersionConstraint
-
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup
 
@@ -138,9 +136,6 @@ instance Arbitrary ShortToken where
 
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
-
-instance Arbitrary PackageVersionConstraint where
-    arbitrary = PackageVersionConstraint <$> arbitrary <*> arbitrary
 
 instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
     arbitrary = toNubList <$> arbitrary
