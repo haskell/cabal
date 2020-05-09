@@ -63,12 +63,10 @@ import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
          ( Package(..), packageName, PackageId )
-import Distribution.Types.Dependency
-         ( thisPackageVersion )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
-         ( PackageVersionConstraint(..) )
+         ( PackageVersionConstraint(..), thisPackageVersionConstraint )
 import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
@@ -409,7 +407,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- We generate the legacy constraints as well as the new style precise
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
-      configConstraints  = [ thisPackageVersion srcid
+      configConstraints  = [ thisPackageVersionConstraint srcid
                            | ConfiguredId srcid (Just (PkgDesc.CLibName PkgDesc.LMainLibName)) _uid
                                <- CD.nonSetupDeps deps ],
       configDependencies = [ GivenComponent (packageName srcid) cname uid

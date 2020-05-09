@@ -109,10 +109,9 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(..)
          , toPathTemplate, fromPathTemplate, combinePathTemplate )
 import Distribution.Version
-         ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
+         ( Version, mkVersion )
 import Distribution.Package
-         ( PackageName, PackageIdentifier, packageName, packageVersion )
-import Distribution.Types.Dependency
+         ( PackageName )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
@@ -127,9 +126,7 @@ import Distribution.Deprecated.Text
 import Distribution.ReadE
          ( ReadE(..), succeedReadE, parsecToReadE )
 import qualified Distribution.Deprecated.ReadP as Parse
-         ( ReadP, char, sepBy1, (+++) )
-import Distribution.Deprecated.ParseUtils
-         ( readPToMaybe )
+         ( ReadP, char, sepBy1 )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
@@ -140,10 +137,10 @@ import Distribution.Client.GlobalFlags
          )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 import Distribution.Parsec.Newtypes (SpecVersion (..))
+import Distribution.Parsec (eitherParsec)
 
 import Data.List
          ( deleteFirstsBy )
-import qualified Data.Set as Set
 import System.FilePath
          ( (</>) )
 
@@ -2670,24 +2667,13 @@ usageFlags name pname =
   "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
 
 --TODO: do we want to allow per-package flags?
-parsePackageArgs :: [String] -> Either String [Dependency]
-parsePackageArgs = parsePkgArgs []
-  where
-    parsePkgArgs ds [] = Right (reverse ds)
-    parsePkgArgs ds (arg:args) =
-      case readPToMaybe parseDependencyOrPackageId arg of
-        Just dep -> parsePkgArgs (dep:ds) args
-        Nothing  -> Left $
-         show arg ++ " is not valid syntax for a package name or"
-                  ++ " package dependency."
-
-parseDependencyOrPackageId :: Parse.ReadP r Dependency
-parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
-  where
-    pkgidToDependency :: PackageIdentifier -> Dependency
-    pkgidToDependency p = case packageVersion p of
-      v | v == nullVersion -> Dependency (packageName p) anyVersion (Set.singleton LMainLibName)
-        | otherwise        -> Dependency (packageName p) (thisVersion v) (Set.singleton LMainLibName)
+parsePackageArgs :: [String] -> Either String [PackageVersionConstraint]
+parsePackageArgs = traverse p where
+    p arg = case eitherParsec arg of
+        Right pvc -> Right pvc
+        Left err  -> Left $
+          show arg ++ " is not valid syntax for a package name or"
+                   ++ " package dependency. " ++ err 
 
 showRemoteRepo :: RemoteRepo -> String
 showRemoteRepo = prettyShow

@@ -3395,7 +3395,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configConstraints         =
         case elabPkgOrComp of
             ElabPackage _ ->
-                [ thisPackageVersion srcid
+                [ thisPackageVersionConstraint srcid
                 | ConfiguredId srcid _ _uid <- elabLibDependencies elab ]
             ElabComponent _ -> []
 
