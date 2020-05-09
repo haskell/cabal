@@ -1,6 +1,9 @@
 Quickstart
 ==========
 
+.. TIP::
+    If this is your first time using `cabal` you should check out the `Getting Started guide <getting-started.html>`__.
+
 Lets assume we have created a project directory and already have a
 Haskell module or two.
 
@@ -33,38 +36,40 @@ them for us.
 Using "cabal init"
 ------------------
 
-The ``cabal init`` command is interactive. It asks us a number of
-questions starting with the package name and version.
+The ``cabal init --interactive`` command is interactive. If we answer
+"no" to using the "sensible defaults" it asks a number of questions.
 
 ::
 
-    $ cabal init
-    Package name [default "proglet"]?
-    Package version [default "0.1"]?
+    $ cabal init --interactive
+    Should I generate a simple project with sensible defaults? [default: y] n
+    What does the package build:
+       1) Executable
+       2) Library
+       3) Library and Executable
+    Your choice?
     ...
 
-It also asks questions about various other bits of package metadata. For
-a package that you never intend to distribute to others, these fields
-can be left blank.
-
 One of the important questions is whether the package contains a library
-or an executable. Libraries are collections of Haskell modules that can
-be re-used by other Haskell libraries and programs, while executables
+and/or an executable. Libraries are collections of Haskell modules that
+can be re-used by other Haskell libraries and programs, while executables
 are standalone programs.
-
-::
-
-    What does the package build:
-       1) Library
-       2) Executable
-    Your choice?
 
 For the moment these are the only choices. For more complex packages
 (e.g. a library and multiple executables or test suites) the ``.cabal``
 file can be edited afterwards.
 
-Finally, ``cabal init`` creates the initial ``proglet.cabal`` and
-``Setup.hs`` files, and depending on your choice of license, a
+After you make your selection (executable; library; or: library
+and executable) cabal asks us a number of questions starting with
+which version of the cabal specification to use, our package's name
+(for example, "proglet"), and our package's version.
+
+It also asks questions about various other bits of package metadata. For
+a package that you never intend to distribute to others, these fields
+can be left blank.
+
+Finally, ``cabal init --interactive`` creates the initial ``proglet.cabal``
+and ``Setup.hs`` files, and depending on your choice of license, a
 ``LICENSE`` file as well.
 
 ::
