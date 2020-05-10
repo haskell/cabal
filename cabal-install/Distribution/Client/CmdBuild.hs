@@ -7,7 +7,6 @@ module Distribution.Client.CmdBuild (
     buildAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
@@ -16,6 +15,8 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.TargetProblem
+         ( TargetProblem (..), TargetProblem' )
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.NixStyleOptions
@@ -112,11 +113,10 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            targets <- either (reportTargetProblems verbosity) return
+            targets <- either (reportBuildTargetProblems verbosity) return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
-                         TargetProblemCommon
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -152,7 +152,7 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
 -- components
 --
 selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -185,36 +185,12 @@ selectPackageTargets targetSelector targets
 -- For the @build@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic subtarget
+                      -> AvailableTarget k -> Either TargetProblem' k
+selectComponentTarget = selectComponentTargetBasic
 
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build" problem
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build" targetSelector targets
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build" targetSelector
+reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
+reportBuildTargetProblems verbosity problems =
+  reportTargetProblems verbosity "build" problems
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =

@@ -12,7 +12,8 @@ module Distribution.Client.CmdRun (
     handleShebang, validScript,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
+    matchesMultipleProblem,
+    noExesProblem,
     selectPackageTargets,
     selectComponentTarget
   ) where
@@ -22,6 +23,12 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+         ( renderTargetSelector, showTargetSelector,
+           renderTargetProblem,
+           renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
+           targetSelectorFilter, renderListCommaAnd )
+import Distribution.Client.TargetProblem
+         ( TargetProblem (..) )
 
 import Distribution.Client.CmdRun.ClientRunFlags
 
@@ -201,7 +208,6 @@ runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings glob
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
-                         TargetProblemCommon
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -216,7 +222,7 @@ runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings glob
             _ <- singleExeOrElse
                    (reportTargetProblems
                       verbosity
-                      [TargetProblemMultipleTargets targets])
+                      [multipleTargetsProblem targets])
                    targets
 
             let elaboratedPlan' = pruneInstallPlanToTargets
@@ -467,7 +473,7 @@ matchingPackagesByUnitId uid =
 -- buildable. Fail if there are no or multiple buildable exe components.
 --
 selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+                     -> [AvailableTarget k] -> Either RunTargetProblem [k]
 selectPackageTargets targetSelector targets
 
     -- If there is exactly one buildable executable then we select that
@@ -476,7 +482,7 @@ selectPackageTargets targetSelector targets
 
     -- but fail if there are multiple buildable executables.
   | not (null targetsExesBuildable)
-  = Left (TargetProblemMatchesMultiple targetSelector targetsExesBuildable')
+  = Left (matchesMultipleProblem targetSelector targetsExesBuildable')
 
     -- If there are executables but none are buildable then we report those
   | not (null targetsExes)
@@ -484,7 +490,7 @@ selectPackageTargets targetSelector targets
 
     -- If there are no executables but some other targets then we report that
   | not (null targets)
-  = Left (TargetProblemNoExes targetSelector)
+  = Left (noExesProblem targetSelector)
 
     -- If there are no targets at all then we report that
   | otherwise
@@ -508,36 +514,28 @@ selectPackageTargets targetSelector targets
 -- to the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem  k
+                      -> AvailableTarget k -> Either RunTargetProblem  k
 selectComponentTarget subtarget@WholeComponent t
   = case availableTargetComponentName t
     of CExeName _ -> component
        CTestName _ -> component
        CBenchName _ -> component
-       _ -> Left (TargetProblemComponentNotExe pkgid cname)
+       _ -> Left (componentNotExeProblem pkgid cname)
     where pkgid = availableTargetPackageId t
           cname = availableTargetComponentName t
-          component = either (Left . TargetProblemCommon) return $
-                        selectComponentTargetBasic subtarget t
+          component = selectComponentTargetBasic subtarget t
 
 selectComponentTarget subtarget t
-  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
-                                      (availableTargetComponentName t)
-                                       subtarget)
+  = Left (isSubComponentProblem (availableTargetPackageId t)
+           (availableTargetComponentName t)
+           subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @run@ command.
 --
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-
+data RunProblem =
      -- | The 'TargetSelector' matches targets but no executables
-   | TargetProblemNoExes      TargetSelector
+     TargetProblemNoExes      TargetSelector
 
      -- | A single 'TargetSelector' matches multiple targets
    | TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
@@ -552,25 +550,36 @@ data TargetProblem =
    | TargetProblemIsSubComponent  PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+type RunTargetProblem = TargetProblem RunProblem
+
+noExesProblem :: TargetSelector -> RunTargetProblem
+noExesProblem = CustomTargetProblem . TargetProblemNoExes
+
+matchesMultipleProblem :: TargetSelector -> [AvailableTarget ()] -> RunTargetProblem
+matchesMultipleProblem selector targets = CustomTargetProblem $
+    TargetProblemMatchesMultiple selector targets
+
+multipleTargetsProblem :: TargetsMap -> TargetProblem RunProblem
+multipleTargetsProblem = CustomTargetProblem . TargetProblemMultipleTargets
+
+componentNotExeProblem :: PackageId -> ComponentName -> TargetProblem RunProblem
+componentNotExeProblem pkgid name = CustomTargetProblem $
+    TargetProblemComponentNotExe pkgid name
+
+isSubComponentProblem
+  :: PackageId
+  -> ComponentName
+  -> SubComponentTarget
+  -> TargetProblem RunProblem
+isSubComponentProblem pkgid name subcomponent = CustomTargetProblem $
+    TargetProblemIsSubComponent pkgid name subcomponent
+
+reportTargetProblems :: Verbosity -> [RunTargetProblem] -> IO a
 reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
+    die' verbosity . unlines . map renderRunTargetProblem
 
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "run" problem
-
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "run" targetSelector targets
-
-renderTargetProblem (TargetProblemNoExes targetSelector) =
-    "Cannot run the target '" ++ showTargetSelector targetSelector
- ++ "' which refers to " ++ renderTargetSelector targetSelector
- ++ " because "
- ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
- ++ " not contain any executables."
-
-renderTargetProblem (TargetProblemNoTargets targetSelector) =
+renderRunTargetProblem :: RunTargetProblem -> String
+renderRunTargetProblem (TargetProblemNoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= ExeKind
         -> "The run command is for running executables, but the target '"
@@ -578,8 +587,11 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
            ++ renderTargetSelector targetSelector ++ "."
 
       _ -> renderTargetProblemNoTargets "run" targetSelector
+renderRunTargetProblem problem =
+    renderTargetProblem "run" renderRunProblem problem
 
-renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
+renderRunProblem :: RunProblem -> String
+renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The run command is for running a single executable at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " which includes "
@@ -591,13 +603,13 @@ renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
                            [ExeKind, TestKind, BenchKind] )
  ++ "."
 
-renderTargetProblem (TargetProblemMultipleTargets selectorMap) =
+renderRunProblem (TargetProblemMultipleTargets selectorMap) =
     "The run command is for running a single executable at once. The targets "
  ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
                        | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
  ++ " refer to different executables."
 
-renderTargetProblem (TargetProblemComponentNotExe pkgid cname) =
+renderRunProblem (TargetProblemComponentNotExe pkgid cname) =
     "The run command is for running executables, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -605,10 +617,17 @@ renderTargetProblem (TargetProblemComponentNotExe pkgid cname) =
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
-renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+renderRunProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
     "The run command can only run an executable as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ "."
   where
     targetSelector = TargetComponent pkgid cname subtarget
+
+renderRunProblem (TargetProblemNoExes targetSelector) =
+    "Cannot run the target '" ++ showTargetSelector targetSelector
+ ++ "' which refers to " ++ renderTargetSelector targetSelector
+ ++ " because "
+ ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
+ ++ " not contain any executables."
