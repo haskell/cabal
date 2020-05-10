@@ -8,6 +8,9 @@ module Distribution.Client.CmdBench (
     benchAction,
 
     -- * Internals exposed for testing
+    componentNotBenchmarkProblem,
+    isSubComponentProblem,
+    noBenchmarksProblem,
     selectPackageTargets,
     selectComponentTarget
   ) where

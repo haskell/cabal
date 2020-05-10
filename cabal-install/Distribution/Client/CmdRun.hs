@@ -12,6 +12,8 @@ module Distribution.Client.CmdRun (
     handleShebang, validScript,
 
     -- * Internals exposed for testing
+    matchesMultipleProblem,
+    noExesProblem,
     selectPackageTargets,
     selectComponentTarget
   ) where

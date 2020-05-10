@@ -23,6 +23,8 @@ import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectOrchestration
          ( resolveTargets, TargetProblemCommon(..), distinctTargetComponents )
+import Distribution.Client.TargetProblem
+         ( TargetProblem, commonTargetProblem, noneEnabledTargetProblem, noTargetsProblem )
 import Distribution.Client.Types
          ( PackageLocation(..), UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -534,18 +536,18 @@ testTargetProblemsCommon config0 = do
                      [ (packageName p, packageId p)
                      | p <- InstallPlan.toList elaboratedPlan ]
 
-        cases :: [( TargetSelector -> CmdBuild.TargetProblem
+        cases :: [( TargetSelector -> TargetProblem
                   , TargetSelector
                   )]
         cases =
           [ -- Cannot resolve packages outside of the project
-            ( \_ -> CmdBuild.TargetProblemCommon $
+            ( \_ -> commonTargetProblem $
                     TargetProblemNoSuchPackage "foobar"
             , mkTargetPackage "foobar" )
 
             -- We cannot currently build components like testsuites or
             -- benchmarks from packages that are not local to the project
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetComponentNotProjectLocal
                       (pkgIdMap Map.! "filepath") (CTestName "filepath-tests")
                       WholeComponent
@@ -553,19 +555,19 @@ testTargetProblemsCommon config0 = do
                                 (CTestName "filepath-tests") )
 
             -- Components can be explicitly @buildable: False@
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetComponentNotBuildable "q-0.1" (CExeName "buildable-false") WholeComponent
             , mkTargetComponent "q-0.1" (CExeName "buildable-false") )
 
             -- Testsuites and benchmarks can be disabled by the solver if it
             -- cannot satisfy deps
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetOptionalStanzaDisabledBySolver "q-0.1" (CTestName "solver-disabled") WholeComponent
             , mkTargetComponent "q-0.1" (CTestName "solver-disabled") )
 
             -- Testsuites and benchmarks can be disabled explicitly by the
             -- user via config
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetOptionalStanzaDisabledByUser
                       "q-0.1" (CBenchName "user-disabled") WholeComponent
             , mkTargetComponent "q-0.1" (CBenchName "user-disabled") )
@@ -573,14 +575,14 @@ testTargetProblemsCommon config0 = do
             -- An unknown package. The target selector resolution should only
             -- produce known packages, so this should not happen with the
             -- output from 'readTargetSelectors'.
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetProblemNoSuchPackage "foobar"
             , mkTargetPackage "foobar" )
 
             -- An unknown component of a known package. The target selector
             -- resolution should only produce known packages, so this should
             -- not happen with the output from 'readTargetSelectors'.
-          , ( \_ -> CmdBuild.TargetProblemCommon $
+          , ( \_ -> commonTargetProblem $
                     TargetProblemNoSuchComponent "q-0.1" (CExeName "no-such")
             , mkTargetComponent "q-0.1" (CExeName "no-such") )
           ]
@@ -588,7 +590,7 @@ testTargetProblemsCommon config0 = do
       elaboratedPlan
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
-      CmdBuild.TargetProblemCommon
+      commonTargetProblem
       cases
   where
     testdir = "targets/complex"
@@ -612,8 +614,8 @@ testTargetProblemsBuild config reportSubCase = do
       "targets/empty-pkg" config
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
-      CmdBuild.TargetProblemCommon
-      [ ( CmdBuild.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "all-disabled"
@@ -626,8 +628,8 @@ testTargetProblemsBuild config reportSubCase = do
       }
       CmdBuild.selectPackageTargets
       CmdBuild.selectComponentTarget
-      CmdBuild.TargetProblemCommon
-      [ ( flip CmdBuild.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CBenchName "user-disabled")
                                  TargetDisabledByUser True
                , AvailableTarget "p-0.1" (CTestName "solver-disabled")
@@ -653,7 +655,7 @@ testTargetProblemsBuild config reportSubCase = do
          elaboratedPlan
          CmdBuild.selectPackageTargets
          CmdBuild.selectComponentTarget
-         CmdBuild.TargetProblemCommon
+         commonTargetProblem
          [ mkTargetPackage "p-0.1" ]
          [ ("p-0.1-inplace",             (CLibName LMainLibName))
          , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
@@ -675,7 +677,7 @@ testTargetProblemsBuild config reportSubCase = do
          elaboratedPlan
          CmdBuild.selectPackageTargets
          CmdBuild.selectComponentTarget
-         CmdBuild.TargetProblemCommon
+         commonTargetProblem
          [ mkTargetPackage "p-0.1" ]
          [ ("p-0.1-inplace",        (CLibName LMainLibName))
          , ("p-0.1-inplace-an-exe", CExeName  "an-exe")
@@ -690,7 +692,7 @@ testTargetProblemsBuild config reportSubCase = do
          elaboratedPlan
          CmdBuild.selectPackageTargets
          CmdBuild.selectComponentTarget
-         CmdBuild.TargetProblemCommon
+         commonTargetProblem
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
          , TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind)
          ]
@@ -707,8 +709,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/multiple-libs" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemMatchesMultiple
+      commonTargetProblem
+      [ ( flip CmdRepl.matchesMultipleProblem
                [ AvailableTarget "p-0.1" (CLibName LMainLibName)
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "q-0.1" (CLibName LMainLibName)
@@ -722,8 +724,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/multiple-exes" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemMatchesMultiple
+      commonTargetProblem
+      [ ( flip CmdRepl.matchesMultipleProblem
                [ AvailableTarget "p-0.1" (CExeName "p2")
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "p-0.1" (CExeName "p1")
@@ -737,8 +739,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/multiple-tests" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemMatchesMultiple
+      commonTargetProblem
+      [ ( flip CmdRepl.matchesMultipleProblem
                [ AvailableTarget "p-0.1" (CTestName "p2")
                    (TargetBuildable () TargetNotRequestedByDefault) True
                , AvailableTarget "p-0.1" (CTestName "p1")
@@ -753,7 +755,7 @@ testTargetProblemsRepl config reportSubCase = do
          elaboratedPlan
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
-         CmdRepl.TargetProblemCommon
+         commonTargetProblem
          [ mkTargetComponent "p-0.1" (CExeName "p1")
          , mkTargetComponent "p-0.1" (CExeName "p2")
          ]
@@ -766,8 +768,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/libs-disabled" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CLibName LMainLibName) TargetNotBuildable True ]
         , mkTargetPackage "p-0.1" )
       ]
@@ -777,8 +779,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/exes-disabled" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CExeName "p") TargetNotBuildable True
                ]
         , mkTargetPackage "p-0.1" )
@@ -789,8 +791,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/test-only" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( flip CmdRepl.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CTestName "pexe")
                    (TargetBuildable () TargetNotRequestedByDefault) True
                ]
@@ -802,8 +804,8 @@ testTargetProblemsRepl config reportSubCase = do
       "targets/empty-pkg" config
       CmdRepl.selectPackageTargets
       CmdRepl.selectComponentTarget
-      CmdRepl.TargetProblemCommon
-      [ ( CmdRepl.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "requested component kinds"
@@ -813,7 +815,7 @@ testTargetProblemsRepl config reportSubCase = do
          elaboratedPlan
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
-         CmdRepl.TargetProblemCommon
+         commonTargetProblem
          [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing ]
          [ ("p-0.1-inplace", (CLibName LMainLibName)) ]
        -- When we select the package with an explicit filter then we get those
@@ -822,14 +824,14 @@ testTargetProblemsRepl config reportSubCase = do
          elaboratedPlan
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
-         CmdRepl.TargetProblemCommon
+         commonTargetProblem
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind) ]
          [ ("p-0.1-inplace-a-testsuite", CTestName  "a-testsuite") ]
        assertProjectDistinctTargets
          elaboratedPlan
          CmdRepl.selectPackageTargets
          CmdRepl.selectComponentTarget
-         CmdRepl.TargetProblemCommon
+         commonTargetProblem
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind) ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark") ]
 
@@ -842,8 +844,8 @@ testTargetProblemsRun config reportSubCase = do
       "targets/multiple-exes" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      CmdRun.TargetProblemCommon
-      [ ( flip CmdRun.TargetProblemMatchesMultiple
+      commonTargetProblem
+      [ ( flip CmdRun.matchesMultipleProblem
                [ AvailableTarget "p-0.1" (CExeName "p2")
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "p-0.1" (CExeName "p1")
@@ -858,7 +860,7 @@ testTargetProblemsRun config reportSubCase = do
          elaboratedPlan
          CmdRun.selectPackageTargets
          CmdRun.selectComponentTarget
-         CmdRun.TargetProblemCommon
+         commonTargetProblem
          [ mkTargetComponent "p-0.1" (CExeName "p1")
          , mkTargetComponent "p-0.1" (CExeName "p2")
          ]
@@ -871,8 +873,8 @@ testTargetProblemsRun config reportSubCase = do
       "targets/exes-disabled" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      CmdRun.TargetProblemCommon
-      [ ( flip CmdRun.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CExeName "p") TargetNotBuildable True
                ]
         , mkTargetPackage "p-0.1" )
@@ -883,8 +885,8 @@ testTargetProblemsRun config reportSubCase = do
       "targets/empty-pkg" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      CmdRun.TargetProblemCommon
-      [ ( CmdRun.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "lib-only"
@@ -892,8 +894,8 @@ testTargetProblemsRun config reportSubCase = do
       "targets/lib-only" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      CmdRun.TargetProblemCommon
-      [ ( CmdRun.TargetProblemNoExes, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( CmdRun.noExesProblem, mkTargetPackage "p-0.1" )
       ]
 
 
@@ -910,8 +912,8 @@ testTargetProblemsTest config reportSubCase = do
       }
       CmdTest.selectPackageTargets
       CmdTest.selectComponentTarget
-      CmdTest.TargetProblemCommon
-      [ ( flip CmdTest.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CTestName "user-disabled")
                                  TargetDisabledByUser True
                , AvailableTarget "p-0.1" (CTestName "solver-disabled")
@@ -926,8 +928,8 @@ testTargetProblemsTest config reportSubCase = do
       config
       CmdTest.selectPackageTargets
       CmdTest.selectComponentTarget
-      CmdTest.TargetProblemCommon
-      [ ( flip CmdTest.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CTestName "user-disabled")
                                  TargetDisabledBySolver True
                , AvailableTarget "p-0.1" (CTestName "solver-disabled")
@@ -935,7 +937,7 @@ testTargetProblemsTest config reportSubCase = do
                ]
         , mkTargetPackage "p-0.1" )
 
-      , ( flip CmdTest.TargetProblemNoneEnabled
+      , ( flip noneEnabledTargetProblem
                [ AvailableTarget "q-0.1" (CTestName "buildable-false")
                                  TargetNotBuildable True
                ]
@@ -947,8 +949,8 @@ testTargetProblemsTest config reportSubCase = do
       "targets/empty-pkg" config
       CmdTest.selectPackageTargets
       CmdTest.selectComponentTarget
-      CmdTest.TargetProblemCommon
-      [ ( CmdTest.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "no tests"
@@ -957,9 +959,9 @@ testTargetProblemsTest config reportSubCase = do
       config
       CmdTest.selectPackageTargets
       CmdTest.selectComponentTarget
-      CmdTest.TargetProblemCommon
-      [ ( CmdTest.TargetProblemNoTests, mkTargetPackage "p-0.1" )
-      , ( CmdTest.TargetProblemNoTests, mkTargetPackage "q-0.1" )
+      commonTargetProblem
+      [ ( CmdTest.noTestsProblem, mkTargetPackage "p-0.1" )
+      , ( CmdTest.noTestsProblem, mkTargetPackage "q-0.1" )
       ]
 
     reportSubCase "not a test"
@@ -968,24 +970,24 @@ testTargetProblemsTest config reportSubCase = do
       config
       CmdTest.selectPackageTargets
       CmdTest.selectComponentTarget
-      CmdTest.TargetProblemCommon $
-      [ ( const (CmdTest.TargetProblemComponentNotTest
+      commonTargetProblem $
+      [ ( const (CmdTest.notTestProblem
                   "p-0.1" (CLibName LMainLibName))
         , mkTargetComponent "p-0.1" (CLibName LMainLibName) )
 
-      , ( const (CmdTest.TargetProblemComponentNotTest
+      , ( const (CmdTest.notTestProblem
                   "p-0.1" (CExeName "an-exe"))
         , mkTargetComponent "p-0.1" (CExeName "an-exe") )
 
-      , ( const (CmdTest.TargetProblemComponentNotTest
+      , ( const (CmdTest.notTestProblem
                   "p-0.1" (CFLibName "libp"))
         , mkTargetComponent "p-0.1" (CFLibName "libp") )
 
-      , ( const (CmdTest.TargetProblemComponentNotTest
+      , ( const (CmdTest.notTestProblem
                   "p-0.1" (CBenchName "a-benchmark"))
         , mkTargetComponent "p-0.1" (CBenchName "a-benchmark") )
       ] ++
-      [ ( const (CmdTest.TargetProblemIsSubComponent
+      [ ( const (CmdTest.isSubComponentProblem
                           "p-0.1" cname (ModuleTarget modname))
         , mkTargetModule "p-0.1" cname modname )
       | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
@@ -994,7 +996,7 @@ testTargetProblemsTest config reportSubCase = do
                             , ((CLibName LMainLibName),                 "P")
                             ]
       ] ++
-      [ ( const (CmdTest.TargetProblemIsSubComponent
+      [ ( const (CmdTest.isSubComponentProblem
                           "p-0.1" cname (FileTarget fname))
         , mkTargetFile "p-0.1" cname fname)
       | (cname, fname) <- [ (CTestName  "a-testsuite", "Test.hs")
@@ -1017,8 +1019,8 @@ testTargetProblemsBench config reportSubCase = do
       }
       CmdBench.selectPackageTargets
       CmdBench.selectComponentTarget
-      CmdBench.TargetProblemCommon
-      [ ( flip CmdBench.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CBenchName "user-disabled")
                                  TargetDisabledByUser True
                , AvailableTarget "p-0.1" (CBenchName "solver-disabled")
@@ -1033,8 +1035,8 @@ testTargetProblemsBench config reportSubCase = do
       config
       CmdBench.selectPackageTargets
       CmdBench.selectComponentTarget
-      CmdBench.TargetProblemCommon
-      [ ( flip CmdBench.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CBenchName "user-disabled")
                                  TargetDisabledBySolver True
                , AvailableTarget "p-0.1" (CBenchName "solver-disabled")
@@ -1042,7 +1044,7 @@ testTargetProblemsBench config reportSubCase = do
                ]
         , mkTargetPackage "p-0.1" )
 
-      , ( flip CmdBench.TargetProblemNoneEnabled
+      , ( flip noneEnabledTargetProblem
                [ AvailableTarget "q-0.1" (CBenchName "buildable-false")
                                  TargetNotBuildable True
                ]
@@ -1054,8 +1056,8 @@ testTargetProblemsBench config reportSubCase = do
       "targets/empty-pkg" config
       CmdBench.selectPackageTargets
       CmdBench.selectComponentTarget
-      CmdBench.TargetProblemCommon
-      [ ( CmdBench.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "no benchmarks"
@@ -1064,9 +1066,9 @@ testTargetProblemsBench config reportSubCase = do
       config
       CmdBench.selectPackageTargets
       CmdBench.selectComponentTarget
-      CmdBench.TargetProblemCommon
-      [ ( CmdBench.TargetProblemNoBenchmarks, mkTargetPackage "p-0.1" )
-      , ( CmdBench.TargetProblemNoBenchmarks, mkTargetPackage "q-0.1" )
+      commonTargetProblem
+      [ ( CmdBench.noBenchmarksProblem, mkTargetPackage "p-0.1" )
+      , ( CmdBench.noBenchmarksProblem, mkTargetPackage "q-0.1" )
       ]
 
     reportSubCase "not a benchmark"
@@ -1075,24 +1077,24 @@ testTargetProblemsBench config reportSubCase = do
       config
       CmdBench.selectPackageTargets
       CmdBench.selectComponentTarget
-      CmdBench.TargetProblemCommon $
-      [ ( const (CmdBench.TargetProblemComponentNotBenchmark
+      commonTargetProblem $
+      [ ( const (CmdBench.componentNotBenchmarkProblem
                   "p-0.1" (CLibName LMainLibName))
         , mkTargetComponent "p-0.1" (CLibName LMainLibName) )
 
-      , ( const (CmdBench.TargetProblemComponentNotBenchmark
+      , ( const (CmdBench.componentNotBenchmarkProblem
                   "p-0.1" (CExeName "an-exe"))
         , mkTargetComponent "p-0.1" (CExeName "an-exe") )
 
-      , ( const (CmdBench.TargetProblemComponentNotBenchmark
+      , ( const (CmdBench.componentNotBenchmarkProblem
                   "p-0.1" (CFLibName "libp"))
         , mkTargetComponent "p-0.1" (CFLibName "libp") )
 
-      , ( const (CmdBench.TargetProblemComponentNotBenchmark
+      , ( const (CmdBench.componentNotBenchmarkProblem
                   "p-0.1" (CTestName "a-testsuite"))
         , mkTargetComponent "p-0.1" (CTestName "a-testsuite") )
       ] ++
-      [ ( const (CmdBench.TargetProblemIsSubComponent
+      [ ( const (CmdBench.isSubComponentProblem
                           "p-0.1" cname (ModuleTarget modname))
         , mkTargetModule "p-0.1" cname modname )
       | (cname, modname) <- [ (CTestName  "a-testsuite", "TestModule")
@@ -1101,7 +1103,7 @@ testTargetProblemsBench config reportSubCase = do
                             , ((CLibName LMainLibName),                 "P")
                             ]
       ] ++
-      [ ( const (CmdBench.TargetProblemIsSubComponent
+      [ ( const (CmdBench.isSubComponentProblem
                           "p-0.1" cname (FileTarget fname))
         , mkTargetFile "p-0.1" cname fname)
       | (cname, fname) <- [ (CTestName  "a-testsuite", "Test.hs")
@@ -1121,8 +1123,8 @@ testTargetProblemsHaddock config reportSubCase = do
       (let haddockFlags = mkHaddockFlags False True True False
         in CmdHaddock.selectPackageTargets haddockFlags)
       CmdHaddock.selectComponentTarget
-      CmdHaddock.TargetProblemCommon
-      [ ( flip CmdHaddock.TargetProblemNoneEnabled
+      commonTargetProblem
+      [ ( flip noneEnabledTargetProblem
                [ AvailableTarget "p-0.1" (CBenchName "user-disabled")
                                  TargetDisabledByUser True
                , AvailableTarget "p-0.1" (CTestName "solver-disabled")
@@ -1141,8 +1143,8 @@ testTargetProblemsHaddock config reportSubCase = do
       (let haddockFlags = mkHaddockFlags False False False False
         in CmdHaddock.selectPackageTargets haddockFlags)
       CmdHaddock.selectComponentTarget
-      CmdHaddock.TargetProblemCommon
-      [ ( CmdHaddock.TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      commonTargetProblem
+      [ ( noTargetsProblem, mkTargetPackage "p-0.1" )
       ]
 
     reportSubCase "enabled component kinds"
@@ -1154,7 +1156,7 @@ testTargetProblemsHaddock config reportSubCase = do
           elaboratedPlan
           (CmdHaddock.selectPackageTargets haddockFlags)
           CmdHaddock.selectComponentTarget
-          CmdHaddock.TargetProblemCommon
+          commonTargetProblem
           [ mkTargetPackage "p-0.1" ]
           [ ("p-0.1-inplace",             (CLibName LMainLibName))
           , ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark")
@@ -1171,7 +1173,7 @@ testTargetProblemsHaddock config reportSubCase = do
           elaboratedPlan
           (CmdHaddock.selectPackageTargets haddockFlags)
           CmdHaddock.selectComponentTarget
-          CmdHaddock.TargetProblemCommon
+          commonTargetProblem
           [ mkTargetPackage "p-0.1" ]
           [ ("p-0.1-inplace", (CLibName LMainLibName)) ]
 
@@ -1183,7 +1185,7 @@ testTargetProblemsHaddock config reportSubCase = do
           elaboratedPlan
           (CmdHaddock.selectPackageTargets haddockFlags)
           CmdHaddock.selectComponentTarget
-          CmdHaddock.TargetProblemCommon
+          commonTargetProblem
           [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just FLibKind)
           , TargetPackage TargetExplicitNamed ["p-0.1"] (Just ExeKind)
           , TargetPackage TargetExplicitNamed ["p-0.1"] (Just TestKind)
@@ -1330,7 +1332,7 @@ testExceptionInConfigureStep config = do
     (_pkga1, failure) <- expectPackageFailed plan res pkgidA1
     case buildFailureReason failure of
       ConfigureFailed _ -> return ()
-      _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure 
+      _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure
     cleanProject testdir
   where
     testdir = "exception/configure"

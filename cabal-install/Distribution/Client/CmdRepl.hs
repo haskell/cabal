@@ -12,6 +12,7 @@ module Distribution.Client.CmdRepl (
     replAction,
 
     -- * Internals exposed for testing
+    matchesMultipleProblem,
     selectPackageTargets,
     selectComponentTarget
   ) where

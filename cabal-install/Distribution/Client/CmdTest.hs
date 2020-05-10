@@ -8,6 +8,9 @@ module Distribution.Client.CmdTest (
     testAction,
 
     -- * Internals exposed for testing
+    isSubComponentProblem,
+    notTestProblem,
+    noTestsProblem,
     selectPackageTargets,
     selectComponentTarget
   ) where
