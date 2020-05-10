@@ -12,7 +12,6 @@ module Distribution.Client.CmdInstall (
     installAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget,
     -- * Internals exposed for CmdRepl + CmdRun
@@ -28,6 +27,13 @@ import Distribution.Compat.Directory
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
+import Distribution.Client.TargetProblem
+         ( TargetProblem,
+           ExtensibleTargetProblem (ExtensibleTargetProblemCommon),
+           commonTargetProblem,
+           noneEnabledTargetProblem,
+           noTargetsProblem,
+           reportTargetProblems )
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
@@ -506,7 +512,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
   let mTargets = resolveTargets
         selectPackageTargets
         selectComponentTarget
-        TargetProblemCommon
+        commonTargetProblem
         elaboratedPlan
         (Just pkgDb)
         targetSelectors
@@ -518,12 +524,12 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- Not everything is local.
       let
         (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
-          TargetProblemCommon (TargetAvailableInIndex name) -> Right name
+          ExtensibleTargetProblemCommon (TargetAvailableInIndex name) -> Right name
           err -> Left err
 
       -- report incorrect case for known package.
       for_ errs' $ \case
-        TargetProblemCommon (TargetNotInProject hn) ->
+        ExtensibleTargetProblemCommon (TargetNotInProject hn) ->
           case searchByName (packageIndex pkgDb) (unPackageName hn) of
             [] -> return ()
             xs -> die' verbosity . concat $
@@ -533,7 +539,7 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
               ]
         _ -> return ()
 
-      when (not . null $ errs') $ reportTargetProblems verbosity errs'
+      when (not . null $ errs') $ reportBuildTargetProblems verbosity errs'
 
       let
         targetSelectors' = flip filter targetSelectors $ \case
@@ -546,11 +552,11 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- This can't fail, because all of the errors are
       -- removed (or we've given up).
       targets <-
-        either (reportTargetProblems verbosity) return $
+        either (reportBuildTargetProblems verbosity) return $
         resolveTargets
           selectPackageTargets
           selectComponentTarget
-          TargetProblemCommon
+          commonTargetProblem
           elaboratedPlan
           Nothing
           targetSelectors'
@@ -568,11 +574,11 @@ constructProjectBuildContext
 constructProjectBuildContext verbosity baseCtx targetSelectors = do
   runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
     -- Interpret the targets on the command line as build targets
-    targets <- either (reportTargetProblems verbosity) return $
+    targets <- either (reportBuildTargetProblems verbosity) return $
       resolveTargets
         selectPackageTargets
         selectComponentTarget
-        TargetProblemCommon
+        commonTargetProblem
         elaboratedPlan
         Nothing
         targetSelectors
@@ -940,11 +946,11 @@ selectPackageTargets targetSelector targets
 
     -- If there are targets but none are buildable then we report those
   | not (null targets)
-  = Left (TargetProblemNoneEnabled targetSelector targets')
+  = Left (noneEnabledTargetProblem targetSelector targets')
 
     -- If there are no targets at all then we report that
   | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
+  = Left (noTargetsProblem targetSelector)
   where
     targets'         = forgetTargetsDetail targets
     targetsBuildable = selectBuildableTargetsWith
@@ -967,34 +973,11 @@ selectComponentTarget
   :: SubComponentTarget
   -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
+    either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @build@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build" problem
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build" targetSelector targets
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build" targetSelector
+reportBuildTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "build" problems
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a
 reportCannotPruneDependencies verbosity =

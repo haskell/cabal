@@ -8,13 +8,19 @@ module Distribution.Client.CmdHaddock (
     haddockAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.TargetProblem
+         ( TargetProblem
+         , commonTargetProblem
+         , noTargetsProblem
+         , noneEnabledTargetProblem
+         , reportTargetProblems
+         )
 
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
@@ -92,11 +98,11 @@ haddockAction ( configFlags, configExFlags, installFlags
 
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
-            targets <- either (reportTargetProblems verbosity) return
+            targets <- either (reportBuildDocumentationTargetProblems verbosity) return
                      $ resolveTargets
                          (selectPackageTargets haddockFlags)
                          selectComponentTarget
-                         TargetProblemCommon
+                         commonTargetProblem
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -137,11 +143,11 @@ selectPackageTargets haddockFlags targetSelector targets
 
     -- If there are targets but none are buildable then we report those
   | not (null targets)
-  = Left (TargetProblemNoneEnabled targetSelector targets')
+  = Left (noneEnabledTargetProblem targetSelector targets')
 
     -- If there are no targets at all then we report that
   | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
+  = Left (noTargetsProblem targetSelector)
   where
     targets'         = forgetTargetsDetail    (map disableNotRequested targets)
     targetsBuildable = selectBuildableTargets (map disableNotRequested targets)
@@ -180,33 +186,9 @@ selectPackageTargets haddockFlags targetSelector targets
 selectComponentTarget :: SubComponentTarget
                       -> AvailableTarget k -> Either TargetProblem k
 selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
+    either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @haddock@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build documentation for" problem
-
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build documentation for" targetSelector targets
-
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build documentation for" targetSelector
+reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportBuildDocumentationTargetProblems verbosity problems =
+  reportTargetProblems verbosity "build documentation for" problems

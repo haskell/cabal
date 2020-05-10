@@ -8,13 +8,15 @@ module Distribution.Client.CmdBench (
     benchAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.TargetProblem
+         ( ExtensibleTargetProblem (..), commonTargetProblem
+         , noTargetsProblem, noneEnabledTargetProblem )
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -102,7 +104,7 @@ benchAction ( configFlags, configExFlags, installFlags
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
-                         TargetProblemCommon
+                         commonTargetProblem
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -133,7 +135,7 @@ benchAction ( configFlags, configExFlags, installFlags
 -- or fail if there are no benchmarks or no buildable benchmarks.
 --
 selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+                     -> [AvailableTarget k] -> Either BenchTargetProblem [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable benchmark targets then we select those
@@ -142,15 +144,15 @@ selectPackageTargets targetSelector targets
 
     -- If there are benchmarks but none are buildable then we report those
   | not (null targetsBench)
-  = Left (TargetProblemNoneEnabled targetSelector targetsBench)
+  = Left (noneEnabledTargetProblem targetSelector targetsBench)
 
     -- If there are no benchmarks but some other targets then we report that
   | not (null targets)
-  = Left (TargetProblemNoBenchmarks targetSelector)
+  = Left (noBenchmarksProblem targetSelector)
 
     -- If there are no targets at all then we report that
   | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
+  = Left (noTargetsProblem targetSelector)
   where
     targetsBenchBuildable = selectBuildableTargets
                           . filterTargetsKind BenchKind
@@ -168,34 +170,28 @@ selectPackageTargets targetSelector targets
 -- to the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+                      -> AvailableTarget k -> Either BenchTargetProblem k
 selectComponentTarget subtarget@WholeComponent t
   | CBenchName _ <- availableTargetComponentName t
-  = either (Left . TargetProblemCommon) return $
+  = either (Left . commonTargetProblem) return $
            selectComponentTargetBasic subtarget t
   | otherwise
-  = Left (TargetProblemComponentNotBenchmark (availableTargetPackageId t)
-                                             (availableTargetComponentName t))
+  = Left (componentNotBenchmarkProblem
+           (availableTargetPackageId t)
+           (availableTargetComponentName t))
 
 selectComponentTarget subtarget t
-  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
-                                      (availableTargetComponentName t)
-                                       subtarget)
+  = Left (isSubComponentProblem
+           (availableTargetPackageId t)
+           (availableTargetComponentName t)
+           subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @bench@ command.
 --
-data TargetProblem =
-     TargetProblemCommon        TargetProblemCommon
-
-     -- | The 'TargetSelector' matches benchmarks but none are buildable
-   | TargetProblemNoneEnabled  TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets    TargetSelector
-
+data BenchProblem =
      -- | The 'TargetSelector' matches targets but no benchmarks
-   | TargetProblemNoBenchmarks TargetSelector
+     TargetProblemNoBenchmarks TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a benchmark
    | TargetProblemComponentNotBenchmark PackageId ComponentName
@@ -204,25 +200,44 @@ data TargetProblem =
    | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+
+type BenchTargetProblem = ExtensibleTargetProblem BenchProblem
+
+noBenchmarksProblem :: TargetSelector -> ExtensibleTargetProblem BenchProblem
+noBenchmarksProblem = ExtensibleTargetProblemCustomProblem . TargetProblemNoBenchmarks
+
+componentNotBenchmarkProblem :: PackageId -> ComponentName -> ExtensibleTargetProblem BenchProblem
+componentNotBenchmarkProblem pkgid name = ExtensibleTargetProblemCustomProblem $
+  TargetProblemComponentNotBenchmark pkgid name
+
+isSubComponentProblem
+  :: PackageId
+  -> ComponentName
+  -> SubComponentTarget
+  -> ExtensibleTargetProblem BenchProblem
+isSubComponentProblem pkgid name subcomponent = ExtensibleTargetProblemCustomProblem $
+    TargetProblemIsSubComponent pkgid name subcomponent
+
+reportTargetProblems :: Verbosity -> [BenchTargetProblem] -> IO a
 reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
+renderTargetProblem :: BenchTargetProblem -> String
+renderTargetProblem (ExtensibleTargetProblemCommon problem) =
     renderTargetProblemCommon "run" problem
 
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "benchmark" targetSelector targets
 
-renderTargetProblem (TargetProblemNoBenchmarks targetSelector) =
+renderTargetProblem (ExtensibleTargetProblemCustomProblem
+                      (TargetProblemNoBenchmarks targetSelector)) =
     "Cannot run benchmarks for the target '" ++ showTargetSelector targetSelector
  ++ "' which refers to " ++ renderTargetSelector targetSelector
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any benchmarks."
 
-renderTargetProblem (TargetProblemNoTargets targetSelector) =
+renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= BenchKind
         -> "The bench command is for running benchmarks, but the target '"
@@ -231,7 +246,8 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
 
       _ -> renderTargetProblemNoTargets "benchmark" targetSelector
 
-renderTargetProblem (TargetProblemComponentNotBenchmark pkgid cname) =
+renderTargetProblem (ExtensibleTargetProblemCustomProblem
+                      (TargetProblemComponentNotBenchmark pkgid cname)) =
     "The bench command is for running benchmarks, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -239,7 +255,8 @@ renderTargetProblem (TargetProblemComponentNotBenchmark pkgid cname) =
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
-renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+renderTargetProblem  (ExtensibleTargetProblemCustomProblem
+                       (TargetProblemIsSubComponent pkgid cname subtarget)) =
     "The bench command can only run benchmarks as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "

@@ -8,13 +8,15 @@ module Distribution.Client.CmdTest (
     testAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.TargetProblem
+         ( ExtensibleTargetProblem (..), commonTargetProblem
+         , noneEnabledTargetProblem, noTargetsProblem )
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
@@ -113,7 +115,7 @@ testAction ( configFlags, configExFlags, installFlags
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
-                         TargetProblemCommon
+                         commonTargetProblem
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -145,7 +147,7 @@ testAction ( configFlags, configExFlags, installFlags
 -- or fail if there are no test-suites or no buildable test-suites.
 --
 selectPackageTargets  :: TargetSelector
-                      -> [AvailableTarget k] -> Either TargetProblem [k]
+                      -> [AvailableTarget k] -> Either TestTargetProblem [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable test-suite targets then we select those
@@ -154,15 +156,15 @@ selectPackageTargets targetSelector targets
 
     -- If there are test-suites but none are buildable then we report those
   | not (null targetsTests)
-  = Left (TargetProblemNoneEnabled targetSelector targetsTests)
+  = Left (noneEnabledTargetProblem targetSelector targetsTests)
 
     -- If there are no test-suite but some other targets then we report that
   | not (null targets)
-  = Left (TargetProblemNoTests targetSelector)
+  = Left (noTestsProblem targetSelector)
 
     -- If there are no targets at all then we report that
   | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
+  = Left (noTargetsProblem targetSelector)
   where
     targetsTestsBuildable = selectBuildableTargets
                           . filterTargetsKind TestKind
@@ -180,34 +182,28 @@ selectPackageTargets targetSelector targets
 -- to the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+                      -> AvailableTarget k -> Either TestTargetProblem k
 selectComponentTarget subtarget@WholeComponent t
   | CTestName _ <- availableTargetComponentName t
-  = either (Left . TargetProblemCommon) return $
+  = either (Left . commonTargetProblem) return $
            selectComponentTargetBasic subtarget t
   | otherwise
-  = Left (TargetProblemComponentNotTest (availableTargetPackageId t)
-                                        (availableTargetComponentName t))
+  = Left (notTestProblem
+           (availableTargetPackageId t)
+           (availableTargetComponentName t))
 
 selectComponentTarget subtarget t
-  = Left (TargetProblemIsSubComponent (availableTargetPackageId t)
-                                      (availableTargetComponentName t)
-                                       subtarget)
+  = Left (isSubComponentProblem
+           (availableTargetPackageId t)
+           (availableTargetComponentName t)
+           subtarget)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @test@ command.
 --
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-
+data TestProblem =
      -- | The 'TargetSelector' matches targets but no test-suites
-   | TargetProblemNoTests     TargetSelector
+     TargetProblemNoTests     TargetSelector
 
      -- | The 'TargetSelector' refers to a component that is not a test-suite
    | TargetProblemComponentNotTest PackageId ComponentName
@@ -216,12 +212,31 @@ data TargetProblem =
    | TargetProblemIsSubComponent   PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-reportTargetProblems :: Verbosity -> Flag Bool -> [TargetProblem] -> IO a
+
+type TestTargetProblem = ExtensibleTargetProblem TestProblem
+
+
+noTestsProblem :: TargetSelector -> ExtensibleTargetProblem TestProblem
+noTestsProblem = ExtensibleTargetProblemCustomProblem . TargetProblemNoTests
+
+notTestProblem :: PackageId -> ComponentName -> ExtensibleTargetProblem TestProblem
+notTestProblem pkgid name = ExtensibleTargetProblemCustomProblem $
+  TargetProblemComponentNotTest pkgid name
+
+isSubComponentProblem
+  :: PackageId
+  -> ComponentName
+  -> SubComponentTarget
+  -> ExtensibleTargetProblem TestProblem
+isSubComponentProblem pkgid name subcomponent = ExtensibleTargetProblemCustomProblem $
+  TargetProblemIsSubComponent pkgid name subcomponent
+
+reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
 reportTargetProblems verbosity failWhenNoTestSuites problems =
   case (failWhenNoTestSuites, problems) of
-    (Flag True, [TargetProblemNoTests _]) ->
+    (Flag True, [ExtensibleTargetProblemCustomProblem (TargetProblemNoTests _)]) ->
       die' verbosity problemsMessage
-    (_, [TargetProblemNoTests selector]) -> do
+    (_, [ExtensibleTargetProblemCustomProblem (TargetProblemNoTests selector)]) -> do
       notice verbosity (renderAllowedNoTestsProblem selector)
       System.Exit.exitSuccess
     (_, _) -> die' verbosity problemsMessage
@@ -236,21 +251,22 @@ renderAllowedNoTestsProblem :: TargetSelector -> String
 renderAllowedNoTestsProblem selector =
     "No tests to run for " ++ renderTargetSelector selector
 
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
+renderTargetProblem :: TestTargetProblem -> String
+renderTargetProblem (ExtensibleTargetProblemCommon problem) =
     renderTargetProblemCommon "run" problem
 
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "test" targetSelector targets
 
-renderTargetProblem (TargetProblemNoTests targetSelector) =
+renderTargetProblem (ExtensibleTargetProblemCustomProblem
+                      (TargetProblemNoTests targetSelector)) =
     "Cannot run tests for the target '" ++ showTargetSelector targetSelector
  ++ "' which refers to " ++ renderTargetSelector targetSelector
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any test suites."
 
-renderTargetProblem (TargetProblemNoTargets targetSelector) =
+renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= TestKind
         -> "The test command is for running test suites, but the target '"
@@ -260,7 +276,8 @@ renderTargetProblem (TargetProblemNoTargets targetSelector) =
 
       _ -> renderTargetProblemNoTargets "test" targetSelector
 
-renderTargetProblem (TargetProblemComponentNotTest pkgid cname) =
+renderTargetProblem (ExtensibleTargetProblemCustomProblem
+                      (TargetProblemComponentNotTest pkgid cname)) =
     "The test command is for running test suites, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -268,7 +285,8 @@ renderTargetProblem (TargetProblemComponentNotTest pkgid cname) =
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
-renderTargetProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
+renderTargetProblem (ExtensibleTargetProblemCustomProblem
+                      (TargetProblemIsSubComponent pkgid cname subtarget)) =
     "The test command can only run test suites as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "

@@ -12,7 +12,6 @@ module Distribution.Client.CmdRepl (
     replAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
@@ -26,6 +25,9 @@ import qualified Distribution.Types.Lens as L
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
+import Distribution.Client.TargetProblem
+         ( ExtensibleTargetProblem (..), commonTargetProblem
+         , noneEnabledTargetProblem, noTargetsProblem )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
@@ -317,7 +319,7 @@ replAction ( configFlags, configExFlags, installFlags
           $ resolveTargets
               selectPackageTargets
               selectComponentTarget
-              TargetProblemCommon
+              commonTargetProblem
               elaboratedPlan
               Nothing
               targetSelectors
@@ -327,7 +329,7 @@ replAction ( configFlags, configExFlags, installFlags
       -- same component, but not two that live in different components.
       when (Set.size (distinctTargetComponents targets) > 1) $
         reportTargetProblems verbosity
-          [TargetProblemMultipleTargets targets]
+          [multipleTargetsProblem targets]
 
       return targets
 
@@ -461,7 +463,7 @@ generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = f
 -- multiple libs or exes.
 --
 selectPackageTargets  :: TargetSelector
-                      -> [AvailableTarget k] -> Either TargetProblem [k]
+                      -> [AvailableTarget k] -> Either ReplTargetProblem [k]
 selectPackageTargets targetSelector targets
 
     -- If there is exactly one buildable library then we select that
@@ -470,7 +472,7 @@ selectPackageTargets targetSelector targets
 
     -- but fail if there are multiple buildable libraries.
   | not (null targetsLibsBuildable)
-  = Left (TargetProblemMatchesMultiple targetSelector targetsLibsBuildable')
+  = Left (matchesMultipleProblem targetSelector targetsLibsBuildable')
 
     -- If there is exactly one buildable executable then we select that
   | [target] <- targetsExesBuildable
@@ -478,7 +480,7 @@ selectPackageTargets targetSelector targets
 
     -- but fail if there are multiple buildable executables.
   | not (null targetsExesBuildable)
-  = Left (TargetProblemMatchesMultiple targetSelector targetsExesBuildable')
+  = Left (matchesMultipleProblem targetSelector targetsExesBuildable')
 
     -- If there is exactly one other target then we select that
   | [target] <- targetsBuildable
@@ -486,15 +488,15 @@ selectPackageTargets targetSelector targets
 
     -- but fail if there are multiple such targets
   | not (null targetsBuildable)
-  = Left (TargetProblemMatchesMultiple targetSelector targetsBuildable')
+  = Left (matchesMultipleProblem targetSelector targetsBuildable')
 
     -- If there are targets but none are buildable then we report those
   | not (null targets)
-  = Left (TargetProblemNoneEnabled targetSelector targets')
+  = Left (noneEnabledTargetProblem targetSelector targets')
 
     -- If there are no targets at all then we report that
   | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
+  = Left (noTargetsProblem targetSelector)
   where
     targets'                = forgetTargetsDetail targets
     (targetsLibsBuildable,
@@ -523,40 +525,47 @@ selectPackageTargets targetSelector targets
 -- For the @repl@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+                      -> AvailableTarget k -> Either ReplTargetProblem k
 selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
+    either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
+
+data ReplProblem
+  = TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
+
+    -- | Multiple 'TargetSelector's match multiple targets
+  | TargetProblemMultipleTargets TargetsMap
+  deriving (Eq, Show)
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @repl@ command.
 --
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
+type ReplTargetProblem = ExtensibleTargetProblem ReplProblem
 
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
+matchesMultipleProblem
+  :: TargetSelector
+  -> [AvailableTarget ()]
+  -> ReplTargetProblem
+matchesMultipleProblem targetSelector targetsExesBuildable =
+  ExtensibleTargetProblemCustomProblem $
+    TargetProblemMatchesMultiple targetSelector targetsExesBuildable
 
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
+multipleTargetsProblem
+  :: TargetsMap
+  -> ReplTargetProblem
+multipleTargetsProblem = ExtensibleTargetProblemCustomProblem . TargetProblemMultipleTargets
 
-     -- | A single 'TargetSelector' matches multiple targets
-   | TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
-
-     -- | Multiple 'TargetSelector's match multiple targets
-   | TargetProblemMultipleTargets TargetsMap
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportTargetProblems :: Verbosity -> [ExtensibleTargetProblem ReplProblem] -> IO a
 reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
+renderTargetProblem :: ExtensibleTargetProblem ReplProblem -> String
+renderTargetProblem (ExtensibleTargetProblemCommon problem) =
     renderTargetProblemCommon "open a repl for" problem
 
-renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
+renderTargetProblem
+  (ExtensibleTargetProblemCustomProblem (TargetProblemMatchesMultiple targetSelector targets)) =
     "Cannot open a repl for multiple components at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " which "
@@ -576,7 +585,8 @@ renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
     availableTargetComponentKind = componentKind
                                  . availableTargetComponentName
 
-renderTargetProblem (TargetProblemMultipleTargets selectorMap) =
+renderTargetProblem
+  (ExtensibleTargetProblemCustomProblem (TargetProblemMultipleTargets selectorMap)) =
     "Cannot open a repl for multiple components at once. The targets "
  ++ renderListCommaAnd
       [ "'" ++ showTargetSelector ts ++ "'"
@@ -584,10 +594,10 @@ renderTargetProblem (TargetProblemMultipleTargets selectorMap) =
  ++ " refer to different components."
  ++ ".\n\n" ++ explanationSingleComponentLimitation
 
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "open a repl for" targetSelector targets
 
-renderTargetProblem (TargetProblemNoTargets targetSelector) =
+renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
     renderTargetProblemNoTargets "open a repl for" targetSelector
 
 
