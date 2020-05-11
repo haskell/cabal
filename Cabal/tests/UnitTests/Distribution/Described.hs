@@ -21,6 +21,7 @@ import qualified Distribution.Utils.CharSet as CS
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.Types.Dependency               (Dependency)
 import Distribution.Types.Flag                     (FlagName)
+import Distribution.Types.PackageId                (PackageIdentifier)
 import Distribution.Types.PackageName              (PackageName)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint)
 import Distribution.Types.Version                  (Version)
@@ -36,6 +37,7 @@ tests :: TestTree
 tests = testGroup "Described"
     [ testDescribed (Proxy :: Proxy Dependency)
     , testDescribed (Proxy :: Proxy PackageName)
+    , testDescribed (Proxy :: Proxy PackageIdentifier)
     , testDescribed (Proxy :: Proxy PackageVersionConstraint)
     , testDescribed (Proxy :: Proxy Version)
     , testDescribed (Proxy :: Proxy VersionRange)

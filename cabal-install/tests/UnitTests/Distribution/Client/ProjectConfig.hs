@@ -843,35 +843,6 @@ instance Arbitrary OnlyConstrained where
                       , pure OnlyConstrainedNone
                       ]
 
-instance Arbitrary AllowNewer where
-    arbitrary = AllowNewer <$> arbitrary
-
-instance Arbitrary AllowOlder where
-    arbitrary = AllowOlder <$> arbitrary
-
-instance Arbitrary RelaxDeps where
-    arbitrary = oneof [ pure mempty
-                      , mkRelaxDepSome <$> shortListOf1 3 arbitrary
-                      , pure RelaxDepsAll
-                      ]
-
-instance Arbitrary RelaxDepMod where
-    arbitrary = elements [RelaxDepModNone, RelaxDepModCaret]
-
-instance Arbitrary RelaxDepScope where
-    arbitrary = oneof [ pure RelaxDepScopeAll
-                      , RelaxDepScopePackage <$> arbitrary
-                      , RelaxDepScopePackageId <$> (PackageIdentifier <$> arbitrary <*> arbitrary)
-                      ]
-
-instance Arbitrary RelaxDepSubject where
-    arbitrary = oneof [ pure RelaxDepSubjectAll
-                      , RelaxDepSubjectPkg <$> arbitrary
-                      ]
-
-instance Arbitrary RelaxedDep where
-    arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
-
 instance Arbitrary ProfDetailLevel where
     arbitrary = elements [ d | (_,_,d) <- knownProfDetailLevels ]
 
