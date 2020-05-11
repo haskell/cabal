@@ -189,6 +189,11 @@ validate-via-docker-8.10.1:
 validate-via-docker-old:
 	docker build -t cabal-validate -f .docker/validate-old.dockerfile .
 
+# Weeder
+weeder :
+	cabal build all --project-file=cabal.project.weeder
+	weeder | less
+
 # tags
 .PHONY : tags
 tags :
