@@ -316,9 +316,7 @@ instance Parsec VersionRange where
 
 instance Described VersionRange where
     describe _ = RERec "version-range" $ REUnion
-        [ "-any", "-none"
-
-        , "=="  <> RESpaces <> ver
+        [ "=="  <> RESpaces <> ver
         , ">"   <> RESpaces <> ver
         , "<"   <> RESpaces <> ver
         , "<="  <> RESpaces <> ver
