@@ -3,6 +3,7 @@ module Distribution.Client.Types.AllowNewer (
     AllowNewer (..),
     AllowOlder (..),
     RelaxDeps (..),
+    mkRelaxDepSome,
     RelaxDepMod (..),
     RelaxDepScope (..),
     RelaxDepSubject (..),
@@ -13,15 +14,18 @@ module Distribution.Client.Types.AllowNewer (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.PackageId   (PackageId, pkgVersion)
+import Distribution.Types.PackageId   (PackageId, PackageIdentifier (..))
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Types.Version     (nullVersion)
 
-import qualified Text.PrettyPrint as Disp
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint                as Disp
 
-import           Distribution.Deprecated.ParseUtils (parseOptCommaList)
-import qualified Distribution.Deprecated.ReadP      as Parse
-import           Distribution.Deprecated.Text       (Text (..))
+import Distribution.Parsec (CabalParsing, Parsec (..), parsecLeadingCommaList)
+import Distribution.Pretty (Pretty (..))
+
+-- $setup
+-- >>> import Distribution.Parsec
 
 -- TODO: When https://github.com/haskell/cabal/issues/4203 gets tackled,
 -- it may make sense to move these definitions to the Solver.Types
@@ -82,59 +86,95 @@ data RelaxDepSubject = RelaxDepSubjectAll
                      | RelaxDepSubjectPkg !PackageName
                      deriving (Eq, Ord, Read, Show, Generic)
 
-instance Text RelaxedDep where
-  disp (RelaxedDep scope rdmod subj) = case scope of
-      RelaxDepScopeAll          -> Disp.text "all:"           Disp.<> modDep
-      RelaxDepScopePackage   p0 -> disp p0 Disp.<> Disp.colon Disp.<> modDep
-      RelaxDepScopePackageId p0 -> disp p0 Disp.<> Disp.colon Disp.<> modDep
+instance Pretty RelaxedDep where
+  pretty (RelaxedDep scope rdmod subj) = case scope of
+      RelaxDepScopeAll          -> Disp.text "*:"               Disp.<> modDep
+      RelaxDepScopePackage   p0 -> pretty p0 Disp.<> Disp.colon Disp.<> modDep
+      RelaxDepScopePackageId p0 -> pretty p0 Disp.<> Disp.colon Disp.<> modDep
     where
       modDep = case rdmod of
-               RelaxDepModNone  -> disp subj
-               RelaxDepModCaret -> Disp.char '^' Disp.<> disp subj
+               RelaxDepModNone  -> pretty subj
+               RelaxDepModCaret -> Disp.char '^' Disp.<> pretty subj
 
-  parse = RelaxedDep <$> scopeP <*> modP <*> parse
-    where
-      -- "greedy" choices
-      scopeP =           (pure RelaxDepScopeAll  <* Parse.char '*' <* Parse.char ':')
-               Parse.<++ (pure RelaxDepScopeAll  <* Parse.string "all:")
-               Parse.<++ (RelaxDepScopePackageId <$> pidP  <* Parse.char ':')
-               Parse.<++ (RelaxDepScopePackage   <$> parse <* Parse.char ':')
-               Parse.<++ (pure RelaxDepScopeAll)
+instance Parsec RelaxedDep where
+    parsec = P.char '*' *> relaxedDepStarP <|> (parsec >>= relaxedDepPkgidP)
 
-      modP =           (pure RelaxDepModCaret <* Parse.char '^')
-             Parse.<++ (pure RelaxDepModNone)
+-- continuation after *
+relaxedDepStarP :: CabalParsing m => m RelaxedDep
+relaxedDepStarP =
+    RelaxedDep RelaxDepScopeAll <$ P.char ':' <*> modP <*> parsec
+    <|> pure (RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll)
 
-      -- | Stricter 'PackageId' parser which doesn't overlap with 'PackageName' parser
-      pidP = do
-          p0 <- parse
-          when (pkgVersion p0 == nullVersion) Parse.pfail
-          pure p0
+-- continuation after package identifier
+relaxedDepPkgidP :: CabalParsing m => PackageIdentifier -> m RelaxedDep
+relaxedDepPkgidP pid@(PackageIdentifier pn v)
+    | pn == mkPackageName "all"
+    , v == nullVersion
+    =  RelaxedDep RelaxDepScopeAll <$ P.char ':' <*> modP <*> parsec
+    <|> pure (RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll)
 
-instance Text RelaxDepSubject where
-  disp RelaxDepSubjectAll      = Disp.text "all"
-  disp (RelaxDepSubjectPkg pn) = disp pn
+    | v == nullVersion
+    = RelaxedDep (RelaxDepScopePackage pn) <$ P.char ':' <*> modP <*> parsec
+    <|> pure (RelaxedDep RelaxDepScopeAll RelaxDepModNone (RelaxDepSubjectPkg pn))
 
-  parse = (pure RelaxDepSubjectAll <* Parse.char '*') Parse.<++ pkgn
+    | otherwise
+    = RelaxedDep (RelaxDepScopePackageId pid) <$ P.char ':' <*> modP <*> parsec
+
+modP :: P.CharParsing m => m RelaxDepMod
+modP = RelaxDepModCaret <$ P.char '^' <|> pure RelaxDepModNone
+
+instance Pretty RelaxDepSubject where
+  pretty RelaxDepSubjectAll      = Disp.text "*"
+  pretty (RelaxDepSubjectPkg pn) = pretty pn
+
+instance Parsec RelaxDepSubject where
+  parsec = RelaxDepSubjectAll <$ P.char '*' <|> pkgn
     where
       pkgn = do
-          pn <- parse
-          pure (if (pn == mkPackageName "all")
-                then RelaxDepSubjectAll
-                else RelaxDepSubjectPkg pn)
+          pn <- parsec
+          pure $ if pn == mkPackageName "all"
+              then RelaxDepSubjectAll
+              else RelaxDepSubjectPkg pn
 
-instance Text RelaxDeps where
-  disp rd | not (isRelaxDeps rd) = Disp.text "none"
-  disp (RelaxDepsSome pkgs)      = Disp.fsep .
+instance Pretty RelaxDeps where
+  pretty rd | not (isRelaxDeps rd) = Disp.text "none"
+  pretty (RelaxDepsSome pkgs)      = Disp.fsep .
                                    Disp.punctuate Disp.comma .
-                                   map disp $ pkgs
-  disp RelaxDepsAll              = Disp.text "all"
+                                   map pretty $ pkgs
+  pretty RelaxDepsAll              = Disp.text "all"
 
-  parse =           (const mempty        <$> ((Parse.string "none" Parse.+++
-                                               Parse.string "None") <* Parse.eof))
-          Parse.<++ (const RelaxDepsAll  <$> ((Parse.string "all"  Parse.+++
-                                               Parse.string "All"  Parse.+++
-                                               Parse.string "*")  <* Parse.eof))
-          Parse.<++ (      RelaxDepsSome <$> parseOptCommaList parse)
+-- |
+--
+-- >>> simpleParsec "all" :: Maybe RelaxDeps
+-- Just RelaxDepsAll
+--
+-- >>> simpleParsec "none" :: Maybe RelaxDeps
+-- Just (RelaxDepsSome [])
+--
+-- >>> simpleParsec "*, *" :: Maybe RelaxDeps
+-- Just RelaxDepsAll
+--
+-- >>> simpleParsec "*:*" :: Maybe RelaxDeps
+-- Just RelaxDepsAll
+--
+-- >>> simpleParsec "foo:bar, quu:puu" :: Maybe RelaxDeps
+-- Just (RelaxDepsSome [RelaxedDep (RelaxDepScopePackage (PackageName "foo")) RelaxDepModNone (RelaxDepSubjectPkg (PackageName "bar")),RelaxedDep (RelaxDepScopePackage (PackageName "quu")) RelaxDepModNone (RelaxDepSubjectPkg (PackageName "puu"))])
+--
+-- This is not a glitch, even it looks like:
+--
+-- >>> simpleParsec ", all" :: Maybe RelaxDeps
+-- Just RelaxDepsAll
+-- 
+instance Parsec RelaxDeps where
+    parsec = do
+        xs <- parsecLeadingCommaList parsec
+        pure $ case xs of
+            [RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll]
+                -> RelaxDepsAll
+            [RelaxedDep RelaxDepScopeAll RelaxDepModNone (RelaxDepSubjectPkg pn)]
+                | pn == mkPackageName "none"                                
+                -> mempty
+            _   -> mkRelaxDepSome xs
 
 instance Binary RelaxDeps
 instance Binary RelaxDepMod
@@ -160,16 +200,25 @@ isRelaxDeps (RelaxDepsSome [])    = False
 isRelaxDeps (RelaxDepsSome (_:_)) = True
 isRelaxDeps RelaxDepsAll          = True
 
+-- | A smarter 'RelaxedDepsSome', @*:*@ is the same as @all@.
+mkRelaxDepSome :: [RelaxedDep] -> RelaxDeps
+mkRelaxDepSome xs
+    | any (== RelaxedDep RelaxDepScopeAll RelaxDepModNone RelaxDepSubjectAll) xs
+    = RelaxDepsAll
+    
+    | otherwise
+    = RelaxDepsSome xs
+
 -- | 'RelaxDepsAll' is the /absorbing element/
 instance Semigroup RelaxDeps where
-  -- identity element
-  RelaxDepsSome []    <> r                   = r
-  l@(RelaxDepsSome _) <> RelaxDepsSome []    = l
-  -- absorbing element
-  l@RelaxDepsAll      <> _                   = l
-  (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
-  -- combining non-{identity,absorbing} elements
-  (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
+    -- identity element
+    RelaxDepsSome []    <> r                   = r
+    l@(RelaxDepsSome _) <> RelaxDepsSome []    = l
+    -- absorbing element
+    l@RelaxDepsAll      <> _                   = l
+    (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
+    -- combining non-{identity,absorbing} elements
+    (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
 
 -- | @'RelaxDepsSome' []@ is the /identity element/
 instance Monoid RelaxDeps where

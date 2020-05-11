@@ -15,7 +15,6 @@ import Data.List
 import Network.URI (URI)
 
 import Distribution.Deprecated.ParseUtils
-import Distribution.Deprecated.Text as Text
 import qualified Distribution.Deprecated.ReadP as Parse
 
 import Distribution.Package
@@ -28,6 +27,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Types.PackageVersionConstraint
+
+import Distribution.Parsec
+import Distribution.Pretty
 
 import Distribution.Client.Types
 import Distribution.Client.CmdInstall.ClientInstallFlags
@@ -256,21 +258,22 @@ prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
 prop_parsePackageLocationTokenQ (PackageLocationString str) =
     runReadP parsePackageLocationTokenQ (renderPackageLocationToken str) == Just str
 
-prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Bool
+prop_roundtrip_printparse_RelaxedDep :: RelaxedDep -> Property
 prop_roundtrip_printparse_RelaxedDep rdep =
-    runReadP Text.parse (Text.display rdep) == Just rdep
+    counterexample (prettyShow rdep) $
+    eitherParsec (prettyShow rdep) == Right rdep
 
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
-    counterexample (Text.display rdep) $
-    runReadP Text.parse (Text.display rdep) `ediffEq` Just rdep
+    counterexample (prettyShow rdep) $
+    eitherParsec (prettyShow rdep) `ediffEq` Right rdep
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    runReadP Text.parse rdep' `ediffEq` Just rdep
+    eitherParsec rdep' `ediffEq` Right rdep
   where
-    rdep' = go (Text.display rdep)
+    rdep' = go (prettyShow rdep)
 
     -- replace 'all' tokens by '*'
     go :: String -> String
@@ -848,7 +851,7 @@ instance Arbitrary AllowOlder where
 
 instance Arbitrary RelaxDeps where
     arbitrary = oneof [ pure mempty
-                      , RelaxDepsSome <$> shortListOf1 3 arbitrary
+                      , mkRelaxDepSome <$> shortListOf1 3 arbitrary
                       , pure RelaxDepsAll
                       ]
 

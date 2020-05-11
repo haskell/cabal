@@ -81,7 +81,7 @@ import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
-import Distribution.Parsec (simpleParsec, parsec)
+import Distribution.Parsec (CabalParsing, simpleParsec, parsec, eitherParsec )
 import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Types.ConstraintSource
@@ -123,10 +123,11 @@ import Distribution.PackageDescription
 import Distribution.System ( Platform )
 import Distribution.Deprecated.Text
          ( Text(..), display )
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.ReadE
          ( ReadE(..), succeedReadE, parsecToReadE )
 import qualified Distribution.Deprecated.ReadP as Parse
-         ( ReadP, char, sepBy1 )
+         ( char, sepBy1 )
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
@@ -137,7 +138,6 @@ import Distribution.Client.GlobalFlags
          )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
 import Distribution.Parsec.Newtypes (SpecVersion (..))
-import Distribution.Parsec (eitherParsec)
 
 import Data.List
          ( deleteFirstsBy )
@@ -717,14 +717,14 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
   NoFlag                                               -> []
 
 
-relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)
+relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
 relaxDepsParser =
-  (Just . RelaxDepsSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
+  (Just . RelaxDepsSome . toList) `fmap` P.sepByNonEmpty parsec (P.char ',')
 
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
 relaxDepsPrinter Nothing                     = []
 relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
-relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
+relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) $ pkgs
 
 
 instance Monoid ConfigExFlags where
