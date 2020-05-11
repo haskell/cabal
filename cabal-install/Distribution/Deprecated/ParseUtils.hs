@@ -39,6 +39,8 @@ module Distribution.Deprecated.ParseUtils (
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
+        fieldParsec,
+
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
@@ -67,6 +69,7 @@ import qualified Text.Read as Read
 import qualified Data.Map  as Map
 
 import qualified Control.Monad.Fail as Fail
+import Distribution.Parsec (ParsecParser, explicitEitherParsec)
 
 -- -----------------------------------------------------------------------------
 
@@ -187,6 +190,12 @@ data FieldDescr a
 field :: String -> (a -> Doc) -> ReadP a a -> FieldDescr a
 field name showF readF =
   FieldDescr name showF (\line val _st -> runP line name readF val)
+
+fieldParsec :: String -> (a -> Doc) -> ParsecParser a -> FieldDescr a
+fieldParsec name showF readF =
+  FieldDescr name showF $ \line val _st -> case explicitEitherParsec readF val of
+    Left err -> ParseFailed (FromString err (Just line))
+    Right x  -> ParseOk [] x
 
 -- Lift a field descriptor storing into an 'a' to a field descriptor storing
 -- into a 'b'.

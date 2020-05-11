@@ -129,7 +129,7 @@ import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Compat.Semigroup
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
-import Distribution.Parsec (parsec, simpleParsec)
+import Distribution.Parsec (parsec, simpleParsec, parsecOptCommaList)
 import Distribution.Pretty (pretty)
 import Text.PrettyPrint
          ( ($+$) )
@@ -960,14 +960,14 @@ configFieldDescriptions src =
        (configureExOptions ParseArgs src)
        []
        [let pkgs            = (Just . AllowOlder . RelaxDepsSome)
-                              `fmap` parseOptCommaList Text.parse
+                              `fmap` parsecOptCommaList parsec
             parseAllowOlder = ((Just . AllowOlder . toRelaxDeps)
                                `fmap` Text.parse) Parse.<++ pkgs
          in simpleField "allow-older"
             (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
             configAllowOlder (\v flags -> flags { configAllowOlder = v })
        ,let pkgs            = (Just . AllowNewer . RelaxDepsSome)
-                              `fmap` parseOptCommaList Text.parse
+                              `fmap` parsecOptCommaList parsec
             parseAllowNewer = ((Just . AllowNewer . toRelaxDeps)
                                `fmap` Text.parse) Parse.<++ pkgs
          in simpleField "allow-newer"
