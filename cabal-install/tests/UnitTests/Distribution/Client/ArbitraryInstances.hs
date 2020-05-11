@@ -27,11 +27,12 @@ import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
-import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepos (..), ActiveRepoEntry (..), CombineStrategy (..))
+import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
 import Distribution.Client.InstallSymlink                (OverwritePolicy)
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
+import Distribution.Client.Types.AllowNewer
 
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Cabal ()
@@ -215,3 +216,33 @@ instance Arbitrary ActiveRepoEntry where
 instance Arbitrary CombineStrategy where
     arbitrary = arbitraryBoundedEnum
     shrink    = shrinkBoundedEnum
+
+
+instance Arbitrary AllowNewer where
+    arbitrary = AllowNewer <$> arbitrary
+
+instance Arbitrary AllowOlder where
+    arbitrary = AllowOlder <$> arbitrary
+
+instance Arbitrary RelaxDeps where
+    arbitrary = oneof [ pure mempty
+                      , mkRelaxDepSome <$> shortListOf1 3 arbitrary
+                      , pure RelaxDepsAll
+                      ]
+
+instance Arbitrary RelaxDepMod where
+    arbitrary = elements [RelaxDepModNone, RelaxDepModCaret]
+
+instance Arbitrary RelaxDepScope where
+    arbitrary = oneof [ pure RelaxDepScopeAll
+                      , RelaxDepScopePackage <$> arbitrary
+                      , RelaxDepScopePackageId <$> arbitrary
+                      ]
+
+instance Arbitrary RelaxDepSubject where
+    arbitrary = oneof [ pure RelaxDepSubjectAll
+                      , RelaxDepSubjectPkg <$> arbitrary
+                      ]
+
+instance Arbitrary RelaxedDep where
+    arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary

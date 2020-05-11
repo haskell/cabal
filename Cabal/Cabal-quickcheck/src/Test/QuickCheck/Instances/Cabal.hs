@@ -15,9 +15,9 @@ import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
-import Distribution.Types.Flag
-       (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName)
+import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName)
 import Distribution.Types.LibraryName
+import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.SourceRepo
@@ -41,7 +41,7 @@ instance Arbitrary SpecVersion where
     arbitrary = fmap SpecVersion arbitrary
 
 -------------------------------------------------------------------------------
--- PackageName
+-- PackageName and PackageIdentifier
 -------------------------------------------------------------------------------
 
 instance Arbitrary PackageName where
@@ -51,10 +51,16 @@ instance Arbitrary PackageName where
                         `suchThat` (not . all isDigit)
         packageChars  = filter isAlphaNum ['\0'..'\127']
 
+instance Arbitrary PackageIdentifier where
+    arbitrary = PackageIdentifier <$> arbitrary <*> arbitrary
+
+    shrink (PackageIdentifier pn vr) = uncurry PackageIdentifier <$> shrink (pn, vr)
+
 -------------------------------------------------------------------------------
 -- Version
 -------------------------------------------------------------------------------
 
+-- | Does *NOT* generate 'nullVersion'
 instance Arbitrary Version where
   arbitrary = do
       branch <- smallListOf1 $
