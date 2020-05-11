@@ -14,7 +14,7 @@ import Distribution.Client.Types.RepoName (RepoName (..))
 import Prelude ()
 
 import Distribution.FieldGrammar.Described
-import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaList)
+import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaNonEmpty)
 import Distribution.Pretty                 (Pretty (..), prettyShow)
 
 import qualified Distribution.Compat.CharParsing as P
@@ -63,7 +63,7 @@ instance Pretty ActiveRepos where
 instance Parsec ActiveRepos where
     parsec = ActiveRepos [] <$ P.try (P.string ":none")
         <|> do
-            repos <- parsecLeadingCommaList parsec
+            repos <- parsecLeadingCommaNonEmpty parsec
             return (ActiveRepos (toList repos))
 
 instance Described ActiveRepos where
