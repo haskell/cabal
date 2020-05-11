@@ -10,7 +10,7 @@ module Distribution.Solver.Types.PackagePath
     ) where
 
 import Distribution.Package
-import Distribution.Deprecated.Text
+import Distribution.Pretty (pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
 import Distribution.Solver.Compat.Prelude ((<<>>))
 
@@ -35,7 +35,7 @@ data Namespace =
 -- ends in a period, so it can be prepended onto a qualifier.
 dispNamespace :: Namespace -> Disp.Doc
 dispNamespace DefaultNamespace = Disp.empty
-dispNamespace (Independent i) = disp i <<>> Disp.text "."
+dispNamespace (Independent i) = pretty i <<>> Disp.text "."
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -79,10 +79,10 @@ data Qualifier =
 -- 'Base' qualifier, will always be @base@).
 dispQualifier :: Qualifier -> Disp.Doc
 dispQualifier QualToplevel = Disp.empty
-dispQualifier (QualSetup pn)  = disp pn <<>> Disp.text ":setup."
-dispQualifier (QualExe pn pn2) = disp pn <<>> Disp.text ":" <<>>
-                                 disp pn2 <<>> Disp.text ":exe."
-dispQualifier (QualBase pn)  = disp pn <<>> Disp.text "."
+dispQualifier (QualSetup pn)  = pretty pn <<>> Disp.text ":setup."
+dispQualifier (QualExe pn pn2) = pretty pn <<>> Disp.text ":" <<>>
+                                 pretty pn2 <<>> Disp.text ":exe."
+dispQualifier (QualBase pn)  = pretty pn <<>> Disp.text "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
@@ -94,7 +94,7 @@ type QPN = Qualified PackageName
 -- | Pretty-prints a qualified package name.
 dispQPN :: QPN -> Disp.Doc
 dispQPN (Q (PackagePath ns qual) pn) =
-  dispNamespace ns <<>> dispQualifier qual <<>> disp pn
+  dispNamespace ns <<>> dispQualifier qual <<>> pretty pn
 
 -- | String representation of a qualified package name.
 showQPN :: QPN -> String
