@@ -37,6 +37,7 @@ import Distribution.Client.InstallSymlink                (OverwritePolicy)
 import Distribution.Client.Targets
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
+import Distribution.Client.World                         (WorldPkgInfo (..))
 import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
@@ -259,6 +260,14 @@ instance Arbitrary RelaxDepSubject where
 
 instance Arbitrary RelaxedDep where
     arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
+
+-------------------------------------------------------------------------------
+-- WorldPkgInfo
+-------------------------------------------------------------------------------
+
+instance Arbitrary WorldPkgInfo where
+    arbitrary = WorldPkgInfo <$> arbitrary <*> arbitrary
+    shrink    = genericShrink
 
 -------------------------------------------------------------------------------
 -- UserConstraint
