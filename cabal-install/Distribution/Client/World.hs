@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.World
@@ -33,21 +34,19 @@ import Prelude (sequence)
 import Distribution.Client.Compat.Prelude hiding (getContents)
 
 import Distribution.Types.Dependency
-import Distribution.PackageDescription
-         ( FlagAssignment, mkFlagAssignment, unFlagAssignment
-         , mkFlagName, unFlagName )
+import Distribution.Types.Flag
+         ( FlagAssignment, unFlagAssignment
+         , unFlagName, parsecFlagAssignmentNonEmpty, describeFlagAssignmentNonEmpty )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
-import Distribution.Deprecated.Text
-         ( Text(..), display, simpleParse )
-import qualified Distribution.Deprecated.ReadP as Parse
+import Distribution.Parsec (Parsec (..), CabalParsing, simpleParsec)
+import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..))
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
-
-
-import Data.Char as Char
 
 import Data.List
          ( unionBy, deleteFirstsBy )
@@ -57,7 +56,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 
 
 data WorldPkgInfo = WorldPkgInfo Dependency FlagAssignment
-  deriving (Show,Eq)
+  deriving (Show,Eq, Generic)
 
 -- | Adds packages to the world file; creates the file if it doesn't
 -- exist yet. Version constraints and flag assignments for a package are
@@ -102,7 +101,7 @@ modifyWorld f verbosity world pkgs =
       then do
         info verbosity "Updating world file..."
         writeFileAtomic world . B.pack $ unlines
-            [ (display pkg) | pkg <- pkgsNewWorld]
+            [ (prettyShow pkg) | pkg <- pkgsNewWorld]
       else
         info verbosity "World file is already up to date."
 
@@ -111,7 +110,7 @@ modifyWorld f verbosity world pkgs =
 getContents :: Verbosity -> FilePath -> IO [WorldPkgInfo]
 getContents verbosity world = do
   content <- safelyReadFile world
-  let result = map simpleParse (lines $ B.unpack content)
+  let result = map simpleParsec (lines $ B.unpack content)
   case sequence result of
     Nothing -> die' verbosity "Could not parse world file."
     Just xs -> return xs
@@ -123,51 +122,34 @@ getContents verbosity world = do
                 | otherwise             = ioError e
 
 
-instance Text WorldPkgInfo where
-  disp (WorldPkgInfo dep flags) = disp dep Disp.<+> dispFlags (unFlagAssignment flags)
+instance Pretty WorldPkgInfo where
+  pretty (WorldPkgInfo dep flags) = pretty dep Disp.<+> dispFlags (unFlagAssignment flags)
     where
       dispFlags [] = Disp.empty
       dispFlags fs = Disp.text "--flags="
                   <<>> Disp.doubleQuotes (flagAssToDoc fs)
       flagAssToDoc = foldr (\(fname,val) flagAssDoc ->
                              (if not val then Disp.char '-'
-                                         else Disp.empty)
+                                         else Disp.char '+')
                              <<>> Disp.text (unFlagName fname)
                              Disp.<+> flagAssDoc)
                            Disp.empty
-  parse = do
-      dep <- parse
-      Parse.skipSpaces
-      flagAss <- Parse.option mempty parseFlagAssignment
+
+instance Parsec WorldPkgInfo where
+  parsec = do
+      dep <- parsec
+      P.spaces
+      flagAss <- P.option mempty parseFlagAssignment
       return $ WorldPkgInfo dep flagAss
     where
-      parseFlagAssignment :: Parse.ReadP r FlagAssignment
+      parseFlagAssignment :: CabalParsing m => m FlagAssignment
       parseFlagAssignment = do
-          _ <- Parse.string "--flags"
-          Parse.skipSpaces
-          _ <- Parse.char '='
-          Parse.skipSpaces
-          mkFlagAssignment <$> (inDoubleQuotes $ Parse.many1 flag)
+          _ <- P.string "--flags="
+          inDoubleQuotes parsecFlagAssignmentNonEmpty
         where
-          inDoubleQuotes :: Parse.ReadP r a -> Parse.ReadP r a
-          inDoubleQuotes = Parse.between (Parse.char '"') (Parse.char '"')
+          inDoubleQuotes = P.between (P.char '"') (P.char '"')
 
-          flag = do
-            Parse.skipSpaces
-            val <- negative Parse.+++ positive
-            name <- ident
-            Parse.skipSpaces
-            return (mkFlagName name,val)
-          negative = do
-            _ <- Parse.char '-'
-            return False
-          positive = return True
-
-          ident :: Parse.ReadP r String
-          ident = do
-            -- First character must be a letter/digit to avoid flags
-            -- like "+-debug":
-            c  <- Parse.satisfy Char.isAlphaNum
-            cs <- Parse.munch (\ch -> Char.isAlphaNum ch || ch == '_'
-                                                         || ch == '-')
-            return (c:cs)
+instance Described WorldPkgInfo where
+  describe _ = 
+    describe (Proxy :: Proxy Dependency)
+    <> REOpt (RESpaces1 <> fromString "--flags=\"" <> describeFlagAssignmentNonEmpty <> fromString "\"")
