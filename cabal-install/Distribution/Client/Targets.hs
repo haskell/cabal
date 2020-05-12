@@ -79,7 +79,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.Types.Flag
-         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty, describeFlagAssignment )
+         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty, describeFlagAssignmentNonEmpty )
 import Distribution.Version
          ( VersionRange, anyVersion, isAnyVersion )
 import Distribution.Pretty (Pretty (..), prettyShow)
@@ -745,7 +745,7 @@ instance Described UserConstraint where
             , fromString "source"
             , fromString "test"
             , fromString "bench"
-            , describeFlagAssignment
+            , describeFlagAssignmentNonEmpty
             ]
 
         describePN :: GrammarRegex void

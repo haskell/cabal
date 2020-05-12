@@ -20,7 +20,7 @@ import qualified Distribution.Utils.CharSet as CS
 
 import Distribution.ModuleName                     (ModuleName)
 import Distribution.Types.Dependency               (Dependency)
-import Distribution.Types.Flag                     (FlagName)
+import Distribution.Types.Flag                     (FlagName, FlagAssignment)
 import Distribution.Types.PackageId                (PackageIdentifier)
 import Distribution.Types.PackageName              (PackageName)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint)
@@ -43,6 +43,7 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy Version)
     , testDescribed (Proxy :: Proxy VersionRange)
     , testDescribed (Proxy :: Proxy FlagName)
+    , testDescribed (Proxy :: Proxy FlagAssignment)
     , testDescribed (Proxy :: Proxy ModuleName)
     , testDescribed (Proxy :: Proxy OS)
     , testDescribed (Proxy :: Proxy Arch)
