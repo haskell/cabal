@@ -19,7 +19,7 @@ module Distribution.Types.Flag (
     dispFlagAssignment,
     parsecFlagAssignment,
     parsecFlagAssignmentNonEmpty,
-    describeFlagAssignment,
+    describeFlagAssignmentNonEmpty,
     ) where
 
 import Prelude ()
@@ -240,6 +240,36 @@ showFlagValue :: (FlagName, Bool) -> String
 showFlagValue (f, True)   = '+' : unFlagName f
 showFlagValue (f, False)  = '-' : unFlagName f
 
+-- | @since 3.4.0.0
+instance Pretty FlagAssignment where
+    pretty = dispFlagAssignment
+
+-- |
+--
+-- >>> simpleParsec "" :: Maybe FlagAssignment
+-- Just (fromList [])
+--
+-- >>> simpleParsec "+foo -bar" :: Maybe FlagAssignment
+-- Just (fromList [(FlagName "bar",(1,False)),(FlagName "foo",(1,True))])
+--
+-- >>> simpleParsec "-none -any" :: Maybe FlagAssignment
+-- Just (fromList [(FlagName "any",(1,False)),(FlagName "none",(1,False))])
+--
+-- >>> simpleParsec "+foo -foo +foo +foo" :: Maybe FlagAssignment
+-- Just (fromList [(FlagName "foo",(4,True))])
+--
+-- >>> simpleParsec "+foo -bar baz" :: Maybe FlagAssignment
+-- Nothing
+--
+-- @since 3.4.0.0
+--
+instance Parsec FlagAssignment where
+    parsec = parsecFlagAssignment
+
+instance Described FlagAssignment where
+    describe _ = REMunch RESpaces1 $
+        REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)
+
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
@@ -250,7 +280,7 @@ parsecFlagAssignment = mkFlagAssignment <$>
                        P.sepBy (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
-        _ <- P.optional (P.char '+')
+        _ <- P.char '+'
         f <- parsec
         return (f, True)
     offFlag = do
@@ -276,6 +306,6 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment . toList <$>
         f <- parsec
         return (f, False)
 
-describeFlagAssignment :: GrammarRegex void
-describeFlagAssignment = REMunch1 RESpaces1 $
+describeFlagAssignmentNonEmpty :: GrammarRegex void
+describeFlagAssignmentNonEmpty = REMunch1 RESpaces1 $
     REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)
