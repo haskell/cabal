@@ -51,9 +51,9 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 -- import qualified Distribution.Types.BuildInfo.Lens                 as L
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff        (ediff)
-import Data.TreeDiff.Pretty (ansiWlEditExprCompact)
-import Instances.TreeDiff ()
+import Data.TreeDiff                 (ediff)
+import Data.TreeDiff.Instances.Cabal ()
+import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 #endif
 
 -------------------------------------------------------------------------------

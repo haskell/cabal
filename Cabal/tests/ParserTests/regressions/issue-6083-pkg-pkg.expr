@@ -6,12 +6,12 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "freetype"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "freetype")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName]),
                                              Dependency
-                                               `PackageName "freetype"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "freetype")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
                                        {exposedModules = [],
@@ -58,15 +58,19 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "freetype"`
+                                                                                  (PackageName
+                                                                                     "freetype")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
-                                                                                  `PackageName "freetype"`
+                                                                                  (PackageName
+                                                                                     "freetype")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -101,8 +105,8 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "issue"`,
-                                        pkgVersion = `mkVersion [6083]`},
+                                       {pkgName = PackageName "issue",
+                                        pkgVersion = mkVersion [6083]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

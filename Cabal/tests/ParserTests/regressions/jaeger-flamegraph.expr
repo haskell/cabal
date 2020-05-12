@@ -1,42 +1,43 @@
 GenericPackageDescription
   {condBenchmarks = [],
    condExecutables = [_×_
-                        `UnqualComponentName "jaeger-flamegraph"`
+                        (UnqualComponentName "jaeger-flamegraph")
                         CondNode
                           {condTreeComponents = [],
                            condTreeConstraints = [Dependency
-                                                    `PackageName "base"`
+                                                    (PackageName "base")
                                                     (UnionVersionRanges
-                                                       (MajorBoundVersion `mkVersion [4,11,1,0]`)
-                                                       (MajorBoundVersion `mkVersion [4,12,0,0]`))
+                                                       (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                       (MajorBoundVersion
+                                                          (mkVersion [4, 12, 0, 0])))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "jaeger-flamegraph"`
-                                                    (OrLaterVersion `mkVersion [0]`)
+                                                    (PackageName "jaeger-flamegraph")
+                                                    (OrLaterVersion (mkVersion [0]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "bytestring"`
-                                                    (MajorBoundVersion `mkVersion [0,10,8,2]`)
+                                                    (PackageName "bytestring")
+                                                    (MajorBoundVersion (mkVersion [0, 10, 8, 2]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "containers"`
-                                                    (MajorBoundVersion `mkVersion [0,6,0,1]`)
+                                                    (PackageName "containers")
+                                                    (MajorBoundVersion (mkVersion [0, 6, 0, 1]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "extra"`
-                                                    (MajorBoundVersion `mkVersion [1,6,13]`)
+                                                    (PackageName "extra")
+                                                    (MajorBoundVersion (mkVersion [1, 6, 13]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "aeson"`
-                                                    (MajorBoundVersion `mkVersion [1,4,1,0]`)
+                                                    (PackageName "aeson")
+                                                    (MajorBoundVersion (mkVersion [1, 4, 1, 0]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "optparse-applicative"`
-                                                    (MajorBoundVersion `mkVersion [0,14,3,0]`)
+                                                    (PackageName "optparse-applicative")
+                                                    (MajorBoundVersion (mkVersion [0, 14, 3, 0]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "text"`
-                                                    (MajorBoundVersion `mkVersion [1,2,3,1]`)
+                                                    (PackageName "text")
+                                                    (MajorBoundVersion (mkVersion [1, 2, 3, 1]))
                                                     (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
@@ -86,58 +87,98 @@ GenericPackageDescription
                                                             sharedOptions = PerCompilerFlavor [] [],
                                                             staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
-                                                                                    `PackageName "base"`
+                                                                                    (PackageName
+                                                                                       "base")
                                                                                     (UnionVersionRanges
                                                                                        (MajorBoundVersion
-                                                                                          `mkVersion [4,11,1,0]`)
+                                                                                          (mkVersion
+                                                                                             [4,
+                                                                                              11,
+                                                                                              1,
+                                                                                              0]))
                                                                                        (MajorBoundVersion
-                                                                                          `mkVersion [4,12,0,0]`))
+                                                                                          (mkVersion
+                                                                                             [4,
+                                                                                              12,
+                                                                                              0,
+                                                                                              0])))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "jaeger-flamegraph"`
+                                                                                    (PackageName
+                                                                                       "jaeger-flamegraph")
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0]`)
+                                                                                       (mkVersion
+                                                                                          [0]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "bytestring"`
+                                                                                    (PackageName
+                                                                                       "bytestring")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [0,10,8,2]`)
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           10,
+                                                                                           8,
+                                                                                           2]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "containers"`
+                                                                                    (PackageName
+                                                                                       "containers")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [0,6,0,1]`)
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           6,
+                                                                                           0,
+                                                                                           1]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "extra"`
+                                                                                    (PackageName
+                                                                                       "extra")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [1,6,13]`)
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           6,
+                                                                                           13]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "aeson"`
+                                                                                    (PackageName
+                                                                                       "aeson")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [1,4,1,0]`)
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           4,
+                                                                                           1,
+                                                                                           0]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "optparse-applicative"`
+                                                                                    (PackageName
+                                                                                       "optparse-applicative")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [0,14,3,0]`)
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           14,
+                                                                                           3,
+                                                                                           0]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "text"`
+                                                                                    (PackageName
+                                                                                       "text")
                                                                                     (MajorBoundVersion
-                                                                                       `mkVersion [1,2,3,1]`)
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           2,
+                                                                                           3,
+                                                                                           1]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName])],
                                                             virtualModules = []},
-                                             exeName = `UnqualComponentName "jaeger-flamegraph"`,
+                                             exeName = UnqualComponentName "jaeger-flamegraph",
                                              exeScope = ExecutablePublic,
                                              modulePath = "Main.hs"}}],
    condForeignLibs = [],
@@ -145,17 +186,17 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "base"`
+                                               (PackageName "base")
                                                (UnionVersionRanges
-                                                  (MajorBoundVersion `mkVersion [4,11,1,0]`)
-                                                  (MajorBoundVersion `mkVersion [4,12,0,0]`))
+                                                  (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                  (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
                                                (Set.fromList [LMainLibName]),
                                              Dependency
-                                               `PackageName "QuickCheck"`
-                                               (MajorBoundVersion `mkVersion [2,12,6,1]`)
+                                               (PackageName "QuickCheck")
+                                               (MajorBoundVersion (mkVersion [2, 12, 6, 1]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "Interval"`],
+                                       {exposedModules = [ModuleName "Interval"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -202,18 +243,32 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "base"`
+                                                                                  (PackageName
+                                                                                     "base")
                                                                                   (UnionVersionRanges
                                                                                      (MajorBoundVersion
-                                                                                        `mkVersion [4,11,1,0]`)
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            11,
+                                                                                            1,
+                                                                                            0]))
                                                                                      (MajorBoundVersion
-                                                                                        `mkVersion [4,12,0,0]`))
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            12,
+                                                                                            0,
+                                                                                            0])))
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
-                                                                                  `PackageName "QuickCheck"`
+                                                                                  (PackageName
+                                                                                     "QuickCheck")
                                                                                   (MajorBoundVersion
-                                                                                     `mkVersion [2,12,6,1]`)
+                                                                                     (mkVersion
+                                                                                        [2,
+                                                                                         12,
+                                                                                         6,
+                                                                                         1]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -224,30 +279,30 @@ GenericPackageDescription
                                         signatures = []}},
    condSubLibraries = [],
    condTestSuites = [_×_
-                       `UnqualComponentName "tests"`
+                       (UnqualComponentName "tests")
                        CondNode
                          {condTreeComponents = [],
                           condTreeConstraints = [Dependency
-                                                   `PackageName "base"`
+                                                   (PackageName "base")
                                                    (UnionVersionRanges
-                                                      (MajorBoundVersion `mkVersion [4,11,1,0]`)
-                                                      (MajorBoundVersion `mkVersion [4,12,0,0]`))
+                                                      (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                      (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "jaeger-flamegraph"`
-                                                   (OrLaterVersion `mkVersion [0]`)
+                                                   (PackageName "jaeger-flamegraph")
+                                                   (OrLaterVersion (mkVersion [0]))
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "tasty"`
-                                                   (MajorBoundVersion `mkVersion [1,1,0,4]`)
+                                                   (PackageName "tasty")
+                                                   (MajorBoundVersion (mkVersion [1, 1, 0, 4]))
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "tasty-hspec"`
-                                                   (MajorBoundVersion `mkVersion [1,1,5]`)
+                                                   (PackageName "tasty-hspec")
+                                                   (MajorBoundVersion (mkVersion [1, 1, 5]))
                                                    (Set.fromList [LMainLibName]),
                                                  Dependency
-                                                   `PackageName "tasty-quickcheck"`
-                                                   (MajorBoundVersion `mkVersion [0,10]`)
+                                                   (PackageName "tasty-quickcheck")
+                                                   (MajorBoundVersion (mkVersion [0, 10]))
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -255,7 +310,16 @@ GenericPackageDescription
                                                                asmSources = [],
                                                                autogenIncludes = [],
                                                                autogenModules = [],
-                                                               buildToolDepends = [`ExeDependency (PackageName "tasty-discover") (UnqualComponentName "tasty-discover") (MajorBoundVersion (mkVersion [4,2,1]))`],
+                                                               buildToolDepends = [ExeDependency
+                                                                                     (PackageName
+                                                                                        "tasty-discover")
+                                                                                     (UnqualComponentName
+                                                                                        "tasty-discover")
+                                                                                     (MajorBoundVersion
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            2,
+                                                                                            1]))],
                                                                buildTools = [],
                                                                buildable = True,
                                                                cSources = [],
@@ -291,7 +355,8 @@ GenericPackageDescription
                                                                            [],
                                                                otherExtensions = [],
                                                                otherLanguages = [],
-                                                               otherModules = [`ModuleName "IntervalTest"`],
+                                                               otherModules = [ModuleName
+                                                                                 "IntervalTest"],
                                                                pkgconfigDepends = [],
                                                                profOptions = PerCompilerFlavor
                                                                                [] [],
@@ -300,42 +365,65 @@ GenericPackageDescription
                                                                staticOptions = PerCompilerFlavor
                                                                                  [] [],
                                                                targetBuildDepends = [Dependency
-                                                                                       `PackageName "base"`
+                                                                                       (PackageName
+                                                                                          "base")
                                                                                        (UnionVersionRanges
                                                                                           (MajorBoundVersion
-                                                                                             `mkVersion [4,11,1,0]`)
+                                                                                             (mkVersion
+                                                                                                [4,
+                                                                                                 11,
+                                                                                                 1,
+                                                                                                 0]))
                                                                                           (MajorBoundVersion
-                                                                                             `mkVersion [4,12,0,0]`))
+                                                                                             (mkVersion
+                                                                                                [4,
+                                                                                                 12,
+                                                                                                 0,
+                                                                                                 0])))
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
-                                                                                       `PackageName "jaeger-flamegraph"`
+                                                                                       (PackageName
+                                                                                          "jaeger-flamegraph")
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0]`)
+                                                                                          (mkVersion
+                                                                                             [0]))
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
-                                                                                       `PackageName "tasty"`
+                                                                                       (PackageName
+                                                                                          "tasty")
                                                                                        (MajorBoundVersion
-                                                                                          `mkVersion [1,1,0,4]`)
+                                                                                          (mkVersion
+                                                                                             [1,
+                                                                                              1,
+                                                                                              0,
+                                                                                              4]))
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
-                                                                                       `PackageName "tasty-hspec"`
+                                                                                       (PackageName
+                                                                                          "tasty-hspec")
                                                                                        (MajorBoundVersion
-                                                                                          `mkVersion [1,1,5]`)
+                                                                                          (mkVersion
+                                                                                             [1,
+                                                                                              1,
+                                                                                              5]))
                                                                                        (Set.fromList
                                                                                           [LMainLibName]),
                                                                                      Dependency
-                                                                                       `PackageName "tasty-quickcheck"`
+                                                                                       (PackageName
+                                                                                          "tasty-quickcheck")
                                                                                        (MajorBoundVersion
-                                                                                          `mkVersion [0,10]`)
+                                                                                          (mkVersion
+                                                                                             [0,
+                                                                                              10]))
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
-                                                              `mkVersion [1,0]` "Driver.hs",
-                                            testName = `UnqualComponentName ""`}}],
+                                                              (mkVersion [1, 0]) "Driver.hs",
+                                            testName = UnqualComponentName ""}}],
    genPackageFlags = [],
    gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
@@ -373,8 +461,8 @@ GenericPackageDescription
                                           (License (ELicense (ELicenseId BSD_3_Clause) Nothing)),
                            maintainer = "Sam Halliday",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "jaeger-flamegraph"`,
-                                        pkgVersion = `mkVersion [1,0,0]`},
+                                       {pkgName = PackageName "jaeger-flamegraph",
+                                        pkgVersion = mkVersion [1, 0, 0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [SourceRepo
@@ -394,5 +482,5 @@ GenericPackageDescription
                            testedWith = [_×_
                                            GHC
                                            (UnionVersionRanges
-                                              (MajorBoundVersion `mkVersion [8,4,4]`)
-                                              (MajorBoundVersion `mkVersion [8,6,2]`))]}}
+                                              (MajorBoundVersion (mkVersion [8, 4, 4]))
+                                              (MajorBoundVersion (mkVersion [8, 6, 2])))]}}

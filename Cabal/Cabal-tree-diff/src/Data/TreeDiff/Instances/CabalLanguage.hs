@@ -5,12 +5,12 @@
 {-# OPTIONS_GHC -fcontext-stack=151 #-}
 #endif
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Instances.TreeDiff.Language where
+module Data.TreeDiff.Instances.CabalLanguage () where
 
 import Data.TreeDiff
 import Language.Haskell.Extension (Extension, KnownExtension, Language)
 
--- This are big enums, so they are in separate file.
+-- These are big enums, so they are in separate file.
 --
 instance ToExpr Extension
 instance ToExpr KnownExtension

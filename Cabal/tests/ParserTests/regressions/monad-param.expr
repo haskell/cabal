@@ -6,19 +6,19 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "base"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "base")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName]),
                                              Dependency
-                                               `PackageName "mtl"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "mtl")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName]),
                                              Dependency
-                                               `PackageName "stm"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "stm")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "Control.Monad.Parameterized"`],
+                                       {exposedModules = [ModuleName "Control.Monad.Parameterized"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -77,21 +77,27 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "base"`
+                                                                                  (PackageName
+                                                                                     "base")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
-                                                                                  `PackageName "mtl"`
+                                                                                  (PackageName
+                                                                                     "mtl")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
-                                                                                  `PackageName "stm"`
+                                                                                  (PackageName
+                                                                                     "stm")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -126,8 +132,8 @@ GenericPackageDescription
                            licenseRaw = Right BSD3,
                            maintainer = "Edward Kmett <ekmett@gmail.com>",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "monad-param"`,
-                                        pkgVersion = `mkVersion [0,0,1]`},
+                                       {pkgName = PackageName "monad-param",
+                                        pkgVersion = mkVersion [0, 0, 1]},
                            pkgUrl = "http://comonad.com/haskell/monad-param",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

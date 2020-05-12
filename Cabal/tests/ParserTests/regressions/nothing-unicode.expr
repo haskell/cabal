@@ -71,7 +71,7 @@ GenericPackageDescription
                                                                                        signatures = []}}}],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "\\937"`],
+                                       {exposedModules = [ModuleName "\937"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -127,7 +127,7 @@ GenericPackageDescription
                         {flagDefault = True,
                          flagDescription = "\28961",
                          flagManual = False,
-                         flagName = `FlagName "\\28961"`}],
+                         flagName = FlagName "\28961"}],
    gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
                           {author = "",
@@ -151,8 +151,7 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "\\28961"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "\28961", pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [SourceRepo
