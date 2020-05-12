@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE TypeOperators    #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-
 module UnitTests.Distribution.Client.ArbitraryInstances (
     adjustSize,
     shortListOf,
@@ -26,7 +28,7 @@ import Distribution.Types.Flag         (mkFlagAssignment)
 
 import Distribution.Utils.NubList
 
-import Distribution.Client.BuildReports.Types            (ReportLevel (..))
+import Distribution.Client.BuildReports.Types            (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
 import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
@@ -38,11 +40,11 @@ import Distribution.Client.Types.AllowNewer
 import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
+import Data.Coerce                     (Coercible, coerce)
+import GHC.Generics
+import Network.URI                     (URI (..), URIAuth (..), isUnreserved)
 import Test.QuickCheck
 import Test.QuickCheck.Instances.Cabal ()
-
-import Data.Coerce (Coercible, coerce)
-import Network.URI (URI (..), URIAuth (..), isUnreserved)
 
 -- note: there are plenty of instances defined in ProjectConfig test file.
 -- they should be moved here or into Cabal-quickcheck
@@ -263,10 +265,8 @@ instance Arbitrary RelaxedDep where
 -------------------------------------------------------------------------------
 
 instance Arbitrary UserConstraintScope where
-    arbitrary = oneof [ UserQualified <$> arbitrary <*> arbitrary
-                      , UserAnySetupQualifier <$> arbitrary
-                      , UserAnyQualifier <$> arbitrary
-                      ]
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
 
 instance Arbitrary UserQualifier where
     arbitrary = oneof [ pure UserQualToplevel
@@ -276,8 +276,10 @@ instance Arbitrary UserQualifier where
                       -- , UserQualExe <$> arbitrary <*> arbitrary
                       ]
 
+
 instance Arbitrary UserConstraint where
-    arbitrary = UserConstraint <$> arbitrary <*> arbitrary
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
 
 instance Arbitrary PackageProperty where
     arbitrary = oneof [ PackagePropertyVersion <$> arbitrary
@@ -289,3 +291,57 @@ instance Arbitrary PackageProperty where
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
+
+-------------------------------------------------------------------------------
+-- BuildReport
+-------------------------------------------------------------------------------
+
+instance Arbitrary BuildReport where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
+
+instance Arbitrary InstallOutcome where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
+
+instance Arbitrary Outcome where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
+
+-------------------------------------------------------------------------------
+-- Generic Arbitrary
+-------------------------------------------------------------------------------
+
+-- Generic arbitary for non-recursive types
+genericArbitrary :: (Generic a, GArbitrary (Rep a)) => Gen a
+genericArbitrary = fmap to garbitrary
+
+class GArbitrary f where
+    garbitrary :: Gen (f ())
+
+class GArbitrarySum f where
+    garbitrarySum :: [Gen (f ())]
+
+class GArbitraryProd f where
+    garbitraryProd :: Gen (f ())
+
+instance (GArbitrarySum f, i ~ D) => GArbitrary (M1 i c f) where
+    garbitrary = fmap M1 (oneof garbitrarySum)
+
+instance (GArbitraryProd f, i ~ C) => GArbitrarySum (M1 i c f) where
+    garbitrarySum = [fmap M1 garbitraryProd]
+
+instance (GArbitrarySum f, GArbitrarySum g) => GArbitrarySum (f :+: g) where
+    garbitrarySum = map (fmap L1) garbitrarySum ++ map (fmap R1) garbitrarySum
+
+instance (GArbitraryProd f, i ~ S) => GArbitraryProd (M1 i c f) where
+    garbitraryProd = fmap M1 garbitraryProd
+
+instance (GArbitraryProd f, GArbitraryProd g) => GArbitraryProd (f :*: g) where
+    garbitraryProd = (:*:) <$> garbitraryProd <*> garbitraryProd
+
+instance GArbitraryProd U1 where
+    garbitraryProd = pure U1
+
+instance (Arbitrary a) => GArbitraryProd (K1 i a) where
+    garbitraryProd = fmap K1 arbitrary

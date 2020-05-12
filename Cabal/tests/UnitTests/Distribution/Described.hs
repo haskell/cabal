@@ -11,21 +11,21 @@ import Test.QuickCheck       (Arbitrary (..), Gen, Property, choose, counterexam
 import Test.Tasty            (TestTree, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
 
-import Distribution.FieldGrammar.Described
-       (Described (..), GrammarRegex (..), reComma, reSpacedComma, reSpacedList)
+import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..), reComma, reSpacedComma, reSpacedList)
 import Distribution.Parsec                 (eitherParsec)
 import Distribution.Pretty                 (prettyShow)
 
 import qualified Distribution.Utils.CharSet as CS
 
+import Distribution.Compiler                       (CompilerFlavor, CompilerId)
 import Distribution.ModuleName                     (ModuleName)
+import Distribution.System                         (Arch, OS)
 import Distribution.Types.Dependency               (Dependency)
-import Distribution.Types.Flag                     (FlagName, FlagAssignment)
+import Distribution.Types.Flag                     (FlagAssignment, FlagName)
 import Distribution.Types.PackageId                (PackageIdentifier)
 import Distribution.Types.PackageName              (PackageName)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint)
 import Distribution.Types.Version                  (Version)
-import Distribution.System (OS, Arch)
 import Distribution.Types.VersionRange             (VersionRange)
 
 import qualified RERE         as RE
@@ -47,6 +47,8 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy ModuleName)
     , testDescribed (Proxy :: Proxy OS)
     , testDescribed (Proxy :: Proxy Arch)
+    , testDescribed (Proxy :: Proxy CompilerFlavor)
+    , testDescribed (Proxy :: Proxy CompilerId)
     ]
 
 -------------------------------------------------------------------------------

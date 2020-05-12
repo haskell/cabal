@@ -22,7 +22,7 @@ import Control.Monad
 import System.FilePath.Posix
          ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
-import Distribution.Client.BuildReports.Anonymous (BuildReport)
+import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport)
 import Distribution.Deprecated.Text (display)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die')
@@ -45,7 +45,7 @@ postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildR
 postBuildReport verbosity repoCtxt auth uri buildReport = do
   let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
   transport <- repoContextGetTransport repoCtxt
-  res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
+  res <- postHttp transport verbosity fullURI (showBuildReport buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
     _ -> die' verbosity "unrecognized response" -- give response

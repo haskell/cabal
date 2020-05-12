@@ -92,6 +92,7 @@ Version:            3.3.0.0
         Distribution.Deprecated.ViewAsFieldDescr
 
         Distribution.Client.BuildReports.Anonymous
+        Distribution.Client.BuildReports.Lens
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
@@ -468,6 +469,7 @@ Test-Suite unit-tests
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is UnitTests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
+    UnitTests.Distribution.Client.BuildReport
     UnitTests.Distribution.Client.Described
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor

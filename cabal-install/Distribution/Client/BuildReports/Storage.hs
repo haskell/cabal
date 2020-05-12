@@ -1,4 +1,3 @@
--- TODO
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
 -- |
@@ -25,8 +24,8 @@ module Distribution.Client.BuildReports.Storage (
     fromPlanningFailure,
   ) where
 
+import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport, newBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
-import Distribution.Client.BuildReports.Anonymous (BuildReport)
 
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -68,7 +67,7 @@ storeAnonymous reports = sequence_
   -- the writes for each report are atomic (under 4k and flush at boundaries)
 
   where
-    format r = '\n' : BuildReport.show r ++ "\n"
+    format r = '\n' : showBuildReport r ++ "\n"
     separate :: [(BuildReport, Maybe Repo)]
              -> [(Repo, [BuildReport])]
     separate = map (\rs@((_,repo,_):_) -> (repo, [ r | (r,_,_) <- rs ]))
@@ -101,7 +100,7 @@ storeLocal cinfo templates reports platform = sequence_
   , let output = concatMap format reports'
   ]
   where
-    format r = '\n' : BuildReport.show r ++ "\n"
+    format r = '\n' : showBuildReport r ++ "\n"
 
     reportFileName template report =
         fromPathTemplate (substPathTemplate env template)
@@ -141,7 +140,7 @@ fromPlanPackage :: Platform -> CompilerId
 fromPlanPackage (Platform arch os) comp
                 (InstallPlan.Configured (ConfiguredPackage _ srcPkg flags _ deps))
                 (Just buildResult) =
-      Just ( BuildReport.new os arch comp
+      Just ( newBuildReport os arch comp
                              (packageId srcPkg) flags
                              (map packageId (CD.nonSetupDeps deps))
                              buildResult
@@ -157,5 +156,5 @@ fromPlanPackage _ _ _ _ = Nothing
 fromPlanningFailure :: Platform -> CompilerId
     -> [PackageId] -> FlagAssignment -> [(BuildReport, Maybe Repo)]
 fromPlanningFailure (Platform arch os) comp pkgids flags =
-  [ (BuildReport.new os arch comp pkgid flags [] (Left PlanningFailed), Nothing)
+  [ (newBuildReport os arch comp pkgid flags [] (Left PlanningFailed), Nothing)
   | pkgid <- pkgids ]

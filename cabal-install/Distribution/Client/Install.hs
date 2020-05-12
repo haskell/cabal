@@ -90,6 +90,7 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+import Distribution.Client.BuildReports.Anonymous (showBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
@@ -871,7 +872,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
        handleMissingLogFile $ do
          buildLog <- readFile logFile
          createDirectoryIfMissing True reportsDir -- FIXME
-         writeFile reportFile (show (BuildReports.show report, buildLog))
+         writeFile reportFile (show (showBuildReport report, buildLog))
 
   | (report, Just repo) <- reports
   , Just remoteRepo <- [maybeRepoRemote repo]

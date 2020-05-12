@@ -153,6 +153,7 @@ executable cabal
         Distribution.Deprecated.ViewAsFieldDescr
 
         Distribution.Client.BuildReports.Anonymous
+        Distribution.Client.BuildReports.Lens
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
