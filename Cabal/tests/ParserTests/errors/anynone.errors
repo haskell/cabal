@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [3,4])
+anynone.cabal:10:26: 
+unexpected '-'
+expecting space, white space, opening paren, operator, comma or end of input
+

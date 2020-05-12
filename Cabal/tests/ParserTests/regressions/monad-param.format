@@ -1,0 +1,31 @@
+monad-param.cabal:19:3: Tabs used as indentation at 19:3, 20:3
+name:         monad-param
+version:      0.0.1
+license:      BSD3
+license-file: LICENSE
+copyright:    Copyright (C) 2006-2007, Edward Kmett
+maintainer:   Edward Kmett <ekmett@gmail.com>
+author:       Edward Kmett <ekmett@gmail.com>
+stability:    alpha
+homepage:
+    http://comonad.com/haskell/monad-param/dist/doc/html/Control-Monad-Parameterized.html
+
+package-url:  http://comonad.com/haskell/monad-param
+synopsis:     Parameterized monads
+description:
+    Implements parameterized monads by overloading the monad sugar with more liberal types.
+
+category:     Control
+
+library
+    exposed-modules: Control.Monad.Parameterized
+    hs-source-dirs:  src
+    extensions:
+        MultiParamTypeClasses FunctionalDependencies OverlappingInstances
+        UndecidableInstances EmptyDataDecls NoImplicitPrelude
+
+    ghc-options:     -funbox-strict-fields -threaded -fasm
+    build-depends:
+        base,
+        mtl,
+        stm

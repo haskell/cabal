@@ -185,7 +185,8 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
                 -- version will be parsed twice, therefore we parse without warnings.
                 v <- withoutWarnings $
                     Newtype.unpack' SpecVersion <$>
-                    runFieldParser pos parsec cabalSpecLatest fls
+                    -- Use version with || and && but before addition of ^>= and removal of -any
+                    runFieldParser pos parsec CabalSpecV1_24 fls
 
                 -- if it were at the beginning, scanner would found it
                 when (v >= CabalSpecV2_2) $ parseFailure pos $

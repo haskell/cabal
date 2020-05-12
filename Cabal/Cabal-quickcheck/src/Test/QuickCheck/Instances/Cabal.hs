@@ -21,7 +21,7 @@ import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
-import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName)
+import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName, unFlagAssignment)
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
@@ -249,7 +249,12 @@ instance Arbitrary1 Flag where
 -------------------------------------------------------------------------------
 
 instance Arbitrary FlagName where
-    arbitrary = mkFlagName <$> flagident
+    arbitrary = mkFlagName <$> frequency
+        [ (20, flagident)
+        -- special nasty cases
+        , (1,  pure "none")
+        , (1,  pure "any")
+        ]
       where
         flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
                       `suchThat` (("-" /=) . take 1)
@@ -257,6 +262,7 @@ instance Arbitrary FlagName where
 
 instance Arbitrary FlagAssignment where
     arbitrary = mkFlagAssignment <$> arbitrary
+    shrink x = mkFlagAssignment <$> shrink (unFlagAssignment x)
 
 -------------------------------------------------------------------------------
 -- Verbosity

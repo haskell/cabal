@@ -286,6 +286,12 @@ prettyVersionRange16 vr = prettyVersionRange vr
 --
 -- Small history:
 --
+-- @-any@ and @-none@ removed in 3.4
+-- Use @>=0@ and @<0@ instead.
+--
+-- >>> map (`simpleParsec'` "-none") [CabalSpecV3_0, CabalSpecV3_4] :: [Maybe VersionRange]
+-- [Just (EarlierVersion (mkVersion [0])),Nothing]
+--
 -- Set operations are introduced in 3.0
 --
 -- >>> map (`simpleParsec'` "^>= { 1.2 , 1.3 }") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe VersionRange]
@@ -432,7 +438,12 @@ versionRangeParser digitParser csv = expr
         isOpChar '=' = True
         isOpChar '>' = True
         isOpChar '^' = True
-        isOpChar '-' = True
+        isOpChar '-' = csv < CabalSpecV3_4
+        -- https://github.com/haskell/cabal/issues/6589
+        -- Unfortunately we have must not consume the dash,
+        -- as otherwise following parts may not be parsed.
+        --
+        -- i.e. we cannot fail here with good error.
         isOpChar _   = False
 
         -- -none version range is available since 1.22

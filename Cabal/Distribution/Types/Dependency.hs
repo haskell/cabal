@@ -172,12 +172,8 @@ instance Described Dependency where
                     , reChar '}'
                     ]
                 ]
-        -- TODO: RESpaces1 should be just RESpaces, but we are able
-        -- to generate non-parseable strings without mandatory space
-        --
-        -- https://github.com/haskell/cabal/issues/6589
-        --
-        , REOpt $ RESpaces1 <> vr
+
+        , REOpt $ RESpaces <> vr
         ]
       where
         vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))

@@ -22,8 +22,12 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.4``
 ----------------------
 
+
 * License fields use identifiers from SPDX License List version
   ``3.8 2020-02-09``
+
+* Remove ``-any`` and ``-none`` syntax for version ranges
+  Use ``>=0`` and ``<0`` respectively.
 
 ``cabal-version: 3.0``
 ----------------------

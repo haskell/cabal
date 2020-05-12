@@ -35,6 +35,8 @@ extra-source-files:
   -- BEGIN gen-extra-source-files
   tests/ParserTests/errors/MiniAgda.cabal
   tests/ParserTests/errors/MiniAgda.errors
+  tests/ParserTests/errors/anynone.cabal
+  tests/ParserTests/errors/anynone.errors
   tests/ParserTests/errors/big-version.cabal
   tests/ParserTests/errors/big-version.errors
   tests/ParserTests/errors/common1.cabal
@@ -110,6 +112,9 @@ extra-source-files:
   tests/ParserTests/regressions/Octree-0.5.cabal
   tests/ParserTests/regressions/Octree-0.5.expr
   tests/ParserTests/regressions/Octree-0.5.format
+  tests/ParserTests/regressions/anynone.cabal
+  tests/ParserTests/regressions/anynone.expr
+  tests/ParserTests/regressions/anynone.format
   tests/ParserTests/regressions/assoc-cpp-options.cabal
   tests/ParserTests/regressions/assoc-cpp-options.check
   tests/ParserTests/regressions/bad-glob-syntax.cabal
@@ -200,6 +205,9 @@ extra-source-files:
   tests/ParserTests/regressions/mixin-3.cabal
   tests/ParserTests/regressions/mixin-3.expr
   tests/ParserTests/regressions/mixin-3.format
+  tests/ParserTests/regressions/monad-param.cabal
+  tests/ParserTests/regressions/monad-param.expr
+  tests/ParserTests/regressions/monad-param.format
   tests/ParserTests/regressions/multiple-libs-2.cabal
   tests/ParserTests/regressions/multiple-libs-2.check
   tests/ParserTests/regressions/multiple-libs-2.expr
