@@ -13,18 +13,29 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.BuildReports.Types (
     ReportLevel(..),
-  ) where
+    BuildReport (..),
+    InstallOutcome(..),
+    Outcome(..),
+) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import qualified Distribution.Compat.CharParsing as P
-import qualified Text.PrettyPrint as Disp
+import qualified Text.PrettyPrint                as Disp
 
-import Data.Char as Char
-         ( isAlpha, toLower )
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
-import Distribution.Parsec (Parsec (..))
-import Distribution.Pretty (Pretty (..))
-import Distribution.Utils.Structured (Structured)
+import Distribution.Compiler               (CompilerId (..))
+import Distribution.FieldGrammar.Described
+import Distribution.PackageDescription     (FlagAssignment)
+import Distribution.Parsec                 (Parsec (..))
+import Distribution.Pretty                 (Pretty (..), prettyShow)
+import Distribution.System                 (Arch, OS)
+import Distribution.Types.PackageId        (PackageIdentifier)
+import Text.PrettyPrint                    ((<+>))
+
+-------------------------------------------------------------------------------
+-- ReportLevel
+-------------------------------------------------------------------------------
 
 data ReportLevel = NoReports | AnonymousReports | DetailedReports
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
@@ -39,7 +50,7 @@ instance Pretty ReportLevel where
 
 instance Parsec ReportLevel where
   parsec = do
-    name <- P.munch1 Char.isAlpha
+    name <- P.munch1 isAlpha
     case lowercase name of
       "none"       -> return NoReports
       "anonymous"  -> return AnonymousReports
@@ -47,4 +58,133 @@ instance Parsec ReportLevel where
       _            -> P.unexpected $ "ReportLevel: " ++ name
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower
+
+-------------------------------------------------------------------------------
+-- BuildReport
+-------------------------------------------------------------------------------
+
+data BuildReport = BuildReport {
+    -- | The package this build report is about
+    package         :: PackageIdentifier,
+
+    -- | The OS and Arch the package was built on
+    os              :: OS,
+    arch            :: Arch,
+
+    -- | The Haskell compiler (and hopefully version) used
+    compiler        :: CompilerId,
+
+    -- | The uploading client, ie cabal-install-x.y.z
+    client          :: PackageIdentifier,
+
+    -- | Which configurations flags we used
+    flagAssignment  :: FlagAssignment,
+
+    -- | Which dependent packages we were using exactly
+    dependencies    :: [PackageIdentifier],
+
+    -- | Did installing work ok?
+    installOutcome  :: InstallOutcome,
+
+    --   Which version of the Cabal library was used to compile the Setup.hs
+--    cabalVersion    :: Version,
+
+    --   Which build tools we were using (with versions)
+--    tools      :: [PackageIdentifier],
+
+    -- | Configure outcome, did configure work ok?
+    docsOutcome     :: Outcome,
+
+    -- | Configure outcome, did configure work ok?
+    testsOutcome    :: Outcome
+  }
+  deriving (Eq, Show, Generic)
+
+
+
+-------------------------------------------------------------------------------
+-- InstallOutcome
+-------------------------------------------------------------------------------
+
+data InstallOutcome
+   = PlanningFailed
+   | DependencyFailed PackageIdentifier
+   | DownloadFailed
+   | UnpackFailed
+   | SetupFailed
+   | ConfigureFailed
+   | BuildFailed
+   | TestsFailed
+   | InstallFailed
+   | InstallOk
+  deriving (Eq, Show, Generic)
+
+instance Pretty InstallOutcome where
+  pretty PlanningFailed  = Disp.text "PlanningFailed"
+  pretty (DependencyFailed pkgid) = Disp.text "DependencyFailed" <+> pretty pkgid
+  pretty DownloadFailed  = Disp.text "DownloadFailed"
+  pretty UnpackFailed    = Disp.text "UnpackFailed"
+  pretty SetupFailed     = Disp.text "SetupFailed"
+  pretty ConfigureFailed = Disp.text "ConfigureFailed"
+  pretty BuildFailed     = Disp.text "BuildFailed"
+  pretty TestsFailed     = Disp.text "TestsFailed"
+  pretty InstallFailed   = Disp.text "InstallFailed"
+  pretty InstallOk       = Disp.text "InstallOk"
+
+instance Parsec InstallOutcome where
+  parsec = do
+    name <- P.munch1 isAlpha
+    case name of
+      "PlanningFailed"   -> return PlanningFailed
+      "DependencyFailed" -> DependencyFailed <$ P.spaces <*> parsec
+      "DownloadFailed"   -> return DownloadFailed
+      "UnpackFailed"     -> return UnpackFailed
+      "SetupFailed"      -> return SetupFailed
+      "ConfigureFailed"  -> return ConfigureFailed
+      "BuildFailed"      -> return BuildFailed
+      "TestsFailed"      -> return TestsFailed
+      "InstallFailed"    -> return InstallFailed
+      "InstallOk"        -> return InstallOk
+      _                  -> P.unexpected $ "InstallOutcome: " ++ name
+
+instance Described InstallOutcome where
+  describe _ = REUnion
+    [ fromString "PlanningFailed"
+    , fromString "DependencyFailed" <> RESpaces1 <> describe (Proxy :: Proxy PackageIdentifier)
+    , fromString "DownloadFailed"
+    , fromString "UnpackFailed"
+    , fromString "SetupFailed"
+    , fromString "ConfigureFailed"
+    , fromString "BuildFailed"
+    , fromString "TestsFailed"
+    , fromString "InstallFailed"
+    , fromString "InstallOk"
+    ]
+
+-------------------------------------------------------------------------------
+-- Outcome
+-------------------------------------------------------------------------------
+
+data Outcome = NotTried | Failed | Ok
+  deriving (Eq, Show, Enum, Bounded, Generic)
+
+instance Pretty Outcome where
+  pretty NotTried = Disp.text "NotTried"
+  pretty Failed   = Disp.text "Failed"
+  pretty Ok       = Disp.text "Ok"
+
+instance Parsec Outcome where
+  parsec = do
+    name <- P.munch1 isAlpha
+    case name of
+      "NotTried" -> return NotTried
+      "Failed"   -> return Failed
+      "Ok"       -> return Ok
+      _          -> P.unexpected $ "Outcome: " ++ name
+
+instance Described Outcome where
+  describe _ = REUnion
+    [ fromString (prettyShow o)
+    | o <- [minBound .. maxBound :: Outcome]
+    ]

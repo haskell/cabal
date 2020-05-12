@@ -748,9 +748,6 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
           (x1, ShortToken x2, fmap ShortToken x3, fmap ShortToken x4, fmap ShortToken x5)
         ]
 
-instance Arbitrary CompilerFlavor where
-    arbitrary = elements knownCompilerFlavors
-
 instance Arbitrary a => Arbitrary (InstallDirs a) where
     arbitrary =
       InstallDirs

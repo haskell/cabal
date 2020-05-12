@@ -8,12 +8,13 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
          ( IsCandidate(..), RepoContext(..) )
 
-import Distribution.Simple.Utils (notice, warn, info, die')
+import Distribution.Simple.Utils (notice, warn, info, die', toUTF8BS)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Deprecated.Text (display)
 import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
+import Distribution.Client.BuildReports.Anonymous (parseBuildReport)
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
 import Network.URI (URI(uriPath, uriAuthority), URIAuth(uriRegName))
@@ -187,7 +188,7 @@ report verbosity repoCtxt mUsername mPassword = do
         forM_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile ->
           do inp <- readFile (srcDir </> logFile)
              let (reportStr, buildLog) = read inp :: (String,String) -- TODO: eradicateNoParse
-             case BuildReport.parse reportStr of
+             case parseBuildReport (toUTF8BS reportStr) of
                Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
                Right report' ->
                  do info verbosity $ "Uploading report for "
