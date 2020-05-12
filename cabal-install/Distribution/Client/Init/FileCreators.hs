@@ -65,8 +65,6 @@ import Distribution.Client.Init.Types
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Newtype
   ( Newtype )
-import Distribution.Deprecated.Text
-  ( display, Text(..) )
 import Distribution.Fields.Field
   ( FieldName )
 import Distribution.License
@@ -166,8 +164,8 @@ writeChangeLog flags = when ((defaultChangeLog `elem`) $ fromMaybe [] (extraSrc 
     , ""
     , "* First version. Released on an unsuspecting world."
     ]
-  pname = maybe "" display $ flagToMaybe $ packageName flags
-  pver = maybe "" display $ flagToMaybe $ version flags
+  pname = maybe "" prettyShow $ flagToMaybe $ packageName flags
+  pver = maybe "" prettyShow $ flagToMaybe $ version flags
 
 -- | Creates and writes the initialized .cabal file.
 --
@@ -177,7 +175,7 @@ writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
   message flags "Error: no package name provided."
   return False
 writeCabalFile flags@(InitFlags{packageName = Flag p}) = do
-  let cabalFileName = display p ++ ".cabal"
+  let cabalFileName = prettyShow p ++ ".cabal"
   message flags $ "Generating " ++ cabalFileName ++ "..."
   writeFileSafe flags cabalFileName (generateCabalFile cabalFileName flags)
   return True
@@ -415,7 +413,7 @@ generateCabalFile fileName c =
            ["A copyright notice."]
            True
 
-  , fieldS "category"      (either id display `fmap` category c)
+  , fieldS "category"      (either id prettyShow `fmap` category c)
            []
            True
 
@@ -500,13 +498,13 @@ generateCabalFile fileName c =
 
    -- | Construct a 'PrettyField' from a field that can be automatically
    --   converted to a 'Doc' via 'display'.
-   field :: Text t
+   field :: Pretty t
          => FieldName
          -> Flag t
          -> [String]
          -> Bool
          -> Maybe (PrettyField FieldAnnotation)
-   field fieldName fieldContentsFlag = fieldS fieldName (display <$> fieldContentsFlag)
+   field fieldName fieldContentsFlag = fieldS fieldName (prettyShow <$> fieldContentsFlag)
 
    -- | Construct a 'PrettyField' from a 'String' field.
    fieldS :: FieldName   -- ^ Name of the field
@@ -596,7 +594,7 @@ generateCabalFile fileName c =
      ++
      generateBuildInfo ExecBuild c
      where
-       exeName = text (maybe "" display . flagToMaybe $ packageName c)
+       exeName = text (maybe "" prettyShow . flagToMaybe $ packageName c)
 
    libraryStanza :: PrettyField FieldAnnotation
    libraryStanza = PrettySection annNoComments (toUTF8BS "library") [] $ catMaybes
@@ -633,7 +631,7 @@ generateCabalFile fileName c =
      ]
      where
        testSuiteName =
-         text (maybe "" ((++"-test") . display) . flagToMaybe $ packageName c)
+         text (maybe "" ((++"-test") . prettyShow) . flagToMaybe $ packageName c)
 
 -- | Annotations for cabal file PrettyField.
 data FieldAnnotation = FieldAnnotation

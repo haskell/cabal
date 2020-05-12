@@ -26,17 +26,15 @@ module Distribution.Client.Init.Prompt (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (empty)
 
-import Distribution.Deprecated.ReadP (readP_to_E)
-
 import Control.Monad
   ( mapM_ )
 
 import Distribution.Client.Init.Types
   ( InitFlags(..) )
-import Distribution.Deprecated.Text
-  ( display, Text(..) )
-import Distribution.ReadE
-  ( runReadE )
+import Distribution.Parsec
+  ( Parsec, simpleParsec )
+import Distribution.Pretty
+  ( Pretty, prettyShow )
 import Distribution.Simple.Setup
   ( Flag(..) )
 
@@ -69,10 +67,8 @@ promptYesNo =
 
 -- | Create a prompt with optional default value that returns a value
 --   of some Text instance.
-prompt :: Text t => String -> Maybe t -> IO t
-prompt = promptDefault'
-           (either (const Nothing) Just . runReadE (readP_to_E id parse))
-           display
+prompt :: (Parsec t, Pretty t) => String -> Maybe t -> IO t
+prompt = promptDefault' simpleParsec prettyShow
 
 -- | Create a prompt with an optional default value.
 promptDefault' :: (String -> Maybe t)       -- ^ parser
@@ -99,11 +95,11 @@ mkDefPrompt pr def = pr ++ "?" ++ defStr def
 
 -- | Create a prompt from a list of items, where no selected items is
 --   valid and will be represented as a return value of 'Nothing'.
-promptListOptional :: (Text t, Eq t)
+promptListOptional :: (Pretty t, Eq t)
                    => String            -- ^ prompt
                    -> [t]               -- ^ choices
                    -> IO (Maybe (Either String t))
-promptListOptional pr choices = promptListOptional' pr choices display
+promptListOptional pr choices = promptListOptional' pr choices prettyShow
 
 promptListOptional' :: Eq t
                    => String            -- ^ prompt
