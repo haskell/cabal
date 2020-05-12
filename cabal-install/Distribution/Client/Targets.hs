@@ -734,8 +734,7 @@ instance Described UserConstraint where
 
         describeConstraintProperty :: GrammarRegex void
         describeConstraintProperty = REUnion
-            -- TODO: change first to RESpaces when -any and -none are removed
-            [ RESpaces1 <> RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
+            [ RESpaces <> RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
             , RESpaces1 <> describeConstraintProperty'
             ]
 

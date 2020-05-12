@@ -1,0 +1,5 @@
+synopsis: Remove `-any` and `-none` syntax for version ranges in cabal-version: 3.4
+issues: #6589
+
+description:
+  Use `>=0` (or empty in dependencies) and `<0` respectively.

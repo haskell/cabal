@@ -17,8 +17,8 @@ import Distribution.Fields                         (runParseResult)
 import Distribution.PackageDescription             (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec      (parseGenericPackageDescription)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
-import Distribution.Parsec
-       (PWarnType (..), PWarning (..), showPError, showPWarning)
+import Distribution.Parsec                         (PWarnType (..), PWarning (..), showPError, showPWarning)
+import Distribution.Pretty                         (prettyShow)
 import Distribution.Utils.Generic                  (fromUTF8BS, toUTF8BS)
 import System.Directory                            (setCurrentDirectory)
 import System.Environment                          (getArgs, withArgs)
@@ -129,6 +129,7 @@ errorTests = testGroup "errors"
     , errorTest "libpq2.cabal"
     , errorTest "MiniAgda.cabal"
     , errorTest "big-version.cabal"
+    , errorTest "anynone.cabal"
     ]
 
 errorTest :: FilePath -> TestTree
@@ -189,6 +190,8 @@ regressionTests = testGroup "regressions"
     , regressionTest "indentation2.cabal"
     , regressionTest "indentation3.cabal"
     , regressionTest "big-version.cabal"
+    , regressionTest "anynone.cabal"
+    , regressionTest "monad-param.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
@@ -210,8 +213,11 @@ formatGoldenTest fp = cabalGoldenTest "format" correct $ do
         Right gpd ->
             unlines (map (showPWarning fp) warns)
             ++ showGenericPackageDescription gpd
-        Left (_, errs) ->
-            unlines $ "ERROR" : map (showPError fp) (NE.toList errs)
+        Left (csv, errs) ->
+            unlines $
+                "ERROR" :
+                maybe "unknown-version" prettyShow csv :
+                map (showPError fp) (NE.toList errs)
   where
     input = "tests" </> "ParserTests" </> "regressions" </> fp
     correct = replaceExtension input "format"

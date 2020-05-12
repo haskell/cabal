@@ -66,9 +66,7 @@ instance Parsec PackageVersionConstraint where
 instance Described PackageVersionConstraint where
     describe _ = describe (Proxy :: Proxy PackageName) <> REUnion
         [ fromString "-" <> describe (Proxy :: Proxy Version)
-        -- TODO: change to RESpaces when -any and -none are removed
-        -- Related https://github.com/haskell/cabal/issues/6760
-        , RESpaces1 <> describe (Proxy :: Proxy VersionRange)
+        , RESpaces <> describe (Proxy :: Proxy VersionRange)
         ]
 
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
