@@ -49,7 +49,9 @@ import qualified Distribution.Deprecated.Text as Text
 import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), ParseResult(..), Field(..)
          , simpleField, listField, ppFields, readFields
-         , syntaxError, locatedErrorMsg )
+         , syntaxError, locatedErrorMsg, simpleFieldParsec )
+import Distribution.Pretty (pretty)
+import Distribution.Parsec (parsec)
 import Distribution.Simple.Utils
          ( comparing )
 
@@ -238,7 +240,7 @@ fieldDescrs =
                                  package        (\v r -> r { package = v })
  , simpleField "os"              Text.disp      Text.parse
                                  os             (\v r -> r { os = v })
- , simpleField "arch"            Text.disp      Text.parse
+ , simpleFieldParsec "arch"      pretty         parsec
                                  arch           (\v r -> r { arch = v })
  , simpleField "compiler"        Text.disp      Text.parse
                                  compiler       (\v r -> r { compiler = v })

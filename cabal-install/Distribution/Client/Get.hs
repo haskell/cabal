@@ -36,7 +36,6 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Pretty (prettyShow)
-import Distribution.Deprecated.Text (display)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )
@@ -171,7 +170,7 @@ unpackPackage :: Verbosity -> FilePath -> PackageId
               -> PackageDescriptionOverride
               -> FilePath  -> IO ()
 unpackPackage verbosity prefix pkgid descOverride pkgPath = do
-    let pkgdirname               = display pkgid
+    let pkgdirname               = prettyShow pkgid
         pkgdir                   = prefix </> pkgdirname
         pkgdir'                  = addTrailingPathSeparator pkgdir
         emptyDirectory directory = null <$> listDirectory directory
@@ -190,7 +189,7 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
     case descOverride of
       Nothing     -> return ()
       Just pkgtxt -> do
-        let descFilePath = pkgdir </> display (packageName pkgid) <.> "cabal"
+        let descFilePath = pkgdir </> prettyShow (packageName pkgid) <.> "cabal"
         info verbosity $
           "Updating " ++ descFilePath
                       ++ " with the latest revision from the index."
@@ -214,37 +213,37 @@ data ClonePackageException =
 
 instance Exception ClonePackageException where
   displayException (ClonePackageNoSourceRepos pkgid) =
-       "Cannot fetch a source repository for package " ++ display pkgid
+       "Cannot fetch a source repository for package " ++ prettyShow pkgid
     ++ ". The package does not specify any source repositories."
 
   displayException (ClonePackageNoSourceReposOfKind pkgid repoKind) =
-       "Cannot fetch a source repository for package " ++ display pkgid
+       "Cannot fetch a source repository for package " ++ prettyShow pkgid
     ++ ". The package does not specify a source repository of the requested "
-    ++ "kind" ++ maybe "." (\k -> " (kind " ++ display k ++ ").") repoKind
+    ++ "kind" ++ maybe "." (\k -> " (kind " ++ prettyShow k ++ ").") repoKind
 
   displayException (ClonePackageNoRepoType pkgid _repo) =
-       "Cannot fetch the source repository for package " ++ display pkgid
+       "Cannot fetch the source repository for package " ++ prettyShow pkgid
     ++ ". The package's description specifies a source repository but does "
     ++ "not specify the repository 'type' field (e.g. git, darcs or hg)."
 
   displayException (ClonePackageUnsupportedRepoType pkgid _ repoType) =
-       "Cannot fetch the source repository for package " ++ display pkgid
-    ++ ". The repository type '" ++ display repoType
+       "Cannot fetch the source repository for package " ++ prettyShow pkgid
+    ++ ". The repository type '" ++ prettyShow repoType
     ++ "' is not yet supported."
 
   displayException (ClonePackageNoRepoLocation pkgid _repo) =
-       "Cannot fetch the source repository for package " ++ display pkgid
+       "Cannot fetch the source repository for package " ++ prettyShow pkgid
     ++ ". The package's description specifies a source repository but does "
     ++ "not specify the repository 'location' field (i.e. the URL)."
 
   displayException (ClonePackageDestinationExists pkgid dest isdir) =
-       "Not fetching the source repository for package " ++ display pkgid ++ ". "
+       "Not fetching the source repository for package " ++ prettyShow pkgid ++ ". "
     ++ if isdir then "The destination directory " ++ dest ++ " already exists."
                 else "A file " ++ dest ++ " is in the way."
 
   displayException (ClonePackageFailedWithExitCode
                       pkgid repo vcsprogname exitcode) =
-       "Failed to fetch the source repository for package " ++ display pkgid
+       "Failed to fetch the source repository for package " ++ prettyShow pkgid
     ++ ", repository location " ++ srpLocation repo ++ " ("
     ++ vcsprogname ++ " failed with " ++ show exitcode ++ ")."
 
@@ -302,7 +301,7 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
         Left SourceRepoLocationUnspecified ->
           throwIO (ClonePackageNoRepoLocation pkgid repo)
 
-      let destDir = destDirPrefix </> display (packageName pkgid)
+      let destDir = destDirPrefix </> prettyShow (packageName pkgid)
       destDirExists  <- doesDirectoryExist destDir
       destFileExists <- doesFileExist      destDir
       when (destDirExists || destFileExists) $

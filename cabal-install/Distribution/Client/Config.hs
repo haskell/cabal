@@ -94,7 +94,9 @@ import Distribution.Deprecated.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseOptCommaList, parseTokenQ, syntaxError)
+         , parseFilePathQ, parseOptCommaList, parseTokenQ, syntaxError
+         , simpleFieldParsec
+         )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
@@ -115,6 +117,7 @@ import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
          ( Verbosity, normal )
+import qualified Distribution.Compat.CharParsing as P
 
 import Distribution.Solver.Types.ConstraintSource
 
@@ -1345,8 +1348,8 @@ remoteRepoFields =
   , listField "root-keys"
     text                     parseTokenQ
     remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
-  , simpleField "key-threshold"
-    showThreshold            Text.parse
+  , simpleFieldParsec "key-threshold"
+    showThreshold            P.integral
     remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
   ]
   where

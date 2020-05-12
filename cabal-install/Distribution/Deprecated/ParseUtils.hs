@@ -39,7 +39,7 @@ module Distribution.Deprecated.ParseUtils (
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
-        fieldParsec, commaNewLineListFieldParsec,
+        fieldParsec, simpleFieldParsec, commaNewLineListFieldParsec,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -213,6 +213,11 @@ simpleField :: String -> (a -> Doc) -> ReadP a a
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 simpleField name showF readF get set
   = liftField get set $ field name showF readF
+
+simpleFieldParsec :: String -> (a -> Doc) -> ParsecParser a
+            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
+simpleFieldParsec name showF readF get set
+  = liftField get set $ fieldParsec name showF readF
 
 commaListFieldWithSep :: Separator -> String -> (a -> Doc) -> ReadP [a] a
                       -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b

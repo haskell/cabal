@@ -44,7 +44,7 @@ import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
-import           Distribution.Deprecated.Text
+import           Distribution.Pretty (Pretty, prettyShow)
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
@@ -236,19 +236,19 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         ["bin-file" J..= J.String bin]
        where
         bin = if elabBuildStyle elab == BuildInplaceOnly
-               then dist_dir </> "build" </> display s </> display s
-               else InstallDirs.bindir (elabInstallDirs elab) </> display s
+               then dist_dir </> "build" </> prettyShow s </> prettyShow s
+               else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
     comp2str :: ComponentDeps.Component -> String
     comp2str c = case c of
         ComponentDeps.ComponentLib     -> "lib"
-        ComponentDeps.ComponentSubLib s -> "lib:"   <> display s
-        ComponentDeps.ComponentFLib s  -> "flib:"  <> display s
-        ComponentDeps.ComponentExe s   -> "exe:"   <> display s
-        ComponentDeps.ComponentTest s  -> "test:"  <> display s
-        ComponentDeps.ComponentBench s -> "bench:" <> display s
+        ComponentDeps.ComponentSubLib s -> "lib:"   <> prettyShow s
+        ComponentDeps.ComponentFLib s  -> "flib:"  <> prettyShow s
+        ComponentDeps.ComponentExe s   -> "exe:"   <> prettyShow s
+        ComponentDeps.ComponentTest s  -> "test:"  <> prettyShow s
+        ComponentDeps.ComponentBench s -> "bench:" <> prettyShow s
         ComponentDeps.ComponentSetup   -> "setup"
 
     style2str :: Bool -> BuildStyle -> String
@@ -256,8 +256,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     style2str False BuildInplaceOnly = "inplace"
     style2str False BuildAndInstall  = "global"
 
-    jdisplay :: Text a => a -> J.Value
-    jdisplay = J.String . display
+    jdisplay :: Pretty a => a -> J.Value
+    jdisplay = J.String . prettyShow
 
 
 -----------------------------------------------------------------------------
@@ -692,7 +692,7 @@ updatePostBuildProjectStatus verbosity distDirLayout
 
     return currentBuildStatus
   where
-    displayPackageIdSet = intercalate ", " . map display . Set.toList
+    displayPackageIdSet = intercalate ", " . map prettyShow . Set.toList
 
 -- | Helper for reading the cache file.
 --
@@ -836,7 +836,7 @@ argsEquivalentOfGhcEnvironmentFileGhc
                  selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan
     -- TODO use proper flags? but packageDbArgsDb is private
     clearPackageDbStackFlag = ["-clear-package-db", "-global-package-db"]
-    packageIdFlag uid = ["-package-id", display uid]
+    packageIdFlag uid = ["-package-id", prettyShow uid]
 
 
 -- We're producing an environment for users to use in ghci, so of course
