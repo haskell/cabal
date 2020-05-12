@@ -50,6 +50,7 @@ import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Parsec
 import Distribution.Pretty
+import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -132,6 +133,13 @@ instance Pretty OS where
 instance Parsec OS where
   parsec = classifyOS Compat <$> parsecIdent
 
+instance Described OS where
+  describe _ = REUnion
+    [ fromString al
+    | os <- knownOSs
+    , al <- prettyShow os : osAliases Compat os
+    ]
+
 classifyOS :: ClassificationStrictness -> String -> OS
 classifyOS strictness s =
   fromMaybe (OtherOS s) $ lookup (lowercase s) osMap
@@ -197,6 +205,12 @@ instance Pretty Arch where
 
 instance Parsec Arch where
   parsec = classifyArch Strict <$> parsecIdent
+
+instance Described Arch where
+  describe _ = REUnion
+    [ fromString (prettyShow arch)
+    | arch <- knownArches
+    ]
 
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
