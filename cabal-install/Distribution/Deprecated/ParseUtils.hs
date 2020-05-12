@@ -53,7 +53,7 @@ import Distribution.Deprecated.Text
 import Distribution.Compat.Newtype
 import Distribution.Compiler
 import Distribution.ModuleName
-import Distribution.Parsec.Newtypes (TestedWith (..))
+import Distribution.FieldGrammar.Newtypes (TestedWith (..))
 import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Utils.Generic

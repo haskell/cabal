@@ -1,5 +1,8 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE RankNTypes    #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module Distribution.FieldGrammar.FieldDescrs (
     FieldDescrs,
     fieldDescrPretty,
@@ -14,7 +17,7 @@ import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Lens    (aview, cloneLens)
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
-import Distribution.Pretty         (pretty, showFreeText)
+import Distribution.Pretty         (Pretty (..), showFreeText)
 
 import qualified Data.Map                        as Map
 import qualified Distribution.Compat.CharParsing as C
@@ -55,7 +58,7 @@ fieldDescrsToList = map mk . Map.toList . runF where
     mk (name, SP ppr parse) = (name, ppr, parse)
 
 -- | /Note:/ default values are printed.
-instance FieldGrammar FieldDescrs where
+instance FieldGrammar ParsecPretty FieldDescrs where
     blurFieldGrammar l (F m) = F (fmap blur m) where
         blur (SP f g) = SP (f . aview l) (cloneLens l g)
 
@@ -113,3 +116,6 @@ parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar
 
     trim :: String -> String
     trim = dropWhile isSpace . dropWhileEnd isSpace
+
+class    (P.Parsec a, Pretty a) => ParsecPretty a
+instance (P.Parsec a, Pretty a) => ParsecPretty a

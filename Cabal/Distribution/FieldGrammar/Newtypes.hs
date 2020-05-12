@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 -- | This module provides @newtype@ wrappers to be used with "Distribution.FieldGrammar".
-module Distribution.Parsec.Newtypes (
+module Distribution.FieldGrammar.Newtypes (
     -- * List
     alaList,
     alaList',

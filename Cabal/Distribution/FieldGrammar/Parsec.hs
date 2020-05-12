@@ -1,6 +1,7 @@
-{-# LANGUAGE DeriveFunctor       #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 -- | This module provides a 'FieldGrammarParser', one way to parse
 -- @.cabal@ -like files.
 --
@@ -151,7 +152,7 @@ warnMultipleSingularFields fn (x : xs) = do
     parseWarning pos PWTMultipleSingularField $
         "The field " <> show fn <> " is specified more than once at positions " ++ intercalate ", " (map showPos (pos : poss))
 
-instance FieldGrammar ParsecFieldGrammar where
+instance FieldGrammar Parsec ParsecFieldGrammar where
     blurFieldGrammar _ (ParsecFG s s' parser) = ParsecFG s s' parser
 
     uniqueFieldAla fn _pack _extract = ParsecFG (Set.singleton fn) Set.empty parser

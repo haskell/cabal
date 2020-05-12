@@ -528,6 +528,7 @@ library
     Distribution.FieldGrammar.Class
     Distribution.FieldGrammar.Described
     Distribution.FieldGrammar.FieldDescrs
+    Distribution.FieldGrammar.Newtypes
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar
@@ -535,7 +536,6 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.Parsec
     Distribution.Parsec.Error
-    Distribution.Parsec.Newtypes
     Distribution.Parsec.Position
     Distribution.Parsec.Warning
     Distribution.Parsec.FieldLineStream

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP              #-}
+{-# LANGUAGE CPP           #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Test.QuickCheck.Instances.Cabal () where
@@ -11,8 +11,8 @@ import Test.QuickCheck
 
 import Distribution.CabalSpecVersion
 import Distribution.Compiler
+import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
-import Distribution.Parsec.Newtypes
 import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.SPDX
 import Distribution.System

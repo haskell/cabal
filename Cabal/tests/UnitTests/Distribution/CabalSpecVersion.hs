@@ -6,9 +6,9 @@ import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Parsec           (eitherParsec)
-import Distribution.Parsec.Newtypes  (SpecVersion (..))
-import Distribution.Pretty           (prettyShow)
+import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
+import Distribution.Parsec                (eitherParsec)
+import Distribution.Pretty                (prettyShow)
 
 import Test.Tasty
 import Test.Tasty.QuickCheck

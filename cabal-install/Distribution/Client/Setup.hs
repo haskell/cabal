@@ -131,7 +131,7 @@ import Distribution.Client.GlobalFlags
          , RepoContext(..), withRepoContext
          )
 import Distribution.Client.ManpageFlags (ManpageFlags, defaultManpageFlags, manpageOptions)
-import Distribution.Parsec.Newtypes (SpecVersion (..))
+import Distribution.FieldGrammar.Newtypes (SpecVersion (..))
 
 import Data.List
          ( deleteFirstsBy )
