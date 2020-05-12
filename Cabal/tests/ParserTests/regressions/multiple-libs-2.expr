@@ -6,11 +6,11 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "base"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "base")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "ElseIf"`],
+                                       {exposedModules = [ModuleName "ElseIf"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -54,9 +54,11 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "base"`
+                                                                                  (PackageName
+                                                                                     "base")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -66,15 +68,15 @@ GenericPackageDescription
                                         reexportedModules = [],
                                         signatures = []}},
    condSubLibraries = [_×_
-                         `UnqualComponentName "public"`
+                         (UnqualComponentName "public")
                          CondNode
                            {condTreeComponents = [],
                             condTreeConstraints = [Dependency
-                                                     `PackageName "base"`
-                                                     (OrLaterVersion `mkVersion [0]`)
+                                                     (PackageName "base")
+                                                     (OrLaterVersion (mkVersion [0]))
                                                      (Set.fromList [LMainLibName])],
                             condTreeData = Library
-                                             {exposedModules = [`ModuleName "ElseIf2"`],
+                                             {exposedModules = [ModuleName "ElseIf2"],
                                               libBuildInfo = BuildInfo
                                                                {asmOptions = [],
                                                                 asmSources = [],
@@ -121,14 +123,16 @@ GenericPackageDescription
                                                                 staticOptions = PerCompilerFlavor
                                                                                   [] [],
                                                                 targetBuildDepends = [Dependency
-                                                                                        `PackageName "base"`
+                                                                                        (PackageName
+                                                                                           "base")
                                                                                         (OrLaterVersion
-                                                                                           `mkVersion [0]`)
+                                                                                           (mkVersion
+                                                                                              [0]))
                                                                                         (Set.fromList
                                                                                            [LMainLibName])],
                                                                 virtualModules = []},
                                               libExposed = True,
-                                              libName = LSubLibName `UnqualComponentName "public"`,
+                                              libName = LSubLibName (UnqualComponentName "public"),
                                               libVisibility = LibraryVisibilityPrivate,
                                               reexportedModules = [],
                                               signatures = []}}],
@@ -157,8 +161,8 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "multiple-libs"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "multiple-libs",
+                                        pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

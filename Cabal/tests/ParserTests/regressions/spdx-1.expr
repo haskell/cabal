@@ -83,8 +83,7 @@ GenericPackageDescription
                            licenseRaw = Right BSD3,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "spdx"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "spdx", pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

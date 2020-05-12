@@ -83,8 +83,8 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "indentation"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "indentation",
+                                        pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

@@ -31,9 +31,9 @@ import qualified Data.List.NonEmpty    as NE
 import qualified Distribution.InstalledPackageInfo as IPI
 
 #ifdef MIN_VERSION_tree_diff
-import Data.TreeDiff        (ansiWlEditExpr, ediff, toExpr)
-import Data.TreeDiff.Golden (ediffGolden)
-import Instances.TreeDiff ()
+import Data.TreeDiff                 (ansiWlEditExpr, ediff, toExpr)
+import Data.TreeDiff.Golden          (ediffGolden)
+import Data.TreeDiff.Instances.Cabal ()
 #endif
 
 tests :: TestTree

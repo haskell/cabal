@@ -1,20 +1,20 @@
 GenericPackageDescription
   {condBenchmarks = [],
    condExecutables = [_×_
-                        `UnqualComponentName "wl-pprint-string-example"`
+                        (UnqualComponentName "wl-pprint-string-example")
                         CondNode
                           {condTreeComponents = [],
                            condTreeConstraints = [Dependency
-                                                    `PackageName "base"`
-                                                    (EarlierVersion `mkVersion [5]`)
+                                                    (PackageName "base")
+                                                    (EarlierVersion (mkVersion [5]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "str-string"`
-                                                    (OrLaterVersion `mkVersion [0,1,0,0]`)
+                                                    (PackageName "str-string")
+                                                    (OrLaterVersion (mkVersion [0, 1, 0, 0]))
                                                     (Set.fromList [LMainLibName]),
                                                   Dependency
-                                                    `PackageName "wl-pprint-indef"`
-                                                    (OrLaterVersion `mkVersion [0]`)
+                                                    (PackageName "wl-pprint-indef")
+                                                    (OrLaterVersion (mkVersion [0]))
                                                     (Set.fromList [LMainLibName])],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
@@ -54,31 +54,42 @@ GenericPackageDescription
                                                             options = PerCompilerFlavor [] [],
                                                             otherExtensions = [],
                                                             otherLanguages = [],
-                                                            otherModules = [`ModuleName "StringImpl"`],
+                                                            otherModules = [ModuleName
+                                                                              "StringImpl"],
                                                             pkgconfigDepends = [],
                                                             profOptions = PerCompilerFlavor [] [],
                                                             sharedOptions = PerCompilerFlavor [] [],
                                                             staticOptions = PerCompilerFlavor [] [],
                                                             targetBuildDepends = [Dependency
-                                                                                    `PackageName "base"`
+                                                                                    (PackageName
+                                                                                       "base")
                                                                                     (EarlierVersion
-                                                                                       `mkVersion [5]`)
+                                                                                       (mkVersion
+                                                                                          [5]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "str-string"`
+                                                                                    (PackageName
+                                                                                       "str-string")
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0,1,0,0]`)
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           1,
+                                                                                           0,
+                                                                                           0]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName]),
                                                                                   Dependency
-                                                                                    `PackageName "wl-pprint-indef"`
+                                                                                    (PackageName
+                                                                                       "wl-pprint-indef")
                                                                                     (OrLaterVersion
-                                                                                       `mkVersion [0]`)
+                                                                                       (mkVersion
+                                                                                          [0]))
                                                                                     (Set.fromList
                                                                                        [LMainLibName])],
                                                             virtualModules = []},
-                                             exeName = `UnqualComponentName "wl-pprint-string-example"`,
+                                             exeName = UnqualComponentName
+                                                         "wl-pprint-string-example",
                                              exeScope = ExecutablePublic,
                                              modulePath = "Main.hs"}}],
    condForeignLibs = [],
@@ -86,15 +97,15 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "base"`
-                                               (EarlierVersion `mkVersion [5]`)
+                                               (PackageName "base")
+                                               (EarlierVersion (mkVersion [5]))
                                                (Set.fromList [LMainLibName]),
                                              Dependency
-                                               `PackageName "str-sig"`
-                                               (OrLaterVersion `mkVersion [0,1,0,0]`)
+                                               (PackageName "str-sig")
+                                               (OrLaterVersion (mkVersion [0, 1, 0, 0]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "Text.PrettyPrint.Leijen"`],
+                                       {exposedModules = [ModuleName "Text.PrettyPrint.Leijen"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -138,15 +149,22 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "base"`
+                                                                                  (PackageName
+                                                                                     "base")
                                                                                   (EarlierVersion
-                                                                                     `mkVersion [5]`)
+                                                                                     (mkVersion
+                                                                                        [5]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName]),
                                                                                 Dependency
-                                                                                  `PackageName "str-sig"`
+                                                                                  (PackageName
+                                                                                     "str-sig")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0,1,0,0]`)
+                                                                                     (mkVersion
+                                                                                        [0,
+                                                                                         1,
+                                                                                         0,
+                                                                                         0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -184,8 +202,8 @@ GenericPackageDescription
                            licenseRaw = Right BSD3,
                            maintainer = "Noam Lewis <jones.noamle@gmail.com>",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "wl-pprint-indef"`,
-                                        pkgVersion = `mkVersion [1,2]`},
+                                       {pkgName = PackageName "wl-pprint-indef",
+                                        pkgVersion = mkVersion [1, 2]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [SourceRepo

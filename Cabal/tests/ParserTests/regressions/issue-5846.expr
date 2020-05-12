@@ -6,27 +6,27 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "lib1"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "lib1")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList
-                                                  [LSubLibName `UnqualComponentName "a"`,
-                                                   LSubLibName `UnqualComponentName "b"`]),
+                                                  [LSubLibName (UnqualComponentName "a"),
+                                                   LSubLibName (UnqualComponentName "b")]),
                                              Dependency
-                                               `PackageName "lib2"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "lib2")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList
-                                                  [LSubLibName `UnqualComponentName "c"`]),
+                                                  [LSubLibName (UnqualComponentName "c")]),
                                              Dependency
-                                               `PackageName "lib3"`
-                                               (OrLaterVersion `mkVersion [1]`)
+                                               (PackageName "lib3")
+                                               (OrLaterVersion (mkVersion [1]))
                                                (Set.fromList
-                                                  [LSubLibName `UnqualComponentName "d"`]),
+                                                  [LSubLibName (UnqualComponentName "d")]),
                                              Dependency
-                                               `PackageName "lib4"`
-                                               (OrLaterVersion `mkVersion [1]`)
+                                               (PackageName "lib4")
+                                               (OrLaterVersion (mkVersion [1]))
                                                (Set.fromList
-                                                  [LSubLibName `UnqualComponentName "a"`,
-                                                   LSubLibName `UnqualComponentName "b"`])],
+                                                  [LSubLibName (UnqualComponentName "a"),
+                                                   LSubLibName (UnqualComponentName "b")])],
                       condTreeData = Library
                                        {exposedModules = [],
                                         libBuildInfo = BuildInfo
@@ -72,37 +72,51 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "lib1"`
+                                                                                  (PackageName
+                                                                                     "lib1")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LSubLibName
-                                                                                        `UnqualComponentName "a"`,
+                                                                                        (UnqualComponentName
+                                                                                           "a"),
                                                                                       LSubLibName
-                                                                                        `UnqualComponentName "b"`]),
+                                                                                        (UnqualComponentName
+                                                                                           "b")]),
                                                                                 Dependency
-                                                                                  `PackageName "lib2"`
+                                                                                  (PackageName
+                                                                                     "lib2")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LSubLibName
-                                                                                        `UnqualComponentName "c"`]),
+                                                                                        (UnqualComponentName
+                                                                                           "c")]),
                                                                                 Dependency
-                                                                                  `PackageName "lib3"`
+                                                                                  (PackageName
+                                                                                     "lib3")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1]`)
+                                                                                     (mkVersion
+                                                                                        [1]))
                                                                                   (Set.fromList
                                                                                      [LSubLibName
-                                                                                        `UnqualComponentName "d"`]),
+                                                                                        (UnqualComponentName
+                                                                                           "d")]),
                                                                                 Dependency
-                                                                                  `PackageName "lib4"`
+                                                                                  (PackageName
+                                                                                     "lib4")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [1]`)
+                                                                                     (mkVersion
+                                                                                        [1]))
                                                                                   (Set.fromList
                                                                                      [LSubLibName
-                                                                                        `UnqualComponentName "a"`,
+                                                                                        (UnqualComponentName
+                                                                                           "a"),
                                                                                       LSubLibName
-                                                                                        `UnqualComponentName "b"`])],
+                                                                                        (UnqualComponentName
+                                                                                           "b")])],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -135,8 +149,8 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "issue"`,
-                                        pkgVersion = `mkVersion [5846]`},
+                                       {pkgName = PackageName "issue",
+                                        pkgVersion = mkVersion [5846]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

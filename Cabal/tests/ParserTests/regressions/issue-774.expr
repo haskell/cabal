@@ -7,7 +7,7 @@ GenericPackageDescription
                      {condTreeComponents = [],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "Issue"`],
+                                       {exposedModules = [ModuleName "Issue"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -95,8 +95,8 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "issue"`,
-                                        pkgVersion = `mkVersion [744]`},
+                                       {pkgName = PackageName "issue",
+                                        pkgVersion = mkVersion [744]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [],

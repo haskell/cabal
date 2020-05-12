@@ -6,11 +6,11 @@ GenericPackageDescription
                    CondNode
                      {condTreeComponents = [],
                       condTreeConstraints = [Dependency
-                                               `PackageName "ghc-prim"`
-                                               (OrLaterVersion `mkVersion [0]`)
+                                               (PackageName "ghc-prim")
+                                               (OrLaterVersion (mkVersion [0]))
                                                (Set.fromList [LMainLibName])],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "ElseIf"`],
+                                       {exposedModules = [ModuleName "ElseIf"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -54,9 +54,11 @@ GenericPackageDescription
                                                           sharedOptions = PerCompilerFlavor [] [],
                                                           staticOptions = PerCompilerFlavor [] [],
                                                           targetBuildDepends = [Dependency
-                                                                                  `PackageName "ghc-prim"`
+                                                                                  (PackageName
+                                                                                     "ghc-prim")
                                                                                   (OrLaterVersion
-                                                                                     `mkVersion [0]`)
+                                                                                     (mkVersion
+                                                                                        [0]))
                                                                                   (Set.fromList
                                                                                      [LMainLibName])],
                                                           virtualModules = []},
@@ -67,12 +69,12 @@ GenericPackageDescription
                                         signatures = []}},
    condSubLibraries = [],
    condTestSuites = [_×_
-                       `UnqualComponentName "tests"`
+                       (UnqualComponentName "tests")
                        CondNode
                          {condTreeComponents = [],
                           condTreeConstraints = [Dependency
-                                                   `PackageName "HUnit"`
-                                                   (OrLaterVersion `mkVersion [0]`)
+                                                   (PackageName "HUnit")
+                                                   (OrLaterVersion (mkVersion [0]))
                                                    (Set.fromList [LMainLibName])],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
@@ -121,15 +123,17 @@ GenericPackageDescription
                                                                staticOptions = PerCompilerFlavor
                                                                                  [] [],
                                                                targetBuildDepends = [Dependency
-                                                                                       `PackageName "HUnit"`
+                                                                                       (PackageName
+                                                                                          "HUnit")
                                                                                        (OrLaterVersion
-                                                                                          `mkVersion [0]`)
+                                                                                          (mkVersion
+                                                                                             [0]))
                                                                                        (Set.fromList
                                                                                           [LMainLibName])],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
-                                                              `mkVersion [1,0]` "Tests.hs",
-                                            testName = `UnqualComponentName ""`}}],
+                                                              (mkVersion [1, 0]) "Tests.hs",
+                                            testName = UnqualComponentName ""}}],
    genPackageFlags = [],
    gpdScannedVersion = Nothing,
    packageDescription = PackageDescription
@@ -155,8 +159,7 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "common"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "common", pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [SourceRepo

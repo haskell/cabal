@@ -41,10 +41,10 @@ import Distribution.Client.World                         (WorldPkgInfo (..))
 import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..))
 import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
-import Data.Coerce                     (Coercible, coerce)
-import GHC.Generics
-import Network.URI                     (URI (..), URIAuth (..), isUnreserved)
+import Data.Coerce                      (Coercible, coerce)
+import Network.URI                      (URI (..), URIAuth (..), isUnreserved)
 import Test.QuickCheck
+import Test.QuickCheck.GenericArbitrary
 import Test.QuickCheck.Instances.Cabal ()
 
 -- note: there are plenty of instances defined in ProjectConfig test file.
@@ -247,19 +247,20 @@ instance Arbitrary RelaxDeps where
 instance Arbitrary RelaxDepMod where
     arbitrary = elements [RelaxDepModNone, RelaxDepModCaret]
 
+    shrink RelaxDepModCaret = [RelaxDepModNone]
+    shrink _                = []
+
 instance Arbitrary RelaxDepScope where
-    arbitrary = oneof [ pure RelaxDepScopeAll
-                      , RelaxDepScopePackage <$> arbitrary
-                      , RelaxDepScopePackageId <$> arbitrary
-                      ]
+    arbitrary = genericArbitrary 
+    shrink    = genericShrink
 
 instance Arbitrary RelaxDepSubject where
-    arbitrary = oneof [ pure RelaxDepSubjectAll
-                      , RelaxDepSubjectPkg <$> arbitrary
-                      ]
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
 
 instance Arbitrary RelaxedDep where
-    arbitrary = RelaxedDep <$> arbitrary <*> arbitrary <*> arbitrary
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
 
 -------------------------------------------------------------------------------
 -- WorldPkgInfo
@@ -316,41 +317,3 @@ instance Arbitrary InstallOutcome where
 instance Arbitrary Outcome where
     arbitrary = genericArbitrary
     shrink    = genericShrink
-
--------------------------------------------------------------------------------
--- Generic Arbitrary
--------------------------------------------------------------------------------
-
--- Generic arbitary for non-recursive types
-genericArbitrary :: (Generic a, GArbitrary (Rep a)) => Gen a
-genericArbitrary = fmap to garbitrary
-
-class GArbitrary f where
-    garbitrary :: Gen (f ())
-
-class GArbitrarySum f where
-    garbitrarySum :: [Gen (f ())]
-
-class GArbitraryProd f where
-    garbitraryProd :: Gen (f ())
-
-instance (GArbitrarySum f, i ~ D) => GArbitrary (M1 i c f) where
-    garbitrary = fmap M1 (oneof garbitrarySum)
-
-instance (GArbitraryProd f, i ~ C) => GArbitrarySum (M1 i c f) where
-    garbitrarySum = [fmap M1 garbitraryProd]
-
-instance (GArbitrarySum f, GArbitrarySum g) => GArbitrarySum (f :+: g) where
-    garbitrarySum = map (fmap L1) garbitrarySum ++ map (fmap R1) garbitrarySum
-
-instance (GArbitraryProd f, i ~ S) => GArbitraryProd (M1 i c f) where
-    garbitraryProd = fmap M1 garbitraryProd
-
-instance (GArbitraryProd f, GArbitraryProd g) => GArbitraryProd (f :*: g) where
-    garbitraryProd = (:*:) <$> garbitraryProd <*> garbitraryProd
-
-instance GArbitraryProd U1 where
-    garbitraryProd = pure U1
-
-instance (Arbitrary a) => GArbitraryProd (K1 i a) where
-    garbitraryProd = fmap K1 arbitrary

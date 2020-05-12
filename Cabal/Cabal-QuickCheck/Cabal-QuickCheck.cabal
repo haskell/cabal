@@ -1,5 +1,5 @@
 cabal-version: 2.2
-name:          Cabal-quickcheck
+name:          Cabal-QuickCheck
 version:       3.3.0.0
 synopsis:      QuickCheck instances for types in Cabal
 category:      Testing
@@ -15,4 +15,6 @@ library
     , Cabal       ^>=3.3.0.0
     , QuickCheck  ^>=2.13.2
 
-  exposed-modules:  Test.QuickCheck.Instances.Cabal
+  exposed-modules:
+    Test.QuickCheck.GenericArbitrary
+    Test.QuickCheck.Instances.Cabal

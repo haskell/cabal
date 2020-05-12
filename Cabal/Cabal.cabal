@@ -656,8 +656,9 @@ test-suite unit-tests
     UnitTests.Orphans
 
   -- Cabal-quickcheck
-  hs-source-dirs: Cabal-quickcheck/src
+  hs-source-dirs: Cabal-QuickCheck/src
   other-modules:
+    Test.QuickCheck.GenericArbitrary
     Test.QuickCheck.Instances.Cabal
 
   main-is: UnitTests.hs
@@ -687,11 +688,6 @@ test-suite unit-tests
   if !impl(ghc >= 7.10)
     build-depends: void
 
-  -- Cabal-quickcheck
-  hs-source-dirs: Cabal-quickcheck/src
-  other-modules:
-    Test.QuickCheck.Instances.Cabal
-
 test-suite parser-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
@@ -717,11 +713,12 @@ test-suite parser-tests
   if impl(ghc >= 7.8)
     build-depends:
       tree-diff      >= 0.1 && <0.2
+    hs-source-dirs: Cabal-tree-diff/src
     other-modules:
-      Instances.TreeDiff
-      Instances.TreeDiff.Language
-      Instances.TreeDiff.SPDX
-      Instances.TreeDiff.Version
+      Data.TreeDiff.Instances.Cabal
+      Data.TreeDiff.Instances.CabalLanguage
+      Data.TreeDiff.Instances.CabalSPDX
+      Data.TreeDiff.Instances.CabalVersion
 
 test-suite check-tests
   type: exitcode-stdio-1.0
@@ -786,11 +783,12 @@ test-suite hackage-tests
   if impl(ghc >= 7.8)
     build-depends:
       tree-diff      >= 0.1 && <0.2
+    hs-source-dirs: Cabal-tree-diff/src
     other-modules:
-      Instances.TreeDiff
-      Instances.TreeDiff.Language
-      Instances.TreeDiff.SPDX
-      Instances.TreeDiff.Version
+      Data.TreeDiff.Instances.Cabal
+      Data.TreeDiff.Instances.CabalLanguage
+      Data.TreeDiff.Instances.CabalSPDX
+      Data.TreeDiff.Instances.CabalVersion
 
   ghc-options: -Wall -rtsopts -threaded
   default-extensions: CPP

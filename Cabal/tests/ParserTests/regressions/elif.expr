@@ -10,9 +10,11 @@ GenericPackageDescription
                                                condBranchIfTrue = CondNode
                                                                     {condTreeComponents = [],
                                                                      condTreeConstraints = [Dependency
-                                                                                              `PackageName "unix"`
+                                                                                              (PackageName
+                                                                                                 "unix")
                                                                                               (OrLaterVersion
-                                                                                                 `mkVersion [0]`)
+                                                                                                 (mkVersion
+                                                                                                    [0]))
                                                                                               (Set.fromList
                                                                                                  [LMainLibName])],
                                                                      condTreeData = Library
@@ -68,9 +70,11 @@ GenericPackageDescription
                                                                                                                            []
                                                                                                                            [],
                                                                                                          targetBuildDepends = [Dependency
-                                                                                                                                 `PackageName "unix"`
+                                                                                                                                 (PackageName
+                                                                                                                                    "unix")
                                                                                                                                  (OrLaterVersion
-                                                                                                                                    `mkVersion [0]`)
+                                                                                                                                    (mkVersion
+                                                                                                                                       [0]))
                                                                                                                                  (Set.fromList
                                                                                                                                     [LMainLibName])],
                                                                                                          virtualModules = []},
@@ -81,7 +85,7 @@ GenericPackageDescription
                                                                                        signatures = []}}}],
                       condTreeConstraints = [],
                       condTreeData = Library
-                                       {exposedModules = [`ModuleName "ElseIf"`],
+                                       {exposedModules = [ModuleName "ElseIf"],
                                         libBuildInfo = BuildInfo
                                                          {asmOptions = [],
                                                           asmSources = [],
@@ -157,8 +161,7 @@ GenericPackageDescription
                            licenseRaw = Left NONE,
                            maintainer = "",
                            package = PackageIdentifier
-                                       {pkgName = `PackageName "elif"`,
-                                        pkgVersion = `mkVersion [0]`},
+                                       {pkgName = PackageName "elif", pkgVersion = mkVersion [0]},
                            pkgUrl = "",
                            setupBuildInfo = Nothing,
                            sourceRepos = [SourceRepo

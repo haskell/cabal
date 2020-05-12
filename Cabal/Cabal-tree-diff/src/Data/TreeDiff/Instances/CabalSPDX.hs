@@ -5,12 +5,12 @@
 {-# OPTIONS_GHC -fcontext-stack=151 #-}
 #endif
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Instances.TreeDiff.SPDX where
+module Data.TreeDiff.Instances.CabalSPDX () where
 
 import Data.TreeDiff
 import Distribution.License (License)
 
-import Instances.TreeDiff.Version ()
+import Data.TreeDiff.Instances.CabalVersion ()
 
 import qualified Distribution.SPDX as SPDX
 

@@ -5,10 +5,10 @@
 {-# OPTIONS_GHC -fcontext-stack=151 #-}
 #endif
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Instances.TreeDiff.Version where
+module Data.TreeDiff.Instances.CabalVersion where
 
 import Data.TreeDiff
-import Distribution.Version (Version, VersionRange)
+import Distribution.Version (Version, VersionRange, versionNumbers)
 
-instance ToExpr Version where toExpr = defaultExprViaShow
+instance ToExpr Version where toExpr v = App "mkVersion" [toExpr $ versionNumbers v]
 instance ToExpr VersionRange
