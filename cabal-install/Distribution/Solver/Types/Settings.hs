@@ -19,10 +19,10 @@ import Distribution.Simple.Setup ( BooleanFlag(..) )
 import Distribution.Compat.Binary (Binary)
 import Distribution.Utils.Structured (Structured)
 import Distribution.Pretty ( Pretty(pretty) )
-import Distribution.Deprecated.Text ( Text(parse) )
+import Distribution.Parsec ( Parsec(parsec) )
 import GHC.Generics (Generic)
 
-import qualified Distribution.Deprecated.ReadP as Parse
+import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP
 
 newtype ReorderGoals = ReorderGoals Bool
@@ -90,12 +90,12 @@ instance Structured OnlyConstrained
 instance Structured SolveExecutables
 
 instance Pretty OnlyConstrained where
-  pretty OnlyConstrainedAll = PP.text "all"
+  pretty OnlyConstrainedAll  = PP.text "all"
   pretty OnlyConstrainedNone = PP.text "none"
 
-instance Text OnlyConstrained where
-  parse = Parse.choice
-    [ Parse.string "all" >> return OnlyConstrainedAll
-    , Parse.string "none" >> return OnlyConstrainedNone
+instance Parsec OnlyConstrained where
+  parsec = P.choice
+    [ P.string "all"  >> return OnlyConstrainedAll
+    , P.string "none" >> return OnlyConstrainedNone
     ]
 

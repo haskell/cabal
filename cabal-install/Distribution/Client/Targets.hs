@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 
@@ -50,8 +50,6 @@ module Distribution.Client.Targets (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
-
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
          , packageName )
@@ -79,13 +77,15 @@ import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint (..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, nullFlagAssignment)
+         ( GenericPackageDescription )
+import Distribution.Types.Flag
+         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty, describeFlagAssignment )
 import Distribution.Version
-         ( anyVersion, isAnyVersion )
-import Distribution.Deprecated.Text
-         ( Text(..), display )
+         ( VersionRange, anyVersion, isAnyVersion )
+import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Parsec (Parsec (..), CabalParsing, explicitEitherParsec, eitherParsec)
+import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..))
 import Distribution.Verbosity (Verbosity)
-import Distribution.Parsec (eitherParsec)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
 
@@ -99,11 +99,7 @@ import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (mapM)
-import qualified Distribution.Deprecated.ReadP as Parse
-import Distribution.Deprecated.ReadP
-         ( (+++), (<++) )
-import Distribution.Deprecated.ParseUtils
-         ( readPToMaybe )
+import qualified Distribution.Compat.CharParsing as P
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
 import System.Directory
@@ -560,7 +556,7 @@ reportPackageTargetProblems verbosity problems = do
                , not (isUserTagetWorld originalTarget) ] of
       []    -> return ()
       pkgs  -> die' verbosity $ unlines
-                       [ "There is no package named '" ++ display name ++ "'. "
+                       [ "There is no package named '" ++ prettyShow name ++ "'. "
                        | name <- pkgs ]
                   ++ "You may need to run 'cabal update' to get the latest "
                   ++ "list of available packages."
@@ -568,11 +564,11 @@ reportPackageTargetProblems verbosity problems = do
     case [ (pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems ] of
       []          -> return ()
       ambiguities -> die' verbosity $ unlines
-                         [    "There is no package named '" ++ display name ++ "'. "
+                         [    "There is no package named '" ++ prettyShow name ++ "'. "
                            ++ (if length matches > 1
                                then "However, the following package names exist: "
                                else "However, the following package name exists: ")
-                           ++ intercalate ", " [ "'" ++ display m ++ "'" | m <- matches]
+                           ++ intercalate ", " [ "'" ++ prettyShow m ++ "'" | m <- matches]
                            ++ "."
                          | (name, matches) <- ambiguities ]
 
@@ -581,7 +577,7 @@ reportPackageTargetProblems verbosity problems = do
       pkgs -> warn verbosity $
                  "The following 'world' packages will be ignored because "
               ++ "they refer to packages that cannot be found: "
-              ++ intercalate ", " (map display pkgs) ++ "\n"
+              ++ intercalate ", " (map prettyShow pkgs) ++ "\n"
               ++ "You can suppress this warning by correcting the world file."
   where
     isUserTagetWorld UserTargetWorld = True; isUserTagetWorld _ = False
@@ -709,69 +705,83 @@ userToPackageConstraint (UserConstraint scope prop) =
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
-    case readPToMaybe parse str of
-      Nothing -> Left msgCannotParse
-      Just c  -> Right c
+    case explicitEitherParsec parsec str of
+      Left err -> Left $ msgCannotParse ++ err
+      Right c  -> Right c
   where
     msgCannotParse =
          "expected a (possibly qualified) package name followed by a " ++
          "constraint, which is either a version range, 'installed', " ++
-         "'source', 'test', 'bench', or flags"
+         "'source', 'test', 'bench', or flags. "
 
-instance Text UserConstraint where
-  disp (UserConstraint scope prop) =
+instance Pretty UserConstraint where
+  pretty (UserConstraint scope prop) =
     dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
 
-  parse =
-    let parseConstraintScope :: Parse.ReadP a UserConstraintScope
-        parseConstraintScope =
-          do
-             _ <- Parse.string "any."
-             pn <- parse
-             return (UserAnyQualifier pn)
-          +++
-          do
-             _ <- Parse.string "setup."
-             pn <- parse
-             return (UserAnySetupQualifier pn)
-          +++
-          do
-             -- Qualified name
-             pn <- parse
-             (return (UserQualified UserQualToplevel pn)
-              +++
-              do _ <- Parse.string ":setup."
-                 pn2 <- parse
-                 return (UserQualified (UserQualSetup pn) pn2))
+instance Described UserConstraint where
+    describe _ = REAppend
+        [ describeConstraintScope
+        , describeConstraintProperty
+        ]
+      where
+        describeConstraintScope :: GrammarRegex void
+        describeConstraintScope = REUnion
+            [ fromString "any." <> describePN
+            , fromString "setup." <> describePN
+            , describePN
+            , describePN <> fromString ":setup." <> describePN
+            ]
 
-              -- -- TODO: Re-enable parsing of UserQualExe once we decide on a syntax.
-              --
-              -- +++
-              -- do _ <- Parse.string ":"
-              --    pn2 <- parse
-              --    _ <- Parse.string ":exe."
-              --    pn3 <- parse
-              --    return (UserQualExe pn pn2, pn3)
-    in do
-      scope <- parseConstraintScope
+        describeConstraintProperty :: GrammarRegex void
+        describeConstraintProperty = REUnion
+            -- TODO: change first to RESpaces when -any and -none are removed
+            [ RESpaces1 <> RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
+            , RESpaces1 <> describeConstraintProperty'
+            ]
 
-      -- Package property
-      let keyword str x = Parse.skipSpaces1 >> Parse.string str >> return x
-      prop <- ((parse >>= return . PackagePropertyVersion)
-               +++
-               keyword "installed" PackagePropertyInstalled
-               +++
-               keyword "source" PackagePropertySource
-               +++
-               keyword "test" (PackagePropertyStanzas [TestStanzas])
-               +++
-               keyword "bench" (PackagePropertyStanzas [BenchStanzas]))
-              -- Note: the parser is left-biased here so that we
-              -- don't get an ambiguous parse from 'installed',
-              -- 'source', etc. being regarded as flags.
-              <++
-                (Parse.skipSpaces1 >> parseFlagAssignment
-               >>= return . PackagePropertyFlags)
+        describeConstraintProperty' :: GrammarRegex void
+        describeConstraintProperty' = REUnion
+            [ fromString "installed"
+            , fromString "source"
+            , fromString "test"
+            , fromString "bench"
+            , describeFlagAssignment
+            ]
 
-      -- Result
-      return (UserConstraint scope prop)
+        describePN :: GrammarRegex void
+        describePN = RENamed "package-name" (describe (Proxy :: Proxy PackageName))
+
+instance Parsec UserConstraint where
+    parsec = do
+        scope <- parseConstraintScope
+        P.spaces
+        prop <- P.choice
+            [ PackagePropertyFlags                  <$> parsecFlagAssignmentNonEmpty -- headed by "+-"
+            , PackagePropertyVersion                <$> parsec                       -- headed by "<=>" (will be)
+            , PackagePropertyInstalled              <$ P.string "installed"
+            , PackagePropertySource                 <$ P.string "source"
+            , PackagePropertyStanzas [TestStanzas]  <$ P.string "test"
+            , PackagePropertyStanzas [BenchStanzas] <$ P.string "bench"
+            ]
+        return (UserConstraint scope prop)
+
+      where
+        parseConstraintScope :: forall m. CabalParsing m => m UserConstraintScope
+        parseConstraintScope = do
+            pn <- parsec
+            P.choice
+                [ P.char '.' *> withDot pn
+                , P.char ':' *> withColon pn
+                , return (UserQualified UserQualToplevel pn)
+                ]
+          where
+            withDot :: PackageName -> m UserConstraintScope
+            withDot pn
+                | pn == mkPackageName "any"   = UserAnyQualifier <$> parsec
+                | pn == mkPackageName "setup" = UserAnySetupQualifier <$> parsec
+                | otherwise                   = P.unexpected $ "constraint scope: " ++ unPackageName pn
+
+            withColon :: PackageName -> m UserConstraintScope
+            withColon pn = UserQualified (UserQualSetup pn)
+                <$  P.string "setup."
+                <*> parsec

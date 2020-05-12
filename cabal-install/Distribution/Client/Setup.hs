@@ -60,8 +60,6 @@ module Distribution.Client.Setup
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
 
-import Distribution.Deprecated.ReadP (readP_to_E)
-
 import Distribution.Client.Types.Credentials (Username (..), Password (..))
 import Distribution.Client.Types.Repo (RemoteRepo(..), LocalRepo (..))
 import Distribution.Client.Types.AllowNewer (AllowNewer(..), AllowOlder(..), RelaxDeps(..))
@@ -81,7 +79,7 @@ import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
-import Distribution.Parsec (CabalParsing, simpleParsec, parsec, eitherParsec )
+import Distribution.Parsec (CabalParsing, simpleParsec, parsec, eitherParsec)
 import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Types.ConstraintSource
@@ -121,13 +119,9 @@ import Distribution.Types.UnqualComponentName
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
-import Distribution.Deprecated.Text
-         ( Text(..), display )
-import qualified Distribution.Compat.CharParsing as P
 import Distribution.ReadE
          ( ReadE(..), succeedReadE, parsecToReadE )
-import qualified Distribution.Deprecated.ReadP as Parse
-         ( char, sepBy1 )
+import qualified Distribution.Compat.CharParsing as P
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
@@ -653,23 +647,23 @@ configureExOptions _showOrParseArgs src =
       ("Select which version of the Cabal lib to use to build packages "
       ++ "(useful for testing).")
       configCabalVersion (\v flags -> flags { configCabalVersion = v })
-      (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
-                                    (fmap toFlag parse))
-                        (map display . flagToList))
+      (reqArg "VERSION" (parsecToReadE ("Cannot parse cabal lib version: "++)
+                                    (fmap toFlag parsec))
+                        (map prettyShow. flagToList))
   , option [] ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"
               ((\x -> [(x, src)]) `fmap` ReadE readUserConstraint)
-              (map $ display . fst))
+              (map $ prettyShow . fst))
 
   , option [] ["preference"]
       "Specify preferences (soft constraints) on the version of a package"
       configPreferences (\v flags -> flags { configPreferences = v })
       (reqArg "CONSTRAINT"
-              (readP_to_E (const "dependency expected")
-                          (fmap (\x -> [x]) parse))
-              (map display))
+              (parsecToReadE (const "dependency expected")
+                          (fmap (\x -> [x]) parsec))
+              (map prettyShow))
 
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
@@ -678,7 +672,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowOlder . configAllowOlder)
     (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
     (optArg "DEPS"
-     (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["allow-newer"]
@@ -686,7 +680,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowNewer . configAllowNewer)
     (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
     (optArg "DEPS"
-     (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["write-ghc-environment-files"]
@@ -1235,7 +1229,7 @@ outdatedCommand = CommandUI {
    ,option [] ["ignore"]
     "Packages to ignore"
     outdatedIgnore (\v flags -> flags { outdatedIgnore = v })
-    (reqArg "PKGS" pkgNameListParser (map display))
+    (reqArg "PKGS" pkgNameListParser (map prettyShow))
 
    ,option [] ["minor"]
     "Ignore major version bumps for these packages"
@@ -1251,14 +1245,14 @@ outdatedCommand = CommandUI {
     ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsNone)= []
     ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsAll) = [Nothing]
     ignoreMajorVersionBumpsPrinter (Just (IgnoreMajorVersionBumpsSome pkgs)) =
-      map (Just . display) $ pkgs
+      map (Just . prettyShow) $ pkgs
 
     ignoreMajorVersionBumpsParser  =
       (Just . IgnoreMajorVersionBumpsSome) `fmap` pkgNameListParser
 
-    pkgNameListParser = readP_to_E
+    pkgNameListParser = parsecToReadE
       ("Couldn't parse the list of package names: " ++)
-      (Parse.sepBy1 parse (Parse.char ','))
+      (fmap toList (P.sepByNonEmpty parsec (P.char ',')))
 
 -- ------------------------------------------------------------
 -- * Update command
@@ -1480,8 +1474,8 @@ getCommand = CommandUI {
        ,option "s" ["source-repository"]
          "Copy the package's source repository (ie git clone, darcs get, etc as appropriate)."
          getSourceRepository (\v flags -> flags { getSourceRepository = v })
-        (optArg "[head|this|...]" (readP_to_E (const "invalid source-repository")
-                                              (fmap (toFlag . Just) parse))
+        (optArg "[head|this|...]" (parsecToReadE (const "invalid source-repository")
+                                              (fmap (toFlag . Just) parsec))
                                   (Flag Nothing)
                                   (map (fmap show) . flagToList))
 
@@ -1747,7 +1741,7 @@ defaultSolver :: PreSolver
 defaultSolver = AlwaysModular
 
 allSolvers :: String
-allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
+allSolvers = intercalate ", " (map prettyShow ([minBound .. maxBound] :: [PreSolver]))
 
 installCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
                             , HaddockFlags, TestFlags, BenchmarkFlags
@@ -2005,10 +1999,10 @@ installOptions showOrParseArgs =
       , option [] ["remote-build-reporting"]
           "Generate build reports to send to a remote server (none, anonymous or detailed)."
           installBuildReports (\v flags -> flags { installBuildReports = v })
-          (reqArg "LEVEL" (readP_to_E (const $ "report level must be 'none', "
+          (reqArg "LEVEL" (parsecToReadE (const $ "report level must be 'none', "
                                             ++ "'anonymous' or 'detailed'")
-                                      (toFlag `fmap` parse))
-                          (flagToList . fmap display))
+                                      (toFlag `fmap` parsec))
+                          (flagToList . fmap prettyShow))
 
       , option [] ["report-planning-failure"]
           "Generate build reports when the dependency solver fails. This is used by the Hackage build bot."
@@ -2307,32 +2301,32 @@ initOptions _ =
     "Specify the default language."
     IT.language
     (\v flags -> flags { IT.language = v })
-    (reqArg "LANGUAGE" (readP_to_E ("Cannot parse language: "++)
-                                   (toFlag `fmap` parse))
-                      (flagToList . fmap display))
+    (reqArg "LANGUAGE" (parsecToReadE ("Cannot parse language: "++)
+                                   (toFlag `fmap` parsec))
+                      (flagToList . fmap prettyShow))
 
   , option ['o'] ["expose-module"]
     "Export a module from the package."
     IT.exposedModules
     (\v flags -> flags { IT.exposedModules = v })
-    (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
-                                 ((Just . (:[])) `fmap` parse))
-                     (maybe [] (fmap display)))
+    (reqArg "MODULE" (parsecToReadE ("Cannot parse module name: "++)
+                                 ((Just . (:[])) `fmap` parsec))
+                     (maybe [] (fmap prettyShow)))
 
   , option [] ["extension"]
     "Use a LANGUAGE extension (in the other-extensions field)."
     IT.otherExts
     (\v flags -> flags { IT.otherExts = v })
-    (reqArg "EXTENSION" (readP_to_E ("Cannot parse extension: "++)
-                                    ((Just . (:[])) `fmap` parse))
-                        (maybe [] (fmap display)))
+    (reqArg "EXTENSION" (parsecToReadE ("Cannot parse extension: "++)
+                                    ((Just . (:[])) `fmap` parsec))
+                        (maybe [] (fmap prettyShow)))
 
   , option ['d'] ["dependency"]
     "Package dependency."
     IT.dependencies (\v flags -> flags { IT.dependencies = v })
-    (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
-                                  ((Just . (:[])) `fmap` parse))
-                      (maybe [] (fmap display)))
+    (reqArg "PACKAGE" (parsecToReadE ("Cannot parse dependency: "++)
+                                  ((Just . (:[])) `fmap` parsec))
+                      (maybe [] (fmap prettyShow)))
 
   , option [] ["application-dir"]
     "Directory containing package application executable."
@@ -2415,9 +2409,9 @@ actAsSetupCommand = CommandUI {
       [option "" ["build-type"]
          "Use the given build type."
          actAsSetupBuildType (\v flags -> flags { actAsSetupBuildType = v })
-         (reqArg "BUILD-TYPE" (readP_to_E ("Cannot parse build type: "++)
-                               (fmap toFlag parse))
-                              (map display . flagToList))
+         (reqArg "BUILD-TYPE" (parsecToReadE ("Cannot parse build type: "++)
+                               (fmap toFlag parsec))
+                              (map prettyShow . flagToList))
       ]
 }
 
@@ -2578,11 +2572,11 @@ optionSolver :: (flags -> Flag PreSolver)
              -> OptionField flags
 optionSolver get set =
   option [] ["solver"]
-    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
+    ("Select dependency solver to use (default: " ++ prettyShow defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
     get set
-    (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
-                                 (toFlag `fmap` parse))
-                     (flagToList . fmap display))
+    (reqArg "SOLVER" (parsecToReadE (const $ "solver must be one of: " ++ allSolvers)
+                                    (toFlag `fmap` parsec))
+                     (flagToList . fmap prettyShow))
 
 optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
@@ -2602,7 +2596,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
-      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++) (fmap toFlag parse))
+      (reqArg "NUM" (parsecToReadE ("Cannot parse number: "++) (fmap toFlag P.signedIntegral))
                     (map show . flagToList))
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
@@ -2651,10 +2645,10 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
       getoc
       setoc
       (reqArg "none|all"
-         (readP_to_E
+         (parsecToReadE
             (const "reject-unconstrained-dependencies must be 'none' or 'all'")
-            (toFlag `fmap` parse))
-         (flagToList . fmap display))
+            (toFlag `fmap` parsec))
+         (flagToList . fmap prettyShow))
 
   ]
 

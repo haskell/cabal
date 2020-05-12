@@ -20,6 +20,7 @@ import qualified Distribution.Utils.CharSet as CS
 import Distribution.Client.IndexUtils.ActiveRepos (ActiveRepos)
 import Distribution.Client.IndexUtils.IndexState  (RepoIndexState, TotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp   (Timestamp)
+import Distribution.Client.Targets                (UserConstraint)
 import Distribution.Client.Types                  (RepoName)
 import Distribution.Client.Types.AllowNewer       (RelaxDepSubject, RelaxDeps, RelaxedDep)
 
@@ -39,6 +40,7 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy RelaxDepSubject)
     , testDescribed (Proxy :: Proxy RelaxedDep)
     , testDescribed (Proxy :: Proxy RelaxDeps)
+    , testDescribed (Proxy :: Proxy UserConstraint)
     ]
 
 -------------------------------------------------------------------------------

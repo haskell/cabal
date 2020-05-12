@@ -100,8 +100,7 @@ import Distribution.Client.Utils
 
 import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty (prettyShow)
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
@@ -477,7 +476,7 @@ runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr _delegate = do
 selfExecSetupMethod :: SetupRunner
 selfExecSetupMethod verbosity options bt args0 = do
   let args = ["act-as-setup",
-              "--build-type=" ++ display bt,
+              "--build-type=" ++ prettyShow bt,
               "--"] ++ args0
   info verbosity $ "Using self-exec internal setup method with build-type "
                  ++ show bt ++ " and args:\n  " ++ show args
@@ -570,7 +569,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     ++ show (useDependenciesExclusive options)
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
-  debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
+  debug verbosity $ "Using Cabal library version " ++ prettyShow cabalLibVersion
   path <- if useCachedSetupExecutable
           then getCachedSetupExecutable options'
                cabalLibVersion mCabalLibInstalledPkgId
@@ -728,9 +727,9 @@ getExternalSetupMethod verbosity options pkg bt = do
         cabalDepVersion = useCabalVersion options'
         options''       = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDepName cabalDepVersion of
-      []   -> die' verbosity $ "The package '" ++ display (packageName pkg)
+      []   -> die' verbosity $ "The package '" ++ prettyShow (packageName pkg)
                  ++ "' requires Cabal library version "
-                 ++ display (useCabalVersion options)
+                 ++ prettyShow (useCabalVersion options)
                  ++ " but no suitable version is installed."
       pkgs -> let ipkginfo = fromMaybe err $ safeHead . snd . bestVersion fst $ pkgs
                   err = error "Distribution.Client.installedCabalVersion: empty version list"
@@ -799,11 +798,11 @@ getExternalSetupMethod verbosity options pkg bt = do
     return (setupCacheDir, cachedSetupProgFile)
       where
         buildTypeString       = show bt
-        cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
-        compilerVersionString = display $
+        cabalVersionString    = "Cabal-" ++ prettyShow cabalLibVersion
+        compilerVersionString = prettyShow $
                                 maybe buildCompilerId compilerId
                                   $ useCompiler options'
-        platformString        = display platform
+        platformString        = prettyShow platform
 
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.

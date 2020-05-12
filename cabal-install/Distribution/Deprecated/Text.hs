@@ -45,7 +45,6 @@ import qualified Distribution.PackageDescription             as D
 import qualified Distribution.Simple.Setup                   as D
 import qualified Distribution.System                         as D
 import qualified Distribution.Types.PackageVersionConstraint as D
-import qualified Distribution.Types.SourceRepo               as D
 import qualified Distribution.Types.UnqualComponentName      as D
 import qualified Distribution.Version                        as D
 import qualified Language.Haskell.Extension                  as E
@@ -97,9 +96,6 @@ instance Text Bool where
                        , (Parse.string "False" Parse.+++
                           Parse.string "false") >> return False ]
 
-instance Text Int where
-  parse = fmap negate (Parse.char '-' >> parseNat) Parse.+++ parseNat
-
 instance Text a => Text (Identity a) where
     disp = disp . runIdentity
     parse = fmap Identity parse
@@ -122,20 +118,6 @@ instance Text Version where
 -------------------------------------------------------------------------------
 -- Instances
 -------------------------------------------------------------------------------
-
-instance Text D.Arch where
-  parse = fmap (D.classifyArch D.Strict) ident
-
-instance Text D.BuildType where
-  parse = do
-    name <- Parse.munch1 isAlphaNum
-    case name of
-      "Simple"    -> return D.Simple
-      "Configure" -> return D.Configure
-      "Custom"    -> return D.Custom
-      "Make"      -> return D.Make
-      "Default"   -> return D.Custom
-      _           -> fail ("unknown build-type: '" ++ name ++ "'")
 
 instance Text D.CompilerFlavor where
   parse = do
@@ -275,12 +257,6 @@ instance Text D.Platform where
           where firstChar = Parse.satisfy isAlpha
                 rest = Parse.munch (\c -> isAlphaNum c || c == '_')
 
-instance Text D.RepoKind where
-  parse = fmap D.classifyRepoKind ident
-
-instance Text D.RepoType where
-  parse = fmap D.classifyRepoType ident
-
 instance Text D.UnqualComponentName where
   parse = D.mkUnqualComponentName <$> parsePackageName
 
@@ -379,31 +355,3 @@ ident = liftM2 (:) firstChar rest
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''
-
--------------------------------------------------------------------------------
--- Rest of instances, we don't seem to need
--------------------------------------------------------------------------------
-
--- instance Text D.AbiDependency
--- instance Text D.AbiHash
--- instance Text D.AbiTa
--- instance Text D.BenchmarkType
--- instance Text D.ExecutableScope
--- instance Text D.ExeDependency
--- instance Text D.ExposedModule
--- instance Text D.ForeignLibOption
--- instance Text D.ForeignLibType
--- instance Text D.IncludeRenaming
--- instance Text D.KnownExtension
--- instance Text D.LegacyExeDependency
--- instance Text D.LibVersionInfo
--- instance Text D.License
--- instance Text D.Mixin
--- instance Text D.ModuleReexport
--- instance Text D.ModuleRenaming
--- instance Text D.MungedPackageName
--- instance Text D.OpenModule
--- instance Text D.OpenUnitId
--- instance Text D.PackageVersionConstraint
--- instance Text D.PkgconfigDependency
--- instance Text D.TestType

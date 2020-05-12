@@ -18,6 +18,8 @@ module Distribution.Types.Flag (
     showFlagValue,
     dispFlagAssignment,
     parsecFlagAssignment,
+    parsecFlagAssignmentNonEmpty,
+    describeFlagAssignment,
     ) where
 
 import Prelude ()
@@ -255,3 +257,25 @@ parsecFlagAssignment = mkFlagAssignment <$>
         _ <- P.char '-'
         f <- parsec
         return (f, False)
+
+-- | Parse a non-empty flag assignment
+--
+-- The flags have to explicitly start with minus or plus.
+--
+-- @since 3.4.0.0
+parsecFlagAssignmentNonEmpty :: CabalParsing m => m FlagAssignment
+parsecFlagAssignmentNonEmpty = mkFlagAssignment . toList <$>
+    P.sepByNonEmpty (onFlag <|> offFlag) P.skipSpaces1
+  where
+    onFlag = do
+        _ <- P.char '+'
+        f <- parsec
+        return (f, True)
+    offFlag = do
+        _ <- P.char '-'
+        f <- parsec
+        return (f, False)
+
+describeFlagAssignment :: GrammarRegex void
+describeFlagAssignment = REMunch1 RESpaces1 $
+    REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)

@@ -8,10 +8,11 @@ module Distribution.Client.Dependency.Types (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Deprecated.Text (Text (..))
-import Text.PrettyPrint             (text)
+import Distribution.Parsec (Parsec (..))
+import Distribution.Pretty (Pretty (..))
+import Text.PrettyPrint (text)
 
-import qualified Distribution.Deprecated.ReadP as Parse (munch1, pfail)
+import qualified Distribution.Compat.CharParsing as P
 
 
 -- | All the solvers that can be selected.
@@ -28,13 +29,15 @@ instance Binary Solver
 instance Structured PreSolver
 instance Structured Solver
 
-instance Text PreSolver where
-  disp AlwaysModular = text "modular"
-  parse = do
-    name <- Parse.munch1 isAlpha
-    case map toLower name of
-      "modular" -> return AlwaysModular
-      _         -> Parse.pfail
+instance Pretty PreSolver where
+    pretty AlwaysModular = text "modular"
+
+instance Parsec PreSolver where
+    parsec = do
+        name <- P.munch1 isAlpha
+        case map toLower name of
+            "modular" -> return AlwaysModular
+            _         -> P.unexpected $ "PreSolver: " ++ name
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
