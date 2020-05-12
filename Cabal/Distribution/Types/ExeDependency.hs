@@ -8,7 +8,6 @@ module Distribution.Types.ExeDependency
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.ComponentName
@@ -68,9 +67,5 @@ instance Parsec ExeDependency where
         ver  <- parsec <|> pure anyVersion
         return (ExeDependency name exe ver)
 
-instance Described ExeDependency where
-    describe _ = RETodo
-
 qualifiedExeName :: ExeDependency -> ComponentName
 qualifiedExeName (ExeDependency _ ucn _) = CExeName ucn
-

@@ -11,7 +11,6 @@ import Distribution.Compat.Prelude
 
 import Distribution.Pretty
 import Distribution.Parsec
-import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -34,9 +33,6 @@ instance Parsec ForeignLibOption where
     case name of
       "standalone" -> return ForeignLibStandalone
       _            -> fail "unrecognized foreign-library option"
-
-instance Described ForeignLibOption where
-    describe _ = "standalone"
 
 instance Binary ForeignLibOption
 instance Structured ForeignLibOption

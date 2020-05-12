@@ -19,7 +19,6 @@ import Distribution.Types.VersionRange (isAnyVersionLight)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing        (char, spaces)
 import Distribution.Compat.Parsing            (between, option)
-import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.LibraryName
@@ -155,28 +154,6 @@ versionGuardMultilibs = do
 -- | Library set with main library.
 mainLib :: Set LibraryName
 mainLib = Set.singleton LMainLibName
-
-instance Described Dependency where
-    describe _ = REAppend
-        [ RENamed "pkg-name" (describe (Proxy :: Proxy PackageName))
-        , REOpt $
-               reChar ':'
-            <> REUnion
-                [ reUnqualComponent
-                , REAppend
-                    [ reChar '{'
-                    , RESpaces
-                    -- no leading or trailing comma
-                    , REMunch reSpacedComma reUnqualComponent
-                    , RESpaces
-                    , reChar '}'
-                    ]
-                ]
-
-        , REOpt $ RESpaces <> vr
-        ]
-      where
-        vr = RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
 
 -- | Simplify the 'VersionRange' expression in a 'Dependency'.
 -- See 'simplifyVersionRange'.

@@ -15,7 +15,6 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens               (Lens', (&), (.~))
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
-import Distribution.FieldGrammar.Described
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
 import Distribution.ModuleName
@@ -198,9 +197,6 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
     pretty = showExposedModules . getExposedModules
 
-instance Described ExposedModules where
-    describe _ = REMunch (REOpt reComma) (describe (Proxy :: Proxy ExposedModule))
-
 newtype CompatPackageKey = CompatPackageKey { getCompatPackageKey :: String }
 
 instance Newtype String CompatPackageKey
@@ -212,9 +208,6 @@ instance Parsec CompatPackageKey where
     parsec = CompatPackageKey <$> P.munch1 uid_char where
         uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
 
-instance Described CompatPackageKey where
-    describe _ = RETodo
-
 newtype InstWith = InstWith { getInstWith :: [(ModuleName,OpenModule)] }
 
 instance Newtype  [(ModuleName, OpenModule)] InstWith
@@ -224,9 +217,6 @@ instance Pretty InstWith where
 
 instance Parsec InstWith where
     parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
-
-instance Described InstWith where
-    describe _ = RETodo
 
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient { getSpecLicenseLenient :: Either SPDX.License License }
@@ -238,9 +228,6 @@ instance Parsec SpecLicenseLenient where
 
 instance Pretty SpecLicenseLenient where
     pretty = either pretty pretty . getSpecLicenseLenient
-
-instance Described SpecLicenseLenient where
-    describe _ = RETodo
 
 -------------------------------------------------------------------------------
 -- Basic fields

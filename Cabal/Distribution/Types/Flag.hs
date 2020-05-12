@@ -19,7 +19,6 @@ module Distribution.Types.Flag (
     dispFlagAssignment,
     parsecFlagAssignment,
     parsecFlagAssignmentNonEmpty,
-    describeFlagAssignmentNonEmpty,
     ) where
 
 import Prelude ()
@@ -29,7 +28,6 @@ import Distribution.Utils.Generic (lowercase)
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.FieldGrammar.Described
 
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
@@ -108,12 +106,6 @@ instance Parsec FlagName where
         parsec' = (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
         rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
-
-instance Described FlagName where
-    describe _ = lead <> rest
-      where
-        lead = RECharSet $ csAlphaNum <> fromString "_"
-        rest = reMunchCS $ csAlphaNum <> fromString "_-"
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
@@ -266,10 +258,6 @@ instance Pretty FlagAssignment where
 instance Parsec FlagAssignment where
     parsec = parsecFlagAssignment
 
-instance Described FlagAssignment where
-    describe _ = REMunch RESpaces1 $
-        REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)
-
 -- | Pretty-prints a flag assignment.
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
@@ -306,6 +294,4 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment . toList <$>
         f <- parsec
         return (f, False)
 
-describeFlagAssignmentNonEmpty :: GrammarRegex void
-describeFlagAssignmentNonEmpty = REMunch1 RESpaces1 $
-    REUnion [fromString "+", fromString "-"] <> describe (Proxy :: Proxy FlagName)
+

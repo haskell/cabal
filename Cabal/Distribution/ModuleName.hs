@@ -27,11 +27,10 @@ module Distribution.ModuleName (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Utils.ShortText        (ShortText, fromShortText, toShortText)
-import System.FilePath                     (pathSeparator)
+import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
+import System.FilePath              (pathSeparator)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList
@@ -82,10 +81,6 @@ parsecModuleName = state0 DList.empty where
         case c of
             '.' -> state0 (DList.snoc acc c)
             _   -> state1 (DList.snoc acc c)
-
-instance Described ModuleName where
-    describe _ = REMunch1 (reChar '.') component where
-        component = RECharSet csUpper <> REMunch reEps (REUnion [RECharSet csAlphaNum, RECharSet (fromString "_'")])
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

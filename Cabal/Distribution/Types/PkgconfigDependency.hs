@@ -10,7 +10,6 @@ import Prelude ()
 import Distribution.Types.PkgconfigName
 import Distribution.Types.PkgconfigVersionRange
 
-import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 
@@ -39,6 +38,3 @@ instance Parsec PkgconfigDependency where
         P.spaces
         verRange <- parsec <|> pure anyPkgconfigVersion
         pure $ PkgconfigDependency name verRange
-
-instance Described PkgconfigDependency where
-    describe _ = RETodo

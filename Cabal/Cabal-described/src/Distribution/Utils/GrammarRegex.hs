@@ -18,12 +18,21 @@ module Distribution.Utils.GrammarRegex (
     regexDoc,
     ) where
 
-import Data.Char                   (isControl)
-import Distribution.Compat.Prelude
-import Prelude ()
+import Data.Char                     (isAlphaNum, isControl, ord)
+import Data.Foldable                 (Foldable)
+import Data.Maybe                    (fromMaybe)
+import Data.Monoid                   (Monoid (..))
+import Data.String                   (IsString (..))
+import Data.Traversable              (Traversable)
+import Data.Void                     (Void, vacuous)
+import Distribution.Compat.Semigroup (Semigroup (..))
+import Prelude                       (Bool (..), Char, Eq (..), Functor, Int, Maybe (..), Ord (..), Show, String, fmap, length, map, otherwise, ($), (++), (.))
 
 import qualified Distribution.Utils.CharSet as CS
 import qualified Text.PrettyPrint           as PP
+
+(<<>>) :: PP.Doc -> PP.Doc -> PP.Doc
+(<<>>) = (PP.<>)
 
 -------------------------------------------------------------------------------
 -- GrammarRegex

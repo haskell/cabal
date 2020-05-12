@@ -19,7 +19,6 @@ module Distribution.Types.ForeignLib(
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described
 import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
@@ -101,10 +100,6 @@ instance Parsec LibVersionInfo where
                 P.integral
             return (r,a)
         return $ mkLibVersionInfo (c,r,a)
-
-instance Described LibVersionInfo where
-    describe _ = reDigits <> REOpt (reChar ':' <> reDigits <> REOpt (reChar ':' <> reDigits)) where
-        reDigits = reChars ['0'..'9']
 
 -- | Construct 'LibVersionInfo' from @(current, revision, age)@
 -- numbers.

@@ -14,7 +14,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.PackageId
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
-import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import           Text.PrettyPrint                ((<+>))
@@ -63,11 +62,6 @@ instance Parsec PackageVersionConstraint where
       else
           pure (PackageVersionConstraint name (thisVersion ver))
 
-instance Described PackageVersionConstraint where
-    describe _ = describe (Proxy :: Proxy PackageName) <> REUnion
-        [ fromString "-" <> describe (Proxy :: Proxy Version)
-        , RESpaces <> describe (Proxy :: Proxy VersionRange)
-        ]
 
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
 thisPackageVersionConstraint (PackageIdentifier pn vr) =

@@ -79,12 +79,11 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.Types.Flag
-         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty, describeFlagAssignmentNonEmpty )
+         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty )
 import Distribution.Version
-         ( VersionRange, anyVersion, isAnyVersion )
+         ( anyVersion, isAnyVersion )
 import Distribution.Pretty (Pretty (..), prettyShow)
 import Distribution.Parsec (Parsec (..), CabalParsing, explicitEitherParsec, eitherParsec)
-import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..))
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
@@ -717,38 +716,6 @@ readUserConstraint str =
 instance Pretty UserConstraint where
   pretty (UserConstraint scope prop) =
     dispPackageConstraint $ PackageConstraint (fromUserConstraintScope scope) prop
-
-instance Described UserConstraint where
-    describe _ = REAppend
-        [ describeConstraintScope
-        , describeConstraintProperty
-        ]
-      where
-        describeConstraintScope :: GrammarRegex void
-        describeConstraintScope = REUnion
-            [ fromString "any." <> describePN
-            , fromString "setup." <> describePN
-            , describePN
-            , describePN <> fromString ":setup." <> describePN
-            ]
-
-        describeConstraintProperty :: GrammarRegex void
-        describeConstraintProperty = REUnion
-            [ RESpaces <> RENamed "version-range" (describe (Proxy :: Proxy VersionRange))
-            , RESpaces1 <> describeConstraintProperty'
-            ]
-
-        describeConstraintProperty' :: GrammarRegex void
-        describeConstraintProperty' = REUnion
-            [ fromString "installed"
-            , fromString "source"
-            , fromString "test"
-            , fromString "bench"
-            , describeFlagAssignmentNonEmpty
-            ]
-
-        describePN :: GrammarRegex void
-        describePN = RENamed "package-name" (describe (Proxy :: Proxy PackageName))
 
 instance Parsec UserConstraint where
     parsec = do

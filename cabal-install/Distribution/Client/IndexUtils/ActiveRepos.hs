@@ -13,9 +13,8 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Prelude ()
 
-import Distribution.FieldGrammar.Described
-import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty                 (Pretty (..), prettyShow)
+import Distribution.Parsec (Parsec (..), parsecLeadingCommaNonEmpty)
+import Distribution.Pretty (Pretty (..), prettyShow)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
@@ -66,12 +65,6 @@ instance Parsec ActiveRepos where
             repos <- parsecLeadingCommaNonEmpty parsec
             return (ActiveRepos (toList repos))
 
-instance Described ActiveRepos where
-    describe _ = REUnion
-        [ ":none"
-        , RECommaNonEmpty (describe (Proxy :: Proxy ActiveRepoEntry))
-        ]
-
 data ActiveRepoEntry
     = ActiveRepoRest CombineStrategy        -- ^ rest repositories, i.e. not explicitly listed as 'ActiveRepo'
     | ActiveRepo RepoName CombineStrategy   -- ^ explicit repository name
@@ -104,14 +97,6 @@ instance Parsec ActiveRepoEntry where
 
         strategyP = P.option CombineStrategyMerge (P.char ':' *> parsec)
 
-instance Described ActiveRepoEntry where
-    describe _ = REUnion
-        [ ":rest" <> strategy
-        , REOpt ":repo:" <> describe (Proxy :: Proxy RepoName) <> strategy
-        ]
-      where
-        strategy = REOpt $ ":" <> describe (Proxy :: Proxy CombineStrategy)
-
 data CombineStrategy
     = CombineStrategyMerge    -- ^ merge existing versions
     | CombineStrategyOverride -- ^ if later repository specifies a package,
@@ -130,12 +115,6 @@ instance Parsec CombineStrategy where
     parsec = P.choice
         [ CombineStrategyMerge    <$ P.string "merge"
         , CombineStrategyOverride <$ P.string "override"
-        ]
-
-instance Described CombineStrategy where
-    describe _ = REUnion
-        [ "merge"
-        , "override"
         ]
 
 -------------------------------------------------------------------------------

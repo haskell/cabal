@@ -1,5 +1,6 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Main (main) where
 
 import Data.Map.Strict (Map)
@@ -24,7 +25,7 @@ import qualified Text.PrettyPrint as PP
 
 import qualified Zinza as Z
 
-import Distribution.FieldGrammar.Described
+import Distribution.Described
 import Distribution.Utils.GrammarRegex
 
 import Distribution.ModuleName         (ModuleName)
@@ -62,13 +63,13 @@ main = do
                     , zproduction "version-range"   (describe (Proxy :: Proxy VersionRange))
                         "Version range syntax is recursive. Also note the set syntax added in ``cabal-version: 3.0``, set cannot be empty."
                     ]
-                , zSpaceList                = show $ regexDoc $ 
+                , zSpaceList                = show $ regexDoc $
                     REMunch RESpaces1 (RENamed "element" RETodo)
-                , zCommaList                = show $ regexDoc $ 
+                , zCommaList                = show $ regexDoc $
                     expandedCommaList (RENamed "element" RETodo)
-                , zOptCommaList             = show $ regexDoc $ 
+                , zOptCommaList             = show $ regexDoc $
                     expandedOptCommaList (RENamed "element" RETodo)
-                  
+
                 , zNull                     = null
                 , zNotNull                  = not . null
                 }
@@ -236,7 +237,7 @@ instance Applicative (Reference a) where
     pure _                      = Reference Map.empty
     Reference f <*> Reference x = Reference (Map.union f x)
 
-instance FieldGrammar Reference where
+instance FieldGrammar Described Reference where
     blurFieldGrammar _ (Reference xs) = Reference xs
 
     uniqueFieldAla fn pack _l =
@@ -271,5 +272,3 @@ instance FieldGrammar Reference where
     deprecatedSince = referenceDeprecatedSince
     removedIn       = referenceRemovedIn
     availableSince  v _ r = referenceAvailableSince v r
-
-

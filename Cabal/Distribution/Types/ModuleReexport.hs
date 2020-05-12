@@ -11,7 +11,6 @@ import Prelude ()
 import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.FieldGrammar.Described
 import Distribution.Types.PackageName
 
 import qualified Distribution.Compat.CharParsing as P
@@ -50,6 +49,3 @@ instance Parsec ModuleReexport where
             P.spaces
             parsec
         return (ModuleReexport mpkgname origname newname)
-
-instance Described ModuleReexport where
-    describe _ = RETodo

@@ -197,7 +197,7 @@ build-depends
     * Documentation of :pkg-field:`build-depends`
 
     .. math::
-        \mathrm{commalist}\left(\mathop{\mathit{pkg\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{unqual\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\bullet\mathop{\mathit{version\text{-}range}}\right)}^?\right)
+        \mathrm{commalist}\left(\mathop{\mathit{pkg\text{-}name}}{\left(\mathop{\mathord{``}\mathtt{\text{:}}\mathord{"}}\left\{ \mathop{\mathit{unqual\text{-}name}}\mid\mathop{\mathord{``}\mathtt{\{}\mathord{"}}\circ{\mathop{\mathit{unqual\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\}}\mathord{"}} \right\}\right)}^?{\left(\circ\mathop{\mathit{version\text{-}range}}\right)}^?\right)
 
 build-tool-depends
     * Monoidal field
@@ -515,7 +515,7 @@ cabal-version
     * Documentation of :pkg-field:`cabal-version`
 
     .. math::
-        \mathop{\mathord{``}\mathtt{3\text{.}0}\mathord{"}}
+        \mathop{\mathord{``}\mathtt{3\text{.}4}\mathord{"}}
 
 category
     * Free text field

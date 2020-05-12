@@ -9,7 +9,6 @@ import Distribution.Backpack
 import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
@@ -40,9 +39,6 @@ instance Parsec ExposedModule where
             parsec
 
         return (ExposedModule m reexport)
-
-instance Described ExposedModule where
-    describe _ = RETodo
 
 instance Binary ExposedModule
 instance Structured ExposedModule

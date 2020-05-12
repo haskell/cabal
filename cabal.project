@@ -4,6 +4,7 @@ tests: True
 
 packages: Cabal/Cabal-QuickCheck/
 packages: Cabal/Cabal-tree-diff/
+packages: Cabal/Cabal-described
 packages: cabal-benchmarks/
 
 -- Uncomment to allow picking up extra local unpacked deps:
