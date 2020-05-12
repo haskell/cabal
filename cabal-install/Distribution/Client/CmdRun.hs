@@ -143,7 +143,7 @@ runCommand = CommandUI
       ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
-  , commandDefaultFlags = defaultNixStyleFlags mempty
+  , commandDefaultFlags = defaultNixStyleFlags defaultClientRunFlags
   , commandOptions      = nixStyleOptions clientRunOptions
   }
 
