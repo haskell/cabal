@@ -15,10 +15,12 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Init.Types where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Simple.Setup (Flag(..), toFlag )
 
 import Distribution.Types.Dependency as P
-import Distribution.Compat.Semigroup
 import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Package as P
@@ -28,10 +30,10 @@ import Distribution.CabalSpecVersion
 import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified Text.PrettyPrint as Disp
-import qualified Distribution.Deprecated.ReadP as Parse
-import Distribution.Deprecated.Text
-
-import GHC.Generics ( Generic )
+import qualified Distribution.Compat.CharParsing as P
+import qualified Data.Map as Map
+import Distribution.Pretty (Pretty (..))
+import Distribution.Parsec (Parsec (..))
 
 -- | InitFlags is really just a simple type to represent certain
 --   portions of a .cabal file.  Rather than have a flag for EVERY
@@ -129,6 +131,14 @@ data Category
     | Web
     deriving (Read, Show, Eq, Ord, Bounded, Enum)
 
-instance Text Category where
-  disp  = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ] -- TODO: eradicateNoParse
+instance Pretty Category where
+  pretty = Disp.text . show
+
+instance Parsec Category where
+  parsec = do
+    name <- P.munch1 isAlpha
+    case Map.lookup name names of
+      Just cat -> pure cat
+      _        -> P.unexpected $ "Category: " ++ name
+    where
+      names = Map.fromList [ (show cat, cat) | cat <- [ minBound .. maxBound ] ]
