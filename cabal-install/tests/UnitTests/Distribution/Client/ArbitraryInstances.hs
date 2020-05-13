@@ -22,6 +22,9 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Data.Char (isLetter)
+import Data.List ((\\))
+
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup
 import Distribution.Types.Flag         (mkFlagAssignment)
@@ -30,6 +33,7 @@ import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
+import Distribution.Client.Glob                          (FilePathGlob (..), FilePathGlobRel (..), FilePathRoot (..), GlobPiece (..))
 import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
@@ -251,7 +255,7 @@ instance Arbitrary RelaxDepMod where
     shrink _                = []
 
 instance Arbitrary RelaxDepScope where
-    arbitrary = genericArbitrary 
+    arbitrary = genericArbitrary
     shrink    = genericShrink
 
 instance Arbitrary RelaxDepSubject where
@@ -317,3 +321,97 @@ instance Arbitrary InstallOutcome where
 instance Arbitrary Outcome where
     arbitrary = genericArbitrary
     shrink    = genericShrink
+
+-------------------------------------------------------------------------------
+-- Glob
+-------------------------------------------------------------------------------
+
+instance Arbitrary FilePathGlob where
+  arbitrary = (FilePathGlob <$> arbitrary <*> arbitrary)
+                `suchThat` validFilePathGlob
+
+  shrink (FilePathGlob root pathglob) =
+    [ FilePathGlob root' pathglob'
+    | (root', pathglob') <- shrink (root, pathglob)
+    , validFilePathGlob (FilePathGlob root' pathglob') ]
+
+validFilePathGlob :: FilePathGlob -> Bool
+validFilePathGlob (FilePathGlob FilePathRelative pathglob) =
+  case pathglob of
+    GlobDirTrailing             -> False
+    GlobDir [Literal "~"] _     -> False
+    GlobDir [Literal (d:":")] _
+      | isLetter d              -> False
+    _                           -> True
+validFilePathGlob _ = True
+
+instance Arbitrary FilePathRoot where
+  arbitrary =
+    frequency
+      [ (3, pure FilePathRelative)
+      , (1, pure (FilePathRoot unixroot))
+      , (1, FilePathRoot <$> windrive)
+      , (1, pure FilePathHomeDir)
+      ]
+    where
+      unixroot = "/"
+      windrive = do d <- choose ('A', 'Z'); return (d : ":\\")
+
+  shrink FilePathRelative     = []
+  shrink (FilePathRoot _)     = [FilePathRelative]
+  shrink FilePathHomeDir      = [FilePathRelative]
+
+
+instance Arbitrary FilePathGlobRel where
+  arbitrary = sized $ \sz ->
+    oneof $ take (max 1 sz)
+      [ pure GlobDirTrailing
+      , GlobFile  <$> (getGlobPieces <$> arbitrary)
+      , GlobDir   <$> (getGlobPieces <$> arbitrary)
+                  <*> resize (sz `div` 2) arbitrary
+      ]
+
+  shrink GlobDirTrailing = []
+  shrink (GlobFile glob) =
+      GlobDirTrailing
+    : [ GlobFile (getGlobPieces glob') | glob' <- shrink (GlobPieces glob) ]
+  shrink (GlobDir glob pathglob) =
+      pathglob
+    : GlobFile glob
+    : [ GlobDir (getGlobPieces glob') pathglob'
+      | (glob', pathglob') <- shrink (GlobPieces glob, pathglob) ]
+
+newtype GlobPieces = GlobPieces { getGlobPieces :: [GlobPiece] }
+  deriving Eq
+
+instance Arbitrary GlobPieces where
+  arbitrary = GlobPieces . mergeLiterals <$> shortListOf1 5 arbitrary
+
+  shrink (GlobPieces glob) =
+    [ GlobPieces (mergeLiterals (getNonEmpty glob'))
+    | glob' <- shrink (NonEmpty glob) ]
+
+mergeLiterals :: [GlobPiece] -> [GlobPiece]
+mergeLiterals (Literal a : Literal b : ps) = mergeLiterals (Literal (a++b) : ps)
+mergeLiterals (Union as : ps) = Union (map mergeLiterals as) : mergeLiterals ps
+mergeLiterals (p:ps) = p : mergeLiterals ps
+mergeLiterals []     = []
+
+instance Arbitrary GlobPiece where
+  arbitrary = sized $ \sz ->
+    frequency
+      [ (3, Literal <$> shortListOf1 10 (elements globLiteralChars))
+      , (1, pure WildCard)
+      , (1, Union <$> resize (sz `div` 2) (shortListOf1 5 (shortListOf1 5 arbitrary)))
+      ]
+
+  shrink (Literal str) = [ Literal str'
+                         | str' <- shrink str
+                         , not (null str')
+                         , all (`elem` globLiteralChars) str' ]
+  shrink WildCard       = []
+  shrink (Union as)     = [ Union (map getGlobPieces (getNonEmpty as'))
+                          | as' <- shrink (NonEmpty (map GlobPieces as)) ]
+
+globLiteralChars :: [Char]
+globLiteralChars = ['\0'..'\128'] \\ "*{},/\\"

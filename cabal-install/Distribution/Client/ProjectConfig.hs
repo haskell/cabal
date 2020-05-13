@@ -127,6 +127,7 @@ import Distribution.Verbosity
          ( Verbosity, modifyVerbosity, verbose )
 import Distribution.Version
          ( Version )
+import Distribution.Parsec (simpleParsec)
 import Distribution.Deprecated.Text
 import qualified Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
@@ -873,7 +874,7 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
 
 
     checkIsFileGlobPackage pkglocstr =
-      case simpleParse pkglocstr of
+      case simpleParsec pkglocstr of
         Nothing   -> return Nothing
         Just glob -> liftM Just $ do
           matches <- matchFileGlob glob

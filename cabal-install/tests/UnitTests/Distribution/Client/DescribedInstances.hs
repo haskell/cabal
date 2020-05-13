@@ -6,6 +6,7 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Described
 import Distribution.Pretty    (prettyShow)
+import Data.List ((\\))
 
 import Distribution.Types.Dependency   (Dependency)
 import Distribution.Types.PackageId    (PackageIdentifier)
@@ -20,6 +21,7 @@ import Distribution.Client.Targets                (UserConstraint)
 import Distribution.Client.Types                  (RepoName)
 import Distribution.Client.Types.AllowNewer       (RelaxDepSubject, RelaxDeps, RelaxedDep)
 import Distribution.Client.World                  (WorldPkgInfo)
+import Distribution.Client.Glob                   (FilePathGlob)
 
 -------------------------------------------------------------------------------
 -- BuildReport
@@ -43,6 +45,40 @@ instance Described Outcome where
         [ fromString (prettyShow o)
         | o <- [minBound .. maxBound :: Outcome]
         ]
+
+-------------------------------------------------------------------------------
+-- Glob
+-------------------------------------------------------------------------------
+
+-- This instance is incorrect as it may generate C:\dir\{foo,bar}
+instance Described FilePathGlob where
+    describe _ = REUnion [ root, relative, homedir ] where
+        root = REUnion
+            [ fromString "/"
+            , reChars (['a'..'z'] ++ ['A' .. 'Z']) <> ":" <> reChars "/\\"
+            ] <> REOpt pieces
+        homedir = "~/" <> REOpt pieces
+        relative = pieces
+
+        pieces :: GrammarRegex void
+        pieces = REMunch1 sep piece <> REOpt "/"
+
+        piece :: GrammarRegex void
+        piece = RERec "glob" $ REMunch1 mempty $ REUnion
+            [ normal
+            , escape
+            , wildcard
+            , "{" <> REMunch1 "," (REVar Nothing) <> "}"
+            ]
+
+        sep :: GrammarRegex void
+        sep = reChars "/\\"
+
+        wildcard :: GrammarRegex void
+        wildcard = "*"
+
+        normal   = reChars $ ['\0'..'\128'] \\ "*{},/\\"
+        escape   = fromString "\\" <> reChars "*{},"
 
 -------------------------------------------------------------------------------
 -- WorldPkgInfo
