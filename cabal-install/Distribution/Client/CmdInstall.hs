@@ -124,8 +124,8 @@ import Distribution.Simple.Utils
          , ordNub )
 import Distribution.Utils.Generic
          ( safeHead, writeFileAtomic )
-import Distribution.Deprecated.Text
-         ( simpleParse )
+import Distribution.Parsec
+         ( simpleParsec )
 import Distribution.Pretty
          ( prettyShow )
 
@@ -235,7 +235,7 @@ installAction ( configFlags, configExFlags, installFlags
         (targetStrings'', packageIds) =
           partitionEithers .
           flip fmap targetStrings' $
-          \str -> case simpleParse str of
+          \str -> case simpleParsec str of
             Just (pkgId :: PackageId)
               | pkgVersion pkgId /= nullVersion -> Right pkgId
             _                                   -> Left str

@@ -22,7 +22,7 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import Distribution.Package -- from Cabal
-import Distribution.Deprecated.Text (display)
+import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.PackagePath
@@ -61,7 +61,7 @@ showI (I v InRepo)   = showVer v
 showI (I v (Inst uid)) = showVer v ++ "/installed" ++ extractPackageAbiHash uid
   where
     extractPackageAbiHash xs =
-      case first reverse $ break (=='-') $ reverse (display xs) of
+      case first reverse $ break (=='-') $ reverse (prettyShow xs) of
         (ys, []) -> ys
         (ys, _)  -> '-' : ys
 

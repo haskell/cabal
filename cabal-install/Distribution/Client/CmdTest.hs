@@ -25,8 +25,8 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
          ( Flag(..) )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -264,7 +264,7 @@ renderTargetProblem (TargetProblemComponentNotTest pkgid cname) =
     "The test command is for running test suites, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
- ++ display pkgid ++ "."
+ ++ prettyShow pkgid ++ "."
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 

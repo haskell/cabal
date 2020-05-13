@@ -23,7 +23,7 @@ module Distribution.Client.ProjectConfig.Legacy (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Deprecated.ParseUtils (parseFlagAssignment)
+import Distribution.Types.Flag (parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
@@ -41,8 +41,8 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.FieldGrammar
-import Distribution.Pretty (Pretty (..))
-import Distribution.Parsec (Parsec (..))
+import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Parsec (Parsec (..), simpleParsec)
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.PackageDescription
@@ -73,7 +73,6 @@ import Distribution.Utils.NubList
 import Distribution.Simple.LocalBuildInfo
          ( toPathTemplate, fromPathTemplate )
 
-import Distribution.Deprecated.Text
 import qualified Distribution.Deprecated.ReadP as Parse
 import Distribution.Deprecated.ReadP
          ( ReadP, (+++) )
@@ -83,8 +82,10 @@ import Text.PrettyPrint
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
-         , simpleField, commaNewLineListFieldParsec, newLineListField, parseTokenQ
-         , parseHaskellString, showToken )
+         , commaNewLineListFieldParsec, newLineListField, parseTokenQ
+         , parseHaskellString, showToken 
+         , simpleFieldParsec
+         )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
@@ -1046,8 +1047,8 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           configConfigureArgs
           (\v conf -> conf { configConfigureArgs = v })
-      , simpleField "flags"
-          dispFlagAssignment parseFlagAssignment
+      , simpleFieldParsec "flags"
+          dispFlagAssignment parsecFlagAssignment
           configConfigurationsFlags
           (\v conf -> conf { configConfigurationsFlags = v })
       ]
@@ -1093,9 +1094,9 @@ legacyPackageConfigFieldDescrs =
   . mapFieldNames
       ("haddock-"++)
   . addFields
-      [ simpleField "for-hackage"
+      [ simpleFieldParsec "for-hackage"
           -- TODO: turn this into a library function
-          (fromFlagOrDefault Disp.empty . fmap disp) (Parse.option mempty (fmap toFlag parse))
+          (fromFlagOrDefault Disp.empty . fmap pretty) (toFlag <$> parsec <|> pure mempty)
           haddockForHackage (\v conf -> conf { haddockForHackage = v })
       ]
   . filterFields
@@ -1142,9 +1143,9 @@ legacyPackageConfigFieldDescrs =
 
   where
     overrideFieldCompiler =
-      simpleField "compiler"
-        (fromFlagOrDefault Disp.empty . fmap disp)
-        (Parse.option mempty (fmap toFlag parse))
+      simpleFieldParsec "compiler"
+        (fromFlagOrDefault Disp.empty . fmap pretty)
+        (toFlag <$> parsec <|> pure mempty)
         configHcFlavor (\v flags -> flags { configHcFlavor = v })
 
 
@@ -1286,7 +1287,7 @@ packageSpecificOptionsSectionDescr =
       sectionFields      = packageSpecificOptionsFieldDescrs,
       sectionSubsections = [],
       sectionGet         = \projconf ->
-                             [ (display pkgname, pkgconf)
+                             [ (prettyShow pkgname, pkgconf)
                              | (pkgname, pkgconf) <-
                                  Map.toList . getMapMappend
                                . legacySpecificConfig $ projconf ]
@@ -1297,7 +1298,7 @@ packageSpecificOptionsSectionDescr =
                    legacyAllConfig = legacyAllConfig projconf <> pkgconf
                  }
           _   -> do
-            pkgname <- case simpleParse pkgnamestr of
+            pkgname <- case simpleParsec pkgnamestr of
               Just pkgname -> return pkgname
               Nothing      -> syntaxError lineno $
                                   "a 'package' section requires a package name "

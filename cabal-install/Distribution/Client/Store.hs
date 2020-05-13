@@ -33,7 +33,7 @@ import           Distribution.Compiler (CompilerId)
 import           Distribution.Simple.Utils
                    ( withTempDirectory, debug, info )
 import           Distribution.Verbosity
-import           Distribution.Deprecated.Text
+import           Distribution.Pretty (prettyShow)
 
 import qualified Data.Set as Set
 import           Control.Exception
@@ -203,7 +203,7 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
           then do
             info verbosity $
                 "Concurrent build race: abandoning build in favour of existing "
-             ++ "store entry " ++ display compid </> display unitid
+             ++ "store entry " ++ prettyShow compid </> prettyShow unitid
             return UseExistingStoreEntry
 
           -- If the entry does not exist then we won the race and can proceed.
@@ -220,7 +220,7 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
               renameFile file finalStoreFile
 
             debug verbosity $
-              "Installed store entry " ++ display compid </> display unitid
+              "Installed store entry " ++ prettyShow compid </> prettyShow unitid
             return UseNewStoreEntry
   where
     finalEntryDir = storePackageDirectory compid unitid
@@ -249,7 +249,7 @@ withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
             gotLock <- fdTryLock fd ExclusiveLock
             unless gotLock  $ do
                 info verbosity $ "Waiting for file lock on store entry "
-                              ++ display compid </> display unitid
+                              ++ prettyShow compid </> prettyShow unitid
                 fdLock fd ExclusiveLock
             return fd
 
@@ -269,7 +269,7 @@ withIncomingUnitIdLock verbosity StoreDirLayout{storeIncomingLock}
       gotlock <- hTryLock h ExclusiveLock
       unless gotlock $ do
         info verbosity $ "Waiting for file lock on store entry "
-                      ++ display compid </> display unitid
+                      ++ prettyShow compid </> prettyShow unitid
         hLock h ExclusiveLock
       return h
 

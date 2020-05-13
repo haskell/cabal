@@ -23,7 +23,7 @@ import System.FilePath.Posix
          ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport)
-import Distribution.Deprecated.Text (display)
+import Distribution.Pretty (prettyShow)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die')
 import Distribution.Client.HttpUtils
@@ -43,7 +43,7 @@ uploadReports verbosity repoCtxt auth uri reports = do
 
 postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity repoCtxt auth uri buildReport = do
-  let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
+  let fullURI = uri { uriPath = "/package" </> prettyShow (BuildReport.package buildReport) </> "reports" }
   transport <- repoContextGetTransport repoCtxt
   res <- postHttp transport verbosity fullURI (showBuildReport buildReport) (Just auth)
   case res of
@@ -53,7 +53,7 @@ postBuildReport verbosity repoCtxt auth uri buildReport = do
 {-
   setAllowRedirects False
   (_, response) <- request Request {
-    rqURI     = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" },
+    rqURI     = uri { uriPath = "/package" </> prettyShow (BuildReport.package buildReport) </> "reports" },
     rqMethod  = POST,
     rqHeaders = [Header HdrContentType   ("text/plain"),
                  Header HdrContentLength (show (length body)),

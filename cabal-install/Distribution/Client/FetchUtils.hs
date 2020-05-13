@@ -41,8 +41,8 @@ import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
          ( notice, info, debug, die' )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity, verboseUnmarkOutput )
 import Distribution.Client.GlobalFlags
@@ -165,11 +165,11 @@ fetchRepoTarball :: Verbosity -> RepoContext -> Repo -> PackageId -> IO FilePath
 fetchRepoTarball verbosity' repoCtxt repo pkgid = do
   fetched <- doesFileExist (packageFile repo pkgid)
   if fetched
-    then do info verbosity $ display pkgid ++ " has already been downloaded."
+    then do info verbosity $ prettyShow pkgid ++ " has already been downloaded."
             return (packageFile repo pkgid)
-    else do progressMessage verbosity ProgressDownloading (display pkgid)
+    else do progressMessage verbosity ProgressDownloading (prettyShow pkgid)
             res <- downloadRepoPackage
-            progressMessage verbosity ProgressDownloaded (display pkgid)
+            progressMessage verbosity ProgressDownloaded (prettyShow pkgid)
             return res
   where
     -- whether we download or not is non-deterministic
@@ -285,7 +285,7 @@ waitAsyncFetchPackage verbosity downloadMap srcloc =
 --
 packageFile :: Repo -> PackageId -> FilePath
 packageFile repo pkgid = packageDir repo pkgid
-                     </> display pkgid
+                     </> prettyShow pkgid
                      <.> "tar.gz"
 
 -- | Generate the full path to the directory where the local cached copy of
@@ -294,8 +294,8 @@ packageFile repo pkgid = packageDir repo pkgid
 packageDir :: Repo -> PackageId -> FilePath
 packageDir (RepoLocalNoIndex (LocalRepo _ dir _) _) _pkgid = dir
 packageDir repo pkgid = repoLocalDir repo
-                    </> display (packageName    pkgid)
-                    </> display (packageVersion pkgid)
+                    </> prettyShow (packageName    pkgid)
+                    </> prettyShow (packageVersion pkgid)
 
 -- | Generate the URI of the tarball for a given package.
 --
@@ -304,14 +304,14 @@ packageURI repo pkgid | isOldHackageURI (remoteRepoURI repo) =
   (remoteRepoURI repo) {
     uriPath = FilePath.Posix.joinPath
       [uriPath (remoteRepoURI repo)
-      ,display (packageName    pkgid)
-      ,display (packageVersion pkgid)
-      ,display pkgid <.> "tar.gz"]
+      ,prettyShow (packageName    pkgid)
+      ,prettyShow (packageVersion pkgid)
+      ,prettyShow pkgid <.> "tar.gz"]
   }
 packageURI repo pkgid =
   (remoteRepoURI repo) {
     uriPath = FilePath.Posix.joinPath
       [uriPath (remoteRepoURI repo)
       ,"package"
-      ,display pkgid <.> "tar.gz"]
+      ,prettyShow pkgid <.> "tar.gz"]
   }

@@ -44,8 +44,8 @@ import Distribution.Simple.Utils
          ( tryFindPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Version
@@ -91,7 +91,7 @@ showBounds padTo p = unwords $
     showInterval (LowerBound _ _, NoUpperBound) =
       error "Error: expected upper bound...this should never happen!"
     showInterval (LowerBound l _, UpperBound u _) =
-      unwords [">=", display l, "&& <", display u]
+      unwords [">=", prettyShow l, "&& <", prettyShow u]
 
 -- | Entry point for the @gen-bounds@ command.
 genBounds

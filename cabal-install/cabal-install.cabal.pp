@@ -88,7 +88,6 @@ Version:            3.3.0.0
         -- they are needed for as long until cabal-install moves to parsec parser
         Distribution.Deprecated.ParseUtils
         Distribution.Deprecated.ReadP
-        Distribution.Deprecated.Text
         Distribution.Deprecated.ViewAsFieldDescr
 
         Distribution.Client.BuildReports.Anonymous

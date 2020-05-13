@@ -58,8 +58,8 @@ import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName
          , HasUnitId(..), PackageId, packageVersion, packageName )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 
 import Distribution.Client.Types
          ( UnresolvedPkgLoc )
@@ -111,10 +111,10 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . toList
 
 showPlanPackage :: SolverPlanPackage -> String
-showPlanPackage (PreExisting ipkg) = "PreExisting " ++ display (packageId ipkg)
-                                            ++ " (" ++ display (installedUnitId ipkg)
+showPlanPackage (PreExisting ipkg) = "PreExisting " ++ prettyShow (packageId ipkg)
+                                            ++ " (" ++ prettyShow (installedUnitId ipkg)
                                             ++ ")"
-showPlanPackage (Configured  spkg)   = "Configured " ++ display (packageId spkg)
+showPlanPackage (Configured  spkg)   = "Configured " ++ prettyShow (packageId spkg)
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
@@ -173,26 +173,26 @@ data SolverPlanProblem =
 
 showPlanProblem :: SolverPlanProblem -> String
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
-     "Package " ++ display (packageId pkg)
+     "Package " ++ prettyShow (packageId pkg)
   ++ " depends on the following packages which are missing from the plan: "
-  ++ intercalate ", " (map display missingDeps)
+  ++ intercalate ", " (map prettyShow missingDeps)
 
 showPlanProblem (PackageCycle cycleGroup) =
      "The following packages are involved in a dependency cycle "
-  ++ intercalate ", " (map (display.packageId) cycleGroup)
+  ++ intercalate ", " (map (prettyShow.packageId) cycleGroup)
 
 showPlanProblem (PackageInconsistency name inconsistencies) =
-     "Package " ++ display name
+     "Package " ++ prettyShow name
   ++ " is required by several packages,"
   ++ " but they require inconsistent versions:\n"
-  ++ unlines [ "  package " ++ display pkg ++ " requires "
-                            ++ display (PackageIdentifier name ver)
+  ++ unlines [ "  package " ++ prettyShow pkg ++ " requires "
+                            ++ prettyShow (PackageIdentifier name ver)
              | (pkg, ver) <- inconsistencies ]
 
 showPlanProblem (PackageStateInvalid pkg pkg') =
-     "Package " ++ display (packageId pkg)
+     "Package " ++ prettyShow (packageId pkg)
   ++ " is in the " ++ showPlanState pkg
-  ++ " state but it depends on package " ++ display (packageId pkg')
+  ++ " state but it depends on package " ++ prettyShow (packageId pkg')
   ++ " which is in the " ++ showPlanState pkg'
   ++ " state"
   where

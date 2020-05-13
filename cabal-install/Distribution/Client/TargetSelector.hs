@@ -66,9 +66,9 @@ import Distribution.Simple.LocalBuildInfo
          ( Component(..), ComponentName(..), LibraryName(..)
          , pkgComponents, componentName, componentBuildInfo )
 import Distribution.Types.ForeignLib
+import Distribution.Parsec (Parsec (..), simpleParsec)
+import Distribution.Pretty (prettyShow)
 
-import Distribution.Deprecated.Text
-         ( Text, display, simpleParse )
 import Distribution.Simple.Utils
          ( die', lowercase, ordNub )
 import Distribution.Client.Utils
@@ -1037,7 +1037,7 @@ syntaxForm1File ps =
     (pkgfile, ~KnownPackage{pinfoId, pinfoComponents})
       -- always returns the KnownPackage case
       <- matchPackageDirectoryPrefix ps fstatus1
-    orNoThingIn "package" (display (packageName pinfoId)) $ do
+    orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
       (filepath, c) <- matchComponentFile pinfoComponents pkgfile
       return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
   where
@@ -1135,7 +1135,7 @@ syntaxForm2PackageComponent ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentName pinfoComponents str2
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
         --TODO: the error here ought to say there's no component by that name in
@@ -1147,7 +1147,7 @@ syntaxForm2PackageComponent ps =
     render (TargetComponent p c WholeComponent) =
       [TargetStringFileStatus2 (dispP p) noFileStatus (dispC p c)]
     render (TargetComponentUnknown pn (Left cn) WholeComponent) =
-      [TargetStringFileStatus2 (dispPN pn) noFileStatus (display cn)]
+      [TargetStringFileStatus2 (dispPN pn) noFileStatus (prettyShow cn)]
     render _ = []
 
 -- | Syntax: namespace : component
@@ -1180,7 +1180,7 @@ syntaxForm2PackageModule ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           let ms = [ (m,c) | c <- pinfoComponents, m <- cinfoModules c ]
           (m,c) <- matchModuleNameAnd ms str2
           return (TargetComponent pinfoId (cinfoName c) (ModuleTarget m))
@@ -1226,7 +1226,7 @@ syntaxForm2PackageFile ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           (filepath, c) <- matchComponentFile pinfoComponents str2
           return (TargetComponent pinfoId (cinfoName c) (FileTarget filepath))
       KnownPackageName pn ->
@@ -1325,7 +1325,7 @@ syntaxForm3PackageKindComponent ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str3
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
       KnownPackageName pn ->
@@ -1353,7 +1353,7 @@ syntaxForm3PackageComponentModule ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentName pinfoComponents str2
           orNoThingIn "component" (cinfoStrName c) $ do
             let ms = cinfoModules c
@@ -1405,7 +1405,7 @@ syntaxForm3PackageComponentFile ps =
     p <- matchPackage ps str1 fstatus1
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentName pinfoComponents str2
           orNoThingIn "component" (cinfoStrName c) $ do
             (filepath, _) <- matchComponentFile [c] str3
@@ -1496,7 +1496,7 @@ syntaxForm5MetaNamespacePackageKindComponent ps =
     p <- matchPackage  ps str3 noFileStatus
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str5
           return (TargetComponent pinfoId (cinfoName c) WholeComponent)
       KnownPackageName pn ->
@@ -1526,7 +1526,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceModule ps =
     p <- matchPackage  ps str3 noFileStatus
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str5
           orNoThingIn "component" (cinfoStrName c) $ do
             let ms = cinfoModules c
@@ -1564,7 +1564,7 @@ syntaxForm7MetaNamespacePackageKindComponentNamespaceFile ps =
     p <- matchPackage  ps str3 noFileStatus
     case p of
       KnownPackage{pinfoId, pinfoComponents} ->
-        orNoThingIn "package" (display (packageName pinfoId)) $ do
+        orNoThingIn "package" (prettyShow (packageName pinfoId)) $ do
           c <- matchComponentKindAndName pinfoComponents ckind str5
           orNoThingIn "component" (cinfoStrName c) $ do
             (filepath,_) <- matchComponentFile [c] str7
@@ -1648,10 +1648,10 @@ syntaxForm7 render f =
     match _ = mzero
 
 dispP :: Package p => p -> String
-dispP = display . packageName
+dispP = prettyShow . packageName
 
 dispPN :: PackageName -> String
-dispPN = display
+dispPN = prettyShow
 
 dispC :: PackageId -> ComponentName -> String
 dispC = componentStringName . packageName
@@ -1660,7 +1660,7 @@ dispC' :: PackageName -> ComponentName -> String
 dispC' = componentStringName
 
 dispCN :: UnqualComponentName -> String
-dispCN = display
+dispCN = prettyShow
 
 dispK :: ComponentKind -> String
 dispK = showComponentKindShort
@@ -1672,7 +1672,7 @@ dispF :: ComponentKind -> String
 dispF = showComponentKindFilterShort
 
 dispM :: ModuleName -> String
-dispM = display
+dispM = prettyShow
 
 
 -------------------------------
@@ -1768,8 +1768,8 @@ collectKnownPackageInfo dirActions@DirActions{..}
           dirabs <- canonicalizePath dir
           dirrel <- makeRelativeToCwd dirActions dirabs
           --TODO: ought to get this earlier in project reading
-          let fileabs = dirabs </> display (packageName pkg) <.> "cabal"
-              filerel = dirrel </> display (packageName pkg) <.> "cabal"
+          let fileabs = dirabs </> prettyShow (packageName pkg) <.> "cabal"
+              filerel = dirrel </> prettyShow (packageName pkg) <.> "cabal"
           exists <- doesFileExist fileabs
           return ( Just (dirabs, dirrel)
                  , if exists then Just (fileabs, filerel) else Nothing
@@ -1803,7 +1803,7 @@ collectKnownComponentInfo pkg =
 
 
 componentStringName :: PackageName -> ComponentName -> ComponentStringName
-componentStringName pkgname (CLibName LMainLibName) = display pkgname
+componentStringName pkgname (CLibName LMainLibName) = prettyShow pkgname
 componentStringName _ (CLibName (LSubLibName name)) = unUnqualComponentName name
 componentStringName _ (CFLibName name)  = unUnqualComponentName name
 componentStringName _ (CExeName   name) = unUnqualComponentName name
@@ -1975,9 +1975,9 @@ matchPackageName :: [KnownPackage] -> String -> Match KnownPackage
 matchPackageName ps = \str -> do
     guard (validPackageName str)
     orNoSuchThing "package" str
-                  (map (display . knownPackageName) ps) $
+                  (map (prettyShow . knownPackageName) ps) $
       increaseConfidenceFor $
-        matchInexactly caseFold (display . knownPackageName) ps str
+        matchInexactly caseFold (prettyShow . knownPackageName) ps str
 
 
 matchPackageNameUnknown :: String -> Match KnownPackage
@@ -2060,7 +2060,7 @@ matchComponentKindAndName cs ckind str =
 
 guardModuleName :: String -> Match ()
 guardModuleName s =
-  case simpleParse s :: Maybe ModuleName of
+  case simpleParsec s :: Maybe ModuleName of
     Just _                   -> increaseConfidence
     _ | all validModuleChar s
         && not (null s)      -> return ()
@@ -2071,16 +2071,16 @@ guardModuleName s =
 
 matchModuleName :: [ModuleName] -> String -> Match ModuleName
 matchModuleName ms str =
-    orNoSuchThing "module" str (map display ms)
+    orNoSuchThing "module" str (map prettyShow ms)
   $ increaseConfidenceFor
-  $ matchInexactly caseFold display ms str
+  $ matchInexactly caseFold prettyShow ms str
 
 
 matchModuleNameAnd :: [(ModuleName, a)] -> String -> Match (ModuleName, a)
 matchModuleNameAnd ms str =
-    orNoSuchThing "module" str (map (display . fst) ms)
+    orNoSuchThing "module" str (map (prettyShow . fst) ms)
   $ increaseConfidenceFor
-  $ matchInexactly caseFold (display . fst) ms str
+  $ matchInexactly caseFold (prettyShow . fst) ms str
 
 
 matchModuleNameUnknown :: String -> Match ModuleName
@@ -2370,8 +2370,8 @@ matchInexactly cannonicalise key xs =
     -- the map of canonicalised keys to groups of inexact matches
     m' = Map.mapKeysWith (++) cannonicalise m
 
-matchParse :: Text a => String -> Match a
-matchParse = maybe mzero return . simpleParse
+matchParse :: Parsec a => String -> Match a
+matchParse = maybe mzero return . simpleParsec
 
 
 ------------------------------

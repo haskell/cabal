@@ -100,8 +100,7 @@ import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Simple.Setup
          ( asBool )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty (prettyShow)
 import Distribution.Verbosity
          ( normal, Verbosity )
 import Distribution.Version
@@ -184,7 +183,7 @@ data DepResolverParams = DepResolverParams {
 
 showDepResolverParams :: DepResolverParams -> String
 showDepResolverParams p =
-     "targets: " ++ intercalate ", " (map display $ Set.toList (depResolverTargets p))
+     "targets: " ++ intercalate ", " (map prettyShow $ Set.toList (depResolverTargets p))
   ++ "\nconstraints: "
   ++   concatMap (("\n  " ++) . showLabeledConstraint)
        (depResolverConstraints p)
@@ -233,11 +232,11 @@ data PackagePreference =
 --
 showPackagePreference :: PackagePreference -> String
 showPackagePreference (PackageVersionPreference   pn vr) =
-  display pn ++ " " ++ display (simplifyVersionRange vr)
+  prettyShow pn ++ " " ++ prettyShow (simplifyVersionRange vr)
 showPackagePreference (PackageInstalledPreference pn ip) =
-  display pn ++ " " ++ show ip
+  prettyShow pn ++ " " ++ show ip
 showPackagePreference (PackageStanzasPreference pn st) =
-  display pn ++ " " ++ show st
+  prettyShow pn ++ " " ++ show st
 
 basicDepResolverParams :: InstalledPackageIndex
                        -> PackageIndex.PackageIndex UnresolvedSourcePackage
@@ -833,12 +832,12 @@ data PlanPackageProblem =
 
 showPlanPackageProblem :: PlanPackageProblem -> String
 showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
-     "Package " ++ display (packageId pkg)
+     "Package " ++ prettyShow (packageId pkg)
   ++ " has an invalid configuration, in particular:\n"
   ++ unlines [ "  " ++ showPackageProblem problem
              | problem <- packageProblems ]
 showPlanPackageProblem (DuplicatePackageSolverId pid dups) =
-     "Package " ++ display (packageId pid) ++ " has "
+     "Package " ++ prettyShow (packageId pid) ++ " has "
   ++ show (length dups) ++ " duplicate instances."
 
 planPackagesProblems :: Platform -> CompilerInfo
@@ -872,20 +871,20 @@ showPackageProblem (ExtraFlag flag) =
 
 showPackageProblem (DuplicateDeps pkgids) =
      "duplicate packages specified as selected dependencies: "
-  ++ intercalate ", " (map display pkgids)
+  ++ intercalate ", " (map prettyShow pkgids)
 
 showPackageProblem (MissingDep dep) =
-     "the package has a dependency " ++ display dep
+     "the package has a dependency " ++ prettyShow dep
   ++ " but no package has been selected to satisfy it."
 
 showPackageProblem (ExtraDep pkgid) =
-     "the package configuration specifies " ++ display pkgid
+     "the package configuration specifies " ++ prettyShow pkgid
   ++ " but (with the given flag assignment) the package does not actually"
   ++ " depend on any version of that package."
 
 showPackageProblem (InvalidDep dep pkgid) =
-     "the package depends on " ++ display dep
-  ++ " but the configuration specifies " ++ display pkgid
+     "the package depends on " ++ prettyShow dep
+  ++ " but the configuration specifies " ++ prettyShow pkgid
   ++ " which does not satisfy the dependency."
 
 -- | A 'ConfiguredPackage' is valid if the flag assignment is total and if
@@ -1048,5 +1047,5 @@ data ResolveNoDepsError =
 
 instance Show ResolveNoDepsError where
   show (ResolveUnsatisfiable name ver) =
-       "There is no available version of " ++ display name
-    ++ " that satisfies " ++ display (simplifyVersionRange ver)
+       "There is no available version of " ++ prettyShow name
+    ++ " that satisfies " ++ prettyShow (simplifyVersionRange ver)

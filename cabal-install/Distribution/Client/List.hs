@@ -26,7 +26,7 @@ import Distribution.PackageDescription
          ( PackageFlag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
-import Distribution.Pretty (pretty)
+import Distribution.Pretty (pretty, prettyShow)
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
@@ -40,8 +40,6 @@ import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
-import Distribution.Deprecated.Text
-         ( Text(disp), display )
 
 import qualified Distribution.SPDX as SPDX
 
@@ -156,7 +154,7 @@ list verbosity packageDBs repos comp progdb listFlags pats = do
 
     if simpleOutput
       then putStr $ unlines
-             [ display (pkgName pkg) ++ " " ++ display version
+             [ prettyShow (pkgName pkg) ++ " " ++ prettyShow version
              | pkg <- matches
              , version <- if onlyInstalled
                             then              installedVersions pkg
@@ -225,9 +223,9 @@ info verbosity packageDBs repoCtxt comp progdb
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (NamedPackage name props)
       | null (selectedInstalledPkgs) && null (selectedSourcePkgs)
-      = Left $ "There is no available version of " ++ display name
+      = Left $ "There is no available version of " ++ prettyShow name
             ++ " that satisfies "
-            ++ display (simplifyVersionRange verConstraint)
+            ++ prettyShow (simplifyVersionRange verConstraint)
 
       | otherwise
       = Right $ mergePackageInfo pref installedPkgs
@@ -312,14 +310,14 @@ data ExtDependency = SourceDependency Dependency
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-     char '*' <+> disp (pkgName pkginfo)
+     char '*' <+> pretty (pkgName pkginfo)
      $+$
      (nest 4 $ vcat [
        maybeShowST (synopsis pkginfo) "Synopsis:" reflowParagraphs
      , text "Default available version:" <+>
        case selectedSourcePkg pkginfo of
          Nothing  -> text "[ Not available from any configured repository ]"
-         Just pkg -> disp (packageVersion pkg)
+         Just pkg -> pretty (packageVersion pkg)
      , text "Installed versions:" <+>
        case installedVersions pkginfo of
          []  | hasLib pkginfo -> text "[ Not installed ]"
@@ -338,9 +336,9 @@ showPackageSummaryInfo pkginfo =
 showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-   char '*' <+> disp (pkgName pkginfo)
-            Disp.<> maybe empty (\v -> char '-' Disp.<> disp v) (selectedVersion pkginfo)
-            <+> text (replicate (16 - length (display (pkgName pkginfo))) ' ')
+   char '*' <+> pretty (pkgName pkginfo)
+            Disp.<> maybe empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
+            <+> text (replicate (16 - length (prettyShow (pkgName pkginfo))) ' ')
             Disp.<> parens pkgkind
    $+$
    (nest 4 $ vcat [
@@ -360,13 +358,13 @@ showPackageDetailedInfo pkginfo =
    , entryST "Author"        author       hideIfNull     reflowLines
    , entryST "Maintainer"    maintainer   hideIfNull     reflowLines
    , entry "Source repo"   sourceRepo   orNotSpecified text
-   , entry "Executables"   executables  hideIfNull     (commaSep disp)
+   , entry "Executables"   executables  hideIfNull     (commaSep pretty)
    , entry "Flags"         flags        hideIfNull     (commaSep dispFlag)
    , entry "Dependencies"  dependencies hideIfNull     (commaSep dispExtDep)
    , entry "Documentation" haddockHtml  showIfInstalled text
    , entry "Cached"        haveTarball  alwaysShow     dispYesNo
    , if not (hasLib pkginfo) then empty else
-     text "Modules:" $+$ nest 4 (vcat (map disp . sort . modules $ pkginfo))
+     text "Modules:" $+$ nest 4 (vcat (map pretty . sort . modules $ pkginfo))
    ])
    $+$ text ""
   where
@@ -398,8 +396,8 @@ showPackageDetailedInfo pkginfo =
     dispYesNo True  = text "Yes"
     dispYesNo False = text "No"
 
-    dispExtDep (SourceDependency    dep) = disp dep
-    dispExtDep (InstalledDependency dep) = disp dep
+    dispExtDep (SourceDependency    dep) = pretty dep
+    dispExtDep (InstalledDependency dep) = pretty dep
 
     isInstalled = not (null (installedVersions pkginfo))
     hasExes = length (executables pkginfo) >= 2
@@ -557,7 +555,7 @@ groupOn key = map (\xs -> (key (head xs), xs))
 dispTopVersions :: Int -> VersionRange -> [Version] -> Doc
 dispTopVersions n pref vs =
          (Disp.fsep . Disp.punctuate (Disp.char ',')
-        . map (\ver -> if ispref ver then disp ver else parens (disp ver))
+        . map (\ver -> if ispref ver then pretty ver else parens (pretty ver))
         . sort . take n . interestingVersions ispref
         $ vs)
     <+> trailingMessage

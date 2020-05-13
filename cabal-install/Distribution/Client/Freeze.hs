@@ -53,8 +53,8 @@ import Distribution.Simple.Utils
          ( die', notice, debug, writeFileAtomic )
 import Distribution.System
          ( Platform )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -267,5 +267,5 @@ formatPkgs :: Package pkg => [pkg] -> [String]
 formatPkgs = map $ showPkg . packageId
   where
     showPkg pid = name pid ++ " == " ++ version pid
-    name = display . packageName
-    version = display . packageVersion
+    name = prettyShow . packageName
+    version = prettyShow . packageVersion

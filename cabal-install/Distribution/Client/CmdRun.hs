@@ -37,9 +37,9 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
-import Distribution.Deprecated.Text
-         ( display )
-import Distribution.CabalSpecVersion (CabalSpecVersion (..))
+import Distribution.Pretty
+         ( prettyShow )
+import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -65,8 +65,6 @@ import Distribution.Simple.Program.Run
 import Distribution.Types.UnitId
          ( UnitId )
 
-import Distribution.CabalSpecVersion
-         ( cabalSpecLatest )
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..) )
 import Distribution.FieldGrammar
@@ -275,17 +273,17 @@ runAction ( configFlags, configExFlags, installFlags
       [] -> die' verbosity $ "Unknown executable "
                           ++ exeName
                           ++ " in package "
-                          ++ display selectedUnitId
+                          ++ prettyShow selectedUnitId
       [elabPkg] -> do
         info verbosity $ "Selecting "
-                       ++ display selectedUnitId
+                       ++ prettyShow selectedUnitId
                        ++ " to supply " ++ exeName
         return elabPkg
       elabPkgs -> die' verbosity
         $ "Multiple matching executables found matching "
         ++ exeName
         ++ ":\n"
-        ++ unlines (fmap (\p -> " - in package " ++ display (elabUnitId p)) elabPkgs)
+        ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
     let exePath = binDirectoryFor (distDirLayout baseCtx)
                                   (elaboratedShared buildCtx)
                                   pkg
@@ -617,7 +615,7 @@ renderTargetProblem (TargetProblemComponentNotExe pkgid cname) =
     "The run command is for running executables, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
- ++ display pkgid ++ "."
+ ++ prettyShow pkgid ++ "."
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
