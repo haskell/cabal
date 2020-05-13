@@ -44,8 +44,8 @@ import Distribution.Simple.Utils
          ( die', notice, debug )
 import Distribution.System
          ( Platform )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -110,7 +110,7 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
       else if dryRun
              then notice verbosity $ unlines $
                      "The following packages would be fetched:"
-                   : map (display . packageId) pkgs'
+                   : map (prettyShow . packageId) pkgs'
 
              else mapM_ (fetchPackage verbosity repoCtxt . packageSource) pkgs'
 

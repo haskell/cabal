@@ -10,7 +10,7 @@ import Distribution.Client.Setup
 
 import Distribution.Simple.Utils (notice, warn, info, die', toUTF8BS)
 import Distribution.Verbosity (Verbosity)
-import Distribution.Deprecated.Text (display)
+import Distribution.Pretty (prettyShow)
 import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
@@ -192,7 +192,7 @@ report verbosity repoCtxt mUsername mPassword = do
                Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
                Right report' ->
                  do info verbosity $ "Uploading report for "
-                      ++ display (BuildReport.package report')
+                      ++ prettyShow (BuildReport.package report')
                     BuildReport.uploadReports verbosity repoCtxt auth
                       (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                     return ()

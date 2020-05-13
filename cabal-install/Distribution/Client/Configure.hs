@@ -81,7 +81,6 @@ import Distribution.Simple.Utils as Utils
          , defaultPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Deprecated.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
@@ -279,7 +278,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
           ++ showConstraint h
   forM_ (safeHead unknownPreferences) $ \h ->
     warn verbosity $ "Preference refers to an unknown package: "
-          ++ display h
+          ++ prettyShow h
   where
     unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
                          configExConstraints flags
@@ -403,7 +402,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configIPID = if isJust (flagToMaybe (configIPID configFlags))
                     -- Make sure cabal configure --ipid works.
                     then configIPID configFlags
-                    else toFlag (display ipid),
+                    else toFlag (prettyShow ipid),
       configConfigurationsFlags = flags,
       -- We generate the legacy constraints as well as the new style precise
       -- deps.  In the end only one set gets passed to Setup.hs configure,

@@ -83,8 +83,7 @@ import Distribution.Package
          , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
-import Distribution.Deprecated.Text
-import Distribution.Pretty (prettyShow)
+import Distribution.Pretty (Pretty (..), prettyShow, defaultStyle)
 import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -286,9 +285,9 @@ showPlanGraph graph = renderStyle defaultStyle $
     vcat (map dispPlanPackage (Foldable.toList graph))
   where dispPlanPackage p =
             hang (hsep [ text (showPlanPackageTag p)
-                       , disp (packageId p)
-                       , parens (disp (nodeKey p))]) 2
-                 (vcat (map disp (nodeNeighbors p)))
+                       , pretty (packageId p)
+                       , parens (pretty (nodeKey p))]) 2
+                 (vcat (map pretty (nodeNeighbors p)))
 
 showInstallPlan :: (Package ipkg, Package srcpkg,
                     IsUnit ipkg, IsUnit srcpkg)
@@ -467,10 +466,10 @@ fromSolverInstallPlan f plan =
 
     mapDep _ ipiMap (PreExistingId _pid uid)
         | Just pkgs <- Map.lookup uid ipiMap = pkgs
-        | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ display uid)
+        | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
     mapDep pidMap _ (PlannedId pid)
         | Just pkgs <- Map.lookup pid pidMap = pkgs
-        | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ display pid)
+        | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
     -- This shouldn't happen, since mapDep should only be called
     -- on neighbor SolverId, which must have all been done already
     -- by the reverse top-sort (we assume the graph is not broken).
@@ -500,10 +499,10 @@ fromSolverInstallPlanWithProgress f plan = do
 
     mapDep _ ipiMap (PreExistingId _pid uid)
         | Just pkgs <- Map.lookup uid ipiMap = pkgs
-        | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ display uid)
+        | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ prettyShow uid)
     mapDep pidMap _ (PlannedId pid)
         | Just pkgs <- Map.lookup pid pidMap = pkgs
-        | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ display pid)
+        | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ prettyShow pid)
     -- This shouldn't happen, since mapDep should only be called
     -- on neighbor SolverId, which must have all been done already
     -- by the reverse top-sort (we assume the graph is not broken).
@@ -897,17 +896,17 @@ data PlanProblem ipkg srcpkg =
 showPlanProblem :: (IsUnit ipkg, IsUnit srcpkg)
                 => PlanProblem ipkg srcpkg -> String
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
-     "Package " ++ display (nodeKey pkg)
+     "Package " ++ prettyShow (nodeKey pkg)
   ++ " depends on the following packages which are missing from the plan: "
-  ++ intercalate ", " (map display missingDeps)
+  ++ intercalate ", " (map prettyShow missingDeps)
 
 showPlanProblem (PackageCycle cycleGroup) =
      "The following packages are involved in a dependency cycle "
-  ++ intercalate ", " (map (display . nodeKey) cycleGroup)
+  ++ intercalate ", " (map (prettyShow . nodeKey) cycleGroup)
 showPlanProblem (PackageStateInvalid pkg pkg') =
-     "Package " ++ display (nodeKey pkg)
+     "Package " ++ prettyShow (nodeKey pkg)
   ++ " is in the " ++ showPlanPackageTag pkg
-  ++ " state but it depends on package " ++ display (nodeKey pkg')
+  ++ " state but it depends on package " ++ prettyShow (nodeKey pkg')
   ++ " which is in the " ++ showPlanPackageTag pkg'
   ++ " state"
 

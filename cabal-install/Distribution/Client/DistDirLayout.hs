@@ -30,7 +30,6 @@ import Distribution.Package
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
-import Distribution.Deprecated.Text
 import Distribution.Pretty
          ( prettyShow )
 import Distribution.Types.ComponentName
@@ -193,29 +192,29 @@ defaultDistDirLayout projectRoot mdistDirectory =
     distBuildRootDirectory   = distDirectory </> "build"
     distBuildDirectory params =
         distBuildRootDirectory </>
-        display (distParamPlatform params) </>
-        display (distParamCompilerId params) </>
-        display (distParamPackageId params) </>
+        prettyShow (distParamPlatform params) </>
+        prettyShow (distParamCompilerId params) </>
+        prettyShow (distParamPackageId params) </>
         (case distParamComponentName params of
             Nothing                  -> ""
             Just (CLibName LMainLibName) -> ""
-            Just (CLibName (LSubLibName name)) -> "l" </> display name
-            Just (CFLibName name)    -> "f" </> display name
-            Just (CExeName name)     -> "x" </> display name
-            Just (CTestName name)    -> "t" </> display name
-            Just (CBenchName name)   -> "b" </> display name) </>
+            Just (CLibName (LSubLibName name)) -> "l" </> prettyShow name
+            Just (CFLibName name)    -> "f" </> prettyShow name
+            Just (CExeName name)     -> "x" </> prettyShow name
+            Just (CTestName name)    -> "t" </> prettyShow name
+            Just (CBenchName name)   -> "b" </> prettyShow name) </>
         (case distParamOptimization params of
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""
             MaximumOptimisation -> "opt") </>
-        (let uid_str = display (distParamUnitId params)
-         in if uid_str == display (distParamComponentId params)
+        (let uid_str = prettyShow (distParamUnitId params)
+         in if uid_str == prettyShow (distParamComponentId params)
                 then ""
                 else uid_str)
 
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
-                                      </> display pkgid
+                                      </> prettyShow pkgid
     -- we shouldn't get name clashes so this should be fine:
     distDownloadSrcDirectory       = distUnpackedSrcRootDirectory
 
@@ -233,7 +232,7 @@ defaultDistDirLayout projectRoot mdistDirectory =
 
     distBinDirectory = distDirectory </> "bin"
 
-    distPackageDBPath compid = distDirectory </> "packagedb" </> display compid
+    distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
     distPackageDB = SpecificPackageDB . distPackageDBPath
 
 
@@ -242,10 +241,10 @@ defaultStoreDirLayout storeRoot =
     StoreDirLayout {..}
   where
     storeDirectory compid =
-      storeRoot </> display compid
+      storeRoot </> prettyShow compid
 
     storePackageDirectory compid ipkgid =
-      storeDirectory compid </> display ipkgid
+      storeDirectory compid </> prettyShow ipkgid
 
     storePackageDBPath compid =
       storeDirectory compid </> "package.db"
@@ -260,7 +259,7 @@ defaultStoreDirLayout storeRoot =
       storeDirectory compid </> "incoming"
 
     storeIncomingLock compid unitid =
-      storeIncomingDirectory compid </> display unitid <.> "lock"
+      storeIncomingDirectory compid </> prettyShow unitid <.> "lock"
 
 
 defaultCabalDirLayout :: FilePath -> CabalDirLayout

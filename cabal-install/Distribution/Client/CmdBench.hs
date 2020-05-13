@@ -23,8 +23,8 @@ import Distribution.Simple.Setup
          ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -235,7 +235,7 @@ renderTargetProblem (TargetProblemComponentNotBenchmark pkgid cname) =
     "The bench command is for running benchmarks, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
- ++ display pkgid ++ "."
+ ++ prettyShow pkgid ++ "."
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 

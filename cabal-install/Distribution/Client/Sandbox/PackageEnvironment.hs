@@ -39,7 +39,7 @@ import Distribution.Simple.Setup       ( Flag(..)
 import Distribution.Simple.Utils       ( warn, debug )
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Deprecated.ParseUtils         ( FieldDescr(..), ParseResult(..)
-                                       , commaListField, commaNewLineListField
+                                       , commaListFieldParsec, commaNewLineListFieldParsec
                                        , liftField, lineNo, locatedErrorMsg
                                        , readFields
                                        , showPWarning 
@@ -59,7 +59,6 @@ import Distribution.Pretty             (Pretty (..))
 
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) )
-import qualified Distribution.Deprecated.Text         as Text
 import GHC.Generics ( Generic )
 
 
@@ -145,15 +144,15 @@ loadUserConfig verbosity pkgEnvDir globalConfigLocation =
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
 pkgEnvFieldDescrs src =
-  [ commaNewLineListField "constraints"
+  [ commaNewLineListFieldParsec "constraints"
     (pretty . fst) ((\pc -> (pc, src)) `fmap` parsec)
     (sortConstraints . configExConstraints
      . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configExConstraints = v }))
 
-  , commaListField "preferences"
-    Text.disp Text.parse
+  , commaListFieldParsec "preferences"
+    pretty parsec
     (configPreferences . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configPreferences = v }))

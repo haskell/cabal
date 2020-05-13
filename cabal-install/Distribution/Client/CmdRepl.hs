@@ -87,8 +87,6 @@ import Distribution.Types.Version
          ( mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
-import Distribution.Deprecated.Text
-         ( display )
 import Distribution.Utils.Generic
          ( safeHead )
 import Distribution.Verbosity
@@ -568,7 +566,7 @@ renderTargetProblem (TargetProblemMatchesMultiple targetSelector targets) =
  ++ renderListSemiAnd
       [ "the " ++ renderComponentKind Plural ckind ++ " " ++
         renderListCommaAnd
-          [ maybe (display pkgname) display (componentNameString cname)
+          [ maybe (prettyShow pkgname) prettyShow (componentNameString cname)
           | t <- ts
           , let cname   = availableTargetComponentName t
                 pkgname = packageName (availableTargetPackageId t)

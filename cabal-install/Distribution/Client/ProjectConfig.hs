@@ -128,7 +128,6 @@ import Distribution.Verbosity
 import Distribution.Version
          ( Version )
 import Distribution.Parsec (simpleParsec)
-import Distribution.Deprecated.Text
 import qualified Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
@@ -1439,7 +1438,7 @@ renderBadPerPackageCompilerPaths
     "The path to the compiler program (or programs used by the compiler) "
  ++ "cannot be specified on a per-package basis in the cabal.project file "
  ++ "(i.e. setting the '" ++ progname ++ "-location' for package '"
- ++ display pkgname ++ "'). All packages have to use the same compiler, so "
+ ++ prettyShow pkgname ++ "'). All packages have to use the same compiler, so "
  ++ "specify the path in a global 'program-locations' section."
  --TODO: [nice to have] better format control so we can pretty-print the
  -- offending part of the project file. Currently the line wrapping breaks any

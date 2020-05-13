@@ -55,7 +55,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
 import Distribution.Verbosity
 import Distribution.Pretty (prettyShow)
-import Distribution.Parsec (simpleParsec)
+import Distribution.Parsec (simpleParsec, simpleParsecBS)
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
@@ -74,8 +74,6 @@ import qualified Distribution.Simple.Configure as Configure
 import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
          ( Version, VersionRange, mkVersion, intersectVersionRanges )
-import Distribution.Deprecated.Text
-         ( display, simpleParse )
 import Distribution.Simple.Utils
          ( die', warn, info, createDirectoryIfMissingVerbose )
 import Distribution.Client.Setup
@@ -521,7 +519,7 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
   Tar.NormalFile content _
      | takeExtension fileName == ".cabal"
     -> case splitDirectories (normalise fileName) of
-        [pkgname,vers,_] -> case simpleParse vers of
+        [pkgname,vers,_] -> case simpleParsec vers of
           Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (mkPackageName pkgname) ver
@@ -562,7 +560,7 @@ extractPrefs entry = case Tar.entryContent entry of
   _ -> Nothing
 
 parsePreferredVersions :: ByteString -> [Dependency]
-parsePreferredVersions = mapMaybe simpleParse
+parsePreferredVersions = mapMaybe simpleParsec
                        . filter (not . isPrefixOf "--")
                        . lines
                        . BS.Char8.unpack -- TODO: Are we sure no unicode?
@@ -1123,7 +1121,7 @@ read00IndexCacheEntry = \line ->
         _ -> Nothing
 
     (key: remainder) | key == BSS.pack preferredVersionKey -> do
-      pref <- simpleParse (BSS.unpack (BSS.unwords remainder))
+      pref <- simpleParsecBS (BSS.unwords remainder)
       return $ CachePreference pref 0 nullTimestamp
 
     _  -> Nothing
@@ -1162,8 +1160,8 @@ show00IndexCacheEntry :: IndexCacheEntry -> String
 show00IndexCacheEntry entry = unwords $ case entry of
     CachePackageId pkgid b _ ->
         [ packageKey
-        , display (packageName pkgid)
-        , display (packageVersion pkgid)
+        , prettyShow (packageName pkgid)
+        , prettyShow (packageVersion pkgid)
         , blocknoKey
         , show b
         ]
@@ -1174,5 +1172,5 @@ show00IndexCacheEntry entry = unwords $ case entry of
         ]
     CachePreference dep _ _  ->
         [ preferredVersionKey
-        , display dep
+        , prettyShow dep
         ]

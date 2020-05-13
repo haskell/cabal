@@ -21,6 +21,7 @@ module Distribution.Solver.Types.PackageConstraint (
 import Distribution.Compat.Binary                  (Binary)
 import Distribution.Package                        (PackageName)
 import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
+import Distribution.Pretty                         (flatStyle, pretty)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
 import Distribution.Utils.Structured               (Structured)
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
@@ -29,10 +30,9 @@ import Distribution.Solver.Compat.Prelude       ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
-import           Distribution.Deprecated.Text (disp, flatStyle)
-import           GHC.Generics                 (Generic)
-import           Text.PrettyPrint             ((<+>))
-import qualified Text.PrettyPrint             as Disp
+import           GHC.Generics     (Generic)
+import           Text.PrettyPrint ((<+>))
+import qualified Text.PrettyPrint as Disp
 
 
 -- | Determines to what packages and in what contexts a
@@ -86,10 +86,10 @@ constraintScopeMatches (ScopeAnyQualifier pn) (Q _ pn') = pn == pn'
 
 -- | Pretty-prints a constraint scope.
 dispConstraintScope :: ConstraintScope -> Disp.Doc
-dispConstraintScope (ScopeTarget pn) = disp pn <<>> Disp.text "." <<>> disp pn
-dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> disp pn
-dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> disp pn
-dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> disp pn
+dispConstraintScope (ScopeTarget pn) = pretty pn <<>> Disp.text "." <<>> pretty pn
+dispConstraintScope (ScopeQualified q pn) = dispQualifier q <<>> pretty pn
+dispConstraintScope (ScopeAnySetupQualifier pn) = Disp.text "setup." <<>> pretty pn
+dispConstraintScope (ScopeAnyQualifier pn) = Disp.text "any." <<>> pretty pn
 
 -- | A package property is a logical predicate on packages.
 data PackageProperty
@@ -105,7 +105,7 @@ instance Structured PackageProperty
 
 -- | Pretty-prints a package property.
 dispPackageProperty :: PackageProperty -> Disp.Doc
-dispPackageProperty (PackagePropertyVersion verrange) = disp verrange
+dispPackageProperty (PackagePropertyVersion verrange) = pretty verrange
 dispPackageProperty PackagePropertyInstalled          = Disp.text "installed"
 dispPackageProperty PackagePropertySource             = Disp.text "source"
 dispPackageProperty (PackagePropertyFlags flags)      = dispFlagAssignment flags

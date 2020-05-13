@@ -88,8 +88,6 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
-import Distribution.Deprecated.Text
-  ( display )
 import Distribution.Pretty
   ( prettyShow )
 import Distribution.Parsec
@@ -453,7 +451,7 @@ getLanguage flags = do
                 (either UnknownLanguage id `fmap`
                   promptList "What base language is the package written in"
                   [Haskell2010, Haskell98]
-                  (Just Haskell2010) display True)
+                  (Just Haskell2010) prettyShow True)
           ?>> return (Just Haskell2010)
 
   if invalidLanguage lang
@@ -671,11 +669,11 @@ chooseDep :: InitFlags -> (ModuleName, Maybe [InstalledPackageInfo])
           -> IO (Maybe P.Dependency)
 
 chooseDep flags (m, Nothing)
-  = message flags ("\nWarning: no package found providing " ++ display m ++ ".")
+  = message flags ("\nWarning: no package found providing " ++ prettyShow m ++ ".")
     >> return Nothing
 
 chooseDep flags (m, Just [])
-  = message flags ("\nWarning: no package found providing " ++ display m ++ ".")
+  = message flags ("\nWarning: no package found providing " ++ prettyShow m ++ ".")
     >> return Nothing
 
     -- We found some packages: group them by name.
@@ -687,8 +685,8 @@ chooseDep flags (m, Just ps)
       -- otherwise, we refuse to choose between different packages and make the user
       -- do it.
       grps  -> do message flags ("\nWarning: multiple packages found providing "
-                                 ++ display m
-                                 ++ ": " ++ intercalate ", " (fmap (display . P.pkgName . NE.head) grps))
+                                 ++ prettyShow m
+                                 ++ ": " ++ intercalate ", " (fmap (prettyShow . P.pkgName . NE.head) grps))
                   message flags "You will need to pick one and manually add it to the Build-depends: field."
                   return Nothing
   where
@@ -704,7 +702,7 @@ chooseDep flags (m, Just ps)
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
-      message flags ("\nWarning: multiple versions of " ++ display (P.pkgName . NE.head $ pids) ++ " provide " ++ display m ++ ", choosing the latest.")
+      message flags ("\nWarning: multiple versions of " ++ prettyShow (P.pkgName . NE.head $ pids) ++ " provide " ++ prettyShow m ++ ", choosing the latest.")
       return $ P.Dependency (P.pkgName . NE.head $ pids)
                             (pvpize desugar . maximum . fmap P.pkgVersion $ pids)
                             (Set.singleton LMainLibName) --TODO take into account sublibraries

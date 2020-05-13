@@ -46,6 +46,9 @@ module Distribution.Client.Config (
     postProcessRepo,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Language.Haskell.Extension ( Language(Haskell2010) )
 
 import Distribution.Deprecated.ViewAsFieldDescr
@@ -95,7 +98,7 @@ import Distribution.Deprecated.ParseUtils
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
          , parseFilePathQ, parseOptCommaList, parseTokenQ, syntaxError
-         , simpleFieldParsec
+         , simpleFieldParsec, listFieldParsec
          )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
@@ -103,8 +106,6 @@ import Distribution.Client.HttpUtils
          ( isOldHackageURI )
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
          ( Field(..) )
-import qualified Distribution.Deprecated.Text as Text
-         ( Text(..), display )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..) )
 import Distribution.Simple.Program
@@ -122,18 +123,13 @@ import qualified Distribution.Compat.CharParsing as P
 import Distribution.Solver.Types.ConstraintSource
 
 import Data.List
-         ( partition, find, foldl', nubBy )
-import Data.Maybe
-         ( fromMaybe )
-import Control.Monad
-         ( when, unless, foldM, liftM )
+         ( partition )
 import qualified Distribution.Deprecated.ReadP as Parse
          ( (<++), option )
-import Distribution.Compat.Semigroup
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Distribution.Parsec (parsec, simpleParsec, parsecOptCommaList)
-import Distribution.Pretty (pretty)
+import Distribution.Pretty (pretty, prettyShow)
 import Text.PrettyPrint
          ( ($+$) )
 import Text.PrettyPrint.HughesPJ
@@ -150,12 +146,9 @@ import Distribution.Compat.Environment
          ( getEnvironment, lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
-import Data.Char
-         ( isSpace )
 import qualified Data.Map as M
 import Data.Function
          ( on )
-import GHC.Generics ( Generic )
 
 --
 -- * Configuration saved in the config file
@@ -826,8 +819,8 @@ writeConfigFile file comments vals = do
       ,"--"
       ,"-- This config file was generated using the following versions"
       ,"-- of Cabal and cabal-install:"
-      ,"-- Cabal library version: " ++ Text.display cabalVersion
-      ,"-- cabal-install version: " ++ Text.display cabalInstallVersion
+      ,"-- Cabal library version: " ++ prettyShow cabalVersion
+      ,"-- cabal-install version: " ++ prettyShow cabalInstallVersion
       ,"",""
       ]
 
@@ -900,8 +893,8 @@ configFieldDescriptions src =
         -- This is only here because viewAsFieldDescr gives us a parser
         -- that only recognises 'ghc' etc, the case-sensitive flag names, not
         -- what the normal case-insensitive parser gives us.
-       [simpleField "compiler"
-          (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
+       [simpleFieldParsec "compiler"
+          (fromFlagOrDefault Disp.empty . fmap pretty) (Flag <$> parsec <|> pure NoFlag)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
 
         -- TODO: The following is a temporary fix. The "optimization"
@@ -965,14 +958,14 @@ configFieldDescriptions src =
        [let pkgs            = (Just . AllowOlder . RelaxDepsSome)
                               `fmap` parsecOptCommaList parsec
             parseAllowOlder = ((Just . AllowOlder . toRelaxDeps)
-                               `fmap` Text.parse) Parse.<++ pkgs
+                               `fmap` parsec) Parse.<++ pkgs
          in simpleField "allow-older"
             (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
             configAllowOlder (\v flags -> flags { configAllowOlder = v })
        ,let pkgs            = (Just . AllowNewer . RelaxDepsSome)
                               `fmap` parsecOptCommaList parsec
             parseAllowNewer = ((Just . AllowNewer . toRelaxDeps)
-                               `fmap` Text.parse) Parse.<++ pkgs
+                               `fmap` parsec) Parse.<++ pkgs
          in simpleField "allow-newer"
             (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
             configAllowNewer (\v flags -> flags { configAllowNewer = v })
@@ -1020,8 +1013,6 @@ configFieldDescriptions src =
             name        = fieldName field
             replacement = find ((== name) . fieldName) replacements
       , name `notElem` exclusions ]
-    optional = Parse.option mempty . fmap toFlag
-
 
     showRelaxDeps Nothing                     = mempty
     showRelaxDeps (Just rd) | isRelaxDeps rd  = Disp.text "True"
@@ -1036,7 +1027,7 @@ configFieldDescriptions src =
 deprecatedFieldDescriptions :: [FieldDescr SavedConfig]
 deprecatedFieldDescriptions =
   [ liftGlobalFlag $
-    listField "repos"
+    listFieldParsec "repos"
       pretty parsec
       (fromNubList . globalRemoteRepos)
       (\rs cfg -> cfg { globalRemoteRepos = toNubList rs })
@@ -1342,8 +1333,8 @@ remoteRepoFields =
   [ simpleField "url"
     (text . show)            (parseTokenQ >>= parseURI')
     remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
-  , simpleField "secure"
-    showSecure               (Just `fmap` Text.parse)
+  , simpleFieldParsec "secure"
+    showSecure               (Just `fmap` parsec)
     remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
   , listField "root-keys"
     text                     parseTokenQ

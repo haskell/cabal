@@ -29,9 +29,6 @@ module Distribution.Deprecated.ParseUtils (
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
         parseHaskellString, parseFilePathQ, parseTokenQ, parseTokenQ',
-        parseModuleNameQ,
-        parseFlagAssignment,
-        parseOptVersion, parsePackageName,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
@@ -39,7 +36,10 @@ module Distribution.Deprecated.ParseUtils (
         optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
         readPToMaybe,
 
-        fieldParsec, simpleFieldParsec, commaNewLineListFieldParsec,
+        fieldParsec, simpleFieldParsec,
+        listFieldParsec,
+        commaListFieldParsec,
+        commaNewLineListFieldParsec,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -48,17 +48,14 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import Distribution.Deprecated.ReadP as ReadP hiding (get)
-import Distribution.Deprecated.Text
 
 import Distribution.Compat.Newtype
 import Distribution.Compiler
-import Distribution.ModuleName
 import Distribution.FieldGrammar.Newtypes (TestedWith (..))
 import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Utils.Generic
 import Distribution.Version
-import Distribution.PackageDescription (FlagAssignment, mkFlagAssignment)
 
 import Data.Tree as Tree (Tree (..), flatten)
 import System.FilePath  (normalise)
@@ -69,7 +66,7 @@ import qualified Text.Read as Read
 import qualified Data.Map  as Map
 
 import qualified Control.Monad.Fail as Fail
-import Distribution.Parsec (ParsecParser, explicitEitherParsec, parsecLeadingCommaList)
+import Distribution.Parsec (ParsecParser, explicitEitherParsec, parsecLeadingCommaList, parsecLeadingOptCommaList)
 
 -- -----------------------------------------------------------------------------
 
@@ -228,9 +225,22 @@ commaListFieldWithSep separator name showF readF get set =
      set' xs b = set (get b ++ xs) b
      showF'    = separator . punctuate comma . map showF
 
+commaListFieldWithSepParsec :: Separator -> String -> (a -> Doc) -> ParsecParser a
+                      -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListFieldWithSepParsec separator name showF readF get set =
+   liftField get set' $
+     fieldParsec name showF' (parsecLeadingCommaList readF)
+   where
+     set' xs b = set (get b ++ xs) b
+     showF'    = separator . punctuate comma . map showF
+
 commaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListField = commaListFieldWithSep fsep
+
+commaListFieldParsec :: String -> (a -> Doc) -> ParsecParser a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListFieldParsec = commaListFieldWithSepParsec fsep
 
 commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
@@ -239,11 +249,7 @@ commaNewLineListField = commaListFieldWithSep sep
 commaNewLineListFieldParsec
     :: String -> (a -> Doc) ->  ParsecParser a
     -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaNewLineListFieldParsec name showF readF get set = liftField get set' $
-     fieldParsec name showF' (parsecLeadingCommaList readF)
-   where
-     set' xs b = set (get b ++ xs) b
-     showF'    = sep . punctuate comma . map showF
+commaNewLineListFieldParsec = commaListFieldWithSepParsec sep
 
 spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
@@ -269,9 +275,24 @@ listFieldWithSep separator name showF readF get set =
     set' xs b = set (get b ++ xs) b
     showF'    = separator . map showF
 
+listFieldWithSepParsec :: Separator -> String -> (a -> Doc) -> ParsecParser a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+listFieldWithSepParsec separator name showF readF get set =
+  liftField get set' $
+    fieldParsec name showF' (parsecLeadingOptCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = separator . map showF
+
 listField :: String -> (a -> Doc) -> ReadP [a] a
           -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listField = listFieldWithSep fsep
+
+listFieldParsec
+    :: String -> (a -> Doc) -> ParsecParser a
+    -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+listFieldParsec = listFieldWithSepParsec fsep
+             
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
              -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
@@ -626,10 +647,6 @@ ifelse (f:fs) = do fs' <- ifelse fs
 
 ------------------------------------------------------------------------------
 
--- |parse a module name
-parseModuleNameQ :: ReadP r ModuleName
-parseModuleNameQ = parseMaybeQuoted parse
-
 parseFilePathQ :: ReadP r FilePath
 parseFilePathQ = parseTokenQ
   -- removed until normalise is no longer broken, was:
@@ -641,10 +658,11 @@ betweenSpaces act = do skipSpaces
                        skipSpaces
                        return res
 
-parseOptVersion :: ReadP r Version
-parseOptVersion = parseMaybeQuoted ver
-  where ver :: ReadP r Version
-        ver = parse <++ return nullVersion
+-- REMOVE
+-- parseOptVersion :: ReadP r Version
+-- parseOptVersion = parseMaybeQuoted ver
+--   where ver :: ReadP r Version
+--         ver = parse <++ return nullVersion
 
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
@@ -726,18 +744,6 @@ ppField name fielddoc
          , "autogen-modules"
          , "depends"
          ]
-
-parseFlagAssignment :: ReadP r FlagAssignment
-parseFlagAssignment = mkFlagAssignment <$>
-                      sepBy parseFlagValue skipSpaces1
-  where
-    parseFlagValue =
-          (do optional (char '+')
-              f <- parse
-              return (f, True))
-      +++ (do _ <- char '-'
-              f <- parse
-              return (f, False))
 
 -------------------------------------------------------------------------------
 -- Internal

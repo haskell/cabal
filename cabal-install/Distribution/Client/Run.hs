@@ -35,7 +35,7 @@ import Distribution.Simple.Utils             (die', notice, warn,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
 import Distribution.Verbosity                (Verbosity)
-import Distribution.Deprecated.Text                     (display)
+import Distribution.Pretty                   (prettyShow)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -91,16 +91,16 @@ splitRunArgs verbosity lbi args =
       where
         components :: [(UnqualComponentName, String)] -- Component name, message.
         components =
-          [ (name, "The executable '" ++ display name ++ "' is disabled.")
+          [ (name, "The executable '" ++ prettyShow name ++ "' is disabled.")
           | e <- executables pkg_descr
           , not . buildable . buildInfo $ e, let name = exeName e]
 
-          ++ [ (name, "There is a test-suite '" ++ display name ++ "',"
+          ++ [ (name, "There is a test-suite '" ++ prettyShow name ++ "',"
                       ++ " but the `run` command is only for executables.")
              | t <- testSuites pkg_descr
              , let name = testName t]
 
-          ++ [ (name, "There is a benchmark '" ++ display name ++ "',"
+          ++ [ (name, "There is a benchmark '" ++ prettyShow name ++ "',"
                       ++ " but the `run` command is only for executables.")
              | b <- benchmarks pkg_descr
              , let name = benchmarkName b]
@@ -115,7 +115,7 @@ run verbosity lbi exe exeArgs = do
                        curDir </> dataDir pkg_descr)
 
   (path, runArgs) <-
-    let exeName' = display $ exeName exe
+    let exeName' = prettyShow $ exeName exe
     in case compilerFlavor (compiler lbi) of
       GHCJS -> do
         let (script, cmd, cmdArgs) =
@@ -139,5 +139,5 @@ run verbosity lbi exe exeArgs = do
                      paths <- depLibraryPaths True False lbi clbi
                      return (addLibraryPath os paths env)
              else return env
-  notice verbosity $ "Running " ++ display (exeName exe) ++ "..."
+  notice verbosity $ "Running " ++ prettyShow (exeName exe) ++ "..."
   rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env'

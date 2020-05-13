@@ -51,10 +51,9 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, CompilerInfo(..) )
 import Distribution.System
          ( Platform )
-import Distribution.Deprecated.Text
-         ( display )
 import Distribution.Verbosity  ( Verbosity )
 import Distribution.Simple.Utils ( info, withTempDirectory )
+import Distribution.Pretty (prettyShow)
 
 import System.Directory
          ( canonicalizePath, getTemporaryDirectory, removeFile )
@@ -126,7 +125,7 @@ symlinkBinaries platform comp overwritePolicy
              ok <- symlinkBinary
                      overwritePolicy
                      publicBinDir  privateBinDir
-                     (display publicExeName) privateExeName
+                     (prettyShow publicExeName) privateExeName
              if ok
                then return Nothing
                else return (Just (pkgid, publicExeName,

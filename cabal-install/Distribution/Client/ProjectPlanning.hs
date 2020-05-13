@@ -154,7 +154,7 @@ import           Distribution.Types.ComponentInclude
 import           Distribution.Simple.Utils
 import           Distribution.Version
 import           Distribution.Verbosity
-import           Distribution.Deprecated.Text
+import           Distribution.Pretty (pretty, prettyShow)
 
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
@@ -1294,7 +1294,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             let inplace_doc | shouldBuildInplaceOnly pkg = text "inplace"
                             | otherwise                  = Disp.empty
             in addProgressCtx (text "In the" <+> inplace_doc <+> text "package" <+>
-                             quotes (disp (packageId pkg))) $
+                             quotes (pretty (packageId pkg))) $
                map InstallPlan.Configured <$> elaborateSolverToComponents mapDep pkg
 
     -- NB: We don't INSTANTIATE packages at this point.  That's
@@ -1307,7 +1307,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         = case mkComponentsGraph (elabEnabledSpec elab0) pd of
            Right g -> do
             let src_comps = componentsGraphToList g
-            infoProgress $ hang (text "Component graph for" <+> disp pkgid <<>> colon)
+            infoProgress $ hang (text "Component graph for" <+> pretty pkgid <<>> colon)
                             4 (dispComponentsWithDeps src_comps)
             (_, comps) <- mapAccumM buildComponent
                             (Map.empty, Map.empty, Map.empty)
@@ -1468,10 +1468,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 cid = case elabBuildStyle elab0 of
                         BuildInplaceOnly ->
                           mkComponentId $
-                            display pkgid ++ "-inplace" ++
+                            prettyShow pkgid ++ "-inplace" ++
                               (case Cabal.componentNameString cname of
                                   Nothing -> ""
-                                  Just s -> "-" ++ display s)
+                                  Just s -> "-" ++ prettyShow s)
                         BuildAndInstall ->
                           hashedInstalledPackageId
                             (packageHashInputs
@@ -1484,7 +1484,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             let lookup_uid def_uid =
                     case Map.lookup (unDefUnitId def_uid) preexistingInstantiatedPkgs of
                         Just full -> full
-                        Nothing -> error ("lookup_uid: " ++ display def_uid)
+                        Nothing -> error ("lookup_uid: " ++ prettyShow def_uid)
             lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
             infoProgress $ dispLinkedComponent lc
@@ -1562,8 +1562,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
             compPkgConfigDependencies =
                 [ (pn, fromMaybe (error $ "compPkgConfigDependencies: impossible! "
-                                            ++ display pn ++ " from "
-                                            ++ display (elabPkgSourceId elab0))
+                                            ++ prettyShow pn ++ " from "
+                                            ++ prettyShow (elabPkgSourceId elab0))
                                  (pkgConfigDbPkgVersion pkgConfigDB pn))
                 | PkgconfigDependency pn _ <- PD.pkgconfigDepends
                                                 (Cabal.componentBuildInfo comp) ]
@@ -1574,7 +1574,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     elaboratedSharedConfig
                     elab $
                     case Cabal.componentNameString cname of
-                             Just n -> display n
+                             Just n -> prettyShow n
                              Nothing -> ""
 
 
@@ -1606,7 +1606,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                     ElabComponent comp ->
                         case fmap Cabal.componentNameString
                                   (compComponentName comp) of
-                            Just (Just n) -> [display n]
+                            Just (Just n) -> [prettyShow n]
                             _ -> [""]
             in
               binDirectoryFor
@@ -1650,7 +1650,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
-          = mkComponentId (display pkgid ++ "-inplace")
+          = mkComponentId (prettyShow pkgid ++ "-inplace")
 
           | otherwise
           = assert (isJust elabPkgSourceHash) $
@@ -1661,7 +1661,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
           | otherwise
           = error $ "elaborateInstallPlan: non-inplace package "
-                 ++ " is missing a source hash: " ++ display pkgid
+                 ++ " is missing a source hash: " ++ prettyShow pkgid
 
         -- Need to filter out internal dependencies, because they don't
         -- correspond to anything real anymore.
@@ -2094,9 +2094,9 @@ binDirectories layout config package = case elabBuildStyle package of
   BuildAndInstall -> [installedBinDirectory package]
   BuildInplaceOnly -> map (root</>) $ case elabPkgOrComp package of
     ElabComponent comp -> case compSolverName comp of
-      CD.ComponentExe n -> [display n]
+      CD.ComponentExe n -> [prettyShow n]
       _ -> []
-    ElabPackage _ -> map (display . PD.exeName)
+    ElabPackage _ -> map (prettyShow . PD.exeName)
                    . PD.executables
                    . elabPkgDescription
                    $ package
@@ -2185,7 +2185,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
                   }
             return $ InstallPlan.Configured elab
           _ -> return planpkg
-      | otherwise = error ("instantiateComponent: " ++ display cid)
+      | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
     substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM DefUnitId
     substUnitId _ (DefiniteUnitId uid) =
@@ -2253,7 +2253,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
            }
       | Just planpkg <- Map.lookup cid cmap
       = return planpkg
-      | otherwise = error ("indefiniteComponent: " ++ display cid)
+      | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
 
     ready_map = execState work Map.empty
 
@@ -3084,7 +3084,7 @@ defaultSetupDeps compiler platform pkg =
       -- above in the SetupCustomImplicitDeps case.
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
-             ++ "setup deps: " ++ display (packageId pkg)
+             ++ "setup deps: " ++ prettyShow (packageId pkg)
   where
     -- we require one less
     --
@@ -3309,7 +3309,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     configDeterministic       = mempty -- doesn't matter, configIPID/configCID overridese
     configIPID                = case elabPkgOrComp of
-                                  ElabPackage pkg -> toFlag (display (pkgInstalledId pkg))
+                                  ElabPackage pkg -> toFlag (prettyShow (pkgInstalledId pkg))
                                   ElabComponent _ -> mempty
     configCID                 = case elabPkgOrComp of
                                   ElabPackage _ -> mempty
@@ -3689,7 +3689,7 @@ packageHashInputs
 
 packageHashInputs _ pkg =
     error $ "packageHashInputs: only for packages with source hashes. "
-         ++ display (packageId pkg)
+         ++ prettyShow (packageId pkg)
 
 packageHashConfigInputs :: ElaboratedSharedConfig
                         -> ElaboratedConfiguredPackage

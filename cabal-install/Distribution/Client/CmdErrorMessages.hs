@@ -22,8 +22,8 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Solver.Types.OptionalStanza
          ( OptionalStanza(..) )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 
 import qualified Data.List.NonEmpty as NE
 import Data.Function (on)
@@ -74,7 +74,7 @@ renderListSemiAnd (x:xs) = x ++ "; " ++ renderListSemiAnd xs
 -- things, e.g. grouping components by package name
 --
 -- > renderListSemiAnd
--- >   [     "the package " ++ display pkgname ++ " components "
+-- >   [     "the package " ++ prettyShow pkgname ++ " components "
 -- >      ++ renderListCommaAnd showComponentName components
 -- >   | (pkgname, components) <- sortGroupOn packageName allcomponents ]
 --
@@ -91,19 +91,19 @@ sortGroupOn key = map (\(x:|xs) -> (key x, x:xs))
 renderTargetSelector :: TargetSelector -> String
 renderTargetSelector (TargetPackage _ pkgids Nothing) =
     "the " ++ plural (listPlural pkgids) "package" "packages" ++ " "
- ++ renderListCommaAnd (map display pkgids)
+ ++ renderListCommaAnd (map prettyShow pkgids)
 
 renderTargetSelector (TargetPackage _ pkgids (Just kfilter)) =
     "the " ++ renderComponentKind Plural kfilter
  ++ " in the " ++ plural (listPlural pkgids) "package" "packages" ++ " "
- ++ renderListCommaAnd (map display pkgids)
+ ++ renderListCommaAnd (map prettyShow pkgids)
 
 renderTargetSelector (TargetPackageNamed pkgname Nothing) =
-    "the package " ++ display pkgname
+    "the package " ++ prettyShow pkgname
 
 renderTargetSelector (TargetPackageNamed pkgname (Just kfilter)) =
     "the " ++ renderComponentKind Plural kfilter
- ++ " in the package " ++ display pkgname
+ ++ " in the package " ++ prettyShow pkgname
 
 renderTargetSelector (TargetAllPackages Nothing) =
     "all the packages in the project"
@@ -117,8 +117,8 @@ renderTargetSelector (TargetComponent pkgid cname subtarget) =
  ++ renderComponentName (packageName pkgid) cname
 
 renderTargetSelector (TargetComponentUnknown pkgname (Left ucname) subtarget) =
-    renderSubComponentTarget subtarget ++ "the component " ++ display ucname
- ++ " in the package " ++ display pkgname
+    renderSubComponentTarget subtarget ++ "the component " ++ prettyShow ucname
+ ++ " in the package " ++ prettyShow pkgname
 
 renderTargetSelector (TargetComponentUnknown pkgname (Right cname) subtarget) =
     renderSubComponentTarget subtarget ++ "the "
@@ -129,7 +129,7 @@ renderSubComponentTarget WholeComponent         = ""
 renderSubComponentTarget (FileTarget filename)  =
   "the file " ++ filename ++ "in "
 renderSubComponentTarget (ModuleTarget modname) =
-  "the module" ++ display modname ++ "in "
+  "the module" ++ prettyShow modname ++ "in "
 
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
@@ -169,12 +169,12 @@ targetSelectorFilter  TargetComponent{}              = Nothing
 targetSelectorFilter  TargetComponentUnknown{}       = Nothing
 
 renderComponentName :: PackageName -> ComponentName -> String
-renderComponentName pkgname (CLibName LMainLibName) = "library " ++ display pkgname
-renderComponentName _ (CLibName (LSubLibName name)) = "library " ++ display name
-renderComponentName _ (CFLibName   name) = "foreign library " ++ display name
-renderComponentName _ (CExeName    name) = "executable " ++ display name
-renderComponentName _ (CTestName   name) = "test suite " ++ display name
-renderComponentName _ (CBenchName  name) = "benchmark " ++ display name
+renderComponentName pkgname (CLibName LMainLibName) = "library " ++ prettyShow pkgname
+renderComponentName _ (CLibName (LSubLibName name)) = "library " ++ prettyShow name
+renderComponentName _ (CFLibName   name) = "foreign library " ++ prettyShow name
+renderComponentName _ (CExeName    name) = "executable " ++ prettyShow name
+renderComponentName _ (CTestName   name) = "test suite " ++ prettyShow name
+renderComponentName _ (CBenchName  name) = "benchmark " ++ prettyShow name
 
 renderComponentKind :: Plural -> ComponentKind -> String
 renderComponentKind Singular ckind = case ckind of
@@ -197,19 +197,19 @@ renderComponentKind Plural ckind = case ckind of
 
 renderTargetProblemCommon :: String -> TargetProblemCommon -> String
 renderTargetProblemCommon verb (TargetNotInProject pkgname) =
-    "Cannot " ++ verb ++ " the package " ++ display pkgname ++ ", it is not "
+    "Cannot " ++ verb ++ " the package " ++ prettyShow pkgname ++ ", it is not "
  ++ "in this project (either directly or indirectly). If you want to add it "
  ++ "to the project then edit the cabal.project file."
 
 renderTargetProblemCommon verb (TargetAvailableInIndex pkgname) =
-    "Cannot " ++ verb ++ " the package " ++ display pkgname ++ ", it is not "
+    "Cannot " ++ verb ++ " the package " ++ prettyShow pkgname ++ ", it is not "
  ++ "in this project (either directly or indirectly), but it is in the current "
  ++ "package index. If you want to add it to the project then edit the "
  ++ "cabal.project file."
 
 renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
- ++ "package " ++ display pkgid ++ " is not local to the project, and cabal "
+ ++ "package " ++ prettyShow pkgid ++ " is not local to the project, and cabal "
  ++ "does not currently support building test suites or benchmarks of "
  ++ "non-local dependencies. To run test suites or benchmarks from "
  ++ "dependencies you can unpack the package locally and adjust the "
@@ -217,7 +217,7 @@ renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
 
 renderTargetProblemCommon verb (TargetComponentNotBuildable pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because it is "
- ++ "marked as 'buildable: False' within the '" ++ display (packageName pkgid)
+ ++ "marked as 'buildable: False' within the '" ++ prettyShow (packageName pkgid)
  ++ ".cabal' file (at least for the current configuration). If you believe it "
  ++ "should be buildable then check the .cabal file to see if the buildable "
  ++ "property is conditional on flags. Alternatively you may simply have to "
@@ -240,7 +240,7 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledByUser _ cname _) =
 renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
  ++ "solver did not find a plan that included the " ++ compkinds
- ++ " for " ++ display pkgid ++ ". It is probably worth trying again with "
+ ++ " for " ++ prettyShow pkgid ++ ". It is probably worth trying again with "
  ++ compkinds ++ " explicitly enabled in the configuration in the "
  ++ "cabal.project{.local} file. This will ask the solver to find a plan with "
  ++ "the " ++ compkinds ++ " available. It will either fail with an "
@@ -253,9 +253,9 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname
 renderTargetProblemCommon verb (TargetProblemUnknownComponent pkgname ecname) =
     "Cannot " ++ verb ++ " the "
  ++ (case ecname of
-      Left ucname -> "component " ++ display ucname
+      Left ucname -> "component " ++ prettyShow ucname
       Right cname -> renderComponentName pkgname cname)
- ++ " from the package " ++ display pkgname
+ ++ " from the package " ++ prettyShow pkgname
  ++ ", because the package does not contain a "
  ++ (case ecname of
       Left  _     -> "component"
@@ -264,13 +264,13 @@ renderTargetProblemCommon verb (TargetProblemUnknownComponent pkgname ecname) =
 
 renderTargetProblemCommon verb (TargetProblemNoSuchPackage pkgid) =
     "Internal error when trying to " ++ verb ++ " the package "
-  ++ display pkgid ++ ". The package is not in the set of available targets "
+  ++ prettyShow pkgid ++ ". The package is not in the set of available targets "
   ++ "for the project plan, which would suggest an inconsistency "
   ++ "between readTargetSelectors and resolveTargets."
 
 renderTargetProblemCommon verb (TargetProblemNoSuchComponent pkgid cname) =
     "Internal error when trying to " ++ verb ++ " the "
-  ++ showComponentName cname ++ " from the package " ++ display pkgid
+  ++ showComponentName cname ++ " from the package " ++ prettyShow pkgid
   ++ ". The package,component pair is not in the set of available targets "
   ++ "for the project plan, which would suggest an inconsistency "
   ++ "between readTargetSelectors and resolveTargets."
@@ -385,9 +385,9 @@ renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
       "Cannot select only the dependencies (as requested by the "
    ++ "'--only-dependencies' flag), "
    ++ (case pkgids of
-          [pkgid] -> "the package " ++ display pkgid ++ " is "
+          [pkgid] -> "the package " ++ prettyShow pkgid ++ " is "
           _       -> "the packages "
-                     ++ renderListCommaAnd (map display pkgids) ++ " are ")
+                     ++ renderListCommaAnd (map prettyShow pkgids) ++ " are ")
    ++ "required by a dependency of one of the other targets."
   where
     -- throw away the details and just list the deps that are needed
