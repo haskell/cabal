@@ -8,8 +8,9 @@ executable buildinfo-reference-generator
   ghc-options:      -Wall
   main-is:          Main.hs
   build-depends:
-    , base        ^>=4.12
+    , base             ^>=4.12
     , Cabal
+    , Cabal-described
     , containers
     , pretty
-    , zinza       ^>=0.2
+    , zinza            ^>=0.2

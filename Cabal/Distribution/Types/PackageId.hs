@@ -8,11 +8,10 @@ module Distribution.Types.PackageId
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described (Described (..))
-import Distribution.Parsec                 (Parsec (..), simpleParsec)
+import Distribution.Parsec            (Parsec (..), simpleParsec)
 import Distribution.Pretty
 import Distribution.Types.PackageName
-import Distribution.Version                (Version, nullVersion)
+import Distribution.Version           (Version, nullVersion)
 
 import qualified Data.List.NonEmpty              as NE
 import qualified Distribution.Compat.CharParsing as P
@@ -36,9 +35,6 @@ instance Pretty PackageIdentifier where
   pretty (PackageIdentifier n v)
     | v == nullVersion = pretty n -- if no version, don't show version.
     | otherwise        = pretty n <<>> Disp.char '-' <<>> pretty v
-
-instance Described PackageIdentifier where
-    describe _ = describe (Proxy :: Proxy PackageName) <> fromString "-" <> describe (Proxy :: Proxy Version)
 
 -- |
 --

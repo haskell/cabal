@@ -7,10 +7,9 @@ module Distribution.Types.LegacyExeDependency
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Version                (VersionRange, anyVersion)
+import Distribution.Version (VersionRange, anyVersion)
 
 import qualified Distribution.Compat.CharParsing as P
 import           Text.PrettyPrint                (text, (<+>))
@@ -46,6 +45,3 @@ instance Parsec LegacyExeDependency where
         component = do
             cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
             if all isDigit cs then fail "invalid component" else return cs
-
-instance Described LegacyExeDependency where
-    describe _ = RETodo

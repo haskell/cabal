@@ -14,12 +14,11 @@ module Distribution.Client.Types.AllowNewer (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..))
-import Distribution.Parsec                 (CabalParsing, Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty                 (Pretty (..))
-import Distribution.Types.PackageId        (PackageId, PackageIdentifier (..))
-import Distribution.Types.PackageName      (PackageName, mkPackageName)
-import Distribution.Types.Version          (nullVersion)
+import Distribution.Parsec            (CabalParsing, Parsec (..), parsecLeadingCommaNonEmpty)
+import Distribution.Pretty            (Pretty (..))
+import Distribution.Types.PackageId   (PackageId, PackageIdentifier (..))
+import Distribution.Types.PackageName (PackageName, mkPackageName)
+import Distribution.Types.Version     (nullVersion)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
@@ -99,18 +98,6 @@ instance Pretty RelaxedDep where
 instance Parsec RelaxedDep where
     parsec = P.char '*' *> relaxedDepStarP <|> (parsec >>= relaxedDepPkgidP)
 
-instance Described RelaxedDep where
-    describe _ =
-        REOpt (describeRelaxDepScope <> fromString ":" <> REOpt (fromString "^"))
-        <> describe (Proxy :: Proxy RelaxDepSubject)
-      where
-        describeRelaxDepScope = REUnion
-            [ fromString "*"
-            , fromString "all"
-            , RENamed "package-name" (describe (Proxy :: Proxy PackageName))
-            , RENamed "package-id" (describe (Proxy :: Proxy PackageIdentifier))
-            ]
-
 -- continuation after *
 relaxedDepStarP :: CabalParsing m => m RelaxedDep
 relaxedDepStarP =
@@ -147,13 +134,6 @@ instance Parsec RelaxDepSubject where
           pure $ if pn == mkPackageName "all"
               then RelaxDepSubjectAll
               else RelaxDepSubjectPkg pn
-
-instance Described RelaxDepSubject where
-    describe _ = REUnion
-        [ fromString "*"
-        , fromString "all"
-        , RENamed "package-name" (describe (Proxy :: Proxy PackageName))
-        ]
 
 instance Pretty RelaxDeps where
   pretty rd | not (isRelaxDeps rd) = Disp.text "none"
@@ -197,14 +177,6 @@ instance Parsec RelaxDeps where
                 | pn == mkPackageName "none"
                 -> mempty
             xs' -> mkRelaxDepSome xs'
-
-instance Described RelaxDeps where
-    describe _ = REUnion
-        [ fromString "*"
-        , fromString "all"
-        , fromString "none"
-        , RECommaNonEmpty (describe (Proxy :: Proxy RelaxedDep))
-        ]
 
 instance Binary RelaxDeps
 instance Binary RelaxDepMod

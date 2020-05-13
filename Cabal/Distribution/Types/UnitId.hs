@@ -20,7 +20,6 @@ import Distribution.Utils.ShortText
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Pretty
 import Distribution.Parsec
-import Distribution.FieldGrammar.Described
 import Distribution.Types.ComponentId
 import Distribution.Types.PackageId
 
@@ -86,9 +85,6 @@ instance Parsec UnitId where
         isUnitChar '.' = True
         isUnitChar '+' = True
         isUnitChar c   = isAlphaNum c
-
-instance Described UnitId where
-    describe _ = reMunch1CS $ csAlphaNum <> csChar '-' <> csChar '_' <> csChar '.' <> csChar '+'
 
 -- | If you need backwards compatibility, consider using 'display'
 -- instead, which is supported by all versions of Cabal.

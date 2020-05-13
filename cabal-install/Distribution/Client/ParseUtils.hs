@@ -61,7 +61,7 @@ import qualified Text.PrettyPrint as Disp
 
 -- For new parser stuff
 import Distribution.CabalSpecVersion (cabalSpecLatest)
-import Distribution.FieldGrammar (FieldGrammar, partitionFields, parseFieldGrammar)
+import Distribution.FieldGrammar (partitionFields, parseFieldGrammar)
 import Distribution.Fields.ParseResult (runParseResult)
 import Distribution.Parsec.Error (showPError)
 import Distribution.Parsec.Position (Position (..))
@@ -124,9 +124,9 @@ data SectionDescr a = forall b. SectionDescr {
      }
 
 -- | 'FieldGrammar' section description
-data FGSectionDescr a = forall s. FGSectionDescr
+data FGSectionDescr g a = forall s. FGSectionDescr
     { fgSectionName    :: String
-    , fgSectionGrammar :: forall g. (FieldGrammar g, Applicative (g s)) => g s s
+    , fgSectionGrammar :: g s s
     -- todo: add subsections?
     , fgSectionGet     :: a -> [(String, s)]
     , fgSectionSet     :: LineNo -> String -> s -> a -> ParseResult a
@@ -219,7 +219,7 @@ ppSection name arg fields def cur
 parseFieldsAndSections
     :: [FieldDescr a]      -- ^ field
     -> [SectionDescr a]    -- ^ legacy sections
-    -> [FGSectionDescr a]  -- ^ FieldGrammar sections
+    -> [FGSectionDescr FG.ParsecFieldGrammar a]  -- ^ FieldGrammar sections
     -> a
     -> [Field] -> ParseResult a
 parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
@@ -286,7 +286,7 @@ convertField IfBlock {} = Nothing
 -- Note that unlike 'ppFields', at present it does not support printing
 -- default values. If needed, adding such support would be quite reasonable.
 --
-ppFieldsAndSections :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr a] -> a -> Disp.Doc
+ppFieldsAndSections :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.PrettyFieldGrammar a] -> a -> Disp.Doc
 ppFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs val =
     ppFields fieldDescrs Nothing val
       $+$
@@ -313,7 +313,7 @@ ppFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs val =
 -- 'ppFieldsAndSections' and so does not need to be exported.
 --
 ppSectionAndSubsections :: String -> String
-                        -> [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr a] -> a -> Disp.Doc
+                        -> [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.PrettyFieldGrammar  a] -> a -> Disp.Doc
 ppSectionAndSubsections name arg fields sections fgSections cur
   | Disp.isEmpty fieldsDoc = Disp.empty
   | otherwise              = Disp.text name <+> argDoc
@@ -360,7 +360,7 @@ ppFgSection secName arg grammar x
 --
 -- It accumulates the result on top of a given initial (typically empty) value.
 --
-parseConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr a] -> a
+parseConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.ParsecFieldGrammar a] -> a
             -> String -> ParseResult a
 parseConfig fieldDescrs sectionDescrs fgSectionDescrs empty str =
       parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs empty
@@ -369,6 +369,6 @@ parseConfig fieldDescrs sectionDescrs fgSectionDescrs empty str =
 -- | Render a value in the config file syntax, based on a description of the
 -- configuration file in terms of its fields and sections.
 --
-showConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr a] -> a -> Disp.Doc
+showConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.PrettyFieldGrammar a] -> a -> Disp.Doc
 showConfig = ppFieldsAndSections
 

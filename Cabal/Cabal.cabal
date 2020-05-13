@@ -501,9 +501,7 @@ library
     Distribution.Types.VersionInterval
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
-    Distribution.Utils.CharSet
     Distribution.Utils.Generic
-    Distribution.Utils.GrammarRegex
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
@@ -526,8 +524,8 @@ library
     Distribution.Compat.CharParsing
     Distribution.FieldGrammar
     Distribution.FieldGrammar.Class
-    Distribution.FieldGrammar.Described
     Distribution.FieldGrammar.FieldDescrs
+    Distribution.FieldGrammar.Newtypes
     Distribution.FieldGrammar.Parsec
     Distribution.FieldGrammar.Pretty
     Distribution.PackageDescription.FieldGrammar
@@ -535,7 +533,6 @@ library
     Distribution.PackageDescription.Quirks
     Distribution.Parsec
     Distribution.Parsec.Error
-    Distribution.Parsec.Newtypes
     Distribution.Parsec.Position
     Distribution.Parsec.Warning
     Distribution.Parsec.FieldLineStream
@@ -661,6 +658,13 @@ test-suite unit-tests
     Test.QuickCheck.GenericArbitrary
     Test.QuickCheck.Instances.Cabal
 
+  -- Cabal-described
+  hs-source-dirs: Cabal-described/src
+  other-modules:
+    Distribution.Described
+    Distribution.Utils.CharSet
+    Distribution.Utils.GrammarRegex
+    
   main-is: UnitTests.hs
   build-depends:
     array,
@@ -671,14 +675,15 @@ test-suite unit-tests
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
+    pretty,
     rere >=0.1 && <0.2,
+    tagged,
     tasty >= 1.2.3 && < 1.3,
     tasty-hunit,
     tasty-quickcheck,
-    tagged,
     temporary,
     text,
-    pretty,
+    transformers,
     Diff >=0.4 && <0.5,
     QuickCheck >= 2.13.2 && < 2.14,
     Cabal

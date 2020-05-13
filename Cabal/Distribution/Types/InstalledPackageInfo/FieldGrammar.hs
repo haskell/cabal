@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds       #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
@@ -14,13 +15,11 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens               (Lens', (&), (.~))
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
-import Distribution.FieldGrammar.Described
 import Distribution.FieldGrammar.FieldDescrs
 import Distribution.License
 import Distribution.ModuleName
 import Distribution.Package
 import Distribution.Parsec
-import Distribution.Parsec.Newtypes
 import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
@@ -54,7 +53,24 @@ f <+> x = f <*> x
 {-# NOINLINE (<+>) #-}
 
 ipiFieldGrammar
-    :: (FieldGrammar g, Applicative (g InstalledPackageInfo), Applicative (g Basic))
+    :: ( FieldGrammar c g, Applicative (g InstalledPackageInfo), Applicative (g Basic)
+       , c (Identity AbiHash)
+       , c (Identity LibraryVisibility)
+       , c (Identity PackageName)
+       , c (Identity UnitId)
+       , c (Identity UnqualComponentName)
+       , c (List FSep (Identity AbiDependency) AbiDependency)
+       , c (List FSep (Identity UnitId) UnitId)
+       , c (List FSep (MQuoted ModuleName) ModuleName)
+       , c (List FSep FilePathNT String)
+       , c (List FSep Token String)
+       , c (MQuoted MungedPackageName)
+       , c (MQuoted Version)
+       , c CompatPackageKey
+       , c ExposedModules
+       , c InstWith
+       , c SpecLicenseLenient
+       )
     => g InstalledPackageInfo InstalledPackageInfo
 ipiFieldGrammar = mkInstalledPackageInfo
     -- Deprecated fields
@@ -68,15 +84,15 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <+> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
     <+> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
     <+> optionalFieldDefAla "license"              SpecLicenseLenient            L.license (Left SPDX.NONE)
-    <+> freeTextFieldDefST    "copyright"                                          L.copyright
-    <+> freeTextFieldDefST    "maintainer"                                         L.maintainer
-    <+> freeTextFieldDefST    "author"                                             L.author
-    <+> freeTextFieldDefST    "stability"                                          L.stability
-    <+> freeTextFieldDefST    "homepage"                                           L.homepage
-    <+> freeTextFieldDefST    "package-url"                                        L.pkgUrl
-    <+> freeTextFieldDefST    "synopsis"                                           L.synopsis
-    <+> freeTextFieldDefST    "description"                                        L.description
-    <+> freeTextFieldDefST    "category"                                           L.category
+    <+> freeTextFieldDefST  "copyright"                                          L.copyright
+    <+> freeTextFieldDefST  "maintainer"                                         L.maintainer
+    <+> freeTextFieldDefST  "author"                                             L.author
+    <+> freeTextFieldDefST  "stability"                                          L.stability
+    <+> freeTextFieldDefST  "homepage"                                           L.homepage
+    <+> freeTextFieldDefST  "package-url"                                        L.pkgUrl
+    <+> freeTextFieldDefST  "synopsis"                                           L.synopsis
+    <+> freeTextFieldDefST  "description"                                        L.description
+    <+> freeTextFieldDefST  "category"                                           L.category
     -- Installed fields
     <+> optionalFieldDef    "abi"                                                L.abiHash (mkAbiHash "")
     <+> booleanFieldDef     "indefinite"                                         L.indefinite False
@@ -181,9 +197,6 @@ instance Parsec ExposedModules where
 instance Pretty ExposedModules where
     pretty = showExposedModules . getExposedModules
 
-instance Described ExposedModules where
-    describe _ = REMunch (REOpt reComma) (describe (Proxy :: Proxy ExposedModule))
-
 newtype CompatPackageKey = CompatPackageKey { getCompatPackageKey :: String }
 
 instance Newtype String CompatPackageKey
@@ -195,9 +208,6 @@ instance Parsec CompatPackageKey where
     parsec = CompatPackageKey <$> P.munch1 uid_char where
         uid_char c = Char.isAlphaNum c || c `elem` ("-_.=[],:<>+" :: String)
 
-instance Described CompatPackageKey where
-    describe _ = RETodo
-
 newtype InstWith = InstWith { getInstWith :: [(ModuleName,OpenModule)] }
 
 instance Newtype  [(ModuleName, OpenModule)] InstWith
@@ -207,9 +217,6 @@ instance Pretty InstWith where
 
 instance Parsec InstWith where
     parsec = InstWith . Map.toList <$> parsecOpenModuleSubst
-
-instance Described InstWith where
-    describe _ = RETodo
 
 -- | SPDX License expression or legacy license. Lenient parser, accepts either.
 newtype SpecLicenseLenient = SpecLicenseLenient { getSpecLicenseLenient :: Either SPDX.License License }
@@ -221,9 +228,6 @@ instance Parsec SpecLicenseLenient where
 
 instance Pretty SpecLicenseLenient where
     pretty = either pretty pretty . getSpecLicenseLenient
-
-instance Described SpecLicenseLenient where
-    describe _ = RETodo
 
 -------------------------------------------------------------------------------
 -- Basic fields
@@ -280,7 +284,13 @@ basicLibVisibility f b = (\x -> b { _basicLibVisibility = x }) <$>
 {-# INLINE basicLibVisibility #-}
 
 basicFieldGrammar
-    :: (FieldGrammar g, Applicative (g Basic))
+    :: ( FieldGrammar c g, Applicative (g Basic)
+       , c (Identity LibraryVisibility)
+       , c (Identity PackageName)
+       , c (Identity UnqualComponentName)
+       , c (MQuoted MungedPackageName)
+       , c (MQuoted Version)
+       )
     => g Basic Basic
 basicFieldGrammar = mkBasic
     <$> optionalFieldDefAla "name"          MQuoted  basicName (mungedPackageName emptyInstalledPackageInfo)

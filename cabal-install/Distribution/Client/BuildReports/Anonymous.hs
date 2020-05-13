@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
@@ -40,7 +41,6 @@ import Distribution.Fields.ParseResult        (ParseResult, parseFatalFailure, r
 import Distribution.Package                   (PackageIdentifier (..), mkPackageName)
 import Distribution.PackageDescription        (FlagAssignment)
 import Distribution.Parsec                    (PError (..), zeroPos)
-import Distribution.Parsec.Newtypes
 import Distribution.System                    (Arch, OS)
 
 import qualified Distribution.Client.BuildReports.Lens as L
@@ -100,8 +100,18 @@ cabalInstallID =
 -- FieldGrammar
 -------------------------------------------------------------------------------
 
-
-fieldDescrs :: (Applicative (g BuildReport), FieldGrammar g) => g BuildReport BuildReport
+fieldDescrs
+    :: ( Applicative (g BuildReport), FieldGrammar c g
+       , c (Identity Arch)
+       , c (Identity CompilerId)
+       , c (Identity FlagAssignment)
+       , c (Identity InstallOutcome)
+       , c (Identity OS)
+       , c (Identity Outcome)
+       , c (Identity PackageIdentifier)
+       , c (List VCat (Identity PackageIdentifier) PackageIdentifier)
+       )
+    => g BuildReport BuildReport
 fieldDescrs = BuildReport
     <$> uniqueField       "package"                           L.package
     <*> uniqueField       "os"                                L.os

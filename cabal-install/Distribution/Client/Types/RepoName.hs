@@ -7,9 +7,8 @@ module Distribution.Client.Types.RepoName (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..), csAlpha, csAlphaNum, reMunchCS)
-import Distribution.Parsec                 (Parsec (..))
-import Distribution.Pretty                 (Pretty (..))
+import Distribution.Parsec (Parsec (..))
+import Distribution.Pretty (Pretty (..))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
@@ -47,8 +46,3 @@ instance Parsec RepoName where
         parser = (:) <$> lead <*> rest
         lead = P.satisfy (\c -> isAlpha    c || c == '_' || c == '-' || c == '.')
         rest = P.munch   (\c -> isAlphaNum c || c == '_' || c == '-' || c == '.')
-
-instance Described RepoName where
-    describe _ = lead <> rest where
-        lead = RECharSet $ csAlpha    <> fromString "_-."
-        rest = reMunchCS $ csAlphaNum <> fromString "_-."

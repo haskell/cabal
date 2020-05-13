@@ -71,7 +71,7 @@ import Distribution.License
   ( licenseFromSPDX )
 import qualified Distribution.ModuleName as ModuleName
   ( toFilePath )
-import Distribution.Parsec.Newtypes
+import Distribution.FieldGrammar.Newtypes
   ( SpecVersion(..) )
 import Distribution.PackageDescription.FieldGrammar
   ( formatDependencyList, formatExposedModules, formatHsSourceDirs,

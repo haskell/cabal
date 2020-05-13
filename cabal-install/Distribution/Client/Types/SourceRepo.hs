@@ -1,9 +1,10 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE StandaloneDeriving   #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Distribution.Client.Types.SourceRepo (
     SourceRepositoryPackage (..),
@@ -17,13 +18,11 @@ module Distribution.Client.Types.SourceRepo (
 ) where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Lens           (Lens, Lens')
 import Prelude ()
-import Distribution.Compat.Lens (Lens, Lens')
 
-import Distribution.Types.SourceRepo
-         ( RepoType(..))
-import Distribution.FieldGrammar (FieldGrammar, ParsecFieldGrammar', PrettyFieldGrammar', uniqueField, uniqueFieldAla, optionalFieldAla, monoidalFieldAla)
-import Distribution.Parsec.Newtypes (Token (..), FilePathNT (..), alaList', NoCommaFSep (..))
+import Distribution.FieldGrammar
+import Distribution.Types.SourceRepo (RepoType (..))
 
 -- | @source-repository-package@ definition
 --
@@ -94,7 +93,10 @@ srpSubdirLens f s = fmap (\x -> s { srpSubdir = x }) (f (srpSubdir s))
 -------------------------------------------------------------------------------
 
 sourceRepositoryPackageGrammar
-    :: (FieldGrammar g, Applicative (g SourceRepoList))
+    :: ( FieldGrammar c g, Applicative (g SourceRepoList)
+       , c (Identity RepoType)
+       , c (List NoCommaFSep FilePathNT String)
+       )
     => g SourceRepoList SourceRepoList
 sourceRepositoryPackageGrammar = SourceRepositoryPackage
     <$> uniqueField      "type"                                       srpTypeLens

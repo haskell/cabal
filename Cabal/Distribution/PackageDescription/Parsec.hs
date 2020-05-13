@@ -56,7 +56,6 @@ import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks        (patchQuirks)
 import Distribution.Parsec                           (parsec, simpleParsecBS)
 import Distribution.Parsec.FieldLineStream           (fieldLineStreamFromBS)
-import Distribution.Parsec.Newtypes                  (CommaFSep, List, SpecVersion (..), Token)
 import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)

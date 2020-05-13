@@ -10,11 +10,10 @@ module Distribution.Types.BenchmarkType (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.FieldGrammar.Described (Described (..))
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
-import Text.PrettyPrint                    (char, text)
+import Text.PrettyPrint     (char, text)
 
 -- | The \"benchmark-type\" field in the benchmark stanza.
 --
@@ -39,6 +38,3 @@ instance Parsec BenchmarkType where
     parsec = parsecStandard $ \ver name -> case name of
        "exitcode-stdio" -> BenchmarkTypeExe ver
        _                -> BenchmarkTypeUnknown name ver
-
-instance Described BenchmarkType where
-    describe _ = "exitcode-stdio-1.0"

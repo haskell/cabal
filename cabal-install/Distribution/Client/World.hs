@@ -36,14 +36,13 @@ import Distribution.Client.Compat.Prelude hiding (getContents)
 import Distribution.Types.Dependency
 import Distribution.Types.Flag
          ( FlagAssignment, unFlagAssignment
-         , unFlagName, parsecFlagAssignmentNonEmpty, describeFlagAssignmentNonEmpty )
+         , unFlagName, parsecFlagAssignmentNonEmpty )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
 import Distribution.Parsec (Parsec (..), CabalParsing, simpleParsec)
 import Distribution.Pretty (Pretty (..), prettyShow)
-import Distribution.FieldGrammar.Described (Described (..), GrammarRegex (..))
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
@@ -148,8 +147,3 @@ instance Parsec WorldPkgInfo where
           inDoubleQuotes parsecFlagAssignmentNonEmpty
         where
           inDoubleQuotes = P.between (P.char '"') (P.char '"')
-
-instance Described WorldPkgInfo where
-  describe _ = 
-    describe (Proxy :: Proxy Dependency)
-    <> REOpt (RESpaces1 <> fromString "--flags=\"" <> describeFlagAssignmentNonEmpty <> fromString "\"")

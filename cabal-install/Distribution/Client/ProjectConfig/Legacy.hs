@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
@@ -40,9 +40,11 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 
 import Distribution.Solver.Types.ConstraintSource
 
+import Distribution.FieldGrammar
 import Distribution.Pretty (Pretty (..))
 import Distribution.Parsec (Parsec (..))
 import Distribution.Package
+import Distribution.Types.SourceRepo (RepoType)
 import Distribution.PackageDescription
          ( dispFlagAssignment )
 import Distribution.Simple.Compiler
@@ -1204,7 +1206,11 @@ legacyPackageConfigFieldDescrs =
                     | otherwise = "test-" ++ name
 
 
-legacyPackageConfigFGSectionDescrs :: [FGSectionDescr LegacyProjectConfig]
+legacyPackageConfigFGSectionDescrs
+    :: ( FieldGrammar c g, Applicative (g SourceRepoList)
+       , c (Identity RepoType), c (List NoCommaFSep FilePathNT String)
+       )
+    => [FGSectionDescr g LegacyProjectConfig]
 legacyPackageConfigFGSectionDescrs =
     [ packageRepoSectionDescr
     ]
@@ -1229,7 +1235,11 @@ legacyPackageConfigSectionDescrs =
         remoteRepoSectionDescr
     ]
 
-packageRepoSectionDescr :: FGSectionDescr LegacyProjectConfig
+packageRepoSectionDescr
+    :: ( FieldGrammar c g, Applicative (g SourceRepoList)
+       , c (Identity RepoType), c (List NoCommaFSep FilePathNT String)
+       )
+    => FGSectionDescr g LegacyProjectConfig
 packageRepoSectionDescr = FGSectionDescr
   { fgSectionName        = "source-repository-package"
   , fgSectionGrammar     = sourceRepositoryPackageGrammar

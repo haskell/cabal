@@ -59,7 +59,6 @@ import Distribution.Version (Version, mkVersion', nullVersion)
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Parsec (Parsec (..))
 import Distribution.Pretty (Pretty (..), prettyShow)
-import Distribution.FieldGrammar.Described
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
 
@@ -89,12 +88,6 @@ instance Parsec CompilerFlavor where
         component = do
           cs <- P.munch1 isAlphaNum
           if all isDigit cs then fail "all digits compiler name" else return cs
-
-instance Described CompilerFlavor where
-    describe _ = REUnion
-        [ fromString (prettyShow c)
-        | c <- knownCompilerFlavors
-        ]
 
 classifyCompilerFlavor :: String -> CompilerFlavor
 classifyCompilerFlavor s =
@@ -171,12 +164,6 @@ instance Parsec CompilerId where
     flavour <- parsec
     version <- (P.char '-' >> parsec) <|> return nullVersion
     return (CompilerId flavour version)
-
-instance Described CompilerId where
-  describe _ =
-    describe (Proxy :: Proxy CompilerFlavor)
-    <> fromString "-"
-    <> describe (Proxy :: Proxy Version)
 
 lowercase :: String -> String
 lowercase = map toLower

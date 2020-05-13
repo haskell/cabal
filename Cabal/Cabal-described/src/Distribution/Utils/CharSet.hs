@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP          #-}
-{-# LANGUAGE Safe         #-}
 -- | Sets of characters.
 --
 -- Using this is more efficint than 'RE.Type.Alt':ng individual characters.
@@ -31,8 +30,14 @@ module Distribution.Utils.CharSet (
     upper,
     ) where
 
-import Distribution.Compat.Prelude hiding (empty, null, toList)
-import Prelude ()
+import Data.Char                     (chr, isAlpha, isAlphaNum, isUpper, ord)
+import Data.List                     (foldl', sortBy)
+import Data.Monoid                   (Monoid (..))
+import Data.String                   (IsString (..))
+import Distribution.Compat.Semigroup (Semigroup (..))
+import Prelude
+       (Bool (..), Bounded (..), Char, Enum (..), Eq (..), Int, Maybe (..), Num (..), Ord (..), Show (..), String, concatMap, flip, fst, otherwise, showParen,
+       showString, uncurry, ($), (.))
 
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.IntMap.Strict as IM

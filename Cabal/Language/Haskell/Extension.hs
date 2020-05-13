@@ -31,7 +31,6 @@ import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.FieldGrammar.Described
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as Disp
@@ -73,9 +72,6 @@ instance Pretty Language where
 
 instance Parsec Language where
   parsec = classifyLanguage <$> P.munch1 isAlphaNum
-
-instance Described Language where
-    describe _ = REUnion ["Haskell98", "Haskell2010"]
 
 classifyLanguage :: String -> Language
 classifyLanguage = \str -> case lookup str langTable of
@@ -876,9 +872,6 @@ instance Parsec Extension where
 
 instance Pretty KnownExtension where
   pretty ke = Disp.text (show ke)
-
-instance Described Extension where
-    describe _ = RETodo
 
 classifyExtension :: String -> Extension
 classifyExtension string

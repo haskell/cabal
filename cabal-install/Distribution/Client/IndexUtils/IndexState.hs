@@ -21,9 +21,8 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
 import Distribution.Client.Types.RepoName       (RepoName (..))
 
-import Distribution.FieldGrammar.Described
-import Distribution.Parsec                 (Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty                 (Pretty (..))
+import Distribution.Parsec (Parsec (..), parsecLeadingCommaNonEmpty)
+import Distribution.Pretty (Pretty (..))
 
 import qualified Data.Map.Strict                 as Map
 import qualified Distribution.Compat.CharParsing as P
@@ -88,14 +87,6 @@ instance Parsec TotalIndexState where
         add _           (TokTimestamp ts) = TIS (IndexStateTime ts) Map.empty
         add (TIS def m) (TokRepo rn idx)  = TIS def (Map.insert rn idx m)
 
-instance Described TotalIndexState where
-    describe _ = reCommaNonEmpty $ REUnion
-        [ describe (Proxy :: Proxy RepoName) <> RESpaces1 <> ris
-        , ris
-        ]
-      where
-        ris = describe (Proxy :: Proxy RepoIndexState)
-
 -- used in Parsec TotalIndexState implementation
 data Tok
     = TokRepo RepoName RepoIndexState
@@ -146,9 +137,3 @@ instance Parsec RepoIndexState where
     parsec = parseHead <|> parseTime where
         parseHead = IndexStateHead <$ P.string "HEAD"
         parseTime = IndexStateTime <$> parsec
-
-instance Described RepoIndexState where
-    describe _ = REUnion
-        [ "HEAD"
-        , RENamed "timestamp" (describe (Proxy :: Proxy Timestamp))
-        ]

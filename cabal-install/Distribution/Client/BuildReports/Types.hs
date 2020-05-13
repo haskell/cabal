@@ -18,20 +18,19 @@ module Distribution.Client.BuildReports.Types (
     Outcome(..),
 ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
 
-import Distribution.Compiler               (CompilerId (..))
-import Distribution.FieldGrammar.Described
-import Distribution.PackageDescription     (FlagAssignment)
-import Distribution.Parsec                 (Parsec (..))
-import Distribution.Pretty                 (Pretty (..), prettyShow)
-import Distribution.System                 (Arch, OS)
-import Distribution.Types.PackageId        (PackageIdentifier)
-import Text.PrettyPrint                    ((<+>))
+import Distribution.Compiler           (CompilerId (..))
+import Distribution.PackageDescription (FlagAssignment)
+import Distribution.Parsec             (Parsec (..))
+import Distribution.Pretty             (Pretty (..))
+import Distribution.System             (Arch, OS)
+import Distribution.Types.PackageId    (PackageIdentifier)
+import Text.PrettyPrint                ((<+>))
 
 -------------------------------------------------------------------------------
 -- ReportLevel
@@ -148,20 +147,6 @@ instance Parsec InstallOutcome where
       "InstallOk"        -> return InstallOk
       _                  -> P.unexpected $ "InstallOutcome: " ++ name
 
-instance Described InstallOutcome where
-  describe _ = REUnion
-    [ fromString "PlanningFailed"
-    , fromString "DependencyFailed" <> RESpaces1 <> describe (Proxy :: Proxy PackageIdentifier)
-    , fromString "DownloadFailed"
-    , fromString "UnpackFailed"
-    , fromString "SetupFailed"
-    , fromString "ConfigureFailed"
-    , fromString "BuildFailed"
-    , fromString "TestsFailed"
-    , fromString "InstallFailed"
-    , fromString "InstallOk"
-    ]
-
 -------------------------------------------------------------------------------
 -- Outcome
 -------------------------------------------------------------------------------
@@ -182,9 +167,3 @@ instance Parsec Outcome where
       "Failed"   -> return Failed
       "Ok"       -> return Ok
       _          -> P.unexpected $ "Outcome: " ++ name
-
-instance Described Outcome where
-  describe _ = REUnion
-    [ fromString (prettyShow o)
-    | o <- [minBound .. maxBound :: Outcome]
-    ]
