@@ -23,17 +23,15 @@
 {-# LANGUAGE Rank2Types #-}
 module Distribution.Deprecated.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
-        runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
-        Field(..), fName, lineNo,
-        FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
-        showFields, showSingleNamedField, showSimpleSingleNamedField,
-        parseFields, parseFieldsFlat,
-        parseHaskellString, parseFilePathQ, parseTokenQ, parseTokenQ',
-        parseSepList, parseCommaList, parseOptCommaList,
-        showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
+        runP, runE, ParseResult(..), parseFail, showPWarning,
+        Field(..), lineNo,
+        FieldDescr(..), readFields, readFieldsFlat,
+        parseHaskellString, parseFilePathQ, parseTokenQ,
+        parseOptCommaList,
+        showFilePath, showToken, showFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
-        commaListField, commaListFieldWithSep, commaNewLineListField, newLineListField,
-        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted,
+        newLineListField,
+        liftField,
         readPToMaybe,
 
         fieldParsec, simpleFieldParsec,
@@ -41,7 +39,7 @@ module Distribution.Deprecated.ParseUtils (
         commaListFieldParsec,
         commaNewLineListFieldParsec,
 
-        UnrecFieldParser, warnUnrec, ignoreUnrec,
+        UnrecFieldParser,
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (get)
@@ -49,21 +47,14 @@ import Prelude ()
 
 import Distribution.Deprecated.ReadP as ReadP hiding (get)
 
-import Distribution.Compat.Newtype
-import Distribution.Compiler
-import Distribution.FieldGrammar.Newtypes (TestedWith (..))
 import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Utils.Generic
-import Distribution.Version
 
 import Data.Tree as Tree (Tree (..), flatten)
 import System.FilePath  (normalise)
-import Text.PrettyPrint
-       (Doc, Mode (..), colon, comma, fsep, hsep, isEmpty, mode, nest, punctuate, render,
-       renderStyle, sep, style, text, vcat, ($+$), (<+>))
+import Text.PrettyPrint (Doc, punctuate, comma, fsep, sep)
 import qualified Text.Read as Read
-import qualified Data.Map  as Map
 
 import qualified Control.Monad.Fail as Fail
 import Distribution.Parsec (ParsecParser, explicitEitherParsec, parsecLeadingCommaList, parsecLeadingOptCommaList)
@@ -119,12 +110,6 @@ instance Fail.MonadFail ParseResult where
 
 parseResultFail :: String -> ParseResult a
 parseResultFail s = parseFail (FromString s Nothing)
-
-
-catchParseError :: ParseResult a -> (PError -> ParseResult a)
-                -> ParseResult a
-p@(ParseOk _ _) `catchParseError` _ = p
-ParseFailed e `catchParseError` k   = k e
 
 parseFail :: PError -> ParseResult a
 parseFail = ParseFailed
@@ -216,15 +201,6 @@ simpleFieldParsec :: String -> (a -> Doc) -> ParsecParser a
 simpleFieldParsec name showF readF get set
   = liftField get set $ fieldParsec name showF readF
 
-commaListFieldWithSep :: Separator -> String -> (a -> Doc) -> ReadP [a] a
-                      -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListFieldWithSep separator name showF readF get set =
-   liftField get set' $
-     field name showF' (parseCommaList readF)
-   where
-     set' xs b = set (get b ++ xs) b
-     showF'    = separator . punctuate comma . map showF
-
 commaListFieldWithSepParsec :: Separator -> String -> (a -> Doc) -> ParsecParser a
                       -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListFieldWithSepParsec separator name showF readF get set =
@@ -234,17 +210,9 @@ commaListFieldWithSepParsec separator name showF readF get set =
      set' xs b = set (get b ++ xs) b
      showF'    = separator . punctuate comma . map showF
 
-commaListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField = commaListFieldWithSep fsep
-
 commaListFieldParsec :: String -> (a -> Doc) -> ParsecParser a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListFieldParsec = commaListFieldWithSepParsec fsep
-
-commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaNewLineListField = commaListFieldWithSep sep
 
 commaNewLineListFieldParsec
     :: String -> (a -> Doc) ->  ParsecParser a
@@ -292,81 +260,6 @@ listFieldParsec
     :: String -> (a -> Doc) -> ParsecParser a
     -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listFieldParsec = listFieldWithSepParsec fsep
-             
-
-optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
-             -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
-optsField name flavor get set =
-   liftField (fromMaybe [] . lookup flavor . get)
-             (\opts b -> set (reorder (update flavor opts (get b))) b) $
-        field name showF (sepBy parseTokenQ' (munch1 isSpace))
-  where
-        update _ opts l | all null opts = l  --empty opts as if no opts
-        update f opts [] = [(f,opts)]
-        update f opts ((f',opts'):rest)
-           | f == f'   = (f, opts' ++ opts) : rest
-           | otherwise = (f',opts') : update f opts rest
-        reorder = sortBy (comparing fst)
-        showF   = hsep . map text
-
--- TODO: this is a bit smelly hack. It's because we want to parse bool fields
---       liberally but not accept new parses. We cannot do that with ReadP
---       because it does not support warnings. We need a new parser framework!
-boolField :: String -> (b -> Bool) -> (Bool -> b -> b) -> FieldDescr b
-boolField name get set = liftField get set (FieldDescr name showF readF)
-  where
-    showF = text . show
-    readF line str _
-      |  str == "True"  = ParseOk [] True
-      |  str == "False" = ParseOk [] False
-      | lstr == "true"  = ParseOk [caseWarning] True
-      | lstr == "false" = ParseOk [caseWarning] False
-      | otherwise       = ParseFailed (NoParse name line)
-      where
-        lstr = lowercase str
-        caseWarning = PWarning $
-          "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
-
-ppFields :: [FieldDescr a] -> a -> Doc
-ppFields fields x =
-   vcat [ ppField name (getter x) | FieldDescr name getter _ <- fields ]
-showFields :: [FieldDescr a] -> a -> String
-showFields fields = render . ($+$ text "") . ppFields fields
-
-showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
-showSingleNamedField fields f =
-  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
-    []      -> Nothing
-    (get:_) -> Just (render . ppField f . get)
-
-showSimpleSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
-showSimpleSingleNamedField fields f =
-  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
-    []      -> Nothing
-    (get:_) -> Just (renderStyle myStyle . get)
- where myStyle = style { mode = LeftMode }
-
-parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
-parseFields fields initial str =
-  readFields str >>= accumFields fields initial
-
-parseFieldsFlat :: [FieldDescr a] -> a -> String -> ParseResult a
-parseFieldsFlat fields initial str =
-  readFieldsFlat str >>= accumFields fields initial
-
-accumFields :: [FieldDescr a] -> a -> [Field] -> ParseResult a
-accumFields fields = foldM setField
-  where
-    fieldMap = Map.fromList
-      [ (name, f) | f@(FieldDescr name _ _) <- fields ]
-    setField accum (F line name value) = case Map.lookup name fieldMap of
-      Just (FieldDescr _ _ set) -> set line value accum
-      Nothing -> do
-        warning ("Unrecognized field " ++ name ++ " on line " ++ show line)
-        return accum
-    setField accum f = do
-      warning ("Unrecognized stanza on line " ++ show (lineNo f))
-      return accum
 
 -- | The type of a function which, given a name-value pair of an
 --   unrecognized field, and the current structure being built,
@@ -374,17 +267,6 @@ accumFields fields = foldM setField
 --   (by returning  Just x, where x is a possibly modified version
 --   of the structure being built), or not (by returning Nothing).
 type UnrecFieldParser a = (String,String) -> a -> Maybe a
-
--- | A default unrecognized field parser which simply returns Nothing,
---   i.e. ignores all unrecognized fields, so warnings will be generated.
-warnUnrec :: UnrecFieldParser a
-warnUnrec _ _ = Nothing
-
--- | A default unrecognized field parser which silently (i.e. no
---   warnings will be generated) ignores unrecognized fields, by
---   returning the structure being built unmodified.
-ignoreUnrec :: UnrecFieldParser a
-ignoreUnrec _ = Just
 
 ------------------------------------------------------------------------------
 
@@ -418,11 +300,6 @@ lineNo :: Field -> LineNo
 lineNo (F n _ _) = n
 lineNo (Section n _ _ _) = n
 lineNo (IfBlock n _ _ _) = n
-
-fName :: Field -> String
-fName (F _ n _) = n
-fName (Section _ n _ _) = n
-fName _ = error "fname: not a field or section"
 
 readFields :: String -> ParseResult [Field]
 readFields input = ifelse
@@ -652,18 +529,6 @@ parseFilePathQ = parseTokenQ
   -- removed until normalise is no longer broken, was:
   --   liftM normalise parseTokenQ
 
-betweenSpaces :: ReadP r a -> ReadP r a
-betweenSpaces act = do skipSpaces
-                       res <- act
-                       skipSpaces
-                       return res
-
--- REMOVE
--- parseOptVersion :: ReadP r Version
--- parseOptVersion = parseMaybeQuoted ver
---   where ver :: ReadP r Version
---         ver = parse <++ return nullVersion
-
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
 -- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
@@ -680,22 +545,9 @@ parseHaskellString =
 parseTokenQ :: ReadP r String
 parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
-parseTokenQ' :: ReadP r String
-parseTokenQ' = parseHaskellString <++ munch1 (not . isSpace)
-
-parseSepList :: ReadP r b
-             -> ReadP r a -- ^The parser for the stuff between commas
-             -> ReadP r [a]
-parseSepList sepr p = sepBy p separator
-    where separator = betweenSpaces sepr
-
 parseSpaceList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
 parseSpaceList p = sepBy p skipSpaces
-
-parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
-               -> ReadP r [a]
-parseCommaList = parseSepList (ReadP.char ',')
 
 -- This version avoid parse ambiguity for list element parsers
 -- that have multiple valid parses of prefixes.
@@ -706,48 +558,6 @@ parseOptCommaList p = sepBy p localSep
     localSep = (skipSpaces >> char ',' >> skipSpaces)
       +++ (satisfy isSpace >> skipSpaces)
 
-parseQuoted :: ReadP r a -> ReadP r a
-parseQuoted = between (ReadP.char '"') (ReadP.char '"')
-
-parseMaybeQuoted :: (forall r. ReadP r a) -> ReadP r' a
-parseMaybeQuoted p = parseQuoted p <++ p
-
-parseFreeText :: ReadP.ReadP s String
-parseFreeText = ReadP.munch (const True)
-
 readPToMaybe :: ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- readP_to_S p str
                                      , all isSpace s ]
-
-ppField :: String -> Doc -> Doc
-ppField name fielddoc
-   | isEmpty fielddoc         = mempty
-   | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
-   | otherwise                = text name <<>> colon <+> fielddoc
-   where
-      indentWith = 4
-      nestedFields =
-         [ "description"
-         , "build-depends"
-         , "data-files"
-         , "extra-source-files"
-         , "extra-tmp-files"
-         , "exposed-modules"
-         , "asm-sources"
-         , "cmm-sources"
-         , "c-sources"
-         , "js-sources"
-         , "extra-libraries"
-         , "includes"
-         , "install-includes"
-         , "other-modules"
-         , "autogen-modules"
-         , "depends"
-         ]
-
--------------------------------------------------------------------------------
--- Internal
--------------------------------------------------------------------------------
-
-showTestedWith :: (CompilerFlavor, VersionRange) -> Doc
-showTestedWith = pretty . pack' TestedWith
