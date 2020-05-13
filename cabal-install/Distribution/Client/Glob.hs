@@ -15,19 +15,18 @@ module Distribution.Client.Glob
     , getFilePathRootDirectory
     ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
-import           Data.List (stripPrefix)
-import           Control.Monad (mapM)
+import Data.List        (stripPrefix)
+import System.Directory
+import System.FilePath
 
-import           Distribution.Deprecated.Text
-import           Distribution.Deprecated.ReadP (ReadP, (<++), (+++))
-import qualified Distribution.Deprecated.ReadP as Parse
-import qualified Text.PrettyPrint as Disp
+import Distribution.Parsec (CabalParsing, Parsec (..))
+import Distribution.Pretty (Pretty (..))
 
-import           System.FilePath
-import           System.Directory
+import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint                as Disp
 
 
 -- | A file path specified by globbing
@@ -131,7 +130,7 @@ matchFileGlobRel root glob0 = go glob0 ""
       subdirs <- filterM (\subdir -> doesDirectoryExist
                                        (root </> dir </> subdir))
                $ filter (matchGlob glob) entries
-      concat <$> mapM (\subdir -> go globPath (dir </> subdir)) subdirs
+      concat <$> traverse (\subdir -> go globPath (dir </> subdir)) subdirs
 
     go GlobDirTrailing dir = return [dir]
 
@@ -168,61 +167,50 @@ matchGlob = goStart
 -- Parsing & printing
 --
 
-instance Text FilePathGlob where
-  disp (FilePathGlob root pathglob) = disp root Disp.<> disp pathglob
-  parse =
-    parse >>= \root ->
-        (FilePathGlob root <$> parse)
-    <++ (when (root == FilePathRelative) Parse.pfail >>
-         return (FilePathGlob root GlobDirTrailing))
+instance Pretty FilePathGlob where
+  pretty (FilePathGlob root pathglob) = pretty root Disp.<> pretty pathglob
 
-instance Text FilePathRoot where
-  disp  FilePathRelative    = Disp.empty
-  disp (FilePathRoot root)  = Disp.text root
-  disp FilePathHomeDir      = Disp.char '~' Disp.<> Disp.char '/'
+instance Parsec FilePathGlob where
+    parsec = do
+        root <- parsec
+        case root of
+            FilePathRelative -> FilePathGlob root <$> parsec
+            _                -> FilePathGlob root <$> parsec <|> pure (FilePathGlob root GlobDirTrailing)
 
-  parse =
-        (     (Parse.char '/' >> return (FilePathRoot "/"))
-          +++ (Parse.char '~' >> Parse.char '/' >> return FilePathHomeDir)
-          +++ (do drive <- Parse.satisfy (\c -> (c >= 'a' && c <= 'z')
-                                             || (c >= 'A' && c <= 'Z'))
-                  _ <- Parse.char ':'
-                  _ <- Parse.char '/' +++ Parse.char '\\'
-                  return (FilePathRoot (toUpper drive : ":\\")))
-        )
-    <++ return FilePathRelative
+instance Pretty FilePathRoot where
+    pretty  FilePathRelative    = Disp.empty
+    pretty (FilePathRoot root)  = Disp.text root
+    pretty FilePathHomeDir      = Disp.char '~' Disp.<> Disp.char '/'
 
-instance Text FilePathGlobRel where
-  disp (GlobDir  glob pathglob) = dispGlob glob
-                          Disp.<> Disp.char '/'
-                          Disp.<> disp pathglob
-  disp (GlobFile glob)          = dispGlob glob
-  disp  GlobDirTrailing         = Disp.empty
+instance Parsec FilePathRoot where
+    parsec = root <|> P.try home <|> P.try drive <|> pure FilePathRelative where
+        root = FilePathRoot "/" <$ P.char '/'
+        home = FilePathHomeDir <$ P.string "~/"
+        drive = do
+            dr <- P.satisfy $ \c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+            _ <- P.char ':'
+            _ <- P.char '/' <|> P.char '\\'
+            return (FilePathRoot (toUpper dr : ":\\"))
 
-  parse = parsePath
-    where
-      parsePath :: ReadP r FilePathGlobRel
-      parsePath =
-        parseGlob >>= \globpieces ->
-            asDir globpieces
-        <++ asTDir globpieces
-        <++ asFile globpieces
+instance Pretty FilePathGlobRel where
+    pretty (GlobDir  glob pathglob) = dispGlob glob
+                            Disp.<> Disp.char '/'
+                            Disp.<> pretty pathglob
+    pretty (GlobFile glob)          = dispGlob glob
+    pretty GlobDirTrailing          = Disp.empty
 
-      asDir  glob = do dirSep
-                       globs <- parsePath
-                       return (GlobDir glob globs)
-      asTDir glob = do dirSep
-                       return (GlobDir glob GlobDirTrailing)
-      asFile glob = return (GlobFile glob)
+instance Parsec FilePathGlobRel where
+    parsec = parsecPath where
+        parsecPath :: CabalParsing m => m FilePathGlobRel
+        parsecPath = do
+            glob <- parsecGlob
+            dirSep *> (GlobDir glob <$> parsecPath <|> pure (GlobDir glob GlobDirTrailing)) <|> pure (GlobFile glob)
 
-      dirSep = (Parse.char '/' >> return ())
-           +++ (do _ <- Parse.char '\\'
-                   -- check this isn't an escape code
-                   following <- Parse.look
-                   case following of
-                     (c:_) | isGlobEscapedChar c -> Parse.pfail
-                     _                           -> return ())
-
+        dirSep :: CabalParsing m => m ()
+        dirSep = () <$ P.char '/' <|> P.try (do
+            _ <- P.char '\\'
+            -- check this isn't an escape code
+            P.notFollowedBy (P.satisfy isGlobEscapedChar))
 
 dispGlob :: Glob -> Disp.Doc
 dispGlob = Disp.hcat . map dispPiece
@@ -238,29 +226,18 @@ dispGlob = Disp.hcat . map dispPiece
       | isGlobEscapedChar c = '\\' : c : escape cs
       | otherwise           =        c : escape cs
 
-parseGlob :: ReadP r Glob
-parseGlob = Parse.many1 parsePiece
-  where
-    parsePiece = literal +++ wildcard +++ union
+parsecGlob :: CabalParsing m => m Glob
+parsecGlob = some parsecPiece where
+    parsecPiece = P.choice [ literal, wildcard, union ]
 
-    wildcard = Parse.char '*' >> return WildCard
+    wildcard = WildCard <$ P.char '*'
+    union    = Union . toList <$> P.between (P.char '{') (P.char '}') (P.sepByNonEmpty parsecGlob (P.char ','))
+    literal  = Literal <$> some litchar
 
-    union = Parse.between (Parse.char '{') (Parse.char '}') $
-              fmap Union (Parse.sepBy1 parseGlob (Parse.char ','))
+    litchar = normal <|> escape
 
-    literal = Literal `fmap` litchars1
-
-    litchar = normal +++ escape
-
-    normal  = Parse.satisfy (\c -> not (isGlobEscapedChar c)
-                                && c /= '/' && c /= '\\')
-    escape  = Parse.char '\\' >> Parse.satisfy isGlobEscapedChar
-
-    litchars1 :: ReadP r [Char]
-    litchars1 = liftM2 (:) litchar litchars
-
-    litchars :: ReadP r [Char]
-    litchars = litchars1 <++ return []
+    normal  = P.satisfy (\c -> not (isGlobEscapedChar c) && c /= '/' && c /= '\\')
+    escape  = P.try $ P.char '\\' >> P.satisfy isGlobEscapedChar
 
 isGlobEscapedChar :: Char -> Bool
 isGlobEscapedChar '*'  = True
