@@ -452,7 +452,7 @@ mixins
     * Documentation of :pkg-field:`mixins`
 
     .. math::
-        \mathrm{commalist}\mathsf{\color{red}{TODO}}
+        \mathrm{commalist}\left(\mathop{\mathit{package\text{-}name}}{\left(\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}{\left(\circ\mathop{\mathord{``}\mathtt{requires}\mathord{"}}\bullet\left\{ \mid\mathop{\mathord{``}\mathtt{hiding}\mathord{"}}\circ\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\mathop{\mathit{module\text{-}name}}}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{\text{(}}\mathord{"}}\circ{\left(\mathop{\mathit{module\text{-}name}}{\left(\bullet\mathop{\mathord{``}\mathtt{as}\mathord{"}}\bullet\mathop{\mathit{module\text{-}name}}\right)}^?\right)}^\ast_{\left(\circ\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}\circ\right)}\circ\mathop{\mathord{``}\mathtt{\text{)}}\mathord{"}} \right\}\right)}^?\right)}^?\right)
 
 other-extensions
     * Monoidal field

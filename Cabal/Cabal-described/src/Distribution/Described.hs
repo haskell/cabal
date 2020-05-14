@@ -80,10 +80,12 @@ import Distribution.Types.Flag                     (FlagAssignment, FlagName)
 import Distribution.Types.ForeignLib               (LibVersionInfo)
 import Distribution.Types.ForeignLibOption         (ForeignLibOption)
 import Distribution.Types.ForeignLibType           (ForeignLibType)
+import Distribution.Types.IncludeRenaming          (IncludeRenaming)
 import Distribution.Types.LegacyExeDependency      (LegacyExeDependency)
 import Distribution.Types.LibraryVisibility        (LibraryVisibility)
 import Distribution.Types.Mixin                    (Mixin)
 import Distribution.Types.ModuleReexport           (ModuleReexport)
+import Distribution.Types.ModuleRenaming           (ModuleRenaming)
 import Distribution.Types.MungedPackageName        (MungedPackageName)
 import Distribution.Types.PackageId                (PackageIdentifier)
 import Distribution.Types.PackageName              (PackageName)
@@ -410,6 +412,11 @@ instance Described ForeignLibOption where
 instance Described ForeignLibType where
     describe _ = REUnion ["native-shared","native-static"]
 
+instance Described IncludeRenaming where
+    describe _ = mr <> REOpt (RESpaces <> "requires" <> RESpaces1 <> mr)
+      where
+        mr = describe (Proxy :: Proxy ModuleRenaming)
+
 instance Described Language where
     describe _ = REUnion ["Haskell98", "Haskell2010"]
 
@@ -424,7 +431,8 @@ instance Described LibVersionInfo where
         reDigits = reChars ['0'..'9']
 
 instance Described Mixin where
-    describe _ = RETodo
+    describe _ = RENamed "package-name" (describe (Proxy :: Proxy PackageName)) <>
+        REOpt (RESpaces1 <> describe (Proxy :: Proxy IncludeRenaming))
 
 instance Described ModuleName where
     describe _ = REMunch1 (reChar '.') component where
@@ -432,6 +440,18 @@ instance Described ModuleName where
 
 instance Described ModuleReexport where
     describe _ = RETodo
+
+instance Described ModuleRenaming where
+    describe _ = REUnion
+        [ reEps
+        , "hiding" <> RESpaces <> bp (REMunch reSpacedComma mn)
+        , bp (REMunch reSpacedComma entry)
+        ]
+      where
+        bp r = "(" <> RESpaces <> r <> RESpaces <> ")"
+        mn = RENamed "module-name" $ describe (Proxy :: Proxy ModuleName)
+
+        entry = mn <> REOpt (RESpaces1 <> "as" <> RESpaces1 <> mn)
 
 instance Described MungedPackageName where
     describe _ = RETodo

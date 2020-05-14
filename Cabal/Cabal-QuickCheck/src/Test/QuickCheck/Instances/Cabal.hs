@@ -18,7 +18,10 @@ import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
 import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName, unFlagAssignment)
+import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
+import Distribution.Types.Mixin
+import Distribution.Types.ModuleRenaming
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint
@@ -155,6 +158,22 @@ instance Arbitrary VersionIntervals where
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]
+
+-------------------------------------------------------------------------------
+-- Backpack
+-------------------------------------------------------------------------------
+
+instance Arbitrary Mixin where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
+
+instance Arbitrary IncludeRenaming where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
+
+instance Arbitrary ModuleRenaming where
+    arbitrary = genericArbitrary
+    shrink    = genericShrink
 
 -------------------------------------------------------------------------------
 -- ModuleName
