@@ -54,7 +54,7 @@ instance Parsec IncludeRenaming where
     parsec = do
         prov_rn <- parsec
         req_rn <- P.option defaultRenaming $ P.try $ do
-            P.spaces
+            P.spaces -- no need to be space
             _ <- P.string "requires"
             P.spaces
             parsec
