@@ -64,9 +64,7 @@ import Distribution.Types.CondTree
 import Distribution.Types.Condition
 import Distribution.Types.DependencyMap
 
-import qualified Data.Map.Strict as Map.Strict
 import qualified Data.Map.Lazy   as Map
-import qualified Data.Set as Set
 import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
@@ -188,7 +186,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
   where
     extraConstrs = toDepMap
-      [ Dependency pn ver mempty
+      [ Dependency pn ver mainLibSet
       | PackageVersionConstraint pn ver <- constrs
       ]
 
@@ -232,11 +230,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     mp :: Either DepMapUnion a -> Either DepMapUnion a -> Either DepMapUnion a
     mp m@(Right _) _           = m
     mp _           m@(Right _) = m
-    mp (Left xs)   (Left ys)   =
-        let union = Map.foldrWithKey (Map.Strict.insertWith combine)
-                    (unDepMapUnion xs) (unDepMapUnion ys)
-            combine x y = (\(vr, cs) -> (simplifyVersionRange vr,cs)) $ unionVersionRanges' x y
-        in union `seq` Left (DepMapUnion union)
+    mp (Left xs)   (Left ys)   = Left (xs <> ys)
 
     -- `mzero'
     mz :: Either DepMapUnion a
@@ -312,20 +306,23 @@ extractConditions f gpkg =
     ]
 
 
--- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
-newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, Set LibraryName) }
+-- | A map of package constraints that combines version ranges using 'unionVersionRanges'.
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName (VersionRange, NonEmptySet LibraryName) }
 
--- An union of versions should correspond to an intersection of the components.
--- The intersection may not be necessary.
-unionVersionRanges' :: (VersionRange, Set LibraryName)
-                    -> (VersionRange, Set LibraryName)
-                    -> (VersionRange, Set LibraryName)
-unionVersionRanges' (vra, csa) (vrb, csb) =
-  (unionVersionRanges vra vrb, Set.intersection csa csb)
+instance Semigroup DepMapUnion where
+    DepMapUnion x <> DepMapUnion y = DepMapUnion $
+        Map.unionWith unionVersionRanges' x y
+
+unionVersionRanges'
+    :: (VersionRange, NonEmptySet LibraryName)
+    -> (VersionRange, NonEmptySet LibraryName)
+    -> (VersionRange, NonEmptySet LibraryName)
+unionVersionRanges' (vr, cs) (vr', cs') = (unionVersionRanges vr vr', cs <> cs')
 
 toDepMapUnion :: [Dependency] -> DepMapUnion
 toDepMapUnion ds =
   DepMapUnion $ Map.fromListWith unionVersionRanges' [ (p,(vr,cs)) | Dependency p vr cs <- ds ]
+
 
 fromDepMapUnion :: DepMapUnion -> [Dependency]
 fromDepMapUnion m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDepMapUnion m) ]

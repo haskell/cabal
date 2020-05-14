@@ -7,14 +7,14 @@ module Distribution.Types.Dependency
   , depVerRange
   , depLibraries
   , simplifyDependency
+  , mainLibSet
   ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Version
-       (VersionRange, anyVersion, simplifyVersionRange )
 import Distribution.Types.VersionRange (isAnyVersionLight)
+import Distribution.Version            (VersionRange, anyVersion, simplifyVersionRange)
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.CharParsing        (char, spaces)
@@ -26,8 +26,8 @@ import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 import Text.PrettyPrint                       ((<+>))
 
-import qualified Data.Set         as Set
-import qualified Text.PrettyPrint as PP
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
+import qualified Text.PrettyPrint                as PP
 
 -- | Describes a dependency on a source package (API)
 --
@@ -37,7 +37,7 @@ import qualified Text.PrettyPrint as PP
 data Dependency = Dependency
                     PackageName
                     VersionRange
-                    (Set LibraryName)
+                    (NonEmptySet LibraryName)
                     -- ^ The set of libraries required from the package.
                     -- Only the selected libraries will be built.
                     -- It does not affect the cabal-install solver yet.
@@ -49,7 +49,7 @@ depPkgName (Dependency pn _ _) = pn
 depVerRange :: Dependency -> VersionRange
 depVerRange (Dependency _ vr _) = vr
 
-depLibraries :: Dependency -> Set LibraryName
+depLibraries :: Dependency -> NonEmptySet LibraryName
 depLibraries (Dependency _ _ cs) = cs
 
 -- | Smart constructor of 'Dependency'.
@@ -59,8 +59,8 @@ depLibraries (Dependency _ _ cs) = cs
 --
 -- @since 3.4.0.0
 --
-mkDependency :: PackageName -> VersionRange -> Set LibraryName -> Dependency
-mkDependency pn vr lb = Dependency pn vr (Set.map conv lb)
+mkDependency :: PackageName -> VersionRange -> NonEmptySet LibraryName -> Dependency
+mkDependency pn vr lb = Dependency pn vr (NonEmptySet.map conv lb)
   where
     pn' = packageNameToUnqualComponentName pn
 
@@ -80,10 +80,10 @@ instance Pretty Dependency where
              | otherwise             = pretty ver
 
         withSubLibs doc
-            | sublibs == mainLib = doc
+            | sublibs == mainLibSet = doc
             | otherwise          = doc <<>> PP.colon <<>> PP.braces prettySublibs
 
-        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> Set.toList sublibs
+        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> NonEmptySet.toList sublibs
 
         prettySublib LMainLibName     = PP.text $ unPackageName name
         prettySublib (LSubLibName un) = PP.text $ unUnqualComponentName un
@@ -91,24 +91,24 @@ instance Pretty Dependency where
 -- |
 --
 -- >>> simpleParsec "mylib:sub" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))
 --
 -- >>> simpleParsec "mylib:{sub1,sub2}" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub1") :| [LSubLibName (UnqualComponentName "sub2")])))
 --
 -- >>> simpleParsec "mylib:{ sub1 , sub2 }" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub1") :| [LSubLibName (UnqualComponentName "sub2")])))
 --
 -- >>> simpleParsec "mylib:{ sub1 , sub2 } ^>= 42" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList [LSubLibName (UnqualComponentName "sub1"),LSubLibName (UnqualComponentName "sub2")]))
+-- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub1") :| [LSubLibName (UnqualComponentName "sub2")])))
 --
 -- >>> simpleParsec "mylib:{ } ^>= 42" :: Maybe Dependency
--- Just (Dependency (PackageName "mylib") (MajorBoundVersion (mkVersion [42])) (fromList []))
+-- Nothing
 --
 -- >>> traverse_ print (map simpleParsec ["mylib:mylib", "mylib:{mylib}", "mylib:{mylib,sublib}" ] :: [Maybe Dependency])
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName]))
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName]))
--- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LMainLibName,LSubLibName (UnqualComponentName "sublib")]))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [])))
+-- Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LMainLibName :| [LSubLibName (UnqualComponentName "sublib")])))
 --
 -- Spaces around colon are not allowed:
 --
@@ -118,17 +118,17 @@ instance Pretty Dependency where
 -- Sublibrary syntax is accepted since @cabal-version: 3.0@
 --
 -- >>> map (`simpleParsec'` "mylib:sub") [CabalSpecV2_4, CabalSpecV3_0] :: [Maybe Dependency]
--- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromList [LSubLibName (UnqualComponentName "sub")]))]
+-- [Nothing,Just (Dependency (PackageName "mylib") (OrLaterVersion (mkVersion [0])) (fromNonEmpty (LSubLibName (UnqualComponentName "sub") :| [])))]
 --
 instance Parsec Dependency where
     parsec = do
         name <- parsec
 
-        libs <- option mainLib $ do
+        libs <- option mainLibSet $ do
           _ <- char ':'
           versionGuardMultilibs
           parsecWarning PWTExperimental "colon specifier is experimental feature (issue #5660)"
-          Set.singleton <$> parseLib <|> parseMultipleLibs
+          NonEmptySet.singleton <$> parseLib <|> parseMultipleLibs
 
         spaces -- https://github.com/haskell/cabal/issues/5846
 
@@ -139,7 +139,7 @@ instance Parsec Dependency where
         parseMultipleLibs = between
             (char '{' *> spaces)
             (spaces *> char '}')
-            (Set.fromList <$> parsecCommaList parseLib)
+            (NonEmptySet.fromNonEmpty <$> parsecCommaNonEmpty parseLib)
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do
@@ -152,8 +152,8 @@ versionGuardMultilibs = do
     ]
 
 -- | Library set with main library.
-mainLib :: Set LibraryName
-mainLib = Set.singleton LMainLibName
+mainLibSet :: NonEmptySet LibraryName
+mainLibSet = NonEmptySet.singleton LMainLibName
 
 -- | Simplify the 'VersionRange' expression in a 'Dependency'.
 -- See 'simplifyVersionRange'.

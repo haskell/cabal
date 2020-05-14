@@ -10,35 +10,35 @@ GenericPackageDescription
                                                        (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
                                                        (MajorBoundVersion
                                                           (mkVersion [4, 12, 0, 0])))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "jaeger-flamegraph")
                                                     (OrLaterVersion (mkVersion [0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "bytestring")
                                                     (MajorBoundVersion (mkVersion [0, 10, 8, 2]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "containers")
                                                     (MajorBoundVersion (mkVersion [0, 6, 0, 1]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "extra")
                                                     (MajorBoundVersion (mkVersion [1, 6, 13]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "aeson")
                                                     (MajorBoundVersion (mkVersion [1, 4, 1, 0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "optparse-applicative")
                                                     (MajorBoundVersion (mkVersion [0, 14, 3, 0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "text")
                                                     (MajorBoundVersion (mkVersion [1, 2, 3, 1]))
-                                                    (Set.fromList [LMainLibName])],
+                                                    mainLibSet],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -102,16 +102,14 @@ GenericPackageDescription
                                                                                               12,
                                                                                               0,
                                                                                               0])))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "jaeger-flamegraph")
                                                                                     (OrLaterVersion
                                                                                        (mkVersion
                                                                                           [0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "bytestring")
@@ -121,8 +119,7 @@ GenericPackageDescription
                                                                                            10,
                                                                                            8,
                                                                                            2]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "containers")
@@ -132,8 +129,7 @@ GenericPackageDescription
                                                                                            6,
                                                                                            0,
                                                                                            1]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "extra")
@@ -142,8 +138,7 @@ GenericPackageDescription
                                                                                           [1,
                                                                                            6,
                                                                                            13]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "aeson")
@@ -153,8 +148,7 @@ GenericPackageDescription
                                                                                            4,
                                                                                            1,
                                                                                            0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "optparse-applicative")
@@ -164,8 +158,7 @@ GenericPackageDescription
                                                                                            14,
                                                                                            3,
                                                                                            0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "text")
@@ -175,8 +168,7 @@ GenericPackageDescription
                                                                                            2,
                                                                                            3,
                                                                                            1]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName])],
+                                                                                    mainLibSet],
                                                             virtualModules = []},
                                              exeName = UnqualComponentName "jaeger-flamegraph",
                                              exeScope = ExecutablePublic,
@@ -190,11 +182,11 @@ GenericPackageDescription
                                                (UnionVersionRanges
                                                   (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
                                                   (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "QuickCheck")
                                                (MajorBoundVersion (mkVersion [2, 12, 6, 1]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "Interval"],
                                         libBuildInfo = BuildInfo
@@ -258,8 +250,7 @@ GenericPackageDescription
                                                                                             12,
                                                                                             0,
                                                                                             0])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "QuickCheck")
@@ -269,8 +260,7 @@ GenericPackageDescription
                                                                                          12,
                                                                                          6,
                                                                                          1]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -287,23 +277,23 @@ GenericPackageDescription
                                                    (UnionVersionRanges
                                                       (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
                                                       (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "jaeger-flamegraph")
                                                    (OrLaterVersion (mkVersion [0]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "tasty")
                                                    (MajorBoundVersion (mkVersion [1, 1, 0, 4]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "tasty-hspec")
                                                    (MajorBoundVersion (mkVersion [1, 1, 5]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "tasty-quickcheck")
                                                    (MajorBoundVersion (mkVersion [0, 10]))
-                                                   (Set.fromList [LMainLibName])],
+                                                   mainLibSet],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -380,16 +370,14 @@ GenericPackageDescription
                                                                                                  12,
                                                                                                  0,
                                                                                                  0])))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "jaeger-flamegraph")
                                                                                        (OrLaterVersion
                                                                                           (mkVersion
                                                                                              [0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "tasty")
@@ -399,8 +387,7 @@ GenericPackageDescription
                                                                                               1,
                                                                                               0,
                                                                                               4]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "tasty-hspec")
@@ -409,8 +396,7 @@ GenericPackageDescription
                                                                                              [1,
                                                                                               1,
                                                                                               5]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "tasty-quickcheck")
@@ -418,8 +404,7 @@ GenericPackageDescription
                                                                                           (mkVersion
                                                                                              [0,
                                                                                               10]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName])],
+                                                                                       mainLibSet],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               (mkVersion [1, 0]) "Driver.hs",

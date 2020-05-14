@@ -8,15 +8,15 @@ GenericPackageDescription
                       condTreeConstraints = [Dependency
                                                (PackageName "base")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "mtl")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "stm")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "Control.Monad.Parameterized"],
                                         libBuildInfo = BuildInfo
@@ -82,24 +82,21 @@ GenericPackageDescription
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "mtl")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "stm")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,

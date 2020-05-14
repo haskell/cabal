@@ -549,7 +549,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     testLibDep = Dependency
         pkgName'
         (thisVersion $ pkgVersion $ package pkg_descr)
-        (Set.singleton LMainLibName)
+        mainLibSet
     exe = Executable {
             exeName    = mkUnqualComponentName $ stubName test,
             modulePath = stubFilePath test,

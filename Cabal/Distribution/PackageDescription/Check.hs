@@ -594,7 +594,7 @@ checkFields pkg =
              , name `elem` map prettyShow knownLanguages ]
 
     testedWithImpossibleRanges =
-      [ Dependency (mkPackageName (prettyShow compiler)) vr Set.empty
+      [ Dependency (mkPackageName (prettyShow compiler)) vr mainLibSet
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
 

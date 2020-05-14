@@ -12,7 +12,6 @@ import System.FilePath
   ( (</>) )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS8
-import qualified Data.Set as Set
 
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), defaultInitFlags )
@@ -22,9 +21,7 @@ import Distribution.Simple.Setup
 import Distribution.CabalSpecVersion
   ( CabalSpecVersion(CabalSpecV2_4) )
 import Distribution.Types.Dependency
-  ( Dependency, mkDependency )
-import Distribution.Types.LibraryName
-  ( LibraryName(LMainLibName) )
+  ( Dependency, mkDependency, mainLibSet )
 import Distribution.Types.PackageName
   ( mkPackageName )
 import Distribution.Types.VersionRange
@@ -175,13 +172,13 @@ testDependencies =
   [ mkDependency
       (mkPackageName "base")
       (majorBoundVersion (mkVersion [4,13,0,0]))
-      (Set.singleton LMainLibName)
+      mainLibSet
   , mkDependency
       (mkPackageName "containers")
       (majorBoundVersion (mkVersion [5,7,0,0]))
-      (Set.singleton LMainLibName)
+      mainLibSet
   , mkDependency
       (mkPackageName "unordered-containers")
       (majorBoundVersion (mkVersion [2,7,0,0]))
-      (Set.singleton LMainLibName)
+      mainLibSet
   ]

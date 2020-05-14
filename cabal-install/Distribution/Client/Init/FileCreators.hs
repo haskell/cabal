@@ -34,12 +34,8 @@ import Distribution.Client.Compat.Prelude hiding (empty)
 import System.FilePath
   ( (</>), (<.>), takeExtension )
 
-import qualified Data.Set         as Set
-
-import Distribution.Pretty (Pretty, pretty)
+import Distribution.Pretty (Pretty, pretty, prettyShow)
 import Distribution.Types.Dependency
-import Distribution.Types.LibraryName
-  ( LibraryName(LMainLibName) )
 import Distribution.Types.VersionRange
 
 
@@ -84,8 +80,6 @@ import Distribution.Simple.Utils
   ( toUTF8BS )
 import Distribution.Fields.Pretty
   ( PrettyField(..), showFields' )
-import Distribution.Pretty
-  ( prettyShow )
 
 import qualified Distribution.SPDX as SPDX
 
@@ -481,7 +475,7 @@ generateCabalFile fileName c =
        myLibDep = if exposedModules c' == Just [myLibModule] && buildType == ExecBuild
                       then case packageName c' of
                              Flag pkgName ->
-                               [mkDependency pkgName anyVersion (Set.singleton LMainLibName)]
+                               [mkDependency pkgName anyVersion mainLibSet]
                              _ -> []
                   else []
 

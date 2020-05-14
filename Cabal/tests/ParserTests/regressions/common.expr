@@ -8,7 +8,7 @@ GenericPackageDescription
                       condTreeConstraints = [Dependency
                                                (PackageName "ghc-prim")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "ElseIf"],
                                         libBuildInfo = BuildInfo
@@ -59,8 +59,7 @@ GenericPackageDescription
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -75,7 +74,7 @@ GenericPackageDescription
                           condTreeConstraints = [Dependency
                                                    (PackageName "HUnit")
                                                    (OrLaterVersion (mkVersion [0]))
-                                                   (Set.fromList [LMainLibName])],
+                                                   mainLibSet],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -128,8 +127,7 @@ GenericPackageDescription
                                                                                        (OrLaterVersion
                                                                                           (mkVersion
                                                                                              [0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName])],
+                                                                                       mainLibSet],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               (mkVersion [1, 0]) "Tests.hs",

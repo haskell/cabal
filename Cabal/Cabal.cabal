@@ -352,6 +352,7 @@ library
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.Newtype
+    Distribution.Compat.NonEmptySet
     Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.Process
@@ -692,6 +693,9 @@ test-suite unit-tests
 
   if !impl(ghc >= 7.10)
     build-depends: void
+
+  if !impl(ghc >= 8.0)
+    build-depends: semigroups
 
 test-suite parser-tests
   type: exitcode-stdio-1.0

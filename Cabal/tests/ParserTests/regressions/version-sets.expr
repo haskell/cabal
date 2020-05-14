@@ -8,31 +8,31 @@ GenericPackageDescription
                       condTreeConstraints = [Dependency
                                                (PackageName "network")
                                                (MajorBoundVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "base")
                                                (ThisVersion (mkVersion [1]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "base")
                                                (ThisVersion (mkVersion [1]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "base")
                                                (UnionVersionRanges
                                                   (ThisVersion (mkVersion [1]))
                                                   (ThisVersion (mkVersion [2])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "base")
                                                (ThisVersion (mkVersion [1, 2]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "base")
                                                (UnionVersionRanges
                                                   (ThisVersion (mkVersion [1, 2]))
                                                   (ThisVersion (mkVersion [3, 4])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "ghc")
                                                (UnionVersionRanges
@@ -52,13 +52,13 @@ GenericPackageDescription
                                                                        (mkVersion [7, 6, 3]))
                                                                     (ThisVersion
                                                                        (mkVersion [7, 4, 2])))))))))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "Cabal")
                                                (UnionVersionRanges
                                                   (MajorBoundVersion (mkVersion [2, 4, 1, 1]))
                                                   (MajorBoundVersion (mkVersion [2, 2, 0, 0])))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [],
                                         libBuildInfo = BuildInfo
@@ -109,24 +109,21 @@ GenericPackageDescription
                                                                                   (MajorBoundVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "base")
                                                                                   (ThisVersion
                                                                                      (mkVersion
                                                                                         [1]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "base")
                                                                                   (ThisVersion
                                                                                      (mkVersion
                                                                                         [1]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "base")
@@ -137,16 +134,14 @@ GenericPackageDescription
                                                                                      (ThisVersion
                                                                                         (mkVersion
                                                                                            [2])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "base")
                                                                                   (ThisVersion
                                                                                      (mkVersion
                                                                                         [1, 2]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "base")
@@ -157,8 +152,7 @@ GenericPackageDescription
                                                                                      (ThisVersion
                                                                                         (mkVersion
                                                                                            [3, 4])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "ghc")
@@ -209,8 +203,7 @@ GenericPackageDescription
                                                                                                              [7,
                                                                                                               4,
                                                                                                               2])))))))))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "Cabal")
@@ -227,8 +220,7 @@ GenericPackageDescription
                                                                                             2,
                                                                                             0,
                                                                                             0])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,

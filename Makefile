@@ -20,6 +20,9 @@ exe : $(LEXER_HS)
 lib-ghc-7.6 :
 	$(CABALBUILD) --project-file=cabal.project.libonly --with-compiler=ghc-7.6.3 Cabal:libs
 
+lib-ghc-7.8 :
+	$(CABALBUILD) --project-file=cabal.project.libonly --with-compiler=ghc-7.8.4 Cabal:libs
+
 # source generation: Lexer
 
 LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs

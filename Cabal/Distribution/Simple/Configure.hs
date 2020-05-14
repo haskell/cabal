@@ -146,7 +146,7 @@ import Text.PrettyPrint
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
-import qualified Data.Set as Set
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 
 
 type UseExternalInternalDeps = Bool
@@ -936,7 +936,7 @@ dependencySatisfiable
         then True
         else
           -- Backward compatibility for the old sublibrary syntax
-          (sublibs == Set.singleton LMainLibName
+          (sublibs == mainLibSet
             && Map.member
                  (pn, CLibName $ LSubLibName $
                       packageNameToUnqualComponentName depName)
@@ -1291,10 +1291,10 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
   case Map.lookup dep_pkgname internalIndex of
     Just cname ->
       if use_external_internal_deps
-      then do_external (Just $ maybeToLibraryName cname) <$> Set.toList libs
+      then do_external (Just $ maybeToLibraryName cname) <$> NonEmptySet.toList libs
       else do_internal
     _          ->
-      do_external Nothing <$> Set.toList libs
+      do_external Nothing <$> NonEmptySet.toList libs
   where
 
     -- It's an internal library, and we're not per-component build

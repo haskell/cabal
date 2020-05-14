@@ -45,11 +45,11 @@ import Distribution.Types.Dependency
 import Distribution.Verbosity                        (Verbosity, silent)
 import Distribution.Version
        (Version, VersionRange, LowerBound(..), UpperBound(..)
-       ,asVersionIntervals, majorBoundVersion, simplifyVersionRange)
+       ,asVersionIntervals, majorBoundVersion)
 import Distribution.PackageDescription.Parsec
        (readGenericPackageDescription)
 import Distribution.Types.PackageVersionConstraint
-       (PackageVersionConstraint (..))
+       (PackageVersionConstraint (..), simplifyPackageVersionConstraint)
 
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
@@ -181,7 +181,7 @@ listOutdated :: [PackageVersionConstraint]
              -> ListOutdatedSettings
              -> [(PackageVersionConstraint, Version)]
 listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
-  mapMaybe isOutdated $ map simplifyPVC deps
+  mapMaybe isOutdated $ map simplifyPackageVersionConstraint deps
   where
     isOutdated :: PackageVersionConstraint -> Maybe (PackageVersionConstraint, Version)
     isOutdated dep@(PackageVersionConstraint pname vr)
@@ -214,7 +214,3 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
               case upper of
                 NoUpperBound     -> vr
                 UpperBound _v1 _ -> majorBoundVersion v0
-
-simplifyPVC :: PackageVersionConstraint -> PackageVersionConstraint
-simplifyPVC (PackageVersionConstraint pn vr) =
-    PackageVersionConstraint pn (simplifyVersionRange vr)

@@ -7,15 +7,15 @@ GenericPackageDescription
                            condTreeConstraints = [Dependency
                                                     (PackageName "base")
                                                     (OrLaterVersion (mkVersion [0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "str-string")
                                                     (OrLaterVersion (mkVersion [0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "str-bytestring")
                                                     (OrLaterVersion (mkVersion [0]))
-                                                    (Set.fromList [LMainLibName])],
+                                                    mainLibSet],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -72,24 +72,21 @@ GenericPackageDescription
                                                                                     (OrLaterVersion
                                                                                        (mkVersion
                                                                                           [0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "str-string")
                                                                                     (OrLaterVersion
                                                                                        (mkVersion
                                                                                           [0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "str-bytestring")
                                                                                     (OrLaterVersion
                                                                                        (mkVersion
                                                                                           [0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName])],
+                                                                                    mainLibSet],
                                                             virtualModules = []},
                                              exeName = UnqualComponentName "str-example",
                                              exeScope = ExecutablePublic,

@@ -7,15 +7,15 @@ GenericPackageDescription
                            condTreeConstraints = [Dependency
                                                     (PackageName "base")
                                                     (EarlierVersion (mkVersion [5]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "str-string")
                                                     (OrLaterVersion (mkVersion [0, 1, 0, 0]))
-                                                    (Set.fromList [LMainLibName]),
+                                                    mainLibSet,
                                                   Dependency
                                                     (PackageName "wl-pprint-indef")
                                                     (OrLaterVersion (mkVersion [0]))
-                                                    (Set.fromList [LMainLibName])],
+                                                    mainLibSet],
                            condTreeData = Executable
                                             {buildInfo = BuildInfo
                                                            {asmOptions = [],
@@ -66,8 +66,7 @@ GenericPackageDescription
                                                                                     (EarlierVersion
                                                                                        (mkVersion
                                                                                           [5]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "str-string")
@@ -77,16 +76,14 @@ GenericPackageDescription
                                                                                            1,
                                                                                            0,
                                                                                            0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName]),
+                                                                                    mainLibSet,
                                                                                   Dependency
                                                                                     (PackageName
                                                                                        "wl-pprint-indef")
                                                                                     (OrLaterVersion
                                                                                        (mkVersion
                                                                                           [0]))
-                                                                                    (Set.fromList
-                                                                                       [LMainLibName])],
+                                                                                    mainLibSet],
                                                             virtualModules = []},
                                              exeName = UnqualComponentName
                                                          "wl-pprint-string-example",
@@ -99,11 +96,11 @@ GenericPackageDescription
                       condTreeConstraints = [Dependency
                                                (PackageName "base")
                                                (EarlierVersion (mkVersion [5]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "str-sig")
                                                (OrLaterVersion (mkVersion [0, 1, 0, 0]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "Text.PrettyPrint.Leijen"],
                                         libBuildInfo = BuildInfo
@@ -154,8 +151,7 @@ GenericPackageDescription
                                                                                   (EarlierVersion
                                                                                      (mkVersion
                                                                                         [5]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "str-sig")
@@ -165,8 +161,7 @@ GenericPackageDescription
                                                                                          1,
                                                                                          0,
                                                                                          0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
