@@ -271,6 +271,8 @@ DIGEST_VER="0.0.1.2"; DIGEST_REGEXP="0\.0\.(1\.[2-9]|[2-9]\.?)"
                        # >= 0.0.1.2 && < 0.1
 LUKKO_VER="0.1.1";     LUKKO_VER_REGEXP="0\.1\.[1-9]"
                        # >= 0.1.1 && <0.2
+REGEX_POSIX_VER="0.96.0.0";    REGEX_POSIX_REGEXP="0\.96\.[0-9]"
+REGEX_BASE_VER="0.94.0.0";     REGEX_BASE_REGEXP="0\.94\.[0-9]"
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -475,6 +477,8 @@ info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 info_pkg "digest"            ${DIGEST_VER}           ${DIGEST_REGEXP}
 info_pkg "lukko"        ${LUKKO_VER}   ${LUKKO_REGEXP}
+info_pkg "regex-base"        ${REGEX_BASE_VER}   ${REGEX_BASE_REGEXP}
+info_pkg "regex-posix"       ${REGEX_POSIX_VER}   ${REGEX_POSIX_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 
@@ -513,6 +517,8 @@ do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "digest"            ${DIGEST_VER}           ${DIGEST_REGEXP}
 do_pkg   "lukko"       ${LUKKO_VER}      ${LUKKO_REGEXP}
+do_pkg "regex-base"        ${REGEX_BASE_VER}   ${REGEX_BASE_REGEXP}
+do_pkg "regex-posix"       ${REGEX_POSIX_VER}   ${REGEX_POSIX_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 

@@ -40,7 +40,7 @@ module Distribution.Solver.Types.PackageIndex (
   searchByName,
   SearchResult(..),
   searchByNameSubstring,
-  searchByNameExact,
+  searchWithPredicate,
 
   -- ** Bulk queries
   allPackages,
@@ -325,23 +325,14 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 searchByNameSubstring :: PackageIndex pkg
                       -> String -> [(PackageName, [pkg])]
-searchByNameSubstring =
-  searchByNameInternal False
+searchByNameSubstring index searchterm =
+    searchWithPredicate index (\n -> lsearchterm `isInfixOf` lowercase n)
+  where lsearchterm = lowercase searchterm
 
-searchByNameExact :: PackageIndex pkg
-                  -> String -> [(PackageName, [pkg])]
-searchByNameExact =
-  searchByNameInternal True
-
-searchByNameInternal :: Bool
-                     -> PackageIndex pkg
-                     -> String -> [(PackageName, [pkg])]
-searchByNameInternal exactMatch (PackageIndex m) searchterm =
+searchWithPredicate :: PackageIndex pkg
+                    -> (String -> Bool) -> [(PackageName, [pkg])]
+searchWithPredicate (PackageIndex m) predicate =
     [ pkgs
     | pkgs@(pname, _) <- Map.toList m
-    , if exactMatch
-        then searchterm == unPackageName pname
-        else lsearchterm `isInfixOf` lowercase (unPackageName pname)
+    , predicate (unPackageName pname)
     ]
-  where
-    lsearchterm = lowercase searchterm

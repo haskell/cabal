@@ -37,7 +37,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Utils
         ( equating, comparing, die', notice )
-import Distribution.Simple.Setup (fromFlag)
+import Distribution.Simple.Setup (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Version
@@ -65,6 +65,7 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.FetchUtils
          ( isFetched )
 
+import Data.Bits ((.|.))
 import Data.List
          ( maximumBy, partition )
 import Data.List.NonEmpty (groupBy, nonEmpty)
@@ -86,6 +87,8 @@ import System.Directory
 
 import Distribution.Utils.ShortText (ShortText)
 import qualified Distribution.Utils.ShortText as ShortText
+import qualified Text.Regex.Base as Regex
+import qualified Text.Regex.Posix.String as Regex
 
 
 -- | Return a list of packages matching given search strings.
@@ -100,6 +103,13 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
     installedPkgIndex <- for mcompprogdb $ \(comp, progdb) ->
         getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages verbosity repoCtxt
+
+    regexps <- for pats $ \pat -> do
+        e <- Regex.compile compOption Regex.execBlank pat
+        case e of
+            Right r  -> return r
+            Left err -> die' verbosity $ "Failed to compile regex " ++ pat ++ ": " ++ snd err
+
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
@@ -107,17 +117,17 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
         pkgsInfoMatching ::
           [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfoMatching =
-          let matchingInstalled = maybe [] (matchingPackages ipiSearch) installedPkgIndex
-              matchingSource    = matchingPackages (\ idx n -> concatMap snd (piSearch idx n)) sourcePkgIndex
+          let matchingInstalled = maybe [] (matchingPackages InstalledPackageIndex.searchWithPredicate regexps) installedPkgIndex
+              matchingSource    = matchingPackages (\ idx n -> concatMap snd (PackageIndex.searchWithPredicate idx n)) regexps sourcePkgIndex
           in mergePackages matchingInstalled matchingSource
 
         pkgsInfo ::
           [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfo
             -- gather info for all packages
-          | null pats = mergePackages
-                        (maybe [] InstalledPackageIndex.allPackages installedPkgIndex)
-                        (         PackageIndex.allPackages          sourcePkgIndex)
+          | null regexps = mergePackages
+                           (maybe [] InstalledPackageIndex.allPackages installedPkgIndex)
+                           (         PackageIndex.allPackages          sourcePkgIndex)
 
             -- gather info for packages matching search term
           | otherwise = pkgsInfoMatching
@@ -131,16 +141,16 @@ getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
                         selectedPkg = latestWithPref pref sourcePkgs ]
     return matches
   where
-    onlyInstalled = fromFlag (listInstalled listFlags)
-    exactMatch = fromFlag (listExactMatch listFlags)
-    ipiSearch | exactMatch = InstalledPackageIndex.searchByNameExact
-              | otherwise  = InstalledPackageIndex.searchByNameSubstring
-    piSearch  | exactMatch = PackageIndex.searchByNameExact
-              | otherwise  = PackageIndex.searchByNameSubstring
-    matchingPackages search index =
+    onlyInstalled   = fromFlagOrDefault False (listInstalled listFlags)
+    caseInsensitive = fromFlagOrDefault True (listCaseInsensitive listFlags)
+
+    compOption | caseInsensitive = Regex.compExtended .|. Regex.compIgnoreCase
+               | otherwise       = Regex.compExtended
+
+    matchingPackages search regexps index =
       [ pkg
-      | pat <- pats
-      , pkg <- search index pat ]
+      | re <- regexps
+      , pkg <- search index (Regex.matchTest re) ]
 
 
 -- | Show information about packages.

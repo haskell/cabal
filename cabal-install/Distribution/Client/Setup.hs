@@ -1523,23 +1523,23 @@ instance Semigroup GetFlags where
 -- ------------------------------------------------------------
 
 data ListFlags = ListFlags
-    { listInstalled    :: Flag Bool
-    , listSimpleOutput :: Flag Bool
-    , listExactMatch   :: Flag Bool
-    , listVerbosity    :: Flag Verbosity
-    , listPackageDBs   :: [Maybe PackageDB]
-    , listHcPath       :: Flag FilePath
+    { listInstalled       :: Flag Bool
+    , listSimpleOutput    :: Flag Bool
+    , listCaseInsensitive :: Flag Bool
+    , listVerbosity       :: Flag Verbosity
+    , listPackageDBs      :: [Maybe PackageDB]
+    , listHcPath          :: Flag FilePath
     }
   deriving Generic
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags
-    { listInstalled    = Flag False
-    , listSimpleOutput = Flag False
-    , listExactMatch   = Flag False
-    , listVerbosity    = toFlag normal
-    , listPackageDBs   = []
-    , listHcPath       = mempty
+    { listInstalled       = Flag False
+    , listSimpleOutput    = Flag False
+    , listCaseInsensitive = Flag True
+    , listVerbosity       = toFlag normal
+    , listPackageDBs      = []
+    , listHcPath          = mempty
     }
 
 listCommand  :: CommandUI ListFlags
@@ -1575,10 +1575,10 @@ listOptions =
         "Print in a easy-to-parse format"
         listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
         trueArg
-    , option [] ["exact"]
-        "Print only exact match"
-        listExactMatch (\v flags -> flags { listExactMatch = v })
-        trueArg
+    , option ['i'] ["ignore-case"]
+        "Ignore case destictions"
+        listCaseInsensitive (\v flags -> flags { listCaseInsensitive = v })
+        (boolOpt' (['i'], ["ignore-case"]) (['I'], ["strict-case"]))
 
     , option "" ["package-db"]
       (   "Append the given package database to the list of package"
