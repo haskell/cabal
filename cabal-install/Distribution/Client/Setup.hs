@@ -28,7 +28,7 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , filterHaddockArgs, filterHaddockFlags, haddockOptions
     , defaultSolver, defaultMaxBackjumps
-    , listCommand, ListFlags(..)
+    , listCommand, ListFlags(..), listNeedsCompiler
     , updateCommand, UpdateFlags(..), defaultUpdateFlags
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
@@ -92,6 +92,10 @@ import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Configure
        ( configCompilerAuxEx, interpretPackageDbFlags, computeEffectiveProfiling )
 import qualified Distribution.Simple.Setup as Cabal
+import Distribution.Simple.Flag
+         ( Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
+         , flagElim, fromFlagOrDefault
+         )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags, BenchmarkFlags
@@ -99,7 +103,6 @@ import Distribution.Simple.Setup
          , CleanFlags(..), DoctestFlags(..)
          , CopyFlags(..), RegisterFlags(..)
          , readPackageDbList, showPackageDbList
-         , Flag(..), toFlag, flagToMaybe, flagToList, maybeToFlag
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
          , optionNumJobs )
@@ -1519,22 +1522,25 @@ instance Semigroup GetFlags where
 -- * List flags
 -- ------------------------------------------------------------
 
-data ListFlags = ListFlags {
-    listInstalled    :: Flag Bool,
-    listSimpleOutput :: Flag Bool,
-    listExactMatch   :: Flag Bool,
-    listVerbosity    :: Flag Verbosity,
-    listPackageDBs   :: [Maybe PackageDB]
-  } deriving Generic
+data ListFlags = ListFlags
+    { listInstalled    :: Flag Bool
+    , listSimpleOutput :: Flag Bool
+    , listExactMatch   :: Flag Bool
+    , listVerbosity    :: Flag Verbosity
+    , listPackageDBs   :: [Maybe PackageDB]
+    , listHcPath       :: Flag FilePath
+    }
+  deriving Generic
 
 defaultListFlags :: ListFlags
-defaultListFlags = ListFlags {
-    listInstalled    = Flag False,
-    listSimpleOutput = Flag False,
-    listExactMatch   = Flag False,
-    listVerbosity    = toFlag normal,
-    listPackageDBs   = []
-  }
+defaultListFlags = ListFlags
+    { listInstalled    = Flag False
+    , listSimpleOutput = Flag False
+    , listExactMatch   = Flag False
+    , listVerbosity    = toFlag normal
+    , listPackageDBs   = []
+    , listHcPath       = mempty
+    }
 
 listCommand  :: CommandUI ListFlags
 listCommand = CommandUI {
@@ -1553,35 +1559,47 @@ listCommand = CommandUI {
     commandUsage        = usageAlternatives "list" [ "[FLAGS]"
                                                    , "[FLAGS] STRINGS"],
     commandDefaultFlags = defaultListFlags,
-    commandOptions      = \_ -> [
-        optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
-
-        , option [] ["installed"]
-            "Only print installed packages"
-            listInstalled (\v flags -> flags { listInstalled = v })
-            trueArg
-
-        , option [] ["simple-output"]
-            "Print in a easy-to-parse format"
-            listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
-            trueArg
-        , option [] ["exact"]
-            "Print only exact match"
-            listExactMatch (\v flags -> flags { listExactMatch = v })
-            trueArg
-
-        , option "" ["package-db"]
-          (   "Append the given package database to the list of package"
-           ++ " databases used (to satisfy dependencies and register into)."
-           ++ " May be a specific file, 'global' or 'user'. The initial list"
-           ++ " is ['global'], ['global', 'user'],"
-           ++ " depending on context. Use 'clear' to reset the list to empty."
-           ++ " See the user guide for details.")
-          listPackageDBs (\v flags -> flags { listPackageDBs = v })
-          (reqArg' "DB" readPackageDbList showPackageDbList)
-
-        ]
+    commandOptions      = const listOptions
   }
+
+listOptions :: [OptionField ListFlags]
+listOptions =
+    [ optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
+
+    , option [] ["installed"]
+        "Only print installed packages"
+        listInstalled (\v flags -> flags { listInstalled = v })
+        trueArg
+
+    , option [] ["simple-output"]
+        "Print in a easy-to-parse format"
+        listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
+        trueArg
+    , option [] ["exact"]
+        "Print only exact match"
+        listExactMatch (\v flags -> flags { listExactMatch = v })
+        trueArg
+
+    , option "" ["package-db"]
+      (   "Append the given package database to the list of package"
+       ++ " databases used (to satisfy dependencies and register into)."
+       ++ " May be a specific file, 'global' or 'user'. The initial list"
+       ++ " is ['global'], ['global', 'user'],"
+       ++ " depending on context. Use 'clear' to reset the list to empty."
+       ++ " See the user guide for details.")
+      listPackageDBs (\v flags -> flags { listPackageDBs = v })
+      (reqArg' "DB" readPackageDbList showPackageDbList)
+
+    , option "w" ["with-compiler"]
+      "give the path to a particular compiler"
+      listHcPath (\v flags -> flags { listHcPath = v })
+      (reqArgFlag "PATH")
+    ]
+
+listNeedsCompiler :: ListFlags -> Bool
+listNeedsCompiler f =
+    flagElim False (const True) (listHcPath f)
+    || fromFlagOrDefault False (listInstalled f)
 
 instance Monoid ListFlags where
   mempty = gmempty

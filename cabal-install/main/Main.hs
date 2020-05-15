@@ -33,7 +33,7 @@ import Distribution.Client.Setup
          , checkCommand
          , formatCommand
          , UpdateFlags(..), updateCommand
-         , ListFlags(..), listCommand
+         , ListFlags(..), listCommand, listNeedsCompiler
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
@@ -705,18 +705,22 @@ listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags' = savedConfigureFlags config
-      configFlags  = configFlags' {
-        configPackageDBs = configPackageDBs configFlags'
+      configFlags  = configFlags'
+        { configPackageDBs = configPackageDBs configFlags'
                            `mappend` listPackageDBs listFlags
+        , configHcPath     = listHcPath listFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, progdb) <- configCompilerAux' configFlags
+  compProgdb <- if listNeedsCompiler listFlags 
+      then do
+          (comp, _, progdb) <- configCompilerAux' configFlags
+          return (Just (comp, progdb))
+      else return Nothing
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.list verbosity
        (configPackageDB' configFlags)
        repoContext
-       comp
-       progdb
+       compProgdb
        listFlags
        extraArgs
 

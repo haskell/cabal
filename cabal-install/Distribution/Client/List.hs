@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.List
@@ -12,6 +13,9 @@
 module Distribution.Client.List (
   list, info
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Package
          ( PackageName, Package(..), packageName
@@ -62,16 +66,21 @@ import Distribution.Client.FetchUtils
          ( isFetched )
 
 import Data.List
-         ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
+         ( maximumBy, partition )
+import Data.List.NonEmpty (groupBy, nonEmpty)
+import qualified Data.List as L
 import Data.Maybe
-         ( listToMaybe, fromJust, fromMaybe, isJust, maybeToList )
+         ( fromJust )
 import qualified Data.Map as Map
 import Data.Tree as Tree
 import Control.Monad
-         ( MonadPlus(mplus), join )
+         ( join )
 import Control.Exception
          ( assert )
-import Text.PrettyPrint as Disp
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint
+         ( lineLength, ribbonsPerLine, Doc, renderStyle, char
+         , (<+>), nest, ($+$), text, vcat, style, parens, fsep)
 import System.Directory
          ( doesDirectoryExist )
 
@@ -83,41 +92,35 @@ import qualified Distribution.Utils.ShortText as ShortText
 getPkgList :: Verbosity
            -> PackageDBStack
            -> RepoContext
-           -> Compiler
-           -> ProgramDb
+           -> Maybe (Compiler, ProgramDb)
            -> ListFlags
            -> [String]
            -> IO [PackageDisplayInfo]
-getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+getPkgList verbosity packageDBs repoCtxt mcompprogdb listFlags pats = do
+    installedPkgIndex <- for mcompprogdb $ \(comp, progdb) ->
+        getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
+
+        pkgsInfoMatching ::
+          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
+        pkgsInfoMatching =
+          let matchingInstalled = maybe [] (matchingPackages ipiSearch) installedPkgIndex
+              matchingSource    = matchingPackages (\ idx n -> concatMap snd (piSearch idx n)) sourcePkgIndex
+          in mergePackages matchingInstalled matchingSource
 
         pkgsInfo ::
           [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfo
             -- gather info for all packages
           | null pats = mergePackages
-                        (InstalledPackageIndex.allPackages installedPkgIndex)
-                        (         PackageIndex.allPackages sourcePkgIndex)
+                        (maybe [] InstalledPackageIndex.allPackages installedPkgIndex)
+                        (         PackageIndex.allPackages          sourcePkgIndex)
 
             -- gather info for packages matching search term
           | otherwise = pkgsInfoMatching
-
-        pkgsInfoMatching ::
-          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
-        pkgsInfoMatching =
-          let matchingInstalled = matchingPackages
-                                  ipiSearch
-                                  installedPkgIndex
-              matchingSource   = matchingPackages
-                                 (\ idx n ->
-                                   concatMap snd
-                                   (piSearch idx n))
-                                 sourcePkgIndex
-          in mergePackages matchingInstalled matchingSource
 
         matches :: [PackageDisplayInfo]
         matches = [ mergePackageInfo pref
@@ -144,13 +147,12 @@ getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
 list :: Verbosity
      -> PackageDBStack
      -> RepoContext
-     -> Compiler
-     -> ProgramDb
+     -> Maybe (Compiler, ProgramDb)
      -> ListFlags
      -> [String]
      -> IO ()
-list verbosity packageDBs repos comp progdb listFlags pats = do
-    matches <- getPkgList verbosity packageDBs repos comp progdb listFlags pats
+list verbosity packageDBs repos mcompProgdb listFlags pats = do
+    matches <- getPkgList verbosity packageDBs repos mcompProgdb listFlags pats
 
     if simpleOutput
       then putStr $ unlines
@@ -204,7 +206,7 @@ info verbosity packageDBs repoCtxt comp progdb
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 
-    pkgsinfo      <- sequence
+    pkgsinfo      <- sequenceA
                        [ do pkginfo <- either (die' verbosity) return $
                                          gatherPkgInfo prefs
                                            installedPkgIndex sourcePkgIndex
@@ -330,16 +332,16 @@ showPackageSummaryInfo pkginfo =
      $+$ text ""
   where
     maybeShowST l s f
-        | ShortText.null l = empty
+        | ShortText.null l = Disp.empty
         | otherwise        = text s <+> f (ShortText.fromShortText l)
 
 showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
    char '*' <+> pretty (pkgName pkginfo)
-            Disp.<> maybe empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
+            <<>> maybe Disp.empty (\v -> char '-' Disp.<> pretty v) (selectedVersion pkginfo)
             <+> text (replicate (16 - length (prettyShow (pkgName pkginfo))) ' ')
-            Disp.<> parens pkgkind
+            <<>> parens pkgkind
    $+$
    (nest 4 $ vcat [
      entryST "Synopsis"      synopsis     hideIfNull  reflowParagraphs
@@ -363,14 +365,14 @@ showPackageDetailedInfo pkginfo =
    , entry "Dependencies"  dependencies hideIfNull     (commaSep dispExtDep)
    , entry "Documentation" haddockHtml  showIfInstalled text
    , entry "Cached"        haveTarball  alwaysShow     dispYesNo
-   , if not (hasLib pkginfo) then empty else
+   , if not (hasLib pkginfo) then mempty else
      text "Modules:" $+$ nest 4 (vcat (map pretty . sort . modules $ pkginfo))
    ])
    $+$ text ""
   where
     entry fname field cond format = case cond (field pkginfo) of
       Nothing           -> label <+> format (field pkginfo)
-      Just Nothing      -> empty
+      Just Nothing      -> mempty
       Just (Just other) -> label <+> text other
       where
         label   = text fname Disp.<> char ':' Disp.<> padding
@@ -407,7 +409,7 @@ showPackageDetailedInfo pkginfo =
             | hasLib pkginfo                   = text "library"
             | hasExes                          = text "programs"
             | hasExe pkginfo                   = text "program"
-            | otherwise                        = empty
+            | otherwise                        = mempty
 
 
 reflowParagraphs :: String -> Doc
@@ -416,7 +418,7 @@ reflowParagraphs =
   . intersperse (text "")                    -- re-insert blank lines
   . map (fsep . map text . concatMap words)  -- reflow paragraphs
   . filter (/= [""])
-  . groupBy (\x y -> "" `notElem` [x,y])     -- break on blank lines
+  . L.groupBy (\x y -> "" `notElem` [x,y])     -- break on blank lines
   . lines
 
 reflowLines :: String -> Doc
@@ -548,7 +550,7 @@ mergePackages installedPkgs sourcePkgs =
     collect (OnlyInRight          (name,as)) = (name, [], as)
 
 groupOn :: Ord key => (a -> key) -> [a] -> [(key,[a])]
-groupOn key = map (\xs -> (key (head xs), xs))
+groupOn key = map (\xs -> (key (head xs), toList xs))
             . groupBy (equating key)
             . sortBy (comparing key)
 
@@ -586,9 +588,12 @@ interestingVersions pref =
     . reorderTree (\(Node (v,_) _) -> pref (mkVersion v))
     . reverseTree
     . mkTree
-    . map versionNumbers
+    . map (or0 . versionNumbers)
 
   where
+    or0 []     = 0 :| []
+    or0 (x:xs) = x :| xs
+
     swizzleTree = unfoldTree (spine [])
       where
         spine ts' (Node x [])     = (x, ts')
@@ -601,12 +606,17 @@ interestingVersions pref =
 
     reverseTree (Node x cs) = Node x (reverse (map reverseTree cs))
 
+    mkTree :: forall a. Eq a => [NonEmpty a] -> Tree ([a], Bool)
     mkTree xs = unfoldTree step (False, [], xs)
       where
+        step :: (Bool, [a], [NonEmpty a]) -> (([a], Bool), [(Bool, [a], [NonEmpty a])])
         step (node,ns,vs) =
           ( (reverse ns, node)
-          , [ (any null vs', n:ns, filter (not . null) vs')
-            | (n, vs') <- groups vs ]
+          , [ (any null vs', n:ns, mapMaybe nonEmpty (toList vs'))
+            | (n, vs') <- groups vs
+            ]
           )
-        groups = map (\g -> (head (head g), map tail g))
+
+        groups :: [NonEmpty a] -> [(a, NonEmpty [a])]
+        groups = map (\g -> (head (head g), fmap tail g))
                . groupBy (equating head)
