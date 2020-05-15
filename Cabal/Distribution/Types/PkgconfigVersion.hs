@@ -63,6 +63,11 @@ rpmvercmp :: BS.ByteString -> BS.ByteString -> Ordering
 rpmvercmp a b = go0 (BS.unpack a) (BS.unpack b)
   where
     go0 :: [Word8] -> [Word8] -> Ordering
+    -- if there is _any_ trailing "garbage", it seems to affect result
+    -- https://github.com/haskell/cabal/issues/6805
+    go0 [] [] = EQ
+    go0 [] _  = LT
+    go0 _  [] = GT
     go0 xs ys = go1 (dropNonAlnum8 xs) (dropNonAlnum8 ys)
 
     go1 :: [Word8] -> [Word8] -> Ordering
