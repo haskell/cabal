@@ -200,4 +200,4 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/Distribution Cabal/Cabal-described/src Cabal/Language cabal-install/Distribution
+	hasktags -b Cabal/Distribution Cabal/Cabal-described/src Cabal/Language cabal-install/Distribution cabal-testsuite/src

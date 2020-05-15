@@ -185,11 +185,6 @@ resolveWithFlags ::
 resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     either (Left . fromDepMapUnion) Right $ explore (build mempty dom)
   where
-    extraConstrs = toDepMap
-      [ Dependency pn ver mainLibSet
-      | PackageVersionConstraint pn ver <- constrs
-      ]
-
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
     simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
@@ -208,7 +203,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
-                first (`constrainBy` extraConstrs) .
+                first (`constrainBy` constrs) .
                 simplifyCondTree (env flags)
             deps = overallDependencies enabled targetSet
         in case checkDeps (fromDepMap deps) of

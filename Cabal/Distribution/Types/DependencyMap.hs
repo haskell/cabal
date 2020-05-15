@@ -5,12 +5,13 @@ module Distribution.Types.DependencyMap (
     constrainBy,
 ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Types.Dependency
-import Distribution.Types.PackageName
 import Distribution.Types.LibraryName
+import Distribution.Types.PackageName
+import Distribution.Types.PackageVersionConstraint
 import Distribution.Version
 
 import qualified Data.Map.Lazy as Map
@@ -45,14 +46,12 @@ fromDepMap m = [ Dependency p vr cs | (p,(vr,cs)) <- Map.toList (unDependencyMap
 -- Combines dependencies where the result will only contain keys from the left
 -- (first) map.  If a key also exists in the right map, both constraints will
 -- be intersected.
-constrainBy :: DependencyMap  -- ^ Input map
-            -> DependencyMap  -- ^ Extra constraints
-            -> DependencyMap
-constrainBy left extra =
-    DependencyMap $
-      Map.foldrWithKey tightenConstraint (unDependencyMap left)
-                                         (unDependencyMap extra)
-  where tightenConstraint n c l =
-            case Map.lookup n l of
-              Nothing -> l
-              Just vrcs -> Map.insert n (intersectVersionRangesAndJoinComponents vrcs c) l
+constrainBy
+    :: DependencyMap
+    -> [PackageVersionConstraint]
+    -> DependencyMap
+constrainBy = foldl' tightenConstraint where
+    tightenConstraint (DependencyMap l) (PackageVersionConstraint pn vr) = DependencyMap $
+        case Map.lookup pn l of
+            Nothing        -> l
+            Just (vr', cs) -> Map.insert pn (intersectVersionRanges vr' vr, cs) l
