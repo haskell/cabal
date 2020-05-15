@@ -207,18 +207,30 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
               then Just `fmap` getCurrentTime
               else return Nothing
       updated <- Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
+
+      let rname = remoteRepoName (repoRemote repo)
+
       -- Update cabal's internal index as well so that it's not out of sync
       -- (If all access to the cache goes through hackage-security this can go)
       case updated of
-        Sec.NoUpdates  ->
-          setModificationTime (indexBaseName repo <.> "tar")
-          =<< getCurrentTime
-        Sec.HasUpdates ->
+        Sec.NoUpdates  -> do
+          now <- getCurrentTime
+          setModificationTime (indexBaseName repo <.> "tar") now
+          noticeNoWrap verbosity $
+            "Package list of " ++ prettyShow rname ++
+            " is up to date at index-state " ++ prettyShow (IndexStateTime current_ts)
+
+        Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
-      -- TODO: This will print multiple times if there are multiple
-      -- repositories: main problem is we don't have a way of updating
-      -- a specific repo.  Once we implement that, update this.
-      when (current_ts /= nullTimestamp) $
-        noticeNoWrap verbosity $
-          "To revert to previous state run:\n" ++
-          "    cabal v2-update '" ++ prettyShow (UpdateRequest (remoteRepoName (repoRemote repo)) (IndexStateTime current_ts)) ++ "'\n"
+          new_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
+          noticeNoWrap verbosity $
+            "Updated package list of " ++ prettyShow rname ++
+            " to the index-state " ++ prettyShow (IndexStateTime new_ts)
+
+          -- TODO: This will print multiple times if there are multiple
+          -- repositories: main problem is we don't have a way of updating
+          -- a specific repo.  Once we implement that, update this.
+          when (current_ts /= nullTimestamp) $
+            noticeNoWrap verbosity $
+              "To revert to previous state run:\n" ++
+              "    cabal v2-update '" ++ prettyShow (UpdateRequest rname (IndexStateTime current_ts)) ++ "'\n"
