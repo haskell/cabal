@@ -81,8 +81,7 @@ GenericPackageDescription
                                                                                                                                                 (OrLaterVersion
                                                                                                                                                    (mkVersion
                                                                                                                                                       [0]))
-                                                                                                                                                (Set.fromList
-                                                                                                                                                   [LMainLibName])],
+                                                                                                                                                mainLibSet],
                                                                                                                        condTreeData = Library
                                                                                                                                         {exposedModules = [],
                                                                                                                                          libBuildInfo = BuildInfo
@@ -141,8 +140,7 @@ GenericPackageDescription
                                                                                                                                                                                    (OrLaterVersion
                                                                                                                                                                                       (mkVersion
                                                                                                                                                                                          [0]))
-                                                                                                                                                                                   (Set.fromList
-                                                                                                                                                                                      [LMainLibName])],
+                                                                                                                                                                                   mainLibSet],
                                                                                                                                                            virtualModules = []},
                                                                                                                                          libExposed = True,
                                                                                                                                          libName = LMainLibName,
@@ -217,8 +215,7 @@ GenericPackageDescription
                                                                                               (OrLaterVersion
                                                                                                  (mkVersion
                                                                                                     [0]))
-                                                                                              (Set.fromList
-                                                                                                 [LMainLibName])],
+                                                                                              mainLibSet],
                                                                      condTreeData = Library
                                                                                       {exposedModules = [],
                                                                                        libBuildInfo = BuildInfo
@@ -277,8 +274,7 @@ GenericPackageDescription
                                                                                                                                  (OrLaterVersion
                                                                                                                                     (mkVersion
                                                                                                                                        [0]))
-                                                                                                                                 (Set.fromList
-                                                                                                                                    [LMainLibName])],
+                                                                                                                                 mainLibSet],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = LMainLibName,

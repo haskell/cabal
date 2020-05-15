@@ -8,25 +8,29 @@ GenericPackageDescription
                       condTreeConstraints = [Dependency
                                                (PackageName "lib1")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList
-                                                  [LSubLibName (UnqualComponentName "a"),
-                                                   LSubLibName (UnqualComponentName "b")]),
+                                               (NonEmptySet.fromNonEmpty
+                                                  (NE.fromList
+                                                     [LSubLibName (UnqualComponentName "a"),
+                                                      LSubLibName (UnqualComponentName "b")])),
                                              Dependency
                                                (PackageName "lib2")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList
-                                                  [LSubLibName (UnqualComponentName "c")]),
+                                               (NonEmptySet.fromNonEmpty
+                                                  (NE.fromList
+                                                     [LSubLibName (UnqualComponentName "c")])),
                                              Dependency
                                                (PackageName "lib3")
                                                (OrLaterVersion (mkVersion [1]))
-                                               (Set.fromList
-                                                  [LSubLibName (UnqualComponentName "d")]),
+                                               (NonEmptySet.fromNonEmpty
+                                                  (NE.fromList
+                                                     [LSubLibName (UnqualComponentName "d")])),
                                              Dependency
                                                (PackageName "lib4")
                                                (OrLaterVersion (mkVersion [1]))
-                                               (Set.fromList
-                                                  [LSubLibName (UnqualComponentName "a"),
-                                                   LSubLibName (UnqualComponentName "b")])],
+                                               (NonEmptySet.fromNonEmpty
+                                                  (NE.fromList
+                                                     [LSubLibName (UnqualComponentName "a"),
+                                                      LSubLibName (UnqualComponentName "b")]))],
                       condTreeData = Library
                                        {exposedModules = [],
                                         libBuildInfo = BuildInfo
@@ -77,46 +81,50 @@ GenericPackageDescription
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "a"),
-                                                                                      LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "b")]),
+                                                                                  (NonEmptySet.fromNonEmpty
+                                                                                     (NE.fromList
+                                                                                        [LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "a"),
+                                                                                         LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "b")])),
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "lib2")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "c")]),
+                                                                                  (NonEmptySet.fromNonEmpty
+                                                                                     (NE.fromList
+                                                                                        [LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "c")])),
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "lib3")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [1]))
-                                                                                  (Set.fromList
-                                                                                     [LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "d")]),
+                                                                                  (NonEmptySet.fromNonEmpty
+                                                                                     (NE.fromList
+                                                                                        [LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "d")])),
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "lib4")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [1]))
-                                                                                  (Set.fromList
-                                                                                     [LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "a"),
-                                                                                      LSubLibName
-                                                                                        (UnqualComponentName
-                                                                                           "b")])],
+                                                                                  (NonEmptySet.fromNonEmpty
+                                                                                     (NE.fromList
+                                                                                        [LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "a"),
+                                                                                         LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "b")]))],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,

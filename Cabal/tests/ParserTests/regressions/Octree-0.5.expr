@@ -10,15 +10,15 @@ GenericPackageDescription
                                                (IntersectVersionRanges
                                                   (OrLaterVersion (mkVersion [4, 0]))
                                                   (EarlierVersion (mkVersion [4, 7])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "AC-Vector")
                                                (OrLaterVersion (mkVersion [2, 3, 0]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "QuickCheck")
                                                (OrLaterVersion (mkVersion [2, 4, 0]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "Data.Octree"],
                                         libBuildInfo = BuildInfo
@@ -75,24 +75,21 @@ GenericPackageDescription
                                                                                      (EarlierVersion
                                                                                         (mkVersion
                                                                                            [4, 7])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "AC-Vector")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [2, 3, 0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "QuickCheck")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [2, 4, 0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -109,15 +106,15 @@ GenericPackageDescription
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion (mkVersion [4, 0]))
                                                       (EarlierVersion (mkVersion [4, 7])))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "AC-Vector")
                                                    (OrLaterVersion (mkVersion [2, 3, 0]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "QuickCheck")
                                                    (OrLaterVersion (mkVersion [2, 4, 0]))
-                                                   (Set.fromList [LMainLibName])],
+                                                   mainLibSet],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -176,8 +173,7 @@ GenericPackageDescription
                                                                                              (mkVersion
                                                                                                 [4,
                                                                                                  7])))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "AC-Vector")
@@ -186,8 +182,7 @@ GenericPackageDescription
                                                                                              [2,
                                                                                               3,
                                                                                               0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "QuickCheck")
@@ -196,8 +191,7 @@ GenericPackageDescription
                                                                                              [2,
                                                                                               4,
                                                                                               0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName])],
+                                                                                       mainLibSet],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               (mkVersion [1, 0])
@@ -212,19 +206,19 @@ GenericPackageDescription
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion (mkVersion [4, 0]))
                                                       (EarlierVersion (mkVersion [4, 7])))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "AC-Vector")
                                                    (OrLaterVersion (mkVersion [2, 3, 0]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "QuickCheck")
                                                    (OrLaterVersion (mkVersion [2, 4, 0]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "markdown-unlit")
                                                    (OrLaterVersion (mkVersion [0]))
-                                                   (Set.fromList [LMainLibName])],
+                                                   mainLibSet],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -286,8 +280,7 @@ GenericPackageDescription
                                                                                              (mkVersion
                                                                                                 [4,
                                                                                                  7])))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "AC-Vector")
@@ -296,8 +289,7 @@ GenericPackageDescription
                                                                                              [2,
                                                                                               3,
                                                                                               0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "QuickCheck")
@@ -306,16 +298,14 @@ GenericPackageDescription
                                                                                              [2,
                                                                                               4,
                                                                                               0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "markdown-unlit")
                                                                                        (OrLaterVersion
                                                                                           (mkVersion
                                                                                              [0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName])],
+                                                                                       mainLibSet],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               (mkVersion [1, 0]) "README.lhs",

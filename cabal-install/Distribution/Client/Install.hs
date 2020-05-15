@@ -35,7 +35,6 @@ import Distribution.Utils.Generic(safeLast)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -142,8 +141,7 @@ import Distribution.Package
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
 import Distribution.Types.Dependency
-         ( Dependency (..) )
-import Distribution.Types.LibraryName (LibraryName (..))
+         ( Dependency (..), mainLibSet )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Pretty ( prettyShow )
@@ -832,7 +830,7 @@ postInstallActions verbosity
   unless oneShot $
     World.insert verbosity worldFile
       --FIXME: does not handle flags
-      [ World.WorldPkgInfo (Dependency pn vr (Set.singleton LMainLibName)) mempty
+      [ World.WorldPkgInfo (Dependency pn vr mainLibSet) mempty
       | UserTargetNamed (PackageVersionConstraint pn vr) <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)

@@ -15,8 +15,7 @@ GenericPackageDescription
                                                                                               (OrLaterVersion
                                                                                                  (mkVersion
                                                                                                     [0]))
-                                                                                              (Set.fromList
-                                                                                                 [LMainLibName])],
+                                                                                              mainLibSet],
                                                                      condTreeData = Library
                                                                                       {exposedModules = [],
                                                                                        libBuildInfo = BuildInfo
@@ -75,8 +74,7 @@ GenericPackageDescription
                                                                                                                                  (OrLaterVersion
                                                                                                                                     (mkVersion
                                                                                                                                        [0]))
-                                                                                                                                 (Set.fromList
-                                                                                                                                    [LMainLibName])],
+                                                                                                                                 mainLibSet],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = LMainLibName,
@@ -88,15 +86,15 @@ GenericPackageDescription
                                                (IntersectVersionRanges
                                                   (OrLaterVersion (mkVersion [4, 10]))
                                                   (EarlierVersion (mkVersion [4, 11])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "containers")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "ghc-prim")
                                                (OrLaterVersion (mkVersion [0]))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "ElseIf"],
                                         libBuildInfo = BuildInfo
@@ -152,24 +150,21 @@ GenericPackageDescription
                                                                                         (mkVersion
                                                                                            [4,
                                                                                             11])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "containers")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "ghc-prim")
                                                                                   (OrLaterVersion
                                                                                      (mkVersion
                                                                                         [0]))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -190,8 +185,7 @@ GenericPackageDescription
                                                                                                     (OrLaterVersion
                                                                                                        (mkVersion
                                                                                                           [0]))
-                                                                                                    (Set.fromList
-                                                                                                       [LMainLibName])],
+                                                                                                    mainLibSet],
                                                                            condTreeData = Library
                                                                                             {exposedModules = [],
                                                                                              libBuildInfo = BuildInfo
@@ -250,8 +244,7 @@ GenericPackageDescription
                                                                                                                                        (OrLaterVersion
                                                                                                                                           (mkVersion
                                                                                                                                              [0]))
-                                                                                                                                       (Set.fromList
-                                                                                                                                          [LMainLibName])],
+                                                                                                                                       mainLibSet],
                                                                                                                virtualModules = []},
                                                                                              libExposed = True,
                                                                                              libName = LSubLibName
@@ -265,15 +258,15 @@ GenericPackageDescription
                                                      (IntersectVersionRanges
                                                         (OrLaterVersion (mkVersion [4, 10]))
                                                         (EarlierVersion (mkVersion [4, 11])))
-                                                     (Set.fromList [LMainLibName]),
+                                                     mainLibSet,
                                                    Dependency
                                                      (PackageName "containers")
                                                      (OrLaterVersion (mkVersion [0]))
-                                                     (Set.fromList [LMainLibName]),
+                                                     mainLibSet,
                                                    Dependency
                                                      (PackageName "ghc-prim")
                                                      (OrLaterVersion (mkVersion [0]))
-                                                     (Set.fromList [LMainLibName])],
+                                                     mainLibSet],
                             condTreeData = Library
                                              {exposedModules = [ModuleName "ElseIf2"],
                                               libBuildInfo = BuildInfo
@@ -333,24 +326,21 @@ GenericPackageDescription
                                                                                               (mkVersion
                                                                                                  [4,
                                                                                                   11])))
-                                                                                        (Set.fromList
-                                                                                           [LMainLibName]),
+                                                                                        mainLibSet,
                                                                                       Dependency
                                                                                         (PackageName
                                                                                            "containers")
                                                                                         (OrLaterVersion
                                                                                            (mkVersion
                                                                                               [0]))
-                                                                                        (Set.fromList
-                                                                                           [LMainLibName]),
+                                                                                        mainLibSet,
                                                                                       Dependency
                                                                                         (PackageName
                                                                                            "ghc-prim")
                                                                                         (OrLaterVersion
                                                                                            (mkVersion
                                                                                               [0]))
-                                                                                        (Set.fromList
-                                                                                           [LMainLibName])],
+                                                                                        mainLibSet],
                                                                 virtualModules = []},
                                               libExposed = True,
                                               libName = LSubLibName
@@ -372,8 +362,7 @@ GenericPackageDescription
                                                                                                   (OrLaterVersion
                                                                                                      (mkVersion
                                                                                                         [0]))
-                                                                                                  (Set.fromList
-                                                                                                     [LMainLibName])],
+                                                                                                  mainLibSet],
                                                                          condTreeData = TestSuite
                                                                                           {testBuildInfo = BuildInfo
                                                                                                              {asmOptions = [],
@@ -431,8 +420,7 @@ GenericPackageDescription
                                                                                                                                       (OrLaterVersion
                                                                                                                                          (mkVersion
                                                                                                                                             [0]))
-                                                                                                                                      (Set.fromList
-                                                                                                                                         [LMainLibName])],
+                                                                                                                                      mainLibSet],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
                                                                                                              (TestTypeUnknown
@@ -452,8 +440,7 @@ GenericPackageDescription
                                                                                                   (OrLaterVersion
                                                                                                      (mkVersion
                                                                                                         [0]))
-                                                                                                  (Set.fromList
-                                                                                                     [LMainLibName])],
+                                                                                                  mainLibSet],
                                                                          condTreeData = TestSuite
                                                                                           {testBuildInfo = BuildInfo
                                                                                                              {asmOptions = [],
@@ -511,8 +498,7 @@ GenericPackageDescription
                                                                                                                                       (OrLaterVersion
                                                                                                                                          (mkVersion
                                                                                                                                             [0]))
-                                                                                                                                      (Set.fromList
-                                                                                                                                         [LMainLibName])],
+                                                                                                                                      mainLibSet],
                                                                                                               virtualModules = []},
                                                                                            testInterface = TestSuiteUnsupported
                                                                                                              (TestTypeUnknown
@@ -592,15 +578,15 @@ GenericPackageDescription
                                                    (IntersectVersionRanges
                                                       (OrLaterVersion (mkVersion [4, 10]))
                                                       (EarlierVersion (mkVersion [4, 11])))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "containers")
                                                    (OrLaterVersion (mkVersion [0]))
-                                                   (Set.fromList [LMainLibName]),
+                                                   mainLibSet,
                                                  Dependency
                                                    (PackageName "HUnit")
                                                    (OrLaterVersion (mkVersion [0]))
-                                                   (Set.fromList [LMainLibName])],
+                                                   mainLibSet],
                           condTreeData = TestSuite
                                            {testBuildInfo = BuildInfo
                                                               {asmOptions = [],
@@ -659,24 +645,21 @@ GenericPackageDescription
                                                                                              (mkVersion
                                                                                                 [4,
                                                                                                  11])))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "containers")
                                                                                        (OrLaterVersion
                                                                                           (mkVersion
                                                                                              [0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName]),
+                                                                                       mainLibSet,
                                                                                      Dependency
                                                                                        (PackageName
                                                                                           "HUnit")
                                                                                        (OrLaterVersion
                                                                                           (mkVersion
                                                                                              [0]))
-                                                                                       (Set.fromList
-                                                                                          [LMainLibName])],
+                                                                                       mainLibSet],
                                                                virtualModules = []},
                                             testInterface = TestSuiteExeV10
                                                               (mkVersion [1, 0]) "Tests.hs",

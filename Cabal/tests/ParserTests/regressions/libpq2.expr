@@ -23,8 +23,7 @@ GenericPackageDescription
                                                                                                     (mkVersion
                                                                                                        [2,
                                                                                                         8])))
-                                                                                              (Set.fromList
-                                                                                                 [LMainLibName])],
+                                                                                              mainLibSet],
                                                                      condTreeData = Library
                                                                                       {exposedModules = [],
                                                                                        libBuildInfo = BuildInfo
@@ -91,8 +90,7 @@ GenericPackageDescription
                                                                                                                                        (mkVersion
                                                                                                                                           [2,
                                                                                                                                            8])))
-                                                                                                                                 (Set.fromList
-                                                                                                                                    [LMainLibName])],
+                                                                                                                                 mainLibSet],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = LMainLibName,
@@ -118,8 +116,7 @@ GenericPackageDescription
                                                                                                     (mkVersion
                                                                                                        [2,
                                                                                                         7])))
-                                                                                              (Set.fromList
-                                                                                                 [LMainLibName])],
+                                                                                              mainLibSet],
                                                                      condTreeData = Library
                                                                                       {exposedModules = [],
                                                                                        libBuildInfo = BuildInfo
@@ -186,8 +183,7 @@ GenericPackageDescription
                                                                                                                                        (mkVersion
                                                                                                                                           [2,
                                                                                                                                            7])))
-                                                                                                                                 (Set.fromList
-                                                                                                                                    [LMainLibName])],
+                                                                                                                                 mainLibSet],
                                                                                                          virtualModules = []},
                                                                                        libExposed = True,
                                                                                        libName = LMainLibName,
@@ -522,13 +518,13 @@ GenericPackageDescription
                                                (IntersectVersionRanges
                                                   (OrLaterVersion (mkVersion [4, 3]))
                                                   (EarlierVersion (mkVersion [4, 13])))
-                                               (Set.fromList [LMainLibName]),
+                                               mainLibSet,
                                              Dependency
                                                (PackageName "bytestring")
                                                (IntersectVersionRanges
                                                   (OrLaterVersion (mkVersion [0, 9, 1, 0]))
                                                   (EarlierVersion (mkVersion [0, 11])))
-                                               (Set.fromList [LMainLibName])],
+                                               mainLibSet],
                       condTreeData = Library
                                        {exposedModules = [ModuleName "Database.PostgreSQL.LibPQ",
                                                           ModuleName
@@ -593,8 +589,7 @@ GenericPackageDescription
                                                                                         (mkVersion
                                                                                            [4,
                                                                                             13])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName]),
+                                                                                  mainLibSet,
                                                                                 Dependency
                                                                                   (PackageName
                                                                                      "bytestring")
@@ -609,8 +604,7 @@ GenericPackageDescription
                                                                                         (mkVersion
                                                                                            [0,
                                                                                             11])))
-                                                                                  (Set.fromList
-                                                                                     [LMainLibName])],
+                                                                                  mainLibSet],
                                                           virtualModules = []},
                                         libExposed = True,
                                         libName = LMainLibName,
@@ -668,7 +662,7 @@ GenericPackageDescription
                                                                          (mkVersion [4, 3]))
                                                                       (EarlierVersion
                                                                          (mkVersion [5])))
-                                                                   (Set.fromList [LMainLibName]),
+                                                                   mainLibSet,
                                                                  Dependency
                                                                    (PackageName "Cabal")
                                                                    (IntersectVersionRanges
@@ -676,7 +670,7 @@ GenericPackageDescription
                                                                          (mkVersion [1, 10]))
                                                                       (EarlierVersion
                                                                          (mkVersion [2, 5])))
-                                                                   (Set.fromList [LMainLibName])]},
+                                                                   mainLibSet]},
                            sourceRepos = [],
                            specVersion = CabalSpecV3_0,
                            stability = "",

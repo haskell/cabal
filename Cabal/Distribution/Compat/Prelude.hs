@@ -47,6 +47,7 @@ module Distribution.Compat.Prelude (
     -- * Some types
     Map,
     Set,
+    NonEmptySet,
     Identity (..),
     Proxy (..),
     Void,
@@ -171,6 +172,7 @@ import Text.Read                     (readMaybe)
 import qualified Text.PrettyPrint as Disp
 
 import Distribution.Utils.Structured (Structured)
+import Distribution.Compat.NonEmptySet (NonEmptySet)
 
 -- | New name for 'Text.PrettyPrint.<>'
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc

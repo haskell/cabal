@@ -2,6 +2,8 @@ module Distribution.Utils.MD5 (
     MD5,
     showMD5,
     md5,
+    -- * Helpers
+    md5FromInteger,
     -- * Binary
     binaryPutMD5,
     binaryGetMD5,
@@ -10,6 +12,7 @@ module Distribution.Utils.MD5 (
 import Data.Binary      (Get, Put)
 import Data.Binary.Get  (getWord64le)
 import Data.Binary.Put  (putWord64le)
+import Data.Bits        (complement, shiftR, (.&.))
 import Foreign.Ptr      (castPtr)
 import GHC.Fingerprint  (Fingerprint (..), fingerprintData)
 import Numeric          (showHex)
@@ -52,3 +55,25 @@ binaryGetMD5 = do
     a <- getWord64le
     b <- getWord64le
     return (Fingerprint a b)
+
+-- |
+--
+-- >>> showMD5 $ md5FromInteger 0x37eff01866ba3f538421b30b7cbefcac
+-- "37eff01866ba3f538421b30b7cbefcac"
+--
+-- Note: the input is truncated:
+--
+-- >>> showMD5 $ md5FromInteger 0x1230000037eff01866ba3f538421b30b7cbefcac
+-- "37eff01866ba3f538421b30b7cbefcac"
+--
+-- Yet, negative numbers are not a problem...
+--
+-- >>> showMD5 $ md5FromInteger (-1)
+-- "ffffffffffffffffffffffffffffffff"
+--
+-- @since 3.4.0.0
+md5FromInteger :: Integer -> MD5
+md5FromInteger i = Fingerprint hi lo where
+    mask = complement 0
+    lo   = mask .&. fromInteger i
+    hi   = mask .&. fromInteger (i `shiftR` 64)

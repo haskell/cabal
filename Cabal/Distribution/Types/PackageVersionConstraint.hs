@@ -3,6 +3,7 @@
 module Distribution.Types.PackageVersionConstraint (
     PackageVersionConstraint(..),
     thisPackageVersionConstraint,
+    simplifyPackageVersionConstraint,
 ) where
 
 import Distribution.Compat.Prelude
@@ -10,10 +11,11 @@ import Prelude ()
 
 import Distribution.Parsec
 import Distribution.Pretty
-import Distribution.Types.PackageName
 import Distribution.Types.PackageId
+import Distribution.Types.PackageName
 import Distribution.Types.Version
 import Distribution.Types.VersionRange.Internal
+import Distribution.Version                     (simplifyVersionRange)
 
 import qualified Distribution.Compat.CharParsing as P
 import           Text.PrettyPrint                ((<+>))
@@ -66,3 +68,7 @@ instance Parsec PackageVersionConstraint where
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
 thisPackageVersionConstraint (PackageIdentifier pn vr) =
     PackageVersionConstraint pn (thisVersion vr)
+
+simplifyPackageVersionConstraint :: PackageVersionConstraint -> PackageVersionConstraint
+simplifyPackageVersionConstraint (PackageVersionConstraint pn vr) =
+    PackageVersionConstraint pn (simplifyVersionRange vr)

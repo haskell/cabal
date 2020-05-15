@@ -374,7 +374,7 @@ instance Described Dependency where
                     [ reChar '{'
                     , RESpaces
                     -- no leading or trailing comma
-                    , REMunch reSpacedComma reUnqualComponent
+                    , REMunch1 reSpacedComma reUnqualComponent
                     , RESpaces
                     , reChar '}'
                     ]

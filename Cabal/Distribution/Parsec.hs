@@ -39,6 +39,7 @@ module Distribution.Parsec (
     parsecQuoted,
     parsecMaybeQuoted,
     parsecCommaList,
+    parsecCommaNonEmpty,
     parsecLeadingCommaList,
     parsecLeadingCommaNonEmpty,
     parsecOptCommaList,
@@ -292,6 +293,9 @@ parsecStandard f = do
 
 parsecCommaList :: CabalParsing m => m a -> m [a]
 parsecCommaList p = P.sepBy (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
+
+parsecCommaNonEmpty :: CabalParsing m => m a -> m (NonEmpty a)
+parsecCommaNonEmpty p = P.sepByNonEmpty (p <* P.spaces) (P.char ',' *> P.spaces P.<?> "comma")
 
 -- | Like 'parsecCommaList' but accept leading or trailing comma.
 --

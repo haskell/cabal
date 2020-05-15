@@ -20,7 +20,7 @@ import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
-import Distribution.Package                        (Dependency, PackageIdentifier, PackageName)
+import Distribution.Package                        (PackageIdentifier, PackageName)
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
 import Distribution.Simple.Flag                    (Flag)
@@ -31,6 +31,7 @@ import Distribution.System
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.CondTree
+import Distribution.Types.Dependency               (Dependency (..), mainLibSet)
 import Distribution.Types.ExecutableScope
 import Distribution.Types.ExeDependency
 import Distribution.Types.ForeignLib
@@ -52,6 +53,8 @@ import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
 
+import qualified Distribution.Compat.NonEmptySet as NES
+
 -------------------------------------------------------------------------------
 -- instances
 -------------------------------------------------------------------------------
@@ -61,8 +64,15 @@ instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExp
 instance (Show a, ToExpr b, ToExpr c, Show b, Show c, Eq a, Eq c, Eq b) => ToExpr (CondBranch a b c)
 instance (ToExpr a) => ToExpr (NubList a)
 instance (ToExpr a) => ToExpr (Flag a)
+instance ToExpr a => ToExpr (NES.NonEmptySet a) where
+    toExpr xs = App "NonEmptySet.fromNonEmpty" [toExpr $ NES.toNonEmpty xs]
 
 instance ToExpr a => ToExpr (PerCompilerFlavor a)
+
+instance ToExpr Dependency where
+    toExpr d@(Dependency pn vr cs)
+        | cs == mainLibSet = App "Dependency" [toExpr pn, toExpr vr, App "mainLibSet" []]
+        | otherwise        = genericToExpr d
 
 instance ToExpr AbiDependency
 instance ToExpr AbiHash
@@ -78,7 +88,6 @@ instance ToExpr CompilerId
 instance ToExpr ComponentId
 instance ToExpr DebugInfoLevel
 instance ToExpr DefUnitId
-instance ToExpr Dependency
 instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope

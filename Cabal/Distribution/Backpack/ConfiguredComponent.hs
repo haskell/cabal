@@ -45,6 +45,7 @@ import Distribution.Utils.Generic
 
 import Control.Monad
 import qualified Data.Set as Set
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Map as Map
 import Distribution.Pretty
 import Text.PrettyPrint
@@ -179,7 +180,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                 text "package" <+> pretty pn
                         Just p -> return p
                     -- Return all library components
-                    forM (Set.toList sublibs) $ \lib ->
+                    forM (NonEmptySet.toList sublibs) $ \lib ->
                         let comp = CLibName lib in
                         case Map.lookup (CLibName $ LSubLibName $
                                          packageNameToUnqualComponentName name) pkg

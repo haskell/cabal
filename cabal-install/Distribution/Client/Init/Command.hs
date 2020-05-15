@@ -35,7 +35,6 @@ import qualified Data.List.NonEmpty as NE
 import Data.Function
   ( on )
 import qualified Data.Map as M
-import qualified Data.Set as Set
 import Control.Monad
   ( (>=>), join, mapM )
 import Control.Arrow
@@ -54,8 +53,6 @@ import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, exposed )
 import qualified Distribution.Package as P
 import qualified Distribution.SPDX as SPDX
-import Distribution.Types.LibraryName
-  ( LibraryName(..) )
 import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Defaults
@@ -698,14 +695,14 @@ chooseDep flags (m, Just ps)
     toDep :: NonEmpty P.PackageIdentifier -> IO P.Dependency
 
     -- If only one version, easy.  We change e.g. 0.4.2  into  0.4.*
-    toDep (pid:|[]) = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid) (Set.singleton LMainLibName) --TODO sublibraries
+    toDep (pid:|[]) = return $ P.Dependency (P.pkgName pid) (pvpize desugar . P.pkgVersion $ pid) P.mainLibSet --TODO sublibraries
 
     -- Otherwise, choose the latest version and issue a warning.
     toDep pids  = do
       message flags ("\nWarning: multiple versions of " ++ prettyShow (P.pkgName . NE.head $ pids) ++ " provide " ++ prettyShow m ++ ", choosing the latest.")
       return $ P.Dependency (P.pkgName . NE.head $ pids)
                             (pvpize desugar . maximum . fmap P.pkgVersion $ pids)
-                            (Set.singleton LMainLibName) --TODO take into account sublibraries
+                            P.mainLibSet --TODO take into account sublibraries
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

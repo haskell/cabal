@@ -6,10 +6,12 @@ module Test.QuickCheck.Instances.Cabal () where
 import Control.Applicative        (liftA2)
 import Data.Char                  (isAlphaNum, isDigit)
 import Data.List                  (intercalate)
+import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
 
 import Distribution.CabalSpecVersion
+import Distribution.Compat.NonEmptySet             (NonEmptySet)
 import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
@@ -32,6 +34,8 @@ import Distribution.Verbosity
 import Distribution.Version
 
 import Test.QuickCheck.GenericArbitrary
+
+import qualified Distribution.Compat.NonEmptySet as NES
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (pure, (<$>), (<*>))
@@ -350,6 +354,19 @@ instance Arbitrary CompilerFlavor where
 instance Arbitrary CompilerId where
     arbitrary = genericArbitrary
     shrink    = genericShrink
+
+-------------------------------------------------------------------------------
+-- NonEmptySet
+-------------------------------------------------------------------------------
+
+instance (Arbitrary a, Ord a) => Arbitrary (NonEmptySet a) where
+    arbitrary = mk <$> arbitrary <*> arbitrary where
+        mk x xs = NES.fromNonEmpty (x :| xs)
+
+    shrink nes = case NES.toNonEmpty nes of
+        x :| xs -> map mk (shrink (x, xs))
+      where
+        mk (x,xs) = NES.fromNonEmpty (x :| xs)
 
 -------------------------------------------------------------------------------
 -- Helpers

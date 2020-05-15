@@ -17,7 +17,7 @@ import qualified Data.Map.Lazy as Map
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
-newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, Set LibraryName) }
+newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, NonEmptySet LibraryName) }
   deriving (Show, Read)
 
 instance Monoid DependencyMap where
@@ -28,9 +28,9 @@ instance Semigroup DependencyMap where
     (DependencyMap a) <> (DependencyMap b) =
         DependencyMap (Map.unionWith intersectVersionRangesAndJoinComponents a b)
 
-intersectVersionRangesAndJoinComponents :: (VersionRange, Set LibraryName)
-                                        -> (VersionRange, Set LibraryName)
-                                        -> (VersionRange, Set LibraryName)
+intersectVersionRangesAndJoinComponents :: (VersionRange, NonEmptySet LibraryName)
+                                        -> (VersionRange, NonEmptySet LibraryName)
+                                        -> (VersionRange, NonEmptySet LibraryName)
 intersectVersionRangesAndJoinComponents (va, ca) (vb, cb) =
   (intersectVersionRanges va vb, ca <> cb)
 

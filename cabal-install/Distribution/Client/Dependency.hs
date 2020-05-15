@@ -658,8 +658,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
       -- Force Cabal >= 1.24 dep when the package is affected by #3199.
       mkDefaultSetupDeps :: UnresolvedSourcePackage -> Maybe [Dependency]
       mkDefaultSetupDeps srcpkg | affected        =
-        Just [Dependency (mkPackageName "Cabal")
-              (orLaterVersion $ mkVersion [1,24]) (Set.singleton PD.LMainLibName)]
+        Just [Dependency (mkPackageName "Cabal") (orLaterVersion $ mkVersion [1,24]) mainLibSet]
                                 | otherwise       = Nothing
         where
           gpkgdesc = packageDescription srcpkg

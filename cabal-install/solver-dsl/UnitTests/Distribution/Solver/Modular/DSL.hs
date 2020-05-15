@@ -46,7 +46,6 @@ import Distribution.Utils.Generic
 import Control.Arrow (second)
 import Data.Either (partitionEithers)
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 -- Cabal
 import qualified Distribution.CabalSpecVersion          as C
@@ -552,7 +551,7 @@ exAvSrcPkg ex =
            }
 
     mkDirect :: (ExamplePkgName, C.VersionRange) -> C.Dependency
-    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr (Set.singleton C.LMainLibName)
+    mkDirect (dep, vr) = C.Dependency (C.mkPackageName dep) vr C.mainLibSet
 
     mkFlagged :: (ExampleFlagName, Dependencies, Dependencies)
               -> DependencyComponent C.BuildInfo

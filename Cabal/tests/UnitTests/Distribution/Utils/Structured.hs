@@ -2,8 +2,8 @@
 module UnitTests.Distribution.Utils.Structured (tests) where
 
 import Data.Proxy                    (Proxy (..))
+import Distribution.Utils.MD5        (md5FromInteger)
 import Distribution.Utils.Structured (structureHash)
-import GHC.Fingerprint               (Fingerprint (..))
 import Test.Tasty                    (TestTree, testGroup)
 import Test.Tasty.HUnit              (testCase, (@?=))
 
@@ -20,11 +20,11 @@ import UnitTests.Orphans ()
 tests :: TestTree
 tests = testGroup "Distribution.Utils.Structured"
     -- This test also verifies that structureHash doesn't loop.
-    [ testCase "VersionRange"              $ structureHash (Proxy :: Proxy VersionRange)               @?= Fingerprint 0x39396fc4f2d751aa 0xa1f94e6d843f03bd
-    , testCase "SPDX.License"              $ structureHash (Proxy :: Proxy License)                    @?= Fingerprint 0xd3d4a09f517f9f75 0xbc3d16370d5a853a
+    [ testCase "VersionRange"              $ structureHash (Proxy :: Proxy VersionRange)               @?= md5FromInteger 0x39396fc4f2d751aaa1f94e6d843f03bd
+    , testCase "SPDX.License"              $ structureHash (Proxy :: Proxy License)                    @?= md5FromInteger 0xd3d4a09f517f9f75bc3d16370d5a853a
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
-    , testCase "GenericPackageDescription" $ structureHash (Proxy :: Proxy GenericPackageDescription)  @?= Fingerprint 0xcaf11323731bfb4a 0xdfda6dfccb716a3f
-    , testCase "LocalBuildInfo"            $ structureHash (Proxy :: Proxy LocalBuildInfo)             @?= Fingerprint 0x5a476529cf81643a 0x874574ad4ae0adbf
+    , testCase "GenericPackageDescription" $ structureHash (Proxy :: Proxy GenericPackageDescription)  @?= md5FromInteger 0xf85c3579a0c9396821086624821832d8
+    , testCase "LocalBuildInfo"            $ structureHash (Proxy :: Proxy LocalBuildInfo)             @?= md5FromInteger 0xadb15a4ec2ab6f1c967683f9195c69ec
 #endif
     ]
