@@ -15,11 +15,10 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetProblem
-         ( TargetProblem
+         ( TargetProblem'
          , commonTargetProblem
          , noTargetsProblem
          , noneEnabledTargetProblem
-         , reportTargetProblems
          )
 import Distribution.Client.CmdErrorMessages
 
@@ -181,7 +180,7 @@ buildAction
 -- components
 --
 selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -214,12 +213,12 @@ selectPackageTargets targetSelector targets
 -- For the @build@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem' k
 selectComponentTarget subtarget =
     either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
-reportBuildTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity problems =
   reportTargetProblems verbosity "build" problems
 

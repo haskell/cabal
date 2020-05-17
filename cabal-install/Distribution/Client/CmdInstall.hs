@@ -28,12 +28,11 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdSdist
 import Distribution.Client.TargetProblem
-         ( TargetProblem,
-           ExtensibleTargetProblem (ExtensibleTargetProblemCommon),
+         ( TargetProblem',
+           TargetProblem (CommonProblem),
            commonTargetProblem,
            noneEnabledTargetProblem,
-           noTargetsProblem,
-           reportTargetProblems )
+           noTargetsProblem )
 
 import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
@@ -524,12 +523,12 @@ partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetS
       -- Not everything is local.
       let
         (errs', hackageNames) = partitionEithers . flip fmap errs $ \case
-          ExtensibleTargetProblemCommon (TargetAvailableInIndex name) -> Right name
+          CommonProblem (TargetAvailableInIndex name) -> Right name
           err -> Left err
 
       -- report incorrect case for known package.
       for_ errs' $ \case
-        ExtensibleTargetProblemCommon (TargetNotInProject hn) ->
+        CommonProblem (TargetNotInProject hn) ->
           case searchByName (packageIndex pkgDb) (unPackageName hn) of
             [] -> return ()
             xs -> die' verbosity . concat $
@@ -937,7 +936,7 @@ getPackageDbStack compilerId storeDirFlag logsDirFlag = do
 --
 selectPackageTargets
   :: TargetSelector
-  -> [AvailableTarget k] -> Either TargetProblem [k]
+  -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -971,12 +970,12 @@ selectPackageTargets targetSelector targets
 --
 selectComponentTarget
   :: SubComponentTarget
-  -> AvailableTarget k -> Either TargetProblem k
+  -> AvailableTarget k -> Either TargetProblem' k
 selectComponentTarget subtarget =
     either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
-reportBuildTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportBuildTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildTargetProblems verbosity problems = reportTargetProblems verbosity "build" problems
 
 reportCannotPruneDependencies :: Verbosity -> CannotPruneDependencies -> IO a

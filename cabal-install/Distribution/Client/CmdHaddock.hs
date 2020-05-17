@@ -15,11 +15,10 @@ module Distribution.Client.CmdHaddock (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.TargetProblem
-         ( TargetProblem
+         ( TargetProblem'
          , commonTargetProblem
          , noTargetsProblem
          , noneEnabledTargetProblem
-         , reportTargetProblems
          )
 
 import Distribution.Client.NixStyleOptions
@@ -134,7 +133,7 @@ haddockAction ( configFlags, configExFlags, installFlags
 -- We do similarly for test-suites, benchmarks and foreign libs.
 --
 selectPackageTargets  :: HaddockFlags -> TargetSelector
-                      -> [AvailableTarget k] -> Either TargetProblem [k]
+                      -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets haddockFlags targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -184,11 +183,11 @@ selectPackageTargets haddockFlags targetSelector targets
 -- etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
+                      -> AvailableTarget k -> Either TargetProblem' k
 selectComponentTarget subtarget =
     either (Left . commonTargetProblem) Right
   . selectComponentTargetBasic subtarget
 
-reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem] -> IO a
+reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
 reportBuildDocumentationTargetProblems verbosity problems =
   reportTargetProblems verbosity "build documentation for" problems

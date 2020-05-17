@@ -17,8 +17,11 @@ module Distribution.Client.CmdTest (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+         ( renderTargetSelector, showTargetSelector, targetSelectorFilter, plural,
+           renderTargetProblemCommon, renderTargetProblemNoneEnabled,
+           renderTargetProblemNoTargets, targetSelectorPluralPkgs )
 import Distribution.Client.TargetProblem
-         ( ExtensibleTargetProblem (..), commonTargetProblem
+         ( TargetProblem (..), commonTargetProblem, customTargetProblem
          , noneEnabledTargetProblem, noTargetsProblem )
 
 import Distribution.Client.Setup
@@ -216,30 +219,29 @@ data TestProblem =
   deriving (Eq, Show)
 
 
-type TestTargetProblem = ExtensibleTargetProblem TestProblem
+type TestTargetProblem = TargetProblem TestProblem
 
 
-noTestsProblem :: TargetSelector -> ExtensibleTargetProblem TestProblem
-noTestsProblem = ExtensibleTargetProblemCustomProblem . TargetProblemNoTests
+noTestsProblem :: TargetSelector -> TargetProblem TestProblem
+noTestsProblem = customTargetProblem . TargetProblemNoTests
 
-notTestProblem :: PackageId -> ComponentName -> ExtensibleTargetProblem TestProblem
-notTestProblem pkgid name = ExtensibleTargetProblemCustomProblem $
-  TargetProblemComponentNotTest pkgid name
+notTestProblem :: PackageId -> ComponentName -> TargetProblem TestProblem
+notTestProblem pkgid name = customTargetProblem $ TargetProblemComponentNotTest pkgid name
 
 isSubComponentProblem
   :: PackageId
   -> ComponentName
   -> SubComponentTarget
-  -> ExtensibleTargetProblem TestProblem
-isSubComponentProblem pkgid name subcomponent = ExtensibleTargetProblemCustomProblem $
+  -> TargetProblem TestProblem
+isSubComponentProblem pkgid name subcomponent = customTargetProblem $
   TargetProblemIsSubComponent pkgid name subcomponent
 
 reportTargetProblems :: Verbosity -> Flag Bool -> [TestTargetProblem] -> IO a
 reportTargetProblems verbosity failWhenNoTestSuites problems =
   case (failWhenNoTestSuites, problems) of
-    (Flag True, [ExtensibleTargetProblemCustomProblem (TargetProblemNoTests _)]) ->
+    (Flag True, [CustomProblem (TargetProblemNoTests _)]) ->
       die' verbosity problemsMessage
-    (_, [ExtensibleTargetProblemCustomProblem (TargetProblemNoTests selector)]) -> do
+    (_, [CustomProblem (TargetProblemNoTests selector)]) -> do
       notice verbosity (renderAllowedNoTestsProblem selector)
       System.Exit.exitSuccess
     (_, _) -> die' verbosity problemsMessage
@@ -255,21 +257,20 @@ renderAllowedNoTestsProblem selector =
     "No tests to run for " ++ renderTargetSelector selector
 
 renderTargetProblem :: TestTargetProblem -> String
-renderTargetProblem (ExtensibleTargetProblemCommon problem) =
+renderTargetProblem (CommonProblem problem) =
     renderTargetProblemCommon "run" problem
 
-renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (NoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "test" targetSelector targets
 
-renderTargetProblem (ExtensibleTargetProblemCustomProblem
-                      (TargetProblemNoTests targetSelector)) =
+renderTargetProblem (CustomProblem (TargetProblemNoTests targetSelector)) =
     "Cannot run tests for the target '" ++ showTargetSelector targetSelector
  ++ "' which refers to " ++ renderTargetSelector targetSelector
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any test suites."
 
-renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
+renderTargetProblem (NoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= TestKind
         -> "The test command is for running test suites, but the target '"
@@ -279,8 +280,7 @@ renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
 
       _ -> renderTargetProblemNoTargets "test" targetSelector
 
-renderTargetProblem (ExtensibleTargetProblemCustomProblem
-                      (TargetProblemComponentNotTest pkgid cname)) =
+renderTargetProblem (CustomProblem (TargetProblemComponentNotTest pkgid cname)) =
     "The test command is for running test suites, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -288,8 +288,7 @@ renderTargetProblem (ExtensibleTargetProblemCustomProblem
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
-renderTargetProblem (ExtensibleTargetProblemCustomProblem
-                      (TargetProblemIsSubComponent pkgid cname subtarget)) =
+renderTargetProblem (CustomProblem (TargetProblemIsSubComponent pkgid cname subtarget)) =
     "The test command can only run test suites as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "

@@ -23,8 +23,12 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+         ( renderTargetSelector, showTargetSelector,
+           renderTargetProblemCommon, renderTargetProblemNoneEnabled,
+           renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
+           targetSelectorFilter, renderListCommaAnd )
 import Distribution.Client.TargetProblem
-         ( ExtensibleTargetProblem (..), commonTargetProblem
+         ( TargetProblem (..), commonTargetProblem, customTargetProblem
          , noneEnabledTargetProblem, noTargetsProblem )
 
 import Distribution.Client.CmdRun.ClientRunFlags
@@ -563,28 +567,28 @@ data RunProblem =
    | TargetProblemIsSubComponent  PackageId ComponentName SubComponentTarget
   deriving (Eq, Show)
 
-type RunTargetProblem = ExtensibleTargetProblem RunProblem
+type RunTargetProblem = TargetProblem RunProblem
 
 noExesProblem :: TargetSelector -> RunTargetProblem
-noExesProblem = ExtensibleTargetProblemCustomProblem . TargetProblemNoExes
+noExesProblem = customTargetProblem . TargetProblemNoExes
 
 matchesMultipleProblem :: TargetSelector -> [AvailableTarget ()] -> RunTargetProblem
-matchesMultipleProblem selector targets = ExtensibleTargetProblemCustomProblem $
+matchesMultipleProblem selector targets = customTargetProblem $
     TargetProblemMatchesMultiple selector targets
 
-multipleTargetsProblem :: TargetsMap -> ExtensibleTargetProblem RunProblem
-multipleTargetsProblem = ExtensibleTargetProblemCustomProblem . TargetProblemMultipleTargets
+multipleTargetsProblem :: TargetsMap -> TargetProblem RunProblem
+multipleTargetsProblem = customTargetProblem . TargetProblemMultipleTargets
 
-componentNotExeProblem :: PackageId -> ComponentName -> ExtensibleTargetProblem RunProblem
-componentNotExeProblem pkgid name = ExtensibleTargetProblemCustomProblem $
+componentNotExeProblem :: PackageId -> ComponentName -> TargetProblem RunProblem
+componentNotExeProblem pkgid name = customTargetProblem $
     TargetProblemComponentNotExe pkgid name
 
 isSubComponentProblem
   :: PackageId
   -> ComponentName
   -> SubComponentTarget
-  -> ExtensibleTargetProblem RunProblem
-isSubComponentProblem pkgid name subcomponent = ExtensibleTargetProblemCustomProblem $
+  -> TargetProblem RunProblem
+isSubComponentProblem pkgid name subcomponent = customTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
 reportTargetProblems :: Verbosity -> [RunTargetProblem] -> IO a
@@ -592,22 +596,20 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: RunTargetProblem -> String
-renderTargetProblem (ExtensibleTargetProblemCommon problem) =
+renderTargetProblem (CommonProblem problem) =
     renderTargetProblemCommon "run" problem
 
-renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (NoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "run" targetSelector targets
 
-renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem
-    (TargetProblemNoExes targetSelector)) =
+renderTargetProblem (CustomProblem (TargetProblemNoExes targetSelector)) =
     "Cannot run the target '" ++ showTargetSelector targetSelector
  ++ "' which refers to " ++ renderTargetSelector targetSelector
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any executables."
 
-renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
+renderTargetProblem (NoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= ExeKind
         -> "The run command is for running executables, but the target '"
@@ -617,8 +619,7 @@ renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
       _ -> renderTargetProblemNoTargets "run" targetSelector
 
 renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem
-    (TargetProblemMatchesMultiple targetSelector targets)) =
+  (CustomProblem (TargetProblemMatchesMultiple targetSelector targets)) =
     "The run command is for running a single executable at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " which includes "
@@ -631,16 +632,14 @@ renderTargetProblem
  ++ "."
 
 renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem
-    (TargetProblemMultipleTargets selectorMap)) =
+  (CustomProblem (TargetProblemMultipleTargets selectorMap)) =
     "The run command is for running a single executable at once. The targets "
  ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
                        | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
  ++ " refer to different executables."
 
 renderTargetProblem
-    (ExtensibleTargetProblemCustomProblem
-      (TargetProblemComponentNotExe pkgid cname)) =
+    (CustomProblem (TargetProblemComponentNotExe pkgid cname)) =
     "The run command is for running executables, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -649,8 +648,7 @@ renderTargetProblem
     targetSelector = TargetComponent pkgid cname WholeComponent
 
 renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem
-    (TargetProblemIsSubComponent pkgid cname subtarget)) =
+  (CustomProblem (TargetProblemIsSubComponent pkgid cname subtarget)) =
     "The run command can only run an executable as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "

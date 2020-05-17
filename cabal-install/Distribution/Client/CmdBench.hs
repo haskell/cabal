@@ -17,8 +17,12 @@ module Distribution.Client.CmdBench (
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
+         ( renderTargetSelector, showTargetSelector,
+           renderTargetProblemCommon, renderTargetProblemNoneEnabled,
+           renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
+           targetSelectorFilter )
 import Distribution.Client.TargetProblem
-         ( ExtensibleTargetProblem (..), commonTargetProblem
+         ( TargetProblem (..), commonTargetProblem, customTargetProblem
          , noTargetsProblem, noneEnabledTargetProblem )
 
 import Distribution.Client.Setup
@@ -204,21 +208,21 @@ data BenchProblem =
   deriving (Eq, Show)
 
 
-type BenchTargetProblem = ExtensibleTargetProblem BenchProblem
+type BenchTargetProblem = TargetProblem BenchProblem
 
-noBenchmarksProblem :: TargetSelector -> ExtensibleTargetProblem BenchProblem
-noBenchmarksProblem = ExtensibleTargetProblemCustomProblem . TargetProblemNoBenchmarks
+noBenchmarksProblem :: TargetSelector -> TargetProblem BenchProblem
+noBenchmarksProblem = customTargetProblem . TargetProblemNoBenchmarks
 
-componentNotBenchmarkProblem :: PackageId -> ComponentName -> ExtensibleTargetProblem BenchProblem
-componentNotBenchmarkProblem pkgid name = ExtensibleTargetProblemCustomProblem $
+componentNotBenchmarkProblem :: PackageId -> ComponentName -> TargetProblem BenchProblem
+componentNotBenchmarkProblem pkgid name = customTargetProblem $
   TargetProblemComponentNotBenchmark pkgid name
 
 isSubComponentProblem
   :: PackageId
   -> ComponentName
   -> SubComponentTarget
-  -> ExtensibleTargetProblem BenchProblem
-isSubComponentProblem pkgid name subcomponent = ExtensibleTargetProblemCustomProblem $
+  -> TargetProblem BenchProblem
+isSubComponentProblem pkgid name subcomponent = customTargetProblem $
     TargetProblemIsSubComponent pkgid name subcomponent
 
 reportTargetProblems :: Verbosity -> [BenchTargetProblem] -> IO a
@@ -226,21 +230,20 @@ reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
 renderTargetProblem :: BenchTargetProblem -> String
-renderTargetProblem (ExtensibleTargetProblemCommon problem) =
+renderTargetProblem (CommonProblem problem) =
     renderTargetProblemCommon "run" problem
 
-renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (NoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "benchmark" targetSelector targets
 
-renderTargetProblem (ExtensibleTargetProblemCustomProblem
-                      (TargetProblemNoBenchmarks targetSelector)) =
+renderTargetProblem (CustomProblem (TargetProblemNoBenchmarks targetSelector)) =
     "Cannot run benchmarks for the target '" ++ showTargetSelector targetSelector
  ++ "' which refers to " ++ renderTargetSelector targetSelector
  ++ " because "
  ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
  ++ " not contain any benchmarks."
 
-renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
+renderTargetProblem (NoTargets targetSelector) =
     case targetSelectorFilter targetSelector of
       Just kind | kind /= BenchKind
         -> "The bench command is for running benchmarks, but the target '"
@@ -249,8 +252,7 @@ renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
 
       _ -> renderTargetProblemNoTargets "benchmark" targetSelector
 
-renderTargetProblem (ExtensibleTargetProblemCustomProblem
-                      (TargetProblemComponentNotBenchmark pkgid cname)) =
+renderTargetProblem (CustomProblem (TargetProblemComponentNotBenchmark pkgid cname)) =
     "The bench command is for running benchmarks, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " from the package "
@@ -258,8 +260,7 @@ renderTargetProblem (ExtensibleTargetProblemCustomProblem
   where
     targetSelector = TargetComponent pkgid cname WholeComponent
 
-renderTargetProblem  (ExtensibleTargetProblemCustomProblem
-                       (TargetProblemIsSubComponent pkgid cname subtarget)) =
+renderTargetProblem (CustomProblem (TargetProblemIsSubComponent pkgid cname subtarget)) =
     "The bench command can only run benchmarks as a whole, "
  ++ "not files or modules within them, but the target '"
  ++ showTargetSelector targetSelector ++ "' refers to "

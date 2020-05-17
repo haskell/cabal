@@ -24,7 +24,7 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectOrchestration
          ( resolveTargets, TargetProblemCommon(..), distinctTargetComponents )
 import Distribution.Client.TargetProblem
-         ( TargetProblem, commonTargetProblem, noneEnabledTargetProblem, noTargetsProblem )
+         ( TargetProblem', commonTargetProblem, noneEnabledTargetProblem, noTargetsProblem )
 import Distribution.Client.Types
          ( PackageLocation(..), UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -536,7 +536,7 @@ testTargetProblemsCommon config0 = do
                      [ (packageName p, packageId p)
                      | p <- InstallPlan.toList elaboratedPlan ]
 
-        cases :: [( TargetSelector -> TargetProblem
+        cases :: [( TargetSelector -> TargetProblem'
                   , TargetSelector
                   )]
         cases =

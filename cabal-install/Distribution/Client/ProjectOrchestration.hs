@@ -117,6 +117,8 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 import           Distribution.Client.RebuildMonad ( runRebuild )
 
+import           Distribution.Client.TargetProblem
+                   ( TargetProblemCommon(..) )
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
                    , PackageSpecifier(..)
@@ -787,32 +789,6 @@ selectComponentTargetBasic subtarget
 
       TargetBuildable targetKey _ ->
         Right targetKey
-
-data TargetProblemCommon
-   = TargetNotInProject                   PackageName
-   | TargetAvailableInIndex               PackageName
-
-   | TargetComponentNotProjectLocal
-     PackageId ComponentName SubComponentTarget
-
-   | TargetComponentNotBuildable
-     PackageId ComponentName SubComponentTarget
-
-   | TargetOptionalStanzaDisabledByUser
-     PackageId ComponentName SubComponentTarget
-
-   | TargetOptionalStanzaDisabledBySolver
-     PackageId ComponentName SubComponentTarget
-
-   | TargetProblemUnknownComponent
-     PackageName (Either UnqualComponentName ComponentName)
-
-    -- The target matching stuff only returns packages local to the project,
-    -- so these lookups should never fail, but if 'resolveTargets' is called
-    -- directly then of course it can.
-   | TargetProblemNoSuchPackage           PackageId
-   | TargetProblemNoSuchComponent         PackageId ComponentName
-  deriving (Eq, Show)
 
 -- | Wrapper around 'ProjectPlanning.pruneInstallPlanToTargets' that adjusts
 -- for the extra unneeded info in the 'TargetsMap'.

@@ -26,8 +26,13 @@ import qualified Distribution.Types.Lens as L
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
+         ( renderTargetSelector, showTargetSelector,
+           renderTargetProblemCommon, renderTargetProblemNoneEnabled,
+           renderTargetProblemNoTargets, targetSelectorRefersToPkgs,
+           renderComponentKind, renderListCommaAnd, renderListSemiAnd,
+           componentKind, sortGroupOn, Plural(..) )
 import Distribution.Client.TargetProblem
-         ( ExtensibleTargetProblem (..), commonTargetProblem
+         ( TargetProblem(..), commonTargetProblem, customTargetProblem
          , noneEnabledTargetProblem, noTargetsProblem )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
@@ -542,31 +547,30 @@ data ReplProblem
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's for the @repl@ command.
 --
-type ReplTargetProblem = ExtensibleTargetProblem ReplProblem
+type ReplTargetProblem = TargetProblem ReplProblem
 
 matchesMultipleProblem
   :: TargetSelector
   -> [AvailableTarget ()]
   -> ReplTargetProblem
 matchesMultipleProblem targetSelector targetsExesBuildable =
-  ExtensibleTargetProblemCustomProblem $
-    TargetProblemMatchesMultiple targetSelector targetsExesBuildable
+  customTargetProblem $ TargetProblemMatchesMultiple targetSelector targetsExesBuildable
 
 multipleTargetsProblem
   :: TargetsMap
   -> ReplTargetProblem
-multipleTargetsProblem = ExtensibleTargetProblemCustomProblem . TargetProblemMultipleTargets
+multipleTargetsProblem = customTargetProblem . TargetProblemMultipleTargets
 
-reportTargetProblems :: Verbosity -> [ExtensibleTargetProblem ReplProblem] -> IO a
+reportTargetProblems :: Verbosity -> [TargetProblem ReplProblem] -> IO a
 reportTargetProblems verbosity =
     die' verbosity . unlines . map renderTargetProblem
 
-renderTargetProblem :: ExtensibleTargetProblem ReplProblem -> String
-renderTargetProblem (ExtensibleTargetProblemCommon problem) =
+renderTargetProblem :: TargetProblem ReplProblem -> String
+renderTargetProblem (CommonProblem problem) =
     renderTargetProblemCommon "open a repl for" problem
 
 renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem (TargetProblemMatchesMultiple targetSelector targets)) =
+  (CustomProblem (TargetProblemMatchesMultiple targetSelector targets)) =
     "Cannot open a repl for multiple components at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
  ++ renderTargetSelector targetSelector ++ " which "
@@ -587,7 +591,7 @@ renderTargetProblem
                                  . availableTargetComponentName
 
 renderTargetProblem
-  (ExtensibleTargetProblemCustomProblem (TargetProblemMultipleTargets selectorMap)) =
+  (CustomProblem (TargetProblemMultipleTargets selectorMap)) =
     "Cannot open a repl for multiple components at once. The targets "
  ++ renderListCommaAnd
       [ "'" ++ showTargetSelector ts ++ "'"
@@ -595,10 +599,10 @@ renderTargetProblem
  ++ " refer to different components."
  ++ ".\n\n" ++ explanationSingleComponentLimitation
 
-renderTargetProblem (ExtensibleTargetProblemNoneEnabled targetSelector targets) =
+renderTargetProblem (NoneEnabled targetSelector targets) =
     renderTargetProblemNoneEnabled "open a repl for" targetSelector targets
 
-renderTargetProblem (ExtensibleTargetProblemNoTargets targetSelector) =
+renderTargetProblem (NoTargets targetSelector) =
     renderTargetProblemNoTargets "open a repl for" targetSelector
 
 

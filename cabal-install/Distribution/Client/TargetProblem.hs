@@ -1,10 +1,7 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Distribution.Client.TargetProblem
-  ( TargetProblem,
-    ExtensibleTargetProblem (..),
-    reportTargetProblems,
-    renderTargetProblem,
+  ( TargetProblem(..),
+    TargetProblem',
+    TargetProblemCommon(..),
     commonTargetProblem,
     noneEnabledTargetProblem,
     noTargetsProblem,
@@ -12,72 +9,79 @@ module Distribution.Client.TargetProblem
   )
 where
 
-import Distribution.Client.CmdErrorMessages
-  ( renderTargetProblemCommon,
-    renderTargetProblemNoTargets,
-    renderTargetProblemNoneEnabled,
-  )
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.ProjectOrchestration
-  ( TargetProblemCommon (..),
-  )
 import Distribution.Client.ProjectPlanning
   ( AvailableTarget,
   )
 import Distribution.Client.TargetSelector
-  ( TargetSelector,
+  ( TargetSelector, SubComponentTarget,
   )
-import Distribution.Simple.Utils
-  ( die',
+import Distribution.Package
+  (PackageId, PackageName,
   )
-import Distribution.Verbosity
-  ( Verbosity,
+import Distribution.Types.UnqualComponentName
+  ( UnqualComponentName,
+  )
+import Distribution.Simple.LocalBuildInfo
+  ( ComponentName(..),
   )
 import Prelude ()
+
+-- | Target problems that occur during project orchestration.
+data TargetProblemCommon
+   = TargetNotInProject                   PackageName
+   | TargetAvailableInIndex               PackageName
+
+   | TargetComponentNotProjectLocal
+     PackageId ComponentName SubComponentTarget
+
+   | TargetComponentNotBuildable
+     PackageId ComponentName SubComponentTarget
+
+   | TargetOptionalStanzaDisabledByUser
+     PackageId ComponentName SubComponentTarget
+
+   | TargetOptionalStanzaDisabledBySolver
+     PackageId ComponentName SubComponentTarget
+
+   | TargetProblemUnknownComponent
+     PackageName (Either UnqualComponentName ComponentName)
+
+    -- The target matching stuff only returns packages local to the project,
+    -- so these lookups should never fail, but if 'resolveTargets' is called
+    -- directly then of course it can.
+   | TargetProblemNoSuchPackage           PackageId
+   | TargetProblemNoSuchComponent         PackageId ComponentName
+  deriving (Eq, Show)
+
+
 
 -- | Type alias for a 'TargetProblem' with no user-defined problems/errors.
 --
 -- Can use the utilities below for reporting/rendering problems.
-type TargetProblem = ExtensibleTargetProblem ()
+type TargetProblem' = TargetProblem ()
 
 -- | The various error conditions that can occur when matching a
 -- 'TargetSelector' against 'AvailableTarget's which can be extended
 -- with command specific target problems as described by 'e'.
-data ExtensibleTargetProblem e
-  = ExtensibleTargetProblemCommon TargetProblemCommon
+data TargetProblem e
+  = CommonProblem TargetProblemCommon
   | -- | The 'TargetSelector' matches benchmarks but none are buildable
-    ExtensibleTargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
+    NoneEnabled TargetSelector [AvailableTarget ()]
   | -- | There are no targets at all
-    ExtensibleTargetProblemNoTargets TargetSelector
+    NoTargets TargetSelector
   | -- | A custom target problem
-    ExtensibleTargetProblemCustomProblem e
+    CustomProblem e
   deriving (Eq, Show)
 
-commonTargetProblem :: TargetProblemCommon -> ExtensibleTargetProblem e
-commonTargetProblem = ExtensibleTargetProblemCommon
+commonTargetProblem :: TargetProblemCommon -> TargetProblem e
+commonTargetProblem = CommonProblem
 
-noneEnabledTargetProblem :: TargetSelector -> [AvailableTarget ()] -> ExtensibleTargetProblem e
-noneEnabledTargetProblem = ExtensibleTargetProblemNoneEnabled
+noneEnabledTargetProblem :: TargetSelector -> [AvailableTarget ()] -> TargetProblem e
+noneEnabledTargetProblem = NoneEnabled
 
-noTargetsProblem :: TargetSelector -> ExtensibleTargetProblem e
-noTargetsProblem = ExtensibleTargetProblemNoTargets
+noTargetsProblem :: TargetSelector -> TargetProblem e
+noTargetsProblem = NoTargets
 
-customTargetProblem :: e -> ExtensibleTargetProblem e
-customTargetProblem = ExtensibleTargetProblemCustomProblem
-
--- | Default implementation of 'reportTargetProblems' simply renders one problem per line.
-reportTargetProblems :: Verbosity -> String -> [TargetProblem] -> IO a
-reportTargetProblems verbosity verb =
-  die' verbosity . unlines . map (renderTargetProblem verb)
-
--- | Default implementation of 'renderTargetProblem'.
-renderTargetProblem :: String -> TargetProblem -> String
-renderTargetProblem verb = \case
-  (ExtensibleTargetProblemCommon problem) ->
-    renderTargetProblemCommon verb problem
-  (ExtensibleTargetProblemNoneEnabled targetSelector targets) ->
-    renderTargetProblemNoneEnabled verb targetSelector targets
-  (ExtensibleTargetProblemNoTargets targetSelector) ->
-    renderTargetProblemNoTargets verb targetSelector
-  (ExtensibleTargetProblemCustomProblem ()) ->
-    ""
+customTargetProblem :: e -> TargetProblem e
+customTargetProblem = CustomProblem
