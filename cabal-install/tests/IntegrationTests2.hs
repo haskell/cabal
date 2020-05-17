@@ -361,6 +361,16 @@ testTargetSelectorAmbiguous reportSubCase = do
                       , mkexe "other2" `withCFiles`  ["Foo"] ]
       ]
 
+    -- File target is ambiguous, part of multiple components
+    reportSubCase "ambiguous: file in multiple comps"
+    assertAmbiguous "Bar.hs"
+      [ mkTargetFile "foo" (CExeName "bar")  "Bar"
+      , mkTargetFile "foo" (CExeName "bar2") "Bar"
+      ]
+      [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"]
+                    , mkexe "bar2" `withModules` ["Bar"] ]
+      ]
+
     -- non-exact case packages and components are ambiguous
     reportSubCase "ambiguous: non-exact-case pkg names"
     assertAmbiguous "Foo"
