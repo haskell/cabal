@@ -15,7 +15,7 @@ import Distribution.Types.ModuleRenaming
 import qualified Distribution.Compat.CharParsing as P
 import           Distribution.Parsec
 import           Distribution.Pretty
-import           Text.PrettyPrint           (text, (<+>))
+import           Text.PrettyPrint           (text)
 import qualified Text.PrettyPrint           as Disp
 
 -- ---------------------------------------------------------------------------

@@ -53,10 +53,6 @@ import Distribution.Simple.Utils
          ( die', notice, debug, writeFileAtomic )
 import Distribution.System
          ( Platform )
-import Distribution.Pretty
-         ( prettyShow )
-import Distribution.Verbosity
-         ( Verbosity )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Distribution.Version

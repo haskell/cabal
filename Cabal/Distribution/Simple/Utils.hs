@@ -188,7 +188,6 @@ import Distribution.Version
 import Distribution.Compat.Async
 import Distribution.Compat.CopyFile
 import Distribution.Compat.Internal.TempFile
-import Distribution.Compat.Exception
 import Distribution.Compat.FilePath as FilePath
 import Distribution.Compat.Stack
 import Distribution.Verbosity
@@ -221,8 +220,6 @@ import System.Directory
     , getModificationTime, createDirectory, removeDirectoryRecursive )
 import System.Environment
     ( getProgName )
-import System.Exit
-    ( exitWith, ExitCode(..) )
 import System.FilePath as FilePath
     ( normalise, (</>), (<.>)
     , getSearchPath, joinPath, takeDirectory, splitExtension
@@ -237,7 +234,6 @@ import qualified Control.Exception as Exception
 
 import Foreign.C.Error (Errno (..), ePIPE)
 import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
-import Control.Exception (IOException, evaluate, throwIO, fromException)
 import Numeric (showFFloat)
 import Distribution.Compat.Process  (createProcess, rawSystem, runInteractiveProcess)
 import System.Process

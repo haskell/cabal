@@ -32,6 +32,9 @@ module Distribution.Client.FetchUtils (
     downloadIndex,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
          ( downloadURI, isOldHackageURI, DownloadResult(..)
@@ -41,19 +44,14 @@ import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
          ( notice, info, debug, die' )
-import Distribution.Pretty
-         ( prettyShow )
 import Distribution.Verbosity
-         ( Verbosity, verboseUnmarkOutput )
+         ( verboseUnmarkOutput )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 import Distribution.Client.Utils
          ( ProgressPhase(..), progressMessage )
 
-import Data.Maybe
-import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad
 import Control.Exception
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
@@ -237,13 +235,15 @@ asyncFetchPackages :: Verbosity
 asyncFetchPackages verbosity repoCtxt pkglocs body = do
     --TODO: [nice to have] use parallel downloads?
 
-    asyncDownloadVars <- sequence [ do v <- newEmptyMVar
-                                       return (pkgloc, v)
-                                  | pkgloc <- pkglocs ]
+    asyncDownloadVars <- sequenceA
+        [ do v <- newEmptyMVar
+             return (pkgloc, v)
+        | pkgloc <- pkglocs
+        ]
 
     let fetchPackages :: IO ()
         fetchPackages =
-          forM_ asyncDownloadVars $ \(pkgloc, var) -> do
+          for_ asyncDownloadVars $ \(pkgloc, var) -> do
             -- Suppress marking here, because 'withAsync' means
             -- that we get nondeterministic interleaving
             result <- try $ fetchPackage (verboseUnmarkOutput verbosity)

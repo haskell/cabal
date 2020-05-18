@@ -31,7 +31,6 @@ import Control.Concurrent (forkIO)
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
-import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hGetContents, stdout, stderr )
 

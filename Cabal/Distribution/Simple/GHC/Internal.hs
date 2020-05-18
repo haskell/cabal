@@ -53,7 +53,6 @@ import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Backpack
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.PackageDescription
-import Distribution.Compat.Exception
 import Distribution.Lex
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program.GHC
@@ -669,9 +668,9 @@ renderGhcEnvironmentFile =
 renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
 renderGhcEnvironmentFileEntry entry = case entry of
     GhcEnvFileComment   comment   -> format comment
-      where format = intercalate "\n" . map ("--" <+>) . lines
-            pref <+> ""  = pref
-            pref <+> str = pref ++ " " ++ str
+      where format = intercalate "\n" . map ("--" <++>) . lines
+            pref <++> ""  = pref
+            pref <++> str = pref ++ " " ++ str
     GhcEnvFilePackageId pkgid     -> "package-id " ++ prettyShow pkgid
     GhcEnvFilePackageDb pkgdb     ->
       case pkgdb of

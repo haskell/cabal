@@ -87,7 +87,7 @@ import Distribution.Utils.Generic
          ( safeHead )
 import Distribution.Simple.Utils
          ( die', debug, info, infoNoWrap
-         , cabalVersion, tryFindPackageDesc, comparing
+         , cabalVersion, tryFindPackageDesc
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFileEx, rewriteFileLBS )
 import Distribution.Client.Utils
@@ -100,18 +100,14 @@ import Distribution.Client.Utils
 
 import Distribution.ReadE
 import Distribution.System ( Platform(..), buildPlatform )
-import Distribution.Pretty (prettyShow)
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
-import Distribution.Compat.Exception
-         ( catchIO )
 import Distribution.Compat.Stack
 
 import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
-import System.Exit         ( ExitCode(..), exitWith )
 import Distribution.Compat.Process (createProcess)
 import System.Process      ( StdStream(..), proc, waitForProcess
                            , ProcessHandle )

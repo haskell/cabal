@@ -6,6 +6,8 @@ module Distribution.Client.Compat.FilePerms (
   setFileHidden,
   ) where
 
+import Prelude (FilePath, IO, return, ($))
+
 #ifndef mingw32_HOST_OS
 import System.Posix.Types
          ( FileMode )

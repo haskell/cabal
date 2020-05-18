@@ -20,12 +20,8 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils
     ( info, die', wrapText, handleDoesNotExist )
 import Distribution.Verbosity
-    ( Verbosity, normal )
+    ( normal )
 
-import Control.Monad
-    ( mapM_ )
-import Control.Exception
-    ( throwIO )
 import System.Directory
     ( removeDirectoryRecursive, removeFile
     , doesDirectoryExist, getDirectoryContents )
@@ -111,5 +107,5 @@ cleanAction CleanFlags{..} extraArgs _ = do
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
-  (mapM_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
+  (traverse_ (removeFile . (dir </>)) . filter ((".ghc.environment" ==) . take 16))
   =<< getDirectoryContents dir

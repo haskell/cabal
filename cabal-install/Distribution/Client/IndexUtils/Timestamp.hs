@@ -27,8 +27,6 @@ import Prelude (read)
 
 import Data.Time             (UTCTime (..), fromGregorianValid, makeTimeOfDayValid, showGregorian, timeOfDayToTime, timeToTimeOfDay)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime, utcTimeToPOSIXSeconds)
-import Distribution.Parsec   (Parsec (..))
-import Distribution.Pretty   (Pretty (..))
 
 import qualified Codec.Archive.Tar.Entry         as Tar
 import qualified Distribution.Compat.CharParsing as P

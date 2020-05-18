@@ -24,6 +24,9 @@ module Distribution.Client.BuildReports.Storage (
     fromPlanningFailure,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport, newBuildReport)
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 
@@ -47,12 +50,11 @@ import Distribution.System
 import Distribution.Compiler
          ( CompilerId(..), CompilerInfo(..)  )
 import Distribution.Simple.Utils
-         ( comparing, equating )
+         ( equating )
 
-import Data.List
-         ( groupBy, sortBy )
-import Data.Maybe
-         ( mapMaybe )
+import Data.List.NonEmpty
+         ( groupBy )
+import qualified Data.List as L
 import System.FilePath
          ( (</>), takeDirectory )
 import System.Directory
@@ -71,8 +73,8 @@ storeAnonymous reports = sequence_
     separate :: [(BuildReport, Maybe Repo)]
              -> [(Repo, [BuildReport])]
     separate = map (\rs@((_,repo,_):_) -> (repo, [ r | (r,_,_) <- rs ]))
-             . map concat
-             . groupBy (equating (repoName . head))
+             . map (concatMap toList)
+             . L.groupBy (equating (repoName . head))
              . sortBy (comparing (repoName . head))
              . groupBy (equating repoName)
              . onlyRemote
@@ -115,7 +117,7 @@ storeLocal cinfo templates reports platform = sequence_
                     platform
 
     groupByFileName = map (\grp@((filename,_):_) -> (filename, map snd grp))
-                    . groupBy (equating  fst)
+                    . L.groupBy (equating  fst)
                     . sortBy  (comparing fst)
 
 -- ------------------------------------------------------------

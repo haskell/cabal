@@ -652,7 +652,7 @@ probeMonitorStateGlobRel kindfile kinddir root dirName
                  . filter (matchGlob glob)
                =<< liftIO (getDirectoryContents (root </> dirName))
 
-        children' <- mapM probeMergeResult $
+        children' <- traverse probeMergeResult $
                           mergeBy (\(path1,_) path2 -> compare path1 path2)
                                   children
                                   (sort matches)
@@ -717,14 +717,14 @@ probeMonitorStateGlobRel _ _ root dirName
         matches <- return . filter (matchGlob glob)
                =<< liftIO (getDirectoryContents (root </> dirName))
 
-        mapM_ probeMergeResult $
+        traverse_ probeMergeResult $
               mergeBy (\(path1,_) path2 -> compare path1 path2)
                       children
                       (sort matches)
         return mtime'
 
     -- Check that none of the children have changed
-    forM_ children $ \(file, status) ->
+    for_ children $ \(file, status) ->
       probeMonitorStateFileStatus root (dirName </> file) status
 
 
@@ -928,7 +928,7 @@ buildMonitorStateGlobRel mstartTime hashcache kindfile kinddir root
         subdirs <- filterM (\subdir -> doesDirectoryExist (absdir </> subdir))
                  $ filter (matchGlob glob) dirEntries
         subdirStates <-
-          forM (sort subdirs) $ \subdir -> do
+          for (sort subdirs) $ \subdir -> do
             fstate <- buildMonitorStateGlobRel
                         mstartTime hashcache kindfile kinddir root
                         (dir </> subdir) globPath'
@@ -938,7 +938,7 @@ buildMonitorStateGlobRel mstartTime hashcache kindfile kinddir root
       GlobFile glob -> do
         let files = filter (matchGlob glob) dirEntries
         filesStates <-
-          forM (sort files) $ \file -> do
+          for (sort files) $ \file -> do
             fstate <- buildMonitorStateFile
                         mstartTime hashcache kindfile kinddir root
                         (dir </> file)

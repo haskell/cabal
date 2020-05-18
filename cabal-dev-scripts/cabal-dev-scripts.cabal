@@ -80,3 +80,14 @@ executable gen-cabal-macros
     , syb               ^>=0.7.1
     , template-haskell
     , zinza             ^>=0.2
+
+executable analyse-imports
+  default-language: Haskell2010
+  main-is:          AnalyseImports.hs
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , containers
+    , regex-applicative
+    , haskell-lexer  ^>=1.1

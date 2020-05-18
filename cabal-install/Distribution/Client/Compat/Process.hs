@@ -16,6 +16,8 @@ module Distribution.Client.Compat.Process (
   readProcessWithExitCode
 ) where
 
+import Prelude (FilePath, IO, String, return, (||))
+
 import           Control.Exception (catch, throw)
 import           System.Exit       (ExitCode (ExitFailure))
 import           System.IO.Error   (isDoesNotExistError, isPermissionError)

@@ -2,7 +2,8 @@ module Distribution.Solver.Types.DependencyResolver
     ( DependencyResolver
     ) where
 
-import Data.Set (Set)
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
 
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )

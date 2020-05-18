@@ -5,10 +5,9 @@
 -- http://hackage.haskell.org/package/base-4.12.0.0/src/LICENSE
 module Distribution.Compat.ResponseFile (expandResponse) where
 
-import Prelude (mapM)
 import Distribution.Compat.Prelude
+import Prelude ()
 
-import System.Exit
 import System.FilePath
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error
@@ -57,7 +56,7 @@ expandResponse = go recursionLimit "."
 
     go :: Int -> FilePath -> [String] -> IO [String]
     go n dir
-      | n >= 0    = fmap concat . mapM (expand n dir)
+      | n >= 0    = fmap concat . traverse (expand n dir)
       | otherwise = const $ hPutStrLn stderr "Error: response file recursion limit exceeded." >> exitFailure
 
     expand :: Int -> FilePath -> String -> IO [String]

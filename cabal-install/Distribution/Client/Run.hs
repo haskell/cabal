@@ -34,8 +34,6 @@ import Distribution.Simple.Utils             (die', notice, warn,
                                               rawSystemExitWithEnv,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
-import Distribution.Verbosity                (Verbosity)
-import Distribution.Pretty                   (prettyShow)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 

@@ -22,9 +22,6 @@ import Data.List        (stripPrefix)
 import System.Directory
 import System.FilePath
 
-import Distribution.Parsec (CabalParsing, Parsec (..))
-import Distribution.Pretty (Pretty (..))
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
 

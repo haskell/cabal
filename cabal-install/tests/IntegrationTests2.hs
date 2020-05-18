@@ -51,7 +51,6 @@ import Distribution.Simple.Compiler
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
-import Distribution.Verbosity
 import Distribution.Text
 
 import qualified Data.Map as Map

@@ -40,7 +40,7 @@ import Distribution.Client.Types.SourceRepo (SourceRepoMaybe, SourceRepositoryPa
 import Distribution.Client.RebuildMonad
          ( Rebuild, monitorFiles, MonitorFilePath, monitorDirectoryExistence )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Simple.Program
          ( Program(programFindVersion)
          , ConfiguredProgram(programVersion)
@@ -51,14 +51,10 @@ import Distribution.Version
          ( mkVersion )
 import qualified Distribution.PackageDescription as PD
 
-import Control.Monad
-         ( mapM_ )
 import Control.Monad.Trans
          ( liftIO )
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
-import Data.Either
-         ( partitionEithers )
 import System.FilePath
          ( takeDirectory )
 import System.Directory
@@ -187,7 +183,7 @@ cloneSourceRepo
     -> IO ()
 cloneSourceRepo verbosity vcs
                 repo@SourceRepositoryPackage{ srpLocation = srcuri } destdir =
-    mapM_ (runProgramInvocation verbosity) invocations
+    traverse_ (runProgramInvocation verbosity) invocations
   where
     invocations = vcsCloneRepo vcs verbosity
                                (vcsProgram vcs) repo

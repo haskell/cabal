@@ -8,8 +8,6 @@ module Distribution.Types.Mixin (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Text.PrettyPrint ((<+>))
-
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.IncludeRenaming

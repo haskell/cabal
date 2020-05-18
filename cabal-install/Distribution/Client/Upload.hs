@@ -1,5 +1,8 @@
 module Distribution.Client.Upload (upload, uploadDoc, report) where
 
+import Distribution.Client.Compat.Prelude
+import qualified Prelude as Unsafe (tail, head, read)
+
 import Distribution.Client.Types.Credentials ( Username(..), Password(..) )
 import Distribution.Client.Types.Repo (RemoteRepo(..), maybeRepoRemote)
 import Distribution.Client.Types.RepoName (unRepoName)
@@ -9,8 +12,6 @@ import Distribution.Client.Setup
          ( IsCandidate(..), RepoContext(..) )
 
 import Distribution.Simple.Utils (notice, warn, info, die', toUTF8BS)
-import Distribution.Verbosity (Verbosity)
-import Distribution.Pretty (prettyShow)
 import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
@@ -22,13 +23,9 @@ import Network.HTTP (Header(..), HeaderName(..))
 
 import System.IO        (hFlush, stdout)
 import System.IO.Echo   (withoutInputEcho)
-import System.Exit      (exitFailure)
 import System.FilePath  ((</>), takeExtension, takeFileName, dropExtension)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
-import Control.Monad (forM_, when, foldM)
-import Data.Maybe (mapMaybe)
-import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
 
@@ -52,7 +49,7 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die' verbosity "Cannot upload. No remote repositories are configured."
-        rs -> remoteRepoTryUpgradeToHttps verbosity transport (last rs)
+        (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r:|rs))
     let targetRepoURI = remoteRepoURI targetRepo
         domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
         rootIfEmpty x = if null x then "/" else x
@@ -74,7 +71,7 @@ upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
     Username username <- maybe (promptUsername domain) return mUsername
     Password password <- maybe (promptPassword domain) return mPassword
     let auth = Just (username,password)
-    forM_ paths $ \path -> do
+    for_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
         Just pkgid -> handlePackage transport verbosity uploadURI
@@ -92,7 +89,7 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die' verbosity $ "Cannot upload. No remote repositories are configured."
-        rs -> remoteRepoTryUpgradeToHttps verbosity transport (last rs)
+        (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r:|rs))
     let targetRepoURI = remoteRepoURI targetRepo
         domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
         rootIfEmpty x = if null x then "/" else x
@@ -117,9 +114,9 @@ uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
         }
         (reverseSuffix, reversePkgid) = break (== '-')
                                         (reverse (takeFileName path))
-        pkgid = reverse $ tail reversePkgid
+        pkgid = reverse $ Unsafe.tail reversePkgid
     when (reverse reverseSuffix /= "docs.tar.gz"
-          || null reversePkgid || head reversePkgid /= '-') $
+          || null reversePkgid || Unsafe.head reversePkgid /= '-') $
       die' verbosity "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
     Username username <- maybe (promptUsername domain) return mUsername
     Password password <- maybe (promptPassword domain) return mPassword
@@ -172,7 +169,7 @@ report :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repoCtxt mUsername mPassword = do
   let repos       = repoContextRepos repoCtxt
       remoteRepos = mapMaybe maybeRepoRemote repos
-  forM_ remoteRepos $ \remoteRepo -> do
+  for_ remoteRepos $ \remoteRepo -> do
       let domain = maybe "Hackage" uriRegName $ uriAuthority (remoteRepoURI remoteRepo)
       Username username <- maybe (promptUsername domain) return mUsername
       Password password <- maybe (promptPassword domain) return mPassword
@@ -185,9 +182,9 @@ report verbosity repoCtxt mUsername mPassword = do
       srcExists <- doesDirectoryExist srcDir
       when srcExists $ do
         contents <- getDirectoryContents srcDir
-        forM_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile ->
+        for_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile ->
           do inp <- readFile (srcDir </> logFile)
-             let (reportStr, buildLog) = read inp :: (String,String) -- TODO: eradicateNoParse
+             let (reportStr, buildLog) = Unsafe.read inp :: (String,String) -- TODO: eradicateNoParse
              case parseBuildReport (toUTF8BS reportStr) of
                Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
                Right report' ->

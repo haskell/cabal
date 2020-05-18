@@ -3,15 +3,15 @@ module Distribution.Solver.Types.SolverPackage
     ( SolverPackage(..)
     ) where
 
-import Distribution.Compat.Binary (Binary)
-import Distribution.Utils.Structured (Structured)
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package ( Package(..) )
 import Distribution.PackageDescription ( FlagAssignment )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SourcePackage
-import GHC.Generics (Generic)
 
 -- | A 'SolverPackage' is a package specified by the dependency solver.
 -- It will get elaborated into a 'ConfiguredPackage' or even an

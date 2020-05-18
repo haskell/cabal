@@ -26,7 +26,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 import Distribution.Utils.Generic (safeHead)
 
-import Distribution.Pretty (prettyShow)
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
@@ -81,11 +80,7 @@ import Distribution.Simple.Utils as Utils
          , defaultPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Verbosity as Verbosity
-         ( Verbosity )
 
-import Data.Foldable
-         ( forM_ )
 import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
@@ -273,10 +268,10 @@ checkConfigExFlags :: Package pkg
                    -> ConfigExFlags
                    -> IO ()
 checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
-  forM_ (safeHead unknownConstraints) $ \h ->
+  for_ (safeHead unknownConstraints) $ \h ->
     warn verbosity $ "Constraint refers to an unknown package: "
           ++ showConstraint h
-  forM_ (safeHead unknownPreferences) $ \h ->
+  for_ (safeHead unknownPreferences) $ \h ->
     warn verbosity $ "Preference refers to an unknown package: "
           ++ prettyShow h
   where

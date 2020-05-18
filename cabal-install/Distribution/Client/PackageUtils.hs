@@ -14,6 +14,9 @@ module Distribution.Client.PackageUtils (
     externalBuildDepends,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package                      (packageName, packageVersion)
 import Distribution.PackageDescription
        (PackageDescription (..), enabledBuildDepends, libName)

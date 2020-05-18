@@ -54,7 +54,7 @@ module Distribution.Simple.Configure
   , platformDefines,
   ) where
 
-import qualified Prelude (tail)
+import qualified Prelude as Unsafe (tail)
 import Distribution.Compat.Prelude
 
 import Distribution.Compiler
@@ -112,8 +112,7 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
-    ( ErrorCall, Exception, evaluate, throw, throwIO, try )
-import Control.Monad ( forM, forM_ )
+    ( try )
 import Data.List.NonEmpty            ( nonEmpty )
 import Distribution.Utils.Structured ( structuredDecodeOrFailIO, structuredEncode )
 import Distribution.Compat.Directory ( listDirectory )
@@ -121,9 +120,7 @@ import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), partition, inits, stripPrefix, intersect, dropWhileEnd )
-import Data.Either
-    ( partitionEithers )
+    ( (\\), inits, stripPrefix, intersect, dropWhileEnd )
 import qualified Data.Map as Map
 import System.Directory
     ( canonicalizePath, createDirectoryIfMissing, doesFileExist
@@ -141,10 +138,9 @@ import Distribution.Pretty
 import Distribution.Parsec
     ( simpleParsec )
 import Text.PrettyPrint
-    ( Doc, (<+>), ($+$), char, comma, hsep, nest
+    ( Doc, ($+$), char, comma, hsep, nest
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
-import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 
@@ -206,21 +202,17 @@ getConfigStateFile filename = do
     contents <- BS.readFile filename
     let (header, body) = BLC8.span (/='\n') (BLC8.fromChunks [contents])
 
-    headerParseResult <- try $ evaluate $ parseHeader header
-    let (cabalId, compId) =
-            case headerParseResult of
-              Left (_ :: ErrorCall) -> throw ConfigStateFileBadHeader
-              Right x -> x
+    (cabalId, compId) <- parseHeader header
 
     let getStoredValue = do
           result <- structuredDecodeOrFailIO (BLC8.tail body)
           case result of
-            Left _ -> throw ConfigStateFileNoParse
+            Left _ -> throwIO ConfigStateFileNoParse
             Right x -> return x
         deferErrorIfBadVersion act
           | cabalId /= currentCabalId = do
               eResult <- try act
-              throw $ ConfigStateFileBadVersion cabalId compId eResult
+              throwIO $ ConfigStateFileBadVersion cabalId compId eResult
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
   where
@@ -274,16 +266,16 @@ currentCompilerId = PackageIdentifier (mkPackageName System.Info.compilerName)
 -- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
 parseHeader :: ByteString -- ^ The file contents.
-            -> (PackageIdentifier, PackageIdentifier)
+            -> IO (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId,
    "using", compId] ->
-      fromMaybe (throw ConfigStateFileBadHeader) $ do
+      maybe (throwIO ConfigStateFileBadHeader) return $ do
           _ <- simpleParsec (fromUTF8LBS pkgId) :: Maybe PackageIdentifier
           cabalId' <- simpleParsec (BLC8.unpack cabalId)
           compId' <- simpleParsec (BLC8.unpack compId)
           return (cabalId', compId')
-  _ -> throw ConfigStateFileNoHeader
+  _ -> throwIO ConfigStateFileNoHeader
 
 -- | Generate the @setup-config@ file header.
 showHeader :: PackageIdentifier -- ^ The processed package.
@@ -1758,14 +1750,14 @@ checkForeignDeps pkg lbi verbosity =
         checkDuplicateHeaders = do
           let relIncDirs = filter (not . isAbsolute) (collectField includeDirs)
               isHeader   = isSuffixOf ".h"
-          genHeaders <- forM relIncDirs $ \dir ->
+          genHeaders <- for relIncDirs $ \dir ->
             fmap (dir </>) . filter isHeader <$>
             listDirectory (buildDir lbi </> dir) `catchIO` (\_ -> return [])
-          srcHeaders <- forM relIncDirs $ \dir ->
+          srcHeaders <- for relIncDirs $ \dir ->
             fmap (dir </>) . filter isHeader <$>
             listDirectory (baseDir lbi </> dir) `catchIO` (\_ -> return [])
           let commonHeaders = concat genHeaders `intersect` concat srcHeaders
-          forM_ commonHeaders $ \hdr -> do
+          for_ commonHeaders $ \hdr -> do
             warn verbosity $ "Duplicate header found in "
                           ++ (buildDir lbi </> hdr)
                           ++ " and "
@@ -1777,7 +1769,7 @@ checkForeignDeps pkg lbi verbosity =
         findOffendingHdr =
             ifBuildsWith allHeaders ccArgs
                          (return Nothing)
-                         (go . Prelude.tail . inits $ allHeaders) -- inits always contains at least []
+                         (go . Unsafe.tail . inits $ allHeaders) -- inits always contains at least []
             where
               go [] = return Nothing       -- cannot happen
               go (hdrs:hdrsInits) =
@@ -2014,7 +2006,7 @@ checkRelocatable verbosity pkg lbi
       where
         doCheck pkgr ipkg
           | maybe False (== pkgr) (IPI.pkgRoot ipkg)
-          = forM_ (IPI.libraryDirs ipkg) $ \libdir -> do
+          = for_ (IPI.libraryDirs ipkg) $ \libdir -> do
               -- When @prefix@ is not under @pkgroot@,
               -- @shortRelativePath prefix pkgroot@ will return a path with
               -- @..@s and following check will fail without @canonicalizePath@.

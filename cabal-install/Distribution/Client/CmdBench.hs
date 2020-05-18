@@ -13,6 +13,9 @@ module Distribution.Client.CmdBench (
     selectComponentTarget
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
@@ -24,15 +27,10 @@ import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Pretty
-         ( prettyShow )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
-
-import Control.Monad (when)
-
 
 benchCommand :: CommandUI (NixStyleFlags ())
 benchCommand = CommandUI {

@@ -5,16 +5,15 @@ module Distribution.Solver.Types.SourcePackage
     , SourcePackage(..)
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package
          ( PackageId, Package(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..) )
 
 import Data.ByteString.Lazy (ByteString)
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
-import Data.Typeable
-import Distribution.Utils.Structured (Structured)
 
 -- | A package description along with the location of the package sources.
 --

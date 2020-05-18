@@ -30,20 +30,18 @@ import Distribution.PackageDescription
          ( PackageFlag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
-import Distribution.Pretty (pretty, prettyShow)
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
 import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Utils
-        ( equating, comparing, die', notice )
+        ( equating, die', notice )
 import Distribution.Simple.Setup (fromFlag, fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Version
          ( Version, mkVersion, versionNumbers, VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
-import Distribution.Verbosity (Verbosity)
 
 import qualified Distribution.SPDX as SPDX
 
@@ -67,21 +65,19 @@ import Distribution.Client.FetchUtils
 
 import Data.Bits ((.|.))
 import Data.List
-         ( maximumBy, partition )
+         ( maximumBy )
 import Data.List.NonEmpty (groupBy, nonEmpty)
 import qualified Data.List as L
 import Data.Maybe
          ( fromJust )
 import qualified Data.Map as Map
 import Data.Tree as Tree
-import Control.Monad
-         ( join )
 import Control.Exception
          ( assert )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( lineLength, ribbonsPerLine, Doc, renderStyle, char
-         , (<+>), nest, ($+$), text, vcat, style, parens, fsep)
+         , nest, ($+$), text, vcat, style, parens, fsep)
 import System.Directory
          ( doesDirectoryExist )
 

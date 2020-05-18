@@ -44,20 +44,17 @@ import Distribution.Simple.Flag
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
-         ( Verbosity, normal, lessVerbose )
+         ( normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
          , currentIndexTimestamp, indexBaseName )
-import Distribution.Pretty (Pretty (..), prettyShow)
-import Distribution.Parsec (Parsec (..), simpleParsec)
 
-import Data.Maybe (fromJust)
+import qualified Data.Maybe as Unsafe (fromJust)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
 
-import Control.Monad (mapM, mapM_)
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
@@ -136,7 +133,7 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
           Just r -> return r
           Nothing -> die' verbosity $
                      "'v2-update' unable to parse repo: \"" ++ s ++ "\""
-    updateRepoRequests <- mapM parseArg extraArgs
+    updateRepoRequests <- traverse parseArg extraArgs
 
     unless (null updateRepoRequests) $ do
       let remoteRepoNames = map repoName repos
@@ -154,7 +151,7 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
           -- repositories to HEAD.
           [] -> map (,IndexStateHead) repos
           updateRequests -> let repoMap = [(repoName r, r) | r <- repos]
-                                lookup' k = fromJust (lookup k repoMap)
+                                lookup' k = Unsafe.fromJust (lookup k repoMap)
                             in [ (lookup' name, state)
                                | (UpdateRequest name state) <- updateRequests ]
 
@@ -168,9 +165,9 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
               : map (("- " ++) . unRepoName . repoName . fst) reposToUpdate
 
     jobCtrl <- newParallelJobControl (length reposToUpdate)
-    mapM_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
+    traverse_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
       reposToUpdate
-    mapM_ (\_ -> collectJob jobCtrl) reposToUpdate
+    traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)

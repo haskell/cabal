@@ -22,6 +22,9 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , userPackageEnvironmentFile
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.Config      ( SavedConfig(..) 
                                        , configFieldDescriptions
                                        , haddockFlagsFields
@@ -44,23 +47,13 @@ import Distribution.Deprecated.ParseUtils         ( FieldDescr(..), ParseResult(
                                        , readFields
                                        , showPWarning 
                                        , syntaxError, warning )
-import Distribution.Verbosity          ( Verbosity )
-import Control.Monad                   ( foldM, unless )
-import Data.List                       ( partition, sortBy )
-import Data.Ord                        ( comparing )
-import Distribution.Compat.Exception   ( catchIO )
-import Distribution.Compat.Semigroup
 import System.Directory                ( doesFileExist )
 import System.FilePath                 ( (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
-import Distribution.Parsec             (Parsec (..))
-import Distribution.Pretty             (Pretty (..))
 
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) )
-import GHC.Generics ( Generic )
-
 
 --
 -- * Configuration saved in the package environment file

@@ -58,8 +58,6 @@ import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName
          , HasUnitId(..), PackageId, packageVersion, packageName )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import Distribution.Pretty
-         ( prettyShow )
 
 import Distribution.Client.Types
          ( UnresolvedPkgLoc )

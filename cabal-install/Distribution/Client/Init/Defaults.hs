@@ -19,6 +19,8 @@ module Distribution.Client.Init.Defaults (
   , myLibModule
   ) where
 
+import Prelude (String)
+
 import Distribution.ModuleName
   ( ModuleName )  -- And for the Text instance
 import qualified Distribution.ModuleName as ModuleName

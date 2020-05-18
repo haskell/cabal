@@ -19,7 +19,6 @@ module Distribution.Simple.Program.Hpc
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Control.Monad (mapM)
 import System.Directory (makeRelativeToCurrentDirectory)
 
 import Distribution.ModuleName
@@ -61,7 +60,7 @@ markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
             return passedDirs
 
     -- Prior to GHC 8.0, hpc assumes all .mix paths are relative.
-    hpcDirs'' <- mapM makeRelativeToCurrentDirectory hpcDirs'
+    hpcDirs'' <- traverse makeRelativeToCurrentDirectory hpcDirs'
 
     runProgramInvocation verbosity
       (markupInvocation hpc tixFile hpcDirs'' destDir excluded)

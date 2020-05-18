@@ -7,6 +7,9 @@ module Distribution.Client.CmdFreeze (
     freezeAction,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectOrchestration
@@ -44,8 +47,6 @@ import Distribution.Verbosity
          ( normal )
 
 import qualified Data.Map as Map
-import Data.Map (Map)
-import Control.Monad (unless)
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )

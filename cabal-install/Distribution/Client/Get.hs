@@ -24,7 +24,6 @@ module Distribution.Client.Get (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (get)
-import Data.Ord (comparing)
 import Distribution.Compat.Directory
          ( listDirectory )
 import Distribution.Package
@@ -33,9 +32,6 @@ import Distribution.Simple.Setup
          ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( notice, die', info, writeFileAtomic )
-import Distribution.Verbosity
-         ( Verbosity )
-import Distribution.Pretty (prettyShow)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Program
          ( programName )
@@ -54,15 +50,9 @@ import Distribution.Client.IndexUtils
         ( getSourcePackagesAtIndexState, TotalIndexState, ActiveRepos )
 import Distribution.Solver.Types.SourcePackage
 
-import Control.Exception
-         ( Exception(..), catch, throwIO )
-import Control.Monad
-         ( mapM, forM_, mapM_ )
 import qualified Data.Map as Map
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
-import System.Exit
-         ( ExitCode(..) )
 import System.FilePath
          ( (</>), (<.>), addTrailingPathSeparator )
 
@@ -83,7 +73,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
                         _      -> True
 
   unless useSourceRepo $
-    mapM_ (checkTarget verbosity) userTargets
+    traverse_ (checkTarget verbosity) userTargets
 
   let idxState :: Maybe TotalIndexState
       idxState = flagToMaybe $ getIndexState getFlags
@@ -128,7 +118,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
 
     unpack :: [UnresolvedSourcePackage] -> IO ()
     unpack pkgs = do
-      forM_ pkgs $ \pkg -> do
+      for_ pkgs $ \pkg -> do
         location <- fetchPackage verbosity repoCtxt (packageSource pkg)
         let pkgid = packageId pkg
             descOverride | usePristine = Nothing
@@ -263,7 +253,7 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
                             preferredRepoKind pkgrepos = do
 
     -- Do a bunch of checks and collect the required info
-    pkgrepos' <- mapM preCloneChecks pkgrepos
+    pkgrepos' <- traverse preCloneChecks pkgrepos
 
     -- Configure the VCS drivers for all the repository types we may need
     vcss <- configureVCSs verbosity $

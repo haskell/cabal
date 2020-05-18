@@ -83,7 +83,7 @@ import Distribution.Package
          , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
-import Distribution.Pretty (Pretty (..), prettyShow, defaultStyle)
+import Distribution.Pretty (defaultStyle)
 import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)

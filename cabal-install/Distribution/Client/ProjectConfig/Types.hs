@@ -64,8 +64,6 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
          ( NubList )
-import Distribution.Verbosity
-         ( Verbosity )
 
 import qualified Data.Map as Map
 

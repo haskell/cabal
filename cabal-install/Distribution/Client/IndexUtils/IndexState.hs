@@ -21,8 +21,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.IndexUtils.Timestamp (Timestamp)
 import Distribution.Client.Types.RepoName       (RepoName (..))
 
-import Distribution.Parsec (Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty (Pretty (..))
+import Distribution.Parsec (parsecLeadingCommaNonEmpty)
 
 import qualified Data.Map.Strict                 as Map
 import qualified Distribution.Compat.CharParsing as P

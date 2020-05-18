@@ -3,13 +3,13 @@ module UnitTests.Distribution.Client.JobControl (tests) where
 
 import Distribution.Client.JobControl
 
-import Data.List
-import Data.Maybe
-import Data.IORef
-import Control.Monad
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
+import Data.IORef (newIORef, atomicModifyIORef)
+import Control.Monad (replicateM_, replicateM)
 import Control.Concurrent (threadDelay)
-import Control.Exception  (Exception, try, throwIO)
-import Data.Typeable      (Typeable)
+import Control.Exception  (try)
 import qualified Data.Set as Set
 
 import Test.Tasty
@@ -75,13 +75,13 @@ prop_interleaved_parallel (Positive (Small maxJobLimit)) xs =
 
 prop_submit :: JobControl IO Int -> [Int] -> IO Bool
 prop_submit jobCtl xs = do
-    mapM_ (\x -> spawnJob jobCtl (return x)) xs
-    xs' <- mapM (\_ -> collectJob jobCtl) xs
+    traverse_ (\x -> spawnJob jobCtl (return x)) xs
+    xs' <- traverse (\_ -> collectJob jobCtl) xs
     return (sort xs == sort xs')
 
 prop_remaining :: JobControl IO Int -> [Int] -> IO Bool
 prop_remaining jobCtl xs = do
-    mapM_ (\x -> spawnJob jobCtl (return x)) xs
+    traverse_ (\x -> spawnJob jobCtl (return x)) xs
     xs' <- collectRemainingJobs jobCtl
     return (sort xs == sort xs')
 
@@ -97,7 +97,7 @@ collectRemainingJobs jobCtl = go []
 
 prop_submit_interleaved :: JobControl IO (Maybe Int) -> [Int] -> IO Bool
 prop_submit_interleaved jobCtl xs = do
-    xs' <- sequence
+    xs' <- sequenceA
       [ spawn >> collect
       | let spawns   = map (\x -> spawnJob jobCtl (return (Just x))) xs
                     ++ repeat (return ())
@@ -148,8 +148,8 @@ prop_cancel_serial :: [Int] -> [Int] -> Property
 prop_cancel_serial xs ys =
   ioProperty $ do
     jobCtl <- newSerialJobControl
-    mapM_ (\x -> spawnJob jobCtl (return x)) (xs++ys)
-    xs' <- mapM (\_ -> collectJob jobCtl) xs
+    traverse_ (\x -> spawnJob jobCtl (return x)) (xs++ys)
+    xs' <- traverse (\_ -> collectJob jobCtl) xs
     cancelJobs jobCtl
     ys' <- collectRemainingJobs jobCtl
     return (sort xs == sort xs' && null ys')
@@ -158,8 +158,8 @@ prop_cancel_parallel :: Positive (Small Int) -> [Int] -> [Int] -> Property
 prop_cancel_parallel (Positive (Small maxJobLimit)) xs ys = do
   ioProperty $ do
     jobCtl <- newParallelJobControl maxJobLimit
-    mapM_ (\x -> spawnJob jobCtl (threadDelay 100  >> return x)) (xs++ys)
-    xs' <- mapM (\_ -> collectJob jobCtl) xs
+    traverse_ (\x -> spawnJob jobCtl (threadDelay 100  >> return x)) (xs++ys)
+    xs' <- traverse (\_ -> collectJob jobCtl) xs
     cancelJobs jobCtl
     ys' <- collectRemainingJobs jobCtl
     return $ Set.fromList (xs'++ys') `Set.isSubsetOf` Set.fromList (xs++ys)
@@ -183,7 +183,7 @@ prop_exception_parallel (Positive (Small maxJobLimit)) xs =
 
 prop_exception :: JobControl IO Int -> [Either Int Int] -> IO Bool
 prop_exception jobCtl xs = do
-    mapM_ (\x -> spawnJob jobCtl (either (throwIO . TestException) return x)) xs
+    traverse_ (\x -> spawnJob jobCtl (either (throwIO . TestException) return x)) xs
     xs' <- replicateM (length xs) $ do
              mx <- try (collectJob jobCtl)
              return $ case mx of

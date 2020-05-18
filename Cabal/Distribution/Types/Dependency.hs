@@ -24,7 +24,6 @@ import Distribution.Pretty
 import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
-import Text.PrettyPrint                       ((<+>))
 
 import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Text.PrettyPrint                as PP

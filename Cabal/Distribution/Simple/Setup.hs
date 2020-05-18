@@ -108,8 +108,6 @@ import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..), Option' (..))
 
-import Data.Function (on)
-
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"

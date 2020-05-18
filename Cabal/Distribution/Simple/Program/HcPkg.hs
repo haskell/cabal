@@ -47,7 +47,6 @@ module Distribution.Simple.Program.HcPkg (
 import Distribution.Compat.Prelude hiding (init)
 import Prelude ()
 
-import Distribution.Compat.Exception
 import Distribution.InstalledPackageInfo
 import Distribution.Parsec
 import Distribution.Pretty

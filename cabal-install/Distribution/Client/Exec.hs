@@ -21,7 +21,6 @@ import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) 
 import Distribution.Simple.Utils       (die')
 
 import Distribution.System    (Platform(..))
-import Distribution.Verbosity (Verbosity)
 
 -- | Execute the given command in the package's environment.
 --

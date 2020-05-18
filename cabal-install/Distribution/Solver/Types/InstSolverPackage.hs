@@ -3,8 +3,9 @@ module Distribution.Solver.Types.InstSolverPackage
     ( InstSolverPackage(..)
     ) where
 
-import Distribution.Compat.Binary (Binary(..))
-import Distribution.Utils.Structured (Structured)
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package ( Package(..), HasMungedPackageId(..), HasUnitId(..) )
 import Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import Distribution.Solver.Types.SolverId
@@ -12,7 +13,6 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.PackageId
 import Distribution.Types.MungedPackageName
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import GHC.Generics (Generic)
 
 -- | An 'InstSolverPackage' is a pre-existing installed package
 -- specified by the dependency solver.

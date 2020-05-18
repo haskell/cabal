@@ -12,7 +12,13 @@
 --
 module Distribution.Client.Compat.Prelude
   ( module Distribution.Compat.Prelude.Internal
+  , module X
   ) where
 
-import Distribution.Compat.Prelude.Internal
 import Distribution.Client.Compat.Orphans ()
+import Distribution.Compat.Prelude.Internal
+import Prelude ()
+
+import Distribution.Parsec    as X (CabalParsing, Parsec (..), eitherParsec, explicitEitherParsec, simpleParsec)
+import Distribution.Pretty    as X (Pretty (..), prettyShow)
+import Distribution.Verbosity as X (Verbosity)

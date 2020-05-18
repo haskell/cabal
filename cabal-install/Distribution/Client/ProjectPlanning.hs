@@ -153,24 +153,18 @@ import           Distribution.Types.ComponentInclude
 
 import           Distribution.Simple.Utils
 import           Distribution.Version
-import           Distribution.Verbosity
-import           Distribution.Pretty (pretty, prettyShow)
 
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
-import           Text.PrettyPrint hiding ((<>))
+import           Text.PrettyPrint (text, hang, quotes, colon, vcat, ($$), fsep, punctuate, comma)
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import           Control.Monad
-import qualified Data.Traversable as T
 import           Control.Monad.State as State
-import           Control.Exception
+import           Control.Exception (assert)
 import           Data.List (groupBy)
 import qualified Data.List.NonEmpty as NE
-import           Data.Either
-import           Data.Function
 import           System.FilePath
 
 ------------------------------------------------------------------------------
@@ -774,7 +768,7 @@ getSourcePackages verbosity withRepoCtx idxState activeRepos = do
           sourcePkgDbWithTIS <- IndexUtils.getSourcePackagesAtIndexState verbosity repoctx idxState activeRepos
           return (sourcePkgDbWithTIS, repoContextRepos repoctx)
 
-    mapM_ needIfExists
+    traverse_ needIfExists
         . IndexUtils.getSourcePackagesMonitorFiles
         $ repos
     return sourcePkgDbWithTIS
@@ -785,7 +779,7 @@ getPkgConfigDb verbosity progdb = do
     dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
     -- Just monitor the dirs so we'll notice new .pc files.
     -- Alternatively we could monitor all the .pc files too.
-    mapM_ monitorDirectoryStatus dirs
+    traverse_ monitorDirectoryStatus dirs
     liftIO $ readPkgConfigDb verbosity progdb
 
 
@@ -2162,7 +2156,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
       = case planpkg of
           InstallPlan.Configured (elab0@ElaboratedConfiguredPackage
                                     { elabPkgOrComp = ElabComponent comp }) -> do
-            deps <- mapM (substUnitId insts)
+            deps <- traverse (substUnitId insts)
                          (compLinkedLibDependencies comp)
             let getDep (Module dep_uid _) = [dep_uid]
                 elab1 = elab0 {
@@ -2198,7 +2192,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     substSubst :: Map ModuleName Module
                -> Map ModuleName OpenModule
                -> InstM (Map ModuleName Module)
-    substSubst subst insts = T.mapM (substModule subst) insts
+    substSubst subst insts = traverse (substModule subst) insts
 
     substModule :: Map ModuleName Module -> OpenModule -> InstM Module
     substModule subst (OpenModuleVar mod_name)
@@ -2235,7 +2229,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
            -- we initially created the ElaboratedPlanPackage because
            -- we have no way of actually refiying the UnitId into a
            -- DefiniteUnitId (that's what substUnitId does!)
-           new_deps <- forM (compLinkedLibDependencies elab_comp) $ \uid ->
+           new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
              if Set.null (openUnitIdFreeHoles uid)
                 then fmap DefiniteUnitId (substUnitId Map.empty uid)
                 else return uid
@@ -2257,7 +2251,7 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
 
     ready_map = execState work Map.empty
 
-    work = forM_ pkgs $ \pkg ->
+    work = for_ pkgs $ \pkg ->
             case pkg of
                 InstallPlan.Configured elab
                     | not (Map.null (elabLinkedInstantiatedWith elab))

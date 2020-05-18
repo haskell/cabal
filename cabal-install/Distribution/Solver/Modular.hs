@@ -17,7 +17,6 @@ import Distribution.Solver.Compat.Prelude
 
 import qualified Data.Map as M
 import Data.Set (isSubsetOf)
-import Data.Ord
 import Distribution.Compat.Graph
          ( IsNode(..) )
 import Distribution.Compiler

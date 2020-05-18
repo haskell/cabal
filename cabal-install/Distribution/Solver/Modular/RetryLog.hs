@@ -11,6 +11,9 @@ module Distribution.Solver.Modular.RetryLog
     , tryWith
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Solver.Modular.Message
 import Distribution.Solver.Types.Progress
 

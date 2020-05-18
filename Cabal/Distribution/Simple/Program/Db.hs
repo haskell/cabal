@@ -73,8 +73,7 @@ import Distribution.Utils.Structured       (Structure (..), Structured (..))
 import Distribution.Verbosity
 import Distribution.Version
 
-import Control.Monad (join)
-import Data.Tuple    (swap)
+import Data.Tuple (swap)
 
 import qualified Data.Map as Map
 

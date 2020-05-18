@@ -32,8 +32,6 @@ import Language.Haskell.Extension ( Language(..), Extension )
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.CharParsing as P
 import qualified Data.Map as Map
-import Distribution.Pretty (Pretty (..))
-import Distribution.Parsec (Parsec (..))
 
 -- | InitFlags is really just a simple type to represent certain
 --   portions of a .cabal file.  Rather than have a flag for EVERY

@@ -22,7 +22,9 @@ module Distribution.Client.DistDirLayout (
     defaultCabalDirLayout
 ) where
 
-import Data.Maybe (fromMaybe)
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import System.FilePath
 
 import Distribution.Package
@@ -30,8 +32,6 @@ import Distribution.Package
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
-import Distribution.Pretty
-         ( prettyShow )
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
 import Distribution.System

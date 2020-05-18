@@ -120,27 +120,17 @@ import Distribution.Types.UnitId
 import Distribution.Types.UnqualComponentName
          ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Verbosity
-         ( Verbosity, normal, lessVerbose )
+         ( normal, lessVerbose )
 import Distribution.Simple.Utils
          ( wrapText, die', notice, warn
          , withTempDirectory, createDirectoryIfMissingVerbose
          , ordNub )
 import Distribution.Utils.Generic
          ( safeHead, writeFileAtomic )
-import Distribution.Parsec
-         ( simpleParsec )
-import Distribution.Pretty
-         ( prettyShow )
 
-import Control.Exception
-         ( catch )
-import Control.Monad
-         ( mapM, forM_ )
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Either
-         ( partitionEithers )
 import Data.Ord
-         ( comparing, Down(..) )
+         ( Down(..) )
 import qualified Data.Map as Map
 import Distribution.Utils.NubList
          ( fromNubList )
@@ -263,7 +253,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
 
     withoutProject :: ProjectConfig -> IO ([PackageSpecifier pkg], [URI], [TargetSelector], ProjectConfig)
     withoutProject globalConfig = do
-      tss <- mapM (parseWithoutProjectTargetSelector verbosity) targetStrings'
+      tss <- traverse (parseWithoutProjectTargetSelector verbosity) targetStrings'
 
       cabalDir <- getCabalDir
       let
@@ -478,7 +468,7 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity pkgDb targetSelectors loca
 
   createDirectoryIfMissing True (distSdistDirectory localDistDirLayout)
 
-  unless (Map.null targets) $ forM_ (localPackages localBaseCtx) $ \lpkg -> case lpkg of
+  unless (Map.null targets) $ for_ (localPackages localBaseCtx) $ \lpkg -> case lpkg of
       SpecificSourcePackage pkg -> packageToSdist verbosity
         (distProjectRootDirectory localDistDirLayout) TarGzArchive
         (distSdistFile localDistDirLayout (packageId pkg)) pkg

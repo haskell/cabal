@@ -13,7 +13,6 @@ import Distribution.Solver.Compat.Prelude hiding (get,put)
 import Control.Exception (assert)
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Function (on)
 import Data.Map ((!))
 import qualified Data.Map         as M
 import qualified Data.Set         as S

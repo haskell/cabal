@@ -28,14 +28,6 @@ import Network.Browser
          ( browse, setOutHandler, setErrHandler, setProxy
          , setAuthorityGen, request, setAllowBasicAuth, setUserAgent )
 import qualified Control.Exception as Exception
-import Control.Exception
-         ( evaluate )
-import Control.DeepSeq
-         ( force )
-import Control.Monad
-         ( guard )
-import Distribution.Verbosity (Verbosity)
-import Distribution.Pretty (prettyShow)
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile, IOData (..) )
@@ -55,7 +47,6 @@ import System.IO
          ( withFile, IOMode(ReadMode), hGetContents, hClose )
 import System.IO.Error
          ( isDoesNotExistError )
-import Distribution.Parsec (explicitEitherParsec)
 import Distribution.Simple.Program
          ( Program, simpleProgram, ConfiguredProgram, programPath
          , ProgramInvocation(..), programInvocation
@@ -70,7 +61,6 @@ import Distribution.Simple.Program.Run
          ( getProgramInvocationOutputAndErrors )
 import Numeric (showHex)
 import System.Random (randomRIO)
-import System.Exit (ExitCode(..))
 
 import qualified Crypto.Hash.SHA256         as SHA256
 import qualified Data.ByteString.Base16     as Base16

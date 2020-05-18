@@ -51,7 +51,7 @@ import Distribution.PackageDescription.FieldGrammar
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 
-import Text.PrettyPrint (Doc, char, hsep, parens, text, (<+>))
+import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 

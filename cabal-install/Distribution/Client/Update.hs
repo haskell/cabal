@@ -15,6 +15,9 @@ module Distribution.Client.Update
     ( update
     ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Client.Compat.Directory
@@ -34,9 +37,7 @@ import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
          ( RepoContext(..), UpdateFlags(..) )
-import Distribution.Pretty
-         ( prettyShow )
-import Distribution.Verbosity
+import Distribution.Verbosity (lessVerbose)
 
 import Distribution.Simple.Utils
          ( writeFileAtomic, warn, notice, noticeNoWrap )
@@ -44,9 +45,7 @@ import Distribution.Simple.Utils
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
-import Data.Maybe (mapMaybe)
 import Data.Time (getCurrentTime)
-import Control.Monad
 
 import qualified Hackage.Security.Client as Sec
 
@@ -67,8 +66,8 @@ update verbosity updateFlags repoCtxt = do
             $ "Downloading the latest package lists from: "
             : map (("- " ++) . unRepoName . remoteRepoName) remoteRepos
   jobCtrl <- newParallelJobControl (length repos)
-  mapM_ (spawnJob jobCtrl . updateRepo verbosity updateFlags repoCtxt) repos
-  mapM_ (\_ -> collectJob jobCtrl) repos
+  traverse_ (spawnJob jobCtrl . updateRepo verbosity updateFlags repoCtxt) repos
+  traverse_ (\_ -> collectJob jobCtrl) repos
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> Repo -> IO ()
 updateRepo verbosity updateFlags repoCtxt repo = do

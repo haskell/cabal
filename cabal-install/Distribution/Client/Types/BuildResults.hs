@@ -11,8 +11,6 @@ module Distribution.Client.Types.BuildResults (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Control.Exception (Exception, SomeException)
-
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Types.PackageId            (PackageId)
 import Distribution.Types.UnitId               (UnitId)

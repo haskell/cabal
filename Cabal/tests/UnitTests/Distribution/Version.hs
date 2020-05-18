@@ -16,7 +16,7 @@ import Distribution.Utils.Generic
 import Data.Typeable (typeOf)
 import Math.NumberTheory.Logarithms (intLog2)
 import Text.PrettyPrint as Disp (text, render, hcat
-                                ,punctuate, int, char, (<+>))
+                                ,punctuate, int, char)
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Laws as Laws
@@ -24,7 +24,6 @@ import qualified Test.Laws as Laws
 import Test.QuickCheck.Instances.Cabal ()
 
 import Data.Maybe (fromJust)
-import Data.Function (on)
 
 versionTests :: [TestTree]
 versionTests =

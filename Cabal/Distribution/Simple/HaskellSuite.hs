@@ -6,9 +6,6 @@ module Distribution.Simple.HaskellSuite where
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Data.Either (partitionEithers)
-
-import qualified Data.Map as Map (empty)
 import qualified Data.List.NonEmpty as NE
 
 import Distribution.Simple.Program
@@ -25,7 +22,6 @@ import Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.System (Platform)
-import Distribution.Compat.Exception
 import Language.Haskell.Extension
 import Distribution.Simple.Program.Builtin
 
@@ -83,7 +79,7 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
           compilerCompat         = [],
           compilerLanguages      = languages,
           compilerExtensions     = extensions,
-          compilerProperties     = Map.empty
+          compilerProperties     = mempty
         }
 
       return (comp, confdCompiler, progdb2)

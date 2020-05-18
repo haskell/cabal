@@ -22,11 +22,8 @@ import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Solver.Types.OptionalStanza
          ( OptionalStanza(..) )
-import Distribution.Pretty
-         ( prettyShow )
 
 import qualified Data.List.NonEmpty as NE
-import Data.Function (on)
 
 
 -----------------------

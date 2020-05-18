@@ -5,8 +5,6 @@ import Distribution.Client.Compat.Prelude
 import Data.Monoid ( Any(..) )
 import System.Directory ( doesFileExist )
 
-import Distribution.Verbosity
-
 import Distribution.Simple.Configure ( localBuildInfoFile )
 import Distribution.Simple.Setup ( Flag, flagToMaybe, toFlag )
 import Distribution.Simple.Utils
@@ -126,11 +124,11 @@ reconfigure
             <> checkDist
             <> checkOutdated
             <> check
-      (Any force, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
+      (Any frc, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
 
       let config' = updateInstallDirs (configUserInstall configFlags) config
 
-      when force $ configureAction flags extraArgs globalFlags
+      when frc $ configureAction flags extraArgs globalFlags
       return config'
 
   where

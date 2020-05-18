@@ -64,13 +64,11 @@ import Distribution.Pretty
 import Distribution.Types.ForeignLib
 import Distribution.Verbosity
 
-import Data.List (partition)
 import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
 import System.FilePath ((</>), (<.>), dropExtension, isRelative)
-import Control.Monad
 
 -- |Create a source distribution.
 sdist :: PackageDescription     -- ^ information from the tarball
@@ -189,7 +187,7 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
   , fmap concat
     . withAllFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
        biSrcs   <- allSourcesBuildInfo verbosity rip cwd flibBi pps []
-       defFiles <- mapM (findModDefFile verbosity cwd flibBi pps)
+       defFiles <- traverse (findModDefFile verbosity cwd flibBi pps)
          (foreignLibModDefFile flib)
        return (defFiles ++ biSrcs)
 

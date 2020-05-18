@@ -41,8 +41,6 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.FieldGrammar
-import Distribution.Pretty (Pretty (..), prettyShow)
-import Distribution.Parsec (Parsec (..), simpleParsec)
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.PackageDescription

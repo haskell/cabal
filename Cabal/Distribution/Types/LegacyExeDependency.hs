@@ -12,7 +12,7 @@ import Distribution.Pretty
 import Distribution.Version (VersionRange, anyVersion)
 
 import qualified Distribution.Compat.CharParsing as P
-import           Text.PrettyPrint                (text, (<+>))
+import qualified Text.PrettyPrint                as Disp
 
 -- | Describes a legacy `build-tools`-style dependency on an executable
 --
@@ -31,8 +31,8 @@ instance Structured LegacyExeDependency
 instance NFData LegacyExeDependency where rnf = genericRnf
 
 instance Pretty LegacyExeDependency where
-  pretty (LegacyExeDependency name ver) =
-    text name <+> pretty ver
+    pretty (LegacyExeDependency name ver) =
+        Disp.text name <+> pretty ver
 
 instance Parsec LegacyExeDependency where
     parsec = do

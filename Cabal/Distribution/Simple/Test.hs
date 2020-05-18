@@ -40,7 +40,6 @@ import Distribution.Pretty
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )
-import System.Exit ( exitFailure, exitSuccess )
 import System.FilePath ( (</>) )
 
 -- |Perform the \"@.\/setup test@\" action.

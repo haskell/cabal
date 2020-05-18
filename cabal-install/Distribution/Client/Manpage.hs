@@ -28,7 +28,6 @@ import Distribution.Client.Setup        (globalCommand)
 import Distribution.Compat.Process      (createProcess)
 import Distribution.Simple.Command
 import Distribution.Simple.Flag         (fromFlagOrDefault)
-import System.Exit                      (exitWith)
 import System.IO                        (hClose, hPutStr)
 
 import qualified System.Process as Process

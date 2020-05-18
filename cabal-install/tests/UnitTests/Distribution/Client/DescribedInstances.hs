@@ -5,7 +5,6 @@ module UnitTests.Distribution.Client.DescribedInstances where
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Described
-import Distribution.Pretty    (prettyShow)
 import Data.List ((\\))
 
 import Distribution.Types.Dependency   (Dependency)

@@ -34,13 +34,9 @@ import Distribution.Client.Compat.Prelude hiding (empty)
 import System.FilePath
   ( (</>), (<.>), takeExtension )
 
-import Distribution.Pretty (Pretty, pretty, prettyShow)
 import Distribution.Types.Dependency
 import Distribution.Types.VersionRange
 
-
-import Control.Monad
-  ( forM_ )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 import System.Directory
@@ -184,7 +180,7 @@ writeFileSafe flags fileName content = do
 -- | Create directories, if they were given, and don't already exist.
 createDirectories :: Maybe [String] -> IO ()
 createDirectories mdirs = case mdirs of
-  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
+  Just dirs -> for_ dirs (createDirectoryIfMissing True)
   Nothing   -> return ()
 
 -- | Create MyLib.hs file, if its the only module in the liste.

@@ -36,7 +36,6 @@ module Distribution.PackageDescription.Check (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Monad                                 (mapM)
 import Data.List                                     (group)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
@@ -1747,7 +1746,8 @@ data CheckPackageContentOps m = CheckPackageContentOps {
 -- The point of this extra generality is to allow doing checks in some virtual
 -- file system, for example a tarball in memory.
 --
-checkPackageContent :: Monad m => CheckPackageContentOps m
+checkPackageContent :: (Monad m, Applicative m)
+                    => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
@@ -1838,11 +1838,12 @@ findPackageDesc ops
                   ++ "Please use only one of: "
                   ++ intercalate ", " l
 
-checkLicensesExist :: Monad m => CheckPackageContentOps m
+checkLicensesExist :: (Monad m, Applicative m)
+                   => CheckPackageContentOps m
                    -> PackageDescription
                    -> m [PackageCheck]
 checkLicensesExist ops pkg = do
-    exists <- mapM (doesFileExist ops) (licenseFiles pkg)
+    exists <- traverse (doesFileExist ops) (licenseFiles pkg)
     return
       [ PackageBuildWarning $
            "The '" ++ fieldname ++ "' field refers to the file "
@@ -1895,11 +1896,12 @@ checkLocalPathsExist ops pkg = do
            }
          | (dir, kind) <- missing ]
 
-checkMissingVcsInfo :: Monad m => CheckPackageContentOps m
+checkMissingVcsInfo :: (Monad m, Applicative m)
+                    => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
-    vcsInUse <- liftM or $ mapM (doesDirectoryExist ops) repoDirnames
+    vcsInUse <- liftM or $ traverse (doesDirectoryExist ops) repoDirnames
     if vcsInUse
       then return [ PackageDistSuspicious message ]
       else return []

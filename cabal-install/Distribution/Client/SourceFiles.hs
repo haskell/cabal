@@ -37,7 +37,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import System.FilePath
-import Control.Monad
 import qualified Data.Set as Set
 
 needElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Rebuild ()
@@ -48,7 +47,7 @@ needElaboratedConfiguredPackage elab =
 
 needElaboratedPackage :: ElaboratedConfiguredPackage -> ElaboratedPackage -> Rebuild ()
 needElaboratedPackage elab epkg =
-    mapM_ (needComponent pkg_descr) (enabledComponents pkg_descr enabled)
+    traverse_ (needComponent pkg_descr) (enabledComponents pkg_descr enabled)
   where
     pkg_descr = elabPkgDescription elab
     enabled_stanzas = pkgStanzasEnabled epkg
@@ -89,7 +88,7 @@ needLibrary pkg_descr (Library { exposedModules = modules
 needForeignLib :: PackageDescription -> ForeignLib -> Rebuild ()
 needForeignLib pkg_descr (ForeignLib { foreignLibModDefFile = fs
                                      , foreignLibBuildInfo = bi })
-  = do mapM_ needIfExists fs
+  = do traverse_ needIfExists fs
        needBuildInfo pkg_descr bi []
 
 needExecutable :: PackageDescription -> Executable -> Rebuild ()
@@ -145,21 +144,21 @@ needBuildInfo pkg_descr bi modules = do
     -- A.hs-boot; need to track both.
     findNeededModules ["hs", "lhs", "hsig", "lhsig"]
     findNeededModules ["hs-boot", "lhs-boot"]
-    mapM_ needIfExists (cSources bi ++ jsSources bi)
+    traverse_ needIfExists (cSources bi ++ jsSources bi)
     -- A MASSIVE HACK to (1) make sure we rebuild when header
     -- files change, but (2) not have to rebuild when anything
     -- in extra-src-files changes (most of these won't affect
     -- compilation).  It would be even better if we knew on a
     -- per-component basis which headers would be used but that
     -- seems to be too difficult.
-    mapM_ needIfExists (filter ((==".h").takeExtension) (extraSrcFiles pkg_descr))
-    forM_ (installIncludes bi) $ \f ->
+    traverse_ needIfExists (filter ((==".h").takeExtension) (extraSrcFiles pkg_descr))
+    for_ (installIncludes bi) $ \f ->
         findFileMonitored ("." : includeDirs bi) f
             >>= maybe (return ()) need
   where
-    findNeededModules exts =
-        mapM_ (findNeededModule exts)
-              (modules ++ otherModules bi)
+    findNeededModules exts = traverse_
+        (findNeededModule exts)
+        (modules ++ otherModules bi)
     findNeededModule exts m =
         findFileWithExtensionMonitored
             (ppSuffixes knownSuffixHandlers ++ exts)

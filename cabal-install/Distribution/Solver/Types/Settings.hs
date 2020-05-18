@@ -15,12 +15,12 @@ module Distribution.Solver.Types.Settings
     , SolveExecutables(..)
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Simple.Setup ( BooleanFlag(..) )
-import Distribution.Compat.Binary (Binary)
-import Distribution.Utils.Structured (Structured)
 import Distribution.Pretty ( Pretty(pretty) )
 import Distribution.Parsec ( Parsec(parsec) )
-import GHC.Generics (Generic)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint as PP

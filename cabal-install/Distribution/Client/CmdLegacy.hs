@@ -17,10 +17,10 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils
     ( wrapText )
 import Distribution.Verbosity
-    ( Verbosity, normal )
+    ( normal )
 
 import Control.Exception
-    ( SomeException(..), try )
+    ( try )
 import qualified Data.Text as T
 
 -- Tweaked versions of code from Main.

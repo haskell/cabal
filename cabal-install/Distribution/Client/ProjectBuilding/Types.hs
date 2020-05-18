@@ -22,17 +22,15 @@ module Distribution.Client.ProjectBuilding.Types (
     BuildFailureReason(..),
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.Types          (DocsResult, TestsResult)
 import Distribution.Client.FileMonitor    (MonitorChangedReason(..))
 
 import Distribution.Package               (UnitId, PackageId)
 import Distribution.InstalledPackageInfo  (InstalledPackageInfo)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
-
-import Data.Map          (Map)
-import Data.Set          (Set)
-import Data.Typeable     (Typeable)
-import Control.Exception (Exception, SomeException)
 
 
 ------------------------------------------------------------------------------

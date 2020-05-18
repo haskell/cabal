@@ -24,7 +24,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 import Distribution.Utils.Generic (safeHead, safeTail, safeLast)
 
-import Distribution.Parsec         (simpleParsec)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
@@ -41,11 +40,8 @@ import Distribution.Solver.Types.SourcePackage
     ( packageDescription )
 
 import Distribution.Client.Types ( SourcePackageDb(..) )
-import Control.Monad ( mapM )
-import Data.Char   ( isNumber, isLower )
-import Data.Either ( partitionEithers )
+import Data.Char   ( isLower )
 import Data.List   ( isInfixOf )
-import Data.Ord    ( comparing )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getCurrentDirectory, getDirectoryContents,
                           doesDirectoryExist, doesFileExist, getHomeDirectory, )
@@ -55,7 +51,6 @@ import System.FilePath ( takeExtension, takeBaseName, dropExtension,
 
 import Distribution.Client.Init.Types     ( InitFlags(..) )
 import Distribution.Client.Compat.Process ( readProcessWithExitCode )
-import System.Exit ( ExitCode(..) )
 
 import qualified Distribution.Utils.ShortText as ShortText
 
@@ -104,8 +99,8 @@ guessPackageName = liftM (P.mkPackageName . repair . fromMaybe "" . safeLast . s
         x' -> let (c, r) = first repairComponent $ break (not . isAlphaNum) x'
               in c ++ repairRest r
       where
-        repairComponent c | all isNumber c = invalid c
-                          | otherwise      = valid c
+        repairComponent c | all isDigit c = invalid c
+                          | otherwise     = valid c
     repairRest = repair' id ('-' :)
 
 -- |Data type of source files found in the working directory
@@ -132,12 +127,12 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
   where
     scan dir hierarchy = do
         entries <- getDirectoryContents (projectRoot </> dir)
-        (files, dirs) <- liftM partitionEithers (mapM (tagIsDir dir) entries)
+        (files, dirs) <- liftM partitionEithers (traverse (tagIsDir dir) entries)
         let modules = catMaybes [ guessModuleName hierarchy file
                                 | file <- files
                                 , maybe False isUpper (safeHead file) ]
-        modules' <- mapM (findImportsAndExts projectRoot) modules
-        recMods <- mapM (scanRecursive dir hierarchy) dirs
+        modules' <- traverse (findImportsAndExts projectRoot) modules
+        recMods <- traverse (scanRecursive dir hierarchy) dirs
         return $ concat (modules' : recMods)
     tagIsDir parent entry = do
         isDir <- doesDirectoryExist (parent </> entry)

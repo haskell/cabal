@@ -54,8 +54,7 @@ import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
 import Distribution.Verbosity
-import Distribution.Pretty (prettyShow)
-import Distribution.Parsec (simpleParsec, simpleParsecBS)
+import Distribution.Parsec (simpleParsecBS)
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), mkPackageName
@@ -89,8 +88,6 @@ import           Distribution.Solver.Types.SourcePackage
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Control.DeepSeq
-import Control.Monad
 import Control.Exception
 import Data.List (stripPrefix)
 import qualified Data.ByteString.Lazy as BS
@@ -101,7 +98,6 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils ( byteStringToFilePath
                                  , tryFindAddSourcePackageDesc )
 import Distribution.Utils.Structured (Structured (..), nominalStructure, structuredEncodeFile, structuredDecodeFileOrFail)
-import Distribution.Compat.Exception (catchIO)
 import Distribution.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist, doesDirectoryExist)
 import System.FilePath
@@ -230,7 +226,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   let describeState IndexStateHead        = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
 
-  pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
+  pkgss <- for (repoContextRepos repoCtxt) $ \r -> do
       let rname :: RepoName
           rname = case r of
               RepoRemote remote _      -> remoteRepoName remote
@@ -699,7 +695,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
     dirContents <- listDirectory localDir
     let contentSet = Set.fromList dirContents
 
-    entries <- handle handler $ fmap catMaybes $ forM dirContents $ \file -> do
+    entries <- handle handler $ fmap catMaybes $ for dirContents $ \file -> do
         case isTarGz file of
             Nothing -> do
                 unless (takeFileName file == "noindex.cache" || ".cabal" `isSuffixOf` file) $
@@ -707,7 +703,7 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
                 return Nothing
             Just pkgid | cabalPath `Set.member` contentSet -> do
                 contents <- BSS.readFile (localDir </> cabalPath)
-                forM (parseGenericPackageDescriptionMaybe contents) $ \gpd ->
+                for (parseGenericPackageDescriptionMaybe contents) $ \gpd ->
                     return (CacheGPD gpd contents)
               where
                 cabalPath = prettyShow pkgid ++ ".cabal"

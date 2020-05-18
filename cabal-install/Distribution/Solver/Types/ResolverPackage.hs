@@ -6,17 +6,17 @@ module Distribution.Solver.Types.ResolverPackage
     , resolverPackageExeDeps
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Solver.Types.InstSolverPackage
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
-import Distribution.Compat.Binary (Binary)
-import Distribution.Utils.Structured (Structured)
 import Distribution.Compat.Graph (IsNode(..))
 import Distribution.Package (Package(..), HasUnitId(..))
 import Distribution.Simple.Utils (ordNub)
-import GHC.Generics (Generic)
 
 -- | The dependency resolver picks either pre-existing installed packages
 -- or it picks source packages along with package configuration.

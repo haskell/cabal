@@ -37,7 +37,6 @@ import Distribution.Simple.Compiler
          , ProfDetailLevel(..), showProfDetailLevel )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
-import Distribution.Pretty (prettyShow)
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
 import Distribution.Client.HashValue
 import Distribution.Client.Types
@@ -47,8 +46,6 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-
-import Data.Function     (on)
 
 -------------------------------
 -- Calculating package hashes

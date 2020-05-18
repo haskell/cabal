@@ -163,15 +163,13 @@ import qualified Paths_cabal_install (version)
 
 import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
-import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stderr, stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
-import Control.Exception        (SomeException(..), try)
-import Control.Monad            (mapM_)
+import Control.Exception        (try)
 import Data.Version             (showVersion)
 
 -- | Entry point
@@ -978,16 +976,16 @@ execAction execFlags extraArgs globalFlags = do
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
   let verbosity  = fromFlag (userConfigVerbosity ucflags)
-      force      = fromFlag (userConfigForce ucflags)
+      frc        = fromFlag (userConfigForce ucflags)
       extraLines = fromFlag (userConfigAppendLines ucflags)
   case extraArgs of
     ("init":_) -> do
       path       <- configFile
       fileExists <- doesFileExist path
-      if (not fileExists || (fileExists && force))
+      if (not fileExists || (fileExists && frc))
       then void $ createDefaultConfigFile verbosity extraLines path
       else die' verbosity $ path ++ " already exists."
-    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
+    ("diff":_) -> traverse_ putStrLn =<< userConfigDiff verbosity globalFlags extraLines
     ("update":_) -> userConfigUpdate verbosity globalFlags extraLines
     -- Error handling.
     [] -> die' verbosity $ "Please specify a subcommand (see 'help user-config')"

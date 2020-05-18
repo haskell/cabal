@@ -3,6 +3,9 @@ module Distribution.Client.SrcDist (
     allPackageSourceFiles,
 )  where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec        (readGenericPackageDescription)
 import Distribution.Simple.PreProcess                (knownSuffixHandlers)

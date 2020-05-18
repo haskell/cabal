@@ -7,8 +7,7 @@ import Distribution.Client.Compat.Prelude
 
 import Codec.Compression.GZip          as GZip
 import Codec.Compression.Zlib          as Zlib
-import Control.Exception.Base                  (evaluate)
-import Control.Exception                       (try, SomeException)
+import Control.Exception                       (try)
 import Data.ByteString                as BS    (null)
 import Data.ByteString.Lazy           as BSL   (pack, toChunks)
 import Data.ByteString.Lazy.Char8     as BSLL  (pack, init, length)

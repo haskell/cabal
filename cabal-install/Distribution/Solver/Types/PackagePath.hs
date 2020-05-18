@@ -9,10 +9,11 @@ module Distribution.Solver.Types.PackagePath
     , showQPN
     ) where
 
-import Distribution.Package
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+import Distribution.Package (PackageName)
 import Distribution.Pretty (pretty, flatStyle)
 import qualified Text.PrettyPrint as Disp
-import Distribution.Solver.Compat.Prelude ((<<>>))
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.

@@ -31,7 +31,6 @@ import Prelude ()
 import Distribution.Solver.Compat.Prelude
 
 import Data.List (elemIndex)
-import Data.Ord (comparing)
 
 -- test-framework
 import Test.Tasty as TF

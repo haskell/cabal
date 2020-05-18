@@ -54,7 +54,6 @@ import Distribution.Simple.Program.Internal
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
-import Distribution.Compat.Exception
 import Distribution.Verbosity
 import Distribution.Version
 

@@ -28,6 +28,9 @@ module Distribution.Client.Tar (
   entriesToList,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import qualified Data.ByteString.Lazy    as BS
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -35,7 +38,8 @@ import qualified Codec.Archive.Tar.Check as Tar
 import qualified Codec.Compression.GZip  as GZip
 import qualified Distribution.Client.GZipUtils as GZipUtils
 
-import Control.Exception (Exception(..), throw)
+-- for foldEntries...
+import Control.Exception (throw)
 
 --
 -- * High level operations

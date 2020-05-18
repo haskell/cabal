@@ -28,8 +28,6 @@ module Distribution.Simple.Glob (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Control.Monad (guard)
-
 import Distribution.CabalSpecVersion
 import Distribution.Simple.Utils
 import Distribution.Verbosity

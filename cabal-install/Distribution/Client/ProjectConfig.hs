@@ -99,7 +99,6 @@ import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescription )
 import Distribution.Fields
          ( runParseResult, PError, PWarning, showPWarning)
-import Distribution.Pretty (prettyShow)
 import Distribution.Types.SourceRepo
          ( RepoType(..) )
 import Distribution.Client.Types.SourceRepo
@@ -123,10 +122,9 @@ import Distribution.Client.Utils
 import Distribution.Utils.NubList
          ( fromNubList )
 import Distribution.Verbosity
-         ( Verbosity, modifyVerbosity, verbose )
+         ( modifyVerbosity, verbose )
 import Distribution.Version
          ( Version )
-import Distribution.Parsec (simpleParsec)
 import qualified Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
@@ -135,10 +133,7 @@ import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.Tar as Tar
 import qualified Distribution.Client.GZipUtils as GZipUtils
 
-import Control.Monad
 import Control.Monad.Trans (liftIO)
-import Control.Exception
-import Data.Either
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.Map as Map
@@ -809,7 +804,7 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
   where
     findPackageLocations required pkglocstr = do
       (problems, pkglocs) <-
-        partitionEithers <$> mapM (findPackageLocation required) pkglocstr
+        partitionEithers <$> traverse (findPackageLocation required) pkglocstr
       unless (null problems) $
         liftIO $ throwIO $ BadPackageLocations projectConfigProvenance problems
       return (concat pkglocs)
@@ -881,7 +876,7 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
 
             _  -> do
               (failures, pkglocs) <- partitionEithers <$>
-                                     mapM checkFilePackageMatch matches
+                                     traverse checkFilePackageMatch matches
               return $! case (failures, pkglocs) of
                 ([failure], []) | isJust (isTrivialFilePathGlob glob)
                         -> Left (BadPackageLocationFile failure)
@@ -989,13 +984,13 @@ fetchAndReadSourcePackages verbosity distDirLayout
                            pkgLocations = do
 
     pkgsLocalDirectory <-
-      sequence
+      sequenceA
         [ readSourcePackageLocalDirectory verbosity dir cabalFile
         | location <- pkgLocations
         , (dir, cabalFile) <- projectPackageLocal location ]
 
     pkgsLocalTarball <-
-      sequence
+      sequenceA
         [ readSourcePackageLocalTarball verbosity path
         | ProjectPackageLocalTarball path <- pkgLocations ]
 
@@ -1003,7 +998,7 @@ fetchAndReadSourcePackages verbosity distDirLayout
       getTransport <- delayInitSharedResource $
                       configureTransport verbosity progPathExtra
                                          preferredHttpTransport
-      sequence
+      sequenceA
         [ fetchAndReadSourcePackageRemoteTarball verbosity distDirLayout
                                                  getTransport uri
         | ProjectPackageRemoteTarball uri <- pkgLocations ]
@@ -1147,7 +1142,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
                           let vcs = Map.findWithDefault (error $ "Unknown VCS: " ++ prettyShow repoType) repoType knownVCSs in
                           configureVCS verbosity {-progPathExtra-} vcs
 
-    concat <$> sequence
+    concat <$> sequenceA
       [ rerunIfChanged verbosity monitor repoGroup' $ do
           vcs' <- getConfiguredVCS repoType
           syncRepoGroupAndReadSourcePackages vcs' pathStem repoGroup'
@@ -1178,7 +1173,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.
-        sequence
+        sequenceA
           [ readPackageFromSourceRepo repoWithSubdir repoPath
           | (_, reposWithSubdir, repoPath) <- repoGroupWithPaths
           , repoWithSubdir <- NE.toList reposWithSubdir ]

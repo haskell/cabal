@@ -26,7 +26,7 @@ import Distribution.Simple.Flag ( Flag(..), toFlag, fromFlag, fromFlagOrDefault 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, option, optionName )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
 

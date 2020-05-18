@@ -56,9 +56,7 @@ import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
-         ( Parsec(..), parsecCommaList )
-import Distribution.Pretty
-         ( prettyShow )
+         ( parsecCommaList )
 import Distribution.ReadE
          ( ReadE, parsecToReadE )
 import qualified Distribution.SPDX.License as SPDX
@@ -87,7 +85,7 @@ import Distribution.Types.VersionRange
 import Distribution.Utils.Generic
          ( safeHead )
 import Distribution.Verbosity
-         ( Verbosity, normal, lessVerbose )
+         ( normal, lessVerbose )
 import Distribution.Simple.Utils
          ( wrapText, die', debugNoWrap, ordNub, createTempDirectory, handleDoesNotExist )
 import Language.Haskell.Extension

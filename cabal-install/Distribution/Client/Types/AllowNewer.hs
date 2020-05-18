@@ -14,8 +14,7 @@ module Distribution.Client.Types.AllowNewer (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec            (CabalParsing, Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty            (Pretty (..))
+import Distribution.Parsec            (parsecLeadingCommaNonEmpty)
 import Distribution.Types.PackageId   (PackageId, PackageIdentifier (..))
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Types.Version     (nullVersion)

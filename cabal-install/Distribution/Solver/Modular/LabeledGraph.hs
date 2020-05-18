@@ -17,10 +17,11 @@ module Distribution.Solver.Modular.LabeledGraph (
   , topSort
   ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Data.Array
 import Data.Graph (Vertex, Bounds)
-import Data.List (sortBy)
-import Data.Maybe (mapMaybe)
 import qualified Data.Graph as G
 
 {-------------------------------------------------------------------------------

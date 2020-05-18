@@ -64,6 +64,9 @@ module Distribution.Client.Dependency (
     addSetupCabalMaxVersionConstraint,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import qualified Prelude as Unsafe (head)
+
 import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..), PruneAfterFirstSuccess(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -96,13 +99,10 @@ import Distribution.System
          ( Platform )
 import Distribution.Client.Utils
          ( duplicatesBy, mergeBy, MergeResult(..) )
-import Distribution.Simple.Utils
-         ( comparing )
 import Distribution.Simple.Setup
          ( asBool )
-import Distribution.Pretty (prettyShow)
 import Distribution.Verbosity
-         ( normal, Verbosity )
+         ( normal  )
 import Distribution.Version
 import qualified Distribution.Compat.Graph as Graph
 
@@ -127,12 +127,9 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Solver.Types.Variable
 
 import Data.List
-         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
-import Data.Function (on)
-import Data.Maybe (fromMaybe, mapMaybe)
+         ( maximumBy )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set)
 import Control.Exception
          ( assert )
 
@@ -847,7 +844,7 @@ planPackagesProblems platform cinfo pkgs =
      | Configured pkg <- pkgs
      , let packageProblems = configuredPackageProblems platform cinfo pkg
      , not (null packageProblems) ]
-  ++ [ DuplicatePackageSolverId (Graph.nodeKey (head dups)) dups
+  ++ [ DuplicatePackageSolverId (Graph.nodeKey (Unsafe.head dups)) dups
      | dups <- duplicatesBy (comparing Graph.nodeKey) pkgs ]
 
 data PackageProblem = DuplicateFlag PD.FlagName
@@ -1029,11 +1026,6 @@ collectEithers = collect . partitionEithers
   where
     collect ([], xs) = Right xs
     collect (errs,_) = Left errs
-    partitionEithers :: [Either a b] -> ([a],[b])
-    partitionEithers = foldr (either left right) ([],[])
-     where
-       left  a (l, r) = (a:l, r)
-       right a (l, r) = (l, a:r)
 
 -- | Errors for 'resolveWithoutDependencies'.
 --
