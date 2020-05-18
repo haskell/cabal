@@ -37,7 +37,7 @@ import Distribution.Client.Glob                          (FilePathGlob (..), Fil
 import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
-import Distribution.Client.InstallSymlink                (OverwritePolicy)
+import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Targets
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer

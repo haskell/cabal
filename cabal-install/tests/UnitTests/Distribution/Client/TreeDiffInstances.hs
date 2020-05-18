@@ -14,10 +14,10 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils.Timestamp
-import Distribution.Client.InstallSymlink
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Targets
 import Distribution.Client.Types
+import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo              (SourceRepositoryPackage)
 
 import UnitTests.Distribution.Client.GenericInstances ()
