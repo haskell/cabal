@@ -26,7 +26,7 @@ import Distribution.Client.ProjectConfig
          , projectConfigWithSolverRepoContext
          , withProjectOrGlobalConfigIgn )
 import Distribution.Client.ProjectFlags
-         ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
+         ( ProjectFlags (..) )
 import Distribution.Client.Types
          ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -63,11 +63,11 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, optionName )
+         ( CommandUI(..), usageAlternatives )
 
 import qualified Hackage.Security.Client as Sec
 
-updateCommand :: CommandUI (NixStyleFlags ProjectFlags)
+updateCommand :: CommandUI (NixStyleFlags ())
 updateCommand = CommandUI
   { commandName         = "v2-update"
   , commandSynopsis     = "Updates list of known packages."
@@ -100,10 +100,8 @@ updateCommand = CommandUI
      ++ "is very much appreciated.\n"
   -- TODO: Add ProjectFlags to NixStyleFlags,
   -- so project-file won't be ambiguous
-  , commandOptions      = nixStyleOptions $ const
-                        $ filter (\o -> optionName o `notElem` ["project-file"])
-                        $ projectFlagsOptions
-  , commandDefaultFlags = defaultNixStyleFlags defaultProjectFlags
+  , commandOptions      = nixStyleOptions $ const []
+  , commandDefaultFlags = defaultNixStyleFlags ()
   }
 
 data UpdateRequest = UpdateRequest
@@ -120,8 +118,8 @@ instance Parsec UpdateRequest where
       state <- P.char ',' *> parsec <|> pure IndexStateHead
       return (UpdateRequest name state)
 
-updateAction :: NixStyleFlags ProjectFlags -> [String] -> GlobalFlags -> IO ()
-updateAction NixStyleFlags { extraFlags = projectFlags, ..} extraArgs globalFlags = do
+updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
   let ignoreProject = fromFlagOrDefault False (flagIgnoreProject projectFlags)
 
   projectConfig <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag
@@ -176,11 +174,7 @@ updateAction NixStyleFlags { extraFlags = projectFlags, ..} extraArgs globalFlag
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, RepoIndexState)

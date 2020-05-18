@@ -72,7 +72,7 @@ haddockCommand = CommandUI {
 -- "Distribution.Client.ProjectOrchestration"
 --
 haddockAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-haddockAction NixStyleFlags {..} targetStrings globalFlags = do
+haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
@@ -108,11 +108,7 @@ haddockAction NixStyleFlags {..} targetStrings globalFlags = do
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

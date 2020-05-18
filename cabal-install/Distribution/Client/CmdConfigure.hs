@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -- | cabal-install CLI command: configure
 --
 module Distribution.Client.CmdConfigure (
@@ -13,10 +14,12 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig )
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+         ( GlobalFlags, ConfigFlags(..) )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Verbosity
          ( normal )
 
@@ -24,12 +27,9 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
          ( wrapText, notice )
-import qualified Distribution.Client.Setup as Client
 
-configureCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                              , HaddockFlags, TestFlags, BenchmarkFlags
-                              )
-configureCommand = Client.installCommand {
+configureCommand :: CommandUI (NixStyleFlags ())
+configureCommand = CommandUI {
   commandName         = "v2-configure",
   commandSynopsis     = "Add extra project configuration",
   commandUsage        = usageAlternatives "v2-configure" [ "[FLAGS]" ],
@@ -67,7 +67,9 @@ configureCommand = Client.installCommand {
      ++ "    project configuration works.\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
-   }
+  , commandDefaultFlags = defaultNixStyleFlags ()
+  , commandOptions      = nixStyleOptions (const [])
+  }
 
 -- | To a first approximation, the @configure@ just runs the first phase of
 -- the @build@ command where we bring the install plan up to date (thus
@@ -79,12 +81,8 @@ configureCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-configureAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                   , HaddockFlags, TestFlags, BenchmarkFlags )
-                -> [String] -> GlobalFlags -> IO ()
-configureAction ( configFlags, configExFlags, installFlags
-                , haddockFlags, testFlags, benchmarkFlags )
-                _extraArgs globalFlags = do
+configureAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
@@ -122,9 +120,6 @@ configureAction ( configFlags, configExFlags, installFlags
     printPlan verbosity baseCtx' buildCtx
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
 

@@ -58,6 +58,8 @@ import Distribution.Simple.Setup
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
          , programDbPaths', splitArgs
          )
+import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
+import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -150,7 +152,8 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyConfigureShFlags  :: ConfigFlags,
        legacyConfigureExFlags  :: ConfigExFlags,
        legacyInstallFlags      :: InstallFlags,
-       legacyClientInstallFlags:: ClientInstallFlags
+       legacyClientInstallFlags:: ClientInstallFlags,
+       legacyProjectFlags      :: ProjectFlags
      } deriving Generic
 
 instance Monoid LegacySharedConfig where
@@ -173,15 +176,10 @@ instance Semigroup LegacySharedConfig where
 -- 'LegacyProjectConfig' for an explanation.
 --
 commandLineFlagsToProjectConfig :: GlobalFlags
-                                -> ConfigFlags  -> ConfigExFlags
-                                -> InstallFlags -> ClientInstallFlags
-                                -> HaddockFlags
-                                -> TestFlags
-                                -> BenchmarkFlags
+                                -> NixStyleFlags a
+                                -> ClientInstallFlags
                                 -> ProjectConfig
-commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
-                                installFlags clientInstallFlags
-                                haddockFlags testFlags benchmarkFlags =
+commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlags =
     mempty {
       projectConfigBuildOnly     = convertLegacyBuildOnlyFlags
                                      globalFlags configFlags
@@ -189,7 +187,7 @@ commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
                                      haddockFlags testFlags benchmarkFlags,
       projectConfigShared        = convertLegacyAllPackageFlags
                                      globalFlags configFlags
-                                     configExFlags installFlags,
+                                     configExFlags installFlags projectFlags,
       projectConfigLocalPackages = localConfig,
       projectConfigAllPackages   = allConfig
     }
@@ -243,7 +241,8 @@ convertLegacyGlobalConfig
       savedReportFlags       = _,
       savedHaddockFlags      = haddockFlags,
       savedTestFlags         = testFlags,
-      savedBenchmarkFlags    = benchmarkFlags
+      savedBenchmarkFlags    = benchmarkFlags,
+      savedProjectFlags      = projectFlags
     } =
     mempty {
       projectConfigBuildOnly   = configBuildOnly,
@@ -259,13 +258,14 @@ convertLegacyGlobalConfig
     haddockFlags'       = defaultHaddockFlags       <> haddockFlags
     testFlags'          = defaultTestFlags          <> testFlags
     benchmarkFlags'     = defaultBenchmarkFlags     <> benchmarkFlags
+    projectFlags'       = defaultProjectFlags       <> projectFlags
 
     configAllPackages   = convertLegacyPerPackageFlags
                             configFlags installFlags'
                             haddockFlags' testFlags' benchmarkFlags'
     configShared        = convertLegacyAllPackageFlags
                             globalFlags configFlags
-                            configExFlags' installFlags'
+                            configExFlags' installFlags' projectFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
                             installFlags' clientInstallFlags'
@@ -285,7 +285,7 @@ convertLegacyProjectConfig
     legacyPackagesNamed,
     legacySharedConfig = LegacySharedConfig globalFlags configShFlags
                                             configExFlags installSharedFlags
-                                            clientInstallFlags,
+                                            clientInstallFlags projectFlags,
     legacyAllConfig,
     legacyLocalConfig  = LegacyPackageConfig configFlags installPerPkgFlags
                                              haddockFlags testFlags benchmarkFlags,
@@ -313,7 +313,7 @@ convertLegacyProjectConfig
                             testFlags benchmarkFlags
     configPackagesShared= convertLegacyAllPackageFlags
                             globalFlags (configFlags <> configShFlags)
-                            configExFlags installSharedFlags
+                            configExFlags installSharedFlags projectFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configShFlags
                             installSharedFlags clientInstallFlags
@@ -330,11 +330,14 @@ convertLegacyProjectConfig
 -- | Helper used by other conversion functions that returns the
 -- 'ProjectConfigShared' subset of the 'ProjectConfig'.
 --
-convertLegacyAllPackageFlags :: GlobalFlags -> ConfigFlags
-                             -> ConfigExFlags -> InstallFlags
-                             -> ProjectConfigShared
-convertLegacyAllPackageFlags globalFlags configFlags
-                             configExFlags installFlags =
+convertLegacyAllPackageFlags
+    :: GlobalFlags
+    -> ConfigFlags
+    -> ConfigExFlags
+    -> InstallFlags
+    -> ProjectFlags
+    -> ProjectConfigShared
+convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags projectFlags =
     ProjectConfigShared{..}
   where
     GlobalFlags {
@@ -369,7 +372,6 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = configExFlags
 
     InstallFlags {
-      installProjectFileName    = projectConfigProjectFile,
       installHaddockIndex       = projectConfigHaddockIndex,
     --installReinstall          = projectConfigReinstall,
     --installAvoidReinstalls    = projectConfigAvoidReinstalls,
@@ -389,7 +391,10 @@ convertLegacyAllPackageFlags globalFlags configFlags
       installOnlyConstrained    = projectConfigOnlyConstrained
     } = installFlags
 
-
+    ProjectFlags
+        { flagProjectFileName = projectConfigProjectFile
+        , flagIgnoreProject   = projectConfigIgnoreProject
+        } = projectFlags
 
 -- | Helper used by other conversion functions that returns the
 -- 'PackageConfig' subset of the 'ProjectConfig'.
@@ -560,13 +565,14 @@ convertToLegacySharedConfig
       }
     } =
 
-    LegacySharedConfig {
-      legacyGlobalFlags      = globalFlags,
-      legacyConfigureShFlags = configFlags,
-      legacyConfigureExFlags = configExFlags,
-      legacyInstallFlags     = installFlags,
-      legacyClientInstallFlags = projectConfigClientInstallFlags
-    }
+    LegacySharedConfig
+      { legacyGlobalFlags        = globalFlags
+      , legacyConfigureShFlags   = configFlags
+      , legacyConfigureExFlags   = configExFlags
+      , legacyInstallFlags       = installFlags
+      , legacyClientInstallFlags = projectConfigClientInstallFlags
+      , legacyProjectFlags       = projectFlags
+      }
   where
     globalFlags = GlobalFlags {
       globalVersion           = mempty,
@@ -635,9 +641,13 @@ convertToLegacySharedConfig
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
-      installOfflineMode       = projectConfigOfflineMode,
-      installProjectFileName   = projectConfigProjectFile
+      installOfflineMode       = projectConfigOfflineMode
     }
+
+    projectFlags = ProjectFlags
+        { flagProjectFileName = projectConfigProjectFile
+        , flagIgnoreProject   = projectConfigIgnoreProject
+        }
 
 
 convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
@@ -933,9 +943,8 @@ renderPackageLocationToken s | needsQuoting = show s
 
 
 legacySharedConfigFieldDescrs :: [FieldDescr LegacySharedConfig]
-legacySharedConfigFieldDescrs =
-
-  ( liftFields
+legacySharedConfigFieldDescrs = concat
+  [ liftFields
       legacyGlobalFlags
       (\flags conf -> conf { legacyGlobalFlags = flags })
   . addFields
@@ -950,16 +959,16 @@ legacySharedConfigFieldDescrs =
       , "active-repositories"
       ]
   . commandOptionsToFields
-  ) (commandOptions (globalCommand []) ParseArgs)
- ++
-  ( liftFields
+  $ commandOptions (globalCommand []) ParseArgs
+
+  , liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
   . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
-  ) (configureOptions ParseArgs)
- ++
-  ( liftFields
+  $ configureOptions ParseArgs
+
+  , liftFields
       legacyConfigureExFlags
       (\flags conf -> conf { legacyConfigureExFlags = flags })
   . addFields
@@ -986,9 +995,9 @@ legacySharedConfigFieldDescrs =
         -- not "constraint" or "preference", we use our own plural ones above
       ]
   . commandOptionsToFields
-  ) (configureExOptions ParseArgs constraintSrc)
- ++
-  ( liftFields
+  $ configureExOptions ParseArgs constraintSrc
+
+  , liftFields
       legacyInstallFlags
       (\flags conf -> conf { legacyInstallFlags = flags })
   . addFields
@@ -1010,13 +1019,21 @@ legacySharedConfigFieldDescrs =
       , "reject-unconstrained-dependencies", "index-state"
       ]
   . commandOptionsToFields
-  ) (installOptions ParseArgs)
- ++
-  ( liftFields
+  $ installOptions ParseArgs
+
+  , liftFields
       legacyClientInstallFlags
       (\flags conf -> conf { legacyClientInstallFlags = flags })
   . commandOptionsToFields
-  ) (clientInstallOptions ParseArgs)
+  $ clientInstallOptions ParseArgs
+
+  , liftFields
+      legacyProjectFlags
+      (\flags conf -> conf { legacyProjectFlags = flags })
+  . commandOptionsToFields
+  $ projectFlagsOptions ParseArgs
+
+  ]
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO" -- TODO: is a filepath
 

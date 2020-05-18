@@ -154,7 +154,7 @@ runCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 runAction :: NixStyleFlags ClientRunFlags -> [String] -> GlobalFlags -> IO ()
-runAction NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlags = do
+runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tmpDir <- createTempDirectory globalTmp "cabal-repl."
 
@@ -297,11 +297,7 @@ runAction NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlag
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was

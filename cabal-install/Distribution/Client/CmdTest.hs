@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: test
 --
@@ -16,11 +16,12 @@ module Distribution.Client.CmdTest (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
+         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags(..), BenchmarkFlags(..), fromFlagOrDefault )
+         ( TestFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
@@ -36,10 +37,8 @@ import Control.Monad (when)
 import qualified System.Exit (exitSuccess)
 
 
-testCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                         , HaddockFlags, TestFlags, BenchmarkFlags
-                         )
-testCommand = Client.installCommand
+testCommand :: CommandUI (NixStyleFlags ())
+testCommand = CommandUI
   { commandName         = "v2-test"
   , commandSynopsis     = "Run test-suites"
   , commandUsage        = usageAlternatives "v2-test" [ "[TARGETS] [FLAGS]" ]
@@ -72,6 +71,8 @@ testCommand = Client.installCommand
 
      ++ cmdCommonHelpTextNewBuildBeta
 
+  , commandDefaultFlags = defaultNixStyleFlags ()
+  , commandOptions      = nixStyleOptions (const [])
   }
 
 
@@ -86,12 +87,8 @@ testCommand = Client.installCommand
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-testAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-              , HaddockFlags, TestFlags, BenchmarkFlags )
-           -> [String] -> GlobalFlags -> IO ()
-testAction ( configFlags, configExFlags, installFlags
-           , haddockFlags, testFlags, benchmarkFlags )
-           targetStrings globalFlags = do
+testAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+testAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
@@ -131,11 +128,7 @@ testAction ( configFlags, configExFlags, installFlags
   where
     failWhenNoTestSuites = testFailWhenNoTestSuites testFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags
 
 -- | This defines what a 'TargetSelector' means for the @test@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

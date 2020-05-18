@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: bench
 --
@@ -16,11 +16,12 @@ module Distribution.Client.CmdBench (
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+         ( GlobalFlags, ConfigFlags(..) )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Pretty
@@ -33,10 +34,8 @@ import Distribution.Simple.Utils
 import Control.Monad (when)
 
 
-benchCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                          , HaddockFlags, TestFlags, BenchmarkFlags
-                          )
-benchCommand = Client.installCommand {
+benchCommand :: CommandUI (NixStyleFlags ())
+benchCommand = CommandUI {
   commandName         = "v2-bench",
   commandSynopsis     = "Run benchmarks",
   commandUsage        = usageAlternatives "v2-bench" [ "[TARGETS] [FLAGS]" ],
@@ -65,6 +64,9 @@ benchCommand = Client.installCommand {
      ++ "    Run the benchmark built with '-O2' (including local libs used)\n\n"
 
      ++ cmdCommonHelpTextNewBuildBeta
+
+   , commandDefaultFlags = defaultNixStyleFlags ()
+   , commandOptions      = nixStyleOptions (const [])
    }
 
 
@@ -75,12 +77,8 @@ benchCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-benchAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-               , HaddockFlags, TestFlags, BenchmarkFlags )
-            -> [String] -> GlobalFlags -> IO ()
-benchAction ( configFlags, configExFlags, installFlags
-            , haddockFlags, testFlags, benchmarkFlags )
-            targetStrings globalFlags = do
+benchAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
@@ -119,11 +117,8 @@ benchAction ( configFlags, configExFlags, installFlags
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags 
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

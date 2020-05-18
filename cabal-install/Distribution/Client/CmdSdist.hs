@@ -15,11 +15,13 @@ import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
 import Distribution.Client.ProjectOrchestration
     ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext, establishProjectBaseContextWithRoot)
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), defaultNixStyleFlags )
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
 import Distribution.Client.Setup
-    ( GlobalFlags(..), InstallFlags (installProjectFileName) )
+    ( GlobalFlags(..) )
 import Distribution.Solver.Types.SourcePackage
     ( SourcePackage(..) )
 import Distribution.Client.Types
@@ -96,7 +98,7 @@ sdistCommand = CommandUI
     , commandNotes = Nothing
     , commandDefaultFlags = (defaultProjectFlags, defaultSdistFlags)
     , commandOptions = \showOrParseArgs ->
-        map (liftOptionL _1) projectFlagsOptions ++
+        map (liftOptionL _1) (projectFlagsOptions showOrParseArgs) ++
         map (liftOptionL _2) (sdistOptions showOrParseArgs)
     }
 
@@ -202,12 +204,12 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
         globalFlags
-        mempty { configVerbosity = sdistVerbosity, configDistPref = sdistDistDir }
-        mempty
-        mempty { installProjectFileName = flagProjectFileName }
-        mempty
-        mempty
-        mempty
+        (defaultNixStyleFlags ())
+          { configFlags = (configFlags $ defaultNixStyleFlags ())
+            { configVerbosity = sdistVerbosity
+            , configDistPref = sdistDistDir
+            }
+          }
         mempty
 
     globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)

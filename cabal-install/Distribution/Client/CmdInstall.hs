@@ -48,6 +48,7 @@ import Distribution.Client.ProjectConfig
          )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
@@ -198,7 +199,7 @@ installCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 installAction :: NixStyleFlags ClientInstallFlags -> [String] -> GlobalFlags -> IO ()
-installAction NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrings globalFlags = do
+installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrings globalFlags = do
   -- Ensure there were no invalid configuration options specified.
   verifyPreconditionsOrDie verbosity configFlags'
 
@@ -305,7 +306,7 @@ installAction NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrin
       return (packageSpecifiers, uris, packageTargets, projectConfig)
 
   let
-    ignoreProject = fromFlagOrDefault False (cinstIgnoreProject clientInstallFlags)
+    ignoreProject = fromFlagOrDefault False (flagIgnoreProject projectFlags)
 
   (specs, uris, targetSelectors, config) <-
      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
@@ -404,9 +405,9 @@ installAction NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrin
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
     cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags' configExFlags
-                  installFlags clientInstallFlags'
-                  haddockFlags testFlags benchmarkFlags
+                  globalFlags
+                  flags { configFlags = configFlags' }
+                  clientInstallFlags'
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Verify that invalid config options were not passed to the install command.

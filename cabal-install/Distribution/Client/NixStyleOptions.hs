@@ -15,6 +15,8 @@ import Distribution.Simple.Command                       (OptionField (..), Show
 import Distribution.Simple.Setup                         (BenchmarkFlags, HaddockFlags, TestFlags)
 import Distribution.Solver.Types.ConstraintSource        (ConstraintSource (..))
 
+import Distribution.Client.ProjectFlags
+       (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
        (ConfigExFlags, ConfigFlags (..), InstallFlags (..), benchmarkOptions, configureExOptions,
        configureOptions, haddockOptions, installOptions, liftOptions, testOptions)
@@ -26,6 +28,7 @@ data NixStyleFlags a = NixStyleFlags
     , haddockFlags   :: HaddockFlags
     , testFlags      :: TestFlags
     , benchmarkFlags :: BenchmarkFlags
+    , projectFlags   :: ProjectFlags
     , extraFlags     :: a
     }
 
@@ -57,7 +60,8 @@ nixStyleOptions commandOptions showOrParseArgs =
                                 haddockOptions showOrParseArgs)
      ++ liftOptions testFlags      set5 (testOptions showOrParseArgs)
      ++ liftOptions benchmarkFlags set6 (benchmarkOptions showOrParseArgs)
-     ++ liftOptions extraFlags     set7 (commandOptions showOrParseArgs)
+     ++ liftOptions projectFlags   set7 (projectFlagsOptions showOrParseArgs)
+     ++ liftOptions extraFlags     set8 (commandOptions showOrParseArgs)
   where
     set1 x flags = flags { configFlags    = x }
     set2 x flags = flags { configExFlags  = x }
@@ -65,7 +69,17 @@ nixStyleOptions commandOptions showOrParseArgs =
     set4 x flags = flags { haddockFlags   = x }
     set5 x flags = flags { testFlags      = x }
     set6 x flags = flags { benchmarkFlags = x }
-    set7 x flags = flags { extraFlags     = x }
+    set7 x flags = flags { projectFlags   = x }
+    set8 x flags = flags { extraFlags     = x }
 
 defaultNixStyleFlags :: a ->  NixStyleFlags a
-defaultNixStyleFlags x = NixStyleFlags mempty mempty mempty mempty mempty mempty x
+defaultNixStyleFlags x = NixStyleFlags
+    { configFlags    = mempty
+    , configExFlags  = mempty
+    , installFlags   = mempty
+    , haddockFlags   = mempty
+    , testFlags      = mempty
+    , benchmarkFlags = mempty
+    , projectFlags   = defaultProjectFlags
+    , extraFlags     = x
+    }
