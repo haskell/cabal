@@ -17,6 +17,7 @@ data ProjectFlags = ProjectFlags
     { flagProjectFileName :: Flag FilePath
     , flagIgnoreProject   :: Flag Bool
     }
+  deriving (Show)
 
 defaultProjectFlags :: ProjectFlags
 defaultProjectFlags = ProjectFlags

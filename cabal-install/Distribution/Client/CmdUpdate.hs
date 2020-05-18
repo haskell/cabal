@@ -24,7 +24,9 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
          , ProjectConfigShared(projectConfigConfigFile)
          , projectConfigWithSolverRepoContext
-         , withProjectOrGlobalConfig )
+         , withProjectOrGlobalConfigIgn )
+import Distribution.Client.ProjectFlags
+         ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 import Distribution.Client.Types
          ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -61,11 +63,11 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 
 import qualified Hackage.Security.Client as Sec
 
-updateCommand :: CommandUI (NixStyleFlags ())
+updateCommand :: CommandUI (NixStyleFlags ProjectFlags)
 updateCommand = CommandUI
   { commandName         = "v2-update"
   , commandSynopsis     = "Updates list of known packages."
@@ -96,8 +98,12 @@ updateCommand = CommandUI
      ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
      ++ "to get involved and help with testing, fixing bugs etc then\nthat "
      ++ "is very much appreciated.\n"
-  , commandOptions      = nixStyleOptions (const []) -- clientInstallOptions
-  , commandDefaultFlags = defaultNixStyleFlags () -- defaultClientInstallFlags
+  -- TODO: Add ProjectFlags to NixStyleFlags,
+  -- so project-file won't be ambiguous
+  , commandOptions      = nixStyleOptions $ const
+                        $ filter (\o -> optionName o `notElem` ["project-file"])
+                        $ projectFlagsOptions
+  , commandDefaultFlags = defaultNixStyleFlags defaultProjectFlags
   }
 
 data UpdateRequest = UpdateRequest
@@ -114,9 +120,11 @@ instance Parsec UpdateRequest where
       state <- P.char ',' *> parsec <|> pure IndexStateHead
       return (UpdateRequest name state)
 
-updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-updateAction NixStyleFlags {..} extraArgs globalFlags = do
-  projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
+updateAction :: NixStyleFlags ProjectFlags -> [String] -> GlobalFlags -> IO ()
+updateAction NixStyleFlags { extraFlags = projectFlags, ..} extraArgs globalFlags = do
+  let ignoreProject = fromFlagOrDefault False (flagIgnoreProject projectFlags)
+
+  projectConfig <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)
 
