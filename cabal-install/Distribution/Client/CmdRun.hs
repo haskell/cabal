@@ -26,13 +26,13 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdRun.ClientRunFlags
 
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
@@ -47,7 +47,7 @@ import Distribution.Simple.Utils
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
-         , withProjectOrGlobalConfigIgn )
+         , withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -153,14 +153,8 @@ runCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-             , HaddockFlags, TestFlags, BenchmarkFlags
-             , ClientRunFlags )
-          -> [String] -> GlobalFlags -> IO ()
-runAction ( configFlags, configExFlags, installFlags
-          , haddockFlags, testFlags, benchmarkFlags
-          , clientRunFlags )
-            targetStrings globalFlags = do
+runAction :: NixStyleFlags ClientRunFlags -> [String] -> GlobalFlags -> IO ()
+runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tmpDir <- createTempDirectory globalTmp "cabal-repl."
 
@@ -171,10 +165,7 @@ runAction ( configFlags, configExFlags, installFlags
         distDirLayout <- establishDummyDistDirLayout verbosity (config <> cliConfig) tmpDir
         establishDummyProjectBaseContext verbosity (config <> cliConfig) distDirLayout [] OtherCommand
 
-    let
-      ignoreProject = fromFlagOrDefault False (crunIgnoreProject clientRunFlags)
-
-    baseCtx <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
+    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
 
     let
       scriptOrError script err = do
@@ -303,11 +294,8 @@ runAction ( configFlags, configExFlags, installFlags
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    ignoreProject = crunIgnoreProject clientRunFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was

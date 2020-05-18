@@ -33,7 +33,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
          , SourcePackageDb(..) )
@@ -47,7 +47,8 @@ import Distribution.Client.ProjectConfig
          , fetchAndReadSourcePackages
          )
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
+import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
@@ -78,7 +79,7 @@ import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
          ( projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings, withProjectOrGlobalConfigIgn )
+         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import Distribution.Client.ProjectPlanning.Types
@@ -95,7 +96,7 @@ import Distribution.Client.InstallSymlink
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, TestFlags, BenchmarkFlags )
+         ( Flag(..) )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
@@ -197,16 +198,8 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction
-  :: ( ConfigFlags, ConfigExFlags, InstallFlags
-     , HaddockFlags, TestFlags, BenchmarkFlags
-     , ClientInstallFlags)
-  -> [String] -> GlobalFlags
-  -> IO ()
-installAction ( configFlags, configExFlags, installFlags
-              , haddockFlags, testFlags, benchmarkFlags
-              , clientInstallFlags' )
-              targetStrings globalFlags = do
+installAction :: NixStyleFlags ClientInstallFlags -> [String] -> GlobalFlags -> IO ()
+installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrings globalFlags = do
   -- Ensure there were no invalid configuration options specified.
   verifyPreconditionsOrDie verbosity configFlags'
 
@@ -312,11 +305,8 @@ installAction ( configFlags, configExFlags, installFlags
 
       return (packageSpecifiers, uris, packageTargets, projectConfig)
 
-  let
-    ignoreProject = fromFlagOrDefault False (cinstIgnoreProject clientInstallFlags)
-
   (specs, uris, targetSelectors, config) <-
-     withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
+     withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
   let
     ProjectConfig {
@@ -411,10 +401,11 @@ installAction ( configFlags, configExFlags, installFlags
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
+    ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags' configExFlags
-                  installFlags clientInstallFlags'
-                  haddockFlags testFlags benchmarkFlags
+                  globalFlags
+                  flags { configFlags = configFlags' }
+                  clientInstallFlags'
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 -- | Verify that invalid config options were not passed to the install command.

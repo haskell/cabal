@@ -100,7 +100,7 @@ tests =
 roundtrip :: (Eq a, ToExpr a) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
     let y = f x
-    in f_inv y `ediffEq` x -- no counterexample with y, as they not have ToExpr
+    in x `ediffEq` f_inv y -- no counterexample with y, as they not have ToExpr
 
 roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
@@ -155,7 +155,7 @@ roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
     case fmap convertLegacyProjectConfig (parseLegacyProjectConfig str) of
       ParseOk _ x     -> counterexample ("shown: " ++ str) $
-          config { projectConfigProvenance = mempty } `ediffEq` x
+          x `ediffEq` config { projectConfigProvenance = mempty }
       ParseFailed err -> counterexample (show err) False
   where
     str :: String
@@ -265,12 +265,12 @@ prop_roundtrip_printparse_RelaxedDep rdep =
 prop_roundtrip_printparse_RelaxDeps :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps rdep =
     counterexample (prettyShow rdep) $
-    eitherParsec (prettyShow rdep) `ediffEq` Right rdep
+    Right rdep `ediffEq` eitherParsec (prettyShow rdep)
 
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    eitherParsec rdep' `ediffEq` Right rdep
+    Right rdep `ediffEq` eitherParsec rdep' 
   where
     rdep' = go (prettyShow rdep)
 
@@ -360,7 +360,6 @@ instance Arbitrary ClientInstallFlags where
     arbitrary =
       ClientInstallFlags
         <$> arbitrary
-        <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
         <*> arbitrary
@@ -445,6 +444,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigDistDir              <- arbitraryFlag arbitraryShortToken
         projectConfigConfigFile           <- arbitraryFlag arbitraryShortToken
         projectConfigProjectFile          <- arbitraryFlag arbitraryShortToken
+        projectConfigIgnoreProject        <- arbitrary
         projectConfigHcFlavor             <- arbitrary
         projectConfigHcPath               <- arbitraryFlag arbitraryShortToken
         projectConfigHcPkg                <- arbitraryFlag arbitraryShortToken
@@ -482,6 +482,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigDistDir
         <*> shrinker projectConfigConfigFile
         <*> shrinker projectConfigProjectFile
+        <*> shrinker projectConfigIgnoreProject
         <*> shrinker projectConfigHcFlavor
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg

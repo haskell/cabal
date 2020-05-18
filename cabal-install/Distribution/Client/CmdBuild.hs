@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
@@ -17,15 +18,13 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
-         , liftOptions, yesNoOpt )
-import qualified Distribution.Client.Setup as Client
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags
-         , Flag(..), toFlag, fromFlag, fromFlagOrDefault )
+         ( GlobalFlags, ConfigFlags(..), yesNoOpt )
+import Distribution.Simple.Flag ( Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, option )
+         ( CommandUI(..), usageAlternatives, option, optionName )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -34,11 +33,7 @@ import Distribution.Simple.Utils
 import qualified Data.Map as Map
 
 
-buildCommand ::
-  CommandUI
-  (BuildFlags, ( ConfigFlags, ConfigExFlags
-               , InstallFlags, HaddockFlags
-               , TestFlags, BenchmarkFlags ))
+buildCommand :: CommandUI (NixStyleFlags BuildFlags)
 buildCommand = CommandUI {
   commandName         = "v2-build",
   commandSynopsis     = "Compile targets within the project.",
@@ -70,23 +65,16 @@ buildCommand = CommandUI {
      ++ "    Build the component in profiling mode "
      ++ "(including dependencies as needed)\n\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta,
-  commandDefaultFlags =
-      (defaultBuildFlags, commandDefaultFlags Client.installCommand),
-  commandOptions = \ showOrParseArgs ->
-      liftOptions snd setSnd
-          (commandOptions Client.installCommand showOrParseArgs) ++
-      liftOptions fst setFst
-          [ option [] ["only-configure"]
-              "Instead of performing a full build just run the configure step"
-              buildOnlyConfigure (\v flags -> flags { buildOnlyConfigure = v })
-              (yesNoOpt showOrParseArgs)
-          ]
+     ++ cmdCommonHelpTextNewBuildBeta
+  , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
+  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+                        . nixStyleOptions (\showOrParseArgs ->
+    [ option [] ["only-configure"]
+        "Instead of performing a full build just run the configure step"
+        buildOnlyConfigure (\v flags -> flags { buildOnlyConfigure = v })
+        (yesNoOpt showOrParseArgs)
+    ])
   }
-
-  where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
 
 data BuildFlags = BuildFlags
     { buildOnlyConfigure  :: Flag Bool
@@ -104,16 +92,8 @@ defaultBuildFlags = BuildFlags
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-buildAction ::
-  ( BuildFlags
-  , ( ConfigFlags, ConfigExFlags, InstallFlags
-    , HaddockFlags, TestFlags, BenchmarkFlags ))
-  -> [String] -> GlobalFlags -> IO ()
-buildAction
-  ( buildFlags
-  , ( configFlags, configExFlags, installFlags
-    , haddockFlags, testFlags, benchmarkFlags ))
-            targetStrings globalFlags = do
+buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
+buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings globalFlags = do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
                                  <> buildOnlyConfigure buildFlags)
@@ -160,11 +140,8 @@ buildAction
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

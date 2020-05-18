@@ -165,7 +165,7 @@ data ProjectConfigShared
        projectConfigDistDir           :: Flag FilePath,
        projectConfigConfigFile        :: Flag FilePath,
        projectConfigProjectFile       :: Flag FilePath,
-       -- projectConfigIgnoreProjectFile :: Flag Bool, -- TODO
+       projectConfigIgnoreProject     :: Flag Bool,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,

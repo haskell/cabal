@@ -1880,7 +1880,7 @@ data TestFlags = TestFlags {
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
-  } deriving (Generic, Typeable)
+  } deriving (Show, Generic, Typeable)
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -2000,7 +2000,7 @@ data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
     benchmarkOptions   :: [PathTemplate]
-  } deriving (Generic, Typeable)
+  } deriving (Show, Generic, Typeable)
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {

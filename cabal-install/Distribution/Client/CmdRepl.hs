@@ -24,13 +24,13 @@ import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfigIgn
+         ( ProjectConfig(..), withProjectOrGlobalConfig
          , projectConfigConfigFile )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
@@ -38,13 +38,12 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags
-         , fromFlagOrDefault, replOptions
+         ( fromFlagOrDefault, replOptions
          , Flag(..), toFlag, trueArg, falseArg )
 import Distribution.Simple.Command
          ( CommandUI(..), liftOptionL, usageAlternatives, option
@@ -197,21 +196,14 @@ replCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-replAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-              , HaddockFlags, TestFlags, BenchmarkFlags
-              , (ReplFlags, EnvFlags) )
-           -> [String] -> GlobalFlags -> IO ()
-replAction ( configFlags, configExFlags, installFlags
-           , haddockFlags, testFlags, benchmarkFlags
-           , (replFlags, envFlags) )
-           targetStrings globalFlags = do
+replAction :: NixStyleFlags (ReplFlags, EnvFlags) -> [String] -> GlobalFlags -> IO ()
+replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
-      ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
 
     (baseCtx, targetSelectors, finalizer, replType) <-
-      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
+      withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
 
     when (buildSettingOnlyDeps (buildSettings baseCtx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
@@ -303,11 +295,8 @@ replAction ( configFlags, configExFlags, installFlags
     finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    ignoreProject = envIgnoreProject envFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
     validatedTargets elaboratedPlan targetSelectors = do

@@ -7,6 +7,8 @@ module Distribution.Client.CmdFreeze (
     freezeAction,
   ) where
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
@@ -32,9 +34,9 @@ import Distribution.Version
 import Distribution.PackageDescription
          ( FlagAssignment, nullFlagAssignment )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+         ( GlobalFlags, ConfigFlags(..) )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Flag (Flag (..))
 import Distribution.Simple.Utils
          ( die', notice, wrapText )
@@ -47,13 +49,9 @@ import Control.Monad (unless)
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import qualified Distribution.Client.Setup as Client
 
-
-freezeCommand :: CommandUI ( ConfigFlags, ConfigExFlags, InstallFlags
-                           , HaddockFlags, TestFlags, BenchmarkFlags
-                           )
-freezeCommand = Client.installCommand {
+freezeCommand :: CommandUI (NixStyleFlags ())
+freezeCommand = CommandUI {
   commandName         = "v2-freeze",
   commandSynopsis     = "Freeze dependencies.",
   commandUsage        = usageAlternatives "v2-freeze" [ "[FLAGS]" ],
@@ -93,6 +91,8 @@ freezeCommand = Client.installCommand {
      ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
      ++ "to get involved and help with testing, fixing bugs etc then\nthat "
      ++ "is very much appreciated.\n"
+   , commandDefaultFlags = defaultNixStyleFlags ()
+   , commandOptions      = nixStyleOptions (const [])
    }
 
 -- | To a first approximation, the @freeze@ command runs the first phase of
@@ -102,12 +102,8 @@ freezeCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-freezeAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                , HaddockFlags, TestFlags, BenchmarkFlags )
-             -> [String] -> GlobalFlags -> IO ()
-freezeAction ( configFlags, configExFlags, installFlags
-             , haddockFlags, testFlags, benchmarkFlags )
-             extraArgs globalFlags = do
+freezeAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
 
     unless (null extraArgs) $
       die' verbosity $ "'freeze' doesn't take any extra arguments: "
@@ -133,11 +129,8 @@ freezeAction ( configFlags, configExFlags, installFlags
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
 
 
 

@@ -3,7 +3,9 @@
 -- The commands take a lot of the same options, which affect how install plan
 -- is constructed.
 module Distribution.Client.NixStyleOptions (
-    NixStyleFlags, nixStyleOptions, defaultNixStyleFlags,
+    NixStyleFlags (..),
+    nixStyleOptions,
+    defaultNixStyleFlags,
 ) where
 
 import Distribution.Client.Compat.Prelude
@@ -13,51 +15,71 @@ import Distribution.Simple.Command                       (OptionField (..), Show
 import Distribution.Simple.Setup                         (BenchmarkFlags, HaddockFlags, TestFlags)
 import Distribution.Solver.Types.ConstraintSource        (ConstraintSource (..))
 
+import Distribution.Client.ProjectFlags
+       (ProjectFlags (..), defaultProjectFlags, projectFlagsOptions)
 import Distribution.Client.Setup
        (ConfigExFlags, ConfigFlags (..), InstallFlags (..), benchmarkOptions, configureExOptions,
        configureOptions, haddockOptions, installOptions, liftOptions, testOptions)
 
--- TODO: turn into data record
--- Then we could use RecordWildCards in command implementation.
-type NixStyleFlags a = (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, BenchmarkFlags, a)
+data NixStyleFlags a = NixStyleFlags
+    { configFlags    :: ConfigFlags
+    , configExFlags  :: ConfigExFlags
+    , installFlags   :: InstallFlags
+    , haddockFlags   :: HaddockFlags
+    , testFlags      :: TestFlags
+    , benchmarkFlags :: BenchmarkFlags
+    , projectFlags   :: ProjectFlags
+    , extraFlags     :: a
+    }
 
 nixStyleOptions
     :: (ShowOrParseArgs -> [OptionField a])
     -> ShowOrParseArgs -> [OptionField (NixStyleFlags a)]
 nixStyleOptions commandOptions showOrParseArgs =
-        liftOptions get1 set1
+        liftOptions configFlags     set1
         -- Note: [Hidden Flags]
         -- hide "constraint", "dependency", and
         -- "exact-configuration" from the configure options.
         (filter ((`notElem` ["constraint", "dependency"
                             , "exact-configuration"])
                  . optionName) $ configureOptions showOrParseArgs)
-     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs
+     ++ liftOptions configExFlags   set2 (configureExOptions showOrParseArgs
                                ConstraintSourceCommandlineFlag)
-     ++ liftOptions get3 set3
+     ++ liftOptions installFlags   set3
         -- hide "target-package-db" and "symlink-bindir" flags from the
         -- install options.
         -- "symlink-bindir" is obsoleted by "installdir" in ClientInstallFlags
         (filter ((`notElem` ["target-package-db", "symlink-bindir"])
                  . optionName) $
                                installOptions showOrParseArgs)
-       ++ liftOptions get4 set4
+       ++ liftOptions haddockFlags set4
           -- hide "verbose" and "builddir" flags from the
           -- haddock options.
           (filter ((`notElem` ["v", "verbose", "builddir"])
                   . optionName) $
                                 haddockOptions showOrParseArgs)
-     ++ liftOptions get5 set5 (testOptions showOrParseArgs)
-     ++ liftOptions get6 set6 (benchmarkOptions showOrParseArgs)
-     ++ liftOptions get7 set7 (commandOptions showOrParseArgs)
+     ++ liftOptions testFlags      set5 (testOptions showOrParseArgs)
+     ++ liftOptions benchmarkFlags set6 (benchmarkOptions showOrParseArgs)
+     ++ liftOptions projectFlags   set7 (projectFlagsOptions showOrParseArgs)
+     ++ liftOptions extraFlags     set8 (commandOptions showOrParseArgs)
   where
-    get1 (a,_,_,_,_,_,_) = a; set1 a (_,b,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get2 (_,b,_,_,_,_,_) = b; set2 b (a,_,c,d,e,f,g) = (a,b,c,d,e,f,g)
-    get3 (_,_,c,_,_,_,_) = c; set3 c (a,b,_,d,e,f,g) = (a,b,c,d,e,f,g)
-    get4 (_,_,_,d,_,_,_) = d; set4 d (a,b,c,_,e,f,g) = (a,b,c,d,e,f,g)
-    get5 (_,_,_,_,e,_,_) = e; set5 e (a,b,c,d,_,f,g) = (a,b,c,d,e,f,g)
-    get6 (_,_,_,_,_,f,_) = f; set6 f (a,b,c,d,e,_,g) = (a,b,c,d,e,f,g)
-    get7 (_,_,_,_,_,_,g) = g; set7 g (a,b,c,d,e,f,_) = (a,b,c,d,e,f,g)
+    set1 x flags = flags { configFlags    = x }
+    set2 x flags = flags { configExFlags  = x }
+    set3 x flags = flags { installFlags   = x }
+    set4 x flags = flags { haddockFlags   = x }
+    set5 x flags = flags { testFlags      = x }
+    set6 x flags = flags { benchmarkFlags = x }
+    set7 x flags = flags { projectFlags   = x }
+    set8 x flags = flags { extraFlags     = x }
 
 defaultNixStyleFlags :: a ->  NixStyleFlags a
-defaultNixStyleFlags x = ( mempty, mempty, mempty, mempty, mempty, mempty, x )
+defaultNixStyleFlags x = NixStyleFlags
+    { configFlags    = mempty
+    , configExFlags  = mempty
+    , installFlags   = mempty
+    , haddockFlags   = mempty
+    , testFlags      = mempty
+    , benchmarkFlags = mempty
+    , projectFlags   = defaultProjectFlags
+    , extraFlags     = x
+    }

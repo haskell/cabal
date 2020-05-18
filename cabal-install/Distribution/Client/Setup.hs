@@ -623,7 +623,7 @@ data ConfigExFlags = ConfigExFlags {
     configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Show, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
 defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
@@ -1697,17 +1697,9 @@ data InstallFlags = InstallFlags {
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
-    installOfflineMode      :: Flag Bool,
-    -- | The cabal project file name; defaults to @cabal.project@.
-    -- Th name itself denotes the cabal project file name, but it also
-    -- is the base of auxiliary project files, such as
-    -- @cabal.project.local@ and @cabal.project.freeze@ which are also
-    -- read and written out in some cases.  If the path is not found
-    -- in the current working directory, we will successively probe
-    -- relative to parent directories until this name is found.
-    installProjectFileName   :: Flag FilePath -- TODO: use ProjectFlags
+    installOfflineMode      :: Flag Bool
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Show, Generic)
 
 instance Binary InstallFlags
 
@@ -1745,8 +1737,7 @@ defaultInstallFlags = InstallFlags {
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
     installRunTests        = mempty,
-    installOfflineMode     = Flag False,
-    installProjectFileName = mempty
+    installOfflineMode     = Flag False
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
@@ -2055,10 +2046,6 @@ installOptions showOrParseArgs =
           installOfflineMode (\v flags -> flags { installOfflineMode = v })
           (yesNoOpt showOrParseArgs)
 
-      , option [] ["project-file"]
-          "Set the name of the cabal.project file to search for in parent directories"
-          installProjectFileName (\v flags -> flags {installProjectFileName = v})
-          (reqArgFlag "FILE")
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->

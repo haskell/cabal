@@ -119,7 +119,7 @@ import Distribution.Compiler
 import Distribution.Verbosity
          ( Verbosity, normal )
 import qualified Distribution.Compat.CharParsing as P
-
+import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Solver.Types.ConstraintSource
 
 import Data.List
@@ -154,21 +154,22 @@ import Data.Function
 -- * Configuration saved in the config file
 --
 
-data SavedConfig = SavedConfig {
-    savedGlobalFlags       :: GlobalFlags,
-    savedInitFlags         :: IT.InitFlags,
-    savedInstallFlags      :: InstallFlags,
-    savedClientInstallFlags :: ClientInstallFlags,
-    savedConfigureFlags    :: ConfigFlags,
-    savedConfigureExFlags  :: ConfigExFlags,
-    savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
-    savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
-    savedUploadFlags       :: UploadFlags,
-    savedReportFlags       :: ReportFlags,
-    savedHaddockFlags      :: HaddockFlags,
-    savedTestFlags         :: TestFlags,
-    savedBenchmarkFlags    :: BenchmarkFlags
-  } deriving Generic
+data SavedConfig = SavedConfig
+    { savedGlobalFlags        :: GlobalFlags
+    , savedInitFlags          :: IT.InitFlags
+    , savedInstallFlags       :: InstallFlags
+    , savedClientInstallFlags :: ClientInstallFlags
+    , savedConfigureFlags     :: ConfigFlags
+    , savedConfigureExFlags   :: ConfigExFlags
+    , savedUserInstallDirs    :: InstallDirs (Flag PathTemplate)
+    , savedGlobalInstallDirs  :: InstallDirs (Flag PathTemplate)
+    , savedUploadFlags        :: UploadFlags
+    , savedReportFlags        :: ReportFlags
+    , savedHaddockFlags       :: HaddockFlags
+    , savedTestFlags          :: TestFlags
+    , savedBenchmarkFlags     :: BenchmarkFlags
+    , savedProjectFlags       :: ProjectFlags
+    } deriving Generic
 
 instance Monoid SavedConfig where
   mempty = gmempty
@@ -188,7 +189,8 @@ instance Semigroup SavedConfig where
     savedReportFlags       = combinedSavedReportFlags,
     savedHaddockFlags      = combinedSavedHaddockFlags,
     savedTestFlags         = combinedSavedTestFlags,
-    savedBenchmarkFlags    = combinedSavedBenchmarkFlags
+    savedBenchmarkFlags    = combinedSavedBenchmarkFlags,
+    savedProjectFlags      = combinedSavedProjectFlags
   }
     where
       -- This is ugly, but necessary. If we're mappending two config files, we
@@ -329,8 +331,7 @@ instance Semigroup SavedConfig where
         installNumJobs               = combine installNumJobs,
         installKeepGoing             = combine installKeepGoing,
         installRunTests              = combine installRunTests,
-        installOfflineMode           = combine installOfflineMode,
-        installProjectFileName       = combine installProjectFileName
+        installOfflineMode           = combine installOfflineMode
         }
         where
           combine        = combine'        savedInstallFlags
@@ -338,7 +339,6 @@ instance Semigroup SavedConfig where
 
       combinedSavedClientInstallFlags = ClientInstallFlags
         { cinstInstallLibs     = combine cinstInstallLibs
-        , cinstIgnoreProject   = combine cinstIgnoreProject
         , cinstEnvironmentPath = combine cinstEnvironmentPath
         , cinstOverwritePolicy = combine cinstOverwritePolicy
         , cinstInstallMethod   = combine cinstInstallMethod
@@ -521,6 +521,12 @@ instance Semigroup SavedConfig where
           combine      = combine'        savedBenchmarkFlags
           lastNonEmpty = lastNonEmpty'   savedBenchmarkFlags
 
+      combinedSavedProjectFlags = ProjectFlags
+        { flagProjectFileName = combine flagProjectFileName
+        , flagIgnoreProject   = combine flagIgnoreProject
+        }
+        where
+          combine      = combine'        savedProjectFlags
 
 --
 -- * Default config

@@ -15,6 +15,8 @@ module Distribution.Client.CmdUpdate (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
@@ -23,6 +25,8 @@ import Distribution.Client.ProjectConfig
          , ProjectConfigShared(projectConfigConfigFile)
          , projectConfigWithSolverRepoContext
          , withProjectOrGlobalConfig )
+import Distribution.Client.ProjectFlags
+         ( ProjectFlags (..) )
 import Distribution.Client.Types
          ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
 import Distribution.Client.HttpUtils
@@ -32,11 +36,11 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         ( GlobalFlags, ConfigFlags(..)
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
@@ -60,21 +64,17 @@ import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import qualified Distribution.Client.Setup as Client
 
 import qualified Hackage.Security.Client as Sec
 
-updateCommand :: CommandUI ( ConfigFlags, ConfigExFlags
-                           , InstallFlags, HaddockFlags
-                           , TestFlags, BenchmarkFlags
-                           )
-updateCommand = Client.installCommand {
-  commandName         = "v2-update",
-  commandSynopsis     = "Updates list of known packages.",
-  commandUsage        = usageAlternatives "v2-update" [ "[FLAGS] [REPOS]" ],
-  commandDescription  = Just $ \_ -> wrapText $
-        "For all known remote repositories, download the package list.",
-  commandNotes        = Just $ \pname ->
+updateCommand :: CommandUI (NixStyleFlags ())
+updateCommand = CommandUI
+  { commandName         = "v2-update"
+  , commandSynopsis     = "Updates list of known packages."
+  , commandUsage        = usageAlternatives "v2-update" [ "[FLAGS] [REPOS]" ]
+  , commandDescription  = Just $ \_ -> wrapText $
+          "For all known remote repositories, download the package list."
+  , commandNotes        = Just $ \pname ->
         "REPO has the format <repo-id>[,<index-state>] where index-state follows\n"
      ++ "the same format and syntax that is supported by the --index-state flag.\n\n"
      ++ "Examples:\n"
@@ -98,6 +98,10 @@ updateCommand = Client.installCommand {
      ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
      ++ "to get involved and help with testing, fixing bugs etc then\nthat "
      ++ "is very much appreciated.\n"
+  -- TODO: Add ProjectFlags to NixStyleFlags,
+  -- so project-file won't be ambiguous
+  , commandOptions      = nixStyleOptions $ const []
+  , commandDefaultFlags = defaultNixStyleFlags ()
   }
 
 data UpdateRequest = UpdateRequest
@@ -114,13 +118,11 @@ instance Parsec UpdateRequest where
       state <- P.char ',' *> parsec <|> pure IndexStateHead
       return (UpdateRequest name state)
 
-updateAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                , HaddockFlags, TestFlags, BenchmarkFlags )
-             -> [String] -> GlobalFlags -> IO ()
-updateAction ( configFlags, configExFlags, installFlags
-             , haddockFlags, testFlags, benchmarkFlags )
-             extraArgs globalFlags = do
-  projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
+updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
+  let ignoreProject = flagIgnoreProject projectFlags
+
+  projectConfig <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)
 
@@ -172,11 +174,7 @@ updateAction ( configFlags, configExFlags, installFlags
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags
-                  mempty -- ClientInstallFlags, not needed here
-                  haddockFlags testFlags benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
 updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, RepoIndexState)

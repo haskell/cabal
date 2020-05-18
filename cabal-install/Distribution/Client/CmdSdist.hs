@@ -15,11 +15,13 @@ import Distribution.Client.CmdErrorMessages
     ( Plural(..), renderComponentKind )
 import Distribution.Client.ProjectOrchestration
     ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext, establishProjectBaseContextWithRoot)
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), defaultNixStyleFlags )
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
 import Distribution.Client.Setup
-    ( GlobalFlags(..), InstallFlags (installProjectFileName) )
+    ( GlobalFlags(..) )
 import Distribution.Solver.Types.SourcePackage
     ( SourcePackage(..) )
 import Distribution.Client.Types
@@ -27,7 +29,7 @@ import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), ProjectRoot (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig, withProjectOrGlobalConfigIgn, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
+    ( ProjectConfig, withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
 import Distribution.Client.ProjectFlags
      ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 
@@ -96,7 +98,7 @@ sdistCommand = CommandUI
     , commandNotes = Nothing
     , commandDefaultFlags = (defaultProjectFlags, defaultSdistFlags)
     , commandOptions = \showOrParseArgs ->
-        map (liftOptionL _1) projectFlagsOptions ++
+        map (liftOptionL _1) (projectFlagsOptions showOrParseArgs) ++
         map (liftOptionL _2) (sdistOptions showOrParseArgs)
     }
 
@@ -148,7 +150,7 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
+    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
 
@@ -197,17 +199,17 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     listSources    = fromFlagOrDefault False sdistListSources
     nulSeparated   = fromFlagOrDefault False sdistNulSeparated
     mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = fromFlagOrDefault False flagIgnoreProject
+    ignoreProject  = flagIgnoreProject
 
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
         globalFlags
-        mempty { configVerbosity = sdistVerbosity, configDistPref = sdistDistDir }
-        mempty
-        mempty { installProjectFileName = flagProjectFileName }
-        mempty
-        mempty
-        mempty
+        (defaultNixStyleFlags ())
+          { configFlags = (configFlags $ defaultNixStyleFlags ())
+            { configVerbosity = sdistVerbosity
+            , configDistPref = sdistDistDir
+            }
+          }
         mempty
 
     globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
