@@ -256,9 +256,11 @@ executable cabal
         Distribution.Client.Types
         Distribution.Client.Types.AllowNewer
         Distribution.Client.Types.BuildResults
-        Distribution.Client.Types.Credentials
         Distribution.Client.Types.ConfiguredId
         Distribution.Client.Types.ConfiguredPackage
+        Distribution.Client.Types.Credentials
+        Distribution.Client.Types.InstallMethod
+        Distribution.Client.Types.OverwritePolicy
         Distribution.Client.Types.PackageLocation
         Distribution.Client.Types.PackageSpecifier
         Distribution.Client.Types.ReadyPackage

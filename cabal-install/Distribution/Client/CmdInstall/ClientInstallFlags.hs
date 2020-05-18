@@ -8,24 +8,23 @@ module Distribution.Client.CmdInstall.ClientInstallFlags
 ) where
 
 import Distribution.Client.Compat.Prelude
+import Prelude ()
 
 import Distribution.ReadE
-         ( ReadE(..), succeedReadE )
+         ( succeedReadE, parsecToReadE )
 import Distribution.Simple.Command
          ( ShowOrParseArgs(..), OptionField(..), option, reqArg )
 import Distribution.Simple.Setup
          ( Flag(..), trueArg, flagToList, toFlag )
+import Distribution.Parsec (Parsec (..), CabalParsing)
+import Distribution.Pretty (prettyShow)
 
-import Distribution.Client.InstallSymlink
+import Distribution.Client.Types.InstallMethod
+         ( InstallMethod (..) )
+import Distribution.Client.Types.OverwritePolicy
          ( OverwritePolicy(..) )
 
-
-data InstallMethod = InstallMethodCopy
-                   | InstallMethodSymlink
-  deriving (Eq, Show, Generic, Bounded, Enum)
-
-instance Binary InstallMethod
-instance Structured InstallMethod
+import qualified Distribution.Compat.CharParsing as P
 
 data ClientInstallFlags = ClientInstallFlags
   { cinstInstallLibs     :: Flag Bool
@@ -67,42 +66,26 @@ clientInstallOptions _ =
   , option [] ["overwrite-policy"]
     "How to handle already existing symlinks."
     cinstOverwritePolicy (\v flags -> flags { cinstOverwritePolicy = v })
-    $ reqArg
-        "always|never"
-        readOverwritePolicyFlag
-        showOverwritePolicyFlag
+    $ reqArg "always|never"
+        (parsecToReadE (\err -> "Error parsing overwrite-policy: " ++ err) (toFlag `fmap` parsec)) 
+        (map prettyShow . flagToList)
   , option [] ["install-method"]
     "How to install the executables."
     cinstInstallMethod (\v flags -> flags { cinstInstallMethod = v })
     $ reqArg
         "default|copy|symlink"
-        readInstallMethodFlag
-        showInstallMethodFlag
+        (parsecToReadE (\err -> "Error parsing install-method: " ++ err) (toFlag `fmap` parsecInstallMethod))
+        (map prettyShow . flagToList)
   , option [] ["installdir"]
     "Where to install (by symlinking or copying) the executables in."
     cinstInstalldir (\v flags -> flags { cinstInstalldir = v })
     $ reqArg "DIR" (succeedReadE Flag) flagToList
   ]
 
-readOverwritePolicyFlag :: ReadE (Flag OverwritePolicy)
-readOverwritePolicyFlag = ReadE $ \case
-  "always" -> Right $ Flag AlwaysOverwrite
-  "never"  -> Right $ Flag NeverOverwrite
-  policy   -> Left  $ "'" <> policy <> "' isn't a valid overwrite policy"
-
-showOverwritePolicyFlag :: Flag OverwritePolicy -> [String]
-showOverwritePolicyFlag (Flag AlwaysOverwrite) = ["always"]
-showOverwritePolicyFlag (Flag NeverOverwrite)  = ["never"]
-showOverwritePolicyFlag NoFlag                 = []
-
-readInstallMethodFlag :: ReadE (Flag InstallMethod)
-readInstallMethodFlag = ReadE $ \case
-  "default" -> Right $ NoFlag
-  "copy"    -> Right $ Flag InstallMethodCopy
-  "symlink" -> Right $ Flag InstallMethodSymlink
-  method    -> Left  $ "'" <> method <> "' isn't a valid install-method"
-
-showInstallMethodFlag :: Flag InstallMethod -> [String]
-showInstallMethodFlag (Flag InstallMethodCopy)    = ["copy"]
-showInstallMethodFlag (Flag InstallMethodSymlink) = ["symlink"]
-showInstallMethodFlag NoFlag                      = []
+parsecInstallMethod :: CabalParsing m => m InstallMethod
+parsecInstallMethod = do
+    name <- P.munch1 isAlpha
+    case name of
+        "copy"    -> pure InstallMethodCopy
+        "symlink" -> pure InstallMethodSymlink
+        _         -> P.unexpected $ "InstallMethod: " ++ name

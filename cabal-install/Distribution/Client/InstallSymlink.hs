@@ -13,16 +13,13 @@
 -- Managing installing binaries with symlinks.
 -----------------------------------------------------------------------------
 module Distribution.Client.InstallSymlink (
-    OverwritePolicy(..),
     symlinkBinaries,
     symlinkBinary,
     trySymlink,
   ) where
 
-import Distribution.Compat.Binary
-         ( Binary )
-import Distribution.Utils.Structured
-         ( Structured )
+import Distribution.Client.Compat.Prelude hiding (ioError)
+import Prelude ()
 
 import Distribution.Client.Types
          ( ConfiguredPackage(..), BuildOutcomes )
@@ -60,27 +57,17 @@ import System.Directory
 import System.FilePath
          ( (</>), splitPath, joinPath, isAbsolute )
 
-import Prelude hiding (ioError)
 import System.IO.Error
          ( isDoesNotExistError, ioError )
 import Distribution.Compat.Exception ( catchIO )
 import Control.Exception
          ( assert )
-import Data.Maybe
-         ( catMaybes )
-import GHC.Generics
-         ( Generic )
 
 import Distribution.Client.Compat.Directory ( createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink )
+import Distribution.Client.Types.OverwritePolicy
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-
-data OverwritePolicy = NeverOverwrite | AlwaysOverwrite
-  deriving (Show, Eq, Generic, Bounded, Enum)
-
-instance Binary OverwritePolicy
-instance Structured OverwritePolicy
 
 -- | We would like by default to install binaries into some location that is on
 -- the user's PATH. For per-user installations on Unix systems that basically
@@ -120,7 +107,7 @@ symlinkBinaries platform comp overwritePolicy
       publicBinDir  <- canonicalizePath symlinkBinDir
 --    TODO: do we want to do this here? :
 --      createDirectoryIfMissing True publicBinDir
-      fmap catMaybes $ sequence
+      fmap catMaybes $ sequenceA
         [ do privateBinDir <- pkgBinDir pkg ipid
              ok <- symlinkBinary
                      overwritePolicy

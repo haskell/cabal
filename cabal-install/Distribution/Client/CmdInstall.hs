@@ -92,7 +92,9 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
-         ( OverwritePolicy(..), symlinkBinary, trySymlink )
+         ( symlinkBinary, trySymlink )
+import Distribution.Client.Types.OverwritePolicy
+         ( OverwritePolicy (..) )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
