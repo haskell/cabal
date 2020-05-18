@@ -24,7 +24,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), yesNoOpt )
 import Distribution.Simple.Flag ( Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, option )
+         ( CommandUI(..), usageAlternatives, option, optionName )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -67,12 +67,13 @@ buildCommand = CommandUI {
 
      ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
-  , commandOptions      = nixStyleOptions $ \showOrParseArgs ->
+  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+                        . nixStyleOptions (\showOrParseArgs ->
     [ option [] ["only-configure"]
         "Instead of performing a full build just run the configure step"
         buildOnlyConfigure (\v flags -> flags { buildOnlyConfigure = v })
         (yesNoOpt showOrParseArgs)
-    ]
+    ])
   }
 
 data BuildFlags = BuildFlags

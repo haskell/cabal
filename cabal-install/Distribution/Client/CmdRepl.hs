@@ -30,7 +30,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfigIgn
+         ( ProjectConfig(..), withProjectOrGlobalConfig
          , projectConfigConfigFile )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
@@ -199,12 +199,11 @@ replCommand = Client.installCommand {
 replAction :: NixStyleFlags (ReplFlags, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
-      ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
       with           = withProject    cliConfig             verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
 
     (baseCtx, targetSelectors, finalizer, replType) <-
-      withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
+      withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
 
     when (buildSettingOnlyDeps (buildSettings baseCtx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
@@ -296,6 +295,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    ignoreProject = envIgnoreProject envFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 

@@ -24,7 +24,7 @@ import Distribution.Verbosity
          ( normal )
 
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Simple.Utils
          ( wrapText, notice )
 
@@ -68,7 +68,8 @@ configureCommand = CommandUI {
 
      ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags ()
-  , commandOptions      = nixStyleOptions (const [])
+  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+                        . nixStyleOptions (const [])
   }
 
 -- | To a first approximation, the @configure@ just runs the first phase of

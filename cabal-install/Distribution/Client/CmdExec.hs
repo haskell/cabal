@@ -48,7 +48,7 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig(..)
   )
 import Distribution.Simple.Command
-  ( CommandUI(..)
+  ( CommandUI(..), optionName
   )
 import Distribution.Simple.Program.Db
   ( modifyProgramSearchPath
@@ -114,7 +114,8 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandOptions      = nixStyleOptions (const [])
+  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+                        . nixStyleOptions (const [])
   , commandDefaultFlags = defaultNixStyleFlags ()
   }
 

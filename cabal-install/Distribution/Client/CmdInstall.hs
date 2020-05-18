@@ -79,7 +79,7 @@ import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.ProjectConfig
          ( projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings, withProjectOrGlobalConfigIgn )
+         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import Distribution.Client.ProjectPlanning.Types
@@ -305,11 +305,8 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
 
       return (packageSpecifiers, uris, packageTargets, projectConfig)
 
-  let
-    ignoreProject = fromFlagOrDefault False (flagIgnoreProject projectFlags)
-
   (specs, uris, targetSelectors, config) <-
-     withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
+     withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
   let
     ProjectConfig {
@@ -404,6 +401,7 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
   where
     configFlags' = disableTestsBenchsByDefault configFlags
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags')
+    ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig
                   globalFlags
                   flags { configFlags = configFlags' }

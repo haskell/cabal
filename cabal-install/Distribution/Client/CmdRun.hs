@@ -47,7 +47,7 @@ import Distribution.Simple.Utils
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
-         , withProjectOrGlobalConfigIgn )
+         , withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -165,10 +165,7 @@ runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings glob
         distDirLayout <- establishDummyDistDirLayout verbosity (config <> cliConfig) tmpDir
         establishDummyProjectBaseContext verbosity (config <> cliConfig) distDirLayout [] OtherCommand
 
-    let
-      ignoreProject = fromFlagOrDefault False (crunIgnoreProject clientRunFlags)
-
-    baseCtx <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag with without
+    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
 
     let
       scriptOrError script err = do
@@ -297,6 +294,7 @@ runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings glob
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    ignoreProject = crunIgnoreProject clientRunFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 

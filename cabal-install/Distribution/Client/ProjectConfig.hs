@@ -29,7 +29,6 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalFreezeConfig,
     withProjectOrGlobalConfig,
-    withProjectOrGlobalConfigIgn,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
@@ -455,30 +454,26 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
--- | Like 'withProjectOrGlobalConfig', with an additional boolean
--- which tells to ignore local project.
---
--- Used to implement -z / --ignore-project behaviour
---
-withProjectOrGlobalConfigIgn
-    :: Bool -- ^ whether to ignore local project
-    -> Verbosity
-    -> Flag FilePath  -- ^ global config file
+withProjectOrGlobalConfig
+    :: Verbosity                  -- ^ verbosity
+    -> Flag Bool                  -- ^ whether to ignore local project
+    -> Flag FilePath              -- ^ @--cabal-config@
+    -> IO a                       -- ^ with project
+    -> (ProjectConfig -> IO a)    -- ^ without projet
+    -> IO a
+withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
+    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
+    without globalConfig
+withProjectOrGlobalConfig verbosity _ignorePrj  gcf  with without =
+    withProjectOrGlobalConfig' verbosity gcf with without
+
+withProjectOrGlobalConfig'
+    :: Verbosity
+    -> Flag FilePath
     -> IO a
     -> (ProjectConfig -> IO a)
     -> IO a
-withProjectOrGlobalConfigIgn True  verbosity gcf _with without = do
-    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-    without globalConfig
-withProjectOrGlobalConfigIgn False verbosity gcf with without =
-    withProjectOrGlobalConfig verbosity gcf with without
-
-withProjectOrGlobalConfig :: Verbosity
-                          -> Flag FilePath
-                          -> IO a
-                          -> (ProjectConfig -> IO a)
-                          -> IO a
-withProjectOrGlobalConfig verbosity globalConfigFlag with without = do
+withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
   globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
 
   let

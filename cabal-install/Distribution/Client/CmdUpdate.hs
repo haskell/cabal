@@ -24,7 +24,7 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..)
          , ProjectConfigShared(projectConfigConfigFile)
          , projectConfigWithSolverRepoContext
-         , withProjectOrGlobalConfigIgn )
+         , withProjectOrGlobalConfig )
 import Distribution.Client.ProjectFlags
          ( ProjectFlags (..) )
 import Distribution.Client.Types
@@ -120,9 +120,9 @@ instance Parsec UpdateRequest where
 
 updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
-  let ignoreProject = fromFlagOrDefault False (flagIgnoreProject projectFlags)
+  let ignoreProject = flagIgnoreProject projectFlags
 
-  projectConfig <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag
+  projectConfig <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)
 

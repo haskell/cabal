@@ -29,7 +29,7 @@ import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), ProjectRoot (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig, withProjectOrGlobalConfigIgn, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
+    ( ProjectConfig, withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
 import Distribution.Client.ProjectFlags
      ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 
@@ -150,7 +150,7 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfigIgn ignoreProject verbosity globalConfigFlag withProject withoutProject
+    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
 
@@ -199,7 +199,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     listSources    = fromFlagOrDefault False sdistListSources
     nulSeparated   = fromFlagOrDefault False sdistNulSeparated
     mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = fromFlagOrDefault False flagIgnoreProject
+    ignoreProject  = flagIgnoreProject
 
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
