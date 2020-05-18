@@ -33,7 +33,7 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
 import Distribution.Client.CmdInstall.ClientInstallTargetSelector
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.Types
          ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage
          , SourcePackageDb(..) )
@@ -47,7 +47,7 @@ import Distribution.Client.ProjectConfig
          , fetchAndReadSourcePackages
          )
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectConfig.Types
          ( ProjectConfig(..), ProjectConfigShared(..)
          , ProjectConfigBuildOnly(..), PackageConfig(..)
@@ -95,7 +95,7 @@ import Distribution.Client.InstallSymlink
 import Distribution.Simple.Flag
          ( fromFlagOrDefault, flagToMaybe, flagElim )
 import Distribution.Simple.Setup
-         ( Flag(..), HaddockFlags, TestFlags, BenchmarkFlags )
+         ( Flag(..) )
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Simple.Command
@@ -197,16 +197,8 @@ installCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-installAction
-  :: ( ConfigFlags, ConfigExFlags, InstallFlags
-     , HaddockFlags, TestFlags, BenchmarkFlags
-     , ClientInstallFlags)
-  -> [String] -> GlobalFlags
-  -> IO ()
-installAction ( configFlags, configExFlags, installFlags
-              , haddockFlags, testFlags, benchmarkFlags
-              , clientInstallFlags' )
-              targetStrings globalFlags = do
+installAction :: NixStyleFlags ClientInstallFlags -> [String] -> GlobalFlags -> IO ()
+installAction NixStyleFlags { extraFlags = clientInstallFlags', .. } targetStrings globalFlags = do
   -- Ensure there were no invalid configuration options specified.
   verifyPreconditionsOrDie verbosity configFlags'
 

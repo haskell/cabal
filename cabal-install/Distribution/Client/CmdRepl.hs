@@ -24,7 +24,7 @@ import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
@@ -38,13 +38,12 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags
-         , fromFlagOrDefault, replOptions
+         ( fromFlagOrDefault, replOptions
          , Flag(..), toFlag, trueArg, falseArg )
 import Distribution.Simple.Command
          ( CommandUI(..), liftOptionL, usageAlternatives, option
@@ -197,14 +196,8 @@ replCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-replAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-              , HaddockFlags, TestFlags, BenchmarkFlags
-              , (ReplFlags, EnvFlags) )
-           -> [String] -> GlobalFlags -> IO ()
-replAction ( configFlags, configExFlags, installFlags
-           , haddockFlags, testFlags, benchmarkFlags
-           , (replFlags, envFlags) )
-           targetStrings globalFlags = do
+replAction :: NixStyleFlags (ReplFlags, EnvFlags) -> [String] -> GlobalFlags -> IO ()
+replAction NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
       ignoreProject = fromFlagOrDefault False (envIgnoreProject envFlags)
       with           = withProject    cliConfig             verbosity targetStrings

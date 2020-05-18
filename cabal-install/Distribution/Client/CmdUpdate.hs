@@ -15,6 +15,8 @@ module Distribution.Client.CmdUpdate (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Compat.Directory
          ( setModificationTime )
 import Distribution.Client.ProjectOrchestration
@@ -32,11 +34,11 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags
+         ( GlobalFlags, ConfigFlags(..)
          , UpdateFlags, defaultUpdateFlags
          , RepoContext(..) )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
 import Distribution.Verbosity
@@ -60,21 +62,17 @@ import System.FilePath ((<.>), dropExtension)
 import Data.Time (getCurrentTime)
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import qualified Distribution.Client.Setup as Client
 
 import qualified Hackage.Security.Client as Sec
 
-updateCommand :: CommandUI ( ConfigFlags, ConfigExFlags
-                           , InstallFlags, HaddockFlags
-                           , TestFlags, BenchmarkFlags
-                           )
-updateCommand = Client.installCommand {
-  commandName         = "v2-update",
-  commandSynopsis     = "Updates list of known packages.",
-  commandUsage        = usageAlternatives "v2-update" [ "[FLAGS] [REPOS]" ],
-  commandDescription  = Just $ \_ -> wrapText $
-        "For all known remote repositories, download the package list.",
-  commandNotes        = Just $ \pname ->
+updateCommand :: CommandUI (NixStyleFlags ())
+updateCommand = CommandUI
+  { commandName         = "v2-update"
+  , commandSynopsis     = "Updates list of known packages."
+  , commandUsage        = usageAlternatives "v2-update" [ "[FLAGS] [REPOS]" ]
+  , commandDescription  = Just $ \_ -> wrapText $
+          "For all known remote repositories, download the package list."
+  , commandNotes        = Just $ \pname ->
         "REPO has the format <repo-id>[,<index-state>] where index-state follows\n"
      ++ "the same format and syntax that is supported by the --index-state flag.\n\n"
      ++ "Examples:\n"
@@ -98,6 +96,8 @@ updateCommand = Client.installCommand {
      ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
      ++ "to get involved and help with testing, fixing bugs etc then\nthat "
      ++ "is very much appreciated.\n"
+  , commandOptions      = nixStyleOptions (const []) -- clientInstallOptions
+  , commandDefaultFlags = defaultNixStyleFlags () -- defaultClientInstallFlags
   }
 
 data UpdateRequest = UpdateRequest
@@ -114,12 +114,8 @@ instance Parsec UpdateRequest where
       state <- P.char ',' *> parsec <|> pure IndexStateHead
       return (UpdateRequest name state)
 
-updateAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                , HaddockFlags, TestFlags, BenchmarkFlags )
-             -> [String] -> GlobalFlags -> IO ()
-updateAction ( configFlags, configExFlags, installFlags
-             , haddockFlags, testFlags, benchmarkFlags )
-             extraArgs globalFlags = do
+updateAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+updateAction NixStyleFlags {..} extraArgs globalFlags = do
   projectConfig <- withProjectOrGlobalConfig verbosity globalConfigFlag
     (projectConfig <$> establishProjectBaseContext verbosity cliConfig OtherCommand)
     (\globalConfig -> return $ globalConfig <> cliConfig)

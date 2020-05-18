@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | cabal-install CLI command: haddock
 --
@@ -17,11 +17,11 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+         ( GlobalFlags, ConfigFlags(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), TestFlags, BenchmarkFlags(..), fromFlagOrDefault )
+         ( HaddockFlags(..), fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
@@ -71,13 +71,8 @@ haddockCommand = CommandUI {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-haddockAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-                 , HaddockFlags, TestFlags, BenchmarkFlags, () )
-                 -> [String] -> GlobalFlags -> IO ()
-haddockAction ( configFlags, configExFlags, installFlags
-              , haddockFlags, testFlags, benchmarkFlags, () )
-                targetStrings globalFlags = do
-
+haddockAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+haddockAction NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return

@@ -623,7 +623,7 @@ data ConfigExFlags = ConfigExFlags {
     configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Show, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
 defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
@@ -1707,7 +1707,7 @@ data InstallFlags = InstallFlags {
     -- relative to parent directories until this name is found.
     installProjectFileName   :: Flag FilePath -- TODO: use ProjectFlags
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Show, Generic)
 
 instance Binary InstallFlags
 

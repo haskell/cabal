@@ -26,13 +26,13 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.CmdRun.ClientRunFlags
 
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags, nixStyleOptions, defaultNixStyleFlags )
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..), ConfigExFlags, InstallFlags(..) )
+         ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
-import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags, fromFlagOrDefault )
+import Distribution.Simple.Flag
+         ( fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
@@ -153,14 +153,8 @@ runCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: ( ConfigFlags, ConfigExFlags, InstallFlags
-             , HaddockFlags, TestFlags, BenchmarkFlags
-             , ClientRunFlags )
-          -> [String] -> GlobalFlags -> IO ()
-runAction ( configFlags, configExFlags, installFlags
-          , haddockFlags, testFlags, benchmarkFlags
-          , clientRunFlags )
-            targetStrings globalFlags = do
+runAction :: NixStyleFlags ClientRunFlags -> [String] -> GlobalFlags -> IO ()
+runAction NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tmpDir <- createTempDirectory globalTmp "cabal-repl."
 
