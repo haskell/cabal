@@ -1,4 +1,7 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
+
 
 -- | Utilities to help format error messages for the various CLI commands.
 --
@@ -10,14 +13,23 @@ module Distribution.Client.CmdErrorMessages (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
+         ( AvailableTarget(..), AvailableTargetStatus(..),
+           CannotPruneDependencies(..), TargetRequested(..) )
 import Distribution.Client.TargetSelector
-         ( ComponentKindFilter, componentKind, showTargetSelector )
+         ( SubComponentTarget(..) )
+import Distribution.Client.TargetProblem
+         ( TargetProblem(..), TargetProblem' )
+import Distribution.Client.TargetSelector
+         ( ComponentKind(..), ComponentKindFilter, TargetSelector(..),
+           componentKind, showTargetSelector )
 
 import Distribution.Package
-         ( packageId, PackageName, packageName )
+         ( PackageId, packageId, PackageName, packageName )
+import Distribution.Simple.Utils
+         ( die' )
 import Distribution.Types.ComponentName
-         ( showComponentName )
+         ( ComponentName(..), showComponentName )
 import Distribution.Types.LibraryName
          ( LibraryName(..) )
 import Distribution.Solver.Types.OptionalStanza
@@ -189,22 +201,38 @@ renderComponentKind Plural ckind = case ckind of
 
 
 -------------------------------------------------------
--- Renderering error messages for TargetProblemCommon
+-- Renderering error messages for TargetProblem
 --
 
-renderTargetProblemCommon :: String -> TargetProblemCommon -> String
-renderTargetProblemCommon verb (TargetNotInProject pkgname) =
+-- | Default implementation of 'reportTargetProblems' simply renders one problem per line.
+reportTargetProblems :: Verbosity -> String -> [TargetProblem'] -> IO a
+reportTargetProblems verbosity verb =
+  die' verbosity . unlines . map (renderTargetProblem verb absurd)
+
+-- | Default implementation of 'renderTargetProblem'.
+renderTargetProblem
+    :: String           -- ^ verb
+    -> (a -> String)    -- ^ how to render custom problems
+    -> TargetProblem a
+    -> String
+renderTargetProblem _verb f (CustomTargetProblem x) = f x
+renderTargetProblem verb  _ (TargetProblemNoneEnabled targetSelector targets) =
+    renderTargetProblemNoneEnabled verb targetSelector targets
+renderTargetProblem verb  _ (TargetProblemNoTargets targetSelector) =
+    renderTargetProblemNoTargets verb targetSelector
+
+renderTargetProblem verb _ (TargetNotInProject pkgname) =
     "Cannot " ++ verb ++ " the package " ++ prettyShow pkgname ++ ", it is not "
  ++ "in this project (either directly or indirectly). If you want to add it "
  ++ "to the project then edit the cabal.project file."
 
-renderTargetProblemCommon verb (TargetAvailableInIndex pkgname) =
+renderTargetProblem verb _ (TargetAvailableInIndex pkgname) =
     "Cannot " ++ verb ++ " the package " ++ prettyShow pkgname ++ ", it is not "
  ++ "in this project (either directly or indirectly), but it is in the current "
  ++ "package index. If you want to add it to the project then edit the "
  ++ "cabal.project file."
 
-renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
+renderTargetProblem verb _ (TargetComponentNotProjectLocal pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
  ++ "package " ++ prettyShow pkgid ++ " is not local to the project, and cabal "
  ++ "does not currently support building test suites or benchmarks of "
@@ -212,7 +240,7 @@ renderTargetProblemCommon verb (TargetComponentNotProjectLocal pkgid cname _) =
  ++ "dependencies you can unpack the package locally and adjust the "
  ++ "cabal.project file to include that package directory."
 
-renderTargetProblemCommon verb (TargetComponentNotBuildable pkgid cname _) =
+renderTargetProblem verb _ (TargetComponentNotBuildable pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because it is "
  ++ "marked as 'buildable: False' within the '" ++ prettyShow (packageName pkgid)
  ++ ".cabal' file (at least for the current configuration). If you believe it "
@@ -221,7 +249,7 @@ renderTargetProblemCommon verb (TargetComponentNotBuildable pkgid cname _) =
  ++ "edit the .cabal file to declare it as buildable and fix any resulting "
  ++ "build problems."
 
-renderTargetProblemCommon verb (TargetOptionalStanzaDisabledByUser _ cname _) =
+renderTargetProblem verb _ (TargetOptionalStanzaDisabledByUser _ cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because "
  ++ "building " ++ compkinds ++ " has been explicitly disabled in the "
  ++ "configuration. You can adjust this configuration in the "
@@ -234,7 +262,7 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledByUser _ cname _) =
    where
      compkinds = renderComponentKind Plural (componentKind cname)
 
-renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname _) =
+renderTargetProblem verb _ (TargetOptionalStanzaDisabledBySolver pkgid cname _) =
     "Cannot " ++ verb ++ " the " ++ showComponentName cname ++ " because the "
  ++ "solver did not find a plan that included the " ++ compkinds
  ++ " for " ++ prettyShow pkgid ++ ". It is probably worth trying again with "
@@ -247,7 +275,7 @@ renderTargetProblemCommon verb (TargetOptionalStanzaDisabledBySolver pkgid cname
    where
      compkinds = renderComponentKind Plural (componentKind cname)
 
-renderTargetProblemCommon verb (TargetProblemUnknownComponent pkgname ecname) =
+renderTargetProblem verb _ (TargetProblemUnknownComponent pkgname ecname) =
     "Cannot " ++ verb ++ " the "
  ++ (case ecname of
       Left ucname -> "component " ++ prettyShow ucname
@@ -259,13 +287,13 @@ renderTargetProblemCommon verb (TargetProblemUnknownComponent pkgname ecname) =
       Right cname -> renderComponentKind Singular (componentKind cname))
  ++ " with that name."
 
-renderTargetProblemCommon verb (TargetProblemNoSuchPackage pkgid) =
+renderTargetProblem verb _ (TargetProblemNoSuchPackage pkgid) =
     "Internal error when trying to " ++ verb ++ " the package "
   ++ prettyShow pkgid ++ ". The package is not in the set of available targets "
   ++ "for the project plan, which would suggest an inconsistency "
   ++ "between readTargetSelectors and resolveTargets."
 
-renderTargetProblemCommon verb (TargetProblemNoSuchComponent pkgid cname) =
+renderTargetProblem verb _ (TargetProblemNoSuchComponent pkgid cname) =
     "Internal error when trying to " ++ verb ++ " the "
   ++ showComponentName cname ++ " from the package " ++ prettyShow pkgid
   ++ ". The package,component pair is not in the set of available targets "

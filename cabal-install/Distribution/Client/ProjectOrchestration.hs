@@ -68,7 +68,6 @@ module Distribution.Client.ProjectOrchestration (
     ComponentKind(..),
     ComponentTarget(..),
     SubComponentTarget(..),
-    TargetProblemCommon(..),
     selectComponentTargetBasic,
     distinctTargetComponents,
     -- ** Utils for selecting targets
@@ -117,6 +116,8 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
 import           Distribution.Client.RebuildMonad ( runRebuild )
 
+import           Distribution.Client.TargetProblem
+                   ( TargetProblem (..) )
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
                    , PackageSpecifier(..)
@@ -513,16 +514,15 @@ type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector])]
 resolveTargets :: forall err.
                   (forall k. TargetSelector
                           -> [AvailableTarget k]
-                          -> Either err [k])
+                          -> Either (TargetProblem err) [k])
                -> (forall k. SubComponentTarget
                           -> AvailableTarget k
-                          -> Either err  k )
-               -> (TargetProblemCommon -> err)
+                          -> Either (TargetProblem err)  k )
                -> ElaboratedInstallPlan
                -> Maybe (SourcePackageDb)
                -> [TargetSelector]
-               -> Either [err] TargetsMap
-resolveTargets selectPackageTargets selectComponentTarget liftProblem
+               -> Either [TargetProblem err] TargetsMap
+resolveTargets selectPackageTargets selectComponentTarget
                installPlan mPkgDb =
       fmap mkTargetsMap
     . either (Left . toList) Right
@@ -540,7 +540,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
     AvailableTargetIndexes{..} = availableTargetIndexes installPlan
 
-    checkTarget :: TargetSelector -> Either err [(UnitId, ComponentTarget)]
+    checkTarget :: TargetSelector -> Either (TargetProblem err) [(UnitId, ComponentTarget)]
 
     -- We can ask to build any whole package, project-local or a dependency
     checkTarget bt@(TargetPackage _ [pkgid] mkfilter)
@@ -550,7 +550,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       $ selectPackageTargets bt ats
 
       | otherwise
-      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
+      = Left (TargetProblemNoSuchPackage pkgid)
 
     checkTarget (TargetPackage _ _ _)
       = error "TODO: add support for multiple packages in a directory"
@@ -576,10 +576,10 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       $ selectComponentTargets subtarget ats
 
       | Map.member pkgid availableTargetsByPackageId
-      = Left (liftProblem (TargetProblemNoSuchComponent pkgid cname))
+      = Left (TargetProblemNoSuchComponent pkgid cname)
 
       | otherwise
-      = Left (liftProblem (TargetProblemNoSuchPackage pkgid))
+      = Left (TargetProblemNoSuchPackage pkgid)
 
     checkTarget (TargetComponentUnknown pkgname ecname subtarget)
       | Just ats <- case ecname of
@@ -593,10 +593,10 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       $ selectComponentTargets subtarget ats
 
       | Map.member pkgname availableTargetsByPackageName
-      = Left (liftProblem (TargetProblemUnknownComponent pkgname ecname))
+      = Left (TargetProblemUnknownComponent pkgname ecname)
 
       | otherwise
-      = Left (liftProblem (TargetNotInProject pkgname))
+      = Left (TargetNotInProject pkgname)
 
     checkTarget bt@(TargetPackageNamed pkgname mkfilter)
       | Just ats <- fmap (maybe id filterTargetsKind mkfilter)
@@ -608,10 +608,10 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
       | Just SourcePackageDb{ packageIndex } <- mPkgDb
       , let pkg = lookupPackageName packageIndex pkgname
       , not (null pkg)
-      = Left (liftProblem (TargetAvailableInIndex pkgname))
+      = Left (TargetAvailableInIndex pkgname)
 
       | otherwise
-      = Left (liftProblem (TargetNotInProject pkgname))
+      = Left (TargetNotInProject pkgname)
 
     componentTargets :: SubComponentTarget
                      -> [(b, ComponentName)]
@@ -621,7 +621,7 @@ resolveTargets selectPackageTargets selectComponentTarget liftProblem
 
     selectComponentTargets :: SubComponentTarget
                            -> [AvailableTarget k]
-                           -> Either err [k]
+                           -> Either (TargetProblem err) [k]
     selectComponentTargets subtarget =
         either (Left . NE.head) Right
       . checkErrors
@@ -760,7 +760,7 @@ forgetTargetsDetail = map forgetTargetDetail
 --
 selectComponentTargetBasic :: SubComponentTarget
                            -> AvailableTarget k
-                           -> Either TargetProblemCommon k
+                           -> Either (TargetProblem a) k
 selectComponentTargetBasic subtarget
                            AvailableTarget {
                              availableTargetPackageId     = pkgid,
@@ -782,32 +782,6 @@ selectComponentTargetBasic subtarget
 
       TargetBuildable targetKey _ ->
         Right targetKey
-
-data TargetProblemCommon
-   = TargetNotInProject                   PackageName
-   | TargetAvailableInIndex               PackageName
-
-   | TargetComponentNotProjectLocal
-     PackageId ComponentName SubComponentTarget
-
-   | TargetComponentNotBuildable
-     PackageId ComponentName SubComponentTarget
-
-   | TargetOptionalStanzaDisabledByUser
-     PackageId ComponentName SubComponentTarget
-
-   | TargetOptionalStanzaDisabledBySolver
-     PackageId ComponentName SubComponentTarget
-
-   | TargetProblemUnknownComponent
-     PackageName (Either UnqualComponentName ComponentName)
-
-    -- The target matching stuff only returns packages local to the project,
-    -- so these lookups should never fail, but if 'resolveTargets' is called
-    -- directly then of course it can.
-   | TargetProblemNoSuchPackage           PackageId
-   | TargetProblemNoSuchComponent         PackageId ComponentName
-  deriving (Eq, Show)
 
 -- | Wrapper around 'ProjectPlanning.pruneInstallPlanToTargets' that adjusts
 -- for the extra unneeded info in the 'TargetsMap'.

@@ -8,7 +8,6 @@ module Distribution.Client.CmdHaddock (
     haddockAction,
 
     -- * Internals exposed for testing
-    TargetProblem(..),
     selectPackageTargets,
     selectComponentTarget
   ) where
@@ -18,7 +17,8 @@ import Prelude ()
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
-
+import Distribution.Client.TargetProblem
+         ( TargetProblem (..), TargetProblem' )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
@@ -87,11 +87,10 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
               -- When we interpret the targets on the command line, interpret them as
               -- haddock targets
-            targets <- either (reportTargetProblems verbosity) return
+            targets <- either (reportBuildDocumentationTargetProblems verbosity) return
                      $ resolveTargets
                          (selectPackageTargets haddockFlags)
                          selectComponentTarget
-                         TargetProblemCommon
                          elaboratedPlan
                          Nothing
                          targetSelectors
@@ -119,7 +118,7 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 -- We do similarly for test-suites, benchmarks and foreign libs.
 --
 selectPackageTargets  :: HaddockFlags -> TargetSelector
-                      -> [AvailableTarget k] -> Either TargetProblem [k]
+                      -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets haddockFlags targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -169,35 +168,9 @@ selectPackageTargets haddockFlags targetSelector targets
 -- etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic subtarget
+                      -> AvailableTarget k -> Either TargetProblem' k
+selectComponentTarget = selectComponentTargetBasic
 
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @haddock@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build documentation for" problem
-
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build documentation for" targetSelector targets
-
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build documentation for" targetSelector
+reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
+reportBuildDocumentationTargetProblems verbosity problems =
+  reportTargetProblems verbosity "build documentation for" problems

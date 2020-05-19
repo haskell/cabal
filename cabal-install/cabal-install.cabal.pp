@@ -192,6 +192,7 @@ Version:            3.3.0.0
         Distribution.Client.SrcDist
         Distribution.Client.Store
         Distribution.Client.Tar
+        Distribution.Client.TargetProblem
         Distribution.Client.TargetSelector
         Distribution.Client.Targets
         Distribution.Client.Types
