@@ -44,7 +44,6 @@ import Distribution.Utils.Generic
 
 -- base
 import Control.Arrow (second)
-import Data.Either (partitionEithers)
 import qualified Data.Map as Map
 
 -- Cabal

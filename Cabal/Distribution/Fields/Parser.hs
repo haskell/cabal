@@ -27,7 +27,6 @@ module Distribution.Fields.Parser (
 #endif
     ) where
 
-import           Control.Monad                  (guard)
 import qualified Data.ByteString.Char8          as B8
 import           Data.Functor.Identity
 import           Distribution.Compat.Prelude

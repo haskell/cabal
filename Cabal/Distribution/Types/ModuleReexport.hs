@@ -14,8 +14,7 @@ import Distribution.Pretty
 import Distribution.Types.PackageName
 
 import qualified Distribution.Compat.CharParsing as P
-import           Text.PrettyPrint           ((<+>))
-import qualified Text.PrettyPrint           as Disp
+import qualified Text.PrettyPrint                as Disp
 
 -- -----------------------------------------------------------------------------
 -- Module re-exports

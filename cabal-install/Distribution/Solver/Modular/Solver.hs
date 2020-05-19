@@ -9,6 +9,9 @@ module Distribution.Solver.Modular.Solver
     , PruneAfterFirstSuccess(..)
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import qualified Data.Map as M
 import qualified Data.List as L
 import qualified Data.Set as S

@@ -54,7 +54,7 @@ import Distribution.Deprecated.ViewAsFieldDescr
 import Distribution.Simple.Command
          ( OptionField  )
 
-import Text.PrettyPrint ( (<+>), ($+$) )
+import Text.PrettyPrint ( ($+$) )
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
          ( (<>), Doc, text, colon, vcat, empty, isEmpty, nest )

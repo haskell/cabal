@@ -70,7 +70,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IntMap
-import qualified Data.Traversable as T
 import Text.PrettyPrint
 
 -- TODO: more detailed trace output on high verbosity would probably
@@ -321,7 +320,7 @@ convertUnitId' _ (DefiniteUnitId uid) =
 convertUnitId' stk (IndefFullUnitId cid insts) = do
     fs <- fmap unify_uniq getUnifEnv
     x <- liftST $ UnionFind.fresh (error "convertUnitId") -- tie the knot later
-    insts_u <- T.forM insts $ convertModule' (extendMuEnv stk x)
+    insts_u <- for insts $ convertModule' (extendMuEnv stk x)
     u <- readUnifRef fs
     writeUnifRef fs (u+1)
     y <- liftST $ UnionFind.fresh (UnitIdU u cid insts_u)
@@ -359,11 +358,11 @@ type ModuleSubstU s = Map ModuleName (ModuleU s)
 
 -- | Conversion of 'ModuleSubst' to 'ModuleSubstU'
 convertModuleSubst :: Map ModuleName OpenModule -> UnifyM s (Map ModuleName (ModuleU s))
-convertModuleSubst = T.mapM convertModule
+convertModuleSubst = traverse convertModule
 
 -- | Conversion of 'ModuleSubstU' to 'ModuleSubst'
 convertModuleSubstU :: ModuleSubstU s -> UnifyM s OpenModuleSubst
-convertModuleSubstU = T.mapM convertModuleU
+convertModuleSubstU = traverse convertModuleU
 
 -----------------------------------------------------------------------
 -- Conversion from the unifiable data types
@@ -400,7 +399,7 @@ convertUnitIdU' stk uid_u = do
                     failWith (text "Unsupported mutually recursive unit identifier")
                     -- return (UnitIdVar i)
                 Nothing -> do
-                    insts <- T.forM insts_u $ convertModuleU' (extendMooEnv stk u)
+                    insts <- for insts_u $ convertModuleU' (extendMooEnv stk u)
                     return (IndefFullUnitId cid insts)
 
 convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s OpenModule
@@ -615,11 +614,11 @@ convertModuleScopeU (provs_u, reqs_u) = do
 
 -- | Convert a 'ModuleProvides' to a 'ModuleProvidesU'
 convertModuleProvides :: ModuleProvides -> UnifyM s (ModuleProvidesU s)
-convertModuleProvides = T.mapM (mapM (T.mapM convertModule))
+convertModuleProvides = traverse (traverse (traverse convertModule))
 
 -- | Convert a 'ModuleProvidesU' to a 'ModuleProvides'
 convertModuleProvidesU :: ModuleProvidesU s -> UnifyM s ModuleProvides
-convertModuleProvidesU = T.mapM (mapM (T.mapM convertModuleU))
+convertModuleProvidesU = traverse (traverse (traverse convertModuleU))
 
 convertModuleRequires :: ModuleRequires -> UnifyM s (ModuleRequiresU s)
 convertModuleRequires = convertModuleProvides

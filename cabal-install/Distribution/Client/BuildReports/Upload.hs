@@ -7,6 +7,9 @@ module Distribution.Client.BuildReports.Upload
     , uploadReports
     ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 {-
 import Network.Browser
          ( BrowserAction, request, setAllowRedirects )
@@ -17,14 +20,10 @@ import Network.TCP (HandleStream)
 -}
 import Network.URI (URI, uriPath) --parseRelativeReference, relativeTo)
 
-import Control.Monad
-         ( forM_ )
 import System.FilePath.Posix
          ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport, showBuildReport)
-import Distribution.Pretty (prettyShow)
-import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die')
 import Distribution.Client.HttpUtils
 import Distribution.Client.Setup
@@ -35,7 +34,7 @@ type BuildLog = String
 
 uploadReports :: Verbosity -> RepoContext -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
 uploadReports verbosity repoCtxt auth uri reports = do
-  forM_ reports $ \(report, mbBuildLog) -> do
+  for_ reports $ \(report, mbBuildLog) -> do
      buildId <- postBuildReport verbosity repoCtxt auth uri report
      case mbBuildLog of
        Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog

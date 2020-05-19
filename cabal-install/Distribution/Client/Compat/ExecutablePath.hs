@@ -7,6 +7,8 @@
 
 module Distribution.Client.Compat.ExecutablePath ( getExecutablePath ) where
 
+import Prelude
+
 -- The imports are purposely kept completely disjoint to prevent edits
 -- to one OS implementation from breaking another.
 

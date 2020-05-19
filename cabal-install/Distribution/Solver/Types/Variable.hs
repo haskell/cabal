@@ -1,5 +1,7 @@
 module Distribution.Solver.Types.Variable where
 
+import Prelude (Eq, Show)
+
 import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.PackageDescription (FlagName)

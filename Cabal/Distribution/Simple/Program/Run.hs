@@ -38,8 +38,7 @@ import Distribution.Simple.Utils
 import Distribution.Utils.Generic
 import Distribution.Verbosity
 
-import System.Exit     (ExitCode (..), exitWith)
-import System.FilePath
+import System.FilePath (searchPathSeparator)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Map             as Map

@@ -7,9 +7,6 @@ module Distribution.Client.Types.RepoName (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec (Parsec (..))
-import Distribution.Pretty (Pretty (..))
-
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
 

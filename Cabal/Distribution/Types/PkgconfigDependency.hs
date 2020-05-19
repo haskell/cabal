@@ -14,7 +14,6 @@ import Distribution.Parsec
 import Distribution.Pretty
 
 import qualified Distribution.Compat.CharParsing as P
-import           Text.PrettyPrint                ((<+>))
 
 -- | Describes a dependency on a pkg-config library
 --

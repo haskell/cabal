@@ -18,7 +18,6 @@ import Distribution.Types.VersionRange.Internal
 import Distribution.Version                     (simplifyVersionRange)
 
 import qualified Distribution.Compat.CharParsing as P
-import           Text.PrettyPrint                ((<+>))
 
 -- | A version constraint on a package. Different from 'ExeDependency' and
 -- 'Dependency' since it does not specify the need for a component, not even

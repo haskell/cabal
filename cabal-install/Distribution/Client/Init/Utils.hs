@@ -17,6 +17,9 @@ module Distribution.Client.Init.Utils (
   , message
   ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Simple.Setup
   ( Flag(..) )
 import Distribution.Client.Init.Types

@@ -13,6 +13,9 @@ module Distribution.Client.CmdTest (
     selectComponentTarget
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
@@ -26,14 +29,11 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Flag
          ( Flag(..) )
-import Distribution.Pretty
-         ( prettyShow )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Simple.Utils
          ( notice, wrapText, die' )
 
-import Control.Monad (when)
 import qualified System.Exit (exitSuccess)
 
 

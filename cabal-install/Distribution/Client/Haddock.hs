@@ -16,8 +16,10 @@ module Distribution.Client.Haddock
     )
     where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Data.List (maximumBy)
-import Data.Foldable (forM_)
 import System.Directory (createDirectoryIfMissing, renameFile)
 import System.FilePath ((</>), splitFileName)
 import Distribution.Package
@@ -26,11 +28,10 @@ import Distribution.Simple.Haddock (haddockPackagePaths)
 import Distribution.Simple.Program (haddockProgram, ProgramDb
                                    , runProgram, requireProgramVersion)
 import Distribution.Version (mkVersion, orLaterVersion)
-import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, allPackagesByName )
 import Distribution.Simple.Utils
-         ( comparing, debug, installDirectoryContents, withTempDirectory )
+         ( debug, installDirectoryContents, withTempDirectory )
 import Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo(exposed) )
 
@@ -41,7 +42,7 @@ regenerateHaddockIndex :: Verbosity
 regenerateHaddockIndex verbosity pkgs progdb index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing
       let paths' = [ (interface, html) | (interface, Just html, _) <- paths]
-      forM_ warns (debug verbosity)
+      for_ warns (debug verbosity)
 
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram

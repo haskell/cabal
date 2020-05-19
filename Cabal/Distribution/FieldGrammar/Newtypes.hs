@@ -44,7 +44,7 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Version
        (LowerBound (..), Version, VersionRange, VersionRangeF (..), anyVersion, asVersionIntervals, cataVersionRange, mkVersion, version0, versionNumbers)
-import Text.PrettyPrint              (Doc, comma, fsep, punctuate, text, vcat, (<+>))
+import Text.PrettyPrint              (Doc, comma, fsep, punctuate, text, vcat)
 
 import qualified Data.Set                        as Set
 import qualified Distribution.Compat.CharParsing as P

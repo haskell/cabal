@@ -57,9 +57,8 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.CharParsing as P
 
 import Control.Monad ( msum )
-import Data.List ( stripPrefix, groupBy, partition )
+import Data.List ( stripPrefix, groupBy )
 import qualified Data.List.NonEmpty as NE
-import Data.Either ( partitionEithers )
 import System.FilePath as FilePath
          ( dropExtension, normalise, splitDirectories, joinPath, splitPath
          , hasTrailingPathSeparator )

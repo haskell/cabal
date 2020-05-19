@@ -3,6 +3,9 @@
 {-# LANGUAGE ConstraintKinds #-}
 module UnitTests.Distribution.Client.InstallPlan (tests) where
 
+import Distribution.Client.Compat.Prelude
+import qualified Prelude as Unsafe (tail)
+
 import           Distribution.Package
 import           Distribution.Version
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -17,12 +20,11 @@ import           Distribution.Client.JobControl
 
 import Data.Graph
 import Data.Array hiding (index)
-import Data.List
+import Data.List ()
+import Control.Monad (replicateM)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Set (Set)
 import Data.IORef
-import Control.Monad
 import Control.Concurrent (threadDelay)
 import System.Random
 import Test.QuickCheck
@@ -216,19 +218,19 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
     (ipkgvs, srcpkgvs) <-
       fmap ((\(ipkgs, srcpkgs) -> (map fst ipkgs, map fst srcpkgs))
             . partition snd) $
-      sequence
+      sequenceA
         [ do isipkg <- if isRoot then pick ipkgProportion
                                  else return False
              return (v, isipkg)
         | (v,n) <- assocs (outdegree graph)
         , let isRoot = n == 0 ]
 
-    ipkgs   <- sequence
+    ipkgs   <- sequenceA
                  [ mkIPkg pkgv depvs
                  | pkgv <- ipkgvs
                  , let depvs  = graph ! pkgv
                  ]
-    srcpkgs <- sequence
+    srcpkgs <- sequenceA
                  [ mkSrcPkg pkgv depvs
                  | pkgv <- srcpkgvs
                  , let depvs  = graph ! pkgv
@@ -256,9 +258,9 @@ arbitraryAcyclicGraph genNRanks genNPerRank edgeChance = do
     nranks    <- genNRanks
     rankSizes <- replicateM nranks genNPerRank
     let rankStarts = scanl (+) 0 rankSizes
-        rankRanges = drop 1 (zip rankStarts (tail rankStarts))
+        rankRanges = drop 1 (zip rankStarts (Unsafe.tail rankStarts))
         totalRange = sum rankSizes
-    rankEdges <- mapM (uncurry genRank) rankRanges
+    rankEdges <- traverse (uncurry genRank) rankRanges
     return $ buildG (0, totalRange-1) (concat rankEdges)
   where
     genRank :: Vertex -> Vertex -> Gen [Edge]

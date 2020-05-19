@@ -3,5 +3,7 @@ module Distribution.Client.Types.Credentials (
     Password (..),
 ) where
 
+import Prelude (String)
+
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }

@@ -42,7 +42,6 @@ import Distribution.Simple.Program            ( ProgramDb )
 import Distribution.Simple.Setup              ( Flag(..)
                                               , fromFlagOrDefault, flagToMaybe )
 import Distribution.System                    ( Platform )
-import Distribution.Verbosity                 ( Verbosity )
 
 import System.Directory                       ( getCurrentDirectory )
 

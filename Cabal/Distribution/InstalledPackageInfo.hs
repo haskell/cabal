@@ -52,7 +52,6 @@ import Distribution.Package                  hiding (installedUnitId)
 import Distribution.Types.ComponentName
 import Distribution.Utils.Generic            (toUTF8BS)
 
-import Control.DeepSeq (deepseq)
 import Data.ByteString (ByteString)
 
 import qualified Data.Map            as Map

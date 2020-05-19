@@ -82,22 +82,15 @@ import Distribution.Types.Flag
          ( nullFlagAssignment, parsecFlagAssignmentNonEmpty )
 import Distribution.Version
          ( anyVersion, isAnyVersion )
-import Distribution.Pretty (Pretty (..), prettyShow)
-import Distribution.Parsec (Parsec (..), CabalParsing, explicitEitherParsec, eitherParsec)
-import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die', warn, lowercase )
 
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
 
--- import Data.List ( find, nub )
-import Data.Either
-         ( partitionEithers )
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Distribution.Client.GZipUtils as GZipUtils
-import Control.Monad (mapM)
 import qualified Distribution.Compat.CharParsing as P
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
@@ -170,7 +163,7 @@ data UserTarget =
 readUserTargets :: Verbosity -> [String] -> IO [UserTarget]
 readUserTargets verbosity targetStrs = do
     (problems, targets) <- liftM partitionEithers
-                                 (mapM readUserTarget targetStrs)
+                                 (traverse readUserTarget targetStrs)
     reportUserTargetProblems verbosity problems
     return targets
 
@@ -316,9 +309,9 @@ resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
     -- package references
-    packageTargets <- mapM (readPackageTarget verbosity)
-                  =<< mapM (fetchPackageTarget verbosity repoCtxt) . concat
-                  =<< mapM (expandUserTarget verbosity worldFile) userTargets
+    packageTargets <- traverse (readPackageTarget verbosity)
+                  =<< traverse (fetchPackageTarget verbosity repoCtxt) . concat
+                  =<< traverse (expandUserTarget verbosity worldFile) userTargets
 
     -- users are allowed to give package names case-insensitively, so we must
     -- disambiguate named package references

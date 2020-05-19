@@ -16,7 +16,6 @@ import Distribution.SPDX.LicenseId
 import Distribution.SPDX.LicenseListVersion
 import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic           (isAsciiAlphaNum)
-import Text.PrettyPrint                     ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp

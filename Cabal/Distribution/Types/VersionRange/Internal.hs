@@ -42,7 +42,6 @@ import Distribution.CabalSpecVersion
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Utils.Generic    (unsnoc)
-import Text.PrettyPrint              ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.Compat.DList       as DList

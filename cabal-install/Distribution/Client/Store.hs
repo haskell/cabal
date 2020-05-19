@@ -33,11 +33,10 @@ import           Distribution.Compiler (CompilerId)
 import           Distribution.Simple.Utils
                    ( withTempDirectory, debug, info )
 import           Distribution.Verbosity
-import           Distribution.Pretty (prettyShow)
+                   ( silent )
 
 import qualified Data.Set as Set
 import           Control.Exception
-import           Control.Monad (forM_)
 import           System.FilePath
 import           System.Directory
 
@@ -214,7 +213,7 @@ newStoreEntry verbosity storeDirLayout@StoreDirLayout{..}
 
             -- Atomically rename the temp dir to the final store entry location.
             renameDirectory incomingEntryDir finalEntryDir
-            forM_ otherFiles $ \file -> do
+            for_ otherFiles $ \file -> do
               let finalStoreFile = storeDirectory compid </> makeRelative (incomingTmpDir </> (dropDrive (storeDirectory compid))) file
               createDirectoryIfMissing True (takeDirectory finalStoreFile)
               renameFile file finalStoreFile

@@ -39,9 +39,6 @@ import Distribution.ModuleName
 import Distribution.Package
 import Distribution.Simple.Utils
 
-import qualified Control.Applicative as A
-import qualified Data.Traversable as T
-
 import Control.Monad
 import Text.PrettyPrint
 import qualified Data.Map as Map
@@ -198,14 +195,14 @@ instance Functor InstM where
     fmap f (InstM m) = InstM $ \s -> let (x, s') = m s
                                      in (f x, s')
 
-instance A.Applicative InstM where
+instance Applicative InstM where
     pure a = InstM $ \s -> (a, s)
     InstM f <*> InstM x = InstM $ \s -> let (f', s') = f s
                                             (x', s'') = x s'
                                         in (f' x', s'')
 
 instance Monad InstM where
-    return = A.pure
+    return = pure
     InstM m >>= f = InstM $ \s -> let (x, s') = m s
                                   in runInstM (f x) s'
 
@@ -259,20 +256,20 @@ toReadyComponents pid_map subst0 comps
         -> InstM (Maybe ReadyComponent)
     instantiateComponent uid cid insts
       | Just lc <- Map.lookup cid cmap = do
-            provides <- T.mapM (substModule insts) (modShapeProvides (lc_shape lc))
+            provides <- traverse (substModule insts) (modShapeProvides (lc_shape lc))
             -- NB: lc_sig_includes is omitted here, because we don't
             -- need them to build
             includes <- forM (lc_includes lc) $ \ci -> do
                 uid' <- substUnitId insts (ci_id ci)
                 return ci { ci_ann_id = fmap (const uid') (ci_ann_id ci) }
-            exe_deps <- mapM (substExeDep insts) (lc_exe_deps lc)
+            exe_deps <- traverse (substExeDep insts) (lc_exe_deps lc)
             s <- InstM $ \s -> (s, s)
             let getDep (Module dep_def_uid _)
                     | let dep_uid = unDefUnitId dep_def_uid
                     -- Lose DefUnitId invariant for rc_depends
                     = [(dep_uid,
                           fromMaybe err_pid $
-                            Map.lookup dep_uid pid_map A.<|>
+                            Map.lookup dep_uid pid_map <|>
                             fmap rc_munged_id (join (Map.lookup dep_uid s)))]
                   where
                     err_pid = MungedPackageId
@@ -313,7 +310,7 @@ toReadyComponents pid_map subst0 comps
     substSubst :: Map ModuleName Module
                -> Map ModuleName OpenModule
                -> InstM (Map ModuleName Module)
-    substSubst subst insts = T.mapM (substModule subst) insts
+    substSubst subst insts = traverse (substModule subst) insts
 
     substModule :: Map ModuleName Module -> OpenModule -> InstM Module
     substModule subst (OpenModuleVar mod_name)
@@ -346,7 +343,7 @@ toReadyComponents pid_map subst0 comps
                     then do uid' <- substUnitId Map.empty (ci_id ci)
                             return $ ci { ci_ann_id = fmap (const (DefiniteUnitId uid')) (ci_ann_id ci) }
                     else return ci
-            exe_deps <- mapM (substExeDep Map.empty) (lc_exe_deps lc)
+            exe_deps <- traverse (substExeDep Map.empty) (lc_exe_deps lc)
             let indefc = IndefiniteComponent {
                         indefc_requires = map fst (lc_insts lc),
                         indefc_provides = modShapeProvides (lc_shape lc),

@@ -13,8 +13,7 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Client.Types.RepoName (RepoName (..))
 import Prelude ()
 
-import Distribution.Parsec (Parsec (..), parsecLeadingCommaNonEmpty)
-import Distribution.Pretty (Pretty (..), prettyShow)
+import Distribution.Parsec (parsecLeadingCommaNonEmpty)
 
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp

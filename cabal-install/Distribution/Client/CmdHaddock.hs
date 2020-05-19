@@ -13,6 +13,9 @@ module Distribution.Client.CmdHaddock (
     selectComponentTarget
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
@@ -25,12 +28,9 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
-
-import Control.Monad (when)
-
 
 haddockCommand :: CommandUI (NixStyleFlags ())
 haddockCommand = CommandUI {

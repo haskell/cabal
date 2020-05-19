@@ -79,8 +79,6 @@ import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
-import Distribution.Parsec (CabalParsing, simpleParsec, parsec, eitherParsec)
-import Distribution.Pretty (prettyShow)
 
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
@@ -126,7 +124,7 @@ import Distribution.ReadE
          ( ReadE(..), succeedReadE, parsecToReadE )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Verbosity
-         ( Verbosity, lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
+         ( lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
 import Distribution.Simple.Utils
          ( wrapText )
 import Distribution.Client.GlobalFlags

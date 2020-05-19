@@ -7,6 +7,8 @@ module Distribution.Client.Compat.Semaphore
     , signalQSem
     ) where
 
+import Prelude (IO, return, Eq (..), Int, Bool (..), ($), ($!), Num (..), flip)
+
 import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, retry,
                                writeTVar)
 import Control.Exception (mask_, onException)

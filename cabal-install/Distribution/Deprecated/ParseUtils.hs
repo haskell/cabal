@@ -57,7 +57,7 @@ import Text.PrettyPrint (Doc, punctuate, comma, fsep, sep)
 import qualified Text.Read as Read
 
 import qualified Control.Monad.Fail as Fail
-import Distribution.Parsec (ParsecParser, explicitEitherParsec, parsecLeadingCommaList, parsecLeadingOptCommaList)
+import Distribution.Parsec (ParsecParser, parsecLeadingCommaList, parsecLeadingOptCommaList)
 
 -- -----------------------------------------------------------------------------
 

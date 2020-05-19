@@ -2,11 +2,11 @@ module Distribution.Solver.Modular.IndexConversion
     ( convPIs
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import qualified Data.List as L
-import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
-import Data.Maybe (mapMaybe, fromMaybe, maybeToList)
-import Data.Monoid as Mon
 import qualified Data.Set as S
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -90,7 +90,7 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  case mapM (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
+  case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] M.empty M.empty (Just Broken))
         Just fds -> ( pn
                     , i
@@ -182,7 +182,7 @@ convGPD os arch cinfo constraints strfl solveExes pn
     ipns = S.fromList $ [ unqualComponentNameToPackageName nm
                         | (nm, _) <- sub_libs ]
 
-    conv :: Mon.Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
+    conv :: Monoid a => Component -> (a -> BuildInfo) -> DependencyReason PN ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps PN
     conv comp getInfo dr =
         convCondTree M.empty dr pkg os arch cinfo pn fds comp getInfo ipns solveExes .

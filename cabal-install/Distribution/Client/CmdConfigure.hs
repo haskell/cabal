@@ -6,8 +6,10 @@ module Distribution.Client.CmdConfigure (
     configureAction,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import System.Directory
-import Control.Monad
 import qualified Data.Map as Map
 
 import Distribution.Client.ProjectOrchestration

@@ -83,8 +83,7 @@ import Distribution.Simple.Utils
   , wrapText
   )
 import Distribution.Verbosity
-  ( Verbosity
-  , normal
+  ( normal
   )
 
 import Prelude ()

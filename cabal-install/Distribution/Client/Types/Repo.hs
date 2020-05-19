@@ -18,8 +18,6 @@ import Prelude ()
 
 import Network.URI (URI (..), nullURI, parseAbsoluteURI, uriToString)
 
-import Distribution.Parsec       (Parsec (..))
-import Distribution.Pretty       (Pretty (..))
 import Distribution.Simple.Utils (toUTF8BS)
 
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)

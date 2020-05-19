@@ -117,19 +117,16 @@ import Distribution.Client.Utils
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Solver.Types.ConstraintSource
 
-import Data.List
-         ( partition )
 import qualified Distribution.Deprecated.ReadP as Parse
          ( (<++), option )
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
-import Distribution.Parsec (parsec, simpleParsec, parsecOptCommaList)
-import Distribution.Pretty (pretty, prettyShow)
+import Distribution.Parsec (parsecOptCommaList)
 import Text.PrettyPrint
          ( ($+$) )
 import Text.PrettyPrint.HughesPJ
@@ -144,11 +141,7 @@ import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Environment
          ( getEnvironment, lookupEnv )
-import Distribution.Compat.Exception
-         ( catchIO )
 import qualified Data.Map as M
-import Data.Function
-         ( on )
 
 --
 -- * Configuration saved in the config file

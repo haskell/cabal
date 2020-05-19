@@ -31,7 +31,6 @@ import Distribution.Utils.Generic
 import Distribution.Package                          (PackageName, packageVersion)
 import Distribution.PackageDescription               (allBuildDepends)
 import Distribution.PackageDescription.Configuration (finalizePD)
-import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
 import Distribution.Simple.Setup
        (fromFlagOrDefault, flagToMaybe)
@@ -42,7 +41,7 @@ import Distribution.Types.ComponentRequestedSpec
        (ComponentRequestedSpec(..))
 import Distribution.Types.Dependency
        (Dependency(..))
-import Distribution.Verbosity                        (Verbosity, silent)
+import Distribution.Verbosity                        (silent)
 import Distribution.Version
        (Version, VersionRange, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
@@ -53,8 +52,6 @@ import Distribution.Types.PackageVersionConstraint
 
 import qualified Data.Set as S
 import System.Directory                              (getCurrentDirectory)
-import System.Exit                                   (exitFailure)
-import Control.Exception                             (throwIO)
 
 -- | Entry point for the 'outdated' command.
 outdated :: Verbosity -> OutdatedFlags -> RepoContext

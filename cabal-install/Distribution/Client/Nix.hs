@@ -10,7 +10,7 @@ module Distribution.Client.Nix
 
 import Distribution.Client.Compat.Prelude
 
-import Control.Exception (bracket, catch)
+import Control.Exception (bracket)
 import System.Directory
        ( canonicalizePath, createDirectoryIfMissing, doesDirectoryExist
        , doesFileExist, removeDirectoryRecursive, removeFile )
@@ -23,8 +23,6 @@ import System.Process (showCommandForUser)
 
 import Distribution.Compat.Environment
        ( lookupEnv, setEnv, unsetEnv )
-
-import Distribution.Verbosity
 
 import Distribution.Simple.Program
        ( Program(..), ProgramDb
@@ -84,7 +82,7 @@ nixInstantiate
   -> GlobalFlags
   -> SavedConfig
   -> IO ()
-nixInstantiate verb dist force globalFlags config =
+nixInstantiate verb dist force' globalFlags config =
   findNixExpr globalFlags config >>= \case
     Nothing -> return ()
     Just shellNix -> do
@@ -96,7 +94,7 @@ nixInstantiate verb dist force globalFlags config =
       let timestamp = timestampPath dist shellNix
       upToDate <- existsAndIsMoreRecentThan timestamp shellNix
 
-      let ready = alreadyInShell || (instantiated && upToDate && not force)
+      let ready = alreadyInShell || (instantiated && upToDate && not force')
       unless ready $ do
 
         let prog = simpleProgram "nix-instantiate"

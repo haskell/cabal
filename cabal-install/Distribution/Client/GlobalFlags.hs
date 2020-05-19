@@ -24,8 +24,6 @@ import Distribution.Utils.NubList
          ( NubList, fromNubList )
 import Distribution.Client.HttpUtils
          ( HttpTransport, configureTransport )
-import Distribution.Verbosity
-         ( Verbosity )
 import Distribution.Simple.Utils
          ( info, warn )
 
@@ -34,8 +32,6 @@ import Distribution.Client.IndexUtils.ActiveRepos
 
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
-import Control.Exception
-         ( throwIO )
 import System.FilePath
          ( (</>) )
 import Network.URI

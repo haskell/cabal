@@ -18,20 +18,18 @@ module Distribution.Solver.Types.PackageConstraint (
     packageConstraintToDependency
   ) where
 
-import Distribution.Compat.Binary                  (Binary)
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package                        (PackageName)
 import Distribution.PackageDescription             (FlagAssignment, dispFlagAssignment)
 import Distribution.Pretty                         (flatStyle, pretty)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint (..))
-import Distribution.Utils.Structured               (Structured)
 import Distribution.Version                        (VersionRange, simplifyVersionRange)
 
-import Distribution.Solver.Compat.Prelude       ((<<>>))
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
 
-import           GHC.Generics     (Generic)
-import           Text.PrettyPrint ((<+>))
 import qualified Text.PrettyPrint as Disp
 
 

@@ -5,17 +5,15 @@ module Distribution.Client.SavedFlags
        , readSavedArgs, writeSavedArgs
        ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Simple.Command
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils
        ( createDirectoryIfMissingVerbose, unintersperse )
 import Distribution.Verbosity
 
-import Control.Exception ( Exception, throwIO )
-import Control.Monad ( liftM )
-import Data.List ( intercalate )
-import Data.Maybe ( fromMaybe )
-import Data.Typeable
 import System.Directory ( doesFileExist )
 import System.FilePath ( takeDirectory )
 
@@ -41,7 +39,7 @@ readSavedArgs :: FilePath -> IO (Maybe [String])
 readSavedArgs path = do
   exists <- doesFileExist path
   if exists
-     then liftM (Just . unintersperse '\0') (readFile path)
+     then fmap (Just . unintersperse '\0') (readFile path)
     else return Nothing
 
 
@@ -49,7 +47,7 @@ readSavedArgs path = do
 -- Returns the default flags if the file does not exist.
 readCommandFlags :: FilePath -> CommandUI flags -> IO flags
 readCommandFlags path command = do
-  savedArgs <- liftM (fromMaybe []) (readSavedArgs path)
+  savedArgs <- fmap (fromMaybe []) (readSavedArgs path)
   case (commandParseArgs command True savedArgs) of
     CommandHelp _ -> throwIO (SavedArgsErrorHelp savedArgs)
     CommandList _ -> throwIO (SavedArgsErrorList savedArgs)

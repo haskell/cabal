@@ -28,13 +28,16 @@ module Distribution.Client.JobControl (
     criticalSection
   ) where
 
-import Control.Monad
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
+import Control.Monad (forever, replicateM_)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar
 import Control.Concurrent.STM (STM, atomically)
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
-import Control.Exception (SomeException, bracket_, throwIO, try)
+import Control.Exception (bracket_, try)
 import Distribution.Client.Compat.Semaphore
 
 

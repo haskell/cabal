@@ -61,7 +61,7 @@ import Distribution.Package
 import Distribution.Version
          ( VersionRange, withinRange )
 import Distribution.Simple.Utils
-         ( lowercase, comparing )
+         ( lowercase )
 
 import qualified Prelude (foldr1)
 

@@ -98,7 +98,6 @@ import Distribution.System (buildPlatform)
 import System.Environment (getArgs, getProgName)
 import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
-import System.Exit                          (exitWith,ExitCode(..))
 import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
 import Distribution.Compat.ResponseFile (expandResponse)
 import Distribution.Compat.Directory        (makeAbsolute)

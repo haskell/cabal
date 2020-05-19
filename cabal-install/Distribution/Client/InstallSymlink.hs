@@ -48,9 +48,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, CompilerInfo(..) )
 import Distribution.System
          ( Platform )
-import Distribution.Verbosity  ( Verbosity )
 import Distribution.Simple.Utils ( info, withTempDirectory )
-import Distribution.Pretty (prettyShow)
 
 import System.Directory
          ( canonicalizePath, getTemporaryDirectory, removeFile )
@@ -59,7 +57,6 @@ import System.FilePath
 
 import System.IO.Error
          ( isDoesNotExistError, ioError )
-import Distribution.Compat.Exception ( catchIO )
 import Control.Exception
          ( assert )
 

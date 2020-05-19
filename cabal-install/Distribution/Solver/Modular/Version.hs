@@ -11,6 +11,9 @@ module Distribution.Solver.Modular.Version
     , (.||.)
     ) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import qualified Distribution.Version as CV -- from Cabal
 import Distribution.Pretty (prettyShow)
 

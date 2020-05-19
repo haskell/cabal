@@ -14,6 +14,9 @@ module Distribution.Client.Fetch (
     fetch,
   ) where
 
+import Distribution.Client.Compat.Prelude
+import Prelude ()
+
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.FetchUtils hiding (fetchPackage)
@@ -44,13 +47,6 @@ import Distribution.Simple.Utils
          ( die', notice, debug )
 import Distribution.System
          ( Platform )
-import Distribution.Pretty
-         ( prettyShow )
-import Distribution.Verbosity
-         ( Verbosity )
-
-import Control.Monad
-         ( filterM )
 
 -- ------------------------------------------------------------
 -- * The fetch command
@@ -84,7 +80,7 @@ fetch verbosity _ _ _ _ _ _ _ [] =
 fetch verbosity packageDBs repoCtxt comp platform progdb
       globalFlags fetchFlags userTargets = do
 
-    mapM_ (checkTarget verbosity) userTargets
+    traverse_ (checkTarget verbosity) userTargets
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
@@ -112,7 +108,7 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
                      "The following packages would be fetched:"
                    : map (prettyShow . packageId) pkgs'
 
-             else mapM_ (fetchPackage verbosity repoCtxt . packageSource) pkgs'
+             else traverse_ (fetchPackage verbosity repoCtxt . packageSource) pkgs'
 
   where
     dryRun = fromFlag (fetchDryRun fetchFlags)

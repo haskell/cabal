@@ -39,8 +39,6 @@ import Distribution.Package
     ( Package(packageId) )
 import Distribution.PackageDescription.Configuration
     ( flattenPackageDescription )
-import Distribution.Pretty
-    ( prettyShow )
 import Distribution.ReadE
     ( succeedReadE )
 import Distribution.Simple.Command
@@ -60,7 +58,7 @@ import Distribution.Types.ComponentName
 import Distribution.Types.PackageName
     ( PackageName, unPackageName )
 import Distribution.Verbosity
-    ( Verbosity, normal )
+    ( normal )
 
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -73,8 +71,6 @@ import Control.Monad.Writer.Lazy
     ( WriterT, tell, execWriterT )
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
-import Data.Either
-    ( partitionEithers )
 import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory

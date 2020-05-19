@@ -6,8 +6,6 @@ import Distribution.Client.Compat.Prelude hiding (get)
 import Prelude ()
 
 import qualified Data.List.NonEmpty as NE
-import Distribution.Parsec   (parsec)
-import Distribution.Pretty
 import Distribution.ReadE          (parsecToReadE)
 import Distribution.Simple.Command
 import Text.PrettyPrint            (cat, comma, punctuate, text)

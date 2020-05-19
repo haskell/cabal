@@ -90,8 +90,6 @@ import Distribution.Utils.String
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List
     ( isInfixOf )
-import Data.Ord
-    ( comparing )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
 

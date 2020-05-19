@@ -19,7 +19,6 @@ import qualified Data.ByteString.Base16     as Base16
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 
-import Control.Exception (evaluate)
 import System.IO         (IOMode (..), withBinaryFile)
 
 -----------------------------------------------

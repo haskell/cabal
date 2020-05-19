@@ -80,7 +80,6 @@ import Distribution.Version
 import Language.Haskell.Extension
 import Distribution.Simple.Utils
 
-import Control.Monad (join)
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 

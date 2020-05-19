@@ -78,8 +78,7 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Backpack
 import           Distribution.Backpack.ModuleShape
 
-import           Distribution.Pretty
-import           Distribution.Verbosity
+import           Distribution.Verbosity (normal)
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.PkgconfigVersion
 import           Distribution.Types.PackageDescription (PackageDescription(..))
@@ -108,7 +107,6 @@ import           Distribution.Simple.Utils (ordNub)
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Monoid as Mon
-import           Control.Monad (guard)
 import           System.FilePath ((</>))
 
 

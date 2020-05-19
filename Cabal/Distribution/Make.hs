@@ -67,7 +67,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 -- local
-import Distribution.Compat.Exception
 import Distribution.Package
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
@@ -80,7 +79,6 @@ import Distribution.Version
 import Distribution.Pretty
 
 import System.Environment (getArgs, getProgName)
-import System.Exit
 
 defaultMain :: IO ()
 defaultMain = getArgs >>= defaultMainArgs

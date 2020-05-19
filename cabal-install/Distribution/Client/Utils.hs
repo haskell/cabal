@@ -27,18 +27,16 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Compat.Environment
-import Distribution.Compat.Exception   ( catchIO )
-import Distribution.Compat.Time ( getModTime )
+import Distribution.Compat.Time        ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Version
-import Distribution.Verbosity
 import Distribution.Simple.Utils       ( die', findPackageDesc, noticeNoWrap )
 import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
 import System.FilePath
 import Control.Monad
-         ( mapM, mapM_, zipWithM_ )
+         ( zipWithM_ )
 import Data.List
          ( groupBy )
 import Foreign.C.Types ( CInt(..) )
@@ -149,8 +147,8 @@ withEnv k v m = do
 -- environment is a process-global concept.
 withEnvOverrides :: [(String, Maybe FilePath)] -> IO a -> IO a
 withEnvOverrides overrides m = do
-  mb_olds <- mapM lookupEnv envVars
-  mapM_ (uncurry update) overrides
+  mb_olds <- traverse lookupEnv envVars
+  traverse_ (uncurry update) overrides
   m `Exception.finally` zipWithM_ update envVars mb_olds
    where
     envVars :: [String]

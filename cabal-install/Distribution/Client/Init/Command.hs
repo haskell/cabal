@@ -32,11 +32,9 @@ import System.FilePath
   ( (</>), takeBaseName, equalFilePath )
 
 import qualified Data.List.NonEmpty as NE
-import Data.Function
-  ( on )
 import qualified Data.Map as M
 import Control.Monad
-  ( (>=>), join, mapM )
+  ( (>=>) )
 import Control.Arrow
   ( (&&&), (***) )
 
@@ -45,8 +43,6 @@ import Distribution.CabalSpecVersion
 import Distribution.Version
   ( Version, mkVersion, alterVersion, majorBoundVersion
   , orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
-import Distribution.Verbosity
-  ( Verbosity )
 import Distribution.ModuleName
   ( ModuleName )  -- And for the Text instance
 import Distribution.InstalledPackageInfo
@@ -85,10 +81,6 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
-import Distribution.Pretty
-  ( prettyShow )
-import Distribution.Parsec
-  ( eitherParsec )
 
 import Distribution.Solver.Types.PackageIndex
   ( elemByPackageName )
@@ -657,7 +649,7 @@ importsToDeps flags mods pkgIx = do
       modDeps = map (id &&& flip M.lookup modMap) mods
 
   message flags "\nGuessing dependencies..."
-  nub . catMaybes <$> mapM (chooseDep flags) modDeps
+  nub . catMaybes <$> traverse (chooseDep flags) modDeps
 
 -- Given a module and a list of installed packages providing it,
 -- choose a dependency (i.e. package + version range) to use for that

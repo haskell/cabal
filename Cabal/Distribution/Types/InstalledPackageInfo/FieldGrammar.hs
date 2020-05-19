@@ -47,10 +47,10 @@ import qualified Distribution.Types.PackageId.Lens            as L
 -- https://ghc.haskell.org/trac/ghc/ticket/13253 might be the cause.
 --
 -- The workaround is to prevent GHC optimising the code:
-infixl 4 <+>
-(<+>) :: Applicative f => f (a -> b) -> f a -> f b
-f <+> x = f <*> x
-{-# NOINLINE (<+>) #-}
+infixl 4 <@>
+(<@>) :: Applicative f => f (a -> b) -> f a -> f b
+f <@> x = f <*> x
+{-# NOINLINE (<@>) #-}
 
 ipiFieldGrammar
     :: ( FieldGrammar c g, Applicative (g InstalledPackageInfo), Applicative (g Basic)
@@ -78,47 +78,47 @@ ipiFieldGrammar = mkInstalledPackageInfo
         --- https://github.com/haskell/cabal/commit/40f3601e17024f07e0da8e64d3dd390177ce908b
         ^^^ deprecatedSince CabalSpecV1_22 "hugs isn't supported anymore"
     -- Very basic fields: name, version, package-name, lib-name and visibility
-    <+> blurFieldGrammar basic basicFieldGrammar
+    <@> blurFieldGrammar basic basicFieldGrammar
     -- Basic fields
-    <+> optionalFieldDef    "id"                                                 L.installedUnitId (mkUnitId "")
-    <+> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
-    <+> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
-    <+> optionalFieldDefAla "license"              SpecLicenseLenient            L.license (Left SPDX.NONE)
-    <+> freeTextFieldDefST  "copyright"                                          L.copyright
-    <+> freeTextFieldDefST  "maintainer"                                         L.maintainer
-    <+> freeTextFieldDefST  "author"                                             L.author
-    <+> freeTextFieldDefST  "stability"                                          L.stability
-    <+> freeTextFieldDefST  "homepage"                                           L.homepage
-    <+> freeTextFieldDefST  "package-url"                                        L.pkgUrl
-    <+> freeTextFieldDefST  "synopsis"                                           L.synopsis
-    <+> freeTextFieldDefST  "description"                                        L.description
-    <+> freeTextFieldDefST  "category"                                           L.category
+    <@> optionalFieldDef    "id"                                                 L.installedUnitId (mkUnitId "")
+    <@> optionalFieldDefAla "instantiated-with"    InstWith                      L.instantiatedWith []
+    <@> optionalFieldDefAla "key"                  CompatPackageKey              L.compatPackageKey ""
+    <@> optionalFieldDefAla "license"              SpecLicenseLenient            L.license (Left SPDX.NONE)
+    <@> freeTextFieldDefST  "copyright"                                          L.copyright
+    <@> freeTextFieldDefST  "maintainer"                                         L.maintainer
+    <@> freeTextFieldDefST  "author"                                             L.author
+    <@> freeTextFieldDefST  "stability"                                          L.stability
+    <@> freeTextFieldDefST  "homepage"                                           L.homepage
+    <@> freeTextFieldDefST  "package-url"                                        L.pkgUrl
+    <@> freeTextFieldDefST  "synopsis"                                           L.synopsis
+    <@> freeTextFieldDefST  "description"                                        L.description
+    <@> freeTextFieldDefST  "category"                                           L.category
     -- Installed fields
-    <+> optionalFieldDef    "abi"                                                L.abiHash (mkAbiHash "")
-    <+> booleanFieldDef     "indefinite"                                         L.indefinite False
-    <+> booleanFieldDef     "exposed"                                            L.exposed False
-    <+> monoidalFieldAla    "exposed-modules"      ExposedModules                L.exposedModules
-    <+> monoidalFieldAla    "hidden-modules"       (alaList' FSep MQuoted)       L.hiddenModules
-    <+> booleanFieldDef     "trusted"                                            L.trusted False
-    <+> monoidalFieldAla    "import-dirs"          (alaList' FSep FilePathNT)    L.importDirs
-    <+> monoidalFieldAla    "library-dirs"         (alaList' FSep FilePathNT)    L.libraryDirs
-    <+> monoidalFieldAla    "dynamic-library-dirs" (alaList' FSep FilePathNT)    L.libraryDynDirs
-    <+> optionalFieldDefAla "data-dir"             FilePathNT                    L.dataDir ""
-    <+> monoidalFieldAla    "hs-libraries"         (alaList' FSep Token)         L.hsLibraries
-    <+> monoidalFieldAla    "extra-libraries"      (alaList' FSep Token)         L.extraLibraries
-    <+> monoidalFieldAla    "extra-ghci-libraries" (alaList' FSep Token)         L.extraGHCiLibraries
-    <+> monoidalFieldAla    "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
-    <+> monoidalFieldAla    "includes"             (alaList' FSep FilePathNT)    L.includes
-    <+> monoidalFieldAla    "depends"              (alaList FSep)                L.depends
-    <+> monoidalFieldAla    "abi-depends"          (alaList FSep)                L.abiDepends
-    <+> monoidalFieldAla    "cc-options"           (alaList' FSep Token)         L.ccOptions
-    <+> monoidalFieldAla    "cxx-options"          (alaList' FSep Token)         L.cxxOptions
-    <+> monoidalFieldAla    "ld-options"           (alaList' FSep Token)         L.ldOptions
-    <+> monoidalFieldAla    "framework-dirs"       (alaList' FSep FilePathNT)    L.frameworkDirs
-    <+> monoidalFieldAla    "frameworks"           (alaList' FSep Token)         L.frameworks
-    <+> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
-    <+> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
-    <+> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
+    <@> optionalFieldDef    "abi"                                                L.abiHash (mkAbiHash "")
+    <@> booleanFieldDef     "indefinite"                                         L.indefinite False
+    <@> booleanFieldDef     "exposed"                                            L.exposed False
+    <@> monoidalFieldAla    "exposed-modules"      ExposedModules                L.exposedModules
+    <@> monoidalFieldAla    "hidden-modules"       (alaList' FSep MQuoted)       L.hiddenModules
+    <@> booleanFieldDef     "trusted"                                            L.trusted False
+    <@> monoidalFieldAla    "import-dirs"          (alaList' FSep FilePathNT)    L.importDirs
+    <@> monoidalFieldAla    "library-dirs"         (alaList' FSep FilePathNT)    L.libraryDirs
+    <@> monoidalFieldAla    "dynamic-library-dirs" (alaList' FSep FilePathNT)    L.libraryDynDirs
+    <@> optionalFieldDefAla "data-dir"             FilePathNT                    L.dataDir ""
+    <@> monoidalFieldAla    "hs-libraries"         (alaList' FSep Token)         L.hsLibraries
+    <@> monoidalFieldAla    "extra-libraries"      (alaList' FSep Token)         L.extraLibraries
+    <@> monoidalFieldAla    "extra-ghci-libraries" (alaList' FSep Token)         L.extraGHCiLibraries
+    <@> monoidalFieldAla    "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
+    <@> monoidalFieldAla    "includes"             (alaList' FSep FilePathNT)    L.includes
+    <@> monoidalFieldAla    "depends"              (alaList FSep)                L.depends
+    <@> monoidalFieldAla    "abi-depends"          (alaList FSep)                L.abiDepends
+    <@> monoidalFieldAla    "cc-options"           (alaList' FSep Token)         L.ccOptions
+    <@> monoidalFieldAla    "cxx-options"          (alaList' FSep Token)         L.cxxOptions
+    <@> monoidalFieldAla    "ld-options"           (alaList' FSep Token)         L.ldOptions
+    <@> monoidalFieldAla    "framework-dirs"       (alaList' FSep FilePathNT)    L.frameworkDirs
+    <@> monoidalFieldAla    "frameworks"           (alaList' FSep Token)         L.frameworks
+    <@> monoidalFieldAla    "haddock-interfaces"   (alaList' FSep FilePathNT)    L.haddockInterfaces
+    <@> monoidalFieldAla    "haddock-html"         (alaList' FSep FilePathNT)    L.haddockHTMLs
+    <@> optionalFieldAla    "pkgroot"              FilePathNT                    L.pkgRoot
   where
     mkInstalledPackageInfo _ Basic {..} = InstalledPackageInfo
         -- _basicPkgName is not used
@@ -297,7 +297,7 @@ basicFieldGrammar = mkBasic
     <*> optionalFieldDefAla "version"       MQuoted  basicVersion nullVersion
     <*> optionalField       "package-name"           basicPkgName
     <*> optionalField       "lib-name"               basicLibName
-    <+> optionalFieldDef    "visibility"             basicLibVisibility LibraryVisibilityPrivate
+    <*> optionalFieldDef    "visibility"             basicLibVisibility LibraryVisibilityPrivate
   where
     mkBasic n v pn ln lv = Basic n v pn ln' lv'
       where

@@ -26,11 +26,8 @@ import qualified Text.PrettyPrint                as Disp
 
 import Distribution.Compiler           (CompilerId (..))
 import Distribution.PackageDescription (FlagAssignment)
-import Distribution.Parsec             (Parsec (..))
-import Distribution.Pretty             (Pretty (..))
 import Distribution.System             (Arch, OS)
 import Distribution.Types.PackageId    (PackageIdentifier)
-import Text.PrettyPrint                ((<+>))
 
 -------------------------------------------------------------------------------
 -- ReportLevel

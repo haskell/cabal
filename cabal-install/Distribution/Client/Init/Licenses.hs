@@ -23,6 +23,8 @@ module Distribution.Client.Init.Licenses
   , isc
   ) where
 
+import Prelude (String, unlines, (++))
+
 type License = String
 
 bsd2 :: String -> String -> License

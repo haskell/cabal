@@ -49,7 +49,6 @@ import Distribution.Types.UnqualComponentName
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..) )
 
-import Distribution.Verbosity
 import Distribution.PackageDescription
          ( PackageDescription
          , Executable(..)
@@ -66,23 +65,15 @@ import Distribution.Simple.LocalBuildInfo
          ( Component(..), ComponentName(..), LibraryName(..)
          , pkgComponents, componentName, componentBuildInfo )
 import Distribution.Types.ForeignLib
-import Distribution.Parsec (Parsec (..), simpleParsec)
-import Distribution.Pretty (prettyShow)
 
 import Distribution.Simple.Utils
          ( die', lowercase, ordNub )
 import Distribution.Client.Utils
          ( makeRelativeCanonical )
 
-import Data.Either
-         ( partitionEithers )
-import Data.Function
-         ( on )
 import Data.List
-         ( stripPrefix, partition, groupBy )
+         ( stripPrefix, groupBy )
 import qualified Data.List.NonEmpty as NE
-import Data.Ord
-         ( comparing )
 import qualified Data.Map.Lazy   as Map.Lazy
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -225,7 +216,7 @@ readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
 readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter targetStrs =
     case parseTargetStrings targetStrs of
       ([], usertargets) -> do
-        usertargets' <- mapM (getTargetStringFileStatus dirActions) usertargets
+        usertargets' <- traverse (getTargetStringFileStatus dirActions) usertargets
         knowntargets <- getKnownTargets dirActions pkgs
         case resolveTargetSelectors knowntargets usertargets' mfilter of
           ([], btargets) -> return (Right btargets)
@@ -1727,7 +1718,7 @@ getKnownTargets :: (Applicative m, Monad m)
                 -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                 -> m KnownTargets
 getKnownTargets dirActions@DirActions{..} pkgs = do
-    pinfo <- mapM (collectKnownPackageInfo dirActions) pkgs
+    pinfo <- traverse (collectKnownPackageInfo dirActions) pkgs
     cwd   <- getCurrentDirectory
     let (ppinfo, opinfo) = selectPrimaryPackage cwd pinfo
     return KnownTargets {

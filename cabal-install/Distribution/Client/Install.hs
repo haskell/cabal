@@ -36,18 +36,7 @@ import Distribution.Utils.Generic(safeLast)
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as Map
 import Control.Exception as Exception
-         ( Exception(toException), bracket, catches
-         , Handler(Handler), handleJust, IOException, SomeException )
-#ifndef mingw32_HOST_OS
-import Control.Exception as Exception
-         ( Exception(fromException) )
-#endif
-import System.Exit
-         ( ExitCode(..) )
-import Distribution.Compat.Exception
-         ( catchIO, catchExit )
-import Control.Monad
-         ( forM_, mapM )
+         ( bracket, catches, Handler(Handler), handleJust )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory,
@@ -130,8 +119,7 @@ import qualified Distribution.Simple.Setup as Cabal
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..) )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, comparing
-         , writeFileAtomic )
+         ( createDirectoryIfMissingVerbose, writeFileAtomic )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -145,7 +133,6 @@ import Distribution.Types.Dependency
          ( Dependency (..), mainLibSet )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
-import Distribution.Pretty ( prettyShow )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint(..), thisPackageVersionConstraint )
 import Distribution.Types.MungedPackageId
@@ -167,7 +154,7 @@ import Distribution.Client.Utils
 import Distribution.System
          ( Platform, OS(Windows), buildOS, buildPlatform )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, modifyVerbosity, normal, verbose )
+         ( modifyVerbosity, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 import qualified Data.ByteString as BS
@@ -773,7 +760,7 @@ reportPlanningFailure verbosity
     -- Save solver log
     case logFile of
       Nothing -> return ()
-      Just template -> forM_ pkgids $ \pkgid ->
+      Just template -> for_ pkgids $ \pkgid ->
         let env = initialPathTemplateEnv pkgid dummyIpid
                     (compilerInfo comp) platform
             path = fromPathTemplate $ substPathTemplate env template
@@ -1417,7 +1404,7 @@ installUnpackedPackage verbosity installLock numJobs
             let packageDBs = interpretPackageDbFlags
                                 (fromFlag (configUserInstall configFlags))
                                 (configPackageDBs configFlags)
-            forM_ ipkgs' $ \ipkg' ->
+            for_ ipkgs' $ \ipkg' ->
                 registerPackage verbosity comp progdb
                                 packageDBs ipkg'
                                 defaultRegisterOptions
@@ -1494,7 +1481,7 @@ installUnpackedPackage verbosity installLock numJobs
           if is_dir
             -- Sort so that each prefix of the package
             -- configurations is well formed
-            then mapM (readPkgConf pkgConfDest) . sort . filter notHidden
+            then traverse (readPkgConf pkgConfDest) . sort . filter notHidden
                     =<< getDirectoryContents pkgConfDest
             else fmap (:[]) $ readPkgConf "." pkgConfDest
       else return []

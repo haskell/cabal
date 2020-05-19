@@ -26,15 +26,8 @@ module Distribution.Client.Init.Prompt (
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (empty)
 
-import Control.Monad
-  ( mapM_ )
-
 import Distribution.Client.Init.Types
   ( InitFlags(..) )
-import Distribution.Parsec
-  ( Parsec, simpleParsec )
-import Distribution.Pretty
-  ( Pretty, prettyShow )
 import Distribution.Simple.Setup
   ( Flag(..) )
 
@@ -76,15 +69,15 @@ promptDefault' :: (String -> Maybe t)       -- ^ parser
                -> String                    -- ^ prompt message
                -> Maybe t                   -- ^ optional default value
                -> IO t
-promptDefault' parser pretty pr def = do
-  putStr $ mkDefPrompt pr (pretty `fmap` def)
+promptDefault' parser ppr pr def = do
+  putStr $ mkDefPrompt pr (ppr `fmap` def)
   inp <- getLine
   case (inp, def) of
     ("", Just d)  -> return d
     _  -> case parser inp of
             Just t  -> return t
             Nothing -> do putStrLn $ "Couldn't parse " ++ inp ++ ", please try again!"
-                          promptDefault' parser pretty pr def
+                          promptDefault' parser ppr pr def
 
 -- | Create a prompt from a prompt string and a String representation
 --   of an optional default value.
@@ -126,7 +119,7 @@ promptList pr choices def displayItem other = do
   let options1 = map (\c -> (Just c == def, displayItem c)) choices
       options2 = zip ([1..]::[Int])
                      (options1 ++ [(False, "Other (specify)") | other])
-  mapM_ (putStrLn . \(n,(i,s)) -> showOption n i ++ s) options2
+  traverse_ (putStrLn . \(n,(i,s)) -> showOption n i ++ s) options2
   promptList' displayItem (length options2) choices def other
  where showOption n i | n < 10 = " " ++ star i ++ " " ++ rest
                       | otherwise = " " ++ star i ++ rest

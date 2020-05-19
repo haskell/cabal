@@ -44,10 +44,6 @@ import Distribution.Simple.Utils
          ( tryFindPackageDesc )
 import Distribution.System
          ( Platform )
-import Distribution.Pretty
-         ( prettyShow )
-import Distribution.Verbosity
-         ( Verbosity )
 import Distribution.Version
          ( Version, alterVersion
          , LowerBound(..), UpperBound(..), VersionRange, asVersionIntervals

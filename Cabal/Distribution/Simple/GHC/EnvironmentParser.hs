@@ -17,8 +17,6 @@ import Distribution.Simple.GHC.Internal
 import Distribution.Types.UnitId
     ( mkUnitId )
 
-import Control.Exception
-    ( Exception, throwIO )
 import qualified Text.Parsec as P
 import Text.Parsec.String
     ( Parser, parseFromFile )

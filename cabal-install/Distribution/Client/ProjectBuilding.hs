@@ -90,8 +90,6 @@ import           Distribution.Simple.Compiler
 
 import           Distribution.Simple.Utils
 import           Distribution.Version
-import           Distribution.Verbosity
-import           Distribution.Pretty
 import           Distribution.Compat.Graph (IsNode(..))
 
 import qualified Data.List.NonEmpty as NE
@@ -100,8 +98,7 @@ import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
-import Control.Exception (Exception (..), Handler (..), SomeAsyncException, SomeException, assert, catches, handle, throwIO)
-import Data.Function     (on)
+import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
 import System.IO         (IOMode (AppendMode), withFile)

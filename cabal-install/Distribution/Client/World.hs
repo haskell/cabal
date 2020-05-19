@@ -37,14 +37,9 @@ import Distribution.Types.Dependency
 import Distribution.Types.Flag
          ( FlagAssignment, unFlagAssignment
          , unFlagName, parsecFlagAssignmentNonEmpty )
-import Distribution.Verbosity
-         ( Verbosity )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
-import Distribution.Parsec (Parsec (..), CabalParsing, simpleParsec)
-import Distribution.Pretty (Pretty (..), prettyShow)
 import qualified Distribution.Compat.CharParsing as P
-import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
 
 import Data.List

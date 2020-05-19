@@ -15,11 +15,9 @@ import Distribution.Client.TargetSelector
 import Distribution.Client.Types
 import Distribution.Compat.CharParsing             (char, optional)
 import Distribution.Package
-import Distribution.Parsec
 import Distribution.Simple.LocalBuildInfo          (ComponentName (CExeName))
 import Distribution.Simple.Utils                   (die')
 import Distribution.Solver.Types.PackageConstraint (PackageProperty (..))
-import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version
 
 data WithoutProjectTargetSelector
@@ -36,7 +34,7 @@ parseWithoutProjectTargetSelector verbosity input =
             Just uri -> return (WoURI uri)
             Nothing  -> die' verbosity $ "Invalid package ID: " ++ input ++ "\n" ++ err
   where
-    parser :: ParsecParser WithoutProjectTargetSelector
+    parser :: CabalParsing m => m WithoutProjectTargetSelector
     parser = do
         pid <- parsec
         cn  <- optional (char ':' *> parsec)

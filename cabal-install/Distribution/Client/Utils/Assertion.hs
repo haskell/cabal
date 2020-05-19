@@ -1,9 +1,13 @@
 {-# LANGUAGE CPP #-}
 module Distribution.Client.Utils.Assertion (expensiveAssert) where
 
+
 #ifdef DEBUG_EXPENSIVE_ASSERTIONS
+import Prelude (Bool)
 import Control.Exception (assert)
 import Distribution.Compat.Stack
+#else
+import Prelude (Bool, id)
 #endif
 
 -- | Like 'assert', but only enabled with -fdebug-expensive-assertions. This

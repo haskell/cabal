@@ -44,7 +44,6 @@ import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
-import           Distribution.Pretty (Pretty, prettyShow)
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary

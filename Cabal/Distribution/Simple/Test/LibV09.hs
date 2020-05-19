@@ -39,7 +39,6 @@ import System.Directory
     , doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
     , setCurrentDirectory )
-import System.Exit ( exitSuccess, exitWith, ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
 import System.Process (StdStream(..), waitForProcess)

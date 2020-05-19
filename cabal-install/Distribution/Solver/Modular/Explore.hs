@@ -3,13 +3,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.Explore (backjumpAndExplore) where
 
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import qualified Distribution.Solver.Types.Progress as P
 
-import Data.Foldable as F
-import Data.List as L (foldl')
-import Data.Maybe (fromMaybe)
-import Data.Map.Strict as M
-import Data.Set as S
+import qualified Data.List as L (foldl')
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 
 import Distribution.Simple.Setup (asBool)
 
@@ -81,7 +82,7 @@ backjump :: forall w k a . Maybe Int
          -> ExploreState -> ConflictSetLog a
 backjump mbj enableBj fineGrainedConflicts couldResolveConflicts
          logSkippedChoice var lastCS xs =
-    F.foldr combine avoidGoal [(k, v) | (_, k, v) <- W.toList xs] CS.empty Nothing
+    foldr combine avoidGoal [(k, v) | (_, k, v) <- W.toList xs] CS.empty Nothing
   where
     combine :: (k, ExploreState -> ConflictSetLog a)
             -> (ConflictSet -> Maybe ConflictSet -> ExploreState -> ConflictSetLog a)
@@ -269,7 +270,7 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
     -- to be merged with the previous one.
     couldResolveConflicts :: QPN -> POption -> S.Set CS.Conflict -> Maybe ConflictSet
     couldResolveConflicts currentQPN@(Q _ pn) (POption i@(I v _) _) conflicts =
-      let (PInfo deps _ _ _) = idx ! pn ! i
+      let (PInfo deps _ _ _) = idx M.! pn M.! i
           qdeps = qualifyDeps (defaultQualifyOptions idx) currentQPN deps
 
           couldBeResolved :: CS.Conflict -> Maybe ConflictSet
@@ -277,7 +278,7 @@ exploreLog mbj enableBj fineGrainedConflicts (CountConflicts countConflicts) idx
           couldBeResolved (CS.GoalConflict conflictingDep) =
               -- Check whether this package instance also has 'conflictingDep'
               -- as a dependency (ignoring flag and stanza choices).
-              if F.null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _)) _ <- qdeps, qpn == conflictingDep]
+              if null [() | Simple (LDep _ (Dep (PkgComponent qpn _) _)) _ <- qdeps, qpn == conflictingDep]
               then Nothing
               else Just CS.empty
           couldBeResolved (CS.VersionConstraintConflict dep excludedVersion) =

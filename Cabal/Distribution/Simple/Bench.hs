@@ -32,7 +32,6 @@ import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.Pretty
 
-import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 

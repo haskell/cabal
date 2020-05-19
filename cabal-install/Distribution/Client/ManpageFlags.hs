@@ -10,7 +10,7 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Simple.Command (OptionField (..), ShowOrParseArgs (..), option)
 import Distribution.Simple.Setup   (Flag (..), toFlag, trueArg, optionVerbosity)
-import Distribution.Verbosity      (Verbosity, normal)
+import Distribution.Verbosity      (normal)
 
 data ManpageFlags = ManpageFlags
   { manpageVerbosity :: Flag Verbosity

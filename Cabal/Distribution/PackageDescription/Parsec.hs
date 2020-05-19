@@ -35,12 +35,8 @@ module Distribution.PackageDescription.Parsec (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Control.Applicative                           (Const (..))
-import Control.DeepSeq                               (deepseq)
-import Control.Monad                                 (guard)
 import Control.Monad.State.Strict                    (StateT, execStateT)
 import Control.Monad.Trans.Class                     (lift)
-import Data.List                                     (partition)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.FieldGrammar

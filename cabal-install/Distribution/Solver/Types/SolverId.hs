@@ -5,10 +5,10 @@ module Distribution.Solver.Types.SolverId
 
 where
 
-import Distribution.Compat.Binary (Binary)
-import Distribution.Utils.Structured (Structured)
+import Distribution.Solver.Compat.Prelude
+import Prelude ()
+
 import Distribution.Package (PackageId, Package(..), UnitId)
-import GHC.Generics (Generic)
 
 -- | The solver can produce references to existing packages or
 -- packages we plan to install.  Unlike 'ConfiguredId' we don't

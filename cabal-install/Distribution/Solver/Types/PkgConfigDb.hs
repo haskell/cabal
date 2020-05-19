@@ -23,7 +23,7 @@ module Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 
-import           Control.Exception (IOException, handle)
+import           Control.Exception (handle)
 import qualified Data.Map          as M
 import           System.FilePath   (splitSearchPath)
 

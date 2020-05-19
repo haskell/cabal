@@ -16,8 +16,6 @@ import Distribution.Simple.Command
          ( ShowOrParseArgs(..), OptionField(..), option, reqArg )
 import Distribution.Simple.Setup
          ( Flag(..), trueArg, flagToList, toFlag )
-import Distribution.Parsec (Parsec (..), CabalParsing)
-import Distribution.Pretty (prettyShow)
 
 import Distribution.Client.Types.InstallMethod
          ( InstallMethod (..) )

@@ -88,7 +88,6 @@ import Distribution.Compat.Prelude hiding (empty, lookup, null, toList)
 import Prelude ()
 
 import Data.Array                    ((!))
-import Data.Either                   (partitionEithers)
 import Data.Graph                    (SCC (..))
 import Distribution.Utils.Structured (Structure (..), Structured (..))
 

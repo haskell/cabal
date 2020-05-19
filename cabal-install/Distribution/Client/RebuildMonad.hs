@@ -63,7 +63,6 @@ import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 
 import Distribution.Simple.Utils (debug)
-import Distribution.Verbosity    (Verbosity)
 
 import qualified Data.Map.Strict as Map
 import Control.Monad.State as State

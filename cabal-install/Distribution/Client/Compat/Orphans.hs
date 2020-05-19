@@ -7,6 +7,7 @@ import Distribution.Compat.Binary    (Binary (..))
 import Distribution.Compat.Typeable  (typeRep)
 import Distribution.Utils.Structured (Structure (Nominal), Structured (..))
 import Network.URI                   (URI (..), URIAuth (..))
+import Prelude                       (error, return)
 
 -------------------------------------------------------------------------------
 -- network-uri
@@ -34,7 +35,7 @@ instance Binary URIAuth where
 --Added in 46aa019ec85e313e257d122a3549cce01996c566
 instance Binary SomeException where
     put _ = return ()
-    get = fail "cannot serialise exceptions"
+    get = error "cannot serialise exceptions"
 
 instance Structured SomeException where
     structure p = Nominal (typeRep p) 0 "SomeException" []

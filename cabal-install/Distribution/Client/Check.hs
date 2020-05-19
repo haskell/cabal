@@ -28,7 +28,6 @@ import Distribution.PackageDescription.Parsec
        (parseGenericPackageDescription, runParseResult)
 import Distribution.Parsec                           (PWarning (..), showPError, showPWarning)
 import Distribution.Simple.Utils                     (defaultPackageDesc, die', notice, warn)
-import Distribution.Verbosity                        (Verbosity)
 import System.IO                                     (hPutStr, stderr)
 
 import qualified Data.ByteString  as BS

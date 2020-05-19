@@ -158,19 +158,14 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
-import           Distribution.Pretty
-                   ( prettyShow )
 import           Distribution.Simple.Compiler
                    ( compilerCompatVersion, showCompilerId
                    , OptimisationLevel(..))
 
-import qualified Data.Monoid as Mon
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import           Data.Either
-import           Control.Exception (Exception(..), throwIO, assert)
-import           System.Exit (ExitCode(..), exitFailure)
+import           Control.Exception (assert)
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
@@ -949,7 +944,7 @@ printPlan verbosity
               computeEffectiveProfiling fullConfigureFlags
 
             partialConfigureFlags
-              = Mon.mempty {
+              = mempty {
                 configProf    =
                     nubFlag False (configProf fullConfigureFlags),
                 configProfExe =

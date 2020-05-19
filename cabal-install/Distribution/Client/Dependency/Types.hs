@@ -8,8 +8,6 @@ module Distribution.Client.Dependency.Types (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Parsec (Parsec (..))
-import Distribution.Pretty (Pretty (..))
 import Text.PrettyPrint (text)
 
 import qualified Distribution.Compat.CharParsing as P

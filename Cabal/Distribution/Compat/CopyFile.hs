@@ -14,13 +14,11 @@ module Distribution.Compat.CopyFile (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Compat.Exception
-
 #ifndef mingw32_HOST_OS
 import Distribution.Compat.Internal.TempFile
 
 import Control.Exception
-         ( bracketOnError, throwIO )
+         ( bracketOnError )
 import qualified Data.ByteString.Lazy as BSL
 import System.IO.Error
          ( ioeSetLocation )
@@ -43,8 +41,6 @@ import Foreign.C
 
 #else /* else mingw32_HOST_OS */
 
-import Control.Exception
-  ( throwIO )
 import qualified Data.ByteString.Lazy as BSL
 import System.IO.Error
   ( ioeSetLocation )

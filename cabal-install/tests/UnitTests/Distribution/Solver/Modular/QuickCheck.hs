@@ -9,12 +9,9 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Control.Arrow ((&&&))
-import Control.DeepSeq (force)
 import Data.Either (lefts)
-import Data.Function (on)
 import Data.Hashable (Hashable(..))
 import Data.List (groupBy, isInfixOf)
-import Data.Ord (comparing)
 
 import Text.Show.Pretty (parseValue, valToStr)
 

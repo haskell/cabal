@@ -42,6 +42,9 @@ module Distribution.Client.Win32SelfUpgrade (
     deleteOldExeFile,
   ) where
 
+import Distribution.Client.Compat.Prelude hiding (log)
+import Prelude ()
+
 #ifdef mingw32_HOST_OS
 
 import qualified System.Win32 as Win32
@@ -51,10 +54,9 @@ import System.Process (runProcess)
 import System.Directory (canonicalizePath)
 import System.FilePath (takeBaseName, replaceBaseName, equalFilePath)
 
-import Distribution.Verbosity as Verbosity (Verbosity, showForCabal)
+import Distribution.Verbosity as Verbosity (showForCabal)
 import Distribution.Simple.Utils (debug, info)
 
-import Prelude hiding (log)
 
 -- | If one of the given files is our own exe file then we arrange things such
 -- that the nested action can replace our own exe file.
@@ -68,7 +70,7 @@ possibleSelfUpgrade :: Verbosity
 possibleSelfUpgrade verbosity newPaths action = do
   dstPath <- canonicalizePath =<< Win32.getModuleFileName Win32.nullHANDLE
 
-  newPaths' <- mapM canonicalizePath newPaths
+  newPaths' <- traverse canonicalizePath newPaths
   let doingSelfUpgrade = any (equalFilePath dstPath) newPaths'
 
   if not doingSelfUpgrade
@@ -211,7 +213,6 @@ setEvent handle =
 
 #else
 
-import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die')
 
 possibleSelfUpgrade :: Verbosity

@@ -6,9 +6,6 @@ module UnitTests.Distribution.Client.Glob (tests) where
 import Distribution.Client.Compat.Prelude hiding (last)
 import Prelude ()
 
-import Distribution.Pretty (prettyShow)
-import Distribution.Parsec (eitherParsec)
-
 import Distribution.Client.Glob
 import Distribution.Utils.Structured (structureHash)
 import UnitTests.Distribution.Client.ArbitraryInstances ()
@@ -16,7 +13,6 @@ import UnitTests.Distribution.Client.ArbitraryInstances ()
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.Tasty.HUnit
-import Control.Exception
 import GHC.Fingerprint (Fingerprint (..))
 
 tests :: [TestTree]

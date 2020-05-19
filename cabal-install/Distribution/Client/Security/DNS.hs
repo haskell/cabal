@@ -7,12 +7,8 @@ module Distribution.Client.Security.DNS
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 import Network.URI (URI(..), URIAuth(..), parseURI)
-import Distribution.Verbosity
-import Control.Monad
-import Control.DeepSeq (force)
-import Control.Exception (SomeException, evaluate, try)
+import Control.Exception (try)
 import Distribution.Simple.Utils
-import Distribution.Compat.Exception (displayException)
 
 #if defined(MIN_VERSION_resolv) || defined(MIN_VERSION_windns)
 import Network.DNS (queryTXT, Name(..), CharStr(..))
@@ -70,7 +66,7 @@ queryBootstrapMirrors verbosity repoUri
          then warn verbosity ("No mirrors found for " ++ show repoUri)
          else do info verbosity ("located " ++ show (length mirrors) ++
                                  " mirrors for " ++ show repoUri ++ " :")
-                 forM_ mirrors $ \url -> info verbosity ("- " ++ show url)
+                 for_ mirrors $ \url -> info verbosity ("- " ++ show url)
 
          return mirrors
 
@@ -117,7 +113,7 @@ queryBootstrapMirrors verbosity repoUri
               then warn verbosity ("No mirrors found for " ++ show repoUri)
               else do info verbosity ("located " ++ show (length mirrors) ++
                                       " mirrors for " ++ show repoUri ++ " :")
-                      forM_ mirrors $ \url -> info verbosity ("- " ++ show url)
+                      for_ mirrors $ \url -> info verbosity ("- " ++ show url)
 
               return mirrors
 
