@@ -17,6 +17,7 @@ import Distribution.Utils.Progress
 import Distribution.Verbosity
 import Distribution.Simple.Utils
 import Text.PrettyPrint
+import System.IO (hPutStrLn, stderr)
 
 type CtxMsg = Doc
 type LogMsg = Doc
@@ -54,7 +55,7 @@ runLogProgress verbosity (LogProgress m) =
       }
     step_fn :: LogMsg -> IO a -> IO a
     step_fn doc go = do
-        putStrLn (render doc)
+        hPutStrLn stderr (render doc)
         go
     fail_fn :: Doc -> IO a
     fail_fn doc = do
