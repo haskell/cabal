@@ -37,8 +37,6 @@ import Distribution.Client.Targets
 import Distribution.Client.SourceRepo (SourceRepositoryPackage)
 import Distribution.Client.Types
 
-import UnitTests.Distribution.Client.GenericInstances ()
-
 import Network.URI
 import Data.TreeDiff.Class
 
