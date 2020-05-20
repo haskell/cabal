@@ -3,6 +3,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
+-- simplifier goes nuts otherwise
+#if __GLASGOW_HASKELL__ < 806
+{-# OPTIONS_GHC -funfolding-use-threshold=30 #-}
+#endif
+
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
 #if !MIN_VERSION_base(4,8,0)

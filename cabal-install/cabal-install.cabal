@@ -356,7 +356,7 @@ executable cabal
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.5.0.1  && < 1.10,
+        time       >= 1.5.0.1  && < 1.11,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.6.0.1 && < 0.7,
