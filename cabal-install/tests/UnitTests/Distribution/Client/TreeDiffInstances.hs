@@ -20,8 +20,6 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo              (SourceRepositoryPackage)
 
-import UnitTests.Distribution.Client.GenericInstances ()
-
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()
 import Network.URI

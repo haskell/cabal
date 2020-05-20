@@ -40,7 +40,7 @@ Version:            3.3.0.0
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.5.0.1  && < 1.10,
+        time       >= 1.5.0.1  && < 1.11,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.6.0.1 && < 0.7,
@@ -479,7 +479,6 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Get
-    UnitTests.Distribution.Client.GenericInstances
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Init.FileCreators
@@ -519,15 +518,15 @@ Test-Suite unit-tests
         tar,
         time,
         zlib,
-        network-uri < 2.6.2.0,
+        network-uri >= 2.6.2.0 && <2.6.4.0,
         network,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-golden >=2.3.1.1 && <2.4,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
         tree-diff,
-        QuickCheck >= 2.8.2
+        QuickCheck >= 2.14 && <2.15
 
   ghc-options: -threaded
 
@@ -554,7 +553,7 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
@@ -583,9 +582,9 @@ Test-Suite solver-quickcheck
         hashable,
         random,
         tagged,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-quickcheck,
-        QuickCheck >= 2.8.2,
+        QuickCheck >= 2.14 && <2.15,
         pretty-show >= 1.6.15
 
   ghc-options: -threaded
@@ -612,7 +611,7 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10,
         tagged
 

@@ -13,7 +13,7 @@ library
   build-depends:
     , base
     , Cabal       ^>=3.3.0.0
-    , QuickCheck  ^>=2.13.2
+    , QuickCheck  ^>=2.13.2 || ^>=2.14
 
   if !impl(ghc >= 8.0)
     build-depends: semigroups
