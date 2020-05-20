@@ -109,7 +109,7 @@ import Distribution.Simple.Compiler
          ( Compiler(..), CompilerId(..), CompilerFlavor(..)
          , PackageDBStack )
 import Distribution.Simple.GHC
-         ( ghcPlatformAndVersionString
+         ( ghcPlatformAndVersionString, getGhcAppDir
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
@@ -146,7 +146,7 @@ import Distribution.Utils.NubList
          ( fromNubList )
 import Network.URI (URI)
 import System.Directory
-         ( getAppUserDataDirectory, doesFileExist, createDirectoryIfMissing
+         ( doesFileExist, createDirectoryIfMissing
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
@@ -850,7 +850,7 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
 -- | Gets the file file path to the request environment file.
 getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
 getEnvFile clientInstallFlags platform compilerVersion = do
-  appData <- getAppUserDataDirectory "ghc"
+  appData <- getGhcAppDir
   case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
     Just spec
       -- Is spec a bare word without any "pathy" content, then it refers to
