@@ -2108,12 +2108,14 @@ matchComponentOtherFile :: [KnownComponent] -> String
                         -> Match (FilePath, KnownComponent)
 matchComponentOtherFile cs =
     matchFile
-      [ (file, c)
-      | c    <- cs
-      , file <- cinfoHsFiles c
-             ++ cinfoCFiles  c
-             ++ cinfoJsFiles c
+      [ (normalise (srcdir </> file), c)
+      | c      <- cs
+      , srcdir <- cinfoSrcDirs c
+      , file   <- cinfoHsFiles c
+               ++ cinfoCFiles  c
+               ++ cinfoJsFiles c
       ]
+      . normalise
 
 
 matchComponentModuleFile :: [KnownComponent] -> String
