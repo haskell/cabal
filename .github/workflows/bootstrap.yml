@@ -22,19 +22,13 @@ jobs:
     name: Bootstrap on Linux
     runs-on: ubuntu-18.04
     steps:
-      - name: Set PATH
-        run: |
-          echo "::add-path::/opt/ghc/8.6.5/bin"
       - uses: actions/checkout@v2
-      - name: bootstrap.sh
-        env:
-          EXTRA_CONFIGURE_OPTS: ""
+      - name: bootstrap.py
         run: |
-          cd cabal-install
-          sh ./bootstrap.sh --no-doc
+          python3 cabal-install/bootstrap.py -w /opt/ghc/8.6.5/bin/ghc -d bootstrap-deps-ghc-8.6.5.json
       - name: Smoke test
         run: |
-          $HOME/.cabal/bin/cabal --version
+          packages/tmp/bin/cabal --version
 
   boostrap-macos:
     name: Bootstrap on macOS
@@ -48,17 +42,10 @@ jobs:
           cd ghc-*
           ./configure --prefix=/opt/ghc/8.6.5
           sudo make install
-      - name: Set PATH
-        run: |
-          echo "::add-path::/opt/ghc/8.6.5/bin"
-          echo "::add-path::$HOME/.cabal/bin"
       - uses: actions/checkout@v2
-      - name: bootstrap.sh
-        env:
-          EXTRA_CONFIGURE_OPTS: ""
+      - name: bootstrap.py
         run: |
-          cd cabal-install
-          sh ./bootstrap.sh --no-doc
+          python3 cabal-install/bootstrap.py -w /opt/ghc/8.6.5/bin/ghc -d bootstrap-deps-ghc-8.6.5.json
       - name: Smoke test
         run: |
-          $HOME/.cabal/bin/cabal --version
+          packages/tmp/bin/cabal --version
