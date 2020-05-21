@@ -47,3 +47,5 @@ cabal-install $ ./bootstrap.sh # running ./bootstrap.sh from within in cabal-ins
 ~~~~
 
 For more details, and non-unix like systems, see the [README.md in cabal-install](cabal-install/README.md) and [Contributing Guidelines](CONTRIBUTING.md).
+
+
