@@ -1,0 +1,316 @@
+{
+  "dependencies": [
+    {
+      "package": "array",
+      "version": "0.5.4.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "base",
+      "version": "4.13.0.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "binary",
+      "version": "0.8.7.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "bytestring",
+      "version": "0.10.10.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "containers",
+      "version": "0.6.2.1",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "deepseq",
+      "version": "1.4.4.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "directory",
+      "version": "1.3.6.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "filepath",
+      "version": "1.4.2.1",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "mtl",
+      "version": "2.2.2",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "parsec",
+      "version": "3.1.14.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "pretty",
+      "version": "1.1.3.6",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "process",
+      "version": "1.6.8.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "text",
+      "version": "1.2.4.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "time",
+      "version": "1.9.3",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "transformers",
+      "version": "0.5.6.2",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "unix",
+      "version": "2.7.2.2",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "Cabal",
+      "version": "3.3.0.0",
+      "source": "local",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "network",
+      "version": "3.1.1.1",
+      "source": "hackage",
+      "src_sha256": "d7ef590173fff2ab522fbc167f3fafb867e4ecfca279eb3ef0d137b51f142c9a",
+      "revision": 0,
+      "cabal_sha256": "b704cb6676c03e98267190df797497587576a2e96094550ea143415239bbe66e"
+    },
+    {
+      "package": "template-haskell",
+      "version": "2.15.0.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "network-uri",
+      "version": "2.6.3.0",
+      "source": "hackage",
+      "src_sha256": "a01c1389f15d2cc2e847914737f706133bb11f0c5f8ee89711a36a25b7afa723",
+      "revision": 0,
+      "cabal_sha256": "d2d9ff3a80d9b2d1ff317a354bc0c56cc109c69a4c2449e5fc712d3ddce83ede"
+    },
+    {
+      "package": "HTTP",
+      "version": "4000.3.14",
+      "source": "hackage",
+      "src_sha256": "a602d7f30e917164c6a634f8cb1f5df4849048858db01380a0875e16e5aa687b",
+      "revision": 1,
+      "cabal_sha256": "3c19975fdfd8d057eae58847bda6a79514ad882fd6f8ead72ac0247af34bdfc6"
+    },
+    {
+      "package": "ghc-prim",
+      "version": "0.5.3",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "integer-gmp",
+      "version": "1.0.2.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "hashable",
+      "version": "1.3.0.0",
+      "source": "hackage",
+      "src_sha256": "822e5413fbccca6ae884d3aba4066422c8b5d58d23d18b9ecb5c03273bb19ab4",
+      "revision": 1,
+      "cabal_sha256": "4c70f1407881059e93550d3742191254296b2737b793a742bd901348fb3e1fb1"
+    },
+    {
+      "package": "stm",
+      "version": "2.5.0.0",
+      "source": "pre-existing",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    },
+    {
+      "package": "async",
+      "version": "2.2.2",
+      "source": "hackage",
+      "src_sha256": "4b4ab1ac82c45144d82c6daf6cb6ba45eab9957dad44787fa5e869e23d73bbff",
+      "revision": 1,
+      "cabal_sha256": "a178c166856da7ff22fe4500337b54812e94fd2059409452187d72e057ede9cd"
+    },
+    {
+      "package": "base16-bytestring",
+      "version": "0.1.1.6",
+      "source": "hackage",
+      "src_sha256": "5afe65a152c5418f5f4e3579a5e0d5ca19c279dc9bf31c1a371ccbe84705c449",
+      "revision": 0,
+      "cabal_sha256": "ead535a30f93189068b3457496e30e3cb8a55d48b2d46f39325233d0d9987d2c"
+    },
+    {
+      "package": "cryptohash-sha256",
+      "version": "0.11.101.0",
+      "source": "hackage",
+      "src_sha256": "52756435dbea248e344fbcbcc5df5307f60dfacf337dfd11ae30f1c7a4da05dd",
+      "revision": 4,
+      "cabal_sha256": "b963d6308db096362d73d9c603b331cf188aa69310195f479dfedf6045d7e602"
+    },
+    {
+      "package": "echo",
+      "version": "0.1.3",
+      "source": "hackage",
+      "src_sha256": "704f07310f8272d170f8ab7fb2a2c13f15d8501ef8310801e36964c8eff485ef",
+      "revision": 1,
+      "cabal_sha256": "5490be9cfbea95e14a7a68b7d055ae8d295822e0b146d2ac8285b3e5a3e3282f"
+    },
+    {
+      "package": "random",
+      "version": "1.1",
+      "source": "hackage",
+      "src_sha256": "b718a41057e25a3a71df693ab0fe2263d492e759679b3c2fea6ea33b171d3a5a",
+      "revision": 1,
+      "cabal_sha256": "7b67624fd76ddf97c206de0801dc7e888097e9d572974be9b9ea6551d76965df"
+    },
+    {
+      "package": "edit-distance",
+      "version": "0.2.2.1",
+      "source": "hackage",
+      "src_sha256": "3e8885ee2f56ad4da940f043ae8f981ee2fe336b5e8e4ba3f7436cff4f526c4a",
+      "revision": 1,
+      "cabal_sha256": "4d33a49cd383d50af090f1b888642d10116e43809f9da6023d9fc6f67d2656ee"
+    },
+    {
+      "package": "base64-bytestring",
+      "version": "1.0.0.3",
+      "source": "hackage",
+      "src_sha256": "ef159d60ec14c0a3f3e26bab5c9fd7634d5e1b983c6a64f0b0c3261efe008fc7",
+      "revision": 0,
+      "cabal_sha256": "6c82d900465345e30ff0eeb9a1374fbd2955c8e5ca6206e03669f04575830f88"
+    },
+    {
+      "package": "ed25519",
+      "version": "0.0.5.0",
+      "source": "hackage",
+      "src_sha256": "d8a5958ebfa9309790efade64275dc5c441b568645c45ceed1b0c6ff36d6156d",
+      "revision": 2,
+      "cabal_sha256": "2e051ab9d98bc22e0c4afe09e763d3e8e0571ea51a3ae952db33ac89e58006b3"
+    },
+    {
+      "package": "lukko",
+      "version": "0.1.1.2",
+      "source": "hackage",
+      "src_sha256": "8a79d113dc0ccef16c24d83379cc457485943027e777529c46362fecc06607d2",
+      "revision": 0,
+      "cabal_sha256": "c9d3fa30fb6ab2ba16e037586ca79be6e57ec5f00381b6ee5f293400dbdf5515"
+    },
+    {
+      "package": "tar",
+      "version": "0.5.1.1",
+      "source": "hackage",
+      "src_sha256": "b384449f62b2b0aa3e6d2cb1004b8060b01f21ec93e7b63e7af6d8fad8a9f1de",
+      "revision": 2,
+      "cabal_sha256": "7a715414c4d494c9048cfb6d7634e07e7732ca154cb8938dc85f6ea192192e8c"
+    },
+    {
+      "package": "zlib",
+      "version": "0.6.2.1",
+      "source": "hackage",
+      "src_sha256": "f0f810ff173560b60392db448455c0513b3239f48e43cb494b3733aa559621d0",
+      "revision": 1,
+      "cabal_sha256": "d34ddf5fece4d1e9d471b5298f36335bb3cfe12cb5a1b8525c42f0b665382f45"
+    },
+    {
+      "package": "hackage-security",
+      "version": "0.6.0.1",
+      "source": "hackage",
+      "src_sha256": "9162b473af5a21c1ff32a50b972b9acf51f4c901604a22cf08a2dccac2f82f17",
+      "revision": 0,
+      "cabal_sha256": "72ab0fedd55ab1c06b5a08140b5e6ec2568f62165c662ce06ff895ee8a1f1f17"
+    },
+    {
+      "package": "resolv",
+      "version": "0.1.2.0",
+      "source": "hackage",
+      "src_sha256": "81a2bafad484db123cf8d17a02d98bb388a127fd0f822fa022589468a0e64671",
+      "revision": 0,
+      "cabal_sha256": "0a9a6dd29706258ae60a5c22aecc140a40743b8f08fc324fd9984e7dfbf3a80d"
+    },
+    {
+      "package": "cabal-install",
+      "version": "3.3.0.0",
+      "source": "local",
+      "src_sha256": null,
+      "revision": null,
+      "cabal_sha256": null
+    }
+  ]
+}
