@@ -63,6 +63,7 @@ module Distribution.Simple.Compiler (
         backpackSupported,
         arResponseFilesSupported,
         libraryDynDirSupported,
+        libraryVisibilitySupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -379,6 +380,15 @@ profilingSupported comp =
     GHC   -> True
     GHCJS -> True
     _     -> False
+
+-- | Does this compiler support a package database entry with:
+-- "visibility"?
+libraryVisibilitySupported :: Compiler -> Bool
+libraryVisibilitySupported comp = case compilerFlavor comp of
+  GHC -> v >= mkVersion [8,8]
+  _   -> False
+ where
+  v = compilerVersion comp
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool
