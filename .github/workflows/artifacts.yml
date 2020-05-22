@@ -94,14 +94,12 @@ jobs:
     name: Artifact on Windows
     runs-on: windows-latest
     steps:
-      - name: Configure Chocolatey
-        run: choco source add -n mistuke -s https://www.myget.org/F/mistuke/api/v2
-      - name: Install msys2
-        run: choco install -y msys2
       - name: Install Cabal
-        run: choco install -y cabal --version 3.0.0.0
+        run: choco install -fy cabal --version 3.0.0.0
       - name: Install GHC
-        run: choco install -y ghc --version 8.6.5
+        run: |
+          choco uninstall -y ghc
+          choco install -y ghc --version 8.6.5
       - name: Set PATH
         run: |
           [Environment]::GetEnvironmentVariable("Path")
