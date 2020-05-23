@@ -48,6 +48,10 @@ main = do
                     -- cabal-tests: fd:10: hClose: resource vanished (Broken pipe)
                     -- [ WinGhcJob "8.8.1" ["8.6.5"]
                     [ WinGhcJob "8.6.5" []
+                    , WinGhcJob "8.8.1" []
+                    , WinGhcJob "8.8.2" []
+                    , WinGhcJob "8.8.3" []
+                    , WinGhcJob "8.10.1" []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)
