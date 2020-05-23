@@ -55,6 +55,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 import Distribution.Solver.Types.PackagePath
+import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
 
@@ -131,7 +132,9 @@ data PkgComponent qpn = PkgComponent qpn ExposedComponent
 
 -- | A component that can be depended upon by another package, i.e., a library
 -- or an executable.
-data ExposedComponent = ExposedLib | ExposedExe UnqualComponentName
+data ExposedComponent =
+    ExposedLib LibraryName
+  | ExposedExe UnqualComponentName
   deriving (Eq, Ord, Show)
 
 -- | The reason that a dependency is active. It identifies the package and any
@@ -185,7 +188,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- Suppose package B has a setup dependency on package A.
     -- This will be recorded as something like
     --
-    -- > LDep (DependencyReason "B") (Dep (PkgComponent "A" ExposedLib) (Constrained AnyVersion))
+    -- > LDep (DependencyReason "B") (Dep (PkgComponent "A" (ExposedLib LMainLibName)) (Constrained AnyVersion))
     --
     -- Observe that when we qualify this dependency, we need to turn that
     -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
@@ -199,7 +202,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
         Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
-    goD (Dep dep@(PkgComponent qpn ExposedLib) ci) comp
+    goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp
       | qBase qpn   = Dep (Q (PackagePath ns (QualBase  pn)) <$> dep) ci
       | qSetup comp = Dep (Q (PackagePath ns (QualSetup pn)) <$> dep) ci
       | otherwise   = Dep (Q (PackagePath ns inheritedQ    ) <$> dep) ci

@@ -23,6 +23,7 @@ import Distribution.Utils.ShortText (ShortText)
 
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
+import           Distribution.Types.LibraryVisibility
 import           Distribution.Types.PackageName
 import           Distribution.Types.UnqualComponentName
 
@@ -307,8 +308,8 @@ arbitraryExInst pn v pkgs = do
   deps <- randomSubset numDeps pkgs
   return $ ExInst (unPN pn) (unPV v) pkgHash (map exInstHash deps)
 
-arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps [ExampleDependency])
-arbitraryComponentDeps _  (TestDb []) = return $ CD.fromLibraryDeps []
+arbitraryComponentDeps :: PN -> TestDb -> Gen (ComponentDeps Dependencies)
+arbitraryComponentDeps _  (TestDb []) = return $ CD.fromLibraryDeps (dependencies [])
 arbitraryComponentDeps pn db          = do
   -- dedupComponentNames removes components with duplicate names, for example,
   -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
@@ -318,7 +319,7 @@ arbitraryComponentDeps pn db          = do
   return $ if isCompleteComponentDeps cds
            then cds
            else -- Add a library if the ComponentDeps isn't complete.
-                CD.fromLibraryDeps [] <> cds
+                CD.fromLibraryDeps (dependencies []) <> cds
   where
     isValid :: Component -> Bool
     isValid (ComponentSubLib name) = name /= mkUnqualComponentName (unPN pn)
@@ -349,13 +350,20 @@ isCompleteComponentDeps = any (completesPkg . fst) . CD.toList
     completesPkg (ComponentFLib   _) = False
     completesPkg ComponentSetup      = False
 
-arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
+arbitraryComponentDep :: TestDb -> Gen (ComponentDep Dependencies)
 arbitraryComponentDep db = do
   comp <- arbitrary
   deps <- case comp of
             ComponentSetup -> smallListOf (arbitraryExDep db SetupDep)
             _              -> boundedListOf 5 (arbitraryExDep db NonSetupDep)
-  return (comp, deps)
+  return ( comp
+         , Dependencies {
+             depsExampleDependencies = deps
+
+           -- TODO: Test different values for visibility and buildability.
+           , depsVisibility = LibraryVisibilityPublic
+           , depsIsBuildable = True
+           } )
 
 -- | Location of an 'ExampleDependency'. It determines which values are valid.
 data ExDepLocation = SetupDep | NonSetupDep
@@ -384,8 +392,8 @@ arbitraryExDep db@(TestDb pkgs) level =
 
 arbitraryDeps :: TestDb -> Gen Dependencies
 arbitraryDeps db = frequency
-    [ (1, return NotBuildable)
-    , (20, Buildable <$> smallListOf (arbitraryExDep db NonSetupDep))
+    [ (1, return unbuildableDependencies)
+    , (20, dependencies <$> smallListOf (arbitraryExDep db NonSetupDep))
     ]
 
 arbitraryFlagName :: Gen String
@@ -428,6 +436,12 @@ instance Arbitrary IndependentGoals where
   arbitrary = IndependentGoals <$> arbitrary
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
+
+instance Arbitrary LibraryVisibility where
+  arbitrary = elements [LibraryVisibilityPrivate, LibraryVisibilityPublic]
+
+  shrink LibraryVisibilityPublic  = [LibraryVisibilityPrivate]
+  shrink LibraryVisibilityPrivate = []
 
 instance Arbitrary UnqualComponentName where
   -- The "component-" prefix prevents component names and build-depends
@@ -473,19 +487,18 @@ instance Arbitrary ExampleDependency where
   shrink (ExFix "base" _) = [] -- preserve bounds on base
   shrink (ExFix pn _) = [ExAny pn]
   shrink (ExFlagged flag th el) =
-         deps th ++ deps el
+         depsExampleDependencies th ++ depsExampleDependencies el
       ++ [ExFlagged flag th' el | th' <- shrink th]
       ++ [ExFlagged flag th el' | el' <- shrink el]
-    where
-      deps NotBuildable = []
-      deps (Buildable ds) = ds
   shrink dep = error $ "Dependency not handled: " ++ show dep
 
 instance Arbitrary Dependencies where
   arbitrary = error "arbitrary not implemented: Dependencies"
 
-  shrink NotBuildable = [Buildable []]
-  shrink (Buildable deps) = map Buildable (shrink deps)
+  shrink deps =
+         [ deps { depsVisibility = v } | v <- shrink $ depsVisibility deps ]
+      ++ [ deps { depsIsBuildable = b } | b <- shrink $ depsIsBuildable deps ]
+      ++ [ deps { depsExampleDependencies = ds } | ds <- shrink $ depsExampleDependencies deps ]
 
 instance Arbitrary ExConstraint where
   arbitrary = error "arbitrary not implemented: ExConstraint"

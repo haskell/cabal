@@ -512,6 +512,8 @@ filterConfigureFlags flags cabalLibVersion
               convertToLegacyInternalDep (GivenComponent pn LMainLibName cid) =
                 Just $ GivenComponent pn LMainLibName cid
           in catMaybes $ convertToLegacyInternalDep <$> configDependencies flags
+        -- Cabal < 2.5 doesn't know about '--allow-depending-on-private-libs'.
+      , configAllowDependingOnPrivateLibs = NoFlag
         -- Cabal < 2.5 doesn't know about '--enable/disable-executable-static'.
       , configFullyStaticExe = NoFlag
       }

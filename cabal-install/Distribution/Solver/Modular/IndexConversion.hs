@@ -7,6 +7,7 @@ import Prelude ()
 
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Set as S
 
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -25,6 +26,7 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 import Distribution.Types.ForeignLib
+import Distribution.Types.LibraryVisibility
 
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), componentNameToComponent )
@@ -92,11 +94,18 @@ convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo [] M.empty M.empty (Just Broken))
-        Just fds -> ( pn
-                    , i
-                    , PInfo fds (M.singleton ExposedLib (IsBuildable True)) M.empty Nothing)
+        Just fds -> ( pn, i, PInfo fds components M.empty Nothing)
  where
+  -- TODO: Handle sub-libraries and visibility.
+  components =
+      M.singleton (ExposedLib LMainLibName)
+                  ComponentInfo {
+                      compIsVisible = IsVisible True
+                    , compIsBuildable = IsBuildable True
+                    }
+
   (pn, i) = convId ipi
+
   -- 'sourceLibName' is unreliable, but for now we only really use this for
   -- primary libs anyways
   comp = componentNameToComponent $ CLibName $ IPI.sourceLibName ipi
@@ -140,7 +149,8 @@ convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let (pn, i) = convId ipi
-                in  Just (D.Simple (LDep dr (Dep (PkgComponent pn ExposedLib) (Fixed i))) comp)
+                    name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
+                in  Just (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
@@ -213,34 +223,52 @@ convGPD os arch cinfo constraints strfl solveExes pn
         Just ver -> Just (UnsupportedSpecVer ver)
         Nothing  -> Nothing
 
-    components :: Map ExposedComponent IsBuildable
-    components = M.fromList $ libComps ++ exeComps
+    components :: Map ExposedComponent ComponentInfo
+    components = M.fromList $ libComps ++ subLibComps ++ exeComps
       where
-        libComps = [ (ExposedLib, IsBuildable $ isBuildable libBuildInfo lib)
+        libComps = [ (ExposedLib LMainLibName, libToComponentInfo lib)
                    | lib <- maybeToList mlib ]
-        exeComps = [ (ExposedExe name, IsBuildable $ isBuildable buildInfo exe)
+        subLibComps = [ (ExposedLib (LSubLibName name), libToComponentInfo lib)
+                      | (name, lib) <- sub_libs ]
+        exeComps = [ ( ExposedExe name
+                     , ComponentInfo {
+                           compIsVisible = IsVisible True
+                         , compIsBuildable = IsBuildable $ testCondition (buildable . buildInfo) exe /= Just False
+                         }
+                     )
                    | (name, exe) <- exes ]
-        isBuildable = isBuildableComponent os arch cinfo constraints
+
+        libToComponentInfo lib =
+            ComponentInfo {
+                compIsVisible = IsVisible $ testCondition (isPrivate . libVisibility) lib /= Just True
+              , compIsBuildable = IsBuildable $ testCondition (buildable . libBuildInfo) lib /= Just False
+              }
+
+        testCondition = testConditionForComponent os arch cinfo constraints
+
+        isPrivate LibraryVisibilityPrivate = True
+        isPrivate LibraryVisibilityPublic  = False
 
   in PInfo flagged_deps components fds fr
 
--- | Returns true if the component is buildable in the given environment.
--- This function can give false-positives. For example, it only considers flags
--- that are set by unqualified flag constraints, and it doesn't check whether
--- the intra-package dependencies of a component are buildable. It is also
--- possible for the solver to later assign a value to an automatic flag that
--- makes the component unbuildable.
-isBuildableComponent :: OS
-                     -> Arch
-                     -> CompilerInfo
-                     -> [LabeledPackageConstraint]
-                     -> (a -> BuildInfo)
-                     -> CondTree ConfVar [Dependency] a
-                     -> Bool
-isBuildableComponent os arch cinfo constraints getInfo tree =
-    case simplifyCondition $ extractCondition (buildable . getInfo) tree of
-      Lit False -> False
-      _         -> True
+-- | Applies the given predicate (for example, testing buildability or
+-- visibility) to the given component and environment. Values are combined with
+-- AND. This function returns 'Nothing' when the result cannot be determined
+-- before dependency solving. Additionally, this function only considers flags
+-- that are set by unqualified flag constraints, and it doesn't check the
+-- intra-package dependencies of a component.
+testConditionForComponent :: OS
+                          -> Arch
+                          -> CompilerInfo
+                          -> [LabeledPackageConstraint]
+                          -> (a -> Bool)
+                          -> CondTree ConfVar [Dependency] a
+                          -> Maybe Bool
+testConditionForComponent os arch cinfo constraints p tree =
+    case simplifyCondition $ extractCondition p tree of
+      Lit True  -> Just True
+      Lit False -> Just False
+      _         -> Nothing
   where
     flagAssignment :: [(FlagName, Bool)]
     flagAssignment =
@@ -332,8 +360,10 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo ipns solveExes@(Solv
              -- duplicates could grow exponentially from the leaves to the root
              -- of the tree.
              mergeSimpleDeps $
-                 L.map (\d -> D.Simple (convLibDep dr d) comp)
-                       (mapMaybe (filterIPNs ipns) ds)                                -- unconditional package dependencies
+                 [ D.Simple singleDep comp
+                 | dep <- mapMaybe (filterIPNs ipns) ds
+                 , singleDep <- convLibDeps dr dep ]  -- unconditional package dependencies
+
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
@@ -537,9 +567,12 @@ unionDRs :: DependencyReason pn -> DependencyReason pn -> DependencyReason pn
 unionDRs (DependencyReason pn' fs1 ss1) (DependencyReason _ fs2 ss2) =
     DependencyReason pn' (M.union fs1 fs2) (S.union ss1 ss2)
 
--- | Convert a Cabal dependency on a library to a solver-specific dependency.
-convLibDep :: DependencyReason PN -> Dependency -> LDep PN
-convLibDep dr (Dependency pn vr _) = LDep dr $ Dep (PkgComponent pn ExposedLib) (Constrained vr)
+-- | Convert a Cabal dependency on a set of library components (from a single
+-- package) to solver-specific dependencies.
+convLibDeps :: DependencyReason PN -> Dependency -> [LDep PN]
+convLibDeps dr (Dependency pn vr libs) =
+    [ LDep dr $ Dep (PkgComponent pn (ExposedLib lib)) (Constrained vr)
+    | lib <- NonEmptySet.toList libs ]
 
 -- | Convert a Cabal dependency on an executable (build-tools) to a solver-specific dependency.
 convExeDep :: DependencyReason PN -> ExeDependency -> LDep PN
@@ -548,5 +581,6 @@ convExeDep dr (ExeDependency pn exe vr) = LDep dr $ Dep (PkgComponent pn (Expose
 -- | Convert setup dependencies
 convSetupBuildInfo :: PN -> SetupBuildInfo -> FlaggedDeps PN
 convSetupBuildInfo pn nfo =
-    L.map (\d -> D.Simple (convLibDep (DependencyReason pn M.empty S.empty) d) ComponentSetup)
-          (setupDepends nfo)
+    [ D.Simple singleDep ComponentSetup
+    | dep <- setupDepends nfo
+    , singleDep <- convLibDeps (DependencyReason pn M.empty S.empty) dep ]
