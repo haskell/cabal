@@ -2060,7 +2060,7 @@ pkgRoot verbosity lbi = pkgRoot'
       let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)
     pkgRoot' UserPackageDB = do
-      appDir <- getAppUserDataDirectory "ghc"
+      appDir <- getGhcAppDir
       let ver      = compilerVersion (compiler lbi)
           subdir   = System.Info.arch ++ '-':System.Info.os
                      ++ '-':prettyShow ver
