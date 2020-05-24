@@ -193,7 +193,7 @@ then # set up variables for sandbox bootstrap
   SANDBOX=$(abspath "$SANDBOX")
   # Get the name of the package database which cabal sandbox would use.
   GHC_ARCH=$(ghc --info |
-    sed -n 's/.*"Target platform".*"\([^-]\+\)-[^-]\+-\([^"]\+\)".*/\1-\2/p')
+    sed -nE 's/.*"Target platform".*"([^-]+)-[^-]+-([^"]+)".*/\1-\2/p')
   PACKAGEDB="$SANDBOX/${GHC_ARCH}-ghc-${GHC_VER}-packages.conf.d"
   # Assume that if the directory is already there, it is already a
   # package database. We will get an error immediately below if it
