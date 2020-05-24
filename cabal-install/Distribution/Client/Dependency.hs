@@ -721,7 +721,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
                      pkgConfigDB preferences constraints targets
   where
 
-    finalparams @ (DepResolverParams
+    finalparams@(DepResolverParams
       targets constraints
       prefs defpref
       installedPkgIndex
