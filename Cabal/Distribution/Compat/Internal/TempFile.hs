@@ -10,16 +10,21 @@ module Distribution.Compat.Internal.TempFile (
 import Distribution.Compat.Exception
 
 import System.FilePath        ((</>))
-import Foreign.C              (CInt, eEXIST, getErrno, errnoToIOError)
 
 import System.IO              (Handle, openTempFile, openBinaryTempFile)
-import Data.Bits              ((.|.))
-import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
-                               o_BINARY, o_NONBLOCK, o_NOCTTY,
-                               withFilePath, c_getpid)
-import System.IO.Error        (isAlreadyExistsError)
-import GHC.IO.Handle.FD       (fdToHandle)
+#if defined(__IO_MANAGER_WINIO__)
+import System.IO              (openBinaryTempFileWithDefaultPermissions)
+#else
 import Control.Exception      (onException)
+import Data.Bits              ((.|.))
+import Foreign.C              (CInt, eEXIST, getErrno, errnoToIOError)
+import GHC.IO.Handle.FD       (fdToHandle)
+import System.Posix.Internals (c_open, c_close, o_EXCL, o_BINARY, withFilePath,
+                               o_CREAT, o_RDWR, o_NONBLOCK, o_NOCTTY)
+#endif
+
+import System.Posix.Internals (c_getpid)
+import System.IO.Error        (isAlreadyExistsError)
 
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 import System.Directory       ( createDirectory )
@@ -36,10 +41,17 @@ import qualified System.Posix
 -- TODO: This file should probably be removed.
 
 -- This is a copy/paste of the openBinaryTempFile definition, but
--- if uses 666 rather than 600 for the permissions. The base library
--- needs to be changed to make this better.
+-- it uses 666 rather than 600 for the permissions. Newer versions
+-- of base have a new function with this behavior which we use on
+-- Windows when the new IO manager is used.
 openNewBinaryFile :: FilePath -> String -> IO (FilePath, Handle)
 openNewBinaryFile dir template = do
+  -- This method can't be used under WINIO. Also the current implementation has
+  -- thread safety issues depending on which GHC is used.  On newer GHC's let's
+  -- use the built in one.
+#if defined(__IO_MANAGER_WINIO__)
+  openBinaryTempFileWithDefaultPermissions dir template
+#else
   pid <- c_getpid
   findTempName pid
   where
@@ -88,6 +100,12 @@ openNewBinaryFile dir template = do
                   | last a == pathSeparator = a ++ b
                   | otherwise = a ++ [pathSeparator] ++ b
 
+-- FIXME: Copied from GHC.Handle
+std_flags, output_flags, rw_flags :: CInt
+std_flags    = o_NONBLOCK   .|. o_NOCTTY
+output_flags = std_flags    .|. o_CREAT
+rw_flags     = output_flags .|. o_RDWR
+
 -- FIXME: Should use System.FilePath library
 pathSeparator :: Char
 #ifdef mingw32_HOST_OS
@@ -95,12 +113,8 @@ pathSeparator = '\\'
 #else
 pathSeparator = '/'
 #endif
-
--- FIXME: Copied from GHC.Handle
-std_flags, output_flags, rw_flags :: CInt
-std_flags    = o_NONBLOCK   .|. o_NOCTTY
-output_flags = std_flags    .|. o_CREAT
-rw_flags     = output_flags .|. o_RDWR
+-- /* __IO_MANAGER_WINIO__ */
+#endif
 
 createTempDirectory :: FilePath -> String -> IO FilePath
 createTempDirectory dir template = do
