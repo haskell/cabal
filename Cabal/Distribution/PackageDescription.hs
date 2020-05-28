@@ -7,135 +7,91 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Backwards compatibility reexport of everything you need to know
+-- Backwards compatibility reexport of most things you need to know
 -- about @.cabal@ files.
 
 module Distribution.PackageDescription (
-        -- * Package descriptions
-        PackageDescription(..),
-        emptyPackageDescription,
-        buildType,
-        license,
-        BuildType(..),
-        knownBuildTypes,
-        allLibraries,
-
-        -- ** Renaming (syntactic)
-        ModuleRenaming(..),
-        defaultRenaming,
-
-        -- ** Libraries
-        Library(..),
-        ModuleReexport(..),
-        emptyLibrary,
-        withLib,
-        hasPublicLib,
-        hasLibs,
-        explicitLibModules,
-        libModulesAutogen,
-
-        -- ** Executables
-        Executable(..),
-        emptyExecutable,
-        withExe,
-        hasExes,
-        exeModules,
-        exeModulesAutogen,
-
-        -- * Tests
-        TestSuite(..),
-        TestSuiteInterface(..),
-        TestType(..),
-        testType,
-        knownTestTypes,
-        emptyTestSuite,
-        hasTests,
-        withTest,
-        testModules,
-        testModulesAutogen,
-
-        -- * Benchmarks
-        Benchmark(..),
-        BenchmarkInterface(..),
-        BenchmarkType(..),
-        benchmarkType,
-        knownBenchmarkTypes,
-        emptyBenchmark,
-        hasBenchmarks,
-        withBenchmark,
-        benchmarkModules,
-        benchmarkModulesAutogen,
-
-        -- * Build information
-        BuildInfo(..),
-        emptyBuildInfo,
-        allBuildInfo,
-        allLanguages,
-        allExtensions,
-        usedExtensions,
-        usesTemplateHaskellOrQQ,
-        hcOptions,
-        hcProfOptions,
-        hcSharedOptions,
-        hcStaticOptions,
-
-        -- ** Supplementary build information
-        allBuildDepends,
-        enabledBuildDepends,
-        ComponentName(..),
-        LibraryName(..),
-        defaultLibName,
-        HookedBuildInfo,
-        emptyHookedBuildInfo,
-        updatePackageDescription,
-
-        -- * package configuration
-        GenericPackageDescription(..),
-        PackageFlag(..), emptyFlag,
-        FlagName, mkFlagName, unFlagName,
-        FlagAssignment, mkFlagAssignment, unFlagAssignment,
-        nullFlagAssignment, showFlagValue,
-        diffFlagAssignment, lookupFlagAssignment, insertFlagAssignment,
-        dispFlagAssignment, parsecFlagAssignment,
-        findDuplicateFlagAssignments,
-        CondTree(..), ConfVar(..), Condition(..),
-        cNot, cAnd, cOr,
-
-        -- * Source repositories
-        SourceRepo(..),
-        RepoKind(..),
-        RepoType(..),
-        KnownRepoType (..),
-        knownRepoTypes,
-        emptySourceRepo,
-
-        -- * Custom setup build information
-        SetupBuildInfo(..),
+    -- * PD and GPD
+    module Distribution.Types.PackageDescription,
+    module Distribution.Types.GenericPackageDescription,
+    -- * Components
+    module Distribution.Types.ComponentName,
+    -- ** Library
+    module Distribution.Types.Library,
+    module Distribution.Types.LibraryName,
+    module Distribution.Types.LibraryVisibility,
+    -- ** Executable
+    module Distribution.Types.Executable,
+    module Distribution.Types.ExecutableScope,
+    -- ** TestSuite
+    module Distribution.Types.TestSuite,
+    module Distribution.Types.TestType,
+    module Distribution.Types.TestSuiteInterface,
+    -- ** Benchmark
+    module Distribution.Types.Benchmark,
+    module Distribution.Types.BenchmarkType,
+    module Distribution.Types.BenchmarkInterface,
+    -- ** Foreign library
+    module Distribution.Types.ForeignLib,
+    module Distribution.Types.ForeignLibType,
+    module Distribution.Types.ForeignLibOption,
+    -- * BuildInfo
+    module Distribution.Types.BuildType,
+    module Distribution.Types.BuildInfo,
+    module Distribution.Types.HookedBuildInfo,
+    module Distribution.Types.SetupBuildInfo,
+    -- * Flags
+    module Distribution.Types.Flag,
+    -- * Identifiers
+    module Distribution.Types.PackageId,
+    module Distribution.Types.PackageName,
+    module Distribution.Types.UnqualComponentName,
+    -- * Dependencies
+    module Distribution.Types.Dependency,
+    module Distribution.Types.ExeDependency,
+    module Distribution.Types.LegacyExeDependency,
+    module Distribution.Types.PkgconfigDependency,
+    -- * Condition trees
+    module Distribution.Types.CondTree,
+    module Distribution.Types.Condition,
+    module Distribution.Types.ConfVar,
+    -- * Source repository
+    module Distribution.Types.SourceRepo,
   ) where
 
 import Prelude ()
 --import Distribution.Compat.Prelude
 
-import Distribution.Types.Library
-import Distribution.Types.TestSuite
-import Distribution.Types.Executable
 import Distribution.Types.Benchmark
-import Distribution.Types.TestType
-import Distribution.Types.TestSuiteInterface
-import Distribution.Types.BenchmarkType
 import Distribution.Types.BenchmarkInterface
-import Distribution.Types.ModuleRenaming
-import Distribution.Types.ModuleReexport
+import Distribution.Types.BenchmarkType
 import Distribution.Types.BuildInfo
-import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildType
-import Distribution.Types.GenericPackageDescription
-import Distribution.Types.CondTree
-import Distribution.Types.Condition
-import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentName
-import Distribution.Types.LibraryName
-import Distribution.Types.HookedBuildInfo
-import Distribution.Types.SourceRepo
-import Distribution.Types.Flag
+import Distribution.Types.Condition
+import Distribution.Types.CondTree
 import Distribution.Types.ConfVar
+import Distribution.Types.Dependency
+import Distribution.Types.Executable
+import Distribution.Types.ExecutableScope
+import Distribution.Types.ExeDependency
+import Distribution.Types.Flag
+import Distribution.Types.ForeignLib
+import Distribution.Types.ForeignLibOption
+import Distribution.Types.ForeignLibType
+import Distribution.Types.GenericPackageDescription
+import Distribution.Types.HookedBuildInfo
+import Distribution.Types.LegacyExeDependency
+import Distribution.Types.Library
+import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
+import Distribution.Types.PackageDescription
+import Distribution.Types.PackageId
+import Distribution.Types.PackageName
+import Distribution.Types.PkgconfigDependency
+import Distribution.Types.SetupBuildInfo
+import Distribution.Types.SourceRepo
+import Distribution.Types.TestSuite
+import Distribution.Types.TestSuiteInterface
+import Distribution.Types.TestType
+import Distribution.Types.UnqualComponentName

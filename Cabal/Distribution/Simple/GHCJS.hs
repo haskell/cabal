@@ -69,10 +69,6 @@ import Distribution.Version
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Pretty
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibType
-import Distribution.Types.ForeignLibOption
-import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList
 
 import Control.Monad (msum)

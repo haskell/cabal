@@ -16,7 +16,6 @@ import Distribution.PackageDescription
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.UnqualComponentName
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Utils.Generic

@@ -61,7 +61,6 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program
 import Distribution.Pretty
-import Distribution.Types.ForeignLib
 import Distribution.Verbosity
 
 import qualified Data.Map as Map

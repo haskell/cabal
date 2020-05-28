@@ -25,8 +25,6 @@ import Distribution.PackageDescription               -- from Cabal
 import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
-import Distribution.Types.ForeignLib
-import Distribution.Types.LibraryVisibility
 
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), componentNameToComponent )
@@ -265,7 +263,7 @@ testConditionForComponent :: OS
                           -> CondTree ConfVar [Dependency] a
                           -> Maybe Bool
 testConditionForComponent os arch cinfo constraints p tree =
-    case simplifyCondition $ extractCondition p tree of
+    case go $ extractCondition p tree of
       Lit True  -> Just True
       Lit False -> Just False
       _         -> Nothing
@@ -279,10 +277,10 @@ testConditionForComponent os arch cinfo constraints p tree =
     -- Simplify the condition, using the current environment. Most of this
     -- function was copied from convBranch and
     -- Distribution.Types.Condition.simplifyCondition.
-    simplifyCondition :: Condition ConfVar -> Condition ConfVar
-    simplifyCondition (Var (OS os')) = Lit (os == os')
-    simplifyCondition (Var (Arch arch')) = Lit (arch == arch')
-    simplifyCondition (Var (Impl cf cvr))
+    go :: Condition ConfVar -> Condition ConfVar
+    go (Var (OS os')) = Lit (os == os')
+    go (Var (Arch arch')) = Lit (arch == arch')
+    go (Var (Impl cf cvr))
         | matchImpl (compilerInfoId cinfo) ||
               -- fixme: Nothing should be treated as unknown, rather than empty
               --        list. This code should eventually be changed to either
@@ -292,24 +290,24 @@ testConditionForComponent os arch cinfo constraints p tree =
         | otherwise = Lit False
       where
         matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
-    simplifyCondition (Var (PackageFlag f))
+    go (Var (PackageFlag f))
         | Just b <- L.lookup f flagAssignment = Lit b
-    simplifyCondition (Var v) = Var v
-    simplifyCondition (Lit b) = Lit b
-    simplifyCondition (CNot c) =
-        case simplifyCondition c of
+    go (Var v) = Var v
+    go (Lit b) = Lit b
+    go (CNot c) =
+        case go c of
           Lit True -> Lit False
           Lit False -> Lit True
           c' -> CNot c'
-    simplifyCondition (COr c d) =
-        case (simplifyCondition c, simplifyCondition d) of
+    go (COr c d) =
+        case (go c, go d) of
           (Lit False, d') -> d'
           (Lit True, _)   -> Lit True
           (c', Lit False) -> c'
           (_, Lit True)   -> Lit True
           (c', d')        -> COr c' d'
-    simplifyCondition (CAnd c d) =
-        case (simplifyCondition c, simplifyCondition d) of
+    go (CAnd c d) =
+        case (go c, go d) of
           (Lit False, _) -> Lit False
           (Lit True, d') -> d'
           (_, Lit False) -> Lit False

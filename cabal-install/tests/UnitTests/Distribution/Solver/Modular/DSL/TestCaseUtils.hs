@@ -38,7 +38,6 @@ import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 
 -- Cabal
 import qualified Distribution.PackageDescription as C
-import qualified Distribution.Types.PackageName as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 import Distribution.Verbosity
 

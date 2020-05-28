@@ -68,7 +68,6 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription
-import Distribution.Types.PackageDescription
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Check hiding (doesFileExist)
@@ -77,22 +76,13 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Types.ExeDependency
-import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.PkgconfigVersion
-import Distribution.Types.PkgconfigDependency
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
-import Distribution.Types.LibraryName
-import Distribution.Types.LibraryVisibility
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibType
-import Distribution.Types.ForeignLibOption
 import Distribution.Types.GivenComponent
 import Distribution.Types.Mixin
-import Distribution.Types.UnqualComponentName
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version

@@ -17,7 +17,6 @@ import Distribution.Simple.Setup as Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentId
-import Distribution.Types.PackageId
 import Distribution.Types.UnitId
 import Distribution.Types.MungedPackageName
 import Distribution.Utils.Base62

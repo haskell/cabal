@@ -43,8 +43,6 @@ module Distribution.Simple.BuildPaths (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.ForeignLib
-import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.Compiler

@@ -56,13 +56,6 @@ import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
-import Distribution.Types.CondTree
-import Distribution.Types.Dependency                 (Dependency)
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibType             (knownForeignLibTypes)
-import Distribution.Types.GenericPackageDescription  (emptyGenericPackageDescription)
-import Distribution.Types.LibraryVisibility          (LibraryVisibility (..))
-import Distribution.Types.UnqualComponentName        (UnqualComponentName, mkUnqualComponentName)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version                          (Version, mkVersion, versionNumbers)

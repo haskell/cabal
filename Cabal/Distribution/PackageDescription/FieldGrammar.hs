@@ -63,16 +63,8 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty                    (prettyShow)
-import Distribution.Types.ExecutableScope
-import Distribution.Types.ExeDependency       (ExeDependency)
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibOption (ForeignLibOption)
-import Distribution.Types.ForeignLibType
-import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
-import Distribution.Types.LibraryVisibility   (LibraryVisibility (..))
+import Distribution.Types.ModuleReexport
 import Distribution.Types.Mixin               (Mixin)
-import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
-import Distribution.Types.UnqualComponentName
 import Distribution.Version                   (Version, VersionRange)
 
 import qualified Distribution.SPDX as SPDX

@@ -20,7 +20,6 @@ import Distribution.CabalSpecVersion               (CabalSpecVersion)
 import Distribution.Compiler                       (CompilerFlavor, CompilerId, PerCompilerFlavor)
 import Distribution.InstalledPackageInfo           (AbiDependency, ExposedModule, InstalledPackageInfo)
 import Distribution.ModuleName                     (ModuleName)
-import Distribution.Package                        (PackageIdentifier, PackageName)
 import Distribution.PackageDescription
 import Distribution.Simple.Compiler                (DebugInfoLevel, OptimisationLevel, ProfDetailLevel)
 import Distribution.Simple.Flag                    (Flag)
@@ -30,24 +29,15 @@ import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetai
 import Distribution.System
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
-import Distribution.Types.CondTree
-import Distribution.Types.Dependency               (Dependency (..), mainLibSet)
-import Distribution.Types.ExecutableScope
-import Distribution.Types.ExeDependency
-import Distribution.Types.ForeignLib
-import Distribution.Types.ForeignLibOption
-import Distribution.Types.ForeignLibType
 import Distribution.Types.IncludeRenaming          (IncludeRenaming)
-import Distribution.Types.LegacyExeDependency
-import Distribution.Types.LibraryVisibility        (LibraryVisibility)
 import Distribution.Types.Mixin
+import Distribution.Types.ModuleReexport
+import Distribution.Types.ModuleRenaming
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.PkgconfigDependency      (PkgconfigDependency)
 import Distribution.Types.PkgconfigName            (PkgconfigName)
 import Distribution.Types.PkgconfigVersion         (PkgconfigVersion)
 import Distribution.Types.PkgconfigVersionRange    (PkgconfigVersionRange)
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
-import Distribution.Types.UnqualComponentName
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity

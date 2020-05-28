@@ -33,39 +33,33 @@ module Distribution.PackageDescription.Configuration (
     transformAllBuildDepends,
   ) where
 
-import Prelude ()
 import Distribution.Compat.Prelude
+import Prelude ()
 
 -- lens
-import qualified Distribution.Types.BuildInfo.Lens as L
+import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
-import qualified Distribution.Types.PackageDescription.Lens as L
-import qualified Distribution.Types.SetupBuildInfo.Lens as L
+import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Distribution.Types.SetupBuildInfo.Lens            as L
 
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Utils
-import Distribution.Version
-import Distribution.Compiler
-import Distribution.System
-import Distribution.Parsec
-import Distribution.Pretty
-import Distribution.Compat.CharParsing hiding (char)
-import qualified Distribution.Compat.CharParsing as P
-import Distribution.Simple.Utils
-import Distribution.Compat.Lens
-import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.ForeignLib
-import Distribution.Types.Component
-import Distribution.Types.Dependency
-import Distribution.Types.PackageName
-import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.UnqualComponentName
-import Distribution.Types.CondTree
-import Distribution.Types.Condition
-import Distribution.Types.DependencyMap
+import           Distribution.Compat.CharParsing             hiding (char)
+import qualified Distribution.Compat.CharParsing             as P
+import           Distribution.Compat.Lens
+import           Distribution.Compiler
+import           Distribution.PackageDescription
+import           Distribution.PackageDescription.Utils
+import           Distribution.Parsec
+import           Distribution.Pretty
+import           Distribution.Simple.Utils
+import           Distribution.System
+import           Distribution.Types.Component
+import           Distribution.Types.ComponentRequestedSpec
+import           Distribution.Types.DependencyMap
+import           Distribution.Types.PackageVersionConstraint
+import           Distribution.Version
 
-import qualified Data.Map.Lazy   as Map
-import Data.Tree ( Tree(Node) )
+import qualified Data.Map.Lazy as Map
+import           Data.Tree     (Tree (Node))
 
 ------------------------------------------------------------------------------
 
@@ -127,7 +121,7 @@ parseCondition = condOr
     flagIdent     = fmap (PackageFlag . mkFlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
-    sp            = spaces 
+    sp            = spaces
     implIdent     = do i <- parsec
                        vr <- sp >> option anyVersion parsec
                        return $ Impl i vr
