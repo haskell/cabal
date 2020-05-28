@@ -138,9 +138,10 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.MungedPackageId
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( PackageDescription, GenericPackageDescription(..), PackageFlag(..)
-         , FlagAssignment, mkFlagAssignment, unFlagAssignment
-         , showFlagValue, diffFlagAssignment, nullFlagAssignment )
+         ( PackageDescription, GenericPackageDescription(..) )
+import Distribution.Types.Flag
+         ( PackageFlag(..), FlagAssignment, mkFlagAssignment
+         , showFlagAssignment, diffFlagAssignment, nullFlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version
@@ -654,24 +655,26 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkg (pkg, _) = prettyShow (packageId pkg) ++
                        showLatest (pkg)
 
-    showPkgAndReason (ReadyPackage pkg', pr) = prettyShow (packageId pkg') ++
-          showLatest pkg' ++
-          showFlagAssignment (nonDefaultFlags pkg') ++
-          showStanzas (confPkgStanzas pkg') ++
-          showDep pkg' ++
-          case pr of
-            NewPackage     -> " (new package)"
-            NewVersion _   -> " (new version)"
-            Reinstall _ cs -> " (reinstall)" ++ case cs of
+    showPkgAndReason (ReadyPackage pkg', pr) = unwords
+        [ prettyShow (packageId pkg')
+        , showLatest pkg'
+        , showFlagAssignment (nonDefaultFlags pkg')
+        , showStanzas (confPkgStanzas pkg')
+        , showDep pkg'
+        , case pr of
+            NewPackage     -> "(new package)"
+            NewVersion _   -> "(new version)"
+            Reinstall _ cs -> "(reinstall)" ++ case cs of
                 []   -> ""
-                diff -> " (changes: "  ++ intercalate ", " (map change diff)
+                diff -> "(changes: "  ++ intercalate ", " (map change diff)
                         ++ ")"
+        ]
 
     showLatest :: Package srcpkg => srcpkg -> String
     showLatest pkg = case mLatestVersion of
         Just latestVersion ->
             if packageVersion pkg < latestVersion
-            then (" (latest: " ++ prettyShow latestVersion ++ ")")
+            then ("(latest: " ++ prettyShow latestVersion ++ ")")
             else ""
         Nothing -> ""
       where
@@ -694,10 +697,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
       in  confPkgFlags cpkg `diffFlagAssignment` defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
-    showStanzas = concatMap ((" *" ++) . showStanza)
-
-    showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . unFlagAssignment
+    showStanzas = unwords . map (("*" ++) . showStanza)
 
     change (OnlyInLeft pkgid)        = prettyShow pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = prettyShow pkgid ++ " -> "

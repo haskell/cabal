@@ -30,8 +30,8 @@ import Distribution.Package
          , PkgconfigName )
 import Distribution.System
          ( Platform, OS(Windows, OSX), buildOS )
-import Distribution.PackageDescription
-         ( FlagAssignment, unFlagAssignment, showFlagValue )
+import Distribution.Types.Flag
+         ( FlagAssignment, showFlagAssignment )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
          , ProfDetailLevel(..), showProfDetailLevel )
@@ -315,5 +315,3 @@ renderPackageHashInputs PackageHashInputs{
     opt   key def format value
          | value == def = Nothing
          | otherwise    = entry key format value
-
-    showFlagAssignment = unwords . map showFlagValue . sortBy (compare `on` fst) . unFlagAssignment

@@ -2,11 +2,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Distribution.Types.Flag (
+    -- * Package flag
     PackageFlag(..),
     emptyFlag,
+    -- * Flag name
     FlagName,
     mkFlagName,
     unFlagName,
+    -- * Flag assignment
     FlagAssignment,
     mkFlagAssignment,
     unFlagAssignment,
@@ -17,8 +20,13 @@ module Distribution.Types.Flag (
     nullFlagAssignment,
     showFlagValue,
     dispFlagAssignment,
+    showFlagAssignment,
     parsecFlagAssignment,
     parsecFlagAssignmentNonEmpty,
+    -- ** Legacy formats
+    legacyShowFlagAssignment,
+    legacyShowFlagAssignment',
+    legacyParsecFlagAssignment,
     ) where
 
 import Prelude ()
@@ -294,4 +302,45 @@ parsecFlagAssignmentNonEmpty = mkFlagAssignment . toList <$>
         f <- parsec
         return (f, False)
 
+-- | Show flag assignment.
+--
+-- @since 3.4.0.0
+showFlagAssignment :: FlagAssignment -> String
+showFlagAssignment = prettyShow . dispFlagAssignment
 
+-------------------------------------------------------------------------------
+-- Legacy: without requiring +
+-------------------------------------------------------------------------------
+
+-- | We need this as far as we support custom setups older than 2.2.0.0
+--
+-- @since 3.4.0.0
+legacyShowFlagAssignment :: FlagAssignment -> String
+legacyShowFlagAssignment =
+    prettyShow .  Disp.hsep . map Disp.text . legacyShowFlagAssignment'
+
+-- | @since 3.4.0.0
+legacyShowFlagAssignment' :: FlagAssignment -> [String]
+legacyShowFlagAssignment' = map legacyShowFlagValue . unFlagAssignment
+
+-- | @since 3.4.0.0
+legacyShowFlagValue :: (FlagName, Bool) -> String
+legacyShowFlagValue (f, True)   =       unFlagName f
+legacyShowFlagValue (f, False)  = '-' : unFlagName f
+
+-- |
+-- We need this as far as we support custom setups older than 2.2.0.0
+--
+-- @since 3.4.0.0
+legacyParsecFlagAssignment :: CabalParsing m => m FlagAssignment
+legacyParsecFlagAssignment = mkFlagAssignment <$>
+                       P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+  where
+    onFlag = do
+        _ <- P.optional (P.char '+')
+        f <- parsec
+        return (f, True)
+    offFlag = do
+        _ <- P.char '-'
+        f <- parsec
+        return (f, False)
