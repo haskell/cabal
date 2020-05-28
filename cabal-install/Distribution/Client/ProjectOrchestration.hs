@@ -143,9 +143,8 @@ import           Distribution.Types.UnqualComponentName
 import           Distribution.Solver.Types.OptionalStanza
 
 import           Distribution.Package
-import           Distribution.PackageDescription
-                   ( FlagAssignment, unFlagAssignment, showFlagValue
-                   , diffFlagAssignment )
+import           Distribution.Types.Flag
+                   ( FlagAssignment, showFlagAssignment, diffFlagAssignment )
 import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), pkgComponents )
 import           Distribution.Simple.Flag
@@ -853,21 +852,20 @@ printPlan verbosity
               | otherwise          = "will"
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage elab) =
-      " - " ++
-      (if verbosity >= deafening
+    showPkgAndReason (ReadyPackage elab) = unwords $ filter (not . null) $
+      [ " -"
+      , if verbosity >= deafening
         then prettyShow (installedUnitId elab)
         else prettyShow (packageId elab)
-        ) ++
-      (case elabPkgOrComp elab of
+      , case elabPkgOrComp elab of
           ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
           ElabComponent comp ->
-            " (" ++ showComp elab comp ++ ")"
-            ) ++
-      showFlagAssignment (nonDefaultFlags elab) ++
-      showConfigureFlags elab ++
-      let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
-      " (" ++ showBuildStatus buildStatus ++ ")"
+            "(" ++ showComp elab comp ++ ")"
+      , showFlagAssignment (nonDefaultFlags elab)
+      , showConfigureFlags elab
+      , let buildStatus = pkgsBuildStatus Map.! installedUnitId elab
+        in "(" ++ showBuildStatus buildStatus ++ ")"
+      ]
 
     showComp elab comp =
         maybe "custom" prettyShow (compComponentName comp) ++
@@ -892,13 +890,10 @@ printPlan verbosity
     showTargets elab
       | null (elabBuildTargets elab) = ""
       | otherwise
-      = " ("
+      = "("
         ++ intercalate ", " [ showComponentTarget (packageId elab) t
                             | t <- elabBuildTargets elab ]
         ++ ")"
-
-    showFlagAssignment :: FlagAssignment -> String
-    showFlagAssignment = concatMap ((' ' :) . showFlagValue) . unFlagAssignment
 
     showConfigureFlags elab =
         let fullConfigureFlags

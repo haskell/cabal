@@ -99,6 +99,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
+import Distribution.Types.Flag
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageName
@@ -609,8 +610,8 @@ configureOptions showOrParseArgs =
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
          (reqArg "FLAGS"
-              (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) parsecFlagAssignment)
-              showFlagAssignment)
+              (parsecToReadE (\err -> "Invalid flag assignment: " ++ err) legacyParsecFlagAssignment)
+              legacyShowFlagAssignment')
 
       ,option "" ["extra-include-dirs"]
          "A list of directories to search for header files"
@@ -724,16 +725,6 @@ configureOptions showOrParseArgs =
     reqPathTemplateArgFlag title _sf _lf d get set =
       reqArgFlag title _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
-
-showFlagAssignment :: FlagAssignment -> [String]
-showFlagAssignment = map showFlagValue' . unFlagAssignment
-  where
-    -- We can't use 'showFlagValue' because legacy custom-setups don't
-    -- support the '+' prefix in --flags; so we omit the (redundant) + prefix;
-    -- NB: we assume that we never have to set/enable '-'-prefixed flags here.
-    showFlagValue' :: (FlagName, Bool) -> String
-    showFlagValue' (f, True)   =       unFlagName f
-    showFlagValue' (f, False)  = '-' : unFlagName f
 
 readPackageDbList :: String -> [Maybe PackageDB]
 readPackageDbList "clear"  = [Nothing]
