@@ -34,8 +34,6 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
-import Distribution.Types.PackageId
-import Distribution.Types.PackageName (unPackageName)
 import Distribution.Pretty
 
 import qualified Distribution.Simple.Build.Macros.Z as Z

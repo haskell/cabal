@@ -63,6 +63,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.UnitId
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
+import Distribution.Types.ModuleRenaming
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System

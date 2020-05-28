@@ -41,8 +41,8 @@ import Distribution.Types.LibraryVisibility
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
+import Distribution.Types.ModuleRenaming
 import Distribution.Types.TargetInfo
-import Distribution.Types.UnqualComponentName
 
 import Distribution.Package
 import Distribution.Backpack

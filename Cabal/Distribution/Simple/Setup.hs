@@ -99,12 +99,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
-import Distribution.Types.Flag
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
-import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.UnqualComponentName (unUnqualComponentName)
 
 import Distribution.Compat.Stack
 import Distribution.Compat.Semigroup (Last' (..), Option' (..))

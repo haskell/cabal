@@ -29,6 +29,7 @@ import Distribution.Utils.MapAccum
 
 import Distribution.Types.AnnotatedId
 import Distribution.Types.ComponentName
+import Distribution.Types.ModuleReexport
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude

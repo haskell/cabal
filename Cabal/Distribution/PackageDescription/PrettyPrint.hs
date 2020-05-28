@@ -31,12 +31,6 @@ module Distribution.PackageDescription.PrettyPrint (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Distribution.Types.CondTree
-import Distribution.Types.Dependency
-import Distribution.Types.ForeignLib          (ForeignLib (foreignLibName))
-import Distribution.Types.LibraryName
-import Distribution.Types.UnqualComponentName
-
 import Distribution.CabalSpecVersion
 import Distribution.Fields.Pretty
 import Distribution.PackageDescription
@@ -45,9 +39,8 @@ import Distribution.Simple.Utils
 
 import Distribution.FieldGrammar                    (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.FieldGrammar
-       (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar,
-       foreignLibFieldGrammar, libraryFieldGrammar, packageDescriptionFieldGrammar,
-       setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
+       (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
+       packageDescriptionFieldGrammar, setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 

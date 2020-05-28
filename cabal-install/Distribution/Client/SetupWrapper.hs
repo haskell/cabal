@@ -41,7 +41,8 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion, buildType
-         , BuildType(..), defaultRenaming )
+         , BuildType(..) )
+import Distribution.Types.ModuleRenaming (defaultRenaming)
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription )
 import Distribution.Simple.Configure

@@ -19,8 +19,8 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.UnitId
 import Distribution.Types.ComponentName
 import Distribution.Types.MungedPackageName
+import Distribution.Types.ModuleRenaming
 
-import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 
 -- | The first five fields are common across all algebraic variants.

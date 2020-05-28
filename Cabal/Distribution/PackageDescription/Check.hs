@@ -52,10 +52,7 @@ import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.CondTree
-import Distribution.Types.ExeDependency
-import Distribution.Types.LibraryName
-import Distribution.Types.UnqualComponentName
+import Distribution.Types.ModuleReexport
 import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
 import Distribution.Version

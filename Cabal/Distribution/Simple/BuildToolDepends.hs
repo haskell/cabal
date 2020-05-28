@@ -12,9 +12,6 @@ import qualified Data.Map as Map
 
 import           Distribution.Package
 import           Distribution.PackageDescription
-import           Distribution.Types.ExeDependency
-import           Distribution.Types.LegacyExeDependency
-import           Distribution.Types.UnqualComponentName
 
 -- | Desugar a "build-tools" entry into proper a executable dependency if
 -- possible.
