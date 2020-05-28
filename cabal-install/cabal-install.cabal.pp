@@ -33,14 +33,14 @@ Version:            3.2.0.0
         hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 2.3,
-        network-uri >= 2.6.0.2 && < 2.7,
+        network-uri >= 2.6.2.0 && < 2.7,
         network    >= 2.6      && < 3.2,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.2.3.0  && < 1.7,
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.5.0.1  && < 1.10,
+        time       >= 1.5.0.1  && < 1.11,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.6.0.1 && < 0.7,
@@ -343,8 +343,10 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/multiple-tests/cabal.project
   tests/IntegrationTests2/targets/multiple-tests/p.cabal
   tests/IntegrationTests2/targets/simple/P.hs
+  tests/IntegrationTests2/targets/simple/app/Main.hs
   tests/IntegrationTests2/targets/simple/cabal.project
   tests/IntegrationTests2/targets/simple/p.cabal
+  tests/IntegrationTests2/targets/simple/q/Q.hs
   tests/IntegrationTests2/targets/simple/q/QQ.hs
   tests/IntegrationTests2/targets/simple/q/q.cabal
   tests/IntegrationTests2/targets/test-only/p.cabal
@@ -462,7 +464,6 @@ executable cabal
         UnitTests.Distribution.Client.ArbitraryInstances
         UnitTests.Distribution.Client.FileMonitor
         UnitTests.Distribution.Client.Get
-        UnitTests.Distribution.Client.GenericInstances
         UnitTests.Distribution.Client.GZipUtils
         UnitTests.Distribution.Client.Glob
         UnitTests.Distribution.Client.IndexUtils.Timestamp
@@ -535,7 +536,6 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Get
-    UnitTests.Distribution.Client.GenericInstances
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
@@ -573,14 +573,14 @@ Test-Suite unit-tests
         tar,
         time,
         zlib,
-        network-uri < 2.6.2.0,
+        network-uri >= 2.6.2.0 && <2.6.4.0,
         network,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         tagged,
         tree-diff,
-        QuickCheck >= 2.8.2
+        QuickCheck >= 2.14 && <2.15
 
   ghc-options: -threaded
 
@@ -607,7 +607,7 @@ Test-Suite memory-usage-tests
         containers,
         deepseq,
         tagged,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10
 
   ghc-options: -threaded
@@ -636,9 +636,9 @@ Test-Suite solver-quickcheck
         hashable,
         random,
         tagged,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-quickcheck,
-        QuickCheck >= 2.8.2,
+        QuickCheck >= 2.14 && <2.15,
         pretty-show >= 1.6.15
 
   ghc-options: -threaded
@@ -665,7 +665,7 @@ test-suite integration-tests2
         directory,
         edit-distance,
         filepath,
-        tasty >= 1.2.3 && <1.3,
+        tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10,
         tagged
 

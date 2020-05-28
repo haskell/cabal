@@ -220,8 +220,8 @@ BINARY_VER="0.8.5.1";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
 TEXT_VER="1.2.3.0";    TEXT_VER_REGEXP="[1]\.[2]\."
                        # >= 1.2 && < 1.3
-NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\.(0\.[2-9]|[1-9])"
-                       # >= 2.6.0.2 && < 2.7
+NETWORK_URI_VER="2.6.2.0"; NETWORK_URI_VER_REGEXP="2\.6\.2\."
+                       # >= 2.6.2.0 && < 2.7
 NETWORK_VER="2.7.0.0"; NETWORK_VER_REGEXP="2\.[0-7]\."
                        # >= 2.0 && < 2.7
 CABAL_VER="3.2.0.0";   CABAL_VER_REGEXP="3\.2\.[0-9]"

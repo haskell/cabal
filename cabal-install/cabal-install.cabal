@@ -80,8 +80,10 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/multiple-tests/cabal.project
   tests/IntegrationTests2/targets/multiple-tests/p.cabal
   tests/IntegrationTests2/targets/simple/P.hs
+  tests/IntegrationTests2/targets/simple/app/Main.hs
   tests/IntegrationTests2/targets/simple/cabal.project
   tests/IntegrationTests2/targets/simple/p.cabal
+  tests/IntegrationTests2/targets/simple/q/Q.hs
   tests/IntegrationTests2/targets/simple/q/QQ.hs
   tests/IntegrationTests2/targets/simple/q/q.cabal
   tests/IntegrationTests2/targets/test-only/p.cabal
@@ -331,14 +333,14 @@ executable cabal
         hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 2.3,
-        network-uri >= 2.6.0.2 && < 2.7,
+        network-uri >= 2.6.2.0 && < 2.7,
         network    >= 2.6      && < 3.2,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.2.3.0  && < 1.7,
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
-        time       >= 1.5.0.1  && < 1.10,
+        time       >= 1.5.0.1  && < 1.11,
         transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.6.0.1 && < 0.7,
