@@ -1,0 +1,17 @@
+cabal-version: 2.2
+name:          pkg-foo
+version:       0
+
+flag foo-bar
+  description: Should be toggled
+  manual:      False
+  default:     False
+
+library
+  default-language: Haskell2010
+  build-depends:    base
+  exposed-modules:  Foo
+
+  -- this says "toggle me"
+  if !flag(foo-bar)
+    build-depends: base <0
