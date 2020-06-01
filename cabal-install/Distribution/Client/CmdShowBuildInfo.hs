@@ -219,7 +219,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
       -- Check cabal version is correct
       (cabalVersion, _, _) <- getSetupMethod verbosity scriptOptions
                                             (elabPkgDescription pkg) buildType'
-      when (cabalVersion < mkVersion [3, 0, 0,0])
+      when (cabalVersion < mkVersion [3, 0, 0, 0])
         ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
               ++ "Found version: " ++ display cabalVersion ++ "\n"
               ++ "For component: " ++ display targetUnitId
@@ -318,8 +318,8 @@ reportTargetProblems verbosity =
 
 renderTargetProblem :: TargetProblem -> String
 renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "build" problem
+    renderTargetProblemCommon "show-build-info" problem
 renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "build" targetSelector targets
+    renderTargetProblemNoneEnabled "show-build-info" targetSelector targets
 renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "build" targetSelector
+    renderTargetProblemNoTargets "show-build-info" targetSelector
