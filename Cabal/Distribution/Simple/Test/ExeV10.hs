@@ -27,12 +27,13 @@ import Distribution.TestSuite
 import Distribution.Pretty
 import Distribution.Verbosity
 
-import Control.Concurrent (forkIO)
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hGetContents, stdout, stderr )
+import System.IO ( stdout, stderr )
+
+import qualified Data.ByteString.Lazy as LBS
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -66,20 +67,6 @@ runTest pkg_descr lbi clbi flags suite = do
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ testName'
 
-    (wOut, wErr, logText) <- case details of
-        Direct -> return (stdout, stderr, "")
-        _ -> do
-            (rOut, wOut) <- createPipe
-
-            -- Read test executable's output lazily (returns immediately)
-            logText <- hGetContents rOut
-            -- Force the IO manager to drain the test output pipe
-            void $ forkIO $ length logText `seq` return ()
-
-            -- '--show-details=streaming': print the log output in another thread
-            when (details == Streaming) $ void $ forkIO $ putStr logText
-
-            return (wOut, wOut, logText)
 
     -- Run the test executable
     let opts = map (testOption pkg_descr lbi suite)
@@ -97,14 +84,34 @@ runTest pkg_descr lbi clbi flags suite = do
                             return (addLibraryPath os paths shellEnv)
                     else return shellEnv
 
-    exit <- case testWrapper flags of
-      Flag path -> rawSystemIOWithEnv verbosity path (cmd:opts) Nothing (Just shellEnv')
-                               -- these handles are automatically closed
-                               Nothing (Just wOut) (Just wErr)
+    -- Output logger
+    (wOut, wErr, getLogText) <- case details of
+        Direct -> return (stdout, stderr, return LBS.empty)
+        _      -> do
+            (rOut, wOut) <- createPipe
 
-      NoFlag -> rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
-                               -- these handles are automatically closed
-                               Nothing (Just wOut) (Just wErr)
+            return $ (,,) wOut wOut $ do
+                -- Read test executables' output
+                logText <- LBS.hGetContents rOut
+
+                -- '--show-details=streaming': print the log output in another thread
+                when (details == Streaming) $ LBS.putStr logText
+
+                -- drain the output.
+                evaluate (force logText)
+
+    (exit, logText) <- case testWrapper flags of
+        Flag path -> rawSystemIOWithEnvAndAction
+            verbosity path (cmd:opts) Nothing (Just shellEnv')
+            getLogText
+            -- these handles are automatically closed
+            Nothing (Just wOut) (Just wErr)
+
+        NoFlag -> rawSystemIOWithEnvAndAction
+            verbosity cmd opts Nothing (Just shellEnv')
+            getLogText
+            -- these handles are automatically closed
+            Nothing (Just wOut) (Just wErr)
 
     -- Generate TestSuiteLog from executable exit code and a machine-
     -- readable test log.
@@ -115,7 +122,7 @@ runTest pkg_descr lbi clbi flags suite = do
 
     -- Append contents of temporary log file to the final human-
     -- readable log file
-    appendFile (logFile suiteLog) logText
+    LBS.appendFile (logFile suiteLog) logText
 
     -- Write end-of-suite summary notice to log file
     appendFile (logFile suiteLog) $ summarizeSuiteFinish suiteLog
@@ -127,7 +134,9 @@ runTest pkg_descr lbi clbi flags suite = do
               details == Failures && not (suitePassed $ testLogs suiteLog))
             -- verbosity overrides show-details
             && verbosity >= normal
-    whenPrinting $ putStr $ unlines $ lines logText
+    whenPrinting $ do
+        LBS.putStr logText
+        putChar '\n'
 
     -- Write summary notice to terminal indicating end of test suite
     notice verbosity $ summarizeSuiteFinish suiteLog

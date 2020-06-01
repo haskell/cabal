@@ -669,10 +669,12 @@ test-suite unit-tests
   main-is: UnitTests.hs
   build-depends:
     array,
+    async >= 2.2.2 && <2.3,
     base,
     binary,
     bytestring,
     containers,
+    deepseq,
     directory,
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,

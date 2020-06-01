@@ -50,6 +50,7 @@ module Distribution.Simple.Utils (
         rawSystemStdout,
         rawSystemStdInOut,
         rawSystemIOWithEnv,
+        rawSystemIOWithEnvAndAction,
         createProcessWithEnv,
         maybeExit,
         xargs,
@@ -761,6 +762,29 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = withFrozenCallSta
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
     return exitcode
+  where
+    mbToStd :: Maybe Handle -> Process.StdStream
+    mbToStd = maybe Process.Inherit Process.UseHandle
+
+rawSystemIOWithEnvAndAction
+    :: Verbosity
+    -> FilePath
+    -> [String]
+    -> Maybe FilePath           -- ^ New working dir or inherit
+    -> Maybe [(String, String)] -- ^ New environment or inherit
+    -> IO a          -- ^ action to perform after process is created, but before 'waitForProcess'.
+    -> Maybe Handle  -- ^ stdin
+    -> Maybe Handle  -- ^ stdout
+    -> Maybe Handle  -- ^ stderr
+    -> IO (ExitCode, a)
+rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = withFrozenCallStack $ do
+    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
+                                       (mbToStd inp) (mbToStd out) (mbToStd err)
+    a <- action
+    exitcode <- waitForProcess ph
+    unless (exitcode == ExitSuccess) $ do
+      debug verbosity $ path ++ " returned " ++ show exitcode
+    return (exitcode, a)
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
