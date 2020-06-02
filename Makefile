@@ -64,12 +64,19 @@ Cabal/doc/buildinfo-fields-reference.rst : phony
 
 # cabal-install.cabal file generation
 
-cabal-install-prod : cabal-install/cabal-install.cabal.pp
-	runghc -package-env=- cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal cabal-install/cabal-install.cabal.pp
-	git update-index --no-assume-unchanged cabal-install/cabal-install.cabal
+cabal-install-cabal : phony cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal.prod
 
-cabal-install-dev : cabal-install/cabal-install.cabal.pp
-	runghc -package-env=- cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+cabal-install/cabal-install.cabal.dev : cabal-install/cabal-install.cabal.zinza
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- True cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.dev
+
+cabal-install/cabal-install.cabal.prod : cabal-install/cabal-install.cabal.zinza
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- False cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.prod
+
+cabal-install-prod : cabal-install/cabal-install.cabal.prod
+	cp cabal-install/cabal-install.cabal.prod cabal-install/cabal-install.cabal
+
+cabal-install-dev : cabal-install/cabal-install.cabal.dev
+	cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
 	@echo "tell git to ignore changes to cabal-install.cabal:"
 	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
 
@@ -98,7 +105,7 @@ github-actions : .github/workflows/windows.yml
 # We need to generate cabal-install-dev so the test modules are in .cabal file!
 gen-extra-source-files-cli :
 	$(MAKE) cabal-install-dev
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.pp $$(pwd)/cabal-install/cabal-install.cabal
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.zinza $$(pwd)/cabal-install/cabal-install.cabal
 	$(MAKE) cabal-install-prod
 
 # ghcid

@@ -81,6 +81,17 @@ executable gen-cabal-macros
     , template-haskell
     , zinza             ^>=0.2
 
+executable gen-cabal-install-cabal
+  default-language: Haskell2010
+  main-is:          GenCabalInstallCabal.hs
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , bytestring
+    , Cabal
+    , zinza             ^>=0.2
+
 executable analyse-imports
   default-language: Haskell2010
   main-is:          AnalyseImports.hs

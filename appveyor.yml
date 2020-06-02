@@ -47,7 +47,7 @@ cache:
   - "C:\\sr"
 
 build_script:
-  - runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+  - cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
   - cabal %CABOPTS% v2-configure --enable-tests
   - appveyor-retry cabal %CABOPTS% v2-build lib:Cabal --only-dependencies
   - cabal %CABOPTS% v2-build lib:Cabal
