@@ -51,7 +51,7 @@ module Distribution.Client.Setup
     , doctestCommand
     , copyCommand
     , registerCommand
-    --, showBuildInfoCommand
+
     , parsePackageArgs
     , liftOptions
     , yesNoOpt
@@ -100,6 +100,7 @@ import Distribution.Simple.Setup
          , HaddockFlags(..)
          , CleanFlags(..), DoctestFlags(..)
          , CopyFlags(..), RegisterFlags(..)
+         , ShowBuildInfoFlags(..)
          , readPackageDbList, showPackageDbList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
@@ -2661,7 +2662,7 @@ parsePackageArgs = traverse p where
         Right pvc -> Right pvc
         Left err  -> Left $
           show arg ++ " is not valid syntax for a package name or"
-                   ++ " package dependency. " ++ err 
+                   ++ " package dependency. " ++ err
 
 showRemoteRepo :: RemoteRepo -> String
 showRemoteRepo = prettyShow
@@ -2689,17 +2690,11 @@ relevantConfigValuesText vs =
 -- * Commands to support show-build-info
 -- ------------------------------------------------------------
 
-showBuildInfoCommand :: CommandUI (Cabal.ShowBuildInfoFlags, BuildExFlags)
+showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
 showBuildInfoCommand = parent {
-    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandDefaultFlags = commandDefaultFlags parent,
     commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+      \showOrParseArgs -> commandOptions parent showOrParseArgs
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
     parent = Cabal.showBuildInfoCommand defaultProgramDb

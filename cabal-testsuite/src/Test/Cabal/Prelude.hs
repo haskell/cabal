@@ -29,7 +29,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.System (OS(Windows,Linux,OSX), buildOS)
 import Distribution.Simple.Utils
-    ( withFileContents, withTempDirectory, tryFindPackageDesc)
+    ( withFileContents, withTempDirectory, tryFindPackageDesc )
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version

@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -- | cabal-install CLI command: show-build-info
 --
 module Distribution.Client.CmdShowBuildInfo (
@@ -10,14 +11,13 @@ import Distribution.Client.Compat.Prelude
          ( when, find, fromMaybe )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
-import Distribution.Client.CmdInstall.ClientInstallFlags
+import Distribution.Client.TargetProblem
+         ( TargetProblem (..), TargetProblem' )
 
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
-import qualified Distribution.Client.Setup as Client
+         ( GlobalFlags )
 import Distribution.Simple.Setup
-         ( HaddockFlags, TestFlags, BenchmarkFlags
-         , fromFlagOrDefault )
+         (configVerbosity, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), option, reqArg', usageAlternatives )
 import Distribution.Verbosity
@@ -30,8 +30,8 @@ import Distribution.Types.Version
          ( mkVersion )
 import Distribution.Types.PackageDescription
          ( buildType )
-import Distribution.Deprecated.Text
-         ( display )
+import Distribution.Pretty
+         ( prettyShow )
 
 import qualified Data.Map as Map
 import qualified Distribution.Simple.Setup as Cabal
@@ -43,6 +43,8 @@ import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectPlanning
         ( setupHsConfigureFlags, setupHsConfigureArgs, setupHsBuildFlags
         , setupHsBuildArgs, setupHsScriptOptions )
+import Distribution.Client.NixStyleOptions
+         ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.DistDirLayout
         ( distBuildDirectory )
 import Distribution.Client.Types
@@ -51,15 +53,14 @@ import Distribution.Client.JobControl
         ( newLock, Lock )
 import Distribution.Simple.Configure
         ( tryGetPersistBuildConfig )
-import qualified Distribution.Client.CmdInstall as CmdInstall
 
 import System.Directory
         ( getTemporaryDirectory )
 import System.FilePath
         ( (</>) )
 
-showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
-showBuildInfoCommand = CmdInstall.installCommand {
+showBuildInfoCommand :: CommandUI (NixStyleFlags ShowBuildInfoFlags)
+showBuildInfoCommand = CommandUI {
   commandName         = "show-build-info",
   commandSynopsis     = "Show project build information",
   commandUsage        = usageAlternatives "show-build-info" [ "[TARGETS] [FLAGS]" ],
@@ -75,9 +76,7 @@ showBuildInfoCommand = CmdInstall.installCommand {
      ++ "  " ++ pname ++ " show-build-info ./pkgname \n"
      ++ "    Shows build information about the package located in './pkgname'\n"
      ++ cmdCommonHelpTextNewBuildBeta,
-  commandOptions = \showOrParseArgs ->
-      Client.liftOptions buildInfoInstallCommandFlags (\pf flags -> flags { buildInfoInstallCommandFlags = pf }) (commandOptions CmdInstall.installCommand showOrParseArgs)
-      ++
+  commandOptions = nixStyleOptions $ \_ ->
       [ option [] ["buildinfo-json-output"]
               "Write the result to the given file instead of stdout"
               buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
@@ -87,28 +86,25 @@ showBuildInfoCommand = CmdInstall.installCommand {
               buildInfoUnitIds (\pf flags -> flags { buildInfoUnitIds = pf })
               (reqArg' "UNIT-ID" (Just . words) (fromMaybe []))
       ],
-  commandDefaultFlags = defaultShowBuildInfoFlags
-
-   }
+  commandDefaultFlags = defaultNixStyleFlags defaultShowBuildInfoFlags
+  }
 
 data ShowBuildInfoFlags = ShowBuildInfoFlags
-    { buildInfoInstallCommandFlags :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags, TestFlags, BenchmarkFlags, ClientInstallFlags)
-    , buildInfoOutputFile :: Maybe FilePath
+    { buildInfoOutputFile :: Maybe FilePath
     , buildInfoUnitIds :: Maybe [String]
     }
 
 defaultShowBuildInfoFlags :: ShowBuildInfoFlags
 defaultShowBuildInfoFlags = ShowBuildInfoFlags
-    { buildInfoInstallCommandFlags = (mempty, mempty, mempty, mempty, mempty, mempty, mempty)
-    , buildInfoOutputFile = Nothing
+    { buildInfoOutputFile = Nothing
     , buildInfoUnitIds = Nothing
     }
 
 -- | The @show-build-info@ exports information about a package and the compiler
 -- configuration used to build it as JSON, that can be used by other tooling.
 -- See "Distribution.Simple.ShowBuildInfo" for more information.
-showBuildInfoAction :: ShowBuildInfoFlags -> [String] -> GlobalFlags -> IO ()
-showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlags, haddockFlags, testFlags, benchmarkFlags, clientInstallFlags) fileOutput unitIds)
+showBuildInfoAction :: NixStyleFlags ShowBuildInfoFlags -> [String] -> GlobalFlags -> IO ()
+showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileOutput unitIds), ..}
   targetStrings globalFlags = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
   let baseCtx' = baseCtx
@@ -122,11 +118,10 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
     runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
       -- Interpret the targets on the command line as build targets
       -- (as opposed to say repl or haddock targets).
-      targets <- either (reportTargetProblems verbosity) return
+      targets <- either (reportShowBuildInfoTargetProblems verbosity) return
                 $ resolveTargets
                     selectPackageTargets
                     selectComponentTarget
-                    TargetProblemCommon
                     elaboratedPlan
                     Nothing
                     targetSelectors
@@ -139,12 +134,8 @@ showBuildInfoAction (ShowBuildInfoFlags (configFlags, configExFlags, installFlag
   where
     -- Default to silent verbosity otherwise it will pollute our json output
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig
-                  globalFlags configFlags configExFlags
-                  installFlags clientInstallFlags
-                  haddockFlags
-                  testFlags
-                  benchmarkFlags
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
+                  mempty -- ClientInstallFlags, not needed here
 
 -- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
@@ -187,12 +178,12 @@ showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
               printer "]"
 
           unitIdToFilePath :: UnitId -> FilePath
-          unitIdToFilePath unitId = "build-info-" ++ display unitId ++ ".json"
+          unitIdToFilePath unitId = "build-info-" ++ prettyShow unitId ++ ".json"
 
 showInfo :: FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
 showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
   case mbPkg of
-    Nothing -> die' verbosity $ "No unit " ++ display targetUnitId
+    Nothing -> die' verbosity $ "No unit " ++ prettyShow targetUnitId
     Just pkg -> do
       let shared = elaboratedShared buildCtx
           install = elaboratedPlanOriginal buildCtx
@@ -221,8 +212,8 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
                                             (elabPkgDescription pkg) buildType'
       when (cabalVersion < mkVersion [3, 0, 0, 0])
         ( die' verbosity $ "Only a Cabal version >= 3.0.0.0 is supported for this command.\n"
-              ++ "Found version: " ++ display cabalVersion ++ "\n"
-              ++ "For component: " ++ display targetUnitId
+              ++ "Found version: " ++ prettyShow cabalVersion ++ "\n"
+              ++ "For component: " ++ prettyShow targetUnitId
         )
       -- Configure the package if there's no existing config
       lbi <- tryGetPersistBuildConfig buildDir
@@ -260,7 +251,7 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
 -- tests\/benchmarks, fail if there are no such components
 --
 selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either TargetProblem [k]
+                     -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets targetSelector targets
 
     -- If there are any buildable targets then we select those
@@ -293,33 +284,10 @@ selectPackageTargets targetSelector targets
 -- For the @show-build-info@ command we just need the basic checks on being buildable etc.
 --
 selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either TargetProblem k
-selectComponentTarget subtarget =
-    either (Left . TargetProblemCommon) Right
-  . selectComponentTargetBasic subtarget
+                      -> AvailableTarget k -> Either TargetProblem' k
+selectComponentTarget = selectComponentTargetBasic
 
 
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @show-build-info@ command.
---
-data TargetProblem =
-     TargetProblemCommon       TargetProblemCommon
-
-     -- | The 'TargetSelector' matches targets but none are buildable
-   | TargetProblemNoneEnabled TargetSelector [AvailableTarget ()]
-
-     -- | There are no targets at all
-   | TargetProblemNoTargets   TargetSelector
-  deriving (Eq, Show)
-
-reportTargetProblems :: Verbosity -> [TargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderTargetProblem
-
-renderTargetProblem :: TargetProblem -> String
-renderTargetProblem (TargetProblemCommon problem) =
-    renderTargetProblemCommon "show-build-info" problem
-renderTargetProblem (TargetProblemNoneEnabled targetSelector targets) =
-    renderTargetProblemNoneEnabled "show-build-info" targetSelector targets
-renderTargetProblem(TargetProblemNoTargets targetSelector) =
-    renderTargetProblemNoTargets "show-build-info" targetSelector
+reportShowBuildInfoTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
+reportShowBuildInfoTargetProblems verbosity problems =
+  reportTargetProblems verbosity "show-build-info" problems
