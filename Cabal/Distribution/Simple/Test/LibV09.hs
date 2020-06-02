@@ -34,13 +34,14 @@ import Distribution.Pretty
 import Distribution.Verbosity
 
 import qualified Control.Exception as CE
+import qualified Data.ByteString.Lazy as LBS
 import System.Directory
     ( createDirectoryIfMissing, canonicalizePath
     , doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
     , setCurrentDirectory )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hClose, hGetContents, hPutStr )
+import System.IO ( hClose, hPutStr )
 import System.Process (StdStream(..), waitForProcess)
 
 runTest :: PD.PackageDescription
@@ -78,6 +79,8 @@ runTest pkg_descr lbi clbi flags suite = do
 
     suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
+        -- TODO: this setup is broken,
+        -- if the test output is too big, we will deadlock.
         (rOut, wOut) <- createPipe
 
         -- Run test executable
@@ -112,9 +115,9 @@ runTest pkg_descr lbi clbi flags suite = do
 
         -- Append contents of temporary log file to the final human-
         -- readable log file
-        logText <- hGetContents rOut
+        logText <- LBS.hGetContents rOut
         -- Force the IO manager to drain the test output pipe
-        length logText `seq` return ()
+        _ <- evaluate (force logText)
 
         exitcode <- waitForProcess process
         unless (exitcode == ExitSuccess) $ do
@@ -134,7 +137,7 @@ runTest pkg_descr lbi clbi flags suite = do
         -- Write summary notice to log file indicating start of test suite
         appendFile (logFile suiteLog) $ summarizeSuiteStart testName'
 
-        appendFile (logFile suiteLog) logText
+        LBS.appendFile (logFile suiteLog) logText
 
         -- Write end-of-suite summary notice to log file
         appendFile (logFile suiteLog) $ summarizeSuiteFinish suiteLog
@@ -145,7 +148,9 @@ runTest pkg_descr lbi clbi flags suite = do
             whenPrinting = when $ (details > Never)
                 && (not (suitePassed $ testLogs suiteLog) || details == Always)
                 && verbosity >= normal
-        whenPrinting $ putStr $ unlines $ lines logText
+        whenPrinting $ do
+            LBS.putStr logText
+            putChar '\n'
 
         return suiteLog
 
@@ -158,7 +163,7 @@ runTest pkg_descr lbi clbi flags suite = do
     return suiteLog
   where
     testName' = unUnqualComponentName $ PD.testName suite
-    
+
     deleteIfExists file = do
         exists <- doesFileExist file
         when exists $ removeFile file
