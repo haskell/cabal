@@ -110,7 +110,7 @@ import Distribution.Simple.Compiler
          ( Compiler(..), CompilerId(..), CompilerFlavor(..)
          , PackageDBStack )
 import Distribution.Simple.GHC
-         ( ghcPlatformAndVersionString
+         ( ghcPlatformAndVersionString, getGhcAppDir
          , GhcImplInfo(..), getImplInfo
          , GhcEnvironmentFileEntry(..)
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
@@ -137,7 +137,7 @@ import Distribution.Utils.NubList
          ( fromNubList )
 import Network.URI (URI)
 import System.Directory
-         ( getHomeDirectory, doesFileExist, createDirectoryIfMissing
+         ( doesFileExist, createDirectoryIfMissing
          , getTemporaryDirectory, makeAbsolute, doesDirectoryExist
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
@@ -838,13 +838,13 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
 -- | Gets the file file path to the request environment file.
 getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
 getEnvFile clientInstallFlags platform compilerVersion = do
-  home <- getHomeDirectory
+  appDir <- getGhcAppDir
   case flagToMaybe (cinstEnvironmentPath clientInstallFlags) of
     Just spec
       -- Is spec a bare word without any "pathy" content, then it refers to
       -- a named global environment.
       | takeBaseName spec == spec ->
-          return (getGlobalEnv home platform compilerVersion spec)
+          return (getGlobalEnv appDir platform compilerVersion spec)
       | otherwise                 -> do
         spec' <- makeAbsolute spec
         isDir <- doesDirectoryExist spec'
@@ -855,7 +855,7 @@ getEnvFile clientInstallFlags platform compilerVersion = do
           -- Otherwise, treat it like a literal file path.
           else return spec'
     Nothing                       ->
-      return (getGlobalEnv home platform compilerVersion "default")
+      return (getGlobalEnv appDir platform compilerVersion "default")
 
 -- | Returns the list of @GhcEnvFilePackageIj@ values already existing in the
 --   environment being operated on.
@@ -879,8 +879,8 @@ getExistingEnvEntries verbosity compilerFlavor supportsPkgEnvFiles envFile = do
 --
 -- TODO(m-renaud): Create PkgEnvName newtype wrapper.
 getGlobalEnv :: FilePath -> Platform -> Version -> String -> FilePath
-getGlobalEnv home platform compilerVersion name =
-  home </> ".ghc" </> ghcPlatformAndVersionString platform compilerVersion
+getGlobalEnv appDir platform compilerVersion name =
+  appDir </> ghcPlatformAndVersionString platform compilerVersion
   </> "environments" </> name
 
 -- | Constructs the path to a local GHC environment file.

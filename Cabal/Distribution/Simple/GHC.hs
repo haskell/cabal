@@ -51,6 +51,7 @@ module Distribution.Simple.GHC (
         registerPackage,
         componentGhcOptions,
         componentCcGhcOptions,
+        getGhcAppDir,
         getLibDir,
         isDynamic,
         getGlobalPackageDB,
@@ -362,6 +363,10 @@ toPackageIndex verbosity pkgss progdb = do
   where
     ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
+-- | Return the 'FilePath' to the GHC application data directory.
+getGhcAppDir :: IO FilePath
+getGhcAppDir = getAppUserDataDirectory "ghc"
+
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     dropWhileEndLE isSpace `fmap`
@@ -387,7 +392,7 @@ getUserPackageDB _verbosity ghcProg platform = do
     -- It's rather annoying that we have to reconstruct this, because ghc
     -- hides this information from us otherwise. But for certain use cases
     -- like change monitoring it really can't remain hidden.
-    appdir <- getAppUserDataDirectory "ghc"
+    appdir <- getGhcAppDir
     return (appdir </> platformAndVersion </> packageConfFileName)
   where
     platformAndVersion = Internal.ghcPlatformAndVersionString
@@ -2051,7 +2056,7 @@ pkgRoot verbosity lbi = pkgRoot'
       let ghcProg = fromMaybe (error "GHC.pkgRoot: no ghc program") $ lookupProgram ghcProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)
     pkgRoot' UserPackageDB = do
-      appDir <- getAppUserDataDirectory "ghc"
+      appDir <- getGhcAppDir
       let ver      = compilerVersion (compiler lbi)
           subdir   = System.Info.arch ++ '-':System.Info.os
                      ++ '-':prettyShow ver
