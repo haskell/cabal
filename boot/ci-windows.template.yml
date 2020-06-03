@@ -56,7 +56,7 @@ jobs:
         run: cabal v2-update
       - uses: actions/checkout@v2
       - name: make cabal-install-dev
-        run: runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # We cannot ask for all dependencies, but we can for Cabal.
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies

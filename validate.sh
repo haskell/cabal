@@ -361,7 +361,7 @@ step_time_summary() {
 
 step_make_cabal_install_dev() {
 print_header "make cabal-install-dev"
-timed ${RUNHASKELL} cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+timed cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
 }
 
 step_build() {
