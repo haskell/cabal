@@ -30,8 +30,6 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.TargetProblem
          ( TargetProblem (..) )
 
-import Distribution.Client.CmdRun.ClientRunFlags
-
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
@@ -53,6 +51,8 @@ import Distribution.Simple.Utils
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , withProjectOrGlobalConfig )
+import Distribution.Client.ProjectFlags
+         ( flagIgnoreProject )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -110,7 +110,7 @@ import System.FilePath
          ( (</>), isValid, isPathSeparator, takeExtension )
 
 
-runCommand :: CommandUI (NixStyleFlags ClientRunFlags)
+runCommand :: CommandUI (NixStyleFlags ())
 runCommand = CommandUI
   { commandName         = "v2-run"
   , commandSynopsis     = "Run an executable."
@@ -146,8 +146,8 @@ runCommand = CommandUI
       ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
 
       ++ cmdCommonHelpTextNewBuildBeta
-  , commandDefaultFlags = defaultNixStyleFlags defaultClientRunFlags
-  , commandOptions      = nixStyleOptions clientRunOptions
+  , commandDefaultFlags = defaultNixStyleFlags ()
+  , commandOptions      = nixStyleOptions (const [])
   }
 
 -- | The @run@ command runs a specified executable-like component, building it
@@ -158,8 +158,8 @@ runCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: NixStyleFlags ClientRunFlags -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings globalFlags = do
+runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tmpDir <- createTempDirectory globalTmp "cabal-repl."
 
@@ -298,7 +298,7 @@ runAction flags@NixStyleFlags {extraFlags=clientRunFlags, ..} targetStrings glob
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = crunIgnoreProject clientRunFlags
+    ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
