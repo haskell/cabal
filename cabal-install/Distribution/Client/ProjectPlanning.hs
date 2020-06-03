@@ -392,8 +392,10 @@ rebuildInstallPlan :: Verbosity
                    -> IO ( ElaboratedInstallPlan  -- with store packages
                          , ElaboratedInstallPlan  -- with source packages
                          , ElaboratedSharedConfig
-                         , IndexUtils.TotalIndexState )
-                      -- ^ @(improvedPlan, elaboratedPlan, _, _)@
+                         , IndexUtils.TotalIndexState
+                         , IndexUtils.ActiveRepos
+                         )
+                      -- ^ @(improvedPlan, elaboratedPlan, _, _, _)@
 rebuildInstallPlan verbosity
                    distDirLayout@DistDirLayout {
                      distProjectRootDirectory,
@@ -413,14 +415,14 @@ rebuildInstallPlan verbosity
                    (projectConfigMonitored, localPackages, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
-      (elaboratedPlan, elaboratedShared, totalIndexState) <-
+      (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos) <-
         rerunIfChanged verbosity fileMonitorElaboratedPlan
                        (projectConfigMonitored, localPackages,
                         progsearchpath) $ do
 
           compilerEtc   <- phaseConfigureCompiler projectConfig
           _             <- phaseConfigurePrograms projectConfig compilerEtc
-          (solverPlan, pkgConfigDB, totalIndexState)
+          (solverPlan, pkgConfigDB, totalIndexState, activeRepos)
                         <- phaseRunSolver         projectConfig
                                                   compilerEtc
                                                   localPackages
@@ -431,14 +433,14 @@ rebuildInstallPlan verbosity
                                                    localPackages
 
           phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-          return (elaboratedPlan, elaboratedShared, totalIndexState)
+          return (elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
 
-      return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState)
+      return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
 
   where
     fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
@@ -543,7 +545,7 @@ rebuildInstallPlan verbosity
         :: ProjectConfig
         -> (Compiler, Platform, ProgramDb)
         -> [PackageSpecifier UnresolvedSourcePackage]
-        -> Rebuild (SolverInstallPlan, PkgConfigDb, IndexUtils.TotalIndexState)
+        -> Rebuild (SolverInstallPlan, PkgConfigDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
@@ -558,9 +560,9 @@ rebuildInstallPlan verbosity
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
-          (sourcePkgDb, tis)<- getSourcePackages verbosity withRepoCtx
-                                 (solverSettingIndexState solverSettings)
-                                 (solverSettingActiveRepos solverSettings)
+          (sourcePkgDb, tis, ar) <- getSourcePackages verbosity withRepoCtx
+              (solverSettingIndexState solverSettings)
+              (solverSettingActiveRepos solverSettings)
           pkgConfigDB       <- getPkgConfigDb verbosity progdb
 
           --TODO: [code cleanup] it'd be better if the Compiler contained the
@@ -578,7 +580,7 @@ rebuildInstallPlan verbosity
               planPackages verbosity compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
-            return (plan, pkgConfigDB, tis)
+            return (plan, pkgConfigDB, tis, ar)
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
@@ -760,7 +762,7 @@ getSourcePackages
     -> (forall a. (RepoContext -> IO a) -> IO a)
     -> Maybe IndexUtils.TotalIndexState
     -> Maybe IndexUtils.ActiveRepos
-    -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState)
+    -> Rebuild (SourcePackageDb, IndexUtils.TotalIndexState, IndexUtils.ActiveRepos)
 getSourcePackages verbosity withRepoCtx idxState activeRepos = do
     (sourcePkgDbWithTIS, repos) <-
       liftIO $

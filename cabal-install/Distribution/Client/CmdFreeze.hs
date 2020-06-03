@@ -17,7 +17,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , writeProjectLocalFreezeConfig )
-import Distribution.Client.IndexUtils (TotalIndexState)
+import Distribution.Client.IndexUtils (TotalIndexState, ActiveRepos)
 import Distribution.Client.Targets
          ( UserQualifier(..), UserConstraintScope(..), UserConstraint(..) )
 import Distribution.Solver.Types.PackageConstraint
@@ -117,13 +117,13 @@ freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
       localPackages
     } <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
-    (_, elaboratedPlan, _, totalIndexState) <-
+    (_, elaboratedPlan, _, totalIndexState, activeRepos) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
                          localPackages
 
-    let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState
+    let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState activeRepos
     writeProjectLocalFreezeConfig distDirLayout freezeConfig
     notice verbosity $
       "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
@@ -138,12 +138,17 @@ freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
 -- | Given the install plan, produce a config value with constraints that
 -- freezes the versions of packages used in the plan.
 --
-projectFreezeConfig :: ElaboratedInstallPlan -> TotalIndexState -> ProjectConfig
-projectFreezeConfig elaboratedPlan totalIndexState = mempty
+projectFreezeConfig
+    :: ElaboratedInstallPlan
+    -> TotalIndexState
+    -> ActiveRepos
+    -> ProjectConfig
+projectFreezeConfig elaboratedPlan totalIndexState activeRepos = mempty
     { projectConfigShared = mempty
         { projectConfigConstraints =
           concat (Map.elems (projectFreezeConstraints elaboratedPlan))
-        , projectConfigIndexState = Flag totalIndexState
+        , projectConfigIndexState  = Flag totalIndexState
+        , projectConfigActiveRepos = Flag activeRepos
         }
     }
 
