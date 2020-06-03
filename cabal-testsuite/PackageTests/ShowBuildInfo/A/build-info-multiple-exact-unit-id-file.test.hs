@@ -5,20 +5,18 @@ main = cabalTest $ withSourceCopy $ do
     cwd <- fmap testCurrentDir getTestEnv
     let fp = cwd </> "unit.json"
     _ <- cabal' "show-build-info" ["--buildinfo-json-output=" ++ fp, "--unit-ids-json=A-0.1.0.0-inplace A-0.1.0.0-inplace-A", "-v0"]
-    buildInfos <- decodeBuildInfoFile fp
-    assertEqual "Build Infos, exactly two " 2  (length buildInfos)
-    let [libBuildInfo, exeBuildInfo] = buildInfos
+    buildInfo <- decodeBuildInfoFile fp
+    assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
+    assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
+    assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
+    assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
+    assertEqual "Components, exactly two" 2 (length $ components buildInfo)
+    let [libBuildInfo, exeBuildInfo] = components buildInfo
     assertExe exeBuildInfo
     assertLib libBuildInfo
     where
-      assertExe :: BuildInfo -> TestM ()
-      assertExe buildInfo = do
-        assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
-        assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
-        assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
-        assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
-        assertEqual "Components, exactly one" 1 (length $ components buildInfo)
-        let [component] = components buildInfo
+      assertExe :: ComponentInfo -> TestM ()
+      assertExe component = do
         assertEqual "Component type" "exe" (componentType component)
         assertEqual "Component name" "exe:A" (componentName component)
         assertEqual "Component unit-id" "A-0.1.0.0-inplace-A" (componentUnitId component)
@@ -27,14 +25,8 @@ main = cabalTest $ withSourceCopy $ do
         assertEqual "Component source files" ["Main.hs"] (componentSrcFiles component)
         assertEqual "Component source directories" ["src"] (componentSrcDirs component)
 
-      assertLib :: BuildInfo -> TestM ()
-      assertLib buildInfo = do
-        assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
-        assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
-        assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))
-        assertBool "Compiler path non-empty" (not . null . path $ compiler buildInfo)
-        assertEqual "Components, exactly one" 1 (length $ components buildInfo)
-        let [component] = components buildInfo
+      assertLib :: ComponentInfo -> TestM ()
+      assertLib component = do
         assertEqual "Component type" "lib" (componentType component)
         assertEqual "Component name" "lib" (componentName component)
         assertEqual "Component unit-id" "A-0.1.0.0-inplace" (componentUnitId component)

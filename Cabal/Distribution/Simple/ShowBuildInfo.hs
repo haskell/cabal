@@ -54,7 +54,8 @@
 -- Note: At the moment this is only supported when using the GHC compiler.
 --
 
-module Distribution.Simple.ShowBuildInfo (mkBuildInfo) where
+module Distribution.Simple.ShowBuildInfo
+  ( mkBuildInfo, mkBuildInfo', mkCompilerInfo, mkComponentInfo ) where
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -70,7 +71,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Simple.Utils.Json
+import Distribution.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
@@ -83,63 +84,69 @@ mkBuildInfo
   -> BuildFlags          -- ^ Flags that the user passed to build
   -> [TargetInfo]
   -> Json
-mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
+mkBuildInfo pkg_descr lbi _flags targetsToBuild =
+  mkBuildInfo' (mkCompilerInfo (withPrograms lbi) (compiler lbi))
+               (map (mkComponentInfo pkg_descr lbi . targetCLBI) targetsToBuild)
+
+-- | A variant of 'mkBuildInfo' if you need to call 'mkCompilerInfo' and
+-- 'mkComponentInfo' yourself.
+mkBuildInfo'
+  :: Json   -- ^ The 'Json' from 'mkCompilerInfo'
+  -> [Json] -- ^ The 'Json' from 'mkComponentInfo'
+  -> Json
+mkBuildInfo' cmplrInfo componentInfos =
+  JsonObject
+    [ "cabal-version" .= JsonString (display cabalVersion)
+    , "compiler"      .= cmplrInfo
+    , "components"    .= JsonArray componentInfos
+    ]
+
+mkCompilerInfo :: ProgramDb -> Compiler -> Json
+mkCompilerInfo programDb cmplr = JsonObject
+  [ "flavour"     .= JsonString (prettyShow $ compilerFlavor cmplr)
+  , "compiler-id" .= JsonString (showCompilerId cmplr)
+  , "path"        .= path
+  ]
   where
-    targetToNameAndLBI target =
-      (componentLocalName $ targetCLBI target, targetCLBI target)
-    componentsToBuild = map targetToNameAndLBI targetsToBuild
-    (.=) :: String -> Json -> (String, Json)
-    k .= v = (k, v)
+    path = maybe JsonNull (JsonString . programPath)
+            $ (flavorToProgram . compilerFlavor $ cmplr)
+            >>= flip lookupProgram programDb
 
-    info = JsonObject
-      [ "cabal-version" .= JsonString (display cabalVersion)
-      , "compiler"      .= mkCompilerInfo
-      , "components"    .= JsonArray (map mkComponentInfo componentsToBuild)
-      ]
+    flavorToProgram :: CompilerFlavor -> Maybe Program
+    flavorToProgram GHC   = Just ghcProgram
+    flavorToProgram GHCJS = Just ghcjsProgram
+    flavorToProgram UHC   = Just uhcProgram
+    flavorToProgram JHC   = Just jhcProgram
+    flavorToProgram _     = Nothing
 
-    mkCompilerInfo = JsonObject
-      [ "flavour"     .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
-      , "compiler-id" .= JsonString (showCompilerId $ compiler lbi)
-      , "path"        .= path
-      ]
-      where
-        path = maybe JsonNull (JsonString . programPath)
-               $ (flavorToProgram . compilerFlavor $ compiler lbi)
-               >>= flip lookupProgram (withPrograms lbi)
-
-        flavorToProgram :: CompilerFlavor -> Maybe Program
-        flavorToProgram GHC   = Just ghcProgram
-        flavorToProgram GHCJS = Just ghcjsProgram
-        flavorToProgram UHC   = Just uhcProgram
-        flavorToProgram JHC   = Just jhcProgram
-        flavorToProgram _     = Nothing
-
-    mkComponentInfo (name, clbi) = JsonObject
-      [ "type"          .= JsonString compType
-      , "name"          .= JsonString (prettyShow name)
-      , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
-      , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
-      , "modules"       .= JsonArray (map (JsonString . display) modules)
-      , "src-files"     .= JsonArray (map JsonString sourceFiles)
-      , "src-dirs"      .= JsonArray (map JsonString $ hsSourceDirs bi)
-      ]
-      where
-        bi = componentBuildInfo comp
-        comp = fromMaybe (error $ "mkBuildInfo: no component " ++ prettyShow name) $ lookupComponent pkg_descr name
-        compType = case comp of
-          CLib _   -> "lib"
-          CExe _   -> "exe"
-          CTest _  -> "test"
-          CBench _ -> "bench"
-          CFLib _  -> "flib"
-        modules = case comp of
-          CLib lib -> explicitLibModules lib
-          CExe exe -> exeModules exe
-          _        -> []
-        sourceFiles = case comp of
-          CLib _   -> []
-          CExe exe -> [modulePath exe]
-          _        -> []
+mkComponentInfo :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> Json
+mkComponentInfo pkg_descr lbi clbi = JsonObject
+  [ "type"          .= JsonString compType
+  , "name"          .= JsonString (prettyShow name)
+  , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
+  , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
+  , "modules"       .= JsonArray (map (JsonString . display) modules)
+  , "src-files"     .= JsonArray (map JsonString sourceFiles)
+  , "src-dirs"      .= JsonArray (map JsonString $ hsSourceDirs bi)
+  ]
+  where
+    name = componentLocalName clbi
+    bi = componentBuildInfo comp
+    comp = fromMaybe (error $ "mkBuildInfo: no component " ++ prettyShow name) $ lookupComponent pkg_descr name
+    compType = case comp of
+      CLib _   -> "lib"
+      CExe _   -> "exe"
+      CTest _  -> "test"
+      CBench _ -> "bench"
+      CFLib _  -> "flib"
+    modules = case comp of
+      CLib lib -> explicitLibModules lib
+      CExe exe -> exeModules exe
+      _        -> []
+    sourceFiles = case comp of
+      CLib _   -> []
+      CExe exe -> [modulePath exe]
+      _        -> []
 
 -- | Get the command-line arguments that would be passed
 -- to the compiler to build the given component.

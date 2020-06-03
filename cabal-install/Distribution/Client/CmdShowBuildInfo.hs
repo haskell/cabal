@@ -23,7 +23,7 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
-         ( wrapText, die', withTempDirectory )
+         ( wrapText, die' )
 import Distribution.Types.UnitId
          ( UnitId, mkUnitId )
 import Distribution.Types.Version
@@ -36,13 +36,11 @@ import Distribution.Pretty
 import qualified Data.Map as Map
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Client.SetupWrapper
-import Distribution.Simple.Program
-        ( defaultProgramDb )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectPlanning
         ( setupHsConfigureFlags, setupHsConfigureArgs, setupHsBuildFlags
-        , setupHsBuildArgs, setupHsScriptOptions )
+        , setupHsScriptOptions )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.DistDirLayout
@@ -52,12 +50,16 @@ import Distribution.Client.Types
 import Distribution.Client.JobControl
         ( newLock, Lock )
 import Distribution.Simple.Configure
-        ( tryGetPersistBuildConfig )
+        (getPersistBuildConfig,  tryGetPersistBuildConfig )
 
-import System.Directory
-        ( getTemporaryDirectory )
-import System.FilePath
-        ( (</>) )
+import Distribution.Simple.ShowBuildInfo
+import Distribution.Utils.Json
+
+import Distribution.Simple.BuildTarget (readTargetInfos)
+import Distribution.Types.LocalBuildInfo (neededTargetsInBuildOrder')
+import Distribution.Compat.Graph (IsNode(nodeKey))
+import Distribution.Simple.Setup (BuildFlags(buildArgs))
+import Distribution.Types.TargetInfo (TargetInfo(targetCLBI))
 
 showBuildInfoCommand :: CommandUI (NixStyleFlags ShowBuildInfoFlags)
 showBuildInfoCommand = CommandUI {
@@ -137,51 +139,26 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
 
--- Pretty nasty piecemeal out of json, but I can't see a way to retrieve output of the setupWrapper'd tasks
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
 showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
-  tempDir <- getTemporaryDirectory
-  withTempDirectory verbosity tempDir "show-build-info" $ \dir -> do
-    mapM_ (doShowInfo dir) targets
-    case fileOutput of
-      Nothing -> outputResult dir putStr targets
-      Just fp -> do
-        writeFile fp ""
-        outputResult dir (appendFile fp) targets
+  let configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
+      targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
 
-    where configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
-          targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
-          doShowInfo :: FilePath -> UnitId -> IO ()
-          doShowInfo dir unitId =
-              showInfo
-                (dir </> unitIdToFilePath unitId)
-                verbosity
-                baseCtx
-                buildCtx
-                lock
-                configured
-                unitId
+  components <- concat <$> mapM (getComponentInfo verbosity baseCtx buildCtx
+                                  lock configured) targets
 
-          outputResult :: FilePath -> (String -> IO ()) -> [UnitId] -> IO ()
-          outputResult dir printer units = do
-              let unroll [] = return ()
-                  unroll [x] = do
-                    content <- readFile (dir </> unitIdToFilePath x)
-                    printer content
-                  unroll (x:xs) = do
-                    content <- readFile (dir </> unitIdToFilePath x)
-                    printer content
-                    printer ","
-                    unroll xs
-              printer "["
-              unroll units
-              printer "]"
+  let compilerInfo = mkCompilerInfo (pkgConfigCompilerProgs (elaboratedShared buildCtx))
+                                    (pkgConfigCompiler (elaboratedShared buildCtx))
 
-          unitIdToFilePath :: UnitId -> FilePath
-          unitIdToFilePath unitId = "build-info-" ++ prettyShow unitId ++ ".json"
+      json = mkBuildInfo' compilerInfo components
+      res = renderJson json ""
 
-showInfo :: FilePath -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO ()
-showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
+  case fileOutput of
+    Nothing -> putStrLn res
+    Just fp -> writeFile fp res
+
+getComponentInfo :: Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> [ElaboratedConfiguredPackage] -> UnitId -> IO [Json]
+getComponentInfo verbosity baseCtx buildCtx lock pkgs targetUnitId =
   case mbPkg of
     Nothing -> die' verbosity $ "No unit " ++ prettyShow targetUnitId
     Just pkg -> do
@@ -191,7 +168,6 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
           buildDir = distBuildDirectory dirLayout (elabDistDirParams shared pkg)
           buildType' = buildType (elabPkgDescription pkg)
           flags = setupHsBuildFlags pkg shared verbosity buildDir
-          args = setupHsBuildArgs pkg
           srcDir = case (elabPkgSourceLocation pkg) of
             LocalUnpackedPackage fp -> fp
             _ -> ""
@@ -216,29 +192,25 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
               ++ "For component: " ++ prettyShow targetUnitId
         )
       -- Configure the package if there's no existing config
-      lbi <- tryGetPersistBuildConfig buildDir
-      case lbi of
+      lbi' <- tryGetPersistBuildConfig buildDir
+      case lbi' of
         Left _ -> setupWrapper
                     verbosity
                     scriptOptions
                     (Just $ elabPkgDescription pkg)
-                    (Cabal.configureCommand defaultProgramDb)
+                    (Cabal.configureCommand
+                      (pkgConfigCompilerProgs (elaboratedShared buildCtx)))
                     (const configureFlags)
                     (const configureArgs)
         Right _ -> pure ()
 
-      setupWrapper
-        verbosity
-        scriptOptions
-        (Just $ elabPkgDescription pkg)
-        (Cabal.showBuildInfoCommand defaultProgramDb)
-        (const (Cabal.ShowBuildInfoFlags
-          { Cabal.buildInfoBuildFlags = flags
-          , Cabal.buildInfoOutputFile = Just fileOutput
-          }
-          )
-        )
-        (const args)
+      -- Do the bit the Cabal library would normally do here
+      lbi <- getPersistBuildConfig buildDir
+      let pkgDesc = elabPkgDescription pkg
+      targets <- readTargetInfos verbosity pkgDesc lbi (buildArgs flags)
+      let targetsToBuild = neededTargetsInBuildOrder' pkgDesc lbi (map nodeKey targets)
+      return $ map (mkComponentInfo pkgDesc lbi . targetCLBI) targetsToBuild
+
     where
       mbPkg :: Maybe ElaboratedConfiguredPackage
       mbPkg = find ((targetUnitId ==) . elabUnitId) pkgs
@@ -247,9 +219,9 @@ showInfo fileOutput verbosity baseCtx buildCtx lock pkgs targetUnitId =
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
 -- or otherwise classifies the problem.
 --
--- For the @show-build-info@ command select all components except non-buildable and disabled
--- tests\/benchmarks, fail if there are no such components
---
+-- For the @show-build-info@ command select all components. Unlike the @build@
+-- command, we want to show info for tests and benchmarks even without the
+-- @--enable-tests@\/@--enable-benchmarks@ flag set.
 selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either TargetProblem' [k]
 selectPackageTargets targetSelector targets
@@ -267,16 +239,7 @@ selectPackageTargets targetSelector targets
   = Left (TargetProblemNoTargets targetSelector)
   where
     targets'         = forgetTargetsDetail targets
-    targetsBuildable = selectBuildableTargetsWith
-                         (buildable targetSelector)
-                         targets
-
-    -- When there's a target filter like "pkg:tests" then we do select tests,
-    -- but if it's just a target like "pkg" then we don't build tests unless
-    -- they are requested by default (i.e. by using --enable-tests)
-    buildable (TargetPackage _ _  Nothing) TargetNotRequestedByDefault = False
-    buildable (TargetAllPackages  Nothing) TargetNotRequestedByDefault = False
-    buildable _ _ = True
+    targetsBuildable = selectBuildableTargets targets
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be
 -- selected.
