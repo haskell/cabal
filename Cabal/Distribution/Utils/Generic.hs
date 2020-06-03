@@ -77,6 +77,11 @@ module Distribution.Utils.Generic (
         unsnoc,
         unsnocNE,
 
+        -- * Triples
+        fstOf3,
+        sndOf3,
+        trdOf3,
+
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
@@ -512,6 +517,22 @@ unsnocNE :: NonEmpty a -> ([a], a)
 unsnocNE (x:|xs) = go x xs where
     go y []     = ([], y)
     go y (z:zs) = let ~(ws, w) = go z zs in (y : ws, w)
+
+-------------------------------------------------------------------------------
+-- Triples
+-------------------------------------------------------------------------------
+
+-- | @since 3.4.0.0
+fstOf3 :: (a,b,c) -> a
+fstOf3 (a,_,_) = a
+
+-- | @since 3.4.0.0
+sndOf3 :: (a,b,c) -> b
+sndOf3 (_,b,_) = b
+
+-- | @since 3.4.0.0
+trdOf3 :: (a,b,c) -> c
+trdOf3 (_,_,c) = c
 
 -- ------------------------------------------------------------
 -- * FilePath stuff
