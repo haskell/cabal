@@ -77,6 +77,11 @@ module Distribution.Utils.Generic (
         unsnoc,
         unsnocNE,
 
+        -- * Triples
+        fstOf3,
+        sndOf3,
+        trdOf3,
+
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
@@ -90,10 +95,9 @@ import Distribution.Utils.String
 import Data.Bits ((.&.), (.|.), shiftL)
 import Data.List
     ( isInfixOf )
-import qualified Data.ByteString.Lazy as BS
 import qualified Data.Set as Set
-
 import qualified Data.ByteString as SBS
+import qualified Data.ByteString.Lazy as LBS
 
 import System.Directory
     ( removeFile, renameFile )
@@ -154,14 +158,14 @@ withFileContents name action =
 -- On windows it is not possible to delete a file that is open by a process.
 -- This case will give an IO exception but the atomic property is not affected.
 --
-writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
+writeFileAtomic :: FilePath -> LBS.ByteString -> IO ()
 writeFileAtomic targetPath content = do
   let (targetDir, targetFile) = splitFileName targetPath
   Exception.bracketOnError
     (openBinaryTempFileWithDefaultPermissions targetDir $ targetFile <.> "tmp")
     (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
     (\(tmpPath, handle) -> do
-        BS.hPut handle content
+        LBS.hPut handle content
         hClose handle
         renameFile tmpPath targetPath)
 
@@ -179,8 +183,8 @@ fromUTF8BS = decodeStringUtf8 . SBS.unpack
 
 -- | Variant of 'fromUTF8BS' for lazy 'BS.ByteString's
 --
-fromUTF8LBS :: BS.ByteString -> String
-fromUTF8LBS = decodeStringUtf8 . BS.unpack
+fromUTF8LBS :: LBS.ByteString -> String
+fromUTF8LBS = decodeStringUtf8 . LBS.unpack
 
 -- | Encode 'String' to to UTF8-encoded 'SBS.ByteString'
 --
@@ -192,8 +196,8 @@ toUTF8BS = SBS.pack . encodeStringUtf8
 
 -- | Variant of 'toUTF8BS' for lazy 'BS.ByteString's
 --
-toUTF8LBS :: String -> BS.ByteString
-toUTF8LBS = BS.pack . encodeStringUtf8
+toUTF8LBS :: String -> LBS.ByteString
+toUTF8LBS = LBS.pack . encodeStringUtf8
 
 -- | Check that strict 'ByteString' is valid UTF8. Returns 'Just offset' if it's not.
 validateUTF8 :: SBS.ByteString -> Maybe Int
@@ -246,7 +250,7 @@ ignoreBOM string            = string
 -- Reads lazily using ordinary 'readFile'.
 --
 readUTF8File :: FilePath -> IO String
-readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> BS.readFile f
+readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> LBS.readFile f
 
 -- | Reads a UTF8 encoded text file as a Unicode String
 --
@@ -255,14 +259,14 @@ readUTF8File f = (ignoreBOM . fromUTF8LBS) <$> BS.readFile f
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
   withBinaryFile name ReadMode
-    (\hnd -> BS.hGetContents hnd >>= action . ignoreBOM . fromUTF8LBS)
+    (\hnd -> LBS.hGetContents hnd >>= action . ignoreBOM . fromUTF8LBS)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --
 -- Uses 'writeFileAtomic', so provides the same guarantees.
 --
 writeUTF8File :: FilePath -> String -> IO ()
-writeUTF8File path = writeFileAtomic path . BS.pack . encodeStringUtf8
+writeUTF8File path = writeFileAtomic path . toUTF8LBS
 
 -- | Fix different systems silly line ending conventions
 normaliseLineEndings :: String -> String
@@ -513,6 +517,22 @@ unsnocNE :: NonEmpty a -> ([a], a)
 unsnocNE (x:|xs) = go x xs where
     go y []     = ([], y)
     go y (z:zs) = let ~(ws, w) = go z zs in (y : ws, w)
+
+-------------------------------------------------------------------------------
+-- Triples
+-------------------------------------------------------------------------------
+
+-- | @since 3.4.0.0
+fstOf3 :: (a,b,c) -> a
+fstOf3 (a,_,_) = a
+
+-- | @since 3.4.0.0
+sndOf3 :: (a,b,c) -> b
+sndOf3 (_,b,_) = b
+
+-- | @since 3.4.0.0
+trdOf3 :: (a,b,c) -> c
+trdOf3 (_,_,c) = c
 
 -- ------------------------------------------------------------
 -- * FilePath stuff

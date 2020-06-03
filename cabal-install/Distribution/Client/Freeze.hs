@@ -50,11 +50,10 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
-         ( die', notice, debug, writeFileAtomic )
+         ( die', notice, debug, writeFileAtomic, toUTF8LBS)
 import Distribution.System
          ( Platform )
 
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Distribution.Version
          ( thisVersion )
 
@@ -256,7 +255,7 @@ freezePackages verbosity globalFlags pkgs = do
             UserConstraint (UserQualified UserQualToplevel (packageName pkgId))
                            (PackagePropertyVersion $ thisVersion (packageVersion pkgId))
     createPkgEnv config = mempty { pkgEnvSavedConfig = config }
-    showPkgEnv = BS.Char8.pack . showPackageEnvironment
+    showPkgEnv = toUTF8LBS . showPackageEnvironment
 
 
 formatPkgs :: Package pkg => [pkg] -> [String]

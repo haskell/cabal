@@ -107,6 +107,7 @@ import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
 import Distribution.Compat.Directory (listDirectory)
+import Distribution.Utils.Generic (fstOf3)
 
 import qualified Codec.Compression.GZip as GZip
 
@@ -194,7 +195,7 @@ filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
 getSourcePackages verbosity repoCtxt =
-    fst <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing Nothing
+    fstOf3 <$> getSourcePackagesAtIndexState verbosity repoCtxt Nothing Nothing
 
 -- | Variant of 'getSourcePackages' which allows getting the source
 -- packages at a particular 'IndexState'.
@@ -210,7 +211,7 @@ getSourcePackagesAtIndexState
     -> RepoContext
     -> Maybe TotalIndexState
     -> Maybe ActiveRepos
-    -> IO (SourcePackageDb, TotalIndexState)
+    -> IO (SourcePackageDb, TotalIndexState, ActiveRepos)
 getSourcePackagesAtIndexState verbosity repoCtxt _ _
   | null (repoContextRepos repoCtxt) = do
       -- In the test suite, we routinely don't have any remote package
@@ -221,7 +222,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt _ _
       return (SourcePackageDb {
         packageIndex       = mempty,
         packagePreferences = mempty
-      }, headTotalIndexState)
+      }, headTotalIndexState, ActiveRepos [])
 getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   let describeState IndexStateHead        = "most recent state"
       describeState (IndexStateTime time) = "historical state as of " ++ prettyShow time
@@ -299,6 +300,12 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
     Right x  -> return x
     Left err -> warn verbosity err >> return (map (\x -> (x, CombineStrategyMerge)) pkgss)
 
+  let activeRepos' :: ActiveRepos
+      activeRepos' = ActiveRepos
+          [ ActiveRepo (rdRepoName rd) strategy
+          | (rd, strategy) <- pkgss'
+          ]
+
   let totalIndexState :: TotalIndexState
       totalIndexState = makeTotalIndexState IndexStateHead $ Map.fromList
           [ (n, IndexStateTime ts)
@@ -329,7 +336,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
   return (SourcePackageDb {
     packageIndex       = pkgs,
     packagePreferences = prefs
-  }, totalIndexState)
+  }, totalIndexState, activeRepos')
 
 -- auxiliary data used in getSourcePackagesAtIndexState
 data RepoData = RepoData

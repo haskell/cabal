@@ -81,7 +81,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
       activeRepos :: Maybe ActiveRepos
       activeRepos = flagToMaybe $ getActiveRepos getFlags
 
-  (sourcePkgDb, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState activeRepos
+  (sourcePkgDb, _, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState activeRepos
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)

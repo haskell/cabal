@@ -300,7 +300,7 @@ withInstallPlan
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, _, elaboratedShared, _) <-
+    (elaboratedPlan, _, elaboratedShared, _, _) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
@@ -325,7 +325,7 @@ runProjectPreBuildPhase
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, _, elaboratedShared, _) <-
+    (elaboratedPlan, _, elaboratedShared, _, _) <-
       rebuildInstallPlan verbosity
                          distDirLayout cabalDirLayout
                          projectConfig
