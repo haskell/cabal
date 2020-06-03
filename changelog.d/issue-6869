@@ -1,0 +1,3 @@
+synopsis: cxx-sources, asm-sources and cmm-sources are change-tracked
+packages: cabal-install
+issues: #6869
