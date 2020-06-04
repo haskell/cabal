@@ -128,8 +128,20 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
                     Nothing
                     targetSelectors
 
-      -- Don't prune the plan though, as we want a list of all configured packages
-      return (elaboratedPlan, targets)
+      let elaboratedPlan' = pruneInstallPlanToTargets
+                        TargetActionBuild
+                        targets
+                        elaboratedPlan
+
+      -- This will be the build plan for building the dependencies required.
+      elaboratedPlan'' <- either (die' verbosity . renderCannotPruneDependencies) return
+                          $ pruneInstallPlanToDependencies
+                              (Map.keysSet targets) elaboratedPlan'
+
+      return (elaboratedPlan'', targets)
+
+  buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+  runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
   scriptLock <- newLock
   showTargets fileOutput unitIds verbosity baseCtx' buildCtx scriptLock
