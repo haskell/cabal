@@ -17,7 +17,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.Setup
          ( GlobalFlags )
 import Distribution.Simple.Setup
-         (configVerbosity, fromFlagOrDefault )
+         (Flag(..), haddockVerbosity, configVerbosity, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), option, reqArg', usageAlternatives )
 import Distribution.Verbosity
@@ -148,7 +148,9 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
   where
     -- Default to silent verbosity otherwise it will pollute our json output
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
+    -- Also shut up haddock since it dumps warnings to stdout
+    flags' = flags { haddockFlags = haddockFlags { haddockVerbosity = Flag silent } }
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags'
                   mempty -- ClientInstallFlags, not needed here
 
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
