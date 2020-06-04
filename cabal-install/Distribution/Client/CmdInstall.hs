@@ -678,10 +678,14 @@ warnIfNoExes :: Verbosity -> ProjectBuildContext -> IO ()
 warnIfNoExes verbosity buildCtx =
   when noExes $
     warn verbosity $
-    "You asked to install executables, but there are no executables in "
-    <> plural (listPlural selectors) "target" "targets" <> ": "
-    <> intercalate ", " (showTargetSelector <$> selectors) <> ". "
-    <> "Perhaps you want to use --lib to install libraries instead."
+    "\n" <>
+    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
+    "@ WARNING: Installation might not be completed as desired! @\n" <>
+    "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
+    "Without flags, the command \"cabal install\" doesn't expose" <>
+    " libraries in a usable manner.  You might have wanted to run" <>
+    " \"cabal install --lib " <>
+    unwords (showTargetSelector <$> selectors) <> "\". "
   where
     targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets

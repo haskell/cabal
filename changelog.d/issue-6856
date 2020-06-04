@@ -1,0 +1,4 @@
+synopsis: Adjust message indicating `--lib` is likely desired
+packages: cabal-install
+issues: #6856
+prs: #6857
