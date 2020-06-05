@@ -26,7 +26,7 @@ import qualified Distribution.Types.Lens as L
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
-         ( renderTargetSelector, showTargetSelector,
+         ( renderTargetSelector, showTargetSelector, AmbiguityResolver(..),
            renderTargetProblem,
            targetSelectorRefersToPkgs,
            renderComponentKind, renderListCommaAnd, renderListSemiAnd,
@@ -344,7 +344,7 @@ withProject cliConfig verbosity targetStrings = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                 =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
+                 =<< readTargetSelectors (localPackages baseCtx) (AmbiguityResolverKind LibKind) targetStrings
 
   return (baseCtx, targetSelectors, return (), ProjectRepl)
 

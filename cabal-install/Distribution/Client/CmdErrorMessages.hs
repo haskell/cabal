@@ -21,7 +21,7 @@ import Distribution.Client.TargetSelector
 import Distribution.Client.TargetProblem
          ( TargetProblem(..), TargetProblem' )
 import Distribution.Client.TargetSelector
-         ( ComponentKind(..), ComponentKindFilter, TargetSelector(..),
+         ( ComponentKind(..), AmbiguityResolver(..), TargetSelector(..),
            componentKind, showTargetSelector )
 
 import Distribution.Package
@@ -170,7 +170,7 @@ targetSelectorRefersToPkgs (TargetPackageNamed _ mkfilter) = isNothing mkfilter
 targetSelectorRefersToPkgs  TargetComponent{}              = False
 targetSelectorRefersToPkgs  TargetComponentUnknown{}       = False
 
-targetSelectorFilter :: TargetSelector -> Maybe ComponentKindFilter
+targetSelectorFilter :: TargetSelector -> Maybe ComponentKind
 targetSelectorFilter (TargetPackage    _ _ mkfilter) = mkfilter
 targetSelectorFilter (TargetPackageNamed _ mkfilter) = mkfilter
 targetSelectorFilter (TargetAllPackages    mkfilter) = mkfilter

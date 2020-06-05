@@ -114,7 +114,7 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
         }
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                  =<< readTargetSelectors (localPackages baseCtx') Nothing targetStrings
+                  =<< readTargetSelectors (localPackages baseCtx') AmbiguityResolverFirst targetStrings
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do

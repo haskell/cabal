@@ -22,7 +22,7 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
          ( renderTargetSelector, showTargetSelector, renderTargetProblem,
            renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
-           targetSelectorFilter )
+           targetSelectorFilter, AmbiguityResolver(..) )
 import Distribution.Client.TargetProblem
          ( TargetProblem (..) )
 import Distribution.Client.NixStyleOptions
@@ -87,7 +87,8 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) (Just BenchKind) targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx)
+                        (AmbiguityResolverKind BenchKind) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -120,7 +121,7 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags 
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.

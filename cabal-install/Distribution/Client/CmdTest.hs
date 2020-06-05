@@ -22,7 +22,8 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
          ( renderTargetSelector, showTargetSelector, targetSelectorFilter, plural,
            renderTargetProblem,
-           renderTargetProblemNoTargets, targetSelectorPluralPkgs )
+           renderTargetProblemNoTargets, targetSelectorPluralPkgs,
+           AmbiguityResolver(..) )
 import Distribution.Client.TargetProblem
          ( TargetProblem (..) )
 import Distribution.Client.NixStyleOptions
@@ -99,7 +100,8 @@ testAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) (Just TestKind) targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx)
+                        (AmbiguityResolverKind TestKind) targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
