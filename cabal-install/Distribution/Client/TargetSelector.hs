@@ -180,7 +180,8 @@ data SubComponentTarget =
      -- | A specific module within a component.
    | ModuleTarget ModuleName
 
-     -- | A specific file within a component.
+     -- | A specific file within a component. Note that this does not carry the
+     -- file extension.
    | FileTarget   FilePath
   deriving (Eq, Ord, Show, Generic)
 
@@ -428,6 +429,23 @@ forgetFileStatus t = case t of
     TargetStringFileStatus7 s1   s2 s3 s4
                                  s5 s6 s7 -> TargetString7 s1 s2 s3 s4 s5 s6 s7
 
+getFileStatus :: TargetStringFileStatus -> Maybe FileStatus
+getFileStatus (TargetStringFileStatus1 _ f)     = Just f
+getFileStatus (TargetStringFileStatus2 _ f _)   = Just f
+getFileStatus (TargetStringFileStatus3 _ f _ _) = Just f
+getFileStatus _                                 = Nothing
+
+setFileStatus :: FileStatus -> TargetStringFileStatus -> TargetStringFileStatus
+setFileStatus f (TargetStringFileStatus1 s1 _)       = TargetStringFileStatus1 s1 f
+setFileStatus f (TargetStringFileStatus2 s1 _ s2)    = TargetStringFileStatus2 s1 f s2
+setFileStatus f (TargetStringFileStatus3 s1 _ s2 s3) = TargetStringFileStatus3 s1 f s2 s3
+setFileStatus _ t                                    = t
+
+copyFileStatus :: TargetStringFileStatus -> TargetStringFileStatus -> TargetStringFileStatus
+copyFileStatus src dst =
+    case getFileStatus src of
+      Just f -> setFileStatus f dst
+      Nothing -> dst
 
 -- ------------------------------------------------------------
 -- * Resolving target strings to target selectors
@@ -576,7 +594,12 @@ data TargetSelectorProblem
    | TargetSelectorNoTargetsInProject
   deriving (Show, Eq)
 
-data QualLevel = QL1 | QL2 | QL3 | QLFull
+-- | Qualification levels.
+-- Given the filepath src/F, executable component A, and package foo:
+data QualLevel = QL1    -- ^ @src/F@
+               | QL2    -- ^ @foo:src/F | A:src/F@
+               | QL3    -- ^ @foo:A:src/F | exe:A:src/F@
+               | QLFull -- ^ @pkg:foo:exe:A:file:src/F@
   deriving (Eq, Enum, Show)
 
 disambiguateTargetSelectors
@@ -593,12 +616,19 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
     -- So, here's the strategy. We take the original match results, and make a
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
+
+    -- Note that renderTargetSelector won't immediately work on any file syntax
+    -- When rendering syntax, the FileStatus is always FileStatusNotExists,
+    -- which will never match on syntaxForm1File!
+    -- Because matchPackageDirectoryPrefix expects a FileStatusExistsFile.
+    -- So we need to copy over the file status from the input
+    -- TargetStringFileStatus, onto the new rendered TargetStringFileStatus
     matchResultsRenderings :: [(TargetSelector, [TargetStringFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
       , let matchRenderings =
-              [ rendering
+              [ copyFileStatus matchInput rendering
               | ql <- [QL1 .. QLFull]
               , rendering <- renderTargetSelector ql matchResult ]
       ]
@@ -615,6 +645,8 @@ disambiguateTargetSelectors matcher matchInput exactMatch matchResults =
            then Map.insert matchInput (Match Exact 0 matchResults)
            else id)
       $ Map.Lazy.fromList
+        -- (matcher rendering) should *always* be a Match! Otherwise we will hit
+        -- the internal error later on.
           [ (rendering, matcher rendering)
           | rendering <- concatMap snd matchResultsRenderings ]
 
@@ -2127,7 +2159,8 @@ matchComponentModuleFile cs str = do
       , d <- cinfoSrcDirs c
       , m <- cinfoModules c
       ]
-      (dropExtension (normalise str))
+      (dropExtension (normalise str)) -- Drop the extension because FileTarget
+                                      -- is stored without the extension
 
 -- utils
 

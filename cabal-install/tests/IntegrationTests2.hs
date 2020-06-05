@@ -371,6 +371,14 @@ testTargetSelectorAmbiguous reportSubCase = do
       [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"]
                     , mkexe "bar2" `withModules` ["Bar"] ]
       ]
+    reportSubCase "ambiguous: file in multiple comps with path"
+    assertAmbiguous ("src" </> "Bar.hs")
+      [ mkTargetFile "foo" (CExeName "bar")  ("src" </> "Bar")
+      , mkTargetFile "foo" (CExeName "bar2") ("src" </> "Bar")
+      ]
+      [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"] `withHsSrcDirs` ["src"]
+                    , mkexe "bar2" `withModules` ["Bar"] `withHsSrcDirs` ["src"] ]
+      ]
 
     -- non-exact case packages and components are ambiguous
     reportSubCase "ambiguous: non-exact-case pkg names"
@@ -471,6 +479,10 @@ testTargetSelectorAmbiguous reportSubCase = do
     withCFiles :: Executable -> [FilePath] -> Executable
     withCFiles exe files =
       exe { buildInfo = (buildInfo exe) { cSources = files } }
+
+    withHsSrcDirs :: Executable -> [FilePath] -> Executable
+    withHsSrcDirs exe srcDirs =
+      exe { buildInfo = (buildInfo exe) { hsSourceDirs = srcDirs }}
 
 
 mkTargetPackage :: PackageId -> TargetSelector
