@@ -1,5 +1,5 @@
 # cabal v2-configure
-'cabal.project.local' file already exists. Now overwriting it.
+'cabal.project.local' already exists, backing it up to 'cabal.project.local~'.
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:

@@ -95,7 +95,7 @@ configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
     -- before overwriting
     exists <- doesFileExist "cabal.project.local"
     when exists $ do
-        notice verbosity "'cabal.project.local' file already exists. Now overwriting it."
+        notice verbosity "'cabal.project.local' already exists, backing it up to 'cabal.project.local~'."
         copyFile "cabal.project.local" "cabal.project.local~"
     writeProjectLocalExtraConfig (distDirLayout baseCtx)
                                  cliConfig
