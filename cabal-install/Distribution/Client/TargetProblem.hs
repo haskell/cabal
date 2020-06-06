@@ -45,8 +45,8 @@ data TargetProblem a
     | TargetProblemNoSuchPackage           PackageId
     | TargetProblemNoSuchComponent         PackageId ComponentName
 
-    | CustomTargetProblem a
       -- | A custom target problem
+    | CustomTargetProblem a
   deriving (Eq, Show, Functor)
 
 -- | Type alias for a 'TargetProblem' with no user-defined problems/errors.

@@ -1,6 +1,31 @@
 # cabal v2-configure
-'cabal.project.local' file already exists. Now overwriting it.
+'cabal.project.local' already exists, backing it up to 'cabal.project.local~'.
 Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
+# cabal v2-configure
+'cabal.project.local' already exists, backing it up to 'cabal.project.local~0'.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
+# cabal v2-configure
+'cabal.project.local' already exists, backing it up to 'cabal.project.local~1'.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
+# cabal v2-configure
+'foo.project.local' already exists, backing it up to 'foo.project.local~'.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
+# cabal v2-configure
+'foo.project.local' already exists, backing it up to 'foo.project.local~0'.
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - NewConfigure-0.1.0.0 (lib) (first run)
+# cabal v2-configure
+'foo.project.local' already exists, backing it up to 'foo.project.local~1'.
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following would be built:
  - NewConfigure-0.1.0.0 (lib) (first run)
