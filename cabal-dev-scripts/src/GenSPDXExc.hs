@@ -94,6 +94,7 @@ generate' lss template = template $ Input
         , ilId            = textShow (licenseId l)
         , ilName          = textShow (licenseName l)
         , ilIsOsiApproved = False -- not used in exceptions
+        , ilIsFsfLibre    = False -- not used in exceptions
         }
 
     licenseIds :: Text

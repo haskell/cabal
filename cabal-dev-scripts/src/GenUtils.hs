@@ -157,6 +157,7 @@ data InputLicense = InputLicense
     , ilId            :: Text
     , ilName          :: Text
     , ilIsOsiApproved :: Bool
+    , ilIsFsfLibre    :: Bool
     }
   deriving (Show, Generic)
 
