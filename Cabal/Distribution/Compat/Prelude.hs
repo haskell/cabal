@@ -137,7 +137,7 @@ module Distribution.Compat.Prelude (
     readMaybe,
 
     -- * Debug.Trace (as deprecated functions)
-    traceShow, traceShowId,
+    trace, traceShow, traceShowId,
     ) where
 
 -- We also could hide few partial function
@@ -302,6 +302,10 @@ foldl1 = Data.Foldable.foldl1
 
 -- Functions from Debug.Trace
 -- but with DEPRECATED pragma, so -Werror will scream on them.
+
+trace :: String -> a -> a
+trace = Debug.Trace.trace
+{-# DEPRECATED trace "Don't leave me in the code" #-}
 
 traceShowId :: Show a => a -> a
 traceShowId x = Debug.Trace.traceShow x x
