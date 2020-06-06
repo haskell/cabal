@@ -3,7 +3,7 @@
 module Main (main) where
 
 import Control.Lens     (imap)
-import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.:))
+import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.!=), (.:), (.:?))
 import Data.List        (sortOn)
 import Data.Semigroup   ((<>))
 import Data.Text        (Text)
@@ -95,6 +95,7 @@ generate' lss template = template $ Input
         , ilId            = textShow (licenseId l)
         , ilName          = textShow (licenseName l)
         , ilIsOsiApproved = licenseOsiApproved l
+        , ilIsFsfLibre    = licenseFsfLibre l
         }
 
     licenseIds :: Text
@@ -116,6 +117,7 @@ data License = License
     { licenseId          :: !Text
     , licenseName        :: !Text
     , licenseOsiApproved :: !Bool
+    , licenseFsfLibre    :: !Bool
     , licenseDeprecated  :: !Bool
     }
   deriving (Show)
@@ -128,6 +130,7 @@ instance FromJSON License where
         <$> obj .: "licenseId"
         <*> obj .: "name"
         <*> obj .: "isOsiApproved"
+        <*> obj .:? "isFsfLibre" .!= False
         <*> obj .: "isDeprecatedLicenseId"
 
 instance FromJSON LicenseList where

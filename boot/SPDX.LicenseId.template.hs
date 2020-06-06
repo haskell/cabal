@@ -5,6 +5,7 @@ module Distribution.SPDX.LicenseId (
     licenseId,
     licenseName,
     licenseIsOsiApproved,
+    licenseIsFsfLibre,
     mkLicenseId,
     licenseIdList,
     -- * Helpers
@@ -131,8 +132,25 @@ licenseName {{l.constructor}} = {{l.name}}
 -- See <https://opensource.org/licenses/alphabetical>.
 licenseIsOsiApproved :: LicenseId -> Bool
 {% for l in licenses %}
-licenseIsOsiApproved {{l.constructor}} = {% if l.isOsiApproved %}True{% else %}False{% endif %}
+{% if l.isOsiApproved %}
+licenseIsOsiApproved {{l.constructor}} = True
+{% endif %}
 {% endfor %}
+licenseIsOsiApproved _ = False
+
+-- | Whether the license is considered libre by Free Software Foundation (FSF).
+--
+-- See <https://www.gnu.org/licenses/license-list.en.html>
+--
+-- @since 3.4.0.0
+--
+licenseIsFsfLibre :: LicenseId -> Bool
+{% for l in licenses %}
+{% if l.isFsfLibre %}
+licenseIsFsfLibre {{l.constructor}} = True
+{% endif %}
+{% endfor %}
+licenseIsFsfLibre _ = False
 
 -------------------------------------------------------------------------------
 -- Creation
