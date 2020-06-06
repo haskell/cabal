@@ -10,6 +10,7 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import System.Directory
+import System.FilePath
 import qualified Data.Map as Map
 
 import Distribution.Client.ProjectOrchestration
@@ -29,6 +30,9 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, optionName )
 import Distribution.Simple.Utils
          ( wrapText, notice )
+
+import Distribution.Client.DistDirLayout
+         ( DistDirLayout(..) )
 
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
@@ -93,10 +97,26 @@ configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
     -- Write out the @cabal.project.local@ so it gets picked up by the
     -- planning phase. If old config exists, then print the contents
     -- before overwriting
-    exists <- doesFileExist "cabal.project.local"
+
+    let localFile = distProjectFile (distDirLayout baseCtx) "local"
+        -- | Chooses cabal.project.local~, or if it already exists
+        -- cabal.project.local~0, cabal.project.local~1 etc.
+        firstFreeBackup = firstFreeBackup' (0 :: Int)
+        firstFreeBackup' i = do
+          let backup = localFile <> "~" <> (if i <= 0 then "" else show (i - 1))
+          exists <- doesFileExist backup
+          if exists
+            then firstFreeBackup' (i + 1)
+            else return backup
+
+    -- If cabal.project.local already exists, back up to cabal.project.local~[n]
+    exists <- doesFileExist localFile
     when exists $ do
-        notice verbosity "'cabal.project.local' already exists, backing it up to 'cabal.project.local~'."
-        copyFile "cabal.project.local" "cabal.project.local~"
+        backup <- firstFreeBackup
+        notice verbosity $
+          quote (takeFileName localFile) <> " already exists, backing it up to "
+          <> quote (takeFileName backup) <> "."
+        copyFile localFile backup
     writeProjectLocalExtraConfig (distDirLayout baseCtx)
                                  cliConfig
 
@@ -125,4 +145,5 @@ configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
+    quote s = "'" <> s <> "'"
 

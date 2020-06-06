@@ -50,6 +50,7 @@ ctags
 
 # stack artifacts
 /.stack-work/
+stack.yaml.lock
 
 # Shake artifacts
 .shake*
@@ -60,3 +61,6 @@ register.sh
 
 # python artifacts from documentation builds
 *.pyc
+
+# macOS folder metadata
+.DS_Store
