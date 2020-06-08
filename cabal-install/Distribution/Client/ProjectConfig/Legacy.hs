@@ -83,7 +83,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
-         , parseHaskellString, showToken 
+         , parseHaskellString, showToken
          , simpleFieldParsec
          )
 import Distribution.Client.ParseUtils
@@ -603,7 +603,9 @@ convertToLegacySharedConfig
       configAllowOlder    = projectConfigAllowOlder,
       configAllowNewer    = projectConfigAllowNewer,
       configWriteGhcEnvironmentFilesPolicy
-                          = projectConfigWriteGhcEnvironmentFilesPolicy
+                          = projectConfigWriteGhcEnvironmentFilesPolicy,
+      configPickFirstTarget
+                          = mempty
     }
 
     installFlags = InstallFlags {

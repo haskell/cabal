@@ -19,13 +19,13 @@ module Distribution.Client.TargetSelector (
     TargetSelector(..),
     TargetImplicitCwd(..),
     ComponentKind(..),
-    AmbiguityResolver(..),
     SubComponentTarget(..),
     QualLevel(..),
     componentKind,
 
     -- * Reading target selectors
     readTargetSelectors,
+    readTargetSelectors',
     TargetSelectorProblem(..),
     reportTargetSelectorProblems,
     showTargetSelector,
@@ -65,6 +65,12 @@ import Distribution.Simple.LocalBuildInfo
          ( Component(..), ComponentName(..), LibraryName(..)
          , pkgComponents, componentName, componentBuildInfo )
 import Distribution.Types.ForeignLib
+
+import Distribution.Client.NixStyleOptions
+import Distribution.Client.Setup
+        ( ConfigExFlags(..) )
+import Distribution.Simple.Setup
+         ( fromFlagOrDefault )
 
 import Distribution.Simple.Utils
          ( die', lowercase, ordNub )
@@ -176,6 +182,7 @@ data AmbiguityResolver =
                        | AmbiguityResolverFirst
                         -- | Choose the target component with the specific kind
                        | AmbiguityResolverKind ComponentKind
+                       | AmbiguityResolverKindFirst ComponentKind
   deriving (Eq, Ord, Show)
 
 -- | Either the component as a whole or detail about a file or module target
@@ -208,36 +215,54 @@ instance Structured SubComponentTarget
 -- the available packages (and their locations).
 --
 readTargetSelectors :: [PackageSpecifier (SourcePackage (PackageLocation a))]
-                    -> AmbiguityResolver
+                    -> Maybe ComponentKind
                     -- ^ This parameter is used when there are ambiguous selectors.
-                    --   If it is 'AmbiguityResolverKind', then we attempt to resolve
-                    --   ambiguitiy by applying it, since otherwise there is no
-                    --   way to allow contextually valid yet syntactically ambiguous
+                    --   If it is 'Just', then we attempt to resolve ambiguitiy
+                    --   by applying it, since otherwise there is no way to
+                    --   allow contextually valid yet syntactically ambiguous
                     --   selectors.
                     --   (#4676, #5461)
-                    --   If it is 'AmbiguityResolverFirst', then we resolve it by
-                    --   choosing just the first target. This is used by
-                    --   the show-build-info command.
-                    --   Otherwise, if it is 'AmbiguityResolverNone', we make
-                    --   ambiguity a 'TargetSelectorProblem'.
+                    -> NixStyleFlags b
+                    -- ^ Used in case @--pick-first-target@ was passed.
                     -> [String]
                     -> IO (Either [TargetSelectorProblem] [TargetSelector])
-readTargetSelectors = readTargetSelectorsWith defaultDirActions
+readTargetSelectors pkgs mfilter NixStyleFlags{configExFlags}
+  = readTargetSelectorsWith defaultDirActions pkgs mfilter
+      (fromFlagOrDefault False (configPickFirstTarget configExFlags))
+
+
+-- | Same as 'readTargetSelectors' but in case you don't have 'NixStyleFlags'.
+readTargetSelectors' :: [PackageSpecifier (SourcePackage (PackageLocation a))]
+                     -> Maybe ComponentKind
+                     -> [String]
+                     -> IO (Either [TargetSelectorProblem] [TargetSelector])
+readTargetSelectors' pkgs mfilter =
+  readTargetSelectorsWith defaultDirActions pkgs mfilter False
 
 readTargetSelectorsWith :: (Applicative m, Monad m) => DirActions m
                         -> [PackageSpecifier (SourcePackage (PackageLocation a))]
-                        -> AmbiguityResolver
+                        -> Maybe ComponentKind
+                        -- ^ Filter the target to resolve ambiguity?
+                        -> Bool
+                        -- ^ Pick the first target to resolve ambiguity?
                         -> [String]
                         -> m (Either [TargetSelectorProblem] [TargetSelector])
-readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter targetStrs =
+readTargetSelectorsWith dirActions@DirActions{} pkgs mfilter pickFirst targetStrs =
     case parseTargetStrings targetStrs of
       ([], usertargets) -> do
         usertargets' <- traverse (getTargetStringFileStatus dirActions) usertargets
         knowntargets <- getKnownTargets dirActions pkgs
-        case resolveTargetSelectors knowntargets usertargets' mfilter of
+        case resolveTargetSelectors knowntargets usertargets' resolver of
           ([], btargets) -> return (Right btargets)
           (problems, _)  -> return (Left problems)
       (strs, _)          -> return (Left (map TargetSelectorUnrecognised strs))
+ where
+    resolver
+      | Just kind <- mfilter
+      , pickFirst            = AmbiguityResolverKindFirst kind
+      | Just kind <- mfilter = AmbiguityResolverKind kind
+      | pickFirst            = AmbiguityResolverFirst
+      | otherwise            = AmbiguityResolverNone
 
 
 data DirActions m = DirActions {
@@ -496,7 +521,7 @@ resolveTargetSelector :: KnownTargets
                       -> AmbiguityResolver
                       -> TargetStringFileStatus
                       -> Either TargetSelectorProblem TargetSelector
-resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
+resolveTargetSelector knowntargets@KnownTargets{..} resolver targetStrStatus =
     case findMatch (matcher targetStrStatus) of
 
       Unambiguous _
@@ -511,18 +536,32 @@ resolveTargetSelector knowntargets@KnownTargets{..} mfilter targetStrStatus =
         | projectIsEmpty       -> Left TargetSelectorNoTargetsInProject
         | otherwise            -> Left (classifyMatchErrors errs)
 
+      -- Try to resolve the ambiguity with a kind filter
       Ambiguous _          targets
-        | AmbiguityResolverKind kfilter <- mfilter
+        | AmbiguityResolverKind kfilter <- resolver
         , [target] <- applyKindFilter kfilter targets -> Right target
 
+      -- If we have a filter and want to pick from the first
+      Ambiguous _          targets
+        | AmbiguityResolverKindFirst kfilter <- resolver
+        , target:_ <- applyKindFilter kfilter targets -> Right target
+
+      -- Same case as above, except there weren't any filter matches
+      Ambiguous _          targets
+        | AmbiguityResolverKindFirst _ <- resolver
+        , target:_ <- targets -> Right target
+
+      -- Just pick the first of any
+      Ambiguous _          targets
+        | AmbiguityResolverFirst <- resolver
+        , target:_ <- targets -> Right target
+
+      -- A truly, unresolvable ambiguity
       Ambiguous exactMatch targets ->
         case disambiguateTargetSelectors
                matcher targetStrStatus exactMatch
                targets of
-          Right targets'   ->
-            case (targets', mfilter) of
-              ((_,t):_, AmbiguityResolverFirst) -> Right t
-              _ -> Left (TargetSelectorAmbiguous targetStr targets')
+          Right targets'   -> Left (TargetSelectorAmbiguous targetStr targets')
           Left ((m, ms):_) -> Left (MatchingInternalError targetStr m ms)
           Left []          -> internalError "resolveTargetSelector"
   where

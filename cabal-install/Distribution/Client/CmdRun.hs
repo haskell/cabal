@@ -59,7 +59,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
          ( dataDirsEnvironmentForPlan )
 import Distribution.Client.TargetSelector
-         ( TargetSelectorProblem(..), TargetString(..), AmbiguityResolver(..) )
+         ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Types.UnqualComponentName
@@ -182,7 +182,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
           else reportTargetSelectorProblems verbosity err
 
     (baseCtx', targetSelectors) <-
-      readTargetSelectors (localPackages baseCtx) (AmbiguityResolverKind ExeKind) (take 1 targetStrings)
+      readTargetSelectors (localPackages baseCtx) (Just ExeKind) flags (take 1 targetStrings)
         >>= \case
           Left err@(TargetSelectorNoTargetsInProject:_)
             | (script:_) <- targetStrings -> scriptOrError script err

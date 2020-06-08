@@ -114,7 +114,7 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
         }
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                  =<< readTargetSelectors (localPackages baseCtx') AmbiguityResolverFirst targetStrings
+                  =<< readTargetSelectors (localPackages baseCtx') Nothing flags targetStrings
 
   buildCtx <-
     runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
@@ -155,6 +155,8 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
 
 showTargets :: Maybe FilePath -> Maybe [String] -> Verbosity -> ProjectBaseContext -> ProjectBuildContext -> Lock -> IO ()
 showTargets fileOutput unitIds verbosity baseCtx buildCtx lock = do
+
+  -- TODO: can we use --disable-per-component so that we only get one package?
   let configured = [p | InstallPlan.Configured p <- InstallPlan.toList (elaboratedPlanOriginal buildCtx)]
       targets = maybe (fst <$> (Map.toList . targetsMap $ buildCtx)) (map mkUnitId) unitIds
 

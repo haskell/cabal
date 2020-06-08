@@ -240,8 +240,8 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         else do
           targetSelectors <-
             either (reportTargetSelectorProblems verbosity) return
-            =<< readTargetSelectors (localPackages localBaseCtx)
-                                    AmbiguityResolverNone targetStrings''
+            =<< readTargetSelectors (localPackages localBaseCtx) Nothing flags
+                 targetStrings''
 
           (specs, selectors) <-
             getSpecsAndTargetSelectors

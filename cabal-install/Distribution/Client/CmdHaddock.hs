@@ -76,8 +76,8 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx)
-                          AmbiguityResolverNone targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx) Nothing flags
+                         targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

@@ -428,7 +428,9 @@ instance Semigroup SavedConfig where
         configAllowOlder    =
             combineMonoid savedConfigureExFlags configAllowOlder,
         configWriteGhcEnvironmentFilesPolicy
-                            = combine configWriteGhcEnvironmentFilesPolicy
+                            = combine configWriteGhcEnvironmentFilesPolicy,
+        configPickFirstTarget
+                            = combine configPickFirstTarget
         }
         where
           combine      = combine' savedConfigureExFlags

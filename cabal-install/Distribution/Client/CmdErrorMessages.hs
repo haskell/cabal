@@ -21,7 +21,7 @@ import Distribution.Client.TargetSelector
 import Distribution.Client.TargetProblem
          ( TargetProblem(..), TargetProblem' )
 import Distribution.Client.TargetSelector
-         ( ComponentKind(..), AmbiguityResolver(..), TargetSelector(..),
+         ( ComponentKind(..), TargetSelector(..),
            componentKind, showTargetSelector )
 
 import Distribution.Package
