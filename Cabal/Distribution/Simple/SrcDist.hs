@@ -223,7 +223,7 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
             srcDataDir = if null srcDataDirRaw
               then "."
               else srcDataDirRaw
-        in fmap (fmap (\p -> cwd </> srcDataDir </> p)) $
+        in fmap (fmap (\p -> srcDataDir </> p)) $
              matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
 
     -- Extra source files.
