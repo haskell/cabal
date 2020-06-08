@@ -559,7 +559,9 @@ runHaddock verbosity tmpFileOpts comp platform haddockProg args
     renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
       \(flags,result)-> do
 
-        runProgram verbosity haddockProg flags
+        haddockOut <- getProgramOutput verbosity haddockProg flags
+        unless (verbosity <= silent) $
+          putStr haddockOut
 
         notice verbosity $ "Documentation created: " ++ result
 

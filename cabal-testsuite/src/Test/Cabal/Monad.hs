@@ -411,6 +411,10 @@ mkNormalizerEnv = do
     list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
                       ["list", "--global", "--simple-output"] ""
     tmpDir <- liftIO $ getTemporaryDirectory
+    haddock <- let prog = fromJust $ lookupKnownProgram "haddock" (testProgramDb env)
+                 in fmap (fst . fromJust) $ liftIO $
+                    programFindLocation prog (testVerbosity env)
+                        [ProgramSearchPathDefault]
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
@@ -423,8 +427,12 @@ mkNormalizerEnv = do
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
-            = testPlatform env
+            = testPlatform env,
+        normalizerHaddock
+            = haddock
     }
+    where
+
 
 requireProgramM :: Program -> TestM ConfiguredProgram
 requireProgramM program = do
