@@ -26,7 +26,7 @@ jobs:
       - name: Set PATH
         run: |
           echo "::add-path::$HOME/.cabal/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/cabal/3.2/bin"
           echo "::add-path::/opt/ghc/8.6.5/bin"
       - uses: actions/cache@v1
         with:
@@ -56,7 +56,7 @@ jobs:
       - name: Set PATH
         run: |
           echo "::add-path::$HOME/.cabal/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/cabal/3.2/bin"
           echo "::add-path::/opt/ghc/8.6.5/bin"
       - name: Install cabal-env
         run: |
