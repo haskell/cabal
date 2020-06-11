@@ -170,14 +170,11 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
         if newPackageDepsBehaviour pkg_descr
             then fmap concat $ forM (targetBuildDepends bi) $
                  \(Dependency name _ sublibs) -> do
-                    -- The package name still needs fixing in case of legacy
-                    -- sublibrary dependency syntax
-                    let (pn, _) = fixFakePkgName pkg_descr name
-                    pkg <- case Map.lookup pn lib_dep_map of
+                    pkg <- case Map.lookup name lib_dep_map of
                         Nothing ->
                             dieProgress $
                                 text "Dependency on unbuildable" <+>
-                                text "package" <+> pretty pn
+                                text "package" <+> pretty name
                         Just p -> return p
                     -- Return all library components
                     forM (NonEmptySet.toList sublibs) $ \lib ->
@@ -190,7 +187,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                                 dieProgress $
                                     text "Dependency on unbuildable" <+>
                                     text (showLibraryName lib) <+>
-                                    text "from" <+> pretty pn
+                                    text "from" <+> pretty name
                             Just v -> return v
             else return old_style_lib_deps
     mkConfiguredComponent
