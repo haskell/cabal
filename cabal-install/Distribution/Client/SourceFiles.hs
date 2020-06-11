@@ -150,14 +150,8 @@ needBuildInfo pkg_descr bi modules = do
         , jsSources bi
         , cmmSources bi
         , asmSources bi
+        , extraSrcFiles pkg_descr
         ]
-    -- A MASSIVE HACK to (1) make sure we rebuild when header
-    -- files change, but (2) not have to rebuild when anything
-    -- in extra-src-files changes (most of these won't affect
-    -- compilation).  It would be even better if we knew on a
-    -- per-component basis which headers would be used but that
-    -- seems to be too difficult.
-    traverse_ needIfExists (filter ((==".h").takeExtension) (extraSrcFiles pkg_descr))
     for_ (installIncludes bi) $ \f ->
         findFileMonitored ("." : includeDirs bi) f
             >>= maybe (return ()) need
