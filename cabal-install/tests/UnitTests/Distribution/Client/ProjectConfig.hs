@@ -26,9 +26,6 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Compiler
 import Distribution.Version
-import Distribution.Simple.Compiler
-import Distribution.Simple.Setup
-import Distribution.Simple.InstallDirs
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Types.PackageVersionConstraint
@@ -729,11 +726,7 @@ instance Arbitrary PackageConfig where
                          . Map.map (map getNonEmpty . getNonEmpty)
                          . Map.mapKeys getNoShrink
 
-instance Arbitrary HaddockTarget where
-    arbitrary = elements [ForHackage, ForDevelopment]
 
-instance Arbitrary TestShowDetails where
-    arbitrary = arbitraryBoundedEnum
 
 instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
     arbitrary = SourceRepositoryPackage
@@ -753,20 +746,6 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
         | (x1', x2', x3', x4', x5') <- shrink
           (x1, ShortToken x2, fmap ShortToken x3, fmap ShortToken x4, fmap ShortToken x5)
         ]
-
-instance Arbitrary a => Arbitrary (InstallDirs a) where
-    arbitrary =
-      InstallDirs
-        <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
-
-instance Arbitrary PackageDB where
-    arbitrary = oneof [ pure GlobalPackageDB
-                      , pure UserPackageDB
-                      , SpecificPackageDB . getShortToken <$> arbitrary
-                      ]
 
 instance Arbitrary RemoteRepo where
     arbitrary =
@@ -816,12 +795,3 @@ instance Arbitrary OnlyConstrained where
     arbitrary = oneof [ pure OnlyConstrainedAll
                       , pure OnlyConstrainedNone
                       ]
-
-instance Arbitrary ProfDetailLevel where
-    arbitrary = elements [ d | (_,_,d) <- knownProfDetailLevels ]
-
-instance Arbitrary OptimisationLevel where
-    arbitrary = elements [minBound..maxBound]
-
-instance Arbitrary DebugInfoLevel where
-    arbitrary = elements [minBound..maxBound]

@@ -542,6 +542,7 @@ Test-Suite solver-quickcheck
         base,
         async,
         Cabal,
+        Cabal-QuickCheck,
         cabal-lib-client,
         cabal-install-solver-dsl,
         containers,

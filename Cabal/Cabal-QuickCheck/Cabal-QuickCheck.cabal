@@ -12,6 +12,7 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
+    , bytestring
     , Cabal       ^>=3.3.0.0
     , QuickCheck  ^>=2.13.2 || ^>=2.14
 

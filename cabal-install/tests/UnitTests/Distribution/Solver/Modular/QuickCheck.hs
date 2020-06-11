@@ -16,7 +16,8 @@ import Data.List (groupBy, isInfixOf)
 import Text.Show.Pretty (parseValue, valToStr)
 
 import Test.Tasty (TestTree)
-import Test.Tasty.QuickCheck
+import Test.QuickCheck (Arbitrary (..), Gen, Positive (..), frequency, oneof, shrinkList, shuffle, listOf, shrinkNothing, vectorOf, elements, sublistOf, counterexample, (===), (==>), Blind (..))
+import Test.QuickCheck.Instances.Cabal ()
 
 import Distribution.Types.Flag (FlagName)
 import Distribution.Utils.ShortText (ShortText)
@@ -437,32 +438,26 @@ instance Arbitrary IndependentGoals where
 
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
-instance Arbitrary LibraryVisibility where
-  arbitrary = elements [LibraryVisibilityPrivate, LibraryVisibilityPublic]
-
-  shrink LibraryVisibilityPublic  = [LibraryVisibilityPrivate]
-  shrink LibraryVisibilityPrivate = []
-
-instance Arbitrary UnqualComponentName where
-  -- The "component-" prefix prevents component names and build-depends
-  -- dependency names from overlapping.
-  -- TODO: Remove the prefix once the QuickCheck tests support dependencies on
-  -- internal libraries.
-  arbitrary =
-      mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
-
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
-                    , ComponentSubLib <$> arbitrary
-                    , ComponentExe <$> arbitrary
-                    , ComponentFLib <$> arbitrary
-                    , ComponentTest <$> arbitrary
-                    , ComponentBench <$> arbitrary
+                    , ComponentSubLib <$> arbitraryUQN
+                    , ComponentExe <$> arbitraryUQN
+                    , ComponentFLib <$> arbitraryUQN
+                    , ComponentTest <$> arbitraryUQN
+                    , ComponentBench <$> arbitraryUQN
                     , return ComponentSetup
                     ]
 
   shrink ComponentLib = []
   shrink _ = [ComponentLib]
+
+-- The "component-" prefix prevents component names and build-depends
+-- dependency names from overlapping.
+-- TODO: Remove the prefix once the QuickCheck tests support dependencies on
+-- internal libraries.
+arbitraryUQN :: Gen UnqualComponentName
+arbitraryUQN =
+    mkUnqualComponentName <$> (\c -> "component-" ++ [c]) <$> elements "ABC"
 
 instance Arbitrary ExampleInstalled where
   arbitrary = error "arbitrary not implemented: ExampleInstalled"
@@ -521,11 +516,6 @@ instance Arbitrary OptionalStanza where
 
   shrink BenchStanzas = [TestStanzas]
   shrink TestStanzas  = []
-
-instance Arbitrary VersionRange where
-  arbitrary = error "arbitrary not implemented: VersionRange"
-
-  shrink vr = [noVersion | vr /= noVersion]
 
 -- Randomly sorts solver variables using 'hash'.
 -- TODO: Sorting goals with this function is very slow.
