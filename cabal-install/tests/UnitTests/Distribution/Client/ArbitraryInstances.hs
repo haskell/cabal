@@ -25,11 +25,8 @@ import Prelude ()
 import Data.Char (isLetter)
 import Data.List ((\\))
 
-import Distribution.Simple.InstallDirs
 import Distribution.Simple.Setup
 import Distribution.Types.Flag         (mkFlagAssignment)
-
-import Distribution.Utils.NubList
 
 import Distribution.Client.BuildReports.Types            (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
@@ -148,19 +145,6 @@ instance Arbitrary ShortToken where
 
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
-
-instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
-    arbitrary = toNubList <$> arbitrary
-    shrink xs = [ toNubList [] | (not . null) (fromNubList xs) ]
-    -- try empty, otherwise don't shrink as it can loop
-
-
-instance Arbitrary PathTemplate where
-    arbitrary = toPathTemplate <$> arbitraryShortToken
-    shrink t  = [ toPathTemplate s
-                | s <- shrink (fromPathTemplate t)
-                , not (null s) ]
-
 
 newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }
   deriving (Eq, Ord, Show)

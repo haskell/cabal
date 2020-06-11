@@ -5,7 +5,7 @@ module Test.QuickCheck.Instances.Cabal () where
 
 import Control.Applicative        (liftA2)
 import Data.Char                  (isAlphaNum, isDigit)
-import Data.List                  (intercalate)
+import Data.List                  (intercalate, isPrefixOf)
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
@@ -15,26 +15,34 @@ import Distribution.Compat.NonEmptySet             (NonEmptySet)
 import Distribution.Compiler
 import Distribution.FieldGrammar.Newtypes
 import Distribution.ModuleName
+import Distribution.Simple.Compiler                (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..), knownProfDetailLevels)
 import Distribution.Simple.Flag                    (Flag (..))
+import Distribution.Simple.InstallDirs
+import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..))
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
 import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName, unFlagAssignment)
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
+import Distribution.Types.LibraryVisibility
 import Distribution.Types.Mixin
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PackageVersionConstraint
+import Distribution.Types.PkgconfigVersion
+import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.SourceRepo
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.VersionRange.Internal
+import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Distribution.Version
 
 import Test.QuickCheck.GenericArbitrary
 
+import qualified Data.ByteString.Char8           as BS8
 import qualified Distribution.Compat.NonEmptySet as NES
 
 #if !MIN_VERSION_base(4,8,0)
@@ -178,6 +186,16 @@ instance Arbitrary IncludeRenaming where
 instance Arbitrary ModuleRenaming where
     arbitrary = genericArbitrary
     shrink    = genericShrink
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+
+instance Arbitrary LibraryVisibility where
+  arbitrary = elements [LibraryVisibilityPrivate, LibraryVisibilityPublic]
+
+  shrink LibraryVisibilityPublic  = [LibraryVisibilityPrivate]
+  shrink LibraryVisibilityPrivate = []
 
 -------------------------------------------------------------------------------
 -- ModuleName
@@ -355,6 +373,15 @@ instance Arbitrary CompilerId where
     arbitrary = genericArbitrary
     shrink    = genericShrink
 
+instance Arbitrary ProfDetailLevel where
+    arbitrary = elements [ d | (_,_,d) <- knownProfDetailLevels ]
+
+instance Arbitrary OptimisationLevel where
+    arbitrary = elements [minBound..maxBound]
+
+instance Arbitrary DebugInfoLevel where
+    arbitrary = elements [minBound..maxBound]
+
 -------------------------------------------------------------------------------
 -- NonEmptySet
 -------------------------------------------------------------------------------
@@ -369,6 +396,97 @@ instance (Arbitrary a, Ord a) => Arbitrary (NonEmptySet a) where
         mk (x,xs) = NES.fromNonEmpty (x :| xs)
 
 -------------------------------------------------------------------------------
+-- NubList
+-------------------------------------------------------------------------------
+
+instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
+    arbitrary = toNubList <$> arbitrary
+    shrink xs = [ toNubList [] | (not . null) (fromNubList xs) ]
+    -- try empty, otherwise don't shrink as it can loop
+
+-------------------------------------------------------------------------------
+-- InstallDirs
+-------------------------------------------------------------------------------
+
+instance Arbitrary a => Arbitrary (InstallDirs a) where
+    arbitrary = InstallDirs
+        <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
+        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
+        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
+        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
+
+instance Arbitrary PathTemplate where
+    arbitrary = toPathTemplate <$> arbitraryShortToken
+    shrink t  = [ toPathTemplate s
+                | s <- shrink (fromPathTemplate t)
+                , not (null s) ]
+
+-------------------------------------------------------------------------------
+-- Pkgconfig
+-------------------------------------------------------------------------------
+
+instance Arbitrary PkgconfigVersion where
+    arbitrary = PkgconfigVersion . BS8.pack . dropDash . concat <$> listOf1 elems where
+        elems = frequency
+            [ (2, pure ".")
+            , (1, pure "-")
+            , (5, listOf1 $ elements ['0' .. '9'])
+            , (1, listOf1 $ elements ['A' .. 'Z'])
+            , (1, listOf1 $ elements ['a' .. 'z'])
+            ]
+
+        -- disallow versions starting with dash
+        dropDash = notEmpty . dropWhile (== '-')
+        notEmpty x
+            | null x    = "0"
+            | otherwise = x
+
+instance Arbitrary PkgconfigVersionRange where
+  arbitrary = sized verRangeExp
+    where
+      verRangeExp n = frequency $
+        [ (2, return PcAnyVersion)
+        , (1, fmap PcThisVersion arbitrary)
+        , (1, fmap PcLaterVersion arbitrary)
+        , (1, fmap PcOrLaterVersion arbitrary)
+        , (1, fmap orLaterVersion' arbitrary)
+        , (1, fmap PcEarlierVersion arbitrary)
+        , (1, fmap PcOrEarlierVersion arbitrary)
+        , (1, fmap orEarlierVersion' arbitrary)
+        ] ++ if n == 0 then [] else
+        [ (2, liftA2 PcUnionVersionRanges     verRangeExp2 verRangeExp2)
+        , (2, liftA2 PcIntersectVersionRanges verRangeExp2 verRangeExp2)
+        ]
+        where
+          verRangeExp2 = verRangeExp (n `div` 2)
+
+      orLaterVersion'   v =
+        PcUnionVersionRanges (PcLaterVersion v)   (PcThisVersion v)
+      orEarlierVersion' v =
+        PcUnionVersionRanges (PcEarlierVersion v) (PcThisVersion v)
+
+-------------------------------------------------------------------------------
+-- Setup
+-------------------------------------------------------------------------------
+
+instance Arbitrary HaddockTarget where
+    arbitrary = elements [ForHackage, ForDevelopment]
+
+instance Arbitrary TestShowDetails where
+    arbitrary = arbitraryBoundedEnum
+
+-------------------------------------------------------------------------------
+-- PackageDB
+-------------------------------------------------------------------------------
+
+instance Arbitrary PackageDB where
+    arbitrary = oneof [ pure GlobalPackageDB
+                      , pure UserPackageDB
+                      , SpecificPackageDB <$> arbitraryShortToken
+                      ]
+
+
+-------------------------------------------------------------------------------
 -- Helpers
 -------------------------------------------------------------------------------
 
@@ -376,3 +494,7 @@ shortListOf1 :: Int -> Gen a -> Gen [a]
 shortListOf1 bound gen = sized $ \n -> do
     k <- choose (1, 1 `max` ((n `div` 2) `min` bound))
     vectorOf k gen
+
+arbitraryShortToken :: Gen String
+arbitraryShortToken =
+    shortListOf1 5 (choose ('#', '~')) `suchThat` (not . ("[]" `isPrefixOf`))
