@@ -8,6 +8,7 @@ module Distribution.Compat.NonEmptySet (
     toNonEmpty,
     fromNonEmpty,
     toList,
+    toSet,
     -- * Query
     member,
     -- * Map
@@ -99,6 +100,9 @@ toNonEmpty (NES s) = case Set.toList s of
 
 toList :: NonEmptySet a -> [a]
 toList (NES s) = Set.toList s
+
+toSet :: NonEmptySet a -> Set.Set a
+toSet (NES s) = s
 
 -------------------------------------------------------------------------------
 -- Query
