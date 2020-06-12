@@ -1,5 +1,15 @@
 # cabal v2-build
 Resolving dependencies...
-Error:
-    Dependency cycle between the following components: library
-    In the inplace package 'issue-6894'
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - issue-6894 (lib:sublib) (first run)
+ - issue-6894 (lib) (first run)
+Warning: issue.cabal:7:30: colon specifier is experimental feature (issue #5660)
+Configuring library 'sublib' for issue-6894..
+Preprocessing library 'sublib' for issue-6894..
+Building library 'sublib' for issue-6894..
+Warning: issue.cabal:7:30: colon specifier is experimental feature (issue #5660)
+Configuring library for issue-6894..
+Warning: The package has an extraneous version range for a dependency on an internal library: issue:{sublib} >=0 && ==6894. This version range includes the current package but isn't needed as the current package's library will always be used.
+Preprocessing library for issue-6894..
+Building library for issue-6894..

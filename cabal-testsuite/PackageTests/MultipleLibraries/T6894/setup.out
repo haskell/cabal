@@ -1,7 +1,8 @@
 # Setup configure
 Warning: issue.cabal:7:30: colon specifier is experimental feature (issue #5660)
 Configuring issue-6894...
-Error:
-    Components in the package issue-6894 depend on each other in a cyclic way:
-    'library' depends on 'library'
 # Setup build
+Preprocessing library 'sublib' for issue-6894..
+Building library 'sublib' for issue-6894..
+Preprocessing library for issue-6894..
+Building library for issue-6894..

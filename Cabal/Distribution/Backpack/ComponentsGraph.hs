@@ -64,12 +64,25 @@ mkComponentsGraph enabled pkg_descr =
     componentDeps component =
       (CExeName <$> getAllInternalToolDependencies pkg_descr bi)
 
-      ++ [ if pkgname == packageName pkg_descr
-           then CLibName LMainLibName
-           else CLibName (LSubLibName toolname)
-         | Dependency pkgname _ _ <- targetBuildDepends bi
-         , let toolname = packageNameToUnqualComponentName pkgname
-         , toolname `elem` internalPkgDeps ]
+      ++ do
+          Dependency pkgname _ lns <- targetBuildDepends bi
+          let uqn = packageNameToUnqualComponentName pkgname
+          guard (uqn `elem` internalPkgDeps)
+          ln <- toList lns
+
+          -- given package "pkg" with "sublib" library:
+          case ln of
+              LMainLibName
+                  -- build-depends: pkg
+                  | pkgname == packageName pkg_descr -> return (CLibName LMainLibName)
+                  -- build-depends: sublib
+                  | otherwise                        -> return (CLibName (LSubLibName uqn))
+              LSubLibName uqn'
+                  -- build-depends: pkg:sublib
+                  | pkgname == packageName pkg_descr
+                  , uqn' `elem` internalPkgDeps      -> return (CLibName (LSubLibName uqn'))
+                  -- build-depends: sublib:something else
+                  | otherwise                        -> []
       where
         bi = componentBuildInfo component
         internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
