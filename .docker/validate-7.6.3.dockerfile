@@ -1,5 +1,3 @@
-# TODO: change to bionic
-# https://github.com/haskell-CI/haskell-ci/issues/342
 FROM    phadej/ghc:7.6.3-xenial
 
 # Install cabal-plan
@@ -10,12 +8,19 @@ RUN     mkdir -p /root/.cabal/bin && \
         rm -f cabal-plan.xz && \
         chmod a+x /root/.cabal/bin/cabal-plan
 
+# Install cabal-env
+RUN     curl -sL https://github.com/phadej/cabal-extras/releases/download/preview-20191225/cabal-env-snapshot-20191225-x86_64-linux.xz > cabal-env.xz && \
+        echo "1b567d529c5f627fd8c956e57ae8f0d9f11ee66d6db34b7fb0cb1c370b4edf01  cabal-env.xz" | sha256sum -c - && \
+        xz -d < cabal-env.xz > $HOME/.cabal/bin/cabal-env && \
+        rm -f cabal-env.xz && \
+        chmod a+x $HOME/.cabal/bin/cabal-env
+
 # We need newer compiler, to install cabal-plan
 RUN     apt-get update
 RUN     apt-get install -y ghc-7.6.3-dyn
 
 # Update index
-RUN     cabal v2-update
+RUN     cabal v2-update --index-state="2020-06-12T23:36:15Z"
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
@@ -23,6 +28,7 @@ RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
 RUN     cabal v2-install -w ghc-7.6.3 --lib \
+          Cabal \
           aeson \
           async \
           base-compat \
@@ -33,28 +39,28 @@ RUN     cabal v2-install -w ghc-7.6.3 --lib \
           echo \
           ed25519 \
           edit-distance \
-          haskell-lexer \
           HTTP \
-          nats \
+          lukko \
           network \
           optparse-applicative \
-          parsec \
           pretty-show \
           regex-compat-tdfa \
+          regex-posix \
           regex-tdfa \
           rere \
-          semigroups \
           statistics \
           tar \
           tasty \
           tasty-golden \
           tasty-hunit \
           tasty-quickcheck \
-          text \
           tree-diff \
-          unordered-containers \
           void \
           zlib \
+          parsec \
+          text   \
+      --constraint="rere -rere-cfg" \
+      --constraint="these -assoc" \
       --constraint="bytestring installed" \
       --constraint="binary     installed" \
       --constraint="containers installed" \

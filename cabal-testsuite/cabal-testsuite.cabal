@@ -54,7 +54,7 @@ library
     Test.Cabal.ScriptEnv0
 
   build-depends:
-    , aeson                 ^>= 1.4.2.0
+    , aeson                 ^>= 1.4.2.0 || ^>=1.5.0.0
     , async                 ^>= 2.2.1
     , attoparsec            ^>= 0.13.2.2
     , base16-bytestring     ^>= 0.1.1.6

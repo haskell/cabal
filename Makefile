@@ -170,7 +170,21 @@ validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
-validate-via-docker-all : validate-via-docker-8.8.1
+validate-via-docker-all : validate-via-docker-8.8.3
+validate-via-docker-all : validate-via-docker-8.10.1
+
+validate-dockerfiles : .docker/validate-8.10.1.dockerfile
+validate-dockerfiles : .docker/validate-8.8.3.dockerfile
+validate-dockerfiles : .docker/validate-8.6.5.dockerfile
+validate-dockerfiles : .docker/validate-8.4.4.dockerfile
+validate-dockerfiles : .docker/validate-8.2.2.dockerfile
+validate-dockerfiles : .docker/validate-8.6.5.dockerfile
+validate-dockerfiles : .docker/validate-7.10.3.dockerfile
+validate-dockerfiles : .docker/validate-7.8.4.dockerfile
+validate-dockerfiles : .docker/validate-7.6.3.dockerfile
+
+.docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
 
 validate-via-docker-7.6.3:
 	docker build -t cabal-validate -f .docker/validate-7.6.3.dockerfile .
@@ -193,8 +207,8 @@ validate-via-docker-8.4.4:
 validate-via-docker-8.6.5:
 	docker build -t cabal-validate -f .docker/validate-8.6.5.dockerfile .
 
-validate-via-docker-8.8.1:
-	docker build -t cabal-validate -f .docker/validate-8.8.1.dockerfile .
+validate-via-docker-8.8.3:
+	docker build -t cabal-validate -f .docker/validate-8.8.3.dockerfile .
 
 # Only library ATM
 validate-via-docker-8.10.1:
