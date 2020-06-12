@@ -1,0 +1,5 @@
+# cabal v2-build
+Resolving dependencies...
+Error:
+    Dependency cycle between the following components: library
+    In the inplace package 'issue-6894'

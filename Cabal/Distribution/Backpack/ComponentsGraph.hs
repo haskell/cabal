@@ -89,9 +89,10 @@ componentsGraphToList =
     map (\(N c _ cs) -> (c, cs)) . Graph.revTopSort
 
 -- | Error message when there is a cycle; takes the SCC of components.
-componentCycleMsg :: [ComponentName] -> Doc
-componentCycleMsg cnames =
-    text $ "Components in the package depend on each other in a cyclic way:\n  "
-       ++ intercalate " depends on "
+componentCycleMsg :: PackageIdentifier -> [ComponentName] -> Doc
+componentCycleMsg pn cnames =
+    text "Components in the package" <+> pretty pn <+> text "depend on each other in a cyclic way:"
+    $$
+    text (intercalate " depends on "
             [ "'" ++ showComponentName cname ++ "'"
-            | cname <- cnames ++ maybeToList (safeHead cnames) ]
+            | cname <- cnames ++ maybeToList (safeHead cnames) ])
