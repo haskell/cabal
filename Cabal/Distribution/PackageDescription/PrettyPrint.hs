@@ -37,7 +37,8 @@ import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Utils
 
-import Distribution.FieldGrammar                    (PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.FieldGrammar                     (PrettyFieldGrammar', prettyFieldGrammar)
+import Distribution.PackageDescription.Configuration (transformAllBuildDependsN)
 import Distribution.PackageDescription.FieldGrammar
        (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
        packageDescriptionFieldGrammar, setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
@@ -46,7 +47,8 @@ import qualified Distribution.PackageDescription.FieldGrammar as FG
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.ByteString.Lazy.Char8      as BS.Char8
+import qualified Distribution.Compat.NonEmptySet as NES
 
 -- | Writes a .cabal file from a generic package description
 writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
@@ -60,7 +62,7 @@ showGenericPackageDescription gpd = showFields (const []) $ ppGenericPackageDesc
 
 -- | Convert a generic package description to 'PrettyField's.
 ppGenericPackageDescription :: CabalSpecVersion -> GenericPackageDescription -> [PrettyField ()]
-ppGenericPackageDescription v gpd = concat
+ppGenericPackageDescription v gpd0 = concat
     [ ppPackageDescription v (packageDescription gpd)
     , ppSetupBInfo v (setupBuildInfo (packageDescription gpd))
     , ppGenPackageFlags v (genPackageFlags gpd)
@@ -71,6 +73,9 @@ ppGenericPackageDescription v gpd = concat
     , ppCondTestSuites v (condTestSuites gpd)
     , ppCondBenchmarks v (condBenchmarks gpd)
     ]
+  where
+    gpd = preProcessInternalDeps (specVersion (packageDescription gpd0)) gpd0
+
 
 ppPackageDescription :: CabalSpecVersion -> PackageDescription -> [PrettyField ()]
 ppPackageDescription v pd =
@@ -213,6 +218,38 @@ pdToGpd pd = GenericPackageDescription
         :: (a -> UnqualComponentName)
         -> a -> (UnqualComponentName, CondTree ConfVar [Dependency] a)
     mkCondTree' f x = (f x, CondNode x [] [])
+
+-------------------------------------------------------------------------------
+-- Internal libs
+-------------------------------------------------------------------------------
+
+-- See Note [Dependencies on sublibraries] in Distribution.PackageDescription.Parsec
+--
+preProcessInternalDeps :: CabalSpecVersion -> GenericPackageDescription -> GenericPackageDescription
+preProcessInternalDeps specVer gpd
+    | specVer >= CabalSpecV3_4 = gpd
+    | otherwise                = transformAllBuildDependsN (concatMap f) gpd
+  where
+    f :: Dependency -> [Dependency]
+    f (Dependency pn vr ln)
+        | pn == thisPn
+        = if LMainLibName `NES.member` ln
+          then Dependency thisPn vr mainLibSet : sublibs
+          else sublibs
+      where
+        sublibs =
+            [ Dependency (unqualComponentNameToPackageName uqn) vr mainLibSet
+            | LSubLibName uqn <- NES.toList ln
+            ]
+
+    f d = [d]
+
+    thisPn :: PackageName
+    thisPn = pkgName (package (packageDescription gpd))
+
+-------------------------------------------------------------------------------
+-- HookedBuildInfo
+-------------------------------------------------------------------------------
 
 -- | @since 2.0.0.2
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()

@@ -37,7 +37,7 @@ module Distribution.Simple.Configure
   , tryGetPersistBuildConfig
   , maybeGetPersistBuildConfig
   , findDistPref, findDistPrefOrDefault
-  , getInternalPackages
+  , getInternalLibraries
   , computeComponentId
   , computeCompatPackageKey
   , localBuildInfoFile
@@ -132,7 +132,8 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 
-import qualified Distribution.Compat.NonEmptySet as NonEmptySet
+import qualified Data.Set as Set
+import qualified Distribution.Compat.NonEmptySet as NES
 
 
 type UseExternalInternalDeps = Bool
@@ -389,8 +390,8 @@ configure (pkg_descr0, pbi) cfg = do
 
     -- The set of package names which are "shadowed" by internal
     -- packages, and which component they map to
-    let internalPackageSet :: Map PackageName (Maybe UnqualComponentName)
-        internalPackageSet = getInternalPackages pkg_descr0
+    let internalPackageSet :: Set LibraryName
+        internalPackageSet = getInternalLibraries pkg_descr0
 
     -- Make a data structure describing what components are enabled.
     let enabled :: ComponentRequestedSpec
@@ -873,15 +874,12 @@ checkExactConfiguration verbosity pkg_descr0 cfg =
 -- file, and we haven't resolved them yet.  finalizePD
 -- does the resolution of conditionals, and it takes internalPackageSet
 -- as part of its input.
-getInternalPackages :: GenericPackageDescription
-                    -> Map PackageName (Maybe UnqualComponentName)
-getInternalPackages pkg_descr0 =
+getInternalLibraries :: GenericPackageDescription
+                     -> Set LibraryName
+getInternalLibraries pkg_descr0 =
     -- TODO: some day, executables will be fair game here too!
     let pkg_descr = flattenPackageDescription pkg_descr0
-        f lib = case libName lib of
-                  LMainLibName   -> (packageName pkg_descr, Nothing)
-                  LSubLibName n' -> (unqualComponentNameToPackageName n', Just n')
-    in Map.fromList (map f (allLibraries pkg_descr))
+    in Set.fromList (map libName (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function may
 -- report a dependency satisfiable even when it is not, but not vice
@@ -892,7 +890,7 @@ dependencySatisfiable
     -> Bool -- ^ allow depending on private libs?
     -> PackageName
     -> InstalledPackageIndex -- ^ installed set
-    -> Map PackageName (Maybe UnqualComponentName) -- ^ internal set
+    -> Set LibraryName -- ^ library components
     -> Map (PackageName, ComponentName) InstalledPackageInfo
        -- ^ required dependencies
     -> (Dependency -> Bool)
@@ -900,9 +898,8 @@ dependencySatisfiable
   use_external_internal_deps
   exact_config
   allow_private_deps
-  pn installedPackageSet internalPackageSet requiredDepsMap
+  pn installedPackageSet packageLibraries requiredDepsMap
   (Dependency depName vr sublibs)
-
     | exact_config
     -- When we're given '--exact-configuration', we assume that all
     -- dependencies and flags are exactly specified on the command
@@ -915,7 +912,7 @@ dependencySatisfiable
     = if isInternalDep && not use_external_internal_deps
         -- Except for internal deps, when we're NOT per-component mode;
         -- those are just True.
-        then True
+        then internalDepSatisfiable
         else
           -- Backward compatibility for the old sublibrary syntax
           (sublibs == mainLibSet
@@ -931,30 +928,26 @@ dependencySatisfiable
         -- When we are doing per-component configure, we now need to
         -- test if the internal dependency is in the index.  This has
         -- DIFFERENT semantics from normal dependency satisfiability.
-        then internalDepSatisfiable
+        then internalDepSatisfiableExternally
         -- If a 'PackageName' is defined by an internal component, the dep is
         -- satisfiable (we're going to build it ourselves)
-        else True
+        else internalDepSatisfiable
 
     | otherwise
     = depSatisfiable
 
   where
-    isInternalDep = Map.member depName internalPackageSet
+    -- Internal dependency is when dependency is the same as package.
+    isInternalDep = pn == depName
 
     depSatisfiable =
         not . null $ PackageIndex.lookupDependency installedPackageSet depName vr
 
     internalDepSatisfiable =
-        not . null $ PackageIndex.lookupInternalDependency
-                        installedPackageSet pn vr cn
-      where
-        cn | pn == depName
-           = LMainLibName 
-           | otherwise
-           -- Reinterpret the "package name" as an unqualified component
-           -- name
-           = LSubLibName $ packageNameToUnqualComponentName depName
+        Set.isSubsetOf (NES.toSet sublibs) packageLibraries
+    internalDepSatisfiableExternally =
+        all (\ln -> not $ null $ PackageIndex.lookupInternalDependency installedPackageSet pn vr ln) sublibs
+
     -- Check whether a library exists and is visible.
     -- We don't disambiguate between dependency on non-existent or private
     -- library yet, so we just return a bool and later report a generic error.
@@ -1071,21 +1064,21 @@ checkCompilerProblems verbosity comp pkg_descr enabled = do
 configureDependencies
     :: Verbosity
     -> UseExternalInternalDeps
-    -> Map PackageName (Maybe UnqualComponentName) -- ^ internal packages
+    -> Set LibraryName
     -> InstalledPackageIndex -- ^ installed packages
     -> Map (PackageName, ComponentName) InstalledPackageInfo -- ^ required deps
     -> PackageDescription
     -> ComponentRequestedSpec
     -> IO [PreExistingComponent]
 configureDependencies verbosity use_external_internal_deps
-  internalPackageSet installedPackageSet requiredDepsMap pkg_descr enableSpec = do
+  packageLibraries installedPackageSet requiredDepsMap pkg_descr enableSpec = do
     let failedDeps :: [FailedDependency]
         allPkgDeps :: [ResolvedDependency]
         (failedDeps, allPkgDeps) = partitionEithers $ concat
           [ fmap (\s -> (dep, s)) <$> status
           | dep <- enabledBuildDepends pkg_descr enableSpec
           , let status = selectDependency (package pkg_descr)
-                  internalPackageSet installedPackageSet
+                  packageLibraries installedPackageSet
                   requiredDepsMap use_external_internal_deps dep ]
 
         internalPkgDeps = [ pkgid
@@ -1240,12 +1233,12 @@ data DependencyResolution
     | InternalDependency PackageId
 
 data FailedDependency = DependencyNotExists PackageName
-                      | DependencyMissingInternal PackageName PackageName
+                      | DependencyMissingInternal PackageName LibraryName
                       | DependencyNoVersion Dependency
 
 -- | Test for a package dependency and record the version we have installed.
 selectDependency :: PackageId -- ^ Package id of current package
-                 -> Map PackageName (Maybe UnqualComponentName)
+                 -> Set LibraryName -- ^ package libraries
                  -> InstalledPackageIndex  -- ^ Installed packages
                  -> Map (PackageName, ComponentName) InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
@@ -1270,46 +1263,46 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
   --
   -- We want "build-depends: MyLibrary" always to match the internal library
   -- even if there is a newer installed library "MyLibrary-0.2".
-  case Map.lookup dep_pkgname internalIndex of
-    Just cname ->
+  if dep_pkgname == pn
+  then
       if use_external_internal_deps
-      then do_external (Just $ maybeToLibraryName cname) <$> NonEmptySet.toList libs
-      else do_internal
-    _          ->
-      do_external Nothing <$> NonEmptySet.toList libs
+      then do_external_internal <$> NES.toList libs
+      else do_internal <$> NES.toList libs
+  else
+      do_external_external <$> NES.toList libs
   where
+    pn = packageName pkgid
 
     -- It's an internal library, and we're not per-component build
-    do_internal = [Right $ InternalDependency
-                    $ PackageIdentifier dep_pkgname $ packageVersion pkgid]
+    do_internal lib
+        | Set.member lib internalIndex
+        = Right $ InternalDependency $ PackageIdentifier dep_pkgname $ packageVersion pkgid
+
+        | otherwise
+        = Left $ DependencyMissingInternal dep_pkgname lib
 
     -- We have to look it up externally
-    do_external :: Maybe LibraryName -> LibraryName -> Either FailedDependency DependencyResolution
-    do_external is_internal lib = do
+    do_external_external :: LibraryName -> Either FailedDependency DependencyResolution
+    do_external_external lib = do
       ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing ->
-            case is_internal of
-                Nothing -> do_external_external
-                Just ln -> do_external_internal ln
-      return $ ExternalDependency $ ipiToPreExistingComponent ipi
-
-    -- It's an external package, normal situation
-    do_external_external =
-        case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
+        Nothing -> case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
           Nothing  -> Left (DependencyNotExists dep_pkgname)
           Just pkg -> Right pkg
+      return $ ExternalDependency $ ipiToPreExistingComponent ipi
 
-    -- It's an internal library, being looked up externally
-    do_external_internal
-      :: LibraryName -> Either FailedDependency InstalledPackageInfo
-    do_external_internal ln =
-        case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex
-                (packageName pkgid) vr ln of
-          Nothing  -> Left (DependencyMissingInternal dep_pkgname (packageName pkgid))
+    do_external_internal :: LibraryName -> Either FailedDependency DependencyResolution
+    do_external_internal lib = do
+      ipi <- case Map.lookup (dep_pkgname, CLibName lib) requiredDepsMap of
+        -- If we know the exact pkg to use, then use it.
+        Just pkginstance -> Right pkginstance
+        Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex pn vr lib of
+          -- It's an internal library, being looked up externally
+          Nothing  -> Left (DependencyMissingInternal dep_pkgname lib)
           Just pkg -> Right pkg
+      return $ ExternalDependency $ ipiToPreExistingComponent ipi
 
     pickLastIPI :: [(Version, [InstalledPackageInfo])] -> Maybe InstalledPackageInfo
     pickLastIPI pkgs = safeHead . snd . last =<< nonEmpty pkgs
@@ -1336,10 +1329,10 @@ reportFailedDependencies verbosity failed =
       ++ "Perhaps you need to download and install it from\n"
       ++ hackageUrl ++ prettyShow pkgname ++ "?"
 
-    reportFailedDependency (DependencyMissingInternal pkgname real_pkgname) =
-         "internal dependency " ++ prettyShow pkgname ++ " not installed.\n"
+    reportFailedDependency (DependencyMissingInternal pkgname lib) =
+         "internal dependency " ++ prettyShow (prettyLibraryNameComponent lib) ++ " not installed.\n"
       ++ "Perhaps you need to configure and install it first?\n"
-      ++ "(This library was defined by " ++ prettyShow real_pkgname ++ ")"
+      ++ "(This library was defined by " ++ prettyShow pkgname ++ ")"
 
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ prettyShow (simplifyDependency dep) ++ "\n"

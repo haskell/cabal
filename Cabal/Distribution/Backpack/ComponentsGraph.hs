@@ -18,6 +18,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Compat.Graph (Graph, Node(..))
 import qualified Distribution.Compat.Graph as Graph
+import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.Utils.Generic
 
 import Distribution.Pretty (pretty)
@@ -62,33 +63,18 @@ mkComponentsGraph enabled pkg_descr =
   where
     -- The dependencies for the given component
     componentDeps component =
-      (CExeName <$> getAllInternalToolDependencies pkg_descr bi)
-
-      ++ do
-          Dependency pkgname _ lns <- targetBuildDepends bi
-          let uqn = packageNameToUnqualComponentName pkgname
-          guard (uqn `elem` internalPkgDeps)
-          ln <- toList lns
-
-          -- given package "pkg" with "sublib" library:
-          case ln of
-              LMainLibName
-                  -- build-depends: pkg
-                  | pkgname == packageName pkg_descr -> return (CLibName LMainLibName)
-                  -- build-depends: sublib
-                  | otherwise                        -> return (CLibName (LSubLibName uqn))
-              LSubLibName uqn'
-                  -- build-depends: pkg:sublib
-                  | pkgname == packageName pkg_descr
-                  , uqn' `elem` internalPkgDeps      -> return (CLibName (LSubLibName uqn'))
-                  -- build-depends: sublib:something else
-                  | otherwise                        -> []
+        toolDependencies ++ libDependencies
       where
         bi = componentBuildInfo component
-        internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
 
-        conv LMainLibName    = packageNameToUnqualComponentName $ packageName pkg_descr
-        conv (LSubLibName s) = s
+        toolDependencies = CExeName <$> getAllInternalToolDependencies pkg_descr bi
+
+        libDependencies = do
+            Dependency pkgname _ lns <- targetBuildDepends bi
+            guard (pkgname == packageName pkg_descr)
+
+            ln <- NES.toList lns
+            return (CLibName ln)
 
 -- | Given the package description and a 'PackageDescription' (used
 -- to determine if a package name is internal or not), sort the

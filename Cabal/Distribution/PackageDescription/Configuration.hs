@@ -31,6 +31,7 @@ module Distribution.PackageDescription.Configuration (
     mapTreeConstrs,
     transformAllBuildInfos,
     transformAllBuildDepends,
+    transformAllBuildDependsN,
   ) where
 
 import Distribution.Compat.Prelude
@@ -585,3 +586,14 @@ transformAllBuildDepends f =
   . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends . traverse) f
   -- cannot be point-free as normal because of higher rank
   . over (\f' -> L.allCondTrees $ traverseCondTreeC f') (map f)
+
+-- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
+-- @build-depends@ fields.
+transformAllBuildDependsN :: ([Dependency] -> [Dependency])
+                          -> GenericPackageDescription
+                          -> GenericPackageDescription
+transformAllBuildDependsN f =
+  over (L.traverseBuildInfos . L.targetBuildDepends) f
+  . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f
+  -- cannot be point-free as normal because of higher rank
+  . over (\f' -> L.allCondTrees $ traverseCondTreeC f') f

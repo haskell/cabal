@@ -47,7 +47,7 @@ import Distribution.Fields.LexerMonad                (LexWarning, toPWarnings)
 import Distribution.Fields.Parser
 import Distribution.Fields.ParseResult
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Configuration (freeVars)
+import Distribution.PackageDescription.Configuration (freeVars, transformAllBuildDependsN)
 import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks        (patchQuirks)
 import Distribution.Parsec                           (parsec, simpleParsecBS)
@@ -65,6 +65,7 @@ import qualified Data.ByteString.Char8                             as BS8
 import qualified Data.Map.Strict                                   as Map
 import qualified Data.Set                                          as Set
 import qualified Distribution.Compat.Newtype                       as Newtype
+import qualified Distribution.Compat.NonEmptySet                   as NES
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.Executable.Lens                as L
 import qualified Distribution.Types.ForeignLib.Lens                as L
@@ -202,8 +203,9 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
             & L.packageDescription .~ pd
     gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
-    checkForUndefinedFlags gpd1
-    gpd1 `deepseq` return gpd1
+    let gpd2 = postProcessInternalDeps specVer gpd1
+    checkForUndefinedFlags gpd2
+    gpd2 `deepseq` return gpd2
   where
     safeLast :: [a] -> Maybe a
     safeLast = listToMaybe . reverse
@@ -688,6 +690,72 @@ checkForUndefinedFlags gpd = do
     f ct = Const (Set.fromList (freeVars ct))
 
 -------------------------------------------------------------------------------
+-- Post processing of internal dependencies
+-------------------------------------------------------------------------------
+
+-- Note [Dependencies on sublibraries]
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--
+-- This is solution to https://github.com/haskell/cabal/issues/6083
+--
+-- Before 'cabal-version: 3.0' we didn't have a syntax specially
+-- for referring to internal libraries. Internal library names
+-- shadowed the the outside ones.
+--
+-- Since 'cabal-version: 3.0' we have ability to write
+--
+--     build-depends: some-package:its-sub-lib >=1.2.3
+--
+-- This allows us to refer also to local packages by `this-package:sublib`.
+-- So since 'cabal-version: 3.4' to refer to *any*
+-- sublibrary we must use the two part syntax. Here's small table:
+--
+--                   | pre-3.4             |      3.4 and after            |
+-- ------------------|---------------------|-------------------------------|
+-- pkg-name          | may refer to sublib | always refers to external pkg |
+-- pkg-name:sublib   | refers to sublib    | refers to sublib              |
+-- pkg-name:pkg-name | may refer to sublib | always refers to external pkg |
+--
+-- In pre-3.4 case, if a package 'this-pkg' has a sublibrary 'pkg-name',
+-- all dependency definitions will refer to that sublirary.
+--
+-- In 3.4 and after case, 'pkg-name' will always refer to external package,
+-- and to use internal library you have to say 'this-pkg:pkg-name'.
+--
+-- In summary, In 3.4 and after, the internal names don't shadow,
+-- as there is an explicit syntax to refer to them,
+-- i.e. what you write is what you get;
+-- For pre-3.4 we post-process the file.
+--
+
+postProcessInternalDeps :: CabalSpecVersion -> GenericPackageDescription -> GenericPackageDescription
+postProcessInternalDeps specVer gpd
+    | specVer >= CabalSpecV3_4 = gpd
+    | otherwise                = transformAllBuildDependsN (concatMap f) gpd
+  where
+    f :: Dependency -> [Dependency]
+    f (Dependency pn vr ln)
+        | uqn `Set.member` internalLibs
+        , LMainLibName `NES.member` ln
+        = case NES.delete LMainLibName ln of
+            Nothing  -> [dep]
+            Just ln' -> [dep, Dependency pn vr ln']
+      where
+        uqn = packageNameToUnqualComponentName pn
+        dep = Dependency thisPn vr (NES.singleton (LSubLibName uqn))
+
+    f d = [d]
+
+    thisPn :: PackageName
+    thisPn = pkgName (package (packageDescription gpd))
+
+    internalLibs :: Set UnqualComponentName
+    internalLibs = Set.fromList
+        [ n
+        | (n, _) <- condSubLibraries gpd
+        ]
+
+-------------------------------------------------------------------------------
 -- Old syntax
 -------------------------------------------------------------------------------
 
@@ -818,6 +886,10 @@ parseHookedBuildInfo' lexWarnings fs = do
         | name == "executable" = Just fss
         | otherwise            = Nothing
     isExecutableField _ = Nothing
+
+-------------------------------------------------------------------------------
+-- Scan of spec version
+-------------------------------------------------------------------------------
 
 -- | Quickly scan new-style spec-version
 --
