@@ -25,7 +25,7 @@ import Distribution.Types.LibraryName
 import Distribution.Types.PackageName
 import Distribution.Types.UnqualComponentName
 
-import qualified Distribution.Compat.NonEmptySet as NonEmptySet
+import qualified Distribution.Compat.NonEmptySet as NES
 import qualified Text.PrettyPrint                as PP
 
 -- | Describes a dependency on a source package (API)
@@ -59,7 +59,7 @@ depLibraries (Dependency _ _ cs) = cs
 -- @since 3.4.0.0
 --
 mkDependency :: PackageName -> VersionRange -> NonEmptySet LibraryName -> Dependency
-mkDependency pn vr lb = Dependency pn vr (NonEmptySet.map conv lb)
+mkDependency pn vr lb = Dependency pn vr (NES.map conv lb)
   where
     pn' = packageNameToUnqualComponentName pn
 
@@ -71,6 +71,20 @@ instance Binary Dependency
 instance Structured Dependency
 instance NFData Dependency where rnf = genericRnf
 
+-- |
+--
+-- >>> prettyShow $ Dependency "pkg" anyVersion mainLibSet
+-- "pkg"
+--
+-- >>> prettyShow $ Dependency "pkg" anyVersion $ NES.insert (LSubLibName "sublib") mainLibSet
+-- "pkg:{pkg, sublib}"
+--
+-- >>> prettyShow $ Dependency "pkg" anyVersion $ NES.singleton (LSubLibName "sublib")
+-- "pkg:sublib"
+--
+-- >>> prettyShow $ Dependency "pkg" anyVersion $ NES.insert (LSubLibName "sublib-b") $ NES.singleton (LSubLibName "sublib-a")
+-- "pkg:{sublib-a, sublib-b}"
+--
 instance Pretty Dependency where
     pretty (Dependency name ver sublibs) = withSubLibs (pretty name) <+> pver
       where
@@ -78,11 +92,12 @@ instance Pretty Dependency where
         pver | isAnyVersionLight ver = PP.empty
              | otherwise             = pretty ver
 
-        withSubLibs doc
-            | sublibs == mainLibSet = doc
-            | otherwise          = doc <<>> PP.colon <<>> PP.braces prettySublibs
+        withSubLibs doc = case NES.toList sublibs of
+            [LMainLibName]   -> doc
+            [LSubLibName uq] -> doc <<>> PP.colon <<>> pretty uq
+            _                -> doc <<>> PP.colon <<>> PP.braces prettySublibs
 
-        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> NonEmptySet.toList sublibs
+        prettySublibs = PP.hsep $ PP.punctuate PP.comma $ prettySublib <$> NES.toList sublibs
 
         prettySublib LMainLibName     = PP.text $ unPackageName name
         prettySublib (LSubLibName un) = PP.text $ unUnqualComponentName un
@@ -127,7 +142,7 @@ instance Parsec Dependency where
           _ <- char ':'
           versionGuardMultilibs
           parsecWarning PWTExperimental "colon specifier is experimental feature (issue #5660)"
-          NonEmptySet.singleton <$> parseLib <|> parseMultipleLibs
+          NES.singleton <$> parseLib <|> parseMultipleLibs
 
         spaces -- https://github.com/haskell/cabal/issues/5846
 
@@ -138,7 +153,7 @@ instance Parsec Dependency where
         parseMultipleLibs = between
             (char '{' *> spaces)
             (spaces *> char '}')
-            (NonEmptySet.fromNonEmpty <$> parsecCommaNonEmpty parseLib)
+            (NES.fromNonEmpty <$> parsecCommaNonEmpty parseLib)
 
 versionGuardMultilibs :: CabalParsing m => m ()
 versionGuardMultilibs = do
@@ -152,7 +167,7 @@ versionGuardMultilibs = do
 
 -- | Library set with main library.
 mainLibSet :: NonEmptySet LibraryName
-mainLibSet = NonEmptySet.singleton LMainLibName
+mainLibSet = NES.singleton LMainLibName
 
 -- | Simplify the 'VersionRange' expression in a 'Dependency'.
 -- See 'simplifyVersionRange'.

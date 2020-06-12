@@ -4,6 +4,10 @@ module Distribution.Compat.NonEmptySet (
     NonEmptySet,
     -- * Construction
     singleton,
+    -- * Insertion
+    insert,
+    -- * Deletion
+    delete,
     -- * Conversions
     toNonEmpty,
     fromNonEmpty,
@@ -15,7 +19,7 @@ module Distribution.Compat.NonEmptySet (
     map,
 ) where
 
-import Prelude (Bool (..), Eq, Ord (..), Read, Show (..), String, error, return, showParen, showString, ($), (++), (.))
+import Prelude (Bool (..), Eq, Maybe (..), Ord (..), Read, Show (..), String, error, otherwise, return, showParen, showString, ($), (++), (.))
 
 import Control.DeepSeq    (NFData (..))
 import Data.Data          (Data)
@@ -26,7 +30,7 @@ import Data.Typeable      (Typeable)
 import qualified Data.Foldable as F
 import qualified Data.Set      as Set
 
-import Distribution.Compat.Binary (Binary (..))
+import Distribution.Compat.Binary    (Binary (..))
 import Distribution.Utils.Structured
 
 #if MIN_VERSION_binary(0,6,0)
@@ -85,6 +89,24 @@ instance F.Foldable NonEmptySet where
 
 singleton :: a -> NonEmptySet a
 singleton = NES . Set.singleton
+
+-------------------------------------------------------------------------------
+-- Insertion
+-------------------------------------------------------------------------------
+
+insert :: Ord a => a -> NonEmptySet a -> NonEmptySet a
+insert x (NES xs) = NES (Set.insert x xs)
+
+-------------------------------------------------------------------------------
+-- Deletion
+-------------------------------------------------------------------------------
+
+delete :: Ord a => a -> NonEmptySet a -> Maybe (NonEmptySet a)
+delete x (NES xs)
+    | Set.null res = Nothing
+    | otherwise    = Just (NES xs)
+  where
+    res = Set.delete x xs
 
 -------------------------------------------------------------------------------
 -- Conversions
