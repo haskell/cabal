@@ -78,7 +78,7 @@ configureComponentLocalBuildInfos
     -- NB: In single component mode, this returns a *single* component.
     -- In this graph, the graph is NOT closed.
     graph0 <- case mkComponentsGraph enabled pkg_descr of
-                Left ccycle -> dieProgress (componentCycleMsg ccycle)
+                Left ccycle -> dieProgress (componentCycleMsg (package pkg_descr) ccycle)
                 Right g -> return (componentsGraphToList g)
     infoProgress $ hang (text "Source component graph:") 4
                         (dispComponentsWithDeps graph0)
