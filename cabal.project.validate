@@ -5,6 +5,10 @@ packages: Cabal/Cabal-QuickCheck/
 packages: Cabal/Cabal-tree-diff
 packages: Cabal/Cabal-described
 
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc
+
 write-ghc-environment-files: never
 
 package Cabal

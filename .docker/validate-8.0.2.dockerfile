@@ -8,8 +8,9 @@ RUN     mkdir -p /root/.cabal/bin && \
         rm -f cabal-plan.xz && \
         chmod a+x /root/.cabal/bin/cabal-plan
 
+
 # Update index
-RUN     cabal v2-update
+RUN     cabal v2-update --index-state="2020-06-12T23:36:15Z"
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
@@ -17,6 +18,7 @@ RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
 RUN     cabal v2-install -w ghc-8.0.2 --lib \
+          Cabal \
           aeson \
           async \
           base-compat \
@@ -27,14 +29,15 @@ RUN     cabal v2-install -w ghc-8.0.2 --lib \
           echo \
           ed25519 \
           edit-distance \
-          haskell-lexer \
           HTTP \
+          lukko \
           network \
           optparse-applicative \
           pretty-show \
           regex-compat-tdfa \
+          regex-posix \
           regex-tdfa \
-          resolv \
+          rere \
           statistics \
           tar \
           tasty \
@@ -42,10 +45,25 @@ RUN     cabal v2-install -w ghc-8.0.2 --lib \
           tasty-hunit \
           tasty-quickcheck \
           tree-diff \
+          void \
           zlib \
+          resolv \
+      --constraint="rere -rere-cfg" \
+      --constraint="these -assoc" \
+      --constraint="bytestring installed" \
+      --constraint="binary     installed" \
+      --constraint="containers installed" \
+      --constraint="deepseq    installed" \
+      --constraint="directory  installed" \
+      --constraint="filepath   installed" \
+      --constraint="pretty     installed" \
+      --constraint="process    installed" \
+      --constraint="time       installed" \
+      --constraint="unix       installed" \
+      --constraint="transformers installed" \
         && rm -rf $HOME/.ghc
 
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -w ghc-8.0.2 -v
+RUN     sh ./validate.sh  -w ghc-8.0.2 -v

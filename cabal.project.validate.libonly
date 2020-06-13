@@ -3,6 +3,10 @@ tests: True
 
 write-ghc-environment-files: never
 
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc
+
 package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite

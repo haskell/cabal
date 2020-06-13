@@ -67,6 +67,18 @@ executable gen-validate
     , HsYAML      ^>=0.2.1.0
     , zinza       ^>=0.2
 
+executable gen-validate-dockerfile
+  default-language: Haskell2010
+  main-is:          GenValidateDockerfile.hs
+  hs-source-dirs:   src
+  ghc-options:      -Wall
+  build-depends:
+    , base
+    , bytestring
+    , containers
+    , HsYAML      ^>=0.2.1.0
+    , zinza       ^>=0.2
+
 executable gen-cabal-macros
   default-language: Haskell2010
   main-is:          GenCabalMacros.hs

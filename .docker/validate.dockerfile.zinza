@@ -1,4 +1,4 @@
-FROM    phadej/ghc:8.6.5-bionic
+FROM    phadej/ghc:{{ image }}
 
 # Install cabal-plan
 RUN     mkdir -p /root/.cabal/bin && \
@@ -15,6 +15,11 @@ RUN     curl -sL https://github.com/phadej/cabal-extras/releases/download/previe
         rm -f cabal-env.xz && \
         chmod a+x $HOME/.cabal/bin/cabal-env
 
+{% if needsDynamic %}
+# We need newer compiler, to install cabal-plan
+RUN     apt-get update
+RUN     apt-get install -y {{ ghc }}-dyn
+{% endif %}
 
 # Update index
 RUN     cabal v2-update --index-state="2020-06-12T23:36:15Z"
@@ -24,7 +29,7 @@ RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
-RUN     cabal v2-install -w ghc-8.6.5 --lib \
+RUN     cabal v2-install -w {{ ghc }} --lib \
           Cabal \
           aeson \
           async \
@@ -54,7 +59,13 @@ RUN     cabal v2-install -w ghc-8.6.5 --lib \
           tree-diff \
           void \
           zlib \
+{% if client %}
           resolv \
+{% endif %}
+{% if parsecCompat %}
+          parsec \
+          text   \
+{% endif %}
       --constraint="rere -rere-cfg" \
       --constraint="these -assoc" \
       --constraint="bytestring installed" \
@@ -67,10 +78,12 @@ RUN     cabal v2-install -w ghc-8.6.5 --lib \
       --constraint="process    installed" \
       --constraint="time       installed" \
       --constraint="unix       installed" \
+{% if hasTransformers %}
       --constraint="transformers installed" \
+{% endif %}
         && rm -rf $HOME/.ghc
 
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh  -w ghc-8.6.5 -v
+RUN     sh ./validate.sh {{ args }} -w {{ ghc }} -v
