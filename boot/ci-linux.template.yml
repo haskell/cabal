@@ -28,6 +28,9 @@ jobs:
     container:
       image: phadej/ghc:{{job.version}}-{% if job.xenial %}xenial{% else %}bionic{% endif %}
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |

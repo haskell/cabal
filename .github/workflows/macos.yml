@@ -22,6 +22,9 @@ jobs:
     name: validate.sh macos ghc-8.8.3
     runs-on: macos-latest
     steps:
+      - name: System info
+        run: |
+          uname -a
       - name: Install Autotools
         run: |
           brew install automake
@@ -74,6 +77,9 @@ jobs:
     runs-on: macos-latest
     needs: validate-macos-8_8_3
     steps:
+      - name: System info
+        run: |
+          uname -a
       - name: Install Autotools
         run: |
           brew install automake

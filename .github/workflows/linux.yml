@@ -25,6 +25,9 @@ jobs:
     container:
       image: phadej/ghc:8.10.1-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -68,6 +71,9 @@ jobs:
     container:
       image: phadej/ghc:8.8.3-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -112,6 +118,9 @@ jobs:
     container:
       image: phadej/ghc:8.6.5-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -156,6 +165,9 @@ jobs:
     container:
       image: phadej/ghc:8.4.4-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -200,6 +212,9 @@ jobs:
     container:
       image: phadej/ghc:8.2.2-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -244,6 +259,9 @@ jobs:
     container:
       image: phadej/ghc:8.0.2-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -288,6 +306,9 @@ jobs:
     container:
       image: phadej/ghc:7.10.3-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -332,6 +353,9 @@ jobs:
     container:
       image: phadej/ghc:7.8.4-bionic
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -370,6 +394,9 @@ jobs:
     container:
       image: phadej/ghc:7.6.3-xenial
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
@@ -412,6 +439,9 @@ jobs:
     container:
       image: phadej/ghc:8.8.3-xenial
     steps:
+      - name: System info
+        run: |
+          uname -a
       # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
         run: |
