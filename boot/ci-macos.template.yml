@@ -26,6 +26,9 @@ jobs:
     needs: validate-macos-{{ mangleVersion needs }}
 {% endfor %}
     steps:
+      - name: System info
+        run: |
+          uname -a
       - name: Install Autotools
         run: |
           brew install automake
