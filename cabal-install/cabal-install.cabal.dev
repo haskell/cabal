@@ -217,7 +217,6 @@ library cabal-lib-client
         Distribution.Client.NixStyleOptions
         Distribution.Client.Outdated
         Distribution.Client.PackageHash
-        Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectBuilding.Types

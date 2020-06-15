@@ -91,8 +91,6 @@ import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
-import Distribution.Client.PackageUtils
-         ( externalBuildDepends )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -890,22 +888,27 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
+  (SolverPackage pkg specifiedFlags stanzas specifiedDeps0  _specifiedExeDeps') =
      [ DuplicateFlag flag
      | flag <- PD.findDuplicateFlagAssignments specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
      | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName))
-                                specifiedDeps) ]
+                                specifiedDeps1) ]
   ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
   ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
                             , not (packageSatisfiesDependency pkgid dep) ]
   -- TODO: sanity tests on executable deps
   where
-    specifiedDeps :: ComponentDeps [PackageId]
-    specifiedDeps = fmap (map solverSrcId) specifiedDeps'
+    thisPkgName = packageName (packageDescription pkg)
+
+    specifiedDeps1 :: ComponentDeps [PackageId]
+    specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
+
+    specifiedDeps :: [PackageId]
+    specifiedDeps = CD.flatDeps specifiedDeps1
 
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
@@ -919,7 +922,7 @@ configuredPackageProblems platform cinfo
     dependencyName (Dependency name _ _) = name
 
     mergedDeps :: [MergeResult Dependency PackageId]
-    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
+    mergedDeps = mergeDeps requiredDeps specifiedDeps
 
     mergeDeps :: [Dependency] -> [PackageId]
               -> [MergeResult Dependency PackageId]
@@ -947,7 +950,15 @@ configuredPackageProblems platform cinfo
          []
          (packageDescription pkg) of
         Right (resolvedPkg, _) ->
-             externalBuildDepends resolvedPkg compSpec
+            -- we filter self/internal dependencies. They are still there.
+            -- This is INCORRECT.
+            --
+            -- If we had per-component solver, it would make this unnecessary,
+            -- but no finalizePDs picks components we are not building, eg. exes.
+            -- See #3775
+            --
+            filter ((/= thisPkgName) . dependencyName)
+                (PD.enabledBuildDepends resolvedPkg compSpec)
           ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"
