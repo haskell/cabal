@@ -238,17 +238,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                then dist_dir </> "build" </> prettyShow s </> prettyShow s
                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s
 
-    -- TODO: maybe move this helper to "ComponentDeps" module?
-    --       Or maybe define a 'Text' instance?
     comp2str :: ComponentDeps.Component -> String
-    comp2str c = case c of
-        ComponentDeps.ComponentLib     -> "lib"
-        ComponentDeps.ComponentSubLib s -> "lib:"   <> prettyShow s
-        ComponentDeps.ComponentFLib s  -> "flib:"  <> prettyShow s
-        ComponentDeps.ComponentExe s   -> "exe:"   <> prettyShow s
-        ComponentDeps.ComponentTest s  -> "test:"  <> prettyShow s
-        ComponentDeps.ComponentBench s -> "bench:" <> prettyShow s
-        ComponentDeps.ComponentSetup   -> "setup"
+    comp2str = prettyShow
 
     style2str :: Bool -> BuildStyle -> String
     style2str True  _                = "local"

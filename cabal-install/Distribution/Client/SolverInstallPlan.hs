@@ -57,6 +57,7 @@ import Prelude ()
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName
          , HasUnitId(..), PackageId, packageVersion, packageName )
+import Distribution.Types.Flag (nullFlagAssignment)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 import Distribution.Client.Types
@@ -67,6 +68,7 @@ import Distribution.Version
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
+import           Distribution.Solver.Types.SolverPackage
 
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import qualified Data.Foldable as Foldable
@@ -112,7 +114,20 @@ showPlanPackage :: SolverPlanPackage -> String
 showPlanPackage (PreExisting ipkg) = "PreExisting " ++ prettyShow (packageId ipkg)
                                             ++ " (" ++ prettyShow (installedUnitId ipkg)
                                             ++ ")"
-showPlanPackage (Configured  spkg)   = "Configured " ++ prettyShow (packageId spkg)
+showPlanPackage (Configured  spkg) =
+    "Configured " ++ prettyShow (packageId spkg) ++ flags ++ comps
+  where
+    flags
+        | nullFlagAssignment fa = ""
+        | otherwise             = " " ++ prettyShow (solverPkgFlags spkg)
+      where
+        fa = solverPkgFlags spkg
+
+    comps | null deps = ""
+          | otherwise = " " ++ unwords (map prettyShow $ Foldable.toList deps)
+      where
+        deps = CD.components (solverPkgLibDeps spkg)
+             <> CD.components (solverPkgExeDeps spkg)
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
