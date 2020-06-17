@@ -176,8 +176,8 @@ instance Arbitrary Bound where
 -------------------------------------------------------------------------------
 
 instance Arbitrary Mixin where
-    arbitrary = genericArbitrary
-    shrink    = genericShrink
+    arbitrary = normaliseMixin <$> genericArbitrary
+    shrink    = fmap normaliseMixin . genericShrink
 
 instance Arbitrary IncludeRenaming where
     arbitrary = genericArbitrary

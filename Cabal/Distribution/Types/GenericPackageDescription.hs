@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
@@ -74,14 +75,31 @@ emptyGenericPackageDescription = GenericPackageDescription emptyPackageDescripti
 -- Traversal Instances
 
 instance L.HasBuildInfos GenericPackageDescription where
-  traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
-    GenericPackageDescription
-        <$> L.traverseBuildInfos f p
-        <*> pure v
-        <*> pure a1
-        <*> (traverse . traverse . L.buildInfo) f x1
-        <*> (traverse . L._2 . traverse . L.buildInfo) f x2
-        <*> (traverse . L._2 . traverse . L.buildInfo) f x3
-        <*> (traverse . L._2 . traverse . L.buildInfo) f x4
-        <*> (traverse . L._2 . traverse . L.buildInfo) f x5
-        <*> (traverse . L._2 . traverse . L.buildInfo) f x6
+    traverseBuildInfos f (GenericPackageDescription p v a1 x1 x2 x3 x4 x5 x6) =
+        GenericPackageDescription
+            <$> L.traverseBuildInfos f p
+            <*> pure v
+            <*> pure a1
+            <*> (traverse . traverseCondTreeBuildInfo) f x1
+            <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x2
+            <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x3
+            <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x4
+            <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x5
+            <*> (traverse . L._2 . traverseCondTreeBuildInfo) f x6
+      where
+
+-- We use this traversal to keep [Dependency] field in CondTree up to date.
+traverseCondTreeBuildInfo
+    :: forall f comp v. (Applicative f, L.HasBuildInfo comp)
+    => LensLike' f (CondTree v [Dependency] comp) L.BuildInfo
+traverseCondTreeBuildInfo g = node where
+    mkCondNode :: comp -> [CondBranch v [Dependency] comp] -> CondTree v [Dependency] comp
+    mkCondNode comp branches = CondNode comp (view L.targetBuildDepends comp) branches
+
+    node (CondNode comp _ branches) = mkCondNode
+        <$> L.buildInfo g comp
+        <*> traverse branch branches
+
+    branch (CondBranch v x y) = CondBranch v
+        <$> node x
+        <*> traverse node y

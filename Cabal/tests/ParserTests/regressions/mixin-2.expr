@@ -58,6 +58,7 @@ GenericPackageDescription
                                                                                                                             (ModuleName
                                                                                                                                "Str.String")],
                                                                                                    includeRequiresRn = DefaultRenaming},
+                                                                         mixinLibraryName = LMainLibName,
                                                                          mixinPackageName = PackageName
                                                                                               "str-string"},
                                                                       Mixin
@@ -69,6 +70,7 @@ GenericPackageDescription
                                                                                                                             (ModuleName
                                                                                                                                "Str.ByteString")],
                                                                                                    includeRequiresRn = DefaultRenaming},
+                                                                         mixinLibraryName = LMainLibName,
                                                                          mixinPackageName = PackageName
                                                                                               "str-bytestring"}],
                                                             oldExtensions = [],
