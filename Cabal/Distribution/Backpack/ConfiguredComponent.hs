@@ -32,7 +32,6 @@ import Distribution.Types.PackageName
 import Distribution.Types.Mixin
 import Distribution.Types.ComponentName
 import Distribution.Types.LibraryName
-import Distribution.Types.UnqualComponentName
 import Distribution.Types.ComponentInclude
 import Distribution.Package
 import Distribution.PackageDescription
@@ -48,7 +47,8 @@ import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NonEmptySet
 import qualified Data.Map as Map
 import Distribution.Pretty
-import Text.PrettyPrint
+import Text.PrettyPrint (Doc, hang, text, vcat, hsep, quotes, ($$))
+import qualified Text.PrettyPrint as PP
 
 -- | A configured component, we know exactly what its 'ComponentId' is,
 -- and the 'ComponentId's of the things it depends on.
@@ -112,13 +112,12 @@ mkConfiguredComponent
 mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
     -- Resolve each @mixins@ into the actual dependency
     -- from @lib_deps@.
-    explicit_includes <- forM (mixins bi) $ \(Mixin name rns) -> do
-        let keys = fixFakePkgName pkg_descr name
-        aid <- case Map.lookup keys deps_map of
+    explicit_includes <- forM (mixins bi) $ \(Mixin pn ln rns) -> do
+        aid <- case Map.lookup (pn, CLibName ln) deps_map of
                 Nothing ->
                     dieProgress $
-                    text "Mix-in refers to non-existent package" <+>
-                    quotes (pretty name) $$
+                    text "Mix-in refers to non-existent library" <+>
+                    quotes (pretty pn <<>> prettyLN ln) $$
                     text "(did you forget to add the package to build-depends?)"
                 Just r  -> return r
         return ComponentInclude {
@@ -150,9 +149,17 @@ mkConfiguredComponent pkg_descr this_cid lib_deps exe_deps component = do
             cc_includes = explicit_includes ++ implicit_includes
         }
   where
+    bi :: BuildInfo
     bi = componentBuildInfo component
+
+    prettyLN :: LibraryName -> Doc
+    prettyLN LMainLibName    = PP.empty
+    prettyLN (LSubLibName n) = PP.colon <<>> pretty n
+
+    deps_map :: Map (PackageName, ComponentName) (AnnotatedId ComponentId)
     deps_map = Map.fromList [ ((packageName dep, ann_cname dep), dep)
                             | dep <- lib_deps ]
+
     is_public = componentName component == CLibName LMainLibName
 
 type ConfiguredComponentMap =
@@ -179,10 +186,7 @@ toConfiguredComponent pkg_descr this_cid lib_dep_map exe_dep_map component = do
                     -- Return all library components
                     forM (NonEmptySet.toList sublibs) $ \lib ->
                         let comp = CLibName lib in
-                        case Map.lookup (CLibName $ LSubLibName $
-                                         packageNameToUnqualComponentName name) pkg
-                         <|> Map.lookup comp pkg
-                        of
+                        case Map.lookup comp pkg of
                             Nothing ->
                                 dieProgress $
                                     text "Dependency on unbuildable" <+>
@@ -302,19 +306,3 @@ newPackageDepsBehaviourMinVersion = CabalSpecV1_8
 newPackageDepsBehaviour :: PackageDescription -> Bool
 newPackageDepsBehaviour pkg =
    specVersion pkg >= newPackageDepsBehaviourMinVersion
-
--- | 'build-depends:' stanzas are currently ambiguous as the external packages
--- and internal libraries are specified the same. For now, we assume internal
--- libraries shadow, and this function disambiguates accordingly, but soon the
--- underlying ambiguity will be addressed.
--- Multiple public libraries (cabal 3.0) added an unambiguous way of specifying
--- sublibraries, but we still have to support the old syntax for bc reasons.
-fixFakePkgName :: PackageDescription -> PackageName -> (PackageName, ComponentName)
-fixFakePkgName pkg_descr pn =
-  if subLibName `elem` internalLibraries
-  then (packageName pkg_descr, CLibName (LSubLibName subLibName))
-  else (pn,                    CLibName LMainLibName            )
-  where
-    subLibName        = packageNameToUnqualComponentName pn
-    internalLibraries = mapMaybe (libraryNameString . libName)
-                        (allLibraries pkg_descr)

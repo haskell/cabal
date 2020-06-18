@@ -33,17 +33,20 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion
 import Distribution.Fields.Pretty
+import Distribution.Compat.Lens
 import Distribution.PackageDescription
 import Distribution.Pretty
-import Distribution.Simple.Utils
-
+import Distribution.Simple.Utils (writeFileAtomic, writeUTF8File)
+import Distribution.Types.Mixin                      (Mixin (..), mkMixin)
 import Distribution.FieldGrammar                     (PrettyFieldGrammar', prettyFieldGrammar)
-import Distribution.PackageDescription.Configuration (transformAllBuildDependsN)
+import Distribution.PackageDescription.Configuration (transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar
        (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
        packageDescriptionFieldGrammar, setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
+import qualified Distribution.Types.BuildInfo.Lens                 as L
+import qualified Distribution.Types.SetupBuildInfo.Lens            as L
 
 import Text.PrettyPrint (Doc, char, hsep, parens, text)
 
@@ -228,10 +231,18 @@ pdToGpd pd = GenericPackageDescription
 preProcessInternalDeps :: CabalSpecVersion -> GenericPackageDescription -> GenericPackageDescription
 preProcessInternalDeps specVer gpd
     | specVer >= CabalSpecV3_4 = gpd
-    | otherwise                = transformAllBuildDependsN (concatMap f) gpd
+    | otherwise                = transformAllBuildInfos transformBI transformSBI gpd
   where
-    f :: Dependency -> [Dependency]
-    f (Dependency pn vr ln)
+    transformBI :: BuildInfo -> BuildInfo
+    transformBI
+        = over L.targetBuildDepends (concatMap transformD)
+        . over L.mixins (map transformM)
+
+    transformSBI :: SetupBuildInfo -> SetupBuildInfo
+    transformSBI = over L.setupDepends (concatMap transformD)
+
+    transformD :: Dependency -> [Dependency]
+    transformD (Dependency pn vr ln)
         | pn == thisPn
         = if LMainLibName `NES.member` ln
           then Dependency thisPn vr mainLibSet : sublibs
@@ -242,7 +253,13 @@ preProcessInternalDeps specVer gpd
             | LSubLibName uqn <- NES.toList ln
             ]
 
-    f d = [d]
+    transformD d = [d]
+
+    transformM :: Mixin -> Mixin
+    transformM (Mixin pn (LSubLibName uqn) inc)
+        | pn == thisPn
+        = mkMixin (unqualComponentNameToPackageName uqn) LMainLibName inc
+    transformM m = m
 
     thisPn :: PackageName
     thisPn = pkgName (package (packageDescription gpd))

@@ -55,6 +55,7 @@ GenericPackageDescription
                                                                                                                          [ModuleName
                                                                                                                             "Foo"],
                                                                                                    includeRequiresRn = DefaultRenaming},
+                                                                         mixinLibraryName = LMainLibName,
                                                                          mixinPackageName = PackageName
                                                                                               "str"}],
                                                             oldExtensions = [],

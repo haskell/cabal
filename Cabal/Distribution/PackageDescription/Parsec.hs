@@ -47,7 +47,7 @@ import Distribution.Fields.LexerMonad                (LexWarning, toPWarnings)
 import Distribution.Fields.Parser
 import Distribution.Fields.ParseResult
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Configuration (freeVars, transformAllBuildDependsN)
+import Distribution.PackageDescription.Configuration (freeVars, transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar
 import Distribution.PackageDescription.Quirks        (patchQuirks)
 import Distribution.Parsec                           (parsec, simpleParsecBS)
@@ -56,6 +56,7 @@ import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
+import Distribution.Types.Mixin                      (Mixin (..), mkMixin)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version                          (Version, mkVersion, versionNumbers)
@@ -71,6 +72,7 @@ import qualified Distribution.Types.Executable.Lens                as L
 import qualified Distribution.Types.ForeignLib.Lens                as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
+import qualified Distribution.Types.SetupBuildInfo.Lens            as L
 import qualified Text.Parsec                                       as P
 
 -- ---------------------------------------------------------------
@@ -727,14 +729,25 @@ checkForUndefinedFlags gpd = do
 -- i.e. what you write is what you get;
 -- For pre-3.4 we post-process the file.
 --
+-- Similarly, we process mixins.
+-- See https://github.com/haskell/cabal/issues/6281
+--
 
 postProcessInternalDeps :: CabalSpecVersion -> GenericPackageDescription -> GenericPackageDescription
 postProcessInternalDeps specVer gpd
     | specVer >= CabalSpecV3_4 = gpd
-    | otherwise                = transformAllBuildDependsN (concatMap f) gpd
+    | otherwise                = transformAllBuildInfos transformBI transformSBI gpd
   where
-    f :: Dependency -> [Dependency]
-    f (Dependency pn vr ln)
+    transformBI :: BuildInfo -> BuildInfo
+    transformBI
+        = over L.targetBuildDepends (concatMap transformD)
+        . over L.mixins (map transformM)
+
+    transformSBI :: SetupBuildInfo -> SetupBuildInfo
+    transformSBI = over L.setupDepends (concatMap transformD)
+
+    transformD :: Dependency -> [Dependency]
+    transformD (Dependency pn vr ln)
         | uqn `Set.member` internalLibs
         , LMainLibName `NES.member` ln
         = case NES.delete LMainLibName ln of
@@ -744,7 +757,16 @@ postProcessInternalDeps specVer gpd
         uqn = packageNameToUnqualComponentName pn
         dep = Dependency thisPn vr (NES.singleton (LSubLibName uqn))
 
-    f d = [d]
+    transformD d = [d]
+
+    transformM :: Mixin -> Mixin
+    transformM (Mixin pn LMainLibName incl)
+        | uqn `Set.member` internalLibs
+        = mkMixin thisPn (LSubLibName uqn) incl
+      where
+        uqn = packageNameToUnqualComponentName pn
+
+    transformM m = m
 
     thisPn :: PackageName
     thisPn = pkgName (package (packageDescription gpd))

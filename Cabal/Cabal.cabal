@@ -156,6 +156,9 @@ extra-source-files:
   tests/ParserTests/regressions/ghc-option-j.check
   tests/ParserTests/regressions/haddock-api-2.18.1-check.cabal
   tests/ParserTests/regressions/haddock-api-2.18.1-check.check
+  tests/ParserTests/regressions/hasktorch.cabal
+  tests/ParserTests/regressions/hasktorch.expr
+  tests/ParserTests/regressions/hasktorch.format
   tests/ParserTests/regressions/hidden-main-lib.cabal
   tests/ParserTests/regressions/hidden-main-lib.expr
   tests/ParserTests/regressions/hidden-main-lib.format

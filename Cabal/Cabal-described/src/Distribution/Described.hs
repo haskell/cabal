@@ -431,7 +431,9 @@ instance Described LibVersionInfo where
         reDigits = reChars ['0'..'9']
 
 instance Described Mixin where
-    describe _ = RENamed "package-name" (describe (Proxy :: Proxy PackageName)) <>
+    describe _ =
+        RENamed "package-name" (describe (Proxy :: Proxy PackageName)) <>
+        REOpt (reChar ':' <> RENamed "library-name" (describe (Proxy :: Proxy UnqualComponentName))) <>
         REOpt (RESpaces1 <> describe (Proxy :: Proxy IncludeRenaming))
 
 instance Described ModuleName where

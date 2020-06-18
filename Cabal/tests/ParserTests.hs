@@ -195,6 +195,7 @@ regressionTests = testGroup "regressions"
     , regressionTest "big-version.cabal"
     , regressionTest "anynone.cabal"
     , regressionTest "monad-param.cabal"
+    , regressionTest "hasktorch.cabal"
     ]
 
 regressionTest :: FilePath -> TestTree
