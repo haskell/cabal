@@ -406,10 +406,10 @@ handleScriptCase verbosity pol baseCtx tmpDir scriptContents = do
       LiterateHaskell -> "Main.lhs"
 
     sourcePackage = SourcePackage
-      { packageInfoId         = pkgId
-      , SP.packageDescription = genericPackageDescription
-      , packageSource         = LocalUnpackedPackage tmpDir
-      , packageDescrOverride  = Nothing
+      { srcpkgPackageId      = pkgId
+      , srcpkgDescription    = genericPackageDescription
+      , srcpkgSource         = LocalUnpackedPackage tmpDir
+      , srcpkgDescrOverride  = Nothing
       }
     genericPackageDescription  = emptyGenericPackageDescription
       { GPD.packageDescription = packageDescription

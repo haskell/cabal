@@ -443,11 +443,11 @@ getSpecsAndTargetSelectors verbosity reducedVerbosity pkgDb targetSelectors loca
     planMap = InstallPlan.toMap elaboratedPlan
     targetIds = Map.keys targets
 
-    sdistize (SpecificSourcePackage spkg@SourcePackage{..}) =
+    sdistize (SpecificSourcePackage spkg) =
       SpecificSourcePackage spkg'
       where
-        sdistPath = distSdistFile localDistDirLayout packageInfoId
-        spkg' = spkg { packageSource = LocalTarballPackage sdistPath }
+        sdistPath = distSdistFile localDistDirLayout (packageId spkg)
+        spkg' = spkg { srcpkgSource = LocalTarballPackage sdistPath }
     sdistize named = named
 
     local = sdistize <$> localPackages localBaseCtx

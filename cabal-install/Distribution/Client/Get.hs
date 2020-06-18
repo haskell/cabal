@@ -114,15 +114,15 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
         packageSourceRepos :: SourcePackage loc -> [PD.SourceRepo]
         packageSourceRepos = PD.sourceRepos
                            . PD.packageDescription
-                           . packageDescription
+                           . srcpkgDescription
 
     unpack :: [UnresolvedSourcePackage] -> IO ()
     unpack pkgs = do
       for_ pkgs $ \pkg -> do
-        location <- fetchPackage verbosity repoCtxt (packageSource pkg)
+        location <- fetchPackage verbosity repoCtxt (srcpkgSource pkg)
         let pkgid = packageId pkg
             descOverride | usePristine = Nothing
-                         | otherwise   = packageDescrOverride pkg
+                         | otherwise   = srcpkgDescrOverride pkg
         case location of
           LocalTarballPackage tarballPath ->
             unpackPackage verbosity prefix pkgid descOverride tarballPath

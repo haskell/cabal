@@ -419,12 +419,12 @@ readPackageTarget verbosity = traverse modifyLocation
       LocalUnpackedPackage dir -> do
         pkg <- tryFindPackageDesc verbosity dir (localPackageError dir) >>=
                  readGenericPackageDescription verbosity
-        return $ SourcePackage {
-                   packageInfoId        = packageId pkg,
-                   packageDescription   = pkg,
-                   packageSource        = fmap Just location,
-                   packageDescrOverride = Nothing
-                 }
+        return SourcePackage
+          { srcpkgPackageId     = packageId pkg
+          , srcpkgDescription   = pkg
+          , srcpkgSource        = fmap Just location
+          , srcpkgDescrOverride = Nothing
+          }
 
       LocalTarballPackage tarballFile ->
         readTarballPackageTarget location tarballFile tarballFile
@@ -451,12 +451,12 @@ readPackageTarget verbosity = traverse modifyLocation
         Nothing  -> die' verbosity $ "Could not parse the cabal file "
                        ++ filename ++ " in " ++ tarballFile
         Just pkg ->
-          return $ SourcePackage {
-                     packageInfoId        = packageId pkg,
-                     packageDescription   = pkg,
-                     packageSource        = fmap Just location,
-                     packageDescrOverride = Nothing
-                   }
+          return SourcePackage
+            { srcpkgPackageId     = packageId pkg
+            , srcpkgDescription   = pkg
+            , srcpkgSource        = fmap Just location
+            , srcpkgDescrOverride = Nothing
+            }
 
     extractTarballPackageCabalFile :: FilePath -> String
                                    -> IO (FilePath, BS.ByteString)

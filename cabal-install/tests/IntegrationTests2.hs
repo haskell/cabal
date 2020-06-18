@@ -46,7 +46,6 @@ import qualified Distribution.Client.CmdHaddock as CmdHaddock
 
 import Distribution.Package
 import Distribution.PackageDescription
-import qualified Distribution.Types.GenericPackageDescription as GPG
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Simple.Compiler
@@ -450,11 +449,11 @@ testTargetSelectorAmbiguous reportSubCase = do
             -> SourcePackage (PackageLocation a)
     mkpkgAt pkgidstr exes loc =
       SourcePackage {
-        packageInfoId = pkgid,
-        packageSource = LocalUnpackedPackage loc,
-        packageDescrOverride  = Nothing,
-        SP.packageDescription = GenericPackageDescription {
-          GPG.packageDescription = emptyPackageDescription { package = pkgid },
+        srcpkgPackageId = pkgid,
+        srcpkgSource = LocalUnpackedPackage loc,
+        srcpkgDescrOverride  = Nothing,
+        srcpkgDescription = GenericPackageDescription {
+          packageDescription = emptyPackageDescription { package = pkgid },
           gpdScannedVersion  = Nothing,
           genPackageFlags    = [],
           condLibrary        = Nothing,

@@ -1781,8 +1781,8 @@ collectKnownPackageInfo _ (NamedPackage pkgname _props) =
     return (KnownPackageName pkgname)
 collectKnownPackageInfo dirActions@DirActions{..}
                   (SpecificSourcePackage SourcePackage {
-                    packageDescription = pkg,
-                    packageSource      = loc
+                    srcpkgDescription = pkg,
+                    srcpkgSource      = loc
                   }) = do
     (pkgdir, pkgfile) <-
       case loc of

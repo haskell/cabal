@@ -148,7 +148,7 @@ fromPlanPackage (Platform arch os) comp
                              buildResult
            , extractRepo srcPkg)
   where
-    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ })
+    extractRepo (SourcePackage { srcpkgSource = RepoTarballPackage repo _ _ })
                   = Just repo
     extractRepo _ = Nothing
 

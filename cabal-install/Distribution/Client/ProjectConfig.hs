@@ -88,7 +88,7 @@ import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(..) )
 
 import Distribution.Package
-         ( PackageName, PackageId, packageId, UnitId )
+         ( PackageName, PackageId, UnitId, packageId )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint(..) )
 import Distribution.System
@@ -1234,13 +1234,13 @@ mkSpecificSourcePackage :: PackageLocation FilePath
                         -> PackageSpecifier
                              (SourcePackage (PackageLocation (Maybe FilePath)))
 mkSpecificSourcePackage location pkg =
-    SpecificSourcePackage SourcePackage {
-      packageInfoId        = packageId pkg,
-      packageDescription   = pkg,
-      --TODO: it is silly that we still have to use a Maybe FilePath here
-      packageSource        = fmap Just location,
-      packageDescrOverride = Nothing
-    }
+    SpecificSourcePackage SourcePackage
+      { srcpkgPackageId     = packageId pkg
+      , srcpkgDescription   = pkg
+        --TODO: it is silly that we still have to use a Maybe FilePath here
+      , srcpkgSource        = fmap Just location
+      , srcpkgDescrOverride = Nothing
+      }
 
 
 -- | Errors reported upon failing to parse a @.cabal@ file.

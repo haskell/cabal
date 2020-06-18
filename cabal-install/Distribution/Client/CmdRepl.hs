@@ -360,10 +360,10 @@ withoutProject config verbosity extraArgs = do
   -- We need to create a dummy package that lives in our dummy project.
   let
     sourcePackage = SourcePackage
-      { packageInfoId        = pkgId
-      , packageDescription   = genericPackageDescription
-      , packageSource        = LocalUnpackedPackage tempDir
-      , packageDescrOverride = Nothing
+      { srcpkgPackageId     = pkgId
+      , srcpkgDescription   = genericPackageDescription
+      , srcpkgSource        = LocalUnpackedPackage tempDir
+      , srcpkgDescrOverride = Nothing
       }
     genericPackageDescription = emptyGenericPackageDescription
       & L.packageDescription .~ packageDescription
@@ -414,8 +414,8 @@ addDepsToProjectTarget deps pkgId ctx =
     addDeps (SpecificSourcePackage pkg)
       | packageId pkg /= pkgId = SpecificSourcePackage pkg
       | SourcePackage{..} <- pkg =
-        SpecificSourcePackage $ pkg { packageDescription =
-          packageDescription & (\f -> L.allCondTrees $ traverseCondTreeC f)
+        SpecificSourcePackage $ pkg { srcpkgDescription =
+          srcpkgDescription & (\f -> L.allCondTrees $ traverseCondTreeC f)
                             %~ (deps ++)
         }
     addDeps spec = spec
