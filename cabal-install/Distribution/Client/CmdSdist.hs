@@ -51,6 +51,8 @@ import Distribution.Simple.Setup
     )
 import Distribution.Simple.SrcDist
     ( listPackageSources )
+import Distribution.Client.SrcDist
+    ( packageDirToSdist )
 import Distribution.Simple.Utils
     ( die', notice, withOutputMarker, wrapText )
 import Distribution.Types.ComponentName
@@ -60,24 +62,13 @@ import Distribution.Types.PackageName
 import Distribution.Verbosity
     ( normal )
 
-import qualified Codec.Archive.Tar       as Tar
-import qualified Codec.Archive.Tar.Entry as Tar
-import qualified Codec.Compression.GZip  as GZip
-import Control.Monad.Trans
-    ( liftIO )
-import Control.Monad.State.Lazy
-    ( StateT, modify, gets, evalStateT )
-import Control.Monad.Writer.Lazy
-    ( WriterT, tell, execWriterT )
-import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as BSL
-import qualified Data.Set as Set
 import System.Directory
     ( getCurrentDirectory
     , createDirectoryIfMissing, makeAbsolute
     )
 import System.FilePath
-    ( (</>), (<.>), makeRelative, normalise, takeDirectory )
+    ( (</>), (<.>), makeRelative, normalise )
 
 -------------------------------------------------------------------------------
 -- Command
@@ -238,72 +229,34 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
              RepoTarballPackage {}                 -> death
 
     let -- Write String to stdout or file, using the default TextEncoding.
-        write
-          | outputFile == "-" = putStr . withOutputMarker verbosity
-          | otherwise = writeFile outputFile
+        write str
+          | outputFile == "-" = putStr (withOutputMarker verbosity str)
+          | otherwise = do
+            writeFile outputFile str
+            notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
         -- Write raw ByteString to stdout or file as it is, without encoding.
-        writeLBS
-          | outputFile == "-" = BSL.putStr
-          | otherwise = BSL.writeFile outputFile
+        writeLBS lbs
+          | outputFile == "-" = BSL.putStr lbs
+          | otherwise = do
+            BSL.writeFile outputFile lbs
+            notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
 
     case dir0 of
       Left tgz -> do
         case format of
           TarGzArchive -> do
             writeLBS =<< BSL.readFile tgz
-            when (outputFile /= "-") $
-              notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
           _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
 
-      Right dir -> do
-        files' <- listPackageSources verbosity dir (flattenPackageDescription $ srcpkgDescription pkg) knownSuffixHandlers
-        let files = nub $ sort $ map normalise files'
+      Right dir -> case format of
+        SourceList nulSep -> do
+          files' <- listPackageSources verbosity dir (flattenPackageDescription $ srcpkgDescription pkg) knownSuffixHandlers
+          let files = nub $ sort $ map normalise files'
+          let prefix = makeRelative projectRootDir dir
+          write $ concat [prefix </> i ++ [nulSep] | i <- files]
 
-        case format of
-            SourceList nulSep -> do
-                let prefix = makeRelative projectRootDir dir
-                write $ concat [prefix </> i ++ [nulSep] | i <- files]
-                when (outputFile /= "-") $
-                    notice verbosity $ "Wrote source list to " ++ outputFile ++ "\n"
-            TarGzArchive -> do
-                let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
-                    entriesM = do
-                        let prefix = prettyShow (packageId pkg)
-                        modify (Set.insert prefix)
-                        case Tar.toTarPath True prefix of
-                            Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                            Right path -> tell [Tar.directoryEntry path]
-
-                        for_ files $ \file -> do
-                            let fileDir = takeDirectory (prefix </> file)
-                            needsEntry <- gets (Set.notMember fileDir)
-
-                            when needsEntry $ do
-                                modify (Set.insert fileDir)
-                                case Tar.toTarPath True fileDir of
-                                    Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                                    Right path -> tell [Tar.directoryEntry path]
-
-                            contents <- liftIO . fmap BSL.fromStrict . BS.readFile $ dir </> file
-                            case Tar.toTarPath False (prefix </> file) of
-                                Left err -> liftIO $ die' verbosity ("Error packing sdist: " ++ err)
-                                Right path -> tell [(Tar.fileEntry path contents) { Tar.entryPermissions = Tar.ordinaryFilePermissions }]
-
-                entries <- execWriterT (evalStateT entriesM mempty)
-                let -- Pretend our GZip file is made on Unix.
-                    normalize bs = BSL.concat [pfx, "\x03", rest']
-                        where
-                            (pfx, rest) = BSL.splitAt 9 bs
-                            rest' = BSL.tail rest
-                    -- The Unix epoch, which is the default value, is
-                    -- unsuitable because it causes unpacking problems on
-                    -- Windows; we need a post-1980 date. One gigasecond
-                    -- after the epoch is during 2001-09-09, so that does
-                    -- nicely. See #5596.
-                    setModTime entry = entry { Tar.entryTime = 1000000000 }
-                writeLBS . normalize . GZip.compress . Tar.write $ fmap setModTime entries
-                when (outputFile /= "-") $
-                    notice verbosity $ "Wrote tarball sdist to " ++ outputFile ++ "\n"
+        TarGzArchive -> do
+          packageDirToSdist verbosity (srcpkgDescription pkg) dir >>= writeLBS
 
 --
 
