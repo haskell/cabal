@@ -593,6 +593,10 @@ rebuildInstallPlan verbosity
           Map.fromList
             [ (pkgname, stanzas)
             | pkg <- localPackages
+              -- TODO: misnormer: we should separate
+              -- builtin/global/inplace/local packages
+              -- and packages explicitly mentioned in the project
+              --
             , let pkgname            = pkgSpecifierTarget pkg
                   testsEnabled       = lookupLocalPackageConfig
                                          packageConfigTests
@@ -600,12 +604,14 @@ rebuildInstallPlan verbosity
                   benchmarksEnabled  = lookupLocalPackageConfig
                                          packageConfigBenchmarks
                                          projectConfig pkgname
-                  stanzas =
-                    Map.fromList $
+                  isLocal = isJust (shouldBeLocal pkg)
+                  stanzas
+                    | isLocal = Map.fromList $
                       [ (TestStanzas, enabled)
-                      | enabled <- flagToList testsEnabled ]
-                   ++ [ (BenchStanzas , enabled)
+                      | enabled <- flagToList testsEnabled ] ++
+                      [ (BenchStanzas , enabled)
                       | enabled <- flagToList benchmarksEnabled ]
+                    | otherwise = Map.fromList [(TestStanzas, False), (BenchStanzas, False) ]
             ]
 
     -- Elaborate the solver's install plan to get a fully detailed plan. This
@@ -823,10 +829,14 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
         -- Tarballs from remote URLs. We must have downloaded these already
         -- (since we extracted the .cabal file earlier)
-        --TODO: [required eventually] finish remote tarball functionality
---        allRemoteTarballPkgs =
---          [ (pkgid, )
---          | (pkgid, RemoteTarballPackage ) <- allPkgLocations ]
+        remoteTarballPkgs =
+          [ (pkgid, tarball)
+          | (pkgid, RemoteTarballPackage _ (Just tarball)) <- allPkgLocations ]
+
+        -- tarballs from source-repository-package stanzas
+        sourceRepoTarballPkgs =
+          [ (pkgid, tarball)
+          | (pkgid, RemoteSourceRepoPackage _ (Just tarball)) <- allPkgLocations ]
 
         -- Tarballs from repositories, either where the repository provides
         -- hashes as part of the repo metadata, or where we will have to
@@ -906,6 +916,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     --
     let allTarballFilePkgs :: [(PackageId, FilePath)]
         allTarballFilePkgs = localTarballPkgs
+                          ++ remoteTarballPkgs
+                          ++ sourceRepoTarballPkgs
                           ++ repoTarballPkgsDownloaded
                           ++ repoTarballPkgsNewlyDownloaded
     hashesFromTarballFiles <- liftIO $
@@ -1925,16 +1937,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         Set.fromList (catMaybes (map shouldBeLocal localPackages))
         --TODO: localPackages is a misnomer, it's all project packages
         -- here is where we decide which ones will be local!
-      where
-        shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
-        shouldBeLocal NamedPackage{}              = Nothing
-        shouldBeLocal (SpecificSourcePackage pkg)
-          | LocalTarballPackage _ <- srcpkgSource pkg = Nothing
-          | otherwise = Just (packageId pkg)
-        -- TODO: Is it only LocalTarballPackages we can know about without
-        -- them being "local" in the sense meant here?
-        --
-        -- Also, review use of SourcePackage's loc vs ProjectPackageLocation
 
     pkgsUseSharedLibrary :: Set PackageId
     pkgsUseSharedLibrary =
@@ -1994,6 +1996,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
 
 -- TODO: Drop matchPlanPkg/matchElabPkg in favor of mkCCMapping
+
+shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
+shouldBeLocal NamedPackage{}              = Nothing
+shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
+    LocalUnpackedPackage _ -> Just (packageId pkg)
+    _                      -> Nothing
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool
