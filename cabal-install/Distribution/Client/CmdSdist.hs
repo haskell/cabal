@@ -228,7 +228,7 @@ data OutputFormat = SourceList Char
 packageToSdist :: Verbosity -> FilePath -> OutputFormat -> FilePath -> UnresolvedSourcePackage -> IO ()
 packageToSdist verbosity projectRootDir format outputFile pkg = do
     let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
-    dir0 <- case packageSource pkg of
+    dir0 <- case srcpkgSource pkg of
              LocalUnpackedPackage path             -> pure (Right path)
              RemoteSourceRepoPackage _ (Just path) -> pure (Right path)
              RemoteSourceRepoPackage {}            -> death
@@ -256,7 +256,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
           _ -> die' verbosity ("cannot convert tarball package to " ++ show format)
 
       Right dir -> do
-        files' <- listPackageSources verbosity dir (flattenPackageDescription $ packageDescription pkg) knownSuffixHandlers
+        files' <- listPackageSources verbosity dir (flattenPackageDescription $ srcpkgDescription pkg) knownSuffixHandlers
         let files = nub $ sort $ map normalise files'
 
         case format of

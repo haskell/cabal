@@ -421,11 +421,11 @@ exAvSrcPkg ex =
                             C.setupDepends = mkSetupDeps deps,
                             C.defaultSetupDepends = False
                           }
-        package = SourcePackage {
-            packageInfoId        = pkgId
-          , packageSource        = LocalTarballPackage "<<path>>"
-          , packageDescrOverride = Nothing
-          , packageDescription   = C.GenericPackageDescription {
+        package = SourcePackage
+          { srcpkgPackageId     = pkgId
+          , srcpkgSource        = LocalTarballPackage "<<path>>"
+          , srcpkgDescrOverride = Nothing
+          , srcpkgDescription   = C.GenericPackageDescription {
                 C.packageDescription = C.emptyPackageDescription {
                     C.package        = pkgId
                   , C.setupBuildInfo = setup
@@ -477,7 +477,7 @@ exAvSrcPkg ex =
           -- solver allows unknown extensions/languages when the compiler
           -- supports them.
           let ignore = ["Unknown extensions:", "Unknown languages:"]
-          in [ err | err <- C.checkPackage (packageDescription package) Nothing
+          in [ err | err <- C.checkPackage (srcpkgDescription package) Nothing
              , not $ any (`isPrefixOf` C.explanation err) ignore ]
     in if null pkgCheckErrors
        then package
@@ -804,7 +804,7 @@ extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
 
     srcPkg :: SolverPackage UnresolvedPkgLoc -> Maybe (String, Int)
     srcPkg cpkg =
-      let C.PackageIdentifier pn ver = packageInfoId (solverPkgSource cpkg)
+      let C.PackageIdentifier pn ver = C.packageId (solverPkgSource cpkg)
       in (\vn -> (C.unPackageName pn, vn)) <$> safeHead (C.versionNumbers ver)
 
 {-------------------------------------------------------------------------------

@@ -238,7 +238,7 @@ configureSetupScript packageDBs
     maybeSetupBuildInfo :: Maybe PkgDesc.SetupBuildInfo
     maybeSetupBuildInfo = do
       ReadyPackage cpkg <- mpkg
-      let gpkg = packageDescription (confPkgSource cpkg)
+      let gpkg = srcpkgDescription (confPkgSource cpkg)
       PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
 
     -- Was a default 'custom-setup' stanza added by 'cabal-install' itself? If
@@ -305,10 +305,10 @@ planLocalPackage verbosity comp platform configFlags configExFlags
 
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {
-        packageInfoId             = packageId pkg,
-        packageDescription        = pkg,
-        packageSource             = LocalUnpackedPackage ".",
-        packageDescrOverride      = Nothing
+        srcpkgPackageId          = packageId pkg,
+        srcpkgDescription        = pkg,
+        srcpkgSource             = LocalUnpackedPackage ".",
+        srcpkgDescrOverride      = Nothing
       }
 
       testsEnabled = fromFlagOrDefault False $ configTests configFlags
@@ -392,7 +392,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
     scriptOptions (Just pkg) configureCommand configureFlags (const extraArgs)
 
   where
-    gpkg = packageDescription spkg
+    gpkg = srcpkgDescription spkg
     configureFlags   = filterConfigureFlags configFlags {
       configIPID = if isJust (flagToMaybe (configIPID configFlags))
                     -- Make sure cabal configure --ipid works.

@@ -134,11 +134,11 @@ symlinkBinaries platform comp overwritePolicy
       , exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
-    pkgDescription (ConfiguredPackage _ (SourcePackage _ pkg _ _)
+    pkgDescription (ConfiguredPackage _ (SourcePackage _ gpd _ _)
                                       flags stanzas _) =
       case finalizePD flags (enableStanzas stanzas)
              (const True)
-             platform cinfo [] pkg of
+             platform cinfo [] gpd of
         Left _ -> error "finalizePD ReadyPackage failed"
         Right (desc, _) -> desc
 

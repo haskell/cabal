@@ -95,7 +95,7 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
                verbosity comp platform fetchFlags
                installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
-    pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
+    pkgs' <- filterM (fmap not . isFetched . srcpkgSource) pkgs
     if null pkgs'
       --TODO: when we add support for remote tarballs then this message
       -- will need to be changed because for remote tarballs we fetch them
@@ -108,7 +108,7 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
                      "The following packages would be fetched:"
                    : map (prettyShow . packageId) pkgs'
 
-             else traverse_ (fetchPackage verbosity repoCtxt . packageSource) pkgs'
+             else traverse_ (fetchPackage verbosity repoCtxt . srcpkgSource) pkgs'
 
   where
     dryRun = fromFlag (fetchDryRun fetchFlags)

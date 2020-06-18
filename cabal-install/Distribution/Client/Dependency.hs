@@ -466,9 +466,8 @@ removeBounds  relKind relDeps            params =
     sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
 
     relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
-    relaxDeps srcPkg = srcPkg {
-      packageDescription = relaxPackageDeps relKind relDeps
-                           (packageDescription srcPkg)
+    relaxDeps srcPkg = srcPkg
+      { srcpkgDescription = relaxPackageDeps relKind relDeps (srcpkgDescription srcPkg)
       }
 
 -- | Relax the dependencies of this package if needed.
@@ -543,7 +542,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
     applyDefaultSetupDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
     applyDefaultSetupDeps srcpkg =
         srcpkg {
-          packageDescription = gpkgdesc {
+          srcpkgDescription = gpkgdesc {
             PD.packageDescription = pkgdesc {
               PD.setupBuildInfo =
                 case PD.setupBuildInfo pkgdesc of
@@ -560,7 +559,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
         }
       where
         isCustom = PD.buildType pkgdesc == PD.Custom
-        gpkgdesc = packageDescription srcpkg
+        gpkgdesc = srcpkgDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
 
 -- | If a package has a custom setup then we need to add a setup-depends
@@ -656,7 +655,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
         Just [Dependency (mkPackageName "Cabal") (orLaterVersion $ mkVersion [1,24]) mainLibSet]
                                 | otherwise       = Nothing
         where
-          gpkgdesc = packageDescription srcpkg
+          gpkgdesc = srcpkgDescription srcpkg
           pkgdesc  = PD.packageDescription gpkgdesc
           bt       = PD.buildType pkgdesc
           affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
@@ -902,7 +901,7 @@ configuredPackageProblems platform cinfo
                             , not (packageSatisfiesDependency pkgid dep) ]
   -- TODO: sanity tests on executable deps
   where
-    thisPkgName = packageName (packageDescription pkg)
+    thisPkgName = packageName (srcpkgDescription pkg)
 
     specifiedDeps1 :: ComponentDeps [PackageId]
     specifiedDeps1 = fmap (map solverSrcId) specifiedDeps0
@@ -911,7 +910,7 @@ configuredPackageProblems platform cinfo
     specifiedDeps = CD.flatDeps specifiedDeps1
 
     mergedFlags = mergeBy compare
-      (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
+      (sort $ map PD.flagName (PD.genPackageFlags (srcpkgDescription pkg)))
       (sort $ map fst (PD.unFlagAssignment specifiedFlags)) -- TODO
 
     packageSatisfiesDependency
@@ -948,7 +947,7 @@ configuredPackageProblems platform cinfo
          (const True)
          platform cinfo
          []
-         (packageDescription pkg) of
+         (srcpkgDescription pkg) of
         Right (resolvedPkg, _) ->
             -- we filter self/internal dependencies. They are still there.
             -- This is INCORRECT.

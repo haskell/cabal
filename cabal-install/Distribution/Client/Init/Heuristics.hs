@@ -37,7 +37,7 @@ import Language.Haskell.Extension ( Extension )
 import Distribution.Solver.Types.PackageIndex
     ( allPackagesByName )
 import Distribution.Solver.Types.SourcePackage
-    ( packageDescription )
+    ( srcpkgDescription )
 
 import Distribution.Client.Types ( SourcePackageDb(..) )
 import Data.Char   ( isLower )
@@ -344,7 +344,7 @@ maybeReadFile f = do
 knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- maybeToList . safeHead =<< (allPackagesByName sourcePkgIndex)
-          , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
+          , let catList = (PD.category . PD.packageDescription . srcpkgDescription) pkg
           , cat <- splitString ',' $ ShortText.fromShortText catList
     ]
 

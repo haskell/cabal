@@ -364,18 +364,18 @@ readRepoIndex verbosity repoCtxt repo idxState =
                               idxState
 
   where
-    mkAvailablePackage pkgEntry =
-      SourcePackage {
-        packageInfoId      = pkgid,
-        packageDescription = packageDesc pkgEntry,
-        packageSource      = case pkgEntry of
+    mkAvailablePackage pkgEntry = SourcePackage
+      { srcpkgPackageId   = pkgid
+      , srcpkgDescription = pkgdesc
+      , srcpkgSource      = case pkgEntry of
           NormalPackage _ _ _ _       -> RepoTarballPackage repo pkgid Nothing
-          BuildTreeRef  _  _ _ path _ -> LocalUnpackedPackage path,
-        packageDescrOverride = case pkgEntry of
+          BuildTreeRef  _  _ _ path _ -> LocalUnpackedPackage path
+      , srcpkgDescrOverride = case pkgEntry of
           NormalPackage _ _ pkgtxt _ -> Just pkgtxt
           _                          -> Nothing
       }
       where
+        pkgdesc = packageDesc pkgEntry
         pkgid = packageId pkgEntry
 
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e

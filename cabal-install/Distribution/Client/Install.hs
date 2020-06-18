@@ -572,8 +572,8 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   when offline $ do
     let pkgs = [ confPkgSource cpkg
                | InstallPlan.Configured cpkg <- InstallPlan.toList installPlan ]
-    notFetched <- fmap (map packageInfoId)
-                  . filterM (fmap isNothing . checkFetched . packageSource)
+    notFetched <- fmap (map packageId)
+                  . filterM (fmap isNothing . checkFetched . srcpkgSource)
                   $ pkgs
     unless (null notFetched) $
       die' verbosity $ "Can't download packages in offline mode. "
@@ -692,7 +692,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     nonDefaultFlags cpkg =
       let defaultAssignment =
             toFlagAssignment
-             (genPackageFlags (SourcePackage.packageDescription $
+             (genPackageFlags (SourcePackage.srcpkgDescription $
                                confPkgSource cpkg))
       in  confPkgFlags cpkg `diffFlagAssignment` defaultAssignment
 

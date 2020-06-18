@@ -789,7 +789,7 @@ getPkgConfigDb verbosity progdb = do
 packageLocationsSignature :: SolverInstallPlan
                           -> [(PackageId, PackageLocation (Maybe FilePath))]
 packageLocationsSignature solverPlan =
-    [ (packageId pkg, packageSource pkg)
+    [ (packageId pkg, srcpkgSource pkg)
     | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
         <- SolverInstallPlan.toList solverPlan
     ]
@@ -810,7 +810,7 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     --
     let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
         allPkgLocations =
-          [ (packageId pkg, packageSource pkg)
+          [ (packageId pkg, srcpkgSource pkg)
           | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
               <- SolverInstallPlan.toList solverPlan ]
 
@@ -995,7 +995,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . addDefaultSetupDependencies (defaultSetupDeps comp platform
                                    . PD.packageDescription
-                                   . packageDescription)
+                                   . srcpkgDescription)
 
       . addSetupCabalMinVersionConstraint setupMinCabalVersionConstraint
       . addSetupCabalMaxVersionConstraint setupMaxCabalVersionConstraint
@@ -1616,7 +1616,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                              -> [ElaboratedConfiguredPackage]
                              -> ElaboratedConfiguredPackage
     elaborateSolverToPackage
-        pkg@(SolverPackage (SourcePackage pkgid _gdesc _srcloc _descOverride)
+        pkg@(SolverPackage (SourcePackage pkgid _gpd _srcloc _descOverride)
                            _flags _stanzas _deps0 _exe_deps0)
         compGraph comps =
         -- Knot tying: the final elab includes the
@@ -1929,7 +1929,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
         shouldBeLocal NamedPackage{}              = Nothing
         shouldBeLocal (SpecificSourcePackage pkg)
-          | LocalTarballPackage _ <- packageSource pkg = Nothing
+          | LocalTarballPackage _ <- srcpkgSource pkg = Nothing
           | otherwise = Just (packageId pkg)
         -- TODO: Is it only LocalTarballPackages we can know about without
         -- them being "local" in the sense meant here?

@@ -507,7 +507,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     sourceSelected
       | isJust selectedPkg = selectedPkg
       | otherwise          = latestWithPref versionPref sourcePkgs
-    sourceGeneric = fmap packageDescription sourceSelected
+    sourceGeneric = fmap srcpkgDescription sourceSelected
     source        = fmap flattenPackageDescription sourceGeneric
 
     uncons :: b -> (a -> b) -> [a] -> b
@@ -521,7 +521,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
 --
 updateFileSystemPackageDetails :: PackageDisplayInfo -> IO PackageDisplayInfo
 updateFileSystemPackageDetails pkginfo = do
-  fetched   <- maybe (return False) (isFetched . packageSource)
+  fetched   <- maybe (return False) (isFetched . srcpkgSource)
                      (selectedSourcePkg pkginfo)
   docsExist <- doesDirectoryExist (haddockHtml pkginfo)
   return pkginfo {
