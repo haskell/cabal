@@ -15,9 +15,9 @@ executable gen-extra-source-files
   main-is:          GenExtraSourceFiles.hs
   hs-source-dirs:   src
   build-depends:
-    , base        >=4.10 && <4.13
+    , base        >=4.10 && <4.15
     , bytestring
-    , Cabal       >=2.2  && <2.6
+    , Cabal       >=2.2  && <3.3
     , directory
     , filepath
     , process
@@ -30,7 +30,7 @@ executable gen-spdx
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0
-    , base                  >=4.10     && <4.13
+    , base                  >=4.10     && <4.15
     , bytestring
     , containers
     , Diff                  ^>=0.4
@@ -47,7 +47,7 @@ executable gen-spdx-exc
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0
-    , base                  >=4.10     && <4.13
+    , base                  >=4.10     && <4.15
     , bytestring
     , containers
     , Diff                  ^>=0.4
