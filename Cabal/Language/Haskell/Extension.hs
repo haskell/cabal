@@ -839,6 +839,9 @@ data KnownExtension =
 
   -- | Enable unlifted newtypes.
   | UnliftedNewtypes
+  
+  -- | Enable linear types.
+  | LinearTypes
 
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
