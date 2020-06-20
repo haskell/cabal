@@ -127,6 +127,8 @@ import Distribution.Version
          ( Version )
 import qualified Distribution.Deprecated.ParseUtils as OldParser
          ( ParseResult(..), locatedErrorMsg, showPWarning )
+import Distribution.Client.SrcDist
+         ( packageDirToSdist )
 
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -1170,6 +1172,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         syncSourceRepos verbosity vcs
           [ (repo, repoPath)
           | (repo, _, repoPath) <- repoGroupWithPaths ]
+        -- TODO phadej 2020-06-18 add post-sync script
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.
@@ -1199,24 +1202,30 @@ syncAndReadSourcePackagesRemoteRepos verbosity
                   : [ pathStem ++ "-" ++ show (i :: Int) | i <- [2..] ]
 
     readPackageFromSourceRepo
-        :: SourceRepositoryPackage Maybe -> FilePath
+        :: SourceRepositoryPackage Maybe
+        -> FilePath
         -> Rebuild (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
     readPackageFromSourceRepo repo repoPath = do
-        let packageDir = maybe repoPath (repoPath </>) (srpSubdir repo)
+        let packageDir :: FilePath
+            packageDir = maybe repoPath (repoPath </>) (srpSubdir repo)
+
         entries <- liftIO $ getDirectoryContents packageDir
-        --TODO: wrap exceptions
+        --TODO: dcoutts 2018-06-23: wrap exceptions
         case filter (\e -> takeExtension e == ".cabal") entries of
           []       -> liftIO $ throwIO $ NoCabalFileFound packageDir
           (_:_:_)  -> liftIO $ throwIO $ MultipleCabalFilesFound packageDir
           [cabalFileName] -> do
+            let cabalFilePath = packageDir </> cabalFileName
             monitorFiles [monitorFileHashed cabalFilePath]
-            liftIO $ fmap (mkSpecificSourcePackage location)
-                   . readSourcePackageCabalFile verbosity cabalFilePath
-                 =<< BS.readFile cabalFilePath
-            where
-              cabalFilePath = packageDir </> cabalFileName
-              location      = RemoteSourceRepoPackage repo packageDir
+            gpd <- liftIO $ readSourcePackageCabalFile verbosity cabalFilePath =<< BS.readFile cabalFilePath
 
+            -- write sdist tarball, to repoPath-pgkid
+            tarball <- liftIO $ packageDirToSdist verbosity gpd packageDir
+            let tarballPath = repoPath ++ "-" ++ prettyShow (packageId gpd) ++ ".tar.gz"
+            liftIO $ LBS.writeFile tarballPath tarball
+
+            let location = RemoteSourceRepoPackage repo tarballPath
+            return $ mkSpecificSourcePackage location gpd
 
     reportSourceRepoProblems :: [(SourceRepoList, SourceRepoProblem)] -> Rebuild a
     reportSourceRepoProblems = liftIO . die' verbosity . renderSourceRepoProblems
@@ -1231,13 +1240,11 @@ syncAndReadSourcePackagesRemoteRepos verbosity
 --
 mkSpecificSourcePackage :: PackageLocation FilePath
                         -> GenericPackageDescription
-                        -> PackageSpecifier
-                             (SourcePackage (PackageLocation (Maybe FilePath)))
+                        -> PackageSpecifier (SourcePackage UnresolvedPkgLoc)
 mkSpecificSourcePackage location pkg =
     SpecificSourcePackage SourcePackage
       { srcpkgPackageId     = packageId pkg
       , srcpkgDescription   = pkg
-        --TODO: it is silly that we still have to use a Maybe FilePath here
       , srcpkgSource        = fmap Just location
       , srcpkgDescrOverride = Nothing
       }

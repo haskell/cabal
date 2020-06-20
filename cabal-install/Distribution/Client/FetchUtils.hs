@@ -99,8 +99,8 @@ checkFetched loc = case loc of
       return (Just $ RemoteTarballPackage uri file)
     RepoTarballPackage repo pkgid (Just file) ->
       return (Just $ RepoTarballPackage repo pkgid file)
-    RemoteSourceRepoPackage repo (Just dir) ->
-      return (Just $ RemoteSourceRepoPackage repo dir)
+    RemoteSourceRepoPackage repo (Just file) ->
+      return (Just $ RemoteSourceRepoPackage repo file)
 
     RemoteTarballPackage     _uri Nothing -> return Nothing
     RemoteSourceRepoPackage _repo Nothing -> return Nothing
