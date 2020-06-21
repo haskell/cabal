@@ -70,23 +70,24 @@ import System.Posix.Resource
 ------------------------------------------------------------------------
 -- * Utilities
 
-runM :: FilePath -> [String] -> TestM Result
-runM path args = do
+runM :: FilePath -> [String] -> Maybe String -> TestM Result
+runM path args input = do
     env <- getTestEnv
     r <- liftIO $ run (testVerbosity env)
                  (Just (testCurrentDir env))
                  (testEnvironment env)
                  path
                  args
+                 input
     recordLog r
     requireSuccess r
 
-runProgramM :: Program -> [String] -> TestM Result
-runProgramM prog args = do
+runProgramM :: Program -> [String] -> Maybe String -> TestM Result
+runProgramM prog args input = do
     configured_prog <- requireProgramM prog
     -- TODO: Consider also using other information from
     -- ConfiguredProgram, e.g., env and args
-    runM (programPath configured_prog) args
+    runM (programPath configured_prog) args input
 
 getLocalBuildInfoM :: TestM LocalBuildInfo
 getLocalBuildInfoM = do
@@ -188,13 +189,13 @@ setup'' prefix cmd args = do
                     ]
                 (a:|as) = full_args
                 full_args' = if a `elem` legacyCmds then ("v1-" ++ a) : as else a:as
-            in runProgramM cabalProgram full_args'
+            in runProgramM cabalProgram full_args' Nothing
         else do
             pdfile <- liftIO $ tryFindPackageDesc (testVerbosity env)
                       (testCurrentDir env </> prefix)
             pdesc <- liftIO $ readGenericPackageDescription (testVerbosity env) pdfile
             if buildType (packageDescription pdesc) == Simple
-                then runM (testSetupPath env) (NE.toList full_args)
+                then runM (testSetupPath env) (NE.toList full_args) Nothing
                 -- Run the Custom script!
                 else do
                   r <- liftIO $ runghc (testScriptEnv env)
@@ -204,6 +205,7 @@ setup'' prefix cmd args = do
                                        (NE.toList full_args)
                   recordLog r
                   requireSuccess r
+
     -- This code is very tempting (and in principle should be quick:
     -- after all we are loading the built version of Cabal), but
     -- actually it costs quite a bit in wallclock time (e.g. 54sec to
@@ -276,6 +278,9 @@ cabal cmd args = void (cabal' cmd args)
 cabal' :: String -> [String] -> TestM Result
 cabal' = cabalG' []
 
+cabalWithStdin :: String -> [String] -> String -> TestM Result
+cabalWithStdin cmd args input = cabalGArgs [] cmd args (Just input)
+
 cabalG :: [String] -> String -> [String] -> TestM ()
 cabalG global_args cmd args = void (cabalG' global_args cmd args)
 
@@ -285,7 +290,10 @@ cabalG' _ "sandbox" _ =
     -- possible that the first argument isn't the sub-sub-command.
     -- So make sure the user specifies it correctly.
     error "Use cabal_sandbox' instead"
-cabalG' global_args cmd args = do
+cabalG' global_args cmd args = cabalGArgs global_args cmd args Nothing
+
+cabalGArgs :: [String] -> String -> [String] -> Maybe String -> TestM Result
+cabalGArgs global_args cmd args input = do
     env <- getTestEnv
     -- Freeze writes out cabal.config to source directory, this is not
     -- overwritable
@@ -321,7 +329,7 @@ cabalG' global_args cmd args = do
                   ++ args
     defaultRecordMode RecordMarked $ do
     recordHeader ["cabal", cmd]
-    cabal_raw' cabal_args
+    cabal_raw' cabal_args input
 
 cabal_sandbox :: String -> [String] -> TestM ()
 cabal_sandbox cmd args = void $ cabal_sandbox' cmd args
@@ -335,10 +343,10 @@ cabal_sandbox' cmd args = do
                   ++ args
     defaultRecordMode RecordMarked $ do
     recordHeader ["cabal", "v1-sandbox", cmd]
-    cabal_raw' cabal_args
+    cabal_raw' cabal_args Nothing
 
-cabal_raw' :: [String] -> TestM Result
-cabal_raw' cabal_args = runProgramM cabalProgram cabal_args
+cabal_raw' :: [String] -> Maybe String -> TestM Result
+cabal_raw' cabal_args input = runProgramM cabalProgram cabal_args input
 
 withSandbox :: TestM a -> TestM a
 withSandbox m = do
@@ -379,7 +387,7 @@ runPlanExe' pkg_name cname args = do
                         (CExeName (mkUnqualComponentName cname))
     defaultRecordMode RecordAll $ do
     recordHeader [pkg_name, cname]
-    runM (dist_dir </> "build" </> cname </> cname) args
+    runM (dist_dir </> "build" </> cname </> cname) args Nothing
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
@@ -416,7 +424,7 @@ ghcPkg' cmd args = do
                             (programVersion ghcConfProg))
                         db_stack
     recordHeader ["ghc-pkg", cmd]
-    runProgramM ghcPkgProgram (cmd : extraArgs ++ args)
+    runProgramM ghcPkgProgram (cmd : extraArgs ++ args) Nothing
 
 ghcPkgPackageDBParams :: Version -> PackageDBStack -> [String]
 ghcPkgPackageDBParams version dbs = concatMap convert dbs where
@@ -444,7 +452,7 @@ runExe' exe_name args = do
     env <- getTestEnv
     defaultRecordMode RecordAll $ do
     recordHeader [exe_name]
-    runM (testDistDir env </> "build" </> exe_name </> exe_name) args
+    runM (testDistDir env </> "build" </> exe_name </> exe_name) args Nothing
 
 -- | Run an executable that was installed by cabal.  The @exe_name@
 -- is precisely the name of the executable.
@@ -459,11 +467,11 @@ runInstalledExe' exe_name args = do
     env <- getTestEnv
     defaultRecordMode RecordAll $ do
     recordHeader [exe_name]
-    runM (testPrefixDir env </> "bin" </> exe_name) args
+    runM (testPrefixDir env </> "bin" </> exe_name) args Nothing
 
 -- | Run a shell command in the current directory.
 shell :: String -> [String] -> TestM Result
-shell exe args = runM exe args
+shell exe args = runM exe args Nothing
 
 ------------------------------------------------------------------------
 -- * Repository manipulation
@@ -504,7 +512,7 @@ hackageRepoTool cmd args = void $ hackageRepoTool' cmd args
 hackageRepoTool' :: String -> [String] -> TestM Result
 hackageRepoTool' cmd args = do
     recordHeader ["hackage-repo-tool", cmd]
-    runProgramM hackageRepoToolProgram (cmd : args)
+    runProgramM hackageRepoToolProgram (cmd : args) Nothing
 
 tar :: [String] -> TestM ()
 tar args = void $ tar' args
@@ -512,7 +520,7 @@ tar args = void $ tar' args
 tar' :: [String] -> TestM Result
 tar' args = do
     recordHeader ["tar"]
-    runProgramM tarProgram args
+    runProgramM tarProgram args Nothing
 
 -- | Creates a tarball of a directory, such that if you
 -- archive the directory "/foo/bar/baz" to "mine.tgz", @tar tf@ reports
@@ -782,6 +790,7 @@ hasProfiledLibraries = do
     liftIO $ writeFile prof_test_hs "module Prof where"
     r <- liftIO $ run (testVerbosity env) (Just (testCurrentDir env))
                       (testEnvironment env) ghc_path ["-prof", "-c", prof_test_hs]
+                      Nothing
     return (resultExitCode r == ExitSuccess)
 
 -- | Check if the GHC that is used for compiling package tests has
@@ -885,7 +894,7 @@ git cmd args = void $ git' cmd args
 git' :: String -> [String] -> TestM Result
 git' cmd args = do
     recordHeader ["git", cmd]
-    runProgramM gitProgram (cmd : args)
+    runProgramM gitProgram (cmd : args) Nothing
 
 gcc :: [String] -> TestM ()
 gcc args = void $ gcc' args
@@ -893,7 +902,7 @@ gcc args = void $ gcc' args
 gcc' :: [String] -> TestM Result
 gcc' args = do
     recordHeader ["gcc"]
-    runProgramM gccProgram args
+    runProgramM gccProgram args Nothing
 
 ghc :: [String] -> TestM ()
 ghc args = void $ ghc' args
@@ -901,7 +910,7 @@ ghc args = void $ ghc' args
 ghc' :: [String] -> TestM Result
 ghc' args = do
     recordHeader ["ghc"]
-    runProgramM ghcProgram args
+    runProgramM ghcProgram args Nothing
 
 -- | If a test needs to modify or write out source files, it's
 -- necessary to make a hermetic copy of the source files to operate
