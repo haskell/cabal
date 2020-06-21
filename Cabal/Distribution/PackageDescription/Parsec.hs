@@ -182,7 +182,9 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
                 -- if it were at the beginning, scanner would found it
                 when (v >= CabalSpecV2_2) $ parseFailure pos $
                     "cabal-version should be at the beginning of the file starting with spec version 2.2. " ++
-                    "See https://github.com/haskell/cabal/issues/4899"
+                    "See https://github.com/haskell/cabal/issues/4899" ++ 
+                    "\nYou may also need to check version number format, as described at " ++
+                    "https://cabal.readthedocs.io/en/latest/file-format-changelog.html"
 
                 return v
 
