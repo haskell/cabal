@@ -1,0 +1,8 @@
+cabal-version:      2.4
+name:               cabal-csrc-repl
+version:            0.1.0.0
+library
+    exposed-modules:  Lib
+    build-depends:    base
+    C-sources:        foo.c
+    default-language: Haskell2010
