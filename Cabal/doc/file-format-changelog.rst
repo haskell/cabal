@@ -26,8 +26,15 @@ relative to the respective preceding *published* version.
 * License fields use identifiers from SPDX License List version
   ``3.8 2020-02-09``
 
+* Dependencies to sublibraries have to be specified explicitly,
+  even for current package.
+  This way you can have an internal library with the same
+  name as some external dependency.
+
 * Remove ``-any`` and ``-none`` syntax for version ranges
   Use ``>=0`` and ``<0`` respectively.
+
+* :pkg-field:`mixins` field allow specifying a sublibrary.
 
 ``cabal-version: 3.0``
 ----------------------
