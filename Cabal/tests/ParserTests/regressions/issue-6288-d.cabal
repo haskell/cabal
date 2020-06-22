@@ -1,0 +1,13 @@
+cabal-version: >=1.10
+name:          issue
+version:       6288
+build-type:    Simple
+synopsis:      default-language optionality
+category:      Test
+description:   Field is introduced in 1.10, defaulted in 3.4
+license:       BSD3
+license-file:  LICENSE
+maintainer:    Cabal Contributors
+
+library
+  exposed-modules:  Foo

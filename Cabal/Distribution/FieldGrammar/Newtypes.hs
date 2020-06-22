@@ -158,6 +158,10 @@ instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
 
+-------------------------------------------------------------------------------
+-- Identifiers
+-------------------------------------------------------------------------------
+
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }
 
@@ -190,6 +194,21 @@ instance Parsec a => Parsec (MQuoted a) where
 
 instance Pretty a => Pretty (MQuoted a)  where
     pretty = pretty . unpack
+
+-- | Filepath are parsed as 'Token'.
+newtype FilePathNT = FilePathNT { getFilePathNT :: String }
+
+instance Newtype String FilePathNT
+
+instance Parsec FilePathNT where
+    parsec = pack <$> parsecToken
+
+instance Pretty FilePathNT where
+    pretty = showFilePath . unpack
+
+-------------------------------------------------------------------------------
+-- SpecVersion
+-------------------------------------------------------------------------------
 
 -- | Version range or just version, i.e. @cabal-version@ field.
 --
@@ -278,6 +297,10 @@ instance Pretty SpecVersion where
         | csv >= CabalSpecV1_12 = text (showCabalSpecVersion csv)
         | otherwise             = text ">=" <<>> text (showCabalSpecVersion csv)
 
+-------------------------------------------------------------------------------
+-- SpecLicense
+-------------------------------------------------------------------------------
+
 -- | SPDX License expression or legacy license
 newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }
 
@@ -293,6 +316,10 @@ instance Parsec SpecLicense where
 instance Pretty SpecLicense where
     pretty = either pretty pretty . unpack
 
+-------------------------------------------------------------------------------
+-- TestedWith
+-------------------------------------------------------------------------------
+
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }
 
@@ -304,21 +331,6 @@ instance Parsec TestedWith where
 instance Pretty TestedWith where
     pretty x = case unpack x of
         (compiler, vr) -> pretty compiler <+> pretty vr
-
--- | Filepath are parsed as 'Token'.
-newtype FilePathNT = FilePathNT { getFilePathNT :: String }
-
-instance Newtype String FilePathNT
-
-instance Parsec FilePathNT where
-    parsec = pack <$> parsecToken
-
-instance Pretty FilePathNT where
-    pretty = showFilePath . unpack
-
--------------------------------------------------------------------------------
--- Internal
--------------------------------------------------------------------------------
 
 parsecTestedWith :: CabalParsing m => m (CompilerFlavor, VersionRange)
 parsecTestedWith = do

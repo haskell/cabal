@@ -1,0 +1,1 @@
+To use the 'default-language' field the package needs to specify at least 'cabal-version: >= 1.10'.

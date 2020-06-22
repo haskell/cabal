@@ -42,6 +42,12 @@ checkTests = testGroup "regressions"
     , checkTest "assoc-cpp-options.cabal"
     , checkTest "public-multilib-1.cabal"
     , checkTest "public-multilib-2.cabal"
+    , checkTest "issue-6288-a.cabal"
+    , checkTest "issue-6288-b.cabal"
+    , checkTest "issue-6288-c.cabal"
+    , checkTest "issue-6288-d.cabal"
+    , checkTest "issue-6288-e.cabal"
+    , checkTest "issue-6288-f.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
