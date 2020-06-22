@@ -189,6 +189,18 @@ extra-source-files:
   tests/ParserTests/regressions/issue-6083-pkg-pkg.cabal
   tests/ParserTests/regressions/issue-6083-pkg-pkg.expr
   tests/ParserTests/regressions/issue-6083-pkg-pkg.format
+  tests/ParserTests/regressions/issue-6288-a.cabal
+  tests/ParserTests/regressions/issue-6288-a.check
+  tests/ParserTests/regressions/issue-6288-b.cabal
+  tests/ParserTests/regressions/issue-6288-b.check
+  tests/ParserTests/regressions/issue-6288-c.cabal
+  tests/ParserTests/regressions/issue-6288-c.check
+  tests/ParserTests/regressions/issue-6288-d.cabal
+  tests/ParserTests/regressions/issue-6288-d.check
+  tests/ParserTests/regressions/issue-6288-e.cabal
+  tests/ParserTests/regressions/issue-6288-e.check
+  tests/ParserTests/regressions/issue-6288-f.cabal
+  tests/ParserTests/regressions/issue-6288-f.check
   tests/ParserTests/regressions/issue-774.cabal
   tests/ParserTests/regressions/issue-774.check
   tests/ParserTests/regressions/issue-774.expr
