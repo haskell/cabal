@@ -34,6 +34,9 @@ relative to the respective preceding *published* version.
 * Remove ``-any`` and ``-none`` syntax for version ranges
   Use ``>=0`` and ``<0`` respectively.
 
+* :pkg-field:`default-language` is optional.
+  The Default value is to use the compiler's default language.
+
 * :pkg-field:`mixins` field allow specifying a sublibrary.
 
 ``cabal-version: 3.0``

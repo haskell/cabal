@@ -5,12 +5,13 @@ author: Iain Nicol
 stability: stable
 category: PackageTests
 build-type: Simple
-Cabal-version: >= 1.2
+Cabal-version: >= 1.10
 
 description:
     Check that Cabal successfully invokes Haddock.
 
 Library
+    default-language: Haskell2010
     exposed-modules: CPP, Literate, NoCPP, Simple
     other-extensions: CPP
     build-depends: base
