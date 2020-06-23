@@ -530,10 +530,15 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "virtual-modules"      (alaList' VCat MQuoted)       L.virtualModules
         ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "autogen-modules"      (alaList' VCat MQuoted)       L.autogenModules
+        ^^^ availableSince CabalSpecV2_0 []
     <*> optionalFieldAla "default-language"     MQuoted                       L.defaultLanguage
+        ^^^ availableSince CabalSpecV1_10 Nothing
     <*> monoidalFieldAla "other-languages"      (alaList' FSep MQuoted)       L.otherLanguages
+        ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "default-extensions"   (alaList' FSep MQuoted)       L.defaultExtensions
+        ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "other-extensions"     formatOtherExtensions         L.otherExtensions
+        ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."

@@ -11,10 +11,12 @@ description:
     Check that Cabal recognizes the benchmark stanza defined below.
 
 Library
+    default-language: Haskell2010
     exposed-modules: MyLibrary
     build-depends: base
 
 benchmark dummy
+    default-language: Haskell2010
     main-is: dummy.hs
     type: exitcode-stdio-1.0
     build-depends: base

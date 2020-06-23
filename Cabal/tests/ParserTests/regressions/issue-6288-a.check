@@ -1,1 +1,1 @@
-To use the 'default-language' field the package needs to specify at least 'cabal-version: >= 1.10'.
+issue-6288-a.cabal:13:3: The field "default-language" is available only since the Cabal specification version 1.10. This field will be ignored.

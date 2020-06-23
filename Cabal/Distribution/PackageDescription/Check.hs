@@ -1151,10 +1151,10 @@ checkCabalVersion pkg =
            "To use the 'default-language' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.10'."
 
-  , check (specVersion pkg >= CabalSpecV1_10
+  , check (specVersion pkg >= CabalSpecV1_10 && specVersion pkg < CabalSpecV3_4
            && (any isNothing (buildInfoField defaultLanguage))) $
       PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.10' must specify the "
+           "Packages using 'cabal-version: >= 1.10' and before 'cabal-version: 3.4' must specify the "
         ++ "'default-language' field for each component (e.g. Haskell98 or "
         ++ "Haskell2010). If a component uses different languages in "
         ++ "different modules then list the other ones in the "
