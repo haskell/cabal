@@ -274,7 +274,7 @@ data ConfigFlags = ConfigFlags {
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
     configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
-      -- as haddock, or or ld.
+      -- as haddock, or ld.
     configAllowDependingOnPrivateLibs :: Flag Bool
       -- ^ Allow depending on private sublibraries. This is used by external
       -- tools (like cabal-install) so they can add multiple-public-libraries

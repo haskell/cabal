@@ -62,7 +62,7 @@ import GHC.Stack (CallStack)
 --       active constraints, we must check that they are consistent with
 --       the current state.
 --
--- We can actually merge (1) and (2) by saying the the current choice is
+-- We can actually merge (1) and (2) by saying the current choice is
 -- a new active constraint, fixing the choice.
 --
 -- If a test fails, we have detected an inconsistent state. We can

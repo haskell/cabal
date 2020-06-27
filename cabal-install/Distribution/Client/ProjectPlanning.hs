@@ -2031,7 +2031,7 @@ matchElabPkg p elab =
                 (Cabal.pkgBuildableComponents (elabPkgDescription elab))
 
 -- | Given an 'ElaboratedPlanPackage', generate the mapping from 'PackageName'
--- and 'ComponentName' to the 'ComponentId' that that should be used
+-- and 'ComponentName' to the 'ComponentId' that should be used
 -- in this case.
 mkCCMapping :: ElaboratedPlanPackage
             -> (PackageName, Map ComponentName (AnnotatedId ComponentId))

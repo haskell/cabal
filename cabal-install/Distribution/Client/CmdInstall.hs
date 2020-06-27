@@ -839,7 +839,7 @@ entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
       | otherwise          = []
 
 
--- | Gets the file file path to the request environment file.
+-- | Gets the file path to the request environment file.
 getEnvFile :: ClientInstallFlags -> Platform -> Version -> IO FilePath
 getEnvFile clientInstallFlags platform compilerVersion = do
   appDir <- getGhcAppDir

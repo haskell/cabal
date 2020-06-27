@@ -23,7 +23,7 @@
 -- build multi-package systems.
 --
 -- This module does not delegate anything to the per-compiler modules but just
--- mixes it all in in this module, which is rather unsatisfactory. The script
+-- mixes it all in this module, which is rather unsatisfactory. The script
 -- generation and the unregister feature are not well used or tested.
 
 module Distribution.Simple.Register (

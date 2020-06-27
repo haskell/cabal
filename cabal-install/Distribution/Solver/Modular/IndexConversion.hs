@@ -79,7 +79,7 @@ convIPI' (ShadowPkgs sip) idx =
       | sip = (pn, i, PInfo fdeps comps fds (Just Shadowed))
     shadow x                                     = x
 
--- | Extract/recover the the package ID from an installed package info, and convert it to a solver's I.
+-- | Extract/recover the package ID from an installed package info, and convert it to a solver's I.
 convId :: IPI.InstalledPackageInfo -> (PN, I)
 convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
   where MungedPackageId mpn ver = mungedId ipi

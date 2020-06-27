@@ -771,7 +771,7 @@ The library section should contain the following fields:
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
 
-.. pkg-field:: visibility: visibilty specifiers
+.. pkg-field:: visibility: visibility specifiers
 
     :since 3.0
 
@@ -1404,7 +1404,7 @@ A typical stanza for a foreign library looks like
 
 .. pkg-section:: foreign-library name
     :since: 2.0
-    :synopsis: Foriegn library build information.
+    :synopsis: Foreign library build information.
 
     Build information for `foreign libraries`_.
 
@@ -1530,7 +1530,7 @@ system-dependent values for these fields.
 
     External libraries are identified by the package's name they're
     provided by (currently a package can only publicly expose its
-    main library compeonent; in future, packages with multiple exposed
+    main library component; in future, packages with multiple exposed
     public library components will be supported and a syntax for
     referring to public sub-libraries will be provided).
 
@@ -1784,7 +1784,7 @@ system-dependent values for these fields.
 
     1. External dependencies can (and should) contain a version bound like conventional
        :pkg-field:`build-depends` dependencies.
-    2. Internal depenedencies should not contain a version bound, as they will be always
+    2. Internal dependencies should not contain a version bound, as they will be always
        resolved within the same configuration of the package in the build plan.
        Specifically, version bounds that include the package's version will be warned for
        being extraneous, and version bounds that exclude the package's version will raise

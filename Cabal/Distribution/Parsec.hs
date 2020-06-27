@@ -17,7 +17,7 @@ module Distribution.Parsec (
     eitherParsec,
     explicitEitherParsec,
     explicitEitherParsec',
-    -- * CabalParsing and and diagnostics
+    -- * CabalParsing and diagnostics
     CabalParsing (..),
     -- ** Warnings
     PWarnType (..),

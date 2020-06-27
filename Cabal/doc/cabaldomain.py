@@ -26,12 +26,12 @@ Added directives
 
 .. rst:directive:: .. cabal::cfg-section
 
-   Describes a package.cabal section, such as library or exectuble.
+   Describes a package.cabal section, such as library or executable.
 
    All following `pkg-field` directives will add section name
    to their fields name for disambiguating duplicates.
 
-   You can reset the section disambguation with with `.. pkg-section:: None`.
+   You can reset the section disambiguation with `.. pkg-section:: None`.
 
 .. rst::role:: pkg-section
 
@@ -86,7 +86,7 @@ To be done:
   These should act in a way similar to `.. std::option` directive, but with
   extra meta. And should also end up in reference.
 
-  At least setup and 'new-build` subcommands should get special directvies
+  At least setup and 'new-build` subcommands should get special directives
 
 - Improve rendering of flags in `.. cfg-field::` directive. It should be
   possible without copy-pasting code from sphinx.directives.ObjectDescription
@@ -323,7 +323,7 @@ class CabalObject(ObjectDescription):
 
     def get_index_entry(self, env, name):
         '''
-        Should return index entry and achor
+        Should return index entry and anchor
 
         By default uses indextemplate attribute to generate name and
         index entry by joining directive name, section and field name

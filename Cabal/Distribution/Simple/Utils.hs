@@ -887,7 +887,7 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
                               Just (IODataText inp)   -> "\nstdin input:\n" ++ inp
                               Just (IODataBinary inp) -> "\nstdin input (binary):\n" ++ show inp
 
-        -- Check if we we hit an exception while consuming the output
+        -- Check if we hit an exception while consuming the output
         -- (e.g. a text decoding error)
         out <- reportOutputIOError mberr1
 

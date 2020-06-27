@@ -60,7 +60,7 @@ import qualified Text.PrettyPrint as Disp
 -- are two situations where we need to do it.
 --
 -- For parsing OS and arch names in .cabal files we really want everyone to be
--- referring to the same or or arch by the same name. Variety is not a virtue
+-- referring to the same or arch by the same name. Variety is not a virtue
 -- in this case. We don't mind about case though.
 --
 -- For the System.Info.os\/arch different Haskell implementations use different

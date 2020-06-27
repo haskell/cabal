@@ -334,7 +334,7 @@ dependencyInconsistencies' index =
     ]
   where
     -- For each package name (of a dependency, somewhere)
-    --   and each installed ID of that that package
+    --   and each installed ID of that package
     --     the associated package instance
     --     and a list of reverse dependencies (as source IDs)
     inverseIndex :: Map PackageName (Map SolverId (SolverPlanPackage, [PackageId]))
