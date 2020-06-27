@@ -266,7 +266,7 @@ linkDeps target = \deps -> do
           Just False -> return () -- stanza not enabled; no new deps
     -- For extensions and language dependencies, there is nothing to do.
     -- No choice is involved, just checking, so there is nothing to link.
-    -- The same goes for for pkg-config constraints.
+    -- The same goes for pkg-config constraints.
       (Simple (LDep _ (Ext  _))   _, _) -> return ()
       (Simple (LDep _ (Lang _))   _, _) -> return ()
       (Simple (LDep _ (Pkg  _ _)) _, _) -> return ()

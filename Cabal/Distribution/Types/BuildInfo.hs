@@ -88,7 +88,7 @@ data BuildInfo = BuildInfo {
                                        --   copying. E.g. [libHS<name>_<flavour> | flavour <- extraLibFlavours]. This
                                        --   should only be needed in very specific cases, e.g. the `rts` package, where
                                        --   there are multiple copies of slightly differently built libs.
-        extraDynLibFlavours :: [String], -- ^ Hidden Flag. This set of strings will be be appended to all /dynamic/
+        extraDynLibFlavours :: [String], -- ^ Hidden Flag. This set of strings will be appended to all /dynamic/
                                          --   libraries when copying. This is particularly useful with the `rts` package,
                                          --   where we want different dynamic flavours of the RTS library to be installed.
         extraLibDirs      :: [String],

@@ -135,7 +135,7 @@ mkReqHeaders reqHeaders mRange = concat [
     -- Some headers are comma-separated, others need multiple headers for
     -- multiple options.
     --
-    -- TODO: Right we we just comma-separate all of them.
+    -- TODO: Right we just comma-separate all of them.
     finalize :: (HTTP.HeaderName, [String]) -> [HTTP.Header]
     finalize (name, strs) = [HTTP.Header name (intercalate ", " (reverse strs))]
 

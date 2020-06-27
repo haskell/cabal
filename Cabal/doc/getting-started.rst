@@ -74,7 +74,7 @@ You should see the following output in the terminal:
      ...
      Hello, Haskell!
 
-.. note:: The ``:`` prefix in ``:myfirstapp`` signifies that the the
+.. note:: The ``:`` prefix in ``:myfirstapp`` signifies that the
 	  ``myfirstapp`` target is part of the current package.
 
 Notice that we didn't need to run a `build` command before ``cabal run``, this

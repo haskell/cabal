@@ -286,7 +286,7 @@ isVerboseNoWrap = isVerboseFlag VNoWrap
 isVerboseQuiet :: Verbosity -> Bool
 isVerboseQuiet = vQuiet
 
--- | Test if if we should output timestamps when we log.
+-- | Test if we should output timestamps when we log.
 isVerboseTimestamp :: Verbosity -> Bool
 isVerboseTimestamp = isVerboseFlag VTimestamp
 

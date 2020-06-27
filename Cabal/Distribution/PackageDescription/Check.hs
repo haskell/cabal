@@ -14,7 +14,7 @@
 -- like to encourage. There is a 'PackageCheck' type that distinguishes the
 -- different kinds of check so we can see which ones are appropriate to report
 -- in different situations. This code gets uses when configuring a package when
--- we consider only basic problems. The higher standard is uses when when
+-- we consider only basic problems. The higher standard is uses when
 -- preparing a source tarball and by Hackage when uploading new packages. The
 -- reason for this is that we want to hold packages that are expected to be
 -- distributed to a higher standard than packages that are only ever expected
@@ -796,7 +796,7 @@ checkGhcOptions fieldName getOptions pkg =
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -fhpc' is not not necessary. Use the configure flag "
+           "'" ++ fieldName ++ ": -fhpc' is not necessary. Use the configure flag "
         ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $

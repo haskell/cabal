@@ -442,7 +442,7 @@ configure (pkg_descr0, pbi) cfg = do
                                   installedPackageSet
 
     -- pkg_descr:   The resolved package description, that does not contain any
-    --              conditionals, because we have have an assignment for
+    --              conditionals, because we have an assignment for
     --              every flag, either picking them ourselves using a
     --              simple naive algorithm, or having them be passed to
     --              us by 'configConfigurationsFlags')

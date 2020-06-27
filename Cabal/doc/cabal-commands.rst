@@ -121,7 +121,7 @@ for all transitive dependencies are built and installed.)
 
 In addition ``cabal v2-build`` accepts these flags:
 
-- ``--only-configure``: When given we will forgoe performing a full build and
+- ``--only-configure``: When given we will forego performing a full build and
   abort after running the configure phase of each target package.
 
 

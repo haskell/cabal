@@ -552,7 +552,7 @@ baseSavedConfig = do
     }
   }
 
--- | This is the initial configuration that we write out to to the config file
+-- | This is the initial configuration that we write out to the config file
 -- if the file does not exist (or the config we use if the file cannot be read
 -- for some other reason). When the config gets loaded it gets layered on top
 -- of 'baseSavedConfig' so we do not need to include it into the initial

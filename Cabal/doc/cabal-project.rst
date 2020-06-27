@@ -79,7 +79,7 @@ project are:
     There is no command line variant of this field.
 
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
-    :synopsis: Adds external pacakges as local
+    :synopsis: Adds external packages as local
 
     [STRIKEOUT:Specifies a list of external packages from Hackage which
     should be considered local packages.] (Not implemented)
@@ -282,7 +282,7 @@ The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
-    :synopsis: Prefered dependency versions.
+    :synopsis: Preferred dependency versions.
 
     Like :cfg-field:`constraints`, but the solver will attempt to satisfy
     these preferences on a best-effort basis. The resulting install is locally

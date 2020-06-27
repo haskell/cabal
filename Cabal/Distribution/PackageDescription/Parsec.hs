@@ -702,7 +702,7 @@ checkForUndefinedFlags gpd = do
 --
 -- Before 'cabal-version: 3.0' we didn't have a syntax specially
 -- for referring to internal libraries. Internal library names
--- shadowed the the outside ones.
+-- shadowed the outside ones.
 --
 -- Since 'cabal-version: 3.0' we have ability to write
 --

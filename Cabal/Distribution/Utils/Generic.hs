@@ -186,7 +186,7 @@ fromUTF8BS = decodeStringUtf8 . SBS.unpack
 fromUTF8LBS :: LBS.ByteString -> String
 fromUTF8LBS = decodeStringUtf8 . LBS.unpack
 
--- | Encode 'String' to to UTF8-encoded 'SBS.ByteString'
+-- | Encode 'String' to UTF8-encoded 'SBS.ByteString'
 --
 -- Code-points in the @U+D800@-@U+DFFF@ range will be encoded
 -- as the replacement character (i.e. @U+FFFD@).

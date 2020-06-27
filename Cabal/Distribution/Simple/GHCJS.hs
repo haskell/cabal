@@ -100,7 +100,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
       ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 8.8): "
-      ++ programPath ghcjsProg ++ " is is based on GHC version " ++
+      ++ programPath ghcjsProg ++ " is based on GHC version " ++
       prettyShow ghcjsGhcVersion
 
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
