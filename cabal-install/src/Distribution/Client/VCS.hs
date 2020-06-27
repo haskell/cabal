@@ -384,7 +384,7 @@ vcsGit =
                            Just peerLocalDir -> ["--reference", peerLocalDir]
                       ++ verboseArg
                          where loc = srpLocation
-        checkoutArgs   = "checkout" : verboseArg ++ ["--detach", "--force"
+        checkoutArgs   = "checkout" : verboseArg ++ ["--force"
                          , checkoutTarget, "--" ]
         checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
         verboseArg     = [ "--quiet" | verbosity < Verbosity.normal ]
