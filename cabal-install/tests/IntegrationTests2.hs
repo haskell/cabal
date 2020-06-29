@@ -892,7 +892,7 @@ testTargetProblemsRun config reportSubCase = do
       "targets/lib-only" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      [ ( CmdRun.noExesProblem, mkTargetPackage "p-0.1" )
+      [ (CmdRun.noExesProblem, mkTargetPackage "p-0.1" )
       ]
 
 

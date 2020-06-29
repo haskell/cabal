@@ -155,7 +155,6 @@ library cabal-lib-client
         Distribution.Client.CmdBuild
         Distribution.Client.CmdClean
         Distribution.Client.CmdConfigure
-        Distribution.Client.CmdUpdate
         Distribution.Client.CmdErrorMessages
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
@@ -163,11 +162,13 @@ library cabal-lib-client
         Distribution.Client.CmdInstall
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdInstall.ClientInstallTargetSelector
+        Distribution.Client.CmdLegacy
+        Distribution.Client.CmdListBin
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
-        Distribution.Client.CmdTest
-        Distribution.Client.CmdLegacy
         Distribution.Client.CmdSdist
+        Distribution.Client.CmdTest
+        Distribution.Client.CmdUpdate
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FilePerms

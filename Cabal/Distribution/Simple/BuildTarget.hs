@@ -553,7 +553,7 @@ ex_cs =
 --
 
 data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
 componentKind :: ComponentName -> ComponentKind
 componentKind (CLibName   _) = LibKind
