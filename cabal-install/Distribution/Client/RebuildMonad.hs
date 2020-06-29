@@ -12,8 +12,13 @@ module Distribution.Client.RebuildMonad (
     -- * Rebuild monad
     Rebuild,
     runRebuild,
+    runRebuildEx,
     execRebuild,
     askRoot,
+    catchRebuild,
+
+    -- * Rebuild environment
+    RebuildEnv (..),
 
     -- * Setting up file monitoring
     monitorFiles,
@@ -62,7 +67,7 @@ import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 
-import Distribution.Simple.Utils (debug)
+import Distribution.Simple.Utils (debug, die')
 
 import qualified Data.Map.Strict as Map
 import Control.Monad.State as State
@@ -76,8 +81,20 @@ import System.Directory
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged' and 'monitorFiles'.
 --
-newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
+newtype Rebuild a = Rebuild (ReaderT RebuildEnv (StateT [MonitorFilePath] IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
+
+data RebuildEnv = RebuildEnv
+    { reRoot :: FilePath
+    , reDry  :: Bool
+    }
+  deriving Show
+
+defaultRebuildEnv :: FilePath -> RebuildEnv
+defaultRebuildEnv root = RebuildEnv
+    { reRoot = root
+    , reDry  = False
+    }
 
 -- | Use this wihin the body action of 'rerunIfChanged' to declare that the
 -- action depends on the given files. This can be based on what the action
@@ -91,20 +108,30 @@ monitorFiles :: [MonitorFilePath] -> Rebuild ()
 monitorFiles filespecs = Rebuild (State.modify (filespecs++))
 
 -- | Run a 'Rebuild' IO action.
-unRebuild :: FilePath -> Rebuild a -> IO (a, [MonitorFilePath])
-unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
+unRebuild :: RebuildEnv -> [MonitorFilePath] ->  Rebuild a -> IO (a, [MonitorFilePath])
+unRebuild env files (Rebuild action) = runStateT (runReaderT action env) files
 
 -- | Run a 'Rebuild' IO action.
 runRebuild :: FilePath -> Rebuild a -> IO a
-runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action (defaultRebuildEnv rootDir)) []
+
+runRebuildEx :: RebuildEnv -> Rebuild a -> IO a
+runRebuildEx env (Rebuild action) = evalStateT (runReaderT action env) []
 
 -- | Run a 'Rebuild' IO action.
 execRebuild :: FilePath -> Rebuild a -> IO [MonitorFilePath]
-execRebuild rootDir (Rebuild action) = execStateT (runReaderT action rootDir) []
+execRebuild rootDir (Rebuild action) = execStateT (runReaderT action (defaultRebuildEnv rootDir)) []
 
 -- | The root that relative paths are interpreted as being relative to.
 askRoot :: Rebuild FilePath
-askRoot = Rebuild Reader.ask
+askRoot = Rebuild (Reader.asks reRoot)
+
+askEnv :: Rebuild RebuildEnv
+askEnv = Rebuild Reader.ask
+
+catchRebuild :: Exception e => Rebuild a -> (e -> Rebuild a) -> Rebuild a
+catchRebuild m h = Rebuild $ ReaderT $ \r -> StateT $ \s ->
+    catch (unRebuild r s m) $ \e -> unRebuild r s (h e)
 
 -- | This captures the standard use pattern for a 'FileMonitor': given a
 -- monitor, an action and the input value the action depends on, either
@@ -122,8 +149,9 @@ rerunIfChanged :: (Binary a, Structured a, Binary b, Structured b)
                -> Rebuild b
                -> Rebuild b
 rerunIfChanged verbosity monitor key action = do
-    rootDir <- askRoot
-    changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
+    env <- askEnv
+    liftIO $ print env
+    changed <- liftIO $ checkFileMonitorChanged monitor (reRoot env) key
     case changed of
       MonitorUnchanged result files -> do
         liftIO $ debug verbosity $ "File monitor '" ++ monitorName
@@ -131,15 +159,21 @@ rerunIfChanged verbosity monitor key action = do
         monitorFiles files
         return result
 
-      MonitorChanged reason -> do
-        liftIO $ debug verbosity $ "File monitor '" ++ monitorName
-                                ++ "' changed: " ++ showReason reason
-        startTime <- liftIO $ beginUpdateFileMonitor
-        (result, files) <- liftIO $ unRebuild rootDir action
-        liftIO $ updateFileMonitor monitor rootDir
-                                   (Just startTime) files key result
-        monitorFiles files
-        return result
+      MonitorChanged reason
+        | reDry env -> liftIO $ do
+          die' verbosity $ "File monitor '" ++ monitorName
+             ++ "' changed: " ++ showReason reason
+             ++ ". Dry-run: aborting."
+
+        | otherwise -> do
+          liftIO $ debug verbosity $ "File monitor '" ++ monitorName
+                                  ++ "' changed: " ++ showReason reason
+          startTime <- liftIO $ beginUpdateFileMonitor
+          (result, files) <- liftIO $ unRebuild env [] action
+          liftIO $ updateFileMonitor monitor (reRoot env)
+                                     (Just startTime) files key result
+          monitorFiles files
+          return result
   where
     monitorName = takeFileName (fileMonitorCacheFile monitor)
 

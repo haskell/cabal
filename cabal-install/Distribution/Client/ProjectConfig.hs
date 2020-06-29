@@ -29,6 +29,7 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalFreezeConfig,
     withProjectOrGlobalConfig,
+    withProjectOrGlobalConfigR,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
@@ -451,6 +452,19 @@ renderBadProjectRoot :: BadProjectRoot -> String
 renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
     "The given project file '" ++ projectFile ++ "' does not exist."
 
+withProjectOrGlobalConfigR
+    :: Verbosity                       -- ^ verbosity
+    -> Flag Bool                       -- ^ whether to ignore local project
+    -> Flag FilePath                   -- ^ @--cabal-config@
+    -> Rebuild a                       -- ^ with project
+    -> (ProjectConfig -> Rebuild a)    -- ^ without projet
+    -> Rebuild a  
+withProjectOrGlobalConfigR verbosity (Flag True) gcf _with without = do
+    globalConfig <- readGlobalConfig verbosity gcf
+    without globalConfig
+withProjectOrGlobalConfigR verbosity _ignorePrj  gcf  with without =
+    withProjectOrGlobalConfig' verbosity gcf with without
+
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity
     -> Flag Bool                  -- ^ whether to ignore local project
@@ -458,23 +472,21 @@ withProjectOrGlobalConfig
     -> IO a                       -- ^ with project
     -> (ProjectConfig -> IO a)    -- ^ without projet
     -> IO a
-withProjectOrGlobalConfig verbosity (Flag True) gcf _with without = do
-    globalConfig <- runRebuild "" $ readGlobalConfig verbosity gcf
-    without globalConfig
-withProjectOrGlobalConfig verbosity _ignorePrj  gcf  with without =
-    withProjectOrGlobalConfig' verbosity gcf with without
+withProjectOrGlobalConfig verbosity ign gcf with without =
+    runRebuild "" $ withProjectOrGlobalConfigR verbosity ign gcf
+        (liftIO with) (liftIO . without)
 
 withProjectOrGlobalConfig'
     :: Verbosity
     -> Flag FilePath
-    -> IO a
-    -> (ProjectConfig -> IO a)
-    -> IO a
+    -> Rebuild a
+    -> (ProjectConfig -> Rebuild a)
+    -> Rebuild a
 withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
-  globalConfig <- runRebuild "" $ readGlobalConfig verbosity globalConfigFlag
+  globalConfig <- readGlobalConfig verbosity globalConfigFlag
 
   let
-    res' = catch with
+    res' = catchRebuild with
       $ \case
         (BadPackageLocations prov locs)
           | prov == Set.singleton Implicit
@@ -483,12 +495,12 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
             isGlobErr _ = False
           , any isGlobErr locs ->
             without globalConfig
-        err -> throwIO err
+        err -> liftIO $ throwIO err
 
-  catch res'
+  catchRebuild res'
     $ \case
       (BadProjectRootExplicitFile "") -> without globalConfig
-      err -> throwIO err
+      err -> liftIO $ throwIO err
 
 -- | Read all the config relevant for a project. This includes the project
 -- file if any, plus other global config.

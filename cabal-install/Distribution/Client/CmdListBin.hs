@@ -11,14 +11,16 @@ module Distribution.Client.CmdListBin (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Control.Monad.IO.Class                    (liftIO)
 import Distribution.Client.DistDirLayout         (DistDirLayout (..), ProjectRoot (..))
 import Distribution.Client.NixStyleOptions
        (NixStyleFlags (..), defaultNixStyleFlags, nixStyleOptions)
 import Distribution.Client.ProjectConfig
-       (ProjectConfig, projectConfigConfigFile, projectConfigShared, withProjectOrGlobalConfig)
+       (ProjectConfig, projectConfigConfigFile, projectConfigShared, withProjectOrGlobalConfigR)
 import Distribution.Client.ProjectFlags          (ProjectFlags (..))
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.RebuildMonad          (RebuildEnv (..), runRebuildEx)
 import Distribution.Client.Setup                 (GlobalFlags (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
 import Distribution.Simple.Command               (CommandUI (..))
@@ -65,7 +67,10 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         _   -> die' verbosity "One target is required, given multiple"
 
     -- configure
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
+    let env = RebuildEnv "" True
+    (baseCtx, distDirLayout) <- runRebuildEx env $
+        withProjectOrGlobalConfigR verbosity ignoreProject globalConfigFlag
+        (liftIO withProject) (liftIO .  withoutProject)
     let localPkgs = localPackages baseCtx
 
     -- elaborate target selectors
