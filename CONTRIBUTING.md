@@ -4,12 +4,12 @@ Building Cabal for hacking
 --------------------------
 
 The current recommended way of developing Cabal is to use the
-`new-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  Assuming
+`v2-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  Assuming
 that you have a sufficiently recent cabal-install (see above),
 it is sufficient to run:
 
 ~~~~
-cabal new-build cabal
+cabal v2-build cabal
 ~~~~
 
 To build a local, development copy of cabal-install.  The location
@@ -21,9 +21,9 @@ to find the binary (or just run `find -type f -executable -name cabal`).
 Here are some other useful variations on the commands:
 
 ~~~~
-cabal new-build Cabal # build library only
-cabal new-build Cabal:unit-tests # build Cabal's unit test suite
-cabal new-build cabal-tests # etc...
+cabal v2-build Cabal # build library only
+cabal v2-build Cabal:unit-tests # build Cabal's unit test suite
+cabal v2-build cabal-tests # etc...
 ~~~~
 
 **Dogfooding HEAD.**
@@ -45,7 +45,7 @@ and `~/cabal-dev`, and you have a release copy of cabal installed at
 
 ~~~~
 cd ~/cabal-prod
-/opt/cabal/2.4/bin/cabal new-build cabal
+/opt/cabal/2.4/bin/cabal v2-build cabal
 ~~~~
 
 This will produce a cabal binary (see also: [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
@@ -54,7 +54,7 @@ and then use it to build your development copy:
 
 ~~~~
 cd ~/cabal-dev
-cabal new-build cabal
+cabal v2-build cabal
 ~~~~
 
 Running tests
@@ -112,7 +112,7 @@ If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
 **Running tests locally.**
-To run tests locally with `new-build`, you will need to know the
+To run tests locally with `v2-build`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
 several.  Also, you'll want to read [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
 

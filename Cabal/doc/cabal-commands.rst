@@ -9,8 +9,8 @@ cabal v2-configure
 
 ``cabal v2-configure`` takes a set of arguments and writes a
 ``cabal.project.local`` file based on the flags passed to this command.
-``cabal v2-configure FLAGS; cabal new-build`` is roughly equivalent to
-``cabal v2-build FLAGS``, except that with ``new-configure`` the flags
+``cabal v2-configure FLAGS; cabal v2-build`` is roughly equivalent to
+``cabal v2-build FLAGS``, except that with ``v2-configure`` the flags
 are persisted to all subsequent calls to ``v2-build``.
 
 ``cabal v2-configure`` is intended to be a convenient way to write out
@@ -178,7 +178,7 @@ target, which can be a component, a package or can be left blank, as
 long as it can uniquely identify an executable within the project.
 Tests and benchmarks are also treated as executables.
 
-See `the v2-build section <#cabal-new-build>`__ for the target syntax.
+See `the v2-build section <#cabal-v2-build>`__ for the target syntax.
 
 Except in the case of the empty target, the strings after it will be
 passed to the executable as arguments.
@@ -191,7 +191,7 @@ have to separate them with ``--``.
 
     $ cabal v2-run target -- -a -bcd --argument
 
-'v2-run' also supports running script files that use a certain format. With
+``v2-run`` also supports running script files that use a certain format. With
 a script that looks like:
 
 ::
@@ -218,7 +218,7 @@ cabal v2-freeze
 ----------------
 
 ``cabal v2-freeze`` writes out a **freeze file** which records all of
-the versions and flags which that are picked by the solver under the
+the versions and flags that are picked by the solver under the
 current index and flags.  Default name of this file is
 ``cabal.project.freeze`` but in combination with a
 ``--project-file=my.project`` flag (see :ref:`project-file
@@ -336,7 +336,7 @@ Do note that the results of the previous two commands will be overwritten by
 the use of other v2-style commands, so it is not recommended to use them inside
 a project directory.
 
-This command will modify the environment in the "local.env" file in the
+This command will modify the environment in the ``local.env`` file in the
 current directory:
 
 ::
