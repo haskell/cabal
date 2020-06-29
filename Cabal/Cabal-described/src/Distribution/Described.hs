@@ -95,6 +95,7 @@ import Distribution.Types.SourceRepo               (RepoType)
 import Distribution.Types.TestType                 (TestType)
 import Distribution.Types.UnitId                   (UnitId)
 import Distribution.Types.UnqualComponentName      (UnqualComponentName)
+import Distribution.Verbosity                      (Verbosity)
 import Distribution.Version                        (Version, VersionRange)
 import Language.Haskell.Extension                  (Extension, Language)
 
@@ -484,6 +485,15 @@ instance Described RepoType where
 
 instance Described TestType where
     describe _ = REUnion ["exitcode-stdio-1.0", "detailed-0.9"]
+
+instance Described Verbosity where
+    describe _ = REUnion
+        [ REUnion ["0", "1", "2", "3"]
+        , REUnion ["silent", "normal", "verbose", "debug", "deafening"]
+          <> REMunch reEps (RESpaces <> "+" <>
+            -- markoutput is left out on purpose
+            REUnion ["callsite", "callstack", "nowrap", "timestamp", "stderr", "stdout" ])
+        ]
 
 instance Described Version where
     describe _ = REMunch1 reDot reDigits where

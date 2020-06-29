@@ -20,6 +20,7 @@ data VerbosityFlag
     | VNoWrap
     | VMarkOutput
     | VTimestamp
+    | VStderr
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable)
 
 instance Binary VerbosityFlag

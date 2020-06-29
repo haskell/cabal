@@ -48,6 +48,10 @@ module Distribution.Verbosity (
   -- * timestamps
   verboseTimestamp, isVerboseTimestamp,
   verboseNoTimestamp,
+
+  -- * Stderr
+  verboseStderr, isVerboseStderr,
+  verboseNoStderr,
   ) where
 
 import Prelude ()
@@ -57,10 +61,13 @@ import Distribution.ReadE
 
 import Data.List (elemIndex)
 import Distribution.Parsec
+import Distribution.Pretty
 import Distribution.Verbosity.Internal
+import Distribution.Utils.Generic (isAsciiAlpha)
 
 import qualified Data.Set as Set
 import qualified Distribution.Compat.CharParsing as P
+import qualified Text.PrettyPrint as PP
 
 data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
@@ -146,74 +153,94 @@ intToVerbosity _ = Nothing
 -- | Parser verbosity
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal"
--- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [], vQuiet = False}))
+-- Right (Verbosity {vLevel = Normal, vFlags = fromList [], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap  "
--- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap], vQuiet = False}))
+-- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap +markoutput"
--- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+-- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal +nowrap +markoutput"
--- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+-- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
 --
 -- >>> explicitEitherParsec parsecVerbosity "normal+nowrap+markoutput"
--- Right (Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False}))
+-- Right (Verbosity {vLevel = Normal, vFlags = fromList [VNoWrap,VMarkOutput], vQuiet = False})
+--
+-- >>> explicitEitherParsec parsecVerbosity "deafening+nowrap+stdout+stderr+callsite+callstack"
+-- Right (Verbosity {vLevel = Deafening, vFlags = fromList [VCallStack,VCallSite,VNoWrap,VStderr], vQuiet = False})
 --
 -- /Note:/ this parser will eat trailing spaces.
 --
-parsecVerbosity :: CabalParsing m => m (Either Int Verbosity)
+instance Parsec Verbosity where
+    parsec = parsecVerbosity
+
+instance Pretty Verbosity where
+    pretty = PP.text . showForCabal
+
+parsecVerbosity :: CabalParsing m => m Verbosity
 parsecVerbosity = parseIntVerbosity <|> parseStringVerbosity
   where
-    parseIntVerbosity = fmap Left P.integral
-    parseStringVerbosity = fmap Right $ do
+    parseIntVerbosity = do
+        i <- P.integral
+        case intToVerbosity i of
+            Just v  -> return v
+            Nothing -> P.unexpected $ "Bad integral verbosity: " ++ show i ++ ". Valid values are 0..3"
+
+    parseStringVerbosity = do
         level <- parseVerbosityLevel
         _ <- P.spaces
-        extras <- many (parseExtra <* P.spaces)
-        return (foldr (.) id extras (mkVerbosity level))
-    parseVerbosityLevel = P.choice
-        [ P.string "silent" >> return Silent
-        , P.string "normal" >> return Normal
-        , P.string "verbose" >> return Verbose
-        , P.string "debug"  >> return Deafening
-        , P.string "deafening" >> return Deafening
-        ]
-    parseExtra = P.char '+' >> P.choice
-        [ P.string "callsite"  >> return verboseCallSite
-        , P.string "callstack" >> return verboseCallStack
-        , P.string "nowrap"    >> return verboseNoWrap
-        , P.string "markoutput" >> return verboseMarkOutput
-        , P.string "timestamp" >> return verboseTimestamp
-        ]
+        flags <- many (parseFlag <* P.spaces)
+        return $ foldl' (flip ($)) (mkVerbosity level) flags
+
+    parseVerbosityLevel = do
+        token <- P.munch1 isAsciiAlpha
+        case token of
+            "silent"    -> return Silent
+            "normal"    -> return Normal
+            "verbose"   -> return Verbose
+            "debug"     -> return Deafening
+            "deafening" -> return Deafening
+            _           -> P.unexpected $ "Bad verbosity level: " ++ token
+    parseFlag = do
+        _ <- P.char '+'
+        token <- P.munch1 isAsciiAlpha
+        case token of
+            "callsite"   -> return verboseCallSite
+            "callstack"  -> return verboseCallStack
+            "nowrap"     -> return verboseNoWrap
+            "markoutput" -> return verboseMarkOutput
+            "timestamp"  -> return verboseTimestamp
+            "stderr"     -> return verboseStderr
+            "stdout"     -> return verboseNoStderr
+            _            -> P.unexpected $ "Bad verbosity flag: " ++ token
 
 flagToVerbosity :: ReadE Verbosity
-flagToVerbosity = parsecToReadE id $ do
-    e <- parsecVerbosity
-    case e of
-       Right v -> return v
-       Left i -> case intToVerbosity i of
-           Just v  -> return v
-           Nothing -> fail $ "Bad verbosity: " ++ show i ++ ". Valid values are 0..3"
+flagToVerbosity = parsecToReadE id parsecVerbosity
 
-showForCabal, showForGHC :: Verbosity -> String
-
+showForCabal :: Verbosity -> String
 showForCabal v
     | Set.null (vFlags v)
     = maybe (error "unknown verbosity") show $
         elemIndex v [silent,normal,verbose,deafening]
     | otherwise
-    = unwords $ (case vLevel v of
-                    Silent -> "silent"
-                    Normal -> "normal"
-                    Verbose -> "verbose"
-                    Deafening -> "debug")
-              : concatMap showFlag (Set.toList (vFlags v))
+    = unwords
+        $ showLevel (vLevel v)
+        : concatMap showFlag (Set.toList (vFlags v))
   where
+    showLevel Silent    = "silent"
+    showLevel Normal    = "normal"
+    showLevel Verbose   = "verbose"
+    showLevel Deafening = "debug"
+
     showFlag VCallSite   = ["+callsite"]
     showFlag VCallStack  = ["+callstack"]
     showFlag VNoWrap     = ["+nowrap"]
     showFlag VMarkOutput = ["+markoutput"]
     showFlag VTimestamp  = ["+timestamp"]
+    showFlag VStderr     = ["+stderr"]
+
+showForGHC :: Verbosity -> String
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
@@ -250,6 +277,14 @@ verboseTimestamp = verboseFlag VTimestamp
 -- | Turn off timestamps for log messages.
 verboseNoTimestamp :: Verbosity -> Verbosity
 verboseNoTimestamp = verboseNoFlag VTimestamp
+
+-- | Turn on timestamps for log messages.
+verboseStderr :: Verbosity -> Verbosity
+verboseStderr = verboseFlag VStderr
+
+-- | Turn off timestamps for log messages.
+verboseNoStderr :: Verbosity -> Verbosity
+verboseNoStderr = verboseNoFlag VStderr
 
 -- | Helper function for flag enabling functions
 verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
@@ -289,6 +324,10 @@ isVerboseQuiet = vQuiet
 -- | Test if we should output timestamps when we log.
 isVerboseTimestamp :: Verbosity -> Bool
 isVerboseTimestamp = isVerboseFlag VTimestamp
+
+-- | Test if we should output to stderr when we log.
+isVerboseStderr :: Verbosity -> Bool
+isVerboseStderr = isVerboseFlag VStderr
 
 -- | Helper function for flag testing functions.
 isVerboseFlag :: VerbosityFlag -> Verbosity -> Bool

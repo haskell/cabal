@@ -187,6 +187,7 @@ autogen-includes
 
 autogen-modules
     * Monoidal field
+    * Available since ``cabal-version: 2.0``.
     * Documentation of :pkg-field:`autogen-modules`
 
     .. math::
@@ -277,6 +278,7 @@ cxx-sources
 
 default-extensions
     * Monoidal field
+    * Available since ``cabal-version: 1.10``.
     * Documentation of :pkg-field:`default-extensions`
 
     .. math::
@@ -284,6 +286,7 @@ default-extensions
 
 default-language
     * Optional field
+    * Available since ``cabal-version: 1.10``.
     * Documentation of :pkg-field:`default-language`
 
     .. math::
@@ -456,6 +459,7 @@ mixins
 
 other-extensions
     * Monoidal field
+    * Available since ``cabal-version: 1.10``.
     * Documentation of :pkg-field:`other-extensions`
 
     .. math::
@@ -463,6 +467,7 @@ other-extensions
 
 other-languages
     * Monoidal field
+    * Available since ``cabal-version: 1.10``.
     * Documentation of :pkg-field:`other-languages`
 
     .. math::

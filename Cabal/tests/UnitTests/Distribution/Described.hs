@@ -22,6 +22,7 @@ import Distribution.Types.PackageName              (PackageName)
 import Distribution.Types.PackageVersionConstraint (PackageVersionConstraint)
 import Distribution.Types.Version                  (Version)
 import Distribution.Types.VersionRange             (VersionRange)
+import Distribution.Verbosity                      (Verbosity)
 
 -- instances
 import Test.QuickCheck.Instances.Cabal ()
@@ -44,4 +45,5 @@ tests = testGroup "Described"
     , testDescribed (Proxy :: Proxy ModuleRenaming)
     , testDescribed (Proxy :: Proxy IncludeRenaming)
     , testDescribed (Proxy :: Proxy Mixin)
+    , testDescribed (Proxy :: Proxy Verbosity)
     ]
