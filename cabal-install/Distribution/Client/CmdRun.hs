@@ -10,26 +10,15 @@ module Distribution.Client.CmdRun (
     runCommand,
     runAction,
     handleShebang, validScript,
-
-    -- * Internals exposed for testing
-    matchesMultipleProblem,
-    noExesProblem,
+    -- * Exposed for testing
     selectPackageTargets,
-    selectComponentTarget
+    selectComponentTarget,
   ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (toList)
 
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.CmdErrorMessages
-         ( renderTargetSelector, showTargetSelector,
-           renderTargetProblem,
-           renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
-           targetSelectorFilter, renderListCommaAnd )
-import Distribution.Client.TargetProblem
-         ( TargetProblem (..) )
-
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
@@ -40,13 +29,11 @@ import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
-import Distribution.Types.ComponentName
-         ( showComponentName )
 import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, warn, die', ordNub, info
+         ( wrapText, warn, die', info
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
@@ -62,8 +49,6 @@ import Distribution.Client.TargetSelector
          ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
-import Distribution.Types.UnqualComponentName
-         ( UnqualComponentName, unUnqualComponentName )
 import Distribution.Simple.Program.Run
          ( runProgramInvocation, ProgramInvocation(..),
            emptyProgramInvocation )
@@ -100,9 +85,9 @@ import Distribution.Types.PackageName.Magic
 import Language.Haskell.Extension
          ( Language(..) )
 
+import qualified Distribution.Client.SingleCompTargetProblem as SCTP
+
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Text.Parsec as P
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
@@ -204,7 +189,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
             -- Interpret the targets on the command line as build targets
             -- (as opposed to say repl or haddock targets).
-            targets <- either (reportTargetProblems verbosity) return
+            targets <- either (SCTP.reportTargetProblems verbosity "run") return
                      $ resolveTargets
                          selectPackageTargets
                          selectComponentTarget
@@ -219,10 +204,11 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
             -- Note that we discard the target and return the whole 'TargetsMap',
             -- so this check will be repeated (and must succeed) after
             -- the 'runProjectPreBuildPhase'. Keep it in mind when modifying this.
-            _ <- singleExeOrElse
-                   (reportTargetProblems
+            _ <- SCTP.singleComponentOrElse componentKindsRun
+                   (SCTP.reportTargetProblems
                       verbosity
-                      [multipleTargetsProblem targets])
+                      "run"
+                      [SCTP.multipleTargetsProblem targets])
                    targets
 
             let elaboratedPlan' = pruneInstallPlanToTargets
@@ -233,7 +219,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
-      singleExeOrElse
+      SCTP.singleComponentOrElse componentKindsRun
         (die' verbosity $ "No or multiple targets given, but the run "
                        ++ "phase has been reached. This is a bug.")
         $ targetsMap buildCtx
@@ -250,7 +236,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
             selectedUnitId
             elaboratedPlan
 
-    let exeName = unUnqualComponentName selectedComponent
+    let exeName = prettyShow selectedComponent
 
     -- In the common case, we expect @matchingElaboratedConfiguredPackages@
     -- to consist of a single element that provides a single way of building
@@ -442,14 +428,6 @@ handleScriptCase verbosity pol baseCtx tmpDir scriptContents = do
 
   return (baseCtx', targetSelectors)
 
-singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
-singleExeOrElse action targetsMap =
-  case Set.toList . distinctTargetComponents $ targetsMap
-  of [(unitId, CExeName component)] -> return (unitId, component)
-     [(unitId, CTestName component)] -> return (unitId, component)
-     [(unitId, CBenchName component)] -> return (unitId, component)
-     _   -> action
-
 -- | Filter the 'ElaboratedInstallPlan' keeping only the
 -- 'ElaboratedConfiguredPackage's that match the specified
 -- 'UnitId'.
@@ -465,169 +443,12 @@ matchingPackagesByUnitId uid =
                            else Nothing))
           . toList
 
--- | This defines what a 'TargetSelector' means for the @run@ command.
--- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
--- or otherwise classifies the problem.
---
--- For the @run@ command we select the exe if there is only one and it's
--- buildable. Fail if there are no or multiple buildable exe components.
---
-selectPackageTargets :: TargetSelector
-                     -> [AvailableTarget k] -> Either RunTargetProblem [k]
-selectPackageTargets targetSelector targets
+-- | Component kinds we can run
+componentKindsRun :: [ComponentKind]
+componentKindsRun = [ExeKind, TestKind, BenchKind]
 
-    -- If there is exactly one buildable executable then we select that
-  | [target] <- targetsExesBuildable
-  = Right [target]
+selectPackageTargets :: TargetSelector -> [AvailableTarget k] -> Either SCTP.SingleCompTargetProblem [k] 
+selectPackageTargets = SCTP.selectPackageTargets componentKindsRun
 
-    -- but fail if there are multiple buildable executables.
-  | not (null targetsExesBuildable)
-  = Left (matchesMultipleProblem targetSelector targetsExesBuildable')
-
-    -- If there are executables but none are buildable then we report those
-  | not (null targetsExes)
-  = Left (TargetProblemNoneEnabled targetSelector targetsExes)
-
-    -- If there are no executables but some other targets then we report that
-  | not (null targets)
-  = Left (noExesProblem targetSelector)
-
-    -- If there are no targets at all then we report that
-  | otherwise
-  = Left (TargetProblemNoTargets targetSelector)
-  where
-    -- Targets that can be executed
-    targetsExecutableLike =
-      concatMap (\kind -> filterTargetsKind kind targets)
-                [ExeKind, TestKind, BenchKind]
-    (targetsExesBuildable,
-     targetsExesBuildable') = selectBuildableTargets' targetsExecutableLike
-
-    targetsExes             = forgetTargetsDetail targetsExecutableLike
-
-
--- | For a 'TargetComponent' 'TargetSelector', check if the component can be
--- selected.
---
--- For the @run@ command we just need to check it is a executable-like
--- (an executable, a test, or a benchmark), in addition
--- to the basic checks on being buildable etc.
---
-selectComponentTarget :: SubComponentTarget
-                      -> AvailableTarget k -> Either RunTargetProblem  k
-selectComponentTarget subtarget@WholeComponent t
-  = case availableTargetComponentName t
-    of CExeName _ -> component
-       CTestName _ -> component
-       CBenchName _ -> component
-       _ -> Left (componentNotExeProblem pkgid cname)
-    where pkgid = availableTargetPackageId t
-          cname = availableTargetComponentName t
-          component = selectComponentTargetBasic subtarget t
-
-selectComponentTarget subtarget t
-  = Left (isSubComponentProblem (availableTargetPackageId t)
-           (availableTargetComponentName t)
-           subtarget)
-
--- | The various error conditions that can occur when matching a
--- 'TargetSelector' against 'AvailableTarget's for the @run@ command.
---
-data RunProblem =
-     -- | The 'TargetSelector' matches targets but no executables
-     TargetProblemNoExes      TargetSelector
-
-     -- | A single 'TargetSelector' matches multiple targets
-   | TargetProblemMatchesMultiple TargetSelector [AvailableTarget ()]
-
-     -- | Multiple 'TargetSelector's match multiple targets
-   | TargetProblemMultipleTargets TargetsMap
-
-     -- | The 'TargetSelector' refers to a component that is not an executable
-   | TargetProblemComponentNotExe PackageId ComponentName
-
-     -- | Asking to run an individual file or module is not supported
-   | TargetProblemIsSubComponent  PackageId ComponentName SubComponentTarget
-  deriving (Eq, Show)
-
-type RunTargetProblem = TargetProblem RunProblem
-
-noExesProblem :: TargetSelector -> RunTargetProblem
-noExesProblem = CustomTargetProblem . TargetProblemNoExes
-
-matchesMultipleProblem :: TargetSelector -> [AvailableTarget ()] -> RunTargetProblem
-matchesMultipleProblem selector targets = CustomTargetProblem $
-    TargetProblemMatchesMultiple selector targets
-
-multipleTargetsProblem :: TargetsMap -> TargetProblem RunProblem
-multipleTargetsProblem = CustomTargetProblem . TargetProblemMultipleTargets
-
-componentNotExeProblem :: PackageId -> ComponentName -> TargetProblem RunProblem
-componentNotExeProblem pkgid name = CustomTargetProblem $
-    TargetProblemComponentNotExe pkgid name
-
-isSubComponentProblem
-  :: PackageId
-  -> ComponentName
-  -> SubComponentTarget
-  -> TargetProblem RunProblem
-isSubComponentProblem pkgid name subcomponent = CustomTargetProblem $
-    TargetProblemIsSubComponent pkgid name subcomponent
-
-reportTargetProblems :: Verbosity -> [RunTargetProblem] -> IO a
-reportTargetProblems verbosity =
-    die' verbosity . unlines . map renderRunTargetProblem
-
-renderRunTargetProblem :: RunTargetProblem -> String
-renderRunTargetProblem (TargetProblemNoTargets targetSelector) =
-    case targetSelectorFilter targetSelector of
-      Just kind | kind /= ExeKind
-        -> "The run command is for running executables, but the target '"
-           ++ showTargetSelector targetSelector ++ "' refers to "
-           ++ renderTargetSelector targetSelector ++ "."
-
-      _ -> renderTargetProblemNoTargets "run" targetSelector
-renderRunTargetProblem problem =
-    renderTargetProblem "run" renderRunProblem problem
-
-renderRunProblem :: RunProblem -> String
-renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
-    "The run command is for running a single executable at once. The target '"
- ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ " which includes "
- ++ renderListCommaAnd ( ("the "++) <$>
-                         showComponentName <$>
-                         availableTargetComponentName <$>
-                         foldMap
-                           (\kind -> filterTargetsKind kind targets)
-                           [ExeKind, TestKind, BenchKind] )
- ++ "."
-
-renderRunProblem (TargetProblemMultipleTargets selectorMap) =
-    "The run command is for running a single executable at once. The targets "
- ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
- ++ " refer to different executables."
-
-renderRunProblem (TargetProblemComponentNotExe pkgid cname) =
-    "The run command is for running executables, but the target '"
- ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ " from the package "
- ++ prettyShow pkgid ++ "."
-  where
-    targetSelector = TargetComponent pkgid cname WholeComponent
-
-renderRunProblem (TargetProblemIsSubComponent pkgid cname subtarget) =
-    "The run command can only run an executable as a whole, "
- ++ "not files or modules within them, but the target '"
- ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ "."
-  where
-    targetSelector = TargetComponent pkgid cname subtarget
-
-renderRunProblem (TargetProblemNoExes targetSelector) =
-    "Cannot run the target '" ++ showTargetSelector targetSelector
- ++ "' which refers to " ++ renderTargetSelector targetSelector
- ++ " because "
- ++ plural (targetSelectorPluralPkgs targetSelector) "it does" "they do"
- ++ " not contain any executables."
+selectComponentTarget :: SubComponentTarget -> AvailableTarget k -> Either SCTP.SingleCompTargetProblem  k
+selectComponentTarget = SCTP.selectComponentTarget componentKindsRun

@@ -90,6 +90,7 @@ import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
 import qualified Distribution.Client.CmdSdist     as CmdSdist
+import qualified Distribution.Client.CmdListBin   as CmdListBin
 import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
@@ -251,6 +252,7 @@ mainWorker args = do
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
+      , regularCmd CmdListBin.listbinCommand     CmdListBin.listbinAction
 
       ] ++ concat
       [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction

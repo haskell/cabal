@@ -43,6 +43,7 @@ import qualified Distribution.Client.CmdRun     as CmdRun
 import qualified Distribution.Client.CmdTest    as CmdTest
 import qualified Distribution.Client.CmdBench   as CmdBench
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.SingleCompTargetProblem as SCTP
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -846,7 +847,7 @@ testTargetProblemsRun config reportSubCase = do
       "targets/multiple-exes" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      [ ( flip CmdRun.matchesMultipleProblem
+      [ ( flip SCTP.matchesMultipleProblem
                [ AvailableTarget "p-0.1" (CExeName "p2")
                    (TargetBuildable () TargetRequestedByDefault) True
                , AvailableTarget "p-0.1" (CExeName "p1")
@@ -892,7 +893,7 @@ testTargetProblemsRun config reportSubCase = do
       "targets/lib-only" config
       CmdRun.selectPackageTargets
       CmdRun.selectComponentTarget
-      [ ( CmdRun.noExesProblem, mkTargetPackage "p-0.1" )
+      [ ( SCTP.noCompsProblem, mkTargetPackage "p-0.1" )
       ]
 
 
