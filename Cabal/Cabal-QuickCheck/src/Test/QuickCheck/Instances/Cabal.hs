@@ -308,7 +308,17 @@ instance Arbitrary FlagAssignment where
 -------------------------------------------------------------------------------
 
 instance Arbitrary Verbosity where
-    arbitrary = elements [minBound..maxBound]
+    arbitrary = do
+        v <- elements [minBound..maxBound]
+        -- verbose markoutput is left out on purpose
+        flags <- listOf $ elements
+            [ verboseCallSite
+            , verboseCallStack
+            , verboseNoWrap
+            , verboseTimestamp
+            , verboseStderr
+            ]
+        return (foldr ($) v flags)
 
 -------------------------------------------------------------------------------
 -- SourceRepo

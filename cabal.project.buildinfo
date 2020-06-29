@@ -3,4 +3,8 @@ packages: Cabal/Cabal-described
 packages: buildinfo-reference-generator/
 tests: False
 optimization: False
-with-compiler: ghc-8.6.5
+with-compiler: ghc-8.8.3
+
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc
