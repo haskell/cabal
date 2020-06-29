@@ -118,9 +118,9 @@ across projects. To be more precise:
 1. A **local package** is one that is listed explicitly in the
    ``packages``, ``optional-packages`` or ``extra-packages`` field of a
    project. Usually, these refer to packages whose source code lives
-   directly in a folder in your project (although, you can list an
-   arbitrary Hackage package in ``extra-packages`` to force it to be
-   treated as local).
+   directly in a folder in your project. But you can list an
+   arbitrary Hackage package in `extra-packages <cabal-project.html#cfg-field-extra-packages>`
+   to force it to be treated as local.
 
 Local packages, as well as the external packages (below) which depend on
 them, are built **inplace**, meaning that they are always built
@@ -134,8 +134,8 @@ suitable for packages which you want to edit and recompile.
 
 When an external package does not depend on an inplace package, it can
 be built and installed to a **global** store, which can be shared across
-projects. These build products are identified by a hash that over all of
-the inputs which would influence the compilation of a package (flags,
+projects. These build products are identified by a hash based on all of
+the inputs which influence the compilation of a package (flags,
 dependency selection, etc.). Just as in Nix, these hashes uniquely
 identify the result of a build; if we compute this identifier and we
 find that we already have this ID built, we can just use the already
@@ -191,7 +191,7 @@ version of cabal-install:
    ``dist-newstyle/build/x86_64-linux/ghc-8.0.1/p-0.1/c/pexe/build/pexe/pexe``
    (you can see why we want this to be an implementation detail!)
 
-- In cabal-install-2.2 and above, the ``/c/`` part of the above path
+-  In cabal-install-2.2 and above, the ``/c/`` part of the above path
    is replaced with one of ``/l/``, ``/x/``, ``/f/``, ``/t/``, or
    ``/b/``, depending on the type of component (sublibrary,
    executable, foreign library, test suite, or benchmark
@@ -211,7 +211,7 @@ build products like executables.
 Caching
 -------
 
-Nix-style local builds sport a robust caching system which help reduce
+Nix-style local builds sport a robust caching system which helps to reduce
 the time it takes to execute a rebuild cycle. While the details of how
 ``cabal-install`` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for
@@ -235,10 +235,10 @@ this folder (the most important two are first):
     a local package are unchanged, ``cabal v2-build`` will skip
     invoking ``setup build`` entirely (saving us from a possibly
     expensive call to ``ghc --make``). The full list of source files
-    participating in compilation are determined using
-    ``setup sdist --list-sources`` (thus, if you do not list all your
-    source files in a Cabal file, you may fail to recompile when you
-    edit them.)
+    participating in compilation is determined using
+    ``cabal sdist --list-only``. Thus if you do not list all your
+    source files in a Cabal file, Cabal may fail to recompile when you
+    edit them.
 ``config`` (same format as ``cabal.project``)
     The full project configuration, merged from ``cabal.project`` (and
     friends) as well as the command line arguments.
@@ -262,7 +262,3 @@ this folder (the most important two are first):
 
 Note that every package also has a local cache managed by the Cabal
 build system, e.g., in ``$distdir/cache``.
-
-There is another useful file in ``dist-newstyle/cache``,
-``plan.json``, which is a JSON serialization of the computed install
-plan and is intended for integrating with external tooling.

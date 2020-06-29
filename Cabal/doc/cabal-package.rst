@@ -208,7 +208,7 @@ don't follow this rule.
 In the package description file, lines whose first non-whitespace
 characters are "``--``" are treated as comments and ignored.
 
-This file should contain of a number global property descriptions and
+This file should contain a number global property descriptions and
 several sections.
 
 -  The `package properties`_ describe the package
@@ -338,8 +338,8 @@ describe the package as a whole:
     The version of the Cabal specification that this package
     description uses. The Cabal specification does slowly evolve (see
     also :ref:`spec-history`), introducing new features and
-    occasionally changing the meaning of existing features. By
-    specifying which version of the specification you are using it
+    occasionally changing the meaning of existing features.
+    Specifying which version of the specification you are using
     enables programs which process the package description to know
     what syntax to expect and what each part means.
 
@@ -732,7 +732,7 @@ Library
     the :pkg-section:`library` section must be omitted.
 
     Starting with Cabal 2.0, private internal sub-library components
-    can be defined by using setting the ``name`` field to a name
+    can be defined by setting the ``name`` field to a name
     different from the current package's name; see section on
     :ref:`Internal Libraries <sublibs>` for more information.
 
@@ -773,7 +773,7 @@ The library section should contain the following fields:
 
 .. pkg-field:: visibility: visibility specifiers
 
-    :since 3.0
+    :since: 3.0
 
     :default: ``private`` for internal libraries. Cannot be set for public library.
 
