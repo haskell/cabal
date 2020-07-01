@@ -198,6 +198,7 @@ globalCommand commands = CommandUI {
           , "new-install"
           , "new-clean"
           , "new-sdist"
+          , "list-bin"
           -- v1 commands, stateful style
           , "v1-build"
           , "v1-configure"
@@ -275,6 +276,7 @@ globalCommand commands = CommandUI {
         , addCmd "haddock"
         , addCmd "hscolour"
         , addCmd "exec"
+        , addCmd "list-bin"
         , par
         , startGroup "new-style projects (forwards-compatible aliases)"
         , addCmd "v2-build"

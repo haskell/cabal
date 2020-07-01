@@ -44,6 +44,8 @@ import           Distribution.Simple.GHC
                    ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
+import           Distribution.Simple.BuildPaths
+                   ( dllExtension, exeExtension )
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
@@ -98,7 +100,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
              , "install-plan"      J..= installPlanToJ elaboratedInstallPlan
              ]
   where
-    Platform arch os = pkgConfigPlatform elaboratedSharedConfig
+    plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
 
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]
     installPlanToJ = map planPackageToJ . InstallPlan.toList
@@ -230,13 +232,21 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         ComponentDeps.ComponentExe s   -> bin_file' s
         ComponentDeps.ComponentTest s  -> bin_file' s
         ComponentDeps.ComponentBench s -> bin_file' s
+        ComponentDeps.ComponentFLib s  -> flib_file' s
         _ -> []
       bin_file' s =
         ["bin-file" J..= J.String bin]
        where
         bin = if elabBuildStyle elab == BuildInplaceOnly
-               then dist_dir </> "build" </> prettyShow s </> prettyShow s
-               else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s
+               then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
+               else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
+
+      flib_file' s =
+        ["bin-file" J..= J.String bin]
+       where
+        bin = if elabBuildStyle elab == BuildInplaceOnly
+               then dist_dir </> "build" </> prettyShow s </> ("lib" ++ prettyShow s) <.> dllExtension plat
+               else InstallDirs.bindir (elabInstallDirs elab) </> ("lib" ++ prettyShow s) <.> dllExtension plat
 
     comp2str :: ComponentDeps.Component -> String
     comp2str = prettyShow
