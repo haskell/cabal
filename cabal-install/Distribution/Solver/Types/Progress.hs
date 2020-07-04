@@ -15,7 +15,7 @@ data Progress step fail done = Step step (Progress step fail done)
                              | Done done
 
 -- This Functor instance works around a bug in GHC 7.6.3.
--- See https://ghc.haskell.org/trac/ghc/ticket/7436#comment:6.
+-- See https://gitlab.haskell.org/ghc/ghc/-/issues/7436#note_66637.
 -- The derived functor instance caused a space leak in the solver.
 instance Functor (Progress step fail) where
   fmap f (Step s p) = Step s (fmap f p)

@@ -26,8 +26,8 @@ master_doc = 'index'
 extlinks = {
     'issue': ('https://github.com/haskell/cabal/issues/%s', '#'),
 
-    'ghc-wiki': ('http://ghc.haskell.org/trac/ghc/wiki/%s', ''),
-    'ghc-ticket': ('http://ghc.haskell.org/trac/ghc/ticket/%s', 'GHC #'),
+    'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', ''),
+    'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC #'),
 
     'hackage-pkg': ('http://hackage.haskell.org/package/%s', ''),
 }

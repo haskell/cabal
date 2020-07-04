@@ -812,7 +812,7 @@ packageDbArgsConf dbstack = case dbstack of
                   ++ show dbstack
 
 -- | GHC >= 7.6 uses the '-package-db' flag. See
--- https://ghc.haskell.org/trac/ghc/ticket/5977.
+-- https://gitlab.haskell.org/ghc/ghc/-/issues/5977.
 packageDbArgsDb :: PackageDBStack -> [String]
 -- special cases to make arguments prettier in common scenarios
 packageDbArgsDb dbstack = case dbstack of

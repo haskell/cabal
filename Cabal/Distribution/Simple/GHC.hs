@@ -180,7 +180,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = Map.fromList ghcInfo
-      extensions = -- workaround https://ghc.haskell.org/ticket/11214
+      extensions = -- workaround https://gitlab.haskell.org/ghc/ghc/-/issues/11214
                    filterExt JavaScriptFFI $
                    -- see 'filterExtTH' comment below
                    filterExtTH $ extensions0
@@ -428,7 +428,7 @@ checkPackageDbStackPre76 verbosity rest
   die' verbosity $
         "With current ghc versions the global package db is always used "
      ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
-     ++ "see http://ghc.haskell.org/trac/ghc/ticket/5977"
+     ++ "see https://gitlab.haskell.org/ghc/ghc/-/issues/5977"
 checkPackageDbStackPre76 verbosity _ =
   die' verbosity $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"

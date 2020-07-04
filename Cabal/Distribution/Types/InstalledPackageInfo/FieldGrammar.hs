@@ -44,7 +44,7 @@ import qualified Distribution.Types.PackageId.Lens            as L
 -- 34886 KnownBranch
 --  8197 wild1_ixF0
 --
--- https://ghc.haskell.org/trac/ghc/ticket/13253 might be the cause.
+-- https://gitlab.haskell.org/ghc/ghc/-/issues/13253 might be the cause.
 --
 -- The workaround is to prevent GHC optimising the code:
 infixl 4 <@>
