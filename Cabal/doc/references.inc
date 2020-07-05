@@ -23,4 +23,4 @@
 
 .. _ABNF: https://tools.ietf.org/html/rfc5234
 
-.. _Backpack: https://ghc.haskell.org/trac/ghc/wiki/Backpack
+.. _Backpack: https://gitlab.haskell.org/ghc/ghc/-/wikis/backpack

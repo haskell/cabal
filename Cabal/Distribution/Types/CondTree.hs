@@ -80,7 +80,7 @@ data CondBranch v c a = CondBranch
 
 -- This instance is written by hand because GHC 8.0.1/8.0.2 infinite
 -- loops when trying to derive it with optimizations.  See
--- https://ghc.haskell.org/trac/ghc/ticket/13056
+-- https://gitlab.haskell.org/ghc/ghc/-/issues/13056
 instance Foldable (CondBranch v c) where
     foldMap f (CondBranch _ c Nothing) = foldMap f c
     foldMap f (CondBranch _ c (Just a)) = foldMap f c `mappend` foldMap f a

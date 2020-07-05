@@ -104,7 +104,7 @@ ghcProgram :: Program
 ghcProgram = (simpleProgram "ghc") {
     programFindVersion = findProgramVersion "--numeric-version" id,
 
-    -- Workaround for https://ghc.haskell.org/trac/ghc/ticket/8825
+    -- Workaround for https://gitlab.haskell.org/ghc/ghc/-/issues/8825
     -- (spurious warning on non-english locales)
     programPostConf    = \_verbosity ghcProg ->
     do let ghcProg' = ghcProg {
