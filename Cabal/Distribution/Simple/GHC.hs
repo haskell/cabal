@@ -674,7 +674,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
   ifReplLib $ do
     when (null (allLibModules lib clbi)) $ warn verbosity "No exposed modules"
-    ifReplLib (runGhcProg replOpts)
+    runGhcProg replOpts
 
   -- build any C sources
   unless (not has_code || null (cSources libBi)) $ do
