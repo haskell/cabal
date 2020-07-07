@@ -49,5 +49,5 @@ main = cabalTest $ do
                       (Just (testCurrentDir env))
                       (testEnvironment env)
                       (programPath configured_prog)
-                      args
+                      args Nothing
         recordLog r

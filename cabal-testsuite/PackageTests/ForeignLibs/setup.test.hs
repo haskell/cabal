@@ -39,6 +39,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
             , "UseLib.c"
             , "-l", "myforeignlib"
             , "-L", flibdir installDirs ]
+            Nothing
 
         -- Run the C program
         let ldPath = case hostPlatform lbi of
@@ -48,7 +49,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
         oldLdPath <- liftIO $ getEnv' ldPath
         withEnv [ (ldPath, Just $ flibdir installDirs ++ [searchPathSeparator] ++ oldLdPath) ] $ do
             cwd <- fmap testCurrentDir getTestEnv
-            result <- runM (cwd </> "uselib") []
+            result <- runM (cwd </> "uselib") [] Nothing
             assertOutputContains "5678" result
             assertOutputContains "189" result
 
@@ -70,7 +71,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
                 objInfo <- runM (programPath objdump) [
                     "-x"
                   , libdir </> libraryName
-                  ]
+                  ] Nothing
                 assertBool "SONAME of 'libversionedlib.so.5.4.3' incorrect" $
                   elem "libversionedlib.so.5" $ words $ resultOutput objInfo
             _ -> return ()
