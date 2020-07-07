@@ -72,17 +72,17 @@ generate' lss template = template $ Input
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
     , inputLicenseList_3_6 = mkLicenseList
         (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
-    , inputLicenseList_3_8 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_8 vers)
+    , inputLicenseList_3_9 = mkLicenseList
+        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_9 vers)
     }
   where
-    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) (LL ls_3_8) = lss
+    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) (LL ls_3_9) = lss
 
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
         $ combine licenseId $ \ver -> case ver of
-            SPDXLicenseListVersion_3_8 -> filterDeprecated ls_3_8
+            SPDXLicenseListVersion_3_9 -> filterDeprecated ls_3_9
             SPDXLicenseListVersion_3_6 -> filterDeprecated ls_3_6
             SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
             SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0

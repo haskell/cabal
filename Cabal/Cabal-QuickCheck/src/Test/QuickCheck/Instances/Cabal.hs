@@ -335,10 +335,13 @@ instance Arbitrary RepoKind where
 -------------------------------------------------------------------------------
 
 instance Arbitrary LicenseId where
-    arbitrary = elements $ licenseIdList LicenseListVersion_3_6
+    arbitrary = elements $ licenseIdList currentLicenseListVersion
 
 instance Arbitrary LicenseExceptionId where
-    arbitrary = elements $ licenseExceptionIdList LicenseListVersion_3_6
+    arbitrary = elements $ licenseExceptionIdList currentLicenseListVersion
+
+currentLicenseListVersion :: LicenseListVersion
+currentLicenseListVersion = cabalSpecVersionToSPDXListVersion cabalSpecLatest
 
 instance Arbitrary LicenseRef where
     arbitrary = mkLicenseRef' <$> ids' <*> ids
