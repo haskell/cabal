@@ -1,50 +1,65 @@
--- | Extremely simple JSON helper. Don't do anything too fancy with this!
+{-# LANGUAGE OverloadedStrings #-}
 
+-- | Extremely simple JSON helper. Don't do anything too fancy with this!
 module Distribution.Utils.Json
     ( Json(..)
     , (.=)
     , renderJson
     ) where
 
+import Data.Text (Text)
+import qualified Data.Text as Text
+
 data Json = JsonArray [Json]
           | JsonBool !Bool
           | JsonNull
           | JsonNumber !Int
-          | JsonObject [(String, Json)]
-          | JsonString !String
+          | JsonObject [(Text, Json)]
+          | JsonRaw !Text
+          | JsonString !Text
 
-renderJson :: Json -> ShowS
+-- | A type to mirror 'ShowS'
+type ShowT = Text -> Text
+
+renderJson :: Json -> ShowT
 renderJson (JsonArray objs)   =
   surround "[" "]" $ intercalate "," $ map renderJson objs
-renderJson (JsonBool True)    = showString "true"
-renderJson (JsonBool False)   = showString "false"
-renderJson  JsonNull          = showString "null"
-renderJson (JsonNumber n)     = shows n
+renderJson (JsonBool True)    = showText "true"
+renderJson (JsonBool False)   = showText "false"
+renderJson  JsonNull          = showText "null"
+renderJson (JsonNumber n)     = showText $ Text.pack (show n)
 renderJson (JsonObject attrs) =
   surround "{" "}" $ intercalate "," $ map render attrs
   where
-    render (k,v) = (surround "\"" "\"" $ showString' k) . showString ":" . renderJson v
-renderJson (JsonString s)     = surround "\"" "\"" $ showString' s
+    render (k,v) = (surround "\"" "\"" $ showText' k) . showText ":" . renderJson v
+renderJson (JsonString s)     = surround "\"" "\"" $ showText' s
+renderJson (JsonRaw s)        = showText s
 
-surround :: String -> String -> ShowS -> ShowS
-surround begin end middle = showString begin . middle . showString end
+surround :: Text -> Text -> ShowT -> ShowT
+surround begin end middle = showText begin . middle . showText end
 
-showString' :: String -> ShowS
-showString' xs = showStringWorker xs
-    where
-        showStringWorker :: String -> ShowS
-        showStringWorker ('\"':as) = showString "\\\"" . showStringWorker as
-        showStringWorker ('\\':as) = showString "\\\\" . showStringWorker as
-        showStringWorker ('\'':as) = showString "\\\'" . showStringWorker as
-        showStringWorker (x:as) = showString [x] . showStringWorker as
-        showStringWorker [] = showString ""
+showText :: Text -> ShowT
+showText = (<>)
 
-intercalate :: String -> [ShowS] -> ShowS
+showText' :: Text -> ShowT
+showText' xs = showStringWorker xs
+  where
+      showStringWorker :: Text -> ShowT
+      showStringWorker t =
+        case Text.uncons t of
+          Just ('\r', as) -> showText "\\r" . showStringWorker as
+          Just ('\n', as) -> showText "\\n" . showStringWorker as
+          Just ('\"', as) -> showText "\\\"" . showStringWorker as
+          Just ('\\', as) -> showText "\\\\" . showStringWorker as
+          Just (x,    as) -> showText (Text.singleton x) . showStringWorker as
+          Nothing         -> showText ""
+
+intercalate :: Text -> [ShowT] -> ShowT
 intercalate sep = go
   where
     go []     = id
     go [x]    = x
-    go (x:xs) = x . showString' sep . go xs
+    go (x:xs) = x . showText' sep . go xs
 
-(.=) :: String -> Json -> (String, Json)
+(.=) :: Text -> Json -> (Text, Json)
 k .= v = (k, v)

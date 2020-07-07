@@ -84,8 +84,8 @@ removeErrors s = unlines (go (lines s) False)
   where
     go [] _ = []
     go (x:xs) True
-      | "cabal:" `isPrefixOf` x = x:(go xs False)
-      | otherwise               = go xs True
+      | any (`isPrefixOf` x) ["cabal:", "cabal.exe:"] = x:(go xs False)
+      | otherwise                                     = go xs True
     go (x:xs) False
       | "exited with an error" `isInfixOf` x = x:(go xs True)
       | otherwise                            = x:(go xs False)

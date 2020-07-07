@@ -108,6 +108,8 @@ import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
 
+import qualified Data.Text.IO as T
+
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
 -- action specified on the command line.
@@ -265,31 +267,34 @@ buildAction hooks flags args = do
                hooks flags' { buildArgs = args } args
 
 showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
-  distPref <- findDistPrefOrDefault (buildDistPref flags)
-  let verbosity = fromFlag $ buildVerbosity flags
+showBuildInfoAction hooks flags args = do
+  let buildFlags = buildInfoBuildFlags flags
+  distPref <- findDistPrefOrDefault (buildDistPref buildFlags)
+  let verbosity = fromFlag $ buildVerbosity buildFlags
   lbi <- getBuildConfig hooks verbosity distPref
-  let flags' = flags { buildDistPref = toFlag distPref
-                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
-                     }
+  let buildFlags' =
+        buildFlags { buildDistPref = toFlag distPref
+                   , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
+                   }
 
   progs <- reconfigurePrograms verbosity
-             (buildProgramPaths flags')
-             (buildProgramArgs flags')
+             (buildProgramPaths buildFlags')
+             (buildProgramArgs buildFlags')
              (withPrograms lbi)
 
-  pbi <- preBuild hooks args flags'
+  pbi <- preBuild hooks args buildFlags'
   let lbi' = lbi { withPrograms = progs }
       pkg_descr0 = localPkgDescr lbi'
       pkg_descr = updatePackageDescription pbi pkg_descr0
       -- TODO: Somehow don't ignore build hook?
-  buildInfoString <- showBuildInfo pkg_descr lbi' flags
 
-  case fileOutput of
-    Nothing -> putStr buildInfoString
-    Just fp -> writeFile fp buildInfoString
+  buildInfoText <- showBuildInfo pkg_descr lbi' flags
 
-  postBuild hooks args flags' pkg_descr lbi'
+  case buildInfoOutputFile flags of
+    Nothing -> T.putStr buildInfoText
+    Just fp -> T.writeFile fp buildInfoText
+
+  postBuild hooks args buildFlags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do

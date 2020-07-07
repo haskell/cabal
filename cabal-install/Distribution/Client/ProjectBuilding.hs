@@ -97,6 +97,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.Text.IO as T
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -456,9 +457,10 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
 
               (MonitorUnchanged buildResult _, MonitorUnchanged _ _) ->
                   return $ Right BuildResult {
-                    buildResultDocs    = docsResult,
-                    buildResultTests   = testsResult,
-                    buildResultLogFile = Nothing
+                    buildResultDocs      = docsResult,
+                    buildResultTests     = testsResult,
+                    buildResultLogFile   = Nothing,
+                    buildResultBuildInfo = Nothing
                   }
                 where
                   (docsResult, testsResult) = buildResult
@@ -1052,9 +1054,10 @@ buildAndInstallUnpackedPackage verbosity
     noticeProgress ProgressCompleted
 
     return BuildResult {
-       buildResultDocs    = docsResult,
-       buildResultTests   = testsResult,
-       buildResultLogFile = mlogFile
+       buildResultDocs      = docsResult,
+       buildResultTests     = testsResult,
+       buildResultLogFile   = mlogFile,
+       buildResultBuildInfo = Nothing
     }
 
   where
@@ -1299,10 +1302,23 @@ buildInplaceUnpackedPackage verbosity
               Tar.createTarGzFile dest docDir name
               notice verbosity $ "Documentation tarball created: " ++ dest
 
+        -- Build info phase
+        buildInfo <- whenBuildInfo $
+          -- Write the json to a temporary file to read it, since stdout can get
+          -- cluttered
+          withTempDirectory verbosity distTempDirectory "build-info" $ \dir -> do
+            let fp = dir </> "out"
+            setupInteractive
+              buildInfoCommand
+              (\v -> (buildInfoFlags v) { Cabal.buildInfoOutputFile = Just fp })
+              buildInfoArgs
+            Just <$> T.readFile fp
+
         return BuildResult {
           buildResultDocs    = docsResult,
           buildResultTests   = testsResult,
-          buildResultLogFile = Nothing
+          buildResultLogFile = Nothing,
+          buildResultBuildInfo = buildInfo
         }
 
   where
@@ -1339,6 +1355,10 @@ buildInplaceUnpackedPackage verbosity
     whenHaddock action
       | hasValidHaddockTargets pkg = action
       | otherwise                  = return ()
+
+    whenBuildInfo action
+      | null (elabBuildInfoTargets pkg) = return Nothing
+      | otherwise                       = action
 
     whenReRegister  action
       = case buildStatus of
@@ -1383,6 +1403,10 @@ buildInplaceUnpackedPackage verbosity
                                            verbosity builddir
     haddockArgs    v = flip filterHaddockArgs v $
                        setupHsHaddockArgs pkg
+
+    buildInfoCommand = Cabal.showBuildInfoCommand defaultProgramDb
+    buildInfoFlags _ = setupHsShowBuildInfoFlags pkg pkgshared verbosity builddir
+    buildInfoArgs  _ = setupHsShowBuildInfoArgs pkg
 
     scriptOptions    = setupHsScriptOptions rpkg plan pkgshared
                                             distDirLayout srcdir builddir

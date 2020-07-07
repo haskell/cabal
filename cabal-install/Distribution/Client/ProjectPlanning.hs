@@ -57,6 +57,8 @@ module Distribution.Client.ProjectPlanning (
     setupHsRegisterFlags,
     setupHsHaddockFlags,
     setupHsHaddockArgs,
+    setupHsShowBuildInfoFlags,
+    setupHsShowBuildInfoArgs,
 
     packageHashInputs,
 
@@ -1776,6 +1778,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabBenchTargets    = []
         elabReplTarget      = Nothing
         elabHaddockTargets  = []
+        elabBuildInfoTargets = []
 
         elabBuildHaddocks   =
           perPkgOptionFlag pkgid False packageConfigDocumentation
@@ -2565,6 +2568,7 @@ data TargetAction = TargetActionConfigure
                   | TargetActionTest
                   | TargetActionBench
                   | TargetActionHaddock
+                  | TargetActionBuildInfo
 
 -- | Given a set of per-package\/per-component targets, take the subset of the
 -- install plan needed to build those targets. Also, update the package config
@@ -2642,6 +2646,7 @@ setRootTargets targetAction perPkgTargetsMap =
         (Just tgts,  TargetActionHaddock) ->
           foldr setElabHaddockTargets (elab { elabHaddockTargets = tgts
                                             , elabBuildHaddocks = True }) tgts
+        (Just tgts,  TargetActionBuildInfo) -> elab { elabBuildInfoTargets = tgts }
         (Just _,     TargetActionRepl)    ->
           error "pruneInstallPlanToTargets: multiple repl targets"
 
@@ -2684,6 +2689,7 @@ pruneInstallPlanPass1 pkgs =
                      , null (elabBenchTargets elab)
                      , isNothing (elabReplTarget elab)
                      , null (elabHaddockTargets elab)
+                     , null (elabBuildInfoTargets elab)
                      ]
             then Just (installedUnitId elab)
             else Nothing
@@ -3593,6 +3599,22 @@ setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsHaddockArgs elab =
   map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
+
+setupHsShowBuildInfoFlags :: ElaboratedConfiguredPackage
+                          -> ElaboratedSharedConfig
+                          -> Verbosity
+                          -> FilePath
+                          -> Cabal.ShowBuildInfoFlags
+setupHsShowBuildInfoFlags pkg config verbosity builddir =
+  Cabal.ShowBuildInfoFlags {
+    buildInfoBuildFlags     = setupHsBuildFlags pkg config verbosity builddir,
+    buildInfoOutputFile     = Nothing,
+    buildInfoComponentsOnly = toFlag True
+  }
+
+setupHsShowBuildInfoArgs :: ElaboratedConfiguredPackage -> [String]
+setupHsShowBuildInfoArgs elab =
+  map (showComponentTarget (packageId elab)) (elabBuildInfoTargets elab)
 
 {-
 setupHsTestFlags :: ElaboratedConfiguredPackage

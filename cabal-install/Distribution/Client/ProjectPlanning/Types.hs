@@ -317,6 +317,7 @@ data ElaboratedConfiguredPackage
        elabBenchTargets          :: [ComponentTarget],
        elabReplTarget            :: Maybe ComponentTarget,
        elabHaddockTargets        :: [ComponentTarget],
+       elabBuildInfoTargets      :: [ComponentTarget],
 
        elabBuildHaddocks         :: Bool,
 
