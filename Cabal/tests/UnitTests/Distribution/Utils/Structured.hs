@@ -24,7 +24,7 @@ tests = testGroup "Distribution.Utils.Structured"
     , testCase "SPDX.License"              $ structureHash (Proxy :: Proxy License)                    @?= md5FromInteger 0xd3d4a09f517f9f75bc3d16370d5a853a
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
-    , testCase "GenericPackageDescription" $ structureHash (Proxy :: Proxy GenericPackageDescription)  @?= md5FromInteger 0xc3fd68379b7d09c2e3f751d10dde4fd6
-    , testCase "LocalBuildInfo"            $ structureHash (Proxy :: Proxy LocalBuildInfo)             @?= md5FromInteger 0x54cdbbfa6df9a9fb2c6d792d1d77d672
+    , testCase "GenericPackageDescription" $ structureHash (Proxy :: Proxy GenericPackageDescription)  @?= md5FromInteger 0x2f869c09d0cd2288d55b0455830e5a61
+    , testCase "LocalBuildInfo"            $ structureHash (Proxy :: Proxy LocalBuildInfo)             @?= md5FromInteger 0x2d64c99467083bef4a894162a121c467
 #endif
     ]

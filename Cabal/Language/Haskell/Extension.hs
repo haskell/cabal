@@ -840,6 +840,15 @@ data KnownExtension =
   -- | Enable unlifted newtypes.
   | UnliftedNewtypes
 
+  -- | Use whitespace to determine whether the minus sign stands for negation or subtraction.
+  | LexicalNegation
+
+  -- | Enable qualified do-notation desugaring.
+  | QualifiedDo
+
+  -- | Enable linear types.
+  | LinearTypes
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
