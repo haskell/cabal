@@ -1361,7 +1361,7 @@ checkCabalVersion pkg =
 -- * Checks on the GenericPackageDescription
 -- ------------------------------------------------------------
 
--- | Check the build-depends fields for any weirdness or bad practise.
+-- | Check the build-depends fields for any weirdness or bad practice.
 --
 checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
 checkPackageVersions pkg =
@@ -1376,7 +1376,7 @@ checkPackageVersions pkg =
            "The dependency 'build-depends: base' does not specify an upper "
         ++ "bound on the version number. Each major release of the 'base' "
         ++ "package changes the API in various ways and most packages will "
-        ++ "need some changes to compile with it. The recommended practise "
+        ++ "need some changes to compile with it. The recommended practice "
         ++ "is to specify an upper bound on the version of the 'base' "
         ++ "package. This ensures your package will continue to build when a "
         ++ "new major version of the 'base' package is released. If you are "
