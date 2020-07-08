@@ -119,7 +119,7 @@ across projects. To be more precise:
    ``packages``, ``optional-packages`` or ``extra-packages`` field of a
    project. Usually, these refer to packages whose source code lives
    directly in a folder in your project. But you can list an
-   arbitrary Hackage package in `extra-packages <cabal-project.html#cfg-field-extra-packages>`
+   arbitrary Hackage package in :cfg-field:`packages`
    to force it to be treated as local.
 
 Local packages, as well as the external packages (below) which depend on

@@ -1536,7 +1536,7 @@ system-dependent values for these fields.
 
     In order to specify an intra-package dependency on an internal
     library component you can use the unqualified name of the
-    component library component. Note that locally defined sub-library
+    library component. Note that locally defined sub-library
     names shadow external package names of the same name. See section on
     :ref:`Internal Libraries <sublibs>` for examples and more information.
 
@@ -1556,7 +1556,7 @@ system-dependent values for these fields.
             bar
 
     Dependencies like ``foo >= 1.2.3 && < 1.3`` turn out to be very
-    common because it is recommended practise for package versions to
+    common because it is recommended practice for package versions to
     correspond to API versions (see PVP_).
 
     Since Cabal 1.6, there is a special wildcard syntax to help with
@@ -1637,7 +1637,7 @@ system-dependent values for these fields.
 
     .. Note::
 
-       One might expected the desugaring to truncate all version
+       One might expect the desugaring to truncate all version
        components below (and including) the patch-level, i.e.
        ``^>= x.y.z.u`` == ``>= x.y.z && < x.(y+1)``,
        as the major and minor version components alone are supposed to
@@ -2262,7 +2262,7 @@ Example: A package containing a library and executable programs
 
     Flag NewDirectory
       description: Whether to build against @directory >= 1.2@
-      -- This is an automatic flag which the solver will be
+      -- This is an automatic flag which the solver will
       -- assign automatically while searching for a solution
 
     Library
@@ -2530,8 +2530,8 @@ Meaning of field values when using conditionals
 
 During the configuration phase, a flag assignment is chosen, all
 conditionals are evaluated, and the package description is combined into
-a flat package descriptions. If the same field both inside a conditional
-and outside then they are combined using the following rules.
+a flat package descriptions. If the same field is declared both inside
+a conditional and outside then they are combined using the following rules.
 
 -  Boolean fields are combined using conjunction (logical "and").
 
@@ -2621,7 +2621,7 @@ Source Repositories
     :since: 1.6
 
 It is often useful to be able to specify a source revision control
-repository for a package. Cabal lets you specifying this information in
+repository for a package. Cabal lets you specify this information in
 a relatively structured form which enables other tools to interpret and
 make effective use of the information. For example the information
 should be sufficient for an automatic tool to checkout the sources.
@@ -2704,7 +2704,7 @@ The exact fields are as follows:
 
     Many source control systems support the notion of a branch, as a
     distinct concept from having repositories in separate locations. For
-    example CVS, SVN and git use branches while for darcs uses different
+    example CVS, SVN and git use branches while darcs uses different
     locations for different branches. If you need to specify a branch to
     identify a your repository then specify it in this field.
 
@@ -2727,7 +2727,7 @@ The exact fields are as follows:
     package, i.e. the directory containing the package's ``.cabal``
     file.
 
-    This field is optional. It default to empty which corresponds to the
+    This field is optional. It defaults to empty which corresponds to the
     root directory of the repository.
 
 Downloading a package's source
@@ -2765,7 +2765,7 @@ Custom setup scripts
 
 Since Cabal 1.24, custom ``Setup.hs`` are required to accurately track
 their dependencies by declaring them in the ``.cabal`` file rather than
-rely on dependencies being implicitly in scope.  Please refer
+rely on dependencies being implicitly in scope.  Please refer to
 `this article <https://www.well-typed.com/blog/2015/07/cabal-setup-deps/>`__
 for more details.
 
@@ -2889,7 +2889,7 @@ really on the package when distributed. This makes commands like sdist fail
 because the file is not found.
 
 These special modules must appear again on the :pkg-field:`autogen-modules`
-field of the stanza that is using it, besides :pkg-field:`other-modules` or
+field of the stanza that is using them, besides :pkg-field:`other-modules` or
 :pkg-field:`library:exposed-modules`. With this there is no need to create
 complex build hooks for this poweruser case.
 
