@@ -61,8 +61,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 {% for step in job.steps %}
       - name: Validate {{step}}
