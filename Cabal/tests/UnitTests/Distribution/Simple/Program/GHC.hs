@@ -19,6 +19,7 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                     options_8_8_all
 
             assertListEquals flags options_8_8_affects
+
         , testCase "options added in GHC-8.10" $ do
             let flags :: [String]
                 flags = normaliseGhcArgs
@@ -27,6 +28,15 @@ tests = testGroup "Distribution.Simple.Program.GHC"
                     options_8_10_all
 
             assertListEquals flags options_8_10_affects
+
+        , testCase "options added in GHC-8.12" $ do
+            let flags :: [String]
+                flags = normaliseGhcArgs
+                    (Just $ mkVersion [8,12,1])
+                    emptyPackageDescription
+                    options_8_12_all
+
+            assertListEquals flags options_8_12_affects
         ]
     ]
 
@@ -139,4 +149,24 @@ options_8_10_affects =
     , "-fplugin-trustworthy"
     , "-include-cpp-deps"
     , "-optcxx"
+    ]
+
+-------------------------------------------------------------------------------
+-- GHC-8.12
+-------------------------------------------------------------------------------
+
+options_8_12_all :: [String]
+options_8_12_all =
+    [ "-ddump-cmm-opt"
+    , "-ddump-cpranal"
+    , "-ddump-cpr-signatures"
+    , "-ddump-hie"
+    -- NOTE: we filter out -dlinear-core-lint
+    -- we filter, -dcore-lint, -dstg-lint etc.
+    , "-dlinear-core-lint"
+    ] ++ options_8_12_affects
+
+options_8_12_affects :: [String]
+options_8_12_affects =
+    [ "-fcmm-static-pred"
     ]
