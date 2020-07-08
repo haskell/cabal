@@ -75,7 +75,7 @@ library
 
   if !impl(ghc >= 7.8)
     -- semigroups depends on tagged.
-    build-depends:  tagged >=0.8.6 && <0.9
+    build-depends:  tagged >=0.8.6 && <0.9, bytestring-builder >= 0.10.8 && <0.11
 
   exposed-modules:
     Distribution.Backpack
@@ -254,6 +254,7 @@ library
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
     Distribution.Utils.Generic
+    Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
@@ -337,7 +338,6 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
-    Distribution.Simple.Utils.Json
     Distribution.ZinzaPrelude
     Paths_Cabal
 

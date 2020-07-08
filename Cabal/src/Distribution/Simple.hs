@@ -104,6 +104,7 @@ import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
+import qualified Data.ByteString.Lazy as B
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
@@ -285,8 +286,8 @@ showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
   buildInfoString <- showBuildInfo pkg_descr lbi' flags
 
   case fileOutput of
-    Nothing -> putStr buildInfoString
-    Just fp -> writeFile fp buildInfoString
+    Nothing -> B.putStr buildInfoString
+    Just fp -> B.writeFile fp buildInfoString
 
   postBuild hooks args flags' pkg_descr lbi'
 
