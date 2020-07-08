@@ -46,8 +46,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.10.1 -v  -s print-config
@@ -92,8 +93,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v --solver-benchmarks -s print-config
@@ -139,8 +141,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s print-config
@@ -186,8 +189,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s print-config
@@ -233,8 +237,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s print-config
@@ -280,8 +285,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.0.2 -v  -s print-config
@@ -327,8 +333,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.10.3 -v  -s print-config
@@ -374,8 +381,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s print-config
@@ -419,8 +427,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s print-config
@@ -466,8 +475,9 @@ jobs:
       # - uses: actions/checkout@v2
       - name: Checkout
         run: |
+          echo $GITHUB_REF $GITHUB_SHA
           git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v --lib-only -s print-config
