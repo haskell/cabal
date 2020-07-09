@@ -1,0 +1,11 @@
+synopsis: Add list-bin command
+packages: cabal-install
+issues: #6807
+prs: #6931
+significance: significant
+
+description: {
+
+`cabal list-bin executable-component` tells the path to the build artifact.
+
+}

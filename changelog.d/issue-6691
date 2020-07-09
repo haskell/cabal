@@ -1,0 +1,13 @@
+synopsis: Remove upgrade, uninstall and win32selfupgrade commands
+packages: cabal-install
+issues: #6691
+prs: #6707
+
+description: {
+
+This commands were not implemented or are special purpose.
+The removal of `win32selfupgrade` might break self upgrade on windows,
+when `cabal-install` tries to rewrite the binary of itself.
+This shouldn't be a problem when symlinking is used.
+
+}

@@ -1,0 +1,11 @@
+synopsis: Remove local-repo
+packages: cabal-install
+issues: #6729
+prs: #6730
+
+description: {
+
+This functionality was mainly used by removed sandboxes.
+`file+noindex` repositories are better variant for local package repositories.
+
+}

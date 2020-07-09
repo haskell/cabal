@@ -1,3 +1,14 @@
 synopsis: Add active-repositories configuration
 packages: cabal-install
-prs: #6724
+prs: #6724 #6868
+issues: #6819
+significance: significant
+
+description: {
+
+New `active-repositories` `cabal.project` fields allows
+specifying an order and ways various package repositories are combined.
+
+The active `active-repositories` is saved in `cabal.project.freeze`.
+
+}

@@ -1,0 +1,16 @@
+synopsis: Dependency type refactorings
+packages: Cabal
+prs: #6798 #6768 #6895 #6896 #6897 #6898
+issues: #5570 #6894
+significance: significant
+
+description: {
+
+With additions of (public) sublibraries, `Dependency` type use for multiple needs become painful.
+Therefore a new type `PackageVersionConstraint` was added to serve *constraint on package* use-case.
+`Dependency` type is *dependency on a library component*, i.e. representing `build-depends` entry.
+
+- Use PackageVersionConstraint more
+- Add NonEmptySet and use it in Dependency
+
+}

@@ -1,0 +1,43 @@
+synopsis: Backported to 3.2
+packages: Cabal-internal
+prs:
+  -- solver
+  #5918 #6447
+  -- buildinfo generator
+  #6258
+  -- bump version
+  #6426
+  -- cabal install -z
+  #6428
+  -- incomplete-uni-patterns
+  #6433
+  -- packages/optional packages empty
+  #6436
+  -- file+noindex
+  #6448
+  -- documentation
+  #6450 #6464 #6473 #6546
+  -- bounds
+  #6455
+  -- safe functions
+  #6456
+  -- Improve few internalErrors in InstallPlan
+  #6439
+  -- v2-run -z
+  #6457
+  -- test fixes
+  #6463 #6499 #6518
+  -- CI
+  #6469
+  -- show full abi hash
+  #6498 #6496 #6476
+  -- Create distTempDirectory in withTempEnvFile
+  #6501
+  -- cabal_macros.h zinza
+  -- TODO: check whether it made to 3.2
+  -- issue: #6533
+  #6502 #6535
+  -- disallow spaces around : in dependency
+  #6538
+  -- pkg-config
+  #6540 #6541

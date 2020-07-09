@@ -1,0 +1,3 @@
+synopsis: Remove new- command from `--help` output (there are v2-)
+prs: #6930
+packages: cabal-install

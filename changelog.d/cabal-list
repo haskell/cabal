@@ -1,0 +1,5 @@
+synopsis: `cabal list` accepts regular expression
+packages: cabal-install
+prs: #6618 #6806
+issues: #4267 #6683
+significance: significant

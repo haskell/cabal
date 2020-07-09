@@ -1,0 +1,3 @@
+synopsis: Change specVersion to have CabalSpecVersion type
+packages: Cabal
+prs: #6653

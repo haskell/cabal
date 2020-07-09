@@ -1,0 +1,3 @@
+synopsis: Add `licenceIsFsfLibre`
+packages: Cabal
+prs: #6878

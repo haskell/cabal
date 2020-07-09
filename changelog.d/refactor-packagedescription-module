@@ -1,0 +1,9 @@
+synopsis: Refactor Distribution.PackageDescription module
+prs: #6855
+packages: Cabal
+
+description: {
+
+Now it re-exports a collection of modules, not individual symbols.
+
+}

@@ -1,0 +1,11 @@
+synopsis: Windows install symlinks
+packages: cabal-install
+prs: #5684 #6506 #6519
+
+description: {
+
+`cabal-install` will try to infer whether symlinking is supported on Windows,
+and make symlinks in `install`. Otherwise it will fallback to copying files.
+Either way can be forced with `--install-method`.
+
+}

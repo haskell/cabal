@@ -1,0 +1,13 @@
+synopsis: Update GHC environment location
+prs: #6822
+issues: #6565
+packages: cabal-install
+
+description: {
+
+cabal-install currently assumes that the GHC environment files are always located in `$HOME/.ghc/`.
+However, GHC itself doesn't query the home directory directly.
+Instead, it uses `getAppUserDataDirectory "ghc"` which happens to coincide with `$HOME/.ghc`/ on UNIX systems.
+On Windows, however, GHC ends up looking in `%APPDATA%/ghc/`.
+
+}

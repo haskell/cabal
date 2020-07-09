@@ -1,0 +1,8 @@
+synopsis: The grammar of most package description fields is formally documented
+prs: #6591 #6593 #6704 #6766 #6778 #6780 #6781 #6791 #6800
+
+description: {
+
+See https://cabal.readthedocs.io/en/latest/buildinfo-fields-reference.html
+
+}

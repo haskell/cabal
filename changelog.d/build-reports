@@ -1,0 +1,3 @@
+synopsis: Change `BuildReports` parse/pretty to use FieldGrammar framework
+prs: #6783
+packages: cabal-install

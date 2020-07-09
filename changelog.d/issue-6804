@@ -1,0 +1,4 @@
+synopsis: v2-update reports new index-state
+packages: cabal-install
+issues: #6804
+prs: #6810

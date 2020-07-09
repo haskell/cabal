@@ -1,0 +1,8 @@
+synopsis: Fix ghci being launched before other sources are built.
+prs: #6923
+
+description: {
+
+Related to foreign calls to C-sources.
+
+}
