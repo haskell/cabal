@@ -4,7 +4,7 @@ Quickstart
 .. TIP::
     If this is your first time using `cabal` you should check out the `Getting Started guide <getting-started.html>`__.
 
-Lets assume we have created a project directory and already have a
+Let's assume we have created a project directory and already have a
 Haskell module or two.
 
 Every project needs a name, we'll call this example "proglet".
@@ -80,7 +80,7 @@ and ``Setup.hs`` files, and depending on your choice of license, a
 
     You may want to edit the .cabal file and add a Description field.
 
-As this stage the ``proglet.cabal`` is not quite complete and before you
+At this stage the ``proglet.cabal`` is not quite complete and before you
 are able to build the package you will need to edit the file and add
 some build information about the library or executable.
 
@@ -367,7 +367,7 @@ Unit of distribution
 
 The Cabal package is the unit of distribution. What this means is that
 each Cabal package can be distributed on its own in source or binary
-form. Of course there may dependencies between packages, but there is
+form. Of course there may be dependencies between packages, but there is
 usually a degree of flexibility in which versions of packages can work
 together so distributing them independently makes sense.
 

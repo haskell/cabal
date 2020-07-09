@@ -60,7 +60,7 @@ will be no incompatible API changes. But minor versions increments, for
 example 1.2.3, indicate compatible API additions.
 
 The Package Versioning Policy does not require any API guarantees
-between major releases, for example between 1.2.x and 1.4.x. In practise
+between major releases, for example between 1.2.x and 1.4.x. In practice
 of course not everything changes between major releases. Some parts of
 the API are more prone to change than others. The rest of this section
 gives some informal advice on what level of API stability you can expect
