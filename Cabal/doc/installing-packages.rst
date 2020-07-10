@@ -235,12 +235,13 @@ Installing packages from Hackage
 --------------------------------
 
 The ``cabal`` tool also can download, configure, build and install a
-Hackage_ package and all of its
+`Hackage`_ package and all of its
 dependencies in a single step. To do this, run:
 
 ::
 
    $ cabal install [PACKAGE...]
 
-To browse the list of available packages, visit the
-Hackage_ web site.
+To browse the list of available packages, visit the `Hackage`_ web site.
+
+.. _Hackage: https://hackage.haskell.org/

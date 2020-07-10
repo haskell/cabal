@@ -2123,7 +2123,7 @@ system-dependent values for these fields.
     developer documentation for more details on frameworks. This entry
     is ignored on all other platforms.
 
-.. pkg-field:: extra-frameworks-dirs: directory list
+.. pkg-field:: extra-framework-dirs: directory list
     :since: 1.24
 
     On Darwin/MacOS X, a list of directories to search for frameworks.
@@ -2570,6 +2570,8 @@ a conditional and outside then they are combined using the following rules.
          Main-is: OtherMain.hs
        else
          Main-is: Main.hs
+
+.. _common-stanzas:
 
 Common stanzas
 ^^^^^^^^^^^^^^

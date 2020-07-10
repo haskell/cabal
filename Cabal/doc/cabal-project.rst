@@ -119,7 +119,7 @@ format:
    ``{vendor,pkgs}/*.cabal`` matches all Cabal files in the ``vendor``
    and ``pkgs`` subdirectories.
 
-Formally, the format described by the following BNF:
+Formally, the format is described by the following BNF:
 
 .. todo::
     convert globbing grammar to proper ABNF_ syntax
