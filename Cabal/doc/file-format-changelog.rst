@@ -67,7 +67,7 @@ relative to the respective preceding *published* version.
                 import foo-deps
 
 * Allow redundant leading or trailing commas in package fields with
-  optional commas, such as :pkg-field:`exposed-modules`
+  optional commas, such as :pkg-field:`library:exposed-modules`
 
 * Require fields with optional commas to consistently omit or place
   commas between elements.

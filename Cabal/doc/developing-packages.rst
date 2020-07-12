@@ -209,7 +209,7 @@ your libraries and executable sections. For example:
         Proglet
 
 Note that the ``import`` **must** be the first thing in the stanza. For more
-information see the `Common stanzas`_ section.
+information see the :ref:`common-stanzas` section.
 
 Building the package
 --------------------
@@ -300,7 +300,7 @@ of digits such as "1.0.1" or "2.0". There are a range of common
 conventions for "versioning" packages, that is giving some meaning to
 the version number in terms of changes in the package, such as
 e.g. `SemVer <http://semver.org>`__; however, for packages intended to be
-distributed via Hackage Haskell's `Package Versioning Policy`_ applies
+distributed via Hackage Haskell's `Package Versioning Policy <https://pvp.haskell.org/>`_ applies
 (see also the `PVP/SemVer FAQ section <https://pvp.haskell.org/faq/#semver>`__).
 
 The combination of package name and version is called the *package ID*

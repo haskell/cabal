@@ -34,7 +34,7 @@ results to some permanent place and registers the package with GHC.
 .. note ::
     
     Global installing of packages is not recommended.
-    The :ref:`_nix-style-builds` is the preferred of building and installing
+    The :ref:`Nix-style builds<nix-style-builds>` is the preferred way of building and installing
     packages.
 
 Creating a binary package
@@ -1002,7 +1002,7 @@ Miscellaneous options
     (:pkg-field:`build-depends`), build dependencies of build
     dependencies, and so on. Constraints normally do not apply to
     dependencies of the ``Setup.hs`` script of any package
-    (:pkg-field:`setup-depends`) nor do they apply to build tools
+    (:pkg-field:`custom-setup:setup-depends`) nor do they apply to build tools
     (:pkg-field:`build-tool-depends`) or the dependencies of build
     tools. To explicitly apply a constraint to a setup or build
     tool dependency, you can add a qualifier to the constraint as
