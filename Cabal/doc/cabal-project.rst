@@ -143,7 +143,7 @@ Formally, the format is described by the following BNF:
 
 
 Specifying Packages from Remote Version Control Locations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Starting with Cabal 2.4, there is now a stanza
 ``source-repository-package`` for specifying packages from an external

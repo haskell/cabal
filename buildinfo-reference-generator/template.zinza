@@ -221,7 +221,7 @@ Test-suite fields
 {# We show documentation link only for non deprecated fields #}
 {% if null field.deprecatedSince.fst %}
 {% if null field.removedIn.fst %}
-    * Documentation of :pkg-field:`{{field.name}}`
+    * Documentation of :pkg-field:`test-suite:{{field.name}}`
 {% endif %}
 {% endif %}
 {% if notNull field.syntax %}

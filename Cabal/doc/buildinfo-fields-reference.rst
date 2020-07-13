@@ -632,21 +632,21 @@ Test-suite fields
 
 main-is
     * Optional field
-    * Documentation of :pkg-field:`main-is`
+    * Documentation of :pkg-field:`test-suite:main-is`
 
     .. math::
         \left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
 test-module
     * Optional field
-    * Documentation of :pkg-field:`test-module`
+    * Documentation of :pkg-field:`test-suite:test-module`
 
     .. math::
         {\left(\mathop{\mathit{upper}}{\left\{ \mathop{\mathit{alpha\text{-}num}}\mid[\mathop{\mathord{``}\mathtt{\text{'}}\mathord{"}}\mathop{\mathord{``}\mathtt{\text{_}}\mathord{"}}] \right\}}^\ast_{}\right)}^+_{\mathop{\mathord{``}\mathtt{\text{.}}\mathord{"}}}
 
 type
     * Optional field
-    * Documentation of :pkg-field:`type`
+    * Documentation of :pkg-field:`test-suite:type`
 
     .. math::
         \left\{ \mathop{\mathord{``}\mathtt{exitcode\text{-}stdio\text{-}1\text{.}0}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{detailed\text{-}0\text{.}9}\mathord{"}} \right\}
