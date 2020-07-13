@@ -166,6 +166,8 @@ versionGuardMultilibs = do
     ]
 
 -- | Library set with main library.
+--
+-- @since 3.4.0.0
 mainLibSet :: NonEmptySet LibraryName
 mainLibSet = NES.singleton LMainLibName
 

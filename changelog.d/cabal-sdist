@@ -1,9 +1,14 @@
-synopsis: Fix v2-sdist permissions, they are now always readonly
-prs: #6454
-issues: #5813 #2940 #6611 #6514
+synopsis: Rework `v2-sdist` command
+packages: cabal-install
+issues: #6635 #5813 #2940 #6611 #6514
+prs: #6454 #6637 #6640 #6660 #6666 #6884 #6916
+significance: significant
 
 description: {
-The #2940 "cabal sdist should touch preprocessed .hs files" issu
+
+`v2-sdist` marks all files as readonly in resulting tarballs.
+
+The #2940 "cabal sdist should touch preprocessed .hs files" issue
 is fixed by virtue of not doing any preprocessing anymore.
 It's responsibility of packager.
 
@@ -20,5 +25,8 @@ Cabal machinery would run is `configure` script. These
 are run with explicit `sh` program. For package internal scripts,
 maintainers should also use interpreters explicitly as well.
 Scripts with shebangs are not executable on Windows.
+
+The `v1-sdist` command is removed, as its functionality is completely
+superseded by `v2-sdist`.
 
 }

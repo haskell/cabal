@@ -1,0 +1,12 @@
+synopsis: `source-repository-package` directories aren't local
+packages: cabal-install
+issues: #5586
+prs: #6917 #6915
+significance: significant
+
+description: {
+
+Concretely these means that compiled `source-repository-package` entries
+used in different projects are stored in the global nix-style store.
+
+}

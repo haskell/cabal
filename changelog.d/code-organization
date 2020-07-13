@@ -1,0 +1,16 @@
+synopsis: Code organization
+prs: #6599 #6642 #6734 #6745 #6746 #6817 #6818 #6821 #6867
+
+description: {
+
+- Split `Distribution.Client.Types` module
+- Move cabal-testsuite code into `src/`
+- Add `ProjectFlags`
+- Add `NixStyleOptions`
+- Internal refactorings to install command.
+- Make own modules for `InstallMethod` and `OverwritePolicy`
+- Make cabal-install compilable with `NoImplicitPrelude`
+- Refactor shared `TargetProblem` data types into their own module.
+- Template `cabal-install.cabal` using zinza
+
+}

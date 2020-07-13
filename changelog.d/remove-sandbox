@@ -1,0 +1,11 @@
+synopsis: Remove sandboxes
+packages: cabal-install
+prs: #6747
+issues: #6445
+significance: significant
+
+description: {
+
+Sandbox functionality is remove in favour of now default nix-style builds.
+
+}

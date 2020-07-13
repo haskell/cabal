@@ -1,0 +1,11 @@
+synopsis: Remove text type-class
+packages: cabal-install
+prs: #6764 #6777 #6784 #6785 #6793 #6794
+
+description: {
+
+`Text` type-class was removed from `Cabal`, but it still lived in `cabal-install`.
+Now it is finally removed.
+`cabal-install` is still using `ReadP` parsers for various things though.
+
+}

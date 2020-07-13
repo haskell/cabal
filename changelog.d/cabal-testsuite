@@ -1,0 +1,8 @@
+synopsis: Improvements to cabal-testsuite framework
+prs: #6643
+
+desciption: {
+
+- setupAndCabalTest uses cabal act-as-setup for cabal part
+
+}

@@ -63,11 +63,12 @@ instance Parsec PackageVersionConstraint where
       else
           pure (PackageVersionConstraint name (thisVersion ver))
 
-
+-- | @since 3.4.0.0
 thisPackageVersionConstraint :: PackageIdentifier -> PackageVersionConstraint
 thisPackageVersionConstraint (PackageIdentifier pn vr) =
     PackageVersionConstraint pn (thisVersion vr)
 
+-- | @since 3.4.0.0
 simplifyPackageVersionConstraint :: PackageVersionConstraint -> PackageVersionConstraint
 simplifyPackageVersionConstraint (PackageVersionConstraint pn vr) =
     PackageVersionConstraint pn (simplifyVersionRange vr)

@@ -1,0 +1,9 @@
+synopsis: Accept "linux-androideabi" as an alias for Android for determining buildOS
+prs: #6949 #6301
+packages: Cabal
+
+description: {
+
+`Cabal` will able to parse `linux-androideabi` from the value of `System.Info.os`.
+
+}

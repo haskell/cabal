@@ -1,0 +1,11 @@
+synopsis: Add pijul to known repository type
+issues: #6610
+prs: #6684
+
+description: {
+
+Pijul is now explicitly recognized version control system.
+However `cabal-install` isn't yet able to use it in
+`source-repository-package`.
+
+}
