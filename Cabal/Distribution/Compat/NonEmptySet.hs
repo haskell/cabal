@@ -39,6 +39,7 @@ import Control.Applicative (empty)
 import Control.Monad (fail)
 #endif
 
+-- | @since 3.4.0.0
 newtype NonEmptySet a = NES (Set.Set a)
   deriving (Eq, Ord, Typeable, Data, Read)
 

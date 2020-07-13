@@ -279,10 +279,14 @@ verboseNoTimestamp :: Verbosity -> Verbosity
 verboseNoTimestamp = verboseNoFlag VTimestamp
 
 -- | Turn on timestamps for log messages.
+--
+-- @since 3.4.0.0
 verboseStderr :: Verbosity -> Verbosity
 verboseStderr = verboseFlag VStderr
 
 -- | Turn off timestamps for log messages.
+--
+-- @since 3.4.0.0
 verboseNoStderr :: Verbosity -> Verbosity
 verboseNoStderr = verboseNoFlag VStderr
 
@@ -326,6 +330,8 @@ isVerboseTimestamp :: Verbosity -> Bool
 isVerboseTimestamp = isVerboseFlag VTimestamp
 
 -- | Test if we should output to stderr when we log.
+--
+-- @since 3.4.0.0
 isVerboseStderr :: Verbosity -> Bool
 isVerboseStderr = isVerboseFlag VStderr
 

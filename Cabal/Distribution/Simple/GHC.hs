@@ -364,6 +364,8 @@ toPackageIndex verbosity pkgss progdb = do
     ghcProg = fromMaybe (error "GHC.toPackageIndex: no ghc program") $ lookupProgram ghcProgram progdb
 
 -- | Return the 'FilePath' to the GHC application data directory.
+--
+-- @since 3.4.0.0
 getGhcAppDir :: IO FilePath
 getGhcAppDir = getAppUserDataDirectory "ghc"
 

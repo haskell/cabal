@@ -32,6 +32,7 @@ runDList (DList run) = run []
 singleton :: a -> DList a
 singleton a = DList (a:)
 
+-- | @since 3.4.0.0
 empty :: DList a
 empty = DList id
 
