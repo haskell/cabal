@@ -9,11 +9,11 @@ on:
   push:
     branches:
       - master
-      - "3.2"
       - "3.4"
   pull_request:
     branches:
       - master
+      - "3.4"
   release:
     types:
       - created
