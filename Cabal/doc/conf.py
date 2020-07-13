@@ -99,12 +99,12 @@ mathjax_path = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?c
 latex_elements = {
     'inputenc': '',
     'utf8extra': '',
-    'preamble': '''
-\\usepackage{fontspec}
-\\usepackage{makeidx}
-\\setsansfont{DejaVu Sans}
-\\setromanfont{DejaVu Serif}
-\\setmonofont{DejaVu Sans Mono}
+    'preamble': r'''
+\usepackage{fontspec}
+\usepackage{makeidx}
+\setsansfont{DejaVu Sans}
+\setromanfont{DejaVu Serif}
+\setmonofont{DejaVu Sans Mono}
 ''',
 }
 
