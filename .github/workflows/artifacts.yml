@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - "3.2"
   pull_request:
     branches:
       - master
@@ -122,7 +121,7 @@ jobs:
         shell: bash
         run: |
           cabal v2-build cabal-install:exe:cabal
-          cp dist-newstyle/build/x86_64-windows/ghc-8.6.5/cabal-install-3.3.0.0/x/cabal/build/cabal/cabal.exe cabal.exe
+          cp dist-newstyle/build/x86_64-windows/ghc-8.6.5/cabal-install-3.5.0.0/x/cabal/build/cabal/cabal.exe cabal.exe
       - name: Smoke test
         shell: bash
         run: |

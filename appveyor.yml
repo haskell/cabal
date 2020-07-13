@@ -55,7 +55,7 @@ build_script:
   - cabal %CABOPTS% v2-test Cabal
   - appveyor-retry cabal %CABOPTS% v2-build exe:cabal exe:cabal-tests --only-dependencies
   - cabal %CABOPTS% v2-build exe:cabal
-  - cabal %CABOPTS% v2-run cabal-tests -- -j3 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.3.0.0\x\cabal\build\cabal\cabal.exe
+  - cabal %CABOPTS% v2-run cabal-tests -- -j3 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
   - appveyor-retry cabal %CABOPTS% v2-build cabal-install:tests --only-dependencies
   - cd cabal-install
   - cabal %CABOPTS% v2-run cabal-install:memory-usage-tests
