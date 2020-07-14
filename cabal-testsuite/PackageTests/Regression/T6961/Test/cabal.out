@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+cabal: Could not resolve dependencies:
+[__0] trying: issue6961-0 (user goal)
+[__1] rejecting: issue6961:!test (constraint from config file, command line flag, or user target requires opposite flag selection)
+[__1] rejecting: issue6961:*test (requires library 'internal-lib' from issue6961, but the component is private)
+[__1] fail (backjumping, conflict set: issue6961, issue6961:test)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: issue6961 (3), issue6961:test (3)
