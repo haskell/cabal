@@ -230,7 +230,7 @@ validate = cata go
           let newDeps :: Either Conflict (PPreAssignment, Map QPN ComponentDependencyReasons)
               newDeps = do
                 nppa <- mnppa
-                rComps' <- extendRequiredComponents aComps rComps newactives
+                rComps' <- extendRequiredComponents qpn aComps rComps newactives
                 checkComponentsInNewPackage (M.findWithDefault M.empty qpn rComps) qpn comps
                 return (nppa, rComps')
           in case newDeps of
@@ -265,7 +265,7 @@ validate = cata go
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
       let newactives = extractNewDeps (F qfn) b npfa psa qdeps
-          mNewRequiredComps = extendRequiredComponents aComps rComps newactives
+          mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
       let mnppa = extend extSupported langSupported pkgPresent newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
@@ -295,7 +295,7 @@ validate = cata go
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
       let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
-          mNewRequiredComps = extendRequiredComponents aComps rComps newactives
+          mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
       let mnppa = extend extSupported langSupported pkgPresent newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
@@ -534,11 +534,12 @@ createConflictSetForVersionConflict pkg
 -- known component dependencies. It returns a failure when a new dependency
 -- requires a component that is missing, private, or unbuildable in a previously
 -- chosen package.
-extendRequiredComponents :: Map QPN (Map ExposedComponent ComponentInfo)
+extendRequiredComponents :: QPN -- ^ package we extend
+                         -> Map QPN (Map ExposedComponent ComponentInfo)
                          -> Map QPN ComponentDependencyReasons
                          -> [LDep QPN]
                          -> Either Conflict (Map QPN ComponentDependencyReasons)
-extendRequiredComponents available = foldM extendSingle
+extendRequiredComponents eqpn available = foldM extendSingle
   where
     extendSingle :: Map QPN ComponentDependencyReasons
                  -> LDep QPN
@@ -554,7 +555,9 @@ extendRequiredComponents available = foldM extendSingle
                  Nothing ->
                      Left $ mkConflict qpn comp dr PackageRequiresMissingComponent
                  Just compInfo
-                   | compIsVisible compInfo == IsVisible False ->
+                   | compIsVisible compInfo == IsVisible False
+                   , eqpn /= qpn -- package components can depend on other components
+                   ->
                      Left $ mkConflict qpn comp dr PackageRequiresPrivateComponent
                    | compIsBuildable compInfo == IsBuildable False ->
                      Left $ mkConflict qpn comp dr PackageRequiresUnbuildableComponent
