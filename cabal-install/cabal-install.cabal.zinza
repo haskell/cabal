@@ -373,6 +373,10 @@ Extra-Source-Files:
   tests/IntegrationTests2/targets/tests-disabled/q/q.cabal
   tests/IntegrationTests2/targets/variety/cabal.project
   tests/IntegrationTests2/targets/variety/p.cabal
+  tests/fixtures/init/exe-only-golden.cabal
+  tests/fixtures/init/lib-and-exe-golden.cabal
+  tests/fixtures/init/lib-exe-and-test-golden.cabal
+  tests/fixtures/init/lib-exe-and-test-with-comments-golden.cabal
   -- END gen-extra-source-files
 
   -- Additional manual extra-source-files:
