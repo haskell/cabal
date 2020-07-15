@@ -139,7 +139,8 @@ instance Described ActiveRepoEntry where
 
 instance Described CombineStrategy where
     describe _ = REUnion
-        [ "merge"
+        [ "skip"
+        , "merge"
         , "override"
         ]
 
