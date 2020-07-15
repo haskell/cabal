@@ -29,6 +29,7 @@ module Distribution.Client.IndexUtils (
   TotalIndexState,
   getSourcePackagesAtIndexState,
   ActiveRepos,
+  filterSkippedActiveRepos,
 
   Index(..),
   RepoIndexState (..),
@@ -316,6 +317,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
           :: PackageIndex UnresolvedSourcePackage
           -> (RepoData, CombineStrategy)
           -> PackageIndex UnresolvedSourcePackage
+      addIndex acc (RepoData _ _ _   _, CombineStrategySkip)     = acc
       addIndex acc (RepoData _ _ idx _, CombineStrategyMerge)    = PackageIndex.merge acc idx
       addIndex acc (RepoData _ _ idx _, CombineStrategyOverride) = PackageIndex.override acc idx
 
