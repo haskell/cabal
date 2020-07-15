@@ -42,14 +42,15 @@ data ComponentInfo = ComponentInfo {
     compIsVisible   :: IsVisible
   , compIsBuildable :: IsBuildable
   }
+  deriving Show
 
 -- | Whether a component is visible in the current environment.
 newtype IsVisible = IsVisible Bool
-  deriving Eq
+  deriving (Eq, Show)
 
 -- | Whether a component is made unbuildable by a "buildable: False" field.
 newtype IsBuildable = IsBuildable Bool
-  deriving Eq
+  deriving (Eq, Show)
 
 mkIndex :: [(PN, I, PInfo)] -> Index
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
