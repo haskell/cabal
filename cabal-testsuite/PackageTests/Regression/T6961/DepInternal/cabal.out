@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+cabal: Could not resolve dependencies:
+[__0] trying: pkg-bar-0 (user goal)
+[__1] next goal: pkg-foo (user goal)
+[__1] rejecting: pkg-foo-0 (library 'internal-lib' is private, but it is required by pkg-bar)
+[__1] fail (backjumping, conflict set: pkg-bar, pkg-foo)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: pkg-bar (2), pkg-foo (2)
