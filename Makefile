@@ -58,7 +58,7 @@ $(TEMPLATE_MACROS) : boot/cabal_macros.template.h cabal-dev-scripts/src/GenCabal
 
 # generated docs
 
-Cabal/doc/buildinfo-fields-reference.rst : phony
+doc/buildinfo-fields-reference.rst : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
 	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
@@ -226,3 +226,25 @@ weeder :
 .PHONY : tags
 tags :
 	hasktags -b Cabal/Distribution Cabal/Cabal-described/src Cabal/Language cabal-install/Distribution cabal-testsuite/src
+
+# documentation
+##############################################################################
+
+# TODO: when we have sphinx-build2 ?
+SPHINXCMD:=sphinx-build
+SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
+USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
+
+# do pip install everytime so we have up to date requirements when we build
+users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
+$(USERGUIDE_STAMP) : doc/*.rst
+	mkdir -p $(SPHINX_HTML_OUTDIR)
+	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
+
+docs: haddock users-guide
+
+.python-sphinx-virtualenv:
+	python3 -m venv .python-sphinx-virtualenv
+	(. ./.python-sphinx-virtualenv/bin/activate)
+
+

@@ -68,13 +68,13 @@ html_static_path = ['images']
 html_use_smartypants = True
 html_show_copyright = True
 html_context = {
-    'source_url_prefix': "https://github.com/haskell/cabal/tree/master/Cabal/doc/",
+    'source_url_prefix': "https://github.com/haskell/cabal/tree/master/doc/",
     "display_github": True,
     "github_host": "github.com",
     "github_user": "haskell",
     "github_repo": 'cabal',
     "github_version": "master/",
-    "conf_py_path": "Cabal/doc/",
+    "conf_py_path": "doc/",
     "source_suffix": '.rst',
 }
 
