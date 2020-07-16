@@ -4,6 +4,7 @@
 module Distribution.Client.IndexUtils.ActiveRepos (
     ActiveRepos (..),
     defaultActiveRepos,
+    filterSkippedActiveRepos,
     ActiveRepoEntry (..),
     CombineStrategy (..),
     organizeByRepos,
@@ -31,6 +32,18 @@ newtype ActiveRepos = ActiveRepos [ActiveRepoEntry]
 
 defaultActiveRepos :: ActiveRepos
 defaultActiveRepos = ActiveRepos [ ActiveRepoRest CombineStrategyMerge ]
+
+-- | Note, this does nothing if 'ActiveRepoRest' is present.
+filterSkippedActiveRepos :: ActiveRepos -> ActiveRepos
+filterSkippedActiveRepos repos@(ActiveRepos entries)
+    | any isActiveRepoRest entries = repos
+    | otherwise                    = ActiveRepos (filter notSkipped entries)
+  where
+    isActiveRepoRest (ActiveRepoRest _) = True
+    isActiveRepoRest _                  = False
+
+    notSkipped (ActiveRepo _ CombineStrategySkip) = False
+    notSkipped _                                  = True
 
 instance Binary ActiveRepos
 instance Structured ActiveRepos
@@ -97,7 +110,8 @@ instance Parsec ActiveRepoEntry where
         strategyP = P.option CombineStrategyMerge (P.char ':' *> parsec)
 
 data CombineStrategy
-    = CombineStrategyMerge    -- ^ merge existing versions
+    = CombineStrategySkip     -- ^ skip this repository
+    | CombineStrategyMerge    -- ^ merge existing versions
     | CombineStrategyOverride -- ^ if later repository specifies a package,
                               --   all package versions are replaced
   deriving (Eq, Show, Enum, Bounded, Generic)
@@ -107,12 +121,14 @@ instance Structured CombineStrategy
 instance NFData CombineStrategy
 
 instance Pretty CombineStrategy where
+    pretty CombineStrategySkip     = Disp.text "skip"
     pretty CombineStrategyMerge    = Disp.text "merge"
     pretty CombineStrategyOverride = Disp.text "override"
 
 instance Parsec CombineStrategy where
     parsec = P.choice
-        [ CombineStrategyMerge    <$ P.string "merge"
+        [ CombineStrategySkip     <$ P.string "skip"
+        , CombineStrategyMerge    <$ P.string "merge"
         , CombineStrategyOverride <$ P.string "override"
         ]
 

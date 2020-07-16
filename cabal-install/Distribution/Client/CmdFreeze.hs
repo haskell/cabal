@@ -17,7 +17,7 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , writeProjectLocalFreezeConfig )
-import Distribution.Client.IndexUtils (TotalIndexState, ActiveRepos)
+import Distribution.Client.IndexUtils (TotalIndexState, ActiveRepos, filterSkippedActiveRepos)
 import Distribution.Client.Targets
          ( UserQualifier(..), UserConstraintScope(..), UserConstraint(..) )
 import Distribution.Solver.Types.PackageConstraint
@@ -143,7 +143,7 @@ projectFreezeConfig
     -> TotalIndexState
     -> ActiveRepos
     -> ProjectConfig
-projectFreezeConfig elaboratedPlan totalIndexState activeRepos = mempty
+projectFreezeConfig elaboratedPlan totalIndexState activeRepos0 = mempty
     { projectConfigShared = mempty
         { projectConfigConstraints =
           concat (Map.elems (projectFreezeConstraints elaboratedPlan))
@@ -151,6 +151,9 @@ projectFreezeConfig elaboratedPlan totalIndexState activeRepos = mempty
         , projectConfigActiveRepos = Flag activeRepos
         }
     }
+  where
+    activeRepos :: ActiveRepos
+    activeRepos = filterSkippedActiveRepos activeRepos0
 
 -- | Given the install plan, produce solver constraints that will ensure the
 -- solver picks the same solution again in future in different environments.
