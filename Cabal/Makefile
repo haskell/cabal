@@ -20,13 +20,9 @@ SOURCES=Distribution/*.hs Distribution/Simple/*.hs \
 CONFIG_STAMP=dist/setup-config
 BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
 HADDOCK_STAMP=dist/doc/html/Cabal/index.html
-USERGUIDE_STAMP=dist/doc/users-guide/index.html
 SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
 DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
-
-# TODO: when we have sphinx-build2 ?
-SPHINXCMD:=sphinx-build
 
 COMMA=,
 
@@ -50,20 +46,6 @@ install: $(BUILD_STAMP)
 haddock: $(HADDOCK_STAMP)
 $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 	./setup haddock
-
-SPHINX_HTML_OUTDIR=dist/doc/users-guide
-
-# do pip install everytime so we have up to date requirements when we build
-users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
-$(USERGUIDE_STAMP) : doc/*.rst
-	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
-
-docs: haddock users-guide
-
-.python-sphinx-virtualenv:
-	python3 -m venv .python-sphinx-virtualenv
-	(. ./.python-sphinx-virtualenv/bin/activate)
 
 clean:
 	rm -rf dist/
@@ -93,17 +75,15 @@ $(SDIST_STAMP) : $(BUILD_STAMP)
 	./setup sdist
 
 dist: $(DIST_STAMP)
-$(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
+$(DIST_STAMP) : $(HADDOCK_STAMP) $(SDIST_STAMP)
 	rm -rf $(DISTLOC)
 	mkdir $(DISTLOC)
 	tar -xzf $(SDIST_STAMP) -C $(DISTLOC)/
 	mkdir -p $(DISTLOC)/Cabal-$(VERSION)/doc
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
-	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
 	cp ChangeLog.md $(DISTLOC)/Cabal-$(VERSION)/
 	tar --format=ustar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
 	mkdir $(DISTLOC)/doc
-	mv $(DISTLOC)/Cabal-$(VERSION)/doc/users-guide $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc/API $(DISTLOC)/doc
 	mv $(DISTLOC)/Cabal-$(VERSION)/ChangeLog.md $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
