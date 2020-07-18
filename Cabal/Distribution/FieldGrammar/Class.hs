@@ -119,7 +119,7 @@ class
         -> ALens' s [(String, String)]  -- ^ lens into the field
         -> g s [(String, String)]
 
-    -- | Known field, which we don't parse, neither pretty print.
+    -- | Known field, which we don't parse, nor pretty print.
     knownField :: FieldName -> g s ()
 
     -- | Field which is parsed but not pretty printed.
@@ -132,7 +132,7 @@ class
         -> g s a
         -> g s a
 
-    -- | Removed in. If we occur removed field, parsing fails.
+    -- | Removed in. If we encounter removed field, parsing fails.
     removedIn
         :: CabalSpecVersion   -- ^ version
         -> String             -- ^ removal message

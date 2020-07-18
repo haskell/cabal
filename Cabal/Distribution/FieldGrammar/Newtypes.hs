@@ -99,7 +99,7 @@ instance Sep NoCommaFSep where
 newtype List sep b a = List { _getList :: [a] }
 
 -- | 'alaList' and 'alaList'' are simply 'List', with additional phantom
--- arguments to constraint the resulting type
+-- arguments to constrain the resulting type
 --
 -- >>> :t alaList VCat
 -- alaList VCat :: [a] -> List VCat (Identity a) a
@@ -129,7 +129,7 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
 newtype Set' sep b a = Set' { _getSet :: Set a }
 
 -- | 'alaSet' and 'alaSet'' are simply 'Set'' constructor, with additional phantom
--- arguments to constraint the resulting type
+-- arguments to constrain the resulting type
 --
 -- >>> :t alaSet VCat
 -- alaSet VCat :: Set a -> Set' VCat (Identity a) a

@@ -2521,6 +2521,8 @@ The following tests are currently supported.
 ``false``
     Constant value false.
 
+.. _resolution-of-conditions-and-flags:
+
 Resolution of Conditions and Flags
 """"""""""""""""""""""""""""""""""
 
@@ -2984,6 +2986,7 @@ TBW
    TBW
 
 
+.. _accessing-data-files:
 
 Accessing data files from package code
 --------------------------------------
@@ -3048,6 +3051,8 @@ exports the constant ``version ::``
 `Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
 which is defined as the version of your package as specified in the
 ``version`` field.
+
+.. _system-dependent-parameters:
 
 System-dependent parameters
 ---------------------------
@@ -3243,6 +3248,8 @@ instead of a normal Haskell compiler. The value of the
 ``A.B.C`` is the Haddock version. This can be useful for working around
 bugs in Haddock or generating prettier documentation in some special
 cases.
+
+.. _more-complex-packages:
 
 More complex packages
 ---------------------

@@ -34,7 +34,7 @@ results to some permanent place and registers the package with GHC.
 .. note ::
     
     Global installing of packages is not recommended.
-    The :ref:`Nix-style builds<nix-style-builds>` is the preferred way of building and installing
+    The :ref:`nix-style-builds` is the preferred way of building and installing
     packages.
 
 Creating a binary package
@@ -108,10 +108,8 @@ the values supplied via these options are recorded in a private file
 read by later stages.
 
 If a user-supplied ``configure`` script is run (see the section on
-`system-dependent
-parameters <developing-packages.html#system-dependent-parameters>`__ or
-on `complex
-packages <developing-packages.html#more-complex-packages>`__), it is
+:ref:`system-dependent-parameters` or
+on :ref:`more-complex-packages`), it is
 passed the :option:`--with-hc-pkg`, :option:`--prefix`, :option:`--bindir`,
 :option:`--libdir`, :option:`--dynlibdir`, :option:`--datadir`, :option:`--libexecdir` and
 :option:`--sysconfdir` options. In addition the value of the
@@ -211,7 +209,7 @@ files of a package:
 .. option:: --prog-option=option
 
     Specify a single additional option to the program *prog*. For
-    passing an option that contain embedded spaces, such as a file name
+    passing an option that contains embedded spaces, such as a file name
     with embedded spaces, using this rather than :option:`--prog-options`
     means you do not need an additional level of quoting. Of course if you
     are using a command shell you may still need to quote, for example
@@ -499,9 +497,9 @@ with ``$prefix``. If this is not the case then the compiled executable
 will have baked-in all absolute paths.
 
 The application need do nothing special to achieve prefix-independence.
-If it finds any files using ``getDataFileName`` and the `other functions
+If it finds any files using ``getDataFileName`` and the :ref:`other functions
 provided for the
-purpose <developing-packages.html#accessing-data-files-from-package-code>`__,
+purpose <accessing-data-files>`,
 the files will be accessed relative to the location of the current
 executable.
 
@@ -512,8 +510,7 @@ to the library package.
 Controlling Flag Assignments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Flag assignments (see the `resolution of conditions and
-flags <developing-packages.html#resolution-of-conditions-and-flags>`__)
+Flag assignments (see :ref:`resolution-of-conditions-and-flags`)
 can be controlled with the following command line options.
 
 .. option:: -f flagname or -f -flagname
@@ -604,7 +601,7 @@ Miscellaneous options
     built; this identifier is passed on to GHC and serves as the basis
     for linker symbols and the ``id`` field in a ``ghc-pkg``
     registration. When a package has multiple components, the actual
-    component identifiers are derived off of this identifier (e.g., an
+    component identifiers are derived off of this identifier. E.g., an
     internal library ``foo`` from package ``p-0.1-abcd`` will get the
     identifier ``p-0.1-abcd-foo``.
 
@@ -819,7 +816,7 @@ Miscellaneous options
 .. option:: --enable-executable-static
 
     Build fully static executables.
-    This link all dependent libraries into executables statically,
+    This links all dependent libraries into executables statically,
     including libc.
 
 .. option:: --disable-executable-static
@@ -829,8 +826,7 @@ Miscellaneous options
 .. option:: --configure-option=str
 
     An extra option to an external ``configure`` script, if one is used
-    (see the section on `system-dependent
-    parameters <developing-packages.html#system-dependent-parameters>`__).
+    (see the section on :ref:`system-dependent-parameters`).
     There can be several of these options.
 
 .. option:: --extra-include-dirs[=dir]
@@ -840,7 +836,7 @@ Miscellaneous options
 
     You might need to use this flag if you have standard system header
     files in a non-standard location that is not mentioned in the
-    package's ``.cabal`` file. Using this option has the same affect as
+    package's ``.cabal`` file. Using this option has the same effect as
     appending the directory *dir* to the ``include-dirs`` field in each
     library and executable in the package's ``.cabal`` file. The
     advantage of course is that you do not have to modify the package at
@@ -1064,7 +1060,7 @@ This command takes the following options:
     These are mostly the same as the `options configure
     step <#setup-configure>`__. Unlike the options specified at the
     configure step, any program options specified at the build step are
-    not persistent but are used for that invocation only. They options
+    not persistent but are used for that invocation only. The options
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
 
@@ -1097,7 +1093,9 @@ This command takes the following options:
     by hyperlinks in the generated documentation. For example, the
     following command generates links pointing at Hackage_ pages:
 
-        runhaskell Setup.hs haddock
+    ::
+
+        $ runhaskell Setup.hs haddock \
         --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
 
     Here the argument is quoted to prevent substitution by the shell. If
@@ -1134,8 +1132,10 @@ This command takes the following options:
 .. option:: --hscolour-css=path
 
     The argument *path* denotes a CSS file, which is passed to HsColour_ as in
+    
+    ::
 
-        runhaskell Setup.hs hscolour --css=*path*
+        $ runhaskell Setup.hs hscolour --css=*path*
 
 .. _setup-hscolour:
 
@@ -1358,6 +1358,7 @@ the package.
     results in real time).
 
 .. option:: --test-options=options
+    
     Give extra options to the test executables.
 
 .. option:: --test-option=option
@@ -1385,6 +1386,7 @@ only the named benchmarks, otherwise, Cabal will run all benchmarks in
 the package.
 
 .. option:: --benchmark-options=options
+
     Give extra options to the benchmark executables.
 
 .. option:: --benchmark-option=option

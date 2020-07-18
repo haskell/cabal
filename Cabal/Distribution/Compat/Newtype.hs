@@ -26,7 +26,7 @@ import Unsafe.Coerce (unsafeCoerce)
 --
 -- Since Cabal-3.0 class arguments are in a different order than in @newtype@ package.
 -- This change is to allow usage with @DeriveAnyClass@ (and @DerivingStrategies@, in GHC-8.2).
--- Unfortunately one have to repeat inner type.
+-- Unfortunately one has to repeat inner type.
 --
 -- @
 -- newtype New = New Old
@@ -86,6 +86,6 @@ alaf _ hof f = unpack . hof (pack . f)
 pack' :: Newtype o n => (o -> n) -> o -> n
 pack' _ = pack
 
--- | Variant of 'pack', which takes a phantom type.
+-- | Variant of 'unpack', which takes a phantom type.
 unpack' :: Newtype o n => (o -> n) -> n -> o
 unpack' _ = unpack
