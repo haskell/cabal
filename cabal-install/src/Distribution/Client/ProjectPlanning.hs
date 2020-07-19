@@ -2680,16 +2680,22 @@ pruneInstallPlanPass1 pkgs =
                 setDocumentation
               $ addOptionalStanzas elab
 
-    find_root (InstallPlan.Configured (PrunedPackage elab _)) =
-        if not $ and [ null (elabConfigureTargets elab)
-                     , null (elabBuildTargets elab)
-                     , null (elabTestTargets elab)
-                     , null (elabBenchTargets elab)
-                     , isNothing (elabReplTarget elab)
-                     , null (elabHaddockTargets elab)
-                     ]
-            then Just (installedUnitId elab)
-            else Nothing
+    is_root :: PrunedPackage -> Maybe UnitId
+    is_root (PrunedPackage elab _) =
+      if not $ and [ null (elabConfigureTargets elab)
+                   , null (elabBuildTargets elab)
+                   , null (elabTestTargets elab)
+                   , null (elabBenchTargets elab)
+                   , isNothing (elabReplTarget elab)
+                   , null (elabHaddockTargets elab)
+                   ]
+          then Just (installedUnitId elab)
+          else Nothing
+
+    find_root (InstallPlan.Configured pkg) = is_root pkg
+    -- When using the extra-packages stanza we need to
+    -- look at installed packages as well.
+    find_root (InstallPlan.Installed pkg)  = is_root pkg
     find_root _ = Nothing
 
     -- Note [Sticky enabled testsuites]

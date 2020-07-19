@@ -27,10 +27,13 @@ normalizeOutput nenv =
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
     -- Things that look like libraries
   . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
+    -- look for PackageHash directories
+  . resub "/(([A-Za-z0-9_]+)(-[A-Za-z0-9\\._]+)*)-[0-9a-f]{4,64}/"
+          "/<PACKAGE>-<HASH>/"
     -- This is dumb but I don't feel like pulling in another dep for
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
-  . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
+  . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
   . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
@@ -39,6 +42,9 @@ normalizeOutput nenv =
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
   . resub "[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.+]+"
           "<VERSION>/installed-<HASH>"
+    -- incoming directories in the store
+  . resub "/incoming/new-[0-9]+"
+          "/incoming/new-<RAND>"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
     -- Some GHC versions are chattier than others
