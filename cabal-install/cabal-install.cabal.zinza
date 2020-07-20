@@ -419,7 +419,7 @@ Flag lukko
 {% if dev %}
 library cabal-lib-client
 {% useblock componentCommon %}
-    hs-source-dirs: .
+    hs-source-dirs:   src
 {% useblock buildInfo %}
 
 library cabal-install-solver-dsl
@@ -457,7 +457,7 @@ executable cabal
 
     other-modules: Paths_cabal_install
 {% else %}
-    hs-source-dirs: .
+    hs-source-dirs: src
 {% useblock buildInfo %}
 {% endif %}
 {############################################################################}
