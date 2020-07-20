@@ -1,9 +1,0 @@
-synopsis: Add -fexpose-all-unfoldings to parsec and Cabal in release project
-packages: cabal-install
-prs: #6708
-
-description: {
-
-This makes parser faster with acceptable code-size increase.
-
-}

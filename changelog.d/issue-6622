@@ -1,4 +1,0 @@
-synopsis: Prepend hs-source-dir to match-component, fixes `cabal repl file`
-packages: cabal-install
-prs: #6623 #6826 #6875
-issues: #6622

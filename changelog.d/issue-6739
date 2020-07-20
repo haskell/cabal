@@ -1,3 +1,0 @@
-synopsis: Change 'optional-packages' default to empty, when cabal.project is mising.
-issues: #6739 #4797
-prs: #6740

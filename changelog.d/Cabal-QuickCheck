@@ -1,4 +1,0 @@
-synopsis: Cabal-QuickCheck package with `Arbirary` instances
-prs: #6557 #6891
-issues: #6882
-packages: Cabal

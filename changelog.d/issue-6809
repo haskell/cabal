@@ -1,4 +1,0 @@
-synopsis: Add `-z` / `--ignore-project` flag to `cabal v2-update`
-packages: cabal-install
-issues: #6809
-prs: #6814

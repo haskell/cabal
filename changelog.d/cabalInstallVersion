@@ -1,3 +1,0 @@
-synopsis: Refactor cabalInstallVersions, add make doctest-cli
-packages: cabal-install
-prs: #6720

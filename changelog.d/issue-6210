@@ -1,4 +1,0 @@
-synopsis: Default to 'NoReports' for remote build reporting
-packages: cabal-install
-issues: #6210
-prs: #6625

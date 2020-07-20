@@ -1,3 +1,0 @@
-synopsis: Installing (copy or symlink) executable message prints destination.
-prs: #6590 #6582
-packages: cabal-install

@@ -1,3 +1,0 @@
-synopsis: Fix rpmvercmp (trailing non-digit characters)
-issues: #6805
-prs: #6808
