@@ -89,7 +89,7 @@ gen-extra-source-files-lib :
 
 # analyse-imports
 analyse-imports : phony
-	find Cabal/src cabal-install/Distribution -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
+	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # github actions
 github-actions : .github/workflows/artifacts.yml
@@ -123,7 +123,7 @@ doctest :
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
-	doctest -D__DOCTEST__ --fast cabal-install/Distribution
+	doctest -D__DOCTEST__ --fast cabal-install/src
 
 # tests
 
@@ -225,7 +225,7 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/src Cabal/Cabal-described/src cabal-install/Distribution cabal-testsuite/src
+	hasktags -b Cabal/src Cabal/Cabal-described/src cabal-install/src cabal-testsuite/src
 
 # documentation
 ##############################################################################

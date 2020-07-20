@@ -149,7 +149,7 @@ executable cabal
     -- On AIX, some legacy BSD operations such as flock(2) are provided by libbsd.a
     if os(aix)
         extra-libraries: bsd
-    hs-source-dirs: .
+    hs-source-dirs: src
     other-modules:
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser

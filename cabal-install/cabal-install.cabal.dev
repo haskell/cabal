@@ -141,7 +141,7 @@ library cabal-lib-client
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
 
-    hs-source-dirs: .
+    hs-source-dirs:   src
     exposed-modules:
         -- this modules are moved from Cabal
         -- they are needed for as long until cabal-install moves to parsec parser
