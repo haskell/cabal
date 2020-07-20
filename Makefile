@@ -25,7 +25,7 @@ lib-ghc-7.8 :
 
 # source generation: Lexer
 
-LEXER_HS:=Cabal/Distribution/Fields/Lexer.hs
+LEXER_HS:=Cabal/src/Distribution/Fields/Lexer.hs
 
 lexer : $(LEXER_HS)
 
@@ -36,8 +36,8 @@ $(LEXER_HS) : boot/Lexer.x
 
 # source generation: SPDX
 
-SPDX_LICENSE_HS:=Cabal/Distribution/SPDX/LicenseId.hs
-SPDX_EXCEPTION_HS:=Cabal/Distribution/SPDX/LicenseExceptionId.hs
+SPDX_LICENSE_HS:=Cabal/src/Distribution/SPDX/LicenseId.hs
+SPDX_EXCEPTION_HS:=Cabal/src/Distribution/SPDX/LicenseExceptionId.hs
 
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
@@ -49,7 +49,7 @@ $(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-script
 
 # source generation: templates
 
-TEMPLATE_MACROS:=Cabal/Distribution/Simple/Build/Macros/Z.hs
+TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
 
 templates : $(TEMPLATE_MACROS)
 
@@ -89,7 +89,7 @@ gen-extra-source-files-lib :
 
 # analyse-imports
 analyse-imports : phony
-	find Cabal/Distribution cabal-install/Distribution -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
+	find Cabal/src cabal-install/Distribution -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # github actions
 github-actions : .github/workflows/artifacts.yml
@@ -119,7 +119,7 @@ ghcid-cli :
 # doctests (relies on .ghc.environment files)
 
 doctest :
-	doctest --fast Cabal/Distribution Cabal/Language
+	doctest --fast Cabal/src
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
@@ -225,7 +225,7 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/Distribution Cabal/Cabal-described/src Cabal/Language cabal-install/Distribution cabal-testsuite/src
+	hasktags -b Cabal/src Cabal/Cabal-described/src cabal-install/Distribution cabal-testsuite/src
 
 # documentation
 ##############################################################################
