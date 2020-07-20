@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-binds -fno-warn-missing-signatures #-}
 {-# LANGUAGE CPP,MagicHash #-}
-{-# LINE 1 "boot/Lexer.x" #-}
+{-# LINE 1 "templates/Lexer.x" #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -171,7 +171,7 @@ alex_actions = array (0 :: Int, 30)
   , (0,alex_action_25)
   ]
 
-{-# LINE 151 "boot/Lexer.x" #-}
+{-# LINE 151 "templates/Lexer.x" #-}
 
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
 data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator

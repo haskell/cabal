@@ -29,7 +29,7 @@ LEXER_HS:=Cabal/src/Distribution/Fields/Lexer.hs
 
 lexer : $(LEXER_HS)
 
-$(LEXER_HS) : boot/Lexer.x
+$(LEXER_HS) : templates/Lexer.x
 	alex --latin1 --ghc -o $@ $^
 	cat -s $@ > Lexer.tmp
 	mv Lexer.tmp $@
@@ -41,19 +41,19 @@ SPDX_EXCEPTION_HS:=Cabal/src/Distribution/SPDX/LicenseExceptionId.hs
 
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
-$(SPDX_LICENSE_HS) : boot/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- boot/SPDX.LicenseId.template.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.6.json license-list-data/licenses-3.9.json $(SPDX_LICENSE_HS)
+$(SPDX_LICENSE_HS) : templates/SPDX.LicenseId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDX.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx -- templates/SPDX.LicenseId.template.hs license-list-data/licenses-3.0.json license-list-data/licenses-3.2.json license-list-data/licenses-3.6.json license-list-data/licenses-3.9.json $(SPDX_LICENSE_HS)
 
-$(SPDX_EXCEPTION_HS) : boot/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- boot/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.6.json license-list-data/exceptions-3.9.json $(SPDX_EXCEPTION_HS)
+$(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-scripts/src/GenUtils.hs cabal-dev-scripts/src/GenSPDXExc.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-spdx-exc -- templates/SPDX.LicenseExceptionId.template.hs license-list-data/exceptions-3.0.json license-list-data/exceptions-3.2.json license-list-data/exceptions-3.6.json license-list-data/exceptions-3.9.json $(SPDX_EXCEPTION_HS)
 
 # source generation: templates
 
 TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
 
-templates : $(TEMPLATE_MACROS)
+templates : phony $(TEMPLATE_MACROS)
 
-$(TEMPLATE_MACROS) : boot/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
+$(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
 
 # generated docs
@@ -99,7 +99,7 @@ github-actions : .github/workflows/linux.yml
 github-actions : .github/workflows/macos.yml
 github-actions : .github/workflows/windows.yml
 
-.github/workflows/%.yml : boot/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
+.github/workflows/%.yml : templates/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
 
 # We need to generate cabal-install-dev so the test modules are in .cabal file!
