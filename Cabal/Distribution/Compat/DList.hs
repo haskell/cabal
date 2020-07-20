@@ -28,7 +28,7 @@ newtype DList a = DList ([a] -> [a])
 runDList :: DList a -> [a]
 runDList (DList run) = run []
 
--- | Make 'DList' with containing single element.
+-- | Make 'DList' containing single element.
 singleton :: a -> DList a
 singleton a = DList (a:)
 

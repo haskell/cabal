@@ -31,7 +31,7 @@ data SP s = SP
     , pParse  :: !(forall m. P.CabalParsing m => s -> m s)
     }
 
--- | A collection field parsers and pretty-printers.
+-- | A collection of field parsers and pretty-printers.
 newtype FieldDescrs s a = F { runF :: Map P.FieldName (SP s) }
   deriving (Functor)
 

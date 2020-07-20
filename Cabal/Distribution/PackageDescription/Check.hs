@@ -12,9 +12,9 @@
 -- another set of checks that also looks at files in the package. Some of the
 -- checks are basic sanity checks, others are portability standards that we'd
 -- like to encourage. There is a 'PackageCheck' type that distinguishes the
--- different kinds of check so we can see which ones are appropriate to report
--- in different situations. This code gets uses when configuring a package when
--- we consider only basic problems. The higher standard is uses when
+-- different kinds of checks so we can see which ones are appropriate to report
+-- in different situations. This code gets used when configuring a package when
+-- we consider only basic problems. The higher standard is used when
 -- preparing a source tarball and by Hackage when uploading new packages. The
 -- reason for this is that we want to hold packages that are expected to be
 -- distributed to a higher standard than packages that are only ever expected

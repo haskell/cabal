@@ -311,8 +311,8 @@ The following settings control the behavior of the dependency solver:
 
     :default: ``none``
 
-    Allow the solver to pick an newer version of some packages than
-    would normally be permitted by than the :pkg-field:`build-depends` bounds
+    Allow the solver to pick more recent version of some packages than
+    would normally be permitted by the :pkg-field:`build-depends` bounds
     of packages in the install plan. This option may be useful if the
     dependency solver cannot otherwise find a valid install plan.
 
@@ -392,7 +392,7 @@ The following settings control the behavior of the dependency solver:
 
 
     :cfg-field:`allow-newer` is often used in conjunction with a constraint
-    (in the cfg-field:`constraints` field) forcing the usage of a specific,
+    (in the :cfg-field:`constraints` field) forcing the usage of a specific,
     newer version of a package.
 
     The command line variant of this field is e.g. ``--allow-newer=bar``. A
@@ -656,7 +656,7 @@ feature was added.
 
     :default: ``ghc``
 
-    Specify which compiler toolchain to be used. This is independent of
+    Specify the compiler toolchain to be used. This is independent of
     ``with-compiler``, because the choice of toolchain affects Cabal's
     build logic.
 
@@ -944,7 +944,7 @@ Static linking options
     :default: False
 
     Build fully static executables.
-    This link all dependent libraries into executables statically,
+    This links all dependent libraries into executables statically,
     including libc.
     This passes ``-static`` and ``-optl=-static`` to GHC.
 
