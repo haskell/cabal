@@ -12,8 +12,7 @@ http://cabal.readthedocs.io/
 ### How to build it
 
 Building the documentation requires Python 3 be installed
-* `> cd Cabal`
-* `> make clean users-guide`
+* `> make users-guide`
 * Python on Mac OS X dislikes `LC_CTYPE=UTF-8`, unset the env var in
 terminal preferences and instead set `LC_ALL=en_US.UTF-8` or something
 

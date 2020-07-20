@@ -58,7 +58,7 @@ $(TEMPLATE_MACROS) : boot/cabal_macros.template.h cabal-dev-scripts/src/GenCabal
 
 # generated docs
 
-doc/buildinfo-fields-reference.rst : phony
+buildinfo-fields-reference : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
 	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
@@ -240,8 +240,6 @@ users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
 	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
-
-docs: haddock users-guide
 
 .python-sphinx-virtualenv:
 	python3 -m venv .python-sphinx-virtualenv
