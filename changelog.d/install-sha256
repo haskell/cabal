@@ -1,3 +1,0 @@
-synopsis: Check sha256 if `#sha256=...` fragments are given to URIs
-packages: cabal-install
-prs: #6576

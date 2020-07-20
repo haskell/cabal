@@ -1,24 +1,8 @@
-synopsis: CI tweaks
-packages: Cabal-internal
-prs:
-  #6494
-  #6518
-  #6559
-  #6564
-  #6571
-  #6577
-  #6578
-  #6579
-  #6585
-  #6617
-  #6636
-  #6709
-  #6827
-  #6831
-  #6900
-  #6902
-  #6914
-  #6946
-issues:
-  #6500
-  #6945
+synopsis: CI setup
+prs: #6959
+
+description: {
+
+- Remove travis scripts
+
+}

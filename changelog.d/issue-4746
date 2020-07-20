@@ -1,4 +1,0 @@
-synopsis: all extra-source-files are change-tracked
-packages: cabal-install
-issues: #4746
-prs: #6889

@@ -1,3 +1,0 @@
-synopsis: `Cabal.Distribution.Compiler`: add `Traversable` instance for `PerCompilerFlavor`
-prs: #6763
-packages: Cabal

@@ -1,4 +1,0 @@
-synopsis: Use PrettyField to format cabal file in `cabal init`
-packages: cabal-install
-prs: #6718
-issues: #5555

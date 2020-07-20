@@ -1,4 +1,0 @@
-synopsis: cabal v2-install prints copy/symlink destination
-packages: cabal-install
-prs: #6582 #6890
-issues: #6575

@@ -1,3 +1,0 @@
-synopsis: Create Cabal-tree-diff package with `ToExpr` instances
-prs: #6789
-packages: Cabal

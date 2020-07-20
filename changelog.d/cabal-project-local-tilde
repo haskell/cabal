@@ -1,3 +1,0 @@
-synopsis: Tell users about `cabal.project.local~` in `cabal v2-configure`
-prs: #6877
-packages: cabal-install

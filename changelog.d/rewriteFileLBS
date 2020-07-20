@@ -1,3 +1,0 @@
-synopsis: Add rewriteFileLBS and use it to write setup wrapper
-packages: Cabal
-prs: #6574

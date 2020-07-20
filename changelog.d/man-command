@@ -1,3 +1,0 @@
-synopsis: Change manpage command to man
-packages: cabal-install
-prs: #6548

@@ -1,5 +1,0 @@
-synopsis: More rich `index-state` syntax. `v2-freeze` saves `index-state`.
-packages: cabal-install
-prs: #6596 #6581 #6597 #6591 #6682 #6733
-issues: #6728
-significance: significant
