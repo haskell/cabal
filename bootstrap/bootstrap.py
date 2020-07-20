@@ -4,29 +4,13 @@
 """
 bootstrap.py - bootstrapping utility for cabal-install.
 
-See bootstrap.py --help for usage instructions.
+See bootstrap/README.md for usage instructions.
 """
 
 USAGE = """
 This utility is only intended for use in building cabal-install
 on a new platform. If you already have a functional (if dated) cabal-install
 please rather run `cabal v2-install .`.
-
-Typical usage:
-
-  1. On a system with functional cabal-install, install the same GHC version
-     as you will use to bootstrap on the host system.
-
-  2. Build a dependency description file (bootstrap-deps.json) by running:
-
-       bootstrap.py --extract-plan -d bootstrap-deps.json -w /path/to/ghc
-
-  3. Copy `bootstrap-deps.json` to the bootstrapping environment.
-
-  4. On the system you are bootstrapping, run
-
-       bootstrap.py -d bootstrap-deps.json -w /path/to-ghc
-
 """
 
 from enum import Enum
@@ -44,7 +28,6 @@ from typing import Set, Optional, Dict, List, Tuple, \
 
 PACKAGES = Path('packages')
 PKG_DB = PACKAGES / 'packages.conf'
-HACKAGE_TARBALL = Path.home() / '.cabal' / 'packages' / 'hackage.haskell.org' / '01-index.tar'
 
 PackageName = NewType('PackageName', str)
 Version = NewType('Version', str)
@@ -52,8 +35,12 @@ SHA256Hash = NewType('SHA256Hash', str)
 
 class PackageSource(Enum):
     HACKAGE = 'hackage'
-    PREEXISTING = 'pre-existing'
     LOCAL = 'local'
+
+BuiltinDep = NamedTuple('BuiltinDep', [
+    ('package', PackageName),
+    ('version', Version),
+])
 
 BootstrapDep = NamedTuple('BootstrapDep', [
     ('package', PackageName),
@@ -64,6 +51,12 @@ BootstrapDep = NamedTuple('BootstrapDep', [
     # `revision` is only valid when source == HACKAGE.
     ('revision', Optional[int]),
     ('cabal_sha256', Optional[SHA256Hash]),
+    ('flags', List[str]),
+])
+
+BootstrapInfo = NamedTuple('BootstrapInfo', [
+    ('builtin', List[BuiltinDep]),
+    ('dependencies', List[BootstrapDep]),
 ])
 
 class Compiler:
@@ -80,63 +73,17 @@ class Compiler:
         self.ghc_pkg_path = (self.ghc_path.parent / 'ghc-pkg').resolve()
         if not self.ghc_pkg_path.is_file():
             raise TypeError(f'ghc-pkg {self.ghc_pkg_path} is not a file')
+        self.hsc2hs_path = (self.ghc_path.parent / 'hsc2hs').resolve()
+        if not self.hsc2hs_path.is_file():
+            raise TypeError(f'hsc2hs {self.hsc2hs_path} is not a file')
 
     def _get_ghc_info(self) -> Dict[str,str]:
         from ast import literal_eval
-        p = subprocess.run([self.ghc_path, '--info'], stdout=subprocess.PIPE, check=True, encoding='UTF-8')
+        p = subprocess_run([self.ghc_path, '--info'], stdout=subprocess.PIPE, check=True, encoding='UTF-8')
         out = p.stdout.replace('\n', '').strip()
         return dict(literal_eval(out))
 
-def get_revision(cabal_contents: str) -> int:
-    """
-    "Parse" the revision field from a .cabal file.
-    """
-    import re
-    m = re.search('x-revision: *([0-9]+)', cabal_contents)
-    if m is None:
-        return 0
-    else:
-        return int(m.group(1))
-
 PackageSpec = Tuple[PackageName, Version]
-
-def find_pkg_revisions(index_tarball: Path,
-                       pkgs: Set[PackageSpec],
-                       ) -> Dict[PackageSpec, Tuple[SHA256Hash, int]]:
-    """
-    Find the current revision number and hash of the most recent revision of
-    the given package name/versions present in an index tarball. Ideally we
-    would request this information from Hackage, but sadly this isn't currently
-    possible as hackage-server provides no way to do so.
-
-    This interface is a bit awkward but it allows us to find all of the
-    information we need from the index in a single pass. This saves a
-    significant amount of time.
-    """
-    from tarfile import TarFile, TarInfo
-    tar = TarFile.open(index_tarball)
-    interesting_paths = {
-        f'{pkg_name}/{version}/{pkg_name}.cabal': (pkg_name, version)
-        for pkg_name, version in pkgs
-    } # type: Dict[str, PackageSpec]
-
-    logging.info(f'Searching for revisions of {pkgs}')
-    result = {} # type: Dict[PackageSpec, Tuple[SHA256Hash, int]]
-    while True:
-        tar_info = tar.next()
-        if tar_info is None:
-            break
-
-        spec = interesting_paths.get(tar_info.name)
-        if spec is not None:
-            f = tar.extractfile(tar_info)
-            contents = f.read()
-            revision = get_revision(contents.decode('UTF-8'))
-            h = hashlib.sha256()
-            h.update(contents)
-            result[spec] = (SHA256Hash(h.hexdigest()), revision)
-
-    return result
 
 class BadTarball(Exception):
     def __init__(self, path: Path, expected_sha256: SHA256Hash, found_sha256: SHA256Hash):
@@ -191,44 +138,33 @@ def fetch_package(package: PackageName,
     verify_sha256(src_sha256, out)
     return out
 
-def read_bootstrap_deps(path: Path) -> List[BootstrapDep]:
+def read_bootstrap_info(path: Path) -> BootstrapInfo:
     obj = json.load(path.open())
 
-    def from_json(o: dict) -> BootstrapDep:
+    def bi_from_json(o: dict) -> BuiltinDep:
+        return BuiltinDep(**o)
+
+    def dep_from_json(o: dict) -> BootstrapDep:
         o['source'] = PackageSource(o['source'])
         return BootstrapDep(**o)
 
-    return [from_json(dep) for dep in obj['dependencies']]
+    builtin = [bi_from_json(dep) for dep in obj['builtin'] ]
+    deps = [dep_from_json(dep) for dep in obj['dependencies'] ]
 
-def write_bootstrap_deps(path: Path, deps: List[BootstrapDep]):
-    def to_json(dep: BootstrapDep) -> object:
-        return {
-            'package': dep.package,
-            'version': dep.version,
-            'source': dep.source.value,
-            'src_sha256': dep.src_sha256,
-            'revision': dep.revision,
-            'cabal_sha256': dep.cabal_sha256,
-        }
+    return BootstrapInfo(dependencies=deps, builtin=builtin)
 
-    obj = {
-        'dependencies': [to_json(dep) for dep in deps],
-    }
-    json.dump(obj, path.open('w'), indent=2)
+def check_builtin(dep: BuiltinDep, ghc: Compiler) -> None:
+    subprocess_run([str(ghc.ghc_pkg_path), 'describe', f'{dep.package}-{dep.version}'],
+                   check=True, stdout=subprocess.DEVNULL)
+    print(f'Using {dep.package}-{dep.version} from GHC...')
+    return
 
 def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
-    if dep.source == PackageSource.PREEXISTING:
-        # We expect it to be in the compiler's bootstrap package set
-        subprocess.run([str(ghc.ghc_pkg_path), 'describe', f'{dep.package}-{dep.version}'],
-                       check=True, stdout=subprocess.DEVNULL)
-        print(f'Using {dep.package}-{dep.version} from GHC...')
-        return
-
-    elif dep.source == PackageSource.HACKAGE:
+    if dep.source == PackageSource.HACKAGE:
         assert dep.src_sha256 is not None
         tarball = fetch_package(dep.package, dep.version, dep.src_sha256,
                                 dep.revision, dep.cabal_sha256)
-        subprocess.run(['tar', 'zxf', tarball.resolve()],
+        subprocess_run(['tar', 'zxf', tarball.resolve()],
                        cwd=PACKAGES, check=True)
         sdist_dir = PACKAGES / f'{dep.package}-{dep.version}'
 
@@ -245,19 +181,23 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
         else:
             raise ValueError(f'Unknown local package {dep.package}')
 
-    install_sdist(sdist_dir, ghc)
+    install_sdist(sdist_dir, ghc, dep.flags)
 
-def install_sdist(sdist_dir: Path, ghc: Compiler):
+def install_sdist(sdist_dir: Path, ghc: Compiler, flags: List[str]):
     prefix = (PACKAGES / 'tmp').resolve()
+    flags_option = ' '.join(flags)
+
     configure_args = [
         f'--package-db={PKG_DB.resolve()}',
         f'--prefix={prefix}',
         f'--with-compiler={ghc.ghc_path}',
         f'--with-hc-pkg={ghc.ghc_pkg_path}',
+        f'--with-hsc2hs={ghc.hsc2hs_path}',
+        f'--flags={flags_option}'
     ]
 
     def check_call(args: List[str]) -> None:
-        subprocess.run(args, cwd=sdist_dir, check=True)
+        subprocess_run(args, cwd=sdist_dir, check=True)
 
     check_call([str(ghc.ghc_path), '--make', '-package-env', '-', 'Setup'])
     check_call(['./Setup', 'configure'] + configure_args)
@@ -285,99 +225,16 @@ def read_plan(project_dir: Path) -> Dict[UnitId, PlanUnit]:
         for c in plan['install-plan']
     }
 
-def extract_plan() -> List[BootstrapDep]:
-    units = read_plan(Path('.'))
-    target_unit = [
-        unit
-        for unit in units.values()
-        if unit['pkg-name'] == 'cabal-install'
-        if unit['component-name'] == 'exe:cabal'
-    ][0]
-
-    def unit_to_bootstrap_dep(unit: PlanUnit) -> BootstrapDep:
-        package = unit['pkg-name']
-        version = unit['pkg-version']
-        cabal_sha256 = None
-        revision = None
-
-        if 'pkg-src' in unit \
-                and unit['pkg-src']['type'] == 'local':
-            source = PackageSource.LOCAL
-        elif unit['type'] == 'configured':
-            source = PackageSource.HACKAGE
-        elif unit['type'] == 'pre-existing':
-            source = PackageSource.PREEXISTING
-
-        return BootstrapDep(package = package,
-                            version = version,
-                            source = source,
-                            src_sha256 = unit.get('pkg-src-sha256'),
-                            # these will be handled in a second pass below...
-                            revision = None,
-                            cabal_sha256 = None,
-                            )
-
-    def unit_ids_deps(unit_ids: List[UnitId]) -> List[BootstrapDep]:
-        deps = [] # type: List[BootstrapDep]
-        for unit_id in unit_ids:
-            unit = units[unit_id]
-            deps += unit_deps(unit)
-            deps.append(unit_to_bootstrap_dep(unit))
-
-        return deps
-
-    def unit_deps(unit: PlanUnit) -> List[BootstrapDep]:
-        if unit['type'] == 'pre-existing':
-            return []
-
-        deps = [] # type: List[BootstrapDep]
-        if 'components' in unit:
-            for comp_name, comp in unit['components'].items():
-                deps += unit_ids_deps(comp['depends'])
-        if 'depends' in unit:
-            deps += unit_ids_deps(unit['depends'])
-
-        return deps
-
-    deps = remove_duplicates(unit_deps(target_unit) + [unit_to_bootstrap_dep(target_unit)])
-
-    # Find all of the package revisions and cabal file SHAs.
-    pkgs_needing_rev_info = set((dep.package, dep.version)
-                                for dep in deps
-                                if dep.source == PackageSource.HACKAGE) # type: Set[PackageSpec]
-    rev_info = find_pkg_revisions(HACKAGE_TARBALL, pkgs_needing_rev_info)
-    def update_rev_info(dep: BootstrapDep) -> BootstrapDep:
-        if dep.source == PackageSource.HACKAGE:
-            info = rev_info.get((dep.package, dep.version))
-            assert info is not None
-            cabal_sha256, revision = info
-            dep = dep._replace(cabal_sha256=cabal_sha256, revision=revision)
-            assert dep.revision is not None
-            assert dep.cabal_sha256 is not None
-
-        return dep
-
-    return [update_rev_info(dep) for dep in deps]
-
-a = TypeVar('a')
-
-def remove_duplicates(xs: List[a]) -> List[a]:
-    # it's easier to build lists and remove duplicates later than
-    # to implement an order-preserving set.
-    out = [] # type: List[a]
-    for x in xs:
-        if x not in out:
-            out.append(x)
-
-    return out
-
-def bootstrap(deps: List[BootstrapDep], ghc: Compiler) -> None:
+def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
     if not PKG_DB.exists():
         print(f'Creating package database {PKG_DB}')
         PKG_DB.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run([ghc.ghc_pkg_path, 'init', PKG_DB])
+        subprocess_run([ghc.ghc_pkg_path, 'init', PKG_DB])
 
-    for dep in deps:
+    for dep in info.builtin:
+        check_builtin(dep, ghc)
+
+    for dep in info.dependencies:
         install_dep(dep, ghc)
 
 def main() -> None:
@@ -386,8 +243,6 @@ def main() -> None:
         description="bootstrapping utility for cabal-install.",
         epilog = USAGE,
         formatter_class = argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--extract-plan', action='store_true',
-                        help='generate bootstrap-deps.json from plan.json')
     parser.add_argument('-d', '--deps', type=Path, default='bootstrap-deps.json',
                         help='bootstrap dependency file')
     parser.add_argument('-w', '--with-compiler', type=Path,
@@ -405,34 +260,37 @@ def main() -> None:
 
     print(f'Bootstrapping cabal-install with GHC {ghc.version} at {ghc.ghc_path}...')
 
-    if args.extract_plan:
-        subprocess.run(['cabal', 'v2-build', '--dry',
-                        '--project-file', 'cabal.project.release',
-                        '-w', ghc.ghc_path])
-        deps = extract_plan()
-        write_bootstrap_deps(args.deps, deps)
-        print(f'dependencies written to {args.deps}')
-    else:
-        print(dedent("""
-            DO NOT use this script if you have another recent cabal-install available.
-            This script is intended only for bootstrapping cabal-install on new
-            architectures.
-        """))
+    print(dedent("""
+        DO NOT use this script if you have another recent cabal-install available.
+        This script is intended only for bootstrapping cabal-install on new
+        architectures.
+    """))
 
-        deps = read_bootstrap_deps(args.deps)
-        bootstrap(deps, ghc)
-        cabal_path = (PACKAGES / 'tmp' / 'bin' / 'cabal').resolve()
+    info = read_bootstrap_info(args.deps)
+    bootstrap(info, ghc)
+    cabal_path = (PACKAGES / 'tmp' / 'bin' / 'cabal').resolve()
 
-        print(dedent(f'''
-            Bootstrapping finished!
+    print(dedent(f'''
+        Bootstrapping finished!
 
-            The resulting cabal-install executable can be found at
+        The resulting cabal-install executable can be found at
 
-                {cabal_path}
+            {cabal_path}
 
-            You now should use this to build a full cabal-install distribution
-            using v2-build.
-        '''))
+        You now should use this to build a full cabal-install distribution
+        using v2-build.
+    '''))
+
+def subprocess_run(args, **kwargs):
+    "Like subprocess.run, but also print what we run"
+
+    args_str = ' '.join(map(str, args))
+    extras = ''
+    if 'cwd' in kwargs:
+        extras += f' cwd={kwargs["cwd"]}'
+    print(f'bootstrap: running{extras} {args_str}')
+
+    return subprocess.run(args, **kwargs)
 
 if __name__ == '__main__':
     main()
