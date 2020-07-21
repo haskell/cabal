@@ -1,4 +1,4 @@
-module MemoryUsageTests where
+module Main where
 
 import Test.Tasty
 
