@@ -31,7 +31,6 @@ Version:            3.5.0.0
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 2.3,
         network-uri >= 2.6.0.2 && < 2.7,
-        network    >= 2.6      && < 3.2,
         pretty     >= 1.1      && < 1.2,
         process    >= 1.2.3.0  && < 1.7,
         random     >= 1        && < 1.2,
@@ -75,6 +74,9 @@ Version:            3.5.0.0
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
+
+      if impl(ghc >=8.10)
+        ghc-options: -Wunused-packages
 
 {% endblock %}
 {% defblock buildInfo %}
@@ -468,10 +470,11 @@ executable cabal
 -- Small, fast running tests.
 --
 Test-Suite unit-tests
+{% useblock componentCommon %}
+  ghc-options: -threaded
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is UnitTests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.BuildReport
@@ -502,7 +505,6 @@ Test-Suite unit-tests
   build-depends:
         array,
         base,
-        async,
         bytestring,
         cabal-lib-client,
         cabal-install-solver-dsl,
@@ -511,7 +513,6 @@ Test-Suite unit-tests
         Cabal-tree-diff,
         Cabal-QuickCheck,
         containers,
-        deepseq,
         mtl,
         random,
         directory,
@@ -520,64 +521,51 @@ Test-Suite unit-tests
         time,
         zlib,
         network-uri >= 2.6.2.0 && <2.6.4.0,
-        network,
         tasty >= 1.2.3 && <1.4,
         tasty-golden >=2.3.1.1 && <2.4,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
-        tagged,
         tree-diff,
         QuickCheck >= 2.14 && <2.15
-
-  ghc-options: -threaded
-
-  default-language: Haskell2010
 
 -- Tests to run with a limited stack and heap size
 --
 Test-Suite memory-usage-tests
+{% useblock componentCommon %}
+  ghc-options: -threaded
+  ghc-options: "-with-rtsopts=-M4M -K1K"
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns "-with-rtsopts=-M4M -K1K" -main-is MemoryUsageTests
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
     UnitTests.Distribution.Solver.Modular.MemoryUsage
     UnitTests.Options
   build-depends:
         base,
-        async,
         Cabal,
         cabal-lib-client,
         cabal-install-solver-dsl,
-        containers,
-        deepseq,
-        tagged,
         tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10
-
-  ghc-options: -threaded
-
-  default-language: Haskell2010
 
 -- Slow solver tests
 --
 Test-Suite solver-quickcheck
+{% useblock componentCommon %}
+  ghc-options: -threaded
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is SolverQuickCheck
   other-modules:
     UnitTests.Distribution.Solver.Modular.QuickCheck
     UnitTests.Distribution.Solver.Modular.QuickCheck.Utils
   build-depends:
         base,
-        async,
         Cabal,
         Cabal-QuickCheck,
         cabal-lib-client,
         cabal-install-solver-dsl,
-        containers,
         deepseq >= 1.2,
         hashable,
         random,
@@ -587,18 +575,14 @@ Test-Suite solver-quickcheck
         QuickCheck >= 2.14 && <2.15,
         pretty-show >= 1.6.15
 
-  ghc-options: -threaded
-
-  default-language: Haskell2010
-
-
 -- Integration tests that use the cabal-install code directly
 -- but still build whole projects
 test-suite integration-tests2
+{% useblock componentCommon %}
+  ghc-options: -threaded
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests
-  ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -main-is IntegrationTests2
   other-modules:
   build-depends:
         base,
@@ -606,15 +590,11 @@ test-suite integration-tests2
         Cabal,
         cabal-lib-client,
         containers,
-        deepseq,
         directory,
-        edit-distance,
         filepath,
         tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10,
         tagged
 
-  ghc-options: -threaded
-  default-language: Haskell2010
 
 {% endif %}

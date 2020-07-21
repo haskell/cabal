@@ -8,7 +8,7 @@
 -- For the handy instance IsString PackageIdentifier
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module IntegrationTests2 where
+module Main where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
