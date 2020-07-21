@@ -1,4 +1,6 @@
-packages: Cabal/ cabal-testsuite/
+packages: Cabal/
+packages: cabal-testsuite/
+
 tests: True
 
 write-ghc-environment-files: never

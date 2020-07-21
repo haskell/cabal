@@ -273,7 +273,7 @@ if [ -z "$STEPS" ]; then
 fi
 
 TARGETS="Cabal cabal-testsuite"
-if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install"; fi
+if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver  Cabal-QuickCheck Cabal-tree-diff Cabal-described"; fi
 if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
 
 if $LISTSTEPS; then

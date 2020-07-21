@@ -65,7 +65,7 @@ import Distribution.Simple.Setup
          )
 
 import Prelude ()
-import Distribution.Solver.Compat.Prelude hiding (get)
+import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -157,7 +157,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)

@@ -1,9 +1,14 @@
-packages: Cabal/ cabal-testsuite/ cabal-install/ solver-benchmarks/
-tests: True
+packages: Cabal/
+packages: cabal-testsuite/
+packages: cabal-install/
+packages: solver-benchmarks/
 
+packages: cabal-install/cabal-install-solver/
 packages: Cabal/Cabal-QuickCheck/
 packages: Cabal/Cabal-tree-diff
 packages: Cabal/Cabal-described
+
+tests: True
 
 -- avoiding extra dependencies
 constraints: rere -rere-cfg
