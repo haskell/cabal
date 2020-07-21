@@ -9,7 +9,7 @@ import Distribution.Simple.Program
 import Distribution.Verbosity as Verbosity
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy)
 
-import Data.List
+import Data.List (mapAccumL)
 import Data.Tuple
 import qualified Data.Map as Map
 import qualified Data.Set as Set
