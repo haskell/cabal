@@ -82,7 +82,7 @@ cabal-install-dev : cabal-install/cabal-install.cabal.dev
 
 # extra-source-files generation
 
-gen-extra-source-files : gen-extra-source-files-lib gen-extra-source-files-cli
+gen-extra-source-files : gen-extra-source-files-lib
 
 gen-extra-source-files-lib :
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
@@ -101,12 +101,6 @@ github-actions : .github/workflows/windows.yml
 
 .github/workflows/%.yml : templates/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
-
-# We need to generate cabal-install-dev so the test modules are in .cabal file!
-gen-extra-source-files-cli :
-	$(MAKE) cabal-install-dev
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/cabal-install/cabal-install.cabal.zinza $$(pwd)/cabal-install/cabal-install.cabal
-	$(MAKE) cabal-install-prod
 
 # ghcid
 

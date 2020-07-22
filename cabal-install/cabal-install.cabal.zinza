@@ -74,6 +74,8 @@ Version:            3.5.0.0
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
+      if impl(ghc >=8.10)
+        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -212,12 +214,25 @@ Version:            3.5.0.0
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
-        Distribution.Client.Utils.Assertion
         Distribution.Client.Utils.Json
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.World
+
+    hs-source-dirs: cabal-install-solver/src-assertion
+{% if dev %}
+    exposed-modules:
+{% else %}
+    other-modules:
+{% endif %}
+        Distribution.Client.Utils.Assertion
+
+{% if dev %}
+    build-depends: cabal-install-solver
+{% else %}
+    hs-source-dirs: cabal-install-solver/src
+    other-modules:
         Distribution.Solver.Compat.Prelude
         Distribution.Solver.Modular
         Distribution.Solver.Modular.Assignment
@@ -266,6 +281,9 @@ Version:            3.5.0.0
         Distribution.Solver.Types.SolverPackage
         Distribution.Solver.Types.SourcePackage
         Distribution.Solver.Types.Variable
+{% endif %}
+
+    other-modules:
         Paths_cabal_install
 
 {% if dev %}
@@ -303,87 +321,7 @@ Copyright:          2003-2020, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
-  README.md bash-completion/cabal bootstrap.sh changelog
-
-  -- Generated with 'make gen-extra-source-files'
-  -- Do NOT edit this section manually; instead, run the script.
-  -- BEGIN gen-extra-source-files
-  tests/IntegrationTests2/build/keep-going/cabal.project
-  tests/IntegrationTests2/build/keep-going/p/P.hs
-  tests/IntegrationTests2/build/keep-going/p/p.cabal
-  tests/IntegrationTests2/build/keep-going/q/Q.hs
-  tests/IntegrationTests2/build/keep-going/q/q.cabal
-  tests/IntegrationTests2/build/local-tarball/cabal.project
-  tests/IntegrationTests2/build/local-tarball/q/Q.hs
-  tests/IntegrationTests2/build/local-tarball/q/q.cabal
-  tests/IntegrationTests2/build/setup-custom1/A.hs
-  tests/IntegrationTests2/build/setup-custom1/Setup.hs
-  tests/IntegrationTests2/build/setup-custom1/a.cabal
-  tests/IntegrationTests2/build/setup-custom2/A.hs
-  tests/IntegrationTests2/build/setup-custom2/Setup.hs
-  tests/IntegrationTests2/build/setup-custom2/a.cabal
-  tests/IntegrationTests2/build/setup-simple/A.hs
-  tests/IntegrationTests2/build/setup-simple/Setup.hs
-  tests/IntegrationTests2/build/setup-simple/a.cabal
-  tests/IntegrationTests2/exception/bad-config/cabal.project
-  tests/IntegrationTests2/exception/build/Main.hs
-  tests/IntegrationTests2/exception/build/a.cabal
-  tests/IntegrationTests2/exception/configure/a.cabal
-  tests/IntegrationTests2/exception/no-pkg/empty.in
-  tests/IntegrationTests2/exception/no-pkg2/cabal.project
-  tests/IntegrationTests2/regression/3324/cabal.project
-  tests/IntegrationTests2/regression/3324/p/P.hs
-  tests/IntegrationTests2/regression/3324/p/p.cabal
-  tests/IntegrationTests2/regression/3324/q/Q.hs
-  tests/IntegrationTests2/regression/3324/q/q.cabal
-  tests/IntegrationTests2/targets/all-disabled/cabal.project
-  tests/IntegrationTests2/targets/all-disabled/p.cabal
-  tests/IntegrationTests2/targets/benchmarks-disabled/cabal.project
-  tests/IntegrationTests2/targets/benchmarks-disabled/p.cabal
-  tests/IntegrationTests2/targets/benchmarks-disabled/q/q.cabal
-  tests/IntegrationTests2/targets/complex/cabal.project
-  tests/IntegrationTests2/targets/complex/q/Q.hs
-  tests/IntegrationTests2/targets/complex/q/q.cabal
-  tests/IntegrationTests2/targets/empty-pkg/cabal.project
-  tests/IntegrationTests2/targets/empty-pkg/p.cabal
-  tests/IntegrationTests2/targets/empty/cabal.project
-  tests/IntegrationTests2/targets/empty/foo.hs
-  tests/IntegrationTests2/targets/exes-disabled/cabal.project
-  tests/IntegrationTests2/targets/exes-disabled/p/p.cabal
-  tests/IntegrationTests2/targets/exes-disabled/q/q.cabal
-  tests/IntegrationTests2/targets/lib-only/p.cabal
-  tests/IntegrationTests2/targets/libs-disabled/cabal.project
-  tests/IntegrationTests2/targets/libs-disabled/p/p.cabal
-  tests/IntegrationTests2/targets/libs-disabled/q/q.cabal
-  tests/IntegrationTests2/targets/multiple-exes/cabal.project
-  tests/IntegrationTests2/targets/multiple-exes/p.cabal
-  tests/IntegrationTests2/targets/multiple-libs/cabal.project
-  tests/IntegrationTests2/targets/multiple-libs/p/p.cabal
-  tests/IntegrationTests2/targets/multiple-libs/q/q.cabal
-  tests/IntegrationTests2/targets/multiple-tests/cabal.project
-  tests/IntegrationTests2/targets/multiple-tests/p.cabal
-  tests/IntegrationTests2/targets/simple/P.hs
-  tests/IntegrationTests2/targets/simple/app/Main.hs
-  tests/IntegrationTests2/targets/simple/cabal.project
-  tests/IntegrationTests2/targets/simple/p.cabal
-  tests/IntegrationTests2/targets/simple/q/Q.hs
-  tests/IntegrationTests2/targets/simple/q/QQ.hs
-  tests/IntegrationTests2/targets/simple/q/q.cabal
-  tests/IntegrationTests2/targets/test-only/p.cabal
-  tests/IntegrationTests2/targets/tests-disabled/cabal.project
-  tests/IntegrationTests2/targets/tests-disabled/p.cabal
-  tests/IntegrationTests2/targets/tests-disabled/q/q.cabal
-  tests/IntegrationTests2/targets/variety/cabal.project
-  tests/IntegrationTests2/targets/variety/p.cabal
-  tests/fixtures/init/exe-only-golden.cabal
-  tests/fixtures/init/lib-and-exe-golden.cabal
-  tests/fixtures/init/lib-exe-and-test-golden.cabal
-  tests/fixtures/init/lib-exe-and-test-with-comments-golden.cabal
-  -- END gen-extra-source-files
-
-  -- Additional manual extra-source-files:
-  tests/IntegrationTests2/build/local-tarball/p-0.1.tar.gz
-
+  README.md bash-completion/cabal changelog
 
 source-repository head
   type:     git
@@ -433,6 +371,7 @@ library cabal-install-solver-dsl
         base,
         Cabal,
         containers,
+        cabal-install-solver,
         -- TODO: depend on cabal-install-solver only
         cabal-lib-client
 {% endif %}
@@ -507,6 +446,7 @@ Test-Suite unit-tests
         base,
         bytestring,
         cabal-lib-client,
+        cabal-install-solver,
         cabal-install-solver-dsl,
         Cabal,
         Cabal-described,
@@ -544,6 +484,7 @@ Test-Suite memory-usage-tests
   build-depends:
         base,
         Cabal,
+        cabal-install-solver,
         cabal-lib-client,
         cabal-install-solver-dsl,
         tasty >= 1.2.3 && <1.4,
@@ -564,6 +505,7 @@ Test-Suite solver-quickcheck
         base,
         Cabal,
         Cabal-QuickCheck,
+        cabal-install-solver,
         cabal-lib-client,
         cabal-install-solver-dsl,
         deepseq >= 1.2,
@@ -588,6 +530,7 @@ test-suite integration-tests2
         base,
         bytestring,
         Cabal,
+        cabal-install-solver,
         cabal-lib-client,
         containers,
         directory,
@@ -595,6 +538,4 @@ test-suite integration-tests2
         tasty >= 1.2.3 && <1.4,
         tasty-hunit >= 0.10,
         tagged
-
-
 {% endif %}
