@@ -239,8 +239,8 @@ ZLIB_VER="0.6.2.1";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
                        # >= 0.5.3 && <= 0.7
 TIME_VER="1.9.3"       TIME_VER_REGEXP="1\.[1-9]\.?"
                        # >= 1.1 && < 1.10
-RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
-                       # >= 1 && < 1.2
+RANDOM_VER="1.2.0"     RANDOM_VER_REGEXP="1\.[2]\.?"
+                       # >= 1.2 && < 1.3
 STM_VER="2.4.5.0";     STM_VER_REGEXP="2\."
                        # == 2.*
 HASHABLE_VER="1.3.0.0"; HASHABLE_VER_REGEXP="1\."
