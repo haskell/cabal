@@ -50,11 +50,15 @@ $(SPDX_EXCEPTION_HS) : templates/SPDX.LicenseExceptionId.template.hs cabal-dev-s
 # source generation: templates
 
 TEMPLATE_MACROS:=Cabal/src/Distribution/Simple/Build/Macros/Z.hs
+TEMPLATE_PATHS:=Cabal/src/Distribution/Simple/Build/PathsModule/Z.hs
 
-templates : phony $(TEMPLATE_MACROS)
+templates : phony $(TEMPLATE_MACROS) $(TEMPLATE_PATHS)
 
 $(TEMPLATE_MACROS) : templates/cabal_macros.template.h cabal-dev-scripts/src/GenCabalMacros.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-macros -- $< $@
+
+$(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPathsModule.hs
+	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-paths-module -- $< $@
 
 # generated docs
 
