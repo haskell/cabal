@@ -21,26 +21,20 @@ jobs:
       - name: Set PATH
         run: |
           echo "::add-path::$HOME/.cabal/bin"
+      - name: Install newer Python3
+        run: |
+          add-apt-repository ppa:deadsnakes/ppa
+          apt-get update
+          apt-get install -y python3.8
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      - name: Release project
-        run: |
-          cp cabal.project.release cabal.project
-          rm -rf cabal.project.local cabal.project.freeze
-      - name: Build
-        run: |
-          cabal v2-build cabal-install:exe:cabal
-          cp $(find dist-newstyle -type f -executable -name cabal) cabal.exe
-      - name: Smoke test
-        run: |
-          ./cabal.exe --version
-      - name: Prepare for upload
-        run: xz -c < cabal.exe > cabal-artifact.xz
-      - uses: actions/upload-artifact@v1
+      - name: Package project
+        run: python3.8 release.py
+      - uses: actions/upload-artifact@v2
         with:
-          name: cabal-linux-x86_64.xz
-          path: cabal-artifact.xz
+          name: cabal-linux
+          path: _build/artifacts/*
 
   artifact-macos:
     name: Artifact on macOS
@@ -70,24 +64,12 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      - name: Release project
-        run: |
-          cp cabal.project.release cabal.project
-          rm -rf cabal.project.local cabal.project.freeze
-      - name: Build
-        run: |
-          cabal v2-build cabal-install:exe:cabal
-          # macOS find doesn't know -executable
-          cp $(find dist-newstyle -type f -name cabal) cabal.exe
-      - name: Smoke test
-        run: |
-          ./cabal.exe --version
-      - name: Prepare for upload
-        run: xz -c < cabal.exe > cabal-artifact.xz
-      - uses: actions/upload-artifact@v1
+      - name: Package project
+        run: python3 release.py
+      - uses: actions/upload-artifact@v2
         with:
-          name: cabal-macos-x86_64.xz
-          path: cabal-artifact.xz
+          name: cabal-macos
+          path: _build/artifacts/*
 
   artifact-windows:
     name: Artifact on Windows
@@ -112,24 +94,9 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      - name: Release project
-        shell: bash
-        run: |
-          cp cabal.project.release cabal.project
-          rm -rf cabal.project.local cabal.project.freeze
-      - name: Build
-        shell: bash
-        run: |
-          cabal v2-build cabal-install:exe:cabal
-          cp dist-newstyle/build/x86_64-windows/ghc-8.6.5/cabal-install-3.5.0.0/x/cabal/build/cabal/cabal.exe cabal.exe
-      - name: Smoke test
-        shell: bash
-        run: |
-          ./cabal.exe --version
-      - name: Prepare for upload
-        shell: bash
-        run: xz -c < cabal.exe > cabal-artifact.xz
-      - uses: actions/upload-artifact@v1
+      - name: Package project
+        run: python release.py
+      - uses: actions/upload-artifact@v2
         with:
-          name: cabal-windows-x86_64.xz
-          path: cabal-artifact.xz
+          name: cabal-macos
+          path: _build/artifacts/*
