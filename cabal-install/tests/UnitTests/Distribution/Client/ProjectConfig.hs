@@ -16,7 +16,7 @@ import Control.Applicative
 #endif
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.List
+import Data.List (isPrefixOf, intercalate, (\\))
 import Network.URI (URI)
 
 import Distribution.Deprecated.ParseUtils

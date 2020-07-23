@@ -226,3 +226,23 @@ weeder :
 .PHONY : tags
 tags :
 	hasktags -b Cabal/Distribution Cabal/Cabal-described/src Cabal/Language cabal-install/Distribution cabal-testsuite/src
+	hasktags -b Cabal/src Cabal/Cabal-described/src cabal-install/src cabal-testsuite/src
+
+# boostrapping
+##############################################################################
+
+bootstrap-plans-linux: phony
+	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.3  --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.3.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.1 --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.1.plan.json
+
+bootstrap-jsons-linux: phony
+	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
+	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python -m json.tool | tee bootstrap/linux-8.6.5.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.3.plan.json  | python -m json.tool | tee bootstrap/linux-8.8.3.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.1.plan.json | python -m json.tool | tee bootstrap/linux-8.10.1.json
