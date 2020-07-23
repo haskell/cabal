@@ -603,6 +603,7 @@ library
     Distribution.Lex
     Distribution.Utils.String
     Distribution.Simple.Build.Macros.Z
+    Distribution.Simple.Build.PathsModule.Z
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
