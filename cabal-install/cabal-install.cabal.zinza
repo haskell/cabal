@@ -303,7 +303,7 @@ Copyright:          2003-2020, Cabal Development Team
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files:
-  README.md bash-completion/cabal bootstrap.sh changelog
+  README.md bash-completion/cabal changelog
 
   -- Generated with 'make gen-extra-source-files'
   -- Do NOT edit this section manually; instead, run the script.

@@ -26,6 +26,8 @@ cabal-tests.log
 /cabal-install/Setup
 /cabal-install/source-file-list
 
+# Output of release and bootstrap
+_build
 
 # editor temp files
 
