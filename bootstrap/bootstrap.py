@@ -10,7 +10,7 @@ See bootstrap/README.md for usage instructions.
 USAGE = """
 This utility is only intended for use in building cabal-install
 on a new platform. If you already have a functional (if dated) cabal-install
-please rather run `cabal v2-install .`.
+please rather run `cabal v2-install .`. or `release.py`
 """
 
 from enum import Enum
@@ -18,6 +18,7 @@ import hashlib
 import logging
 import json
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 from textwrap import dedent
@@ -26,8 +27,16 @@ from typing import Set, Optional, Dict, List, Tuple, \
 
 #logging.basicConfig(level=logging.INFO)
 
-PACKAGES = Path('packages')
-PKG_DB = PACKAGES / 'packages.conf'
+BUILDDIR    = Path('_build')
+
+BINDIR      = BUILDDIR / 'bin'            # binaries go there (--bindir)
+DISTDIR     = BUILDDIR / 'dists'          # --builddir
+UNPACKED    = BUILDDIR / 'unpacked'       # where we unpack tarballs
+TARBALLS    = BUILDDIR / 'tarballs'       # where we download tarballks
+PSEUDOSTORE = BUILDDIR / 'pseudostore'    # where we install packages
+ARTIFACTS   = BUILDDIR / 'artifacts'      # Where we put the archive
+TMPDIR      = BUILDDIR / 'tmp'            #
+PKG_DB      = BUILDDIR / 'packages.conf'  # package db
 
 PackageName = NewType('PackageName', str)
 Version = NewType('Version', str)
@@ -99,10 +108,10 @@ class BadTarball(Exception):
         ])
 
 def package_url(package: PackageName, version: Version) -> str:
-    return f'https://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
+    return f'http://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
 
 def package_cabal_url(package: PackageName, version: Version, revision: int) -> str:
-    return f'https://hackage.haskell.org/package/{package}-{version}/revision/{revision}.cabal'
+    return f'http://hackage.haskell.org/package/{package}-{version}/revision/{revision}.cabal'
 
 def verify_sha256(expected_hash: SHA256Hash, f: Path):
     h = hash_file(hashlib.sha256(), f.open('rb'))
@@ -114,20 +123,22 @@ def fetch_package(package: PackageName,
                   src_sha256: SHA256Hash,
                   revision: Optional[int],
                   cabal_sha256: Optional[SHA256Hash],
-                  ) -> Path:
+                  ) -> (Path, Path):
     import urllib.request
 
     # Download source distribution
-    out = PACKAGES / (f'{package}-{version}.tar.gz')
-    if not out.exists():
+    tarball = TARBALLS / f'{package}-{version}.tar.gz'
+    if not tarball.exists():
         print(f'Fetching {package}-{version}...')
-        out.parent.mkdir(parents=True, exist_ok=True)
+        tarball.parent.mkdir(parents=True, exist_ok=True)
         url = package_url(package, version)
         with urllib.request.urlopen(url) as resp:
-            shutil.copyfileobj(resp, out.open('wb'))
+            shutil.copyfileobj(resp, tarball.open('wb'))
+
+    verify_sha256(src_sha256, tarball)
 
     # Download revised cabal file
-    cabal_file = PACKAGES / f'{package}.cabal'
+    cabal_file = TARBALLS / f'{package}.cabal'
     if revision is not None and not cabal_file.exists():
         assert cabal_sha256 is not None
         url = package_cabal_url(package, version, revision)
@@ -135,8 +146,7 @@ def fetch_package(package: PackageName,
             shutil.copyfileobj(resp, cabal_file.open('wb'))
             verify_sha256(cabal_sha256, cabal_file)
 
-    verify_sha256(src_sha256, out)
-    return out
+    return (tarball, cabal_file)
 
 def read_bootstrap_info(path: Path) -> BootstrapInfo:
     obj = json.load(path.open())
@@ -160,18 +170,19 @@ def check_builtin(dep: BuiltinDep, ghc: Compiler) -> None:
     return
 
 def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
+    dist_dir = (DISTDIR / f'{dep.package}-{dep.version}').resolve()
+
     if dep.source == PackageSource.HACKAGE:
         assert dep.src_sha256 is not None
-        tarball = fetch_package(dep.package, dep.version, dep.src_sha256,
+        (tarball, cabal_file) = fetch_package(dep.package, dep.version, dep.src_sha256,
                                 dep.revision, dep.cabal_sha256)
-        subprocess_run(['tar', 'zxf', tarball.resolve()],
-                       cwd=PACKAGES, check=True)
-        sdist_dir = PACKAGES / f'{dep.package}-{dep.version}'
+        UNPACKED.mkdir(parents=True, exist_ok=True)
+        shutil.unpack_archive(tarball.resolve(), UNPACKED, 'gztar')
+        sdist_dir = UNPACKED / f'{dep.package}-{dep.version}'
 
         # Update cabal file with revision
         if dep.revision is not None:
-            shutil.copyfile(PACKAGES / f'{dep.package}.cabal',
-                            sdist_dir / f'{dep.package}.cabal')
+            shutil.copyfile(cabal_file, sdist_dir / f'{dep.package}.cabal')
 
     elif dep.source == PackageSource.LOCAL:
         if dep.package == 'Cabal':
@@ -181,28 +192,39 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
         else:
             raise ValueError(f'Unknown local package {dep.package}')
 
-    install_sdist(sdist_dir, ghc, dep.flags)
+    install_sdist(dist_dir, sdist_dir, ghc, dep.flags)
 
-def install_sdist(sdist_dir: Path, ghc: Compiler, flags: List[str]):
-    prefix = (PACKAGES / 'tmp').resolve()
+def install_sdist(dist_dir: Path, sdist_dir: Path, ghc: Compiler, flags: List[str]):
+    prefix = PSEUDOSTORE.resolve()
     flags_option = ' '.join(flags)
+    setup_dist_dir = dist_dir / 'setup'
+    setup = setup_dist_dir / 'Setup'
 
-    configure_args = [
+    build_args = [
+        f'--builddir={dist_dir}',
+    ]
+
+    configure_args = build_args + [
         f'--package-db={PKG_DB.resolve()}',
         f'--prefix={prefix}',
+        f'--bindir={BINDIR.resolve()}',
         f'--with-compiler={ghc.ghc_path}',
         f'--with-hc-pkg={ghc.ghc_pkg_path}',
         f'--with-hsc2hs={ghc.hsc2hs_path}',
-        f'--flags={flags_option}'
+        f'--flags={flags_option}',
     ]
 
     def check_call(args: List[str]) -> None:
         subprocess_run(args, cwd=sdist_dir, check=True)
 
-    check_call([str(ghc.ghc_path), '--make', '-package-env', '-', 'Setup'])
-    check_call(['./Setup', 'configure'] + configure_args)
-    check_call(['./Setup', 'build'])
-    check_call(['./Setup', 'install'])
+    setup_dist_dir.mkdir(parents=True, exist_ok=True)
+
+    # Note: we pass -i so GHC doesn't look for anything else
+    # This should be fine for cabal-install dependencies.
+    check_call([str(ghc.ghc_path), '--make', '-package-env=-', '-i', f'-odir={setup_dist_dir}', f'-hidir={setup_dist_dir}', '-o', setup, 'Setup'])
+    check_call([setup, 'configure'] + configure_args)
+    check_call([setup, 'build'] + build_args)
+    check_call([setup, 'install'] + build_args)
 
 def hash_file(h, f: BinaryIO) -> SHA256Hash:
     while True:
@@ -217,14 +239,6 @@ def hash_file(h, f: BinaryIO) -> SHA256Hash:
 UnitId = NewType('UnitId', str)
 PlanUnit = NewType('PlanUnit', dict)
 
-def read_plan(project_dir: Path) -> Dict[UnitId, PlanUnit]:
-    path = project_dir / 'dist-newstyle' / 'cache' / 'plan.json'
-    plan = json.load(path.open('rb'))
-    return {
-        UnitId(c['id']): PlanUnit(c)
-        for c in plan['install-plan']
-    }
-
 def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
     if not PKG_DB.exists():
         print(f'Creating package database {PKG_DB}')
@@ -236,6 +250,79 @@ def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
 
     for dep in info.dependencies:
         install_dep(dep, ghc)
+
+# Steps
+#######################################################################
+
+def linuxname(i, r):
+  i = i.strip() # id
+  r = r.strip() # release
+  if i == '': return 'linux'
+  else: return f"{i}-{r}".lower()
+
+def macname(macver):
+  # https://en.wikipedia.org/wiki/MacOS_version_history#Releases
+  if macver.startswith('10.12.'): return 'sierra'
+  if macver.startswith('10.13.'): return 'high-sierra'
+  if macver.startswith('10.14.'): return 'mojave'
+  if macver.startswith('10.15.'): return 'catalina'
+  if macver.startswith('11.0.'): return 'big-sur'
+  else: return macver
+
+def archive_name(cabalversion):
+    # Ask platform information
+    machine = platform.machine()
+    if machine == '': machine = "unknown"
+
+    system = platform.system().lower()
+    if system == '': system = "unknown"
+
+    version = system
+    if system == 'linux':
+        try:
+            i = subprocess_run(['lsb_release', '-si'], stdout=subprocess.PIPE, encoding='UTF-8')
+            r = subprocess_run(['lsb_release', '-sr'], stdout=subprocess.PIPE, encoding='UTF-8')
+            version = linuxname(i.stdout, r.stdout)
+        except:
+            try:
+                with open('/etc/alpine-release') as f:
+                    alpinever = f.read().strip()
+                    return f'alpine-{alpinever}'
+            except:
+                pass
+    elif system == 'darwin':
+        version = 'darwin-' + macname(platform.mac_ver()[0])
+    elif system == 'freebsd':
+        version = 'freebsd-' + platform.release().lower()
+
+    return f'cabal-install-{cabalversion}-{machine}-{version}'
+
+def make_archive(cabal_path):
+    import tempfile
+
+    print(f'Creating distribution tarball')
+
+    # Get bootstrapped cabal version
+    # This also acts as smoke test
+    p = subprocess_run([cabal_path, '--numeric-version'], stdout=subprocess.PIPE, check=True, encoding='UTF-8')
+    cabalversion = p.stdout.replace('\n', '').strip()
+
+    # Archive name
+    basename = ARTIFACTS.resolve() / (archive_name(cabalversion) + '-bootstrapped')
+
+    # In temporary directory, create a directory which we will archive
+    tmpdir = TMPDIR.resolve()
+    tmpdir.mkdir(parents=True, exist_ok=True)
+
+    rootdir = Path(tempfile.mkdtemp(dir=tmpdir))
+    shutil.copy(cabal_path, rootdir / 'cabal')
+
+    # Make archive...
+    fmt = 'xztar'
+    if platform.system() == 'Windows': fmt = 'zip'
+    archivename = shutil.make_archive(basename, fmt, rootdir)
+
+    return archivename
 
 def main() -> None:
     import argparse
@@ -268,7 +355,9 @@ def main() -> None:
 
     info = read_bootstrap_info(args.deps)
     bootstrap(info, ghc)
-    cabal_path = (PACKAGES / 'tmp' / 'bin' / 'cabal').resolve()
+    cabal_path = (BINDIR / 'cabal').resolve()
+
+    archive = make_archive(cabal_path)
 
     print(dedent(f'''
         Bootstrapping finished!
@@ -276,6 +365,10 @@ def main() -> None:
         The resulting cabal-install executable can be found at
 
             {cabal_path}
+
+        It have been archived for distribution in
+
+            {archive}
 
         You now should use this to build a full cabal-install distribution
         using v2-build.

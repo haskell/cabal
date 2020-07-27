@@ -25,9 +25,15 @@ jobs:
       - name: bootstrap.py
         run: |
           python3 bootstrap/bootstrap.py -w /opt/ghc/8.6.5/bin/ghc -d bootstrap/linux-8.6.5.json
+
       - name: Smoke test
         run: |
-          packages/tmp/bin/cabal --version
+          _build/bin/cabal --version
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cabal-linux-bootstrapped
+          path: _build/artifacts/*
 
   boostrap-macos:
     name: Bootstrap on macOS
@@ -50,4 +56,9 @@ jobs:
 
       - name: Smoke test
         run: |
-          packages/tmp/bin/cabal --version
+          _build/bin/cabal --version
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: cabal-macos-bootstrapped
+          path: _build/artifacts/*
