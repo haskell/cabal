@@ -65,14 +65,10 @@ Some examples:
     $ cabal v2-update                  # update all remote repos
     $ cabal v2-update head.hackage     # update only head.hackage
 
-cabal v2-build
----------------
+Target Forms
+------------
 
-``cabal v2-build`` takes a set of targets and builds them. It
-automatically handles building and installing any dependencies of these
-targets.
-
-A target can take any of the following forms:
+A cabal command target can take any of the following forms:
 
 -  A package target: ``package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
@@ -100,6 +96,13 @@ A target can take any of the following forms:
 
 -  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
    component of which the given filepath is a part of will be built.
+
+cabal v2-build
+---------------
+
+``cabal v2-build`` takes a set of targets and builds them. It
+automatically handles building and installing any dependencies of these
+targets.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
 are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
@@ -287,8 +290,13 @@ invocations and bringing the project's executables into scope.
 cabal v2-install
 -----------------
 
-``cabal v2-install [FLAGS] PACKAGES`` builds the specified packages and
+``cabal v2-install [FLAGS] [TARGETS]`` builds the specified target packages and
 symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
+
+.. warning::
+
+  If not every package has an executable to install, use ``all:exes`` rather
+  than ``all`` as the target.
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
