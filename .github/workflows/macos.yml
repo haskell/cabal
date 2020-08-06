@@ -38,15 +38,15 @@ jobs:
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
           echo "::add-path::/opt/ghc/8.8.3/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/cabal/3.4/bin"
           echo "::add-path::$HOME/.cabal/bin"
       - name: Update Hackage index
         run: cabal v2-update
@@ -93,15 +93,15 @@ jobs:
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
           echo "::add-path::/opt/ghc/8.6.5/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
+          echo "::add-path::/opt/cabal/3.4/bin"
           echo "::add-path::$HOME/.cabal/bin"
       - name: Update Hackage index
         run: cabal v2-update
