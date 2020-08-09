@@ -497,6 +497,7 @@ licenseIdMigrationMessage = go where
     go l | gnuVariant l    = "SPDX license list 3.0 deprecated suffixless variants of GNU family of licenses. Use " ++ l ++ "-only or " ++ l ++ "-or-later."
     go "BSD3"              = "Do you mean BSD-3-Clause?"
     go "BSD2"              = "Do you mean BSD-2-Clause?"
+    go "LGPL-2"            = "Do you mean LGPL-2.0-only?"
     go "AllRightsReserved" = "You can use NONE as a value of license field."
     go "OtherLicense"      = "SPDX license list contains plenty of licenses. See https://spdx.org/licenses/. Also they can be combined into complex expressions with AND and OR."
     go "PublicDomain"      = "Public Domain is a complex matter. See https://wiki.spdx.org/view/Legal_Team/Decisions/Dealing_with_Public_Domain_within_SPDX_Files. Consider using a proper license."
@@ -504,7 +505,7 @@ licenseIdMigrationMessage = go where
     -- otherwise, we don't know
     go _ = ""
 
-    gnuVariant = flip elem ["GPL-2.0", "GPL-3.0", "LGPL-2.1", "LGPL-3.0", "AGPL-3.0" ]
+    gnuVariant = flip elem ["GPL-2.0", "GPL-3.0", "LGPL-2.0", "LGPL-2.1", "LGPL-3.0", "AGPL-3.0" ]
 
 -------------------------------------------------------------------------------
 -- License Data
