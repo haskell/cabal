@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns, RecordWildCards, RankNTypes #-}
 module Distribution.Client.VCS (
     -- * VCS driver type
@@ -51,6 +52,10 @@ import Distribution.Version
          ( mkVersion )
 import qualified Distribution.PackageDescription as PD
 
+import Control.Applicative
+         ( liftA2 )
+import Control.Exception
+         ( throw )
 import Control.Monad.Trans
          ( liftIO )
 import qualified Data.Char as Char
@@ -58,7 +63,11 @@ import qualified Data.Map  as Map
 import System.FilePath
          ( takeDirectory )
 import System.Directory
-         ( doesDirectoryExist )
+         ( doesDirectoryExist
+         , removeDirectoryRecursive
+         )
+import System.IO.Error
+         ( isDoesNotExistError )
 
 
 -- | A driver for a version control system, e.g. git, darcs etc.
@@ -305,7 +314,29 @@ vcsDarcs =
 
     vcsSyncRepos :: Verbosity -> ConfiguredProgram
                  -> [(SourceRepositoryPackage f, FilePath)] -> IO [MonitorFilePath]
-    vcsSyncRepos _v _p _rs = fail "sync repo not yet supported for darcs"
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity prog ((primaryRepo, primaryLocalDir) : secondaryRepos) =
+        monitors <$ do
+        vcsSyncRepo verbosity prog primaryRepo primaryLocalDir Nothing
+        for_ secondaryRepos $ \ (repo, localDir) ->
+          vcsSyncRepo verbosity prog repo localDir $ Just primaryLocalDir
+      where
+        dirs = primaryLocalDir : (snd <$> secondaryRepos)
+        monitors = monitorDirectoryExistence <$> dirs
+
+    vcsSyncRepo verbosity prog SourceRepositoryPackage{..} localDir _peer = do
+      removeDirectoryRecursive localDir `catch` liftA2 unless isDoesNotExistError throw
+      darcs (takeDirectory localDir) cloneArgs
+      where
+        darcs :: FilePath -> [String] -> IO ()
+        darcs cwd args = runProgramInvocation verbosity (programInvocation prog args)
+          { progInvokeCwd = Just cwd }
+
+        cloneArgs = ["clone"] ++ tagArgs ++ [srpLocation, localDir] ++ verboseArg
+        tagArgs    = case srpTag of
+          Nothing  -> []
+          Just tag -> ["-t" ++ tag]
+        verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
 darcsProgram :: Program
 darcsProgram = (simpleProgram "darcs") {
