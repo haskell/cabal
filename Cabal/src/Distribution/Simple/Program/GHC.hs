@@ -55,7 +55,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [8,13]))
+        (earlierVersion (mkVersion [9,1]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
@@ -237,7 +237,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       , from [8,4] $ to [8,6] [ "-fno-max-valid-substitutions" ]
       , from [8,6] [ "-dhex-word-literals" ]
       , from [8,8] [ "-fshow-docs-of-hole-fits", "-fno-show-docs-of-hole-fits" ]
-      , from [8,12] [ "-dlinear-core-lint" ]
+      , from [9,0] [ "-dlinear-core-lint" ]
       ]
 
     isOptIntFlag :: String -> Any
