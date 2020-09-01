@@ -1,12 +1,12 @@
 module UnitTests.Distribution.Simple.Program.GHC (tests) where
 
-import Test.Tasty       (TestTree, testGroup)
-import Test.Tasty.HUnit
 import Data.Algorithm.Diff (PolyDiff (..), getDiff)
+import Test.Tasty          (TestTree, testGroup)
+import Test.Tasty.HUnit
 
-import Distribution.Simple.Program.GHC (normaliseGhcArgs)
 import Distribution.PackageDescription (emptyPackageDescription)
-import Distribution.Version (mkVersion)
+import Distribution.Simple.Program.GHC (normaliseGhcArgs)
+import Distribution.Version            (mkVersion)
 
 tests :: TestTree
 tests = testGroup "Distribution.Simple.Program.GHC"
@@ -29,14 +29,14 @@ tests = testGroup "Distribution.Simple.Program.GHC"
 
             assertListEquals flags options_8_10_affects
 
-        , testCase "options added in GHC-8.12" $ do
+        , testCase "options added in GHC-9.0" $ do
             let flags :: [String]
                 flags = normaliseGhcArgs
-                    (Just $ mkVersion [8,12,1])
+                    (Just $ mkVersion [9,0,1])
                     emptyPackageDescription
-                    options_8_12_all
+                    options_9_0_all
 
-            assertListEquals flags options_8_12_affects
+            assertListEquals flags options_9_0_affects
         ]
     ]
 
@@ -152,11 +152,11 @@ options_8_10_affects =
     ]
 
 -------------------------------------------------------------------------------
--- GHC-8.12
+-- GHC-9.0
 -------------------------------------------------------------------------------
 
-options_8_12_all :: [String]
-options_8_12_all =
+options_9_0_all :: [String]
+options_9_0_all =
     [ "-ddump-cmm-opt"
     , "-ddump-cpranal"
     , "-ddump-cpr-signatures"
@@ -164,9 +164,9 @@ options_8_12_all =
     -- NOTE: we filter out -dlinear-core-lint
     -- we filter, -dcore-lint, -dstg-lint etc.
     , "-dlinear-core-lint"
-    ] ++ options_8_12_affects
+    ] ++ options_9_0_affects
 
-options_8_12_affects :: [String]
-options_8_12_affects =
+options_9_0_affects :: [String]
+options_9_0_affects =
     [ "-fcmm-static-pred"
     ]
