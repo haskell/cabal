@@ -35,7 +35,7 @@ executable gen-spdx
     , containers
     , Diff                  ^>=0.4
     , lens                  ^>=4.18.1 || ^>=4.19.1
-    , optparse-applicative  ^>=0.15.1.0
+    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
 
@@ -52,7 +52,7 @@ executable gen-spdx-exc
     , containers
     , Diff                  ^>=0.4
     , lens                  ^>=4.18.1 || ^>=4.19.1
-    , optparse-applicative  ^>=0.15.1.0
+    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
 

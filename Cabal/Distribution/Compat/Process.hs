@@ -26,11 +26,11 @@ import           System.Process (waitForProcess)
 -- in the presence of @exec(3)@ on Windows.
 --
 -- Unfortunately the process job support is badly broken in @process@ releases
--- prior to 1.6.8, so we disable it in these versions, despite the fact that
+-- prior to 1.6.9, so we disable it in these versions, despite the fact that
 -- this means we may see sporatic build failures without jobs.
 enableProcessJobs :: CreateProcess -> CreateProcess
 #ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,6,8)
+#if MIN_VERSION_process(1,6,9)
 enableProcessJobs cp = cp {Process.use_process_jobs = True}
 #else
 enableProcessJobs cp = cp
