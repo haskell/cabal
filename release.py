@@ -116,6 +116,13 @@ def step_config(args: Args):
     if platform.system() == 'Linux':
         splitsections = 'split-sections: True'
 
+    # https://github.com/Mistuke/CabalChoco/blob/d0e1d2fd8ce13ab4271c4b906ca0bde3b710a310/3.2.0.0/cabal/tools/chocolateyInstall.ps1#L289
+    extraprogpath = str(args.builddir / 'bin')
+    if platform.system() == 'Windows':
+        msysbin = Path('C:\\tools\\msys64\\usr\\bin')
+        if msysbin.is_dir():
+            extraprogpath = extraprogpath + "," + str(msysbin)
+
     config = dedent(f"""
         repository hackage.haskell.org
           url: http://hackage.haskell.org/
@@ -131,12 +138,12 @@ def step_config(args: Args):
         {splitsections}
 
         build-summary:     {args.builddir}/cabal/logs/build.log
-        extra-prog-path:   {args.builddir}/bin
         installdir:        {args.builddir}/bin
         logs-dir:          {args.builddir}/cabal/logs
         store-dir:         {args.builddir}/cabal/store
         symlink-bindir:    {args.builddir}/bin
         world-file:        {args.builddir}/cabal/world
+        extra-prog-path:   {extraprogpath}
 
         jobs: 1
 
@@ -163,13 +170,8 @@ def step_config(args: Args):
         f.write(cabal_project_local)
 
 def make_env(args: Args):
-    path = os.environ['PATH']
-    if platform.system() == 'Windows':
-        msysbin = Path('C:\\tools\\msys64\\usr\\bin')
-        if msysbin.is_dir():
-            path = path + ";" + str(msysbin)
     env = {
-        'PATH': path,
+        'PATH': os.environ['PATH'],
         'CABAL_DIR': str(args.builddir),
         'CABAL_CONFIG': str(args.builddir / 'cabal' / 'config'),
     }
@@ -185,7 +187,7 @@ def make_env(args: Args):
     for key in envvars:
         if key in os.environ:
             env[key] = os.environ[key]
-    print(env)
+
     return env
 
 def step_cabal_update(args: Args):
@@ -225,6 +227,9 @@ def step_make_archive(args: Args):
     name = archive_name(cabalversion)
     if args.static:
         name = name + "-static"
+    if not args.ofdlocking:
+        name = name + "-noofd"
+
     basename = args.builddir / 'artifacts' / name
 
     # In temporary directory, create a directory which we will archive
