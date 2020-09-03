@@ -103,7 +103,6 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( try )
-import Data.List.NonEmpty            ( nonEmpty )
 import Distribution.Utils.Structured ( structuredDecodeOrFailIO, structuredEncode )
 import Distribution.Compat.Directory ( listDirectory )
 import Data.ByteString.Lazy          ( ByteString )

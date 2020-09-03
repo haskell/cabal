@@ -450,7 +450,7 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
       -- file may show up in multiple paths due to a conditional;
       -- we need to package all of them.  See #367.
       in findAllFilesCwdWithExtension cwd suffixes searchDirs file
-         >>= nonEmpty (notFound module_) return
+         >>= nonEmpty' (notFound module_) return
     | module_ <- modules ++ otherModules bi ]
   bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
@@ -462,8 +462,10 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
            cmmSources bi ++ asmSources bi ++ jsSources bi
 
   where
-    nonEmpty x _ [] = x
-    nonEmpty _ f xs = f xs
+    nonEmpty' :: b -> ([a] -> b) -> [a] -> b
+    nonEmpty' x _ [] = x
+    nonEmpty' _ f xs = f xs
+
     suffixes = ppSuffixes pps ++ ["hs", "lhs", "hsig", "lhsig"]
 
     notFound :: ModuleName -> IO [FilePath]

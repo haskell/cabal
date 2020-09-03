@@ -116,7 +116,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn, notice, info, createDirectoryIfMissingVerbose )
+         ( die', warn, notice, info, createDirectoryIfMissingVerbose, rawSystemIOWithEnv )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -1172,7 +1172,12 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         syncSourceRepos verbosity vcs
           [ (repo, repoPath)
           | (repo, _, repoPath) <- repoGroupWithPaths ]
-        -- TODO phadej 2020-06-18 add post-sync script
+
+        -- Run post-checkout-command if it is specified
+        for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
+            for_ (nonEmpty (srpCommand repo)) $ \(cmd :| args) -> liftIO $ do
+                exitCode <- rawSystemIOWithEnv verbosity cmd args (Just repoPath) Nothing Nothing Nothing Nothing
+                unless (exitCode /= ExitSuccess) $ exitWith exitCode
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.

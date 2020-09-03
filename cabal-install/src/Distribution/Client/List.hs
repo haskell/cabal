@@ -67,7 +67,7 @@ import Distribution.Client.FetchUtils
 import Data.Bits ((.|.))
 import Data.List
          ( maximumBy )
-import Data.List.NonEmpty (groupBy, nonEmpty)
+import Data.List.NonEmpty (groupBy)
 import qualified Data.List as L
 import Data.Maybe
          ( fromJust )

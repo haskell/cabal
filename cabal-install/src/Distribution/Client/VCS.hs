@@ -127,6 +127,7 @@ validatePDSourceRepo repo = do
         , srpTag      = PD.repoTag repo
         , srpBranch   = PD.repoBranch repo
         , srpSubdir   = PD.repoSubdir repo
+        , srpCommand  = mempty
         }
   where
     a ?! e = maybe (Left e) Right a
