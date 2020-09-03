@@ -76,8 +76,9 @@ def macname(macver):
 
 def archive_name(cabalversion):
     # Ask platform information
-    machine = platform.machine()
+    machine = platform.machine().lower()
     if machine == '': machine = "unknown"
+    if machine == 'amd64': machine = "x86_64"
 
     system = platform.system().lower()
     if system == '': system = "unknown"
