@@ -121,7 +121,7 @@ def step_config(args: Args):
     if platform.system() == 'Windows':
         msysbin = Path('C:\\tools\\msys64\\usr\\bin')
         if msysbin.is_dir():
-            extraprogpath = extraprogpath + ";" + str(msysbin)
+            extraprogpath = extraprogpath + "," + str(msysbin)
 
     config = dedent(f"""
         repository hackage.haskell.org
