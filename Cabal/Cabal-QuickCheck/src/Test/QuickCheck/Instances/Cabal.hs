@@ -149,35 +149,8 @@ instance Arbitrary VersionRange where
   shrink (UnionVersionRanges a b)     = a : b : map (uncurry UnionVersionRanges) (shrink (a, b))
   shrink (IntersectVersionRanges a b) = a : b : map (uncurry IntersectVersionRanges) (shrink (a, b))
 
--- | Generating VersionIntervals
---
--- This is a tad tricky as VersionIntervals is an abstract type, so we first
--- make a local type for generating the internal representation. Then we check
--- that this lets us construct valid 'VersionIntervals'.
---
-
 instance Arbitrary VersionIntervals where
-  arbitrary = fmap mkVersionIntervals' arbitrary
-    where
-      mkVersionIntervals' :: [(Version, Bound)] -> VersionIntervals
-      mkVersionIntervals' = mkVersionIntervals . go version0
-        where
-          go :: Version -> [(Version, Bound)] -> [VersionInterval]
-          go _ [] = []
-          go v [(lv, lb)] =
-              [(LowerBound (addVersion lv v) lb, NoUpperBound)]
-          go v ((lv, lb) : (uv, ub) : rest) =
-              (LowerBound lv' lb, UpperBound uv' ub) : go uv' rest
-            where
-              lv' = addVersion v lv
-              uv' = addVersion lv' uv
-
-          addVersion :: Version -> Version -> Version
-          addVersion xs ys = mkVersion $  z (versionNumbers xs) (versionNumbers ys)
-            where
-              z [] ys' = ys'
-              z xs' [] = xs'
-              z (x : xs') (y : ys') = x + y : z xs' ys'
+  arbitrary = fmap toVersionIntervals arbitrary
 
 instance Arbitrary Bound where
   arbitrary = elements [ExclusiveBound, InclusiveBound]

@@ -521,6 +521,7 @@ library
     Distribution.Types.VersionRange
     Distribution.Types.VersionRange.Internal
     Distribution.Types.VersionInterval
+    Distribution.Types.VersionInterval.Legacy
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
     Distribution.Utils.Generic
