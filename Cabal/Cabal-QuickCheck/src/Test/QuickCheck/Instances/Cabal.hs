@@ -4,11 +4,18 @@
 module Test.QuickCheck.Instances.Cabal () where
 
 import Control.Applicative        (liftA2)
+import Data.Bits                  (shiftR)
 import Data.Char                  (isAlphaNum, isDigit)
 import Data.List                  (intercalate, isPrefixOf)
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
+
+#if MIN_VERSION_base(4,8,0)
+import Data.Bits (countLeadingZeros, finiteBitSize, shiftL)
+#else
+import Data.Bits (popCount)
+#endif
 
 import Distribution.CabalSpecVersion
 import Distribution.Compat.NonEmptySet             (NonEmptySet)
@@ -101,25 +108,29 @@ instance Arbitrary Version where
                               , not (null ns) ]
 
 instance Arbitrary VersionRange where
-  arbitrary = sized verRangeExp
+  arbitrary = sized $ \n -> chooseInt (0, n) >>= verRangeExp . intSqrt
     where
-      verRangeExp n = frequency $
-        [ (2, return anyVersion)
-        , (1, fmap thisVersion arbitrary)
-        , (1, fmap laterVersion arbitrary)
-        , (1, fmap orLaterVersion arbitrary)
-        , (1, fmap orLaterVersion' arbitrary)
-        , (1, fmap earlierVersion arbitrary)
-        , (1, fmap orEarlierVersion arbitrary)
-        , (1, fmap orEarlierVersion' arbitrary)
-        , (1, fmap withinVersion arbitraryV)
-        , (1, fmap majorBoundVersion arbitrary)
-        ] ++ if n == 0 then [] else
-        [ (2, liftA2 unionVersionRanges     verRangeExp2 verRangeExp2)
-        , (2, liftA2 intersectVersionRanges verRangeExp2 verRangeExp2)
-        ]
-        where
-          verRangeExp2 = verRangeExp (n `div` 2)
+      verRangeExp n
+        | n > 0     = oneof
+          [ recurse unionVersionRanges     n
+          , recurse intersectVersionRanges n
+          ]
+        | otherwise = oneof
+          [ return anyVersion
+          , fmap thisVersion arbitrary
+          , fmap laterVersion arbitrary
+          , fmap orLaterVersion arbitrary
+          , fmap orLaterVersion' arbitrary
+          , fmap earlierVersion arbitrary
+          , fmap orEarlierVersion arbitrary
+          , fmap orEarlierVersion' arbitrary
+          , fmap withinVersion arbitraryV
+          , fmap majorBoundVersion arbitrary
+          ]
+
+      recurse mk n = do
+        k <- chooseInt (0, n - 1)
+        liftA2 mk (verRangeExp k) (verRangeExp (n - k - 1))
 
       arbitraryV :: Gen Version
       arbitraryV = arbitrary `suchThat` \v -> all (< 999999999) (versionNumbers v)
@@ -455,23 +466,27 @@ instance Arbitrary PkgconfigVersion where
             | otherwise = x
 
 instance Arbitrary PkgconfigVersionRange where
-  arbitrary = sized verRangeExp
+  arbitrary = sized $ \n -> chooseInt (0, n) >>= verRangeExp . intSqrt
     where
-      verRangeExp n = frequency $
-        [ (2, return PcAnyVersion)
-        , (1, fmap PcThisVersion arbitrary)
-        , (1, fmap PcLaterVersion arbitrary)
-        , (1, fmap PcOrLaterVersion arbitrary)
-        , (1, fmap orLaterVersion' arbitrary)
-        , (1, fmap PcEarlierVersion arbitrary)
-        , (1, fmap PcOrEarlierVersion arbitrary)
-        , (1, fmap orEarlierVersion' arbitrary)
-        ] ++ if n == 0 then [] else
-        [ (2, liftA2 PcUnionVersionRanges     verRangeExp2 verRangeExp2)
-        , (2, liftA2 PcIntersectVersionRanges verRangeExp2 verRangeExp2)
-        ]
-        where
-          verRangeExp2 = verRangeExp (n `div` 2)
+      verRangeExp n
+        | n > 0     = oneof
+          [ recurse PcUnionVersionRanges     n
+          , recurse PcIntersectVersionRanges n
+          ]
+        | otherwise = oneof
+          [ return PcAnyVersion
+          , fmap PcThisVersion arbitrary
+          , fmap PcLaterVersion arbitrary
+          , fmap PcOrLaterVersion arbitrary
+          , fmap orLaterVersion' arbitrary
+          , fmap PcEarlierVersion arbitrary
+          , fmap PcOrEarlierVersion arbitrary
+          , fmap orEarlierVersion' arbitrary
+          ]
+
+      recurse mk n = do
+        k <- chooseInt (0, n - 1)
+        liftA2 mk (verRangeExp k) (verRangeExp (n - k - 1))
 
       orLaterVersion'   v =
         PcUnionVersionRanges (PcLaterVersion v)   (PcThisVersion v)
@@ -511,3 +526,23 @@ shortListOf1 bound gen = sized $ \n -> do
 arbitraryShortToken :: Gen String
 arbitraryShortToken =
     shortListOf1 5 (choose ('#', '~')) `suchThat` (not . ("[]" `isPrefixOf`))
+
+-- |
+intSqrt :: Int -> Int
+intSqrt 0 = 0
+intSqrt 1 = 1
+intSqrt n = case compare n 0 of
+    LT -> 0 -- whatever
+    EQ -> 0
+    GT -> iter (iter guess) -- two iterations give good results
+  where
+    iter :: Int -> Int
+    iter 0 = 0
+    iter x = shiftR (x + n `div` x) 1
+
+    guess :: Int
+#if MIN_VERSION_base(4,8,0)
+    guess = shiftR n (shiftL (finiteBitSize n - countLeadingZeros n) 1)
+#else
+    guess = shiftR n (shiftR (popCount n) 1)
+#endif
