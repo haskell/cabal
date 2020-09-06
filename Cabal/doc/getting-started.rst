@@ -33,7 +33,7 @@ Once you have an empty directory we can initialize our package:
 
 .. code-block:: console
 
-    $ cabal init --cabal-version=2.4 --license=NONE -p myfirstapp
+    $ cabal init --cabal-version=3.4 --license=NONE -p myfirstapp
 
 This will generate the following files:
 
