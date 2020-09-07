@@ -325,7 +325,7 @@ library
     build-depends: binary >= 0.7 && < 0.9
 
   if os(windows)
-    build-depends: Win32 >= 2.3.0.0 && < 2.9
+    build-depends: Win32 >= 2.3.0.0 && < 2.10
   else
     build-depends: unix  >= 2.6.0.0 && < 2.8
 
