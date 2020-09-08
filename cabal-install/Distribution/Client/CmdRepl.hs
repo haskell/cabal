@@ -39,6 +39,8 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), withProjectOrGlobalConfig
          , projectConfigConfigFile )
+import Distribution.Client.ProjectFlags
+         ( flagIgnoreProject )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
@@ -51,7 +53,7 @@ import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, replOptions
-         , Flag(..), toFlag, trueArg, falseArg )
+         , Flag(..), toFlag, falseArg )
 import Distribution.Simple.Command
          ( CommandUI(..), liftOptionL, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
@@ -114,14 +116,12 @@ type ReplFlags = [String]
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
-  , envIgnoreProject :: Flag Bool
   }
 
 defaultEnvFlags :: EnvFlags
 defaultEnvFlags = EnvFlags
   { envPackages = []
   , envIncludeTransitive = toFlag True
-  , envIgnoreProject = toFlag False
   }
 
 envOptions :: ShowOrParseArgs -> [OptionField EnvFlags]
@@ -134,10 +134,6 @@ envOptions _ =
     "Don't automatically include transitive dependencies of requested packages."
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
     falseArg
-  , option ['z'] ["ignore-project"]
-    "Only include explicitly specified packages (and 'base')."
-    envIgnoreProject (\p flags -> flags { envIgnoreProject = p })
-    trueArg
   ]
   where
     dependenciesReadE :: ReadE [Dependency]
@@ -300,7 +296,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = envIgnoreProject envFlags
+    ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
