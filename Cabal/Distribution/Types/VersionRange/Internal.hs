@@ -247,22 +247,22 @@ instance Pretty VersionRange where
         | otherwise           = prettyVersionRange16
 
 prettyVersionRange :: VersionRange -> Disp.Doc
-prettyVersionRange = fst . cataVersionRange alg
+prettyVersionRange vr = cataVersionRange alg vr 0
   where
-    alg :: VersionRangeF (Disp.Doc, Int) -> (Disp.Doc, Int)
-    alg (ThisVersionF v)                = (Disp.text "==" <<>> pretty v, 0)
-    alg (LaterVersionF v)               = (Disp.char '>'  <<>> pretty v, 0)
-    alg (OrLaterVersionF v)             = (Disp.text ">=" <<>> pretty v, 0)
-    alg (EarlierVersionF v)             = (Disp.char '<'  <<>> pretty v, 0)
-    alg (OrEarlierVersionF v)           = (Disp.text "<=" <<>> pretty v, 0)
-    alg (MajorBoundVersionF v)          = (Disp.text "^>=" <<>> pretty v, 0)
-    alg (UnionVersionRangesF (r1, p1) (r2, p2)) =
-        (punct 1 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2)
-    alg (IntersectVersionRangesF (r1, p1) (r2, p2)) =
-        (punct 0 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1)
+    alg :: VersionRangeF (Int -> Disp.Doc) -> Int -> Disp.Doc
+    alg (ThisVersionF v)                _ = Disp.text "=="  <<>> pretty v
+    alg (LaterVersionF v)               _ = Disp.text ">"   <<>> pretty v
+    alg (OrLaterVersionF v)             _ = Disp.text ">="  <<>> pretty v
+    alg (EarlierVersionF v)             _ = Disp.text "<"   <<>> pretty v
+    alg (OrEarlierVersionF v)           _ = Disp.text "<="  <<>> pretty v
+    alg (MajorBoundVersionF v)          _ = Disp.text "^>=" <<>> pretty v
+    alg (UnionVersionRangesF r1 r2)     d = parens (d > 0)
+        $ r1 1 <+> Disp.text "||" <+> r2 0
+    alg (IntersectVersionRangesF r1 r2) d = parens (d > 1)
+        $ r1 2 <+> Disp.text "&&" <+> r2 1
 
-    punct p p' | p < p'    = Disp.parens
-               | otherwise = id
+    parens True  = Disp.parens
+    parens False = id
 
 -- | Don't use && and || operators. If possible.
 prettyVersionRange16 :: VersionRange -> Disp.Doc
