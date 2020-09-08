@@ -212,7 +212,8 @@ getCabalVersion flags = do
 --   using an existing package name.
 getPackageName :: Verbosity -> SourcePackageDb -> InitFlags -> IO InitFlags
 getPackageName verbosity sourcePkgDb flags = do
-  guess <- maybe (getCurrentDirectory >>= guessPackageName) pure =<< traverse guessPackageName (flagToMaybe $ packageDir flags)
+  guess <- maybe (getCurrentDirectory >>= guessPackageName) pure
+             =<< traverse guessPackageName (flagToMaybe $ packageDir flags)
 
   pkgName' <- case flagToMaybe $ packageName flags of
     Just pkgName -> return $ Just $ pkgName
@@ -236,7 +237,7 @@ getPackageName verbosity sourcePkgDb flags = do
     isPkgRegistered pkg = elemByPackageName (packageIndex sourcePkgDb) pkg
 
     deathNameMsg pkgName = "The name " ++ (P.unPackageName pkgName) ++
-                        " is already used by another package on Hackage."
+                           " is already used by another package on Hackage."
 
     promptOtherNameMsg = "This package name is already used by another " ++
                          "package on hackage. Do you want to choose a " ++
