@@ -55,20 +55,20 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compiler                  (CompilerFlavor (..), PerCompilerFlavor (..))
+import Distribution.Compiler             (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
-import Distribution.ModuleName                (ModuleName)
+import Distribution.ModuleName           (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty                    (prettyShow)
+import Distribution.Pretty               (prettyShow)
+import Distribution.Types.Mixin          (Mixin)
 import Distribution.Types.ModuleReexport
-import Distribution.Types.Mixin               (Mixin)
-import Distribution.Version                   (Version, VersionRange)
+import Distribution.Version              (Version, VersionRange)
 
-import qualified Distribution.SPDX as SPDX
-
+import qualified Data.ByteString.Char8         as BS8
+import qualified Distribution.SPDX       as SPDX
 import qualified Distribution.Types.Lens as L
 
 -------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ libraryFieldGrammar
        , c (List VCat FilePathNT String)
        , c (List VCat Token String)
        , c (MQuoted Language)
-       ) 
+       )
     => LibraryName
     -> g Library Library
 libraryFieldGrammar n = Library n
@@ -690,3 +690,37 @@ formatOtherExtensions = alaList' FSep MQuoted
 
 formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatOtherModules = alaList' VCat MQuoted
+
+-------------------------------------------------------------------------------
+-- vim syntax definitions
+-------------------------------------------------------------------------------
+
+-- | '_syntaxFieldNames' and '_syntaxExtensions'
+-- are for generating VIM syntax file definitions.
+--
+_syntaxFieldNames :: IO ()
+_syntaxFieldNames = sequence_
+    [ BS8.putStrLn $ "syn keyword cabalStatement " <> n <> ":"
+    | n <- nub $ sort $ mconcat
+        [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
+        , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
+        , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
+        , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
+        , fieldGrammarKnownFieldList testSuiteFieldGrammar
+        , fieldGrammarKnownFieldList benchmarkFieldGrammar
+        , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
+        , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
+        , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True
+        ]
+    ]
+
+_syntaxExtensions :: IO ()
+_syntaxExtensions = sequence_
+    [ putStrLn $ "syn keyword cabalExtension " <> e
+    | e <- nub $ sort
+          [ prettyShow e'
+          | e <- [ minBound .. maxBound ]
+          , e' <- [EnableExtension e, DisableExtension e]
+          ]
+    , e `notElem` ["NoSafe", "NoUnsafe", "NoTrustworthy"]
+    ]
