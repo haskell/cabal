@@ -18,10 +18,14 @@ module Distribution.FieldGrammar.Newtypes (
     Sep (..),
     -- ** Type
     List,
-    -- * Set
+    -- ** Set
     alaSet,
     alaSet',
     Set',
+    -- ** NonEmpty
+    alaNonEmpty,
+    alaNonEmpty',
+    NonEmpty',
     -- * Version & License
     SpecVersion (..),
     TestedWith (..),
@@ -46,6 +50,7 @@ import Distribution.Version
        (LowerBound (..), Version, VersionRange, VersionRangeF (..), anyVersion, asVersionIntervals, cataVersionRange, mkVersion, version0, versionNumbers)
 import Text.PrettyPrint              (Doc, comma, fsep, punctuate, text, vcat)
 
+import qualified Data.List.NonEmpty              as NE
 import qualified Data.Set                        as Set
 import qualified Distribution.Compat.CharParsing as P
 import qualified Distribution.SPDX               as SPDX
@@ -68,31 +73,41 @@ data NoCommaFSep = NoCommaFSep
 class    Sep sep  where
     prettySep :: Proxy sep -> [Doc] -> Doc
 
-    parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
+    parseSep   :: CabalParsing m => Proxy sep -> m a -> m [a]
+    parseSepNE :: CabalParsing m => Proxy sep -> m a -> m (NonEmpty a)
 
 instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
+    parseSepNE _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
+    parseSepNE _ p = do
+        v <- askCabalSpecVersion
+        if v >= CabalSpecV2_2 then parsecLeadingCommaNonEmpty p else parsecCommaNonEmpty p
 instance Sep VCat where
     prettySep _  = vcat
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
+    parseSepNE _ p = NE.some1 (p <* P.spaces)
 instance Sep FSep where
     prettySep _  = fsep
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
+    parseSepNE _ p = NE.some1 (p <* P.spaces)
 instance Sep NoCommaFSep where
-    prettySep _   = fsep
-    parseSep  _ p = many (p <* P.spaces)
+    prettySep _    = fsep
+    parseSep  _ p  = many (p <* P.spaces)
+    parseSepNE _ p = NE.some1 (p <* P.spaces)
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
@@ -157,6 +172,39 @@ instance (Newtype a b, Ord a, Sep sep, Parsec b) => Parsec (Set' sep b a) where
 
 instance (Newtype a b, Sep sep, Pretty b) => Pretty (Set' sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . Set.toList . unpack
+
+--
+-- | Like 'List', but for 'NonEmpty'.
+--
+-- @since 3.2.0.0
+newtype NonEmpty' sep b a = NonEmpty' { _getNonEmpty :: NonEmpty a }
+
+-- | 'alaNonEmpty' and 'alaNonEmpty'' are simply 'NonEmpty'' constructor, with additional phantom
+-- arguments to constrain the resulting type
+--
+-- >>> :t alaNonEmpty VCat
+-- alaNonEmpty VCat :: NonEmpty a -> NonEmpty' VCat (Identity a) a
+--
+-- >>> unpack' (alaNonEmpty' FSep Token) <$> eitherParsec "foo bar foo"
+-- Right ("foo" :| ["bar","foo"])
+--
+-- @since 3.2.0.0
+alaNonEmpty :: sep -> NonEmpty a -> NonEmpty' sep (Identity a) a
+alaNonEmpty _ = NonEmpty'
+
+-- | More general version of 'alaNonEmpty'.
+--
+-- @since 3.2.0.0
+alaNonEmpty' :: sep -> (a -> b) -> NonEmpty a -> NonEmpty' sep b a
+alaNonEmpty' _ _ = NonEmpty'
+
+instance Newtype (NonEmpty a) (NonEmpty' sep wrapper a)
+
+instance (Newtype a b, Sep sep, Parsec b) => Parsec (NonEmpty' sep b a) where
+    parsec   = pack . fmap (unpack :: b -> a) <$> parseSepNE (Proxy :: Proxy sep) parsec
+
+instance (Newtype a b, Sep sep, Pretty b) => Pretty (NonEmpty' sep b a) where
+    pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . NE.toList . unpack
 
 -------------------------------------------------------------------------------
 -- Identifiers
