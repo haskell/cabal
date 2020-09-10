@@ -54,6 +54,9 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
+      - name: allow-newer
+        run: |
+          Set-Content -Path "cabal.project.local" -Value "allow-newer: windns-0.1.0.1:base"
       - name: make cabal-install-dev
         run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # We cannot ask for all dependencies, but we can for Cabal.
