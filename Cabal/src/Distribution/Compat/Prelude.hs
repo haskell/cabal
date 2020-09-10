@@ -71,7 +71,7 @@ module Distribution.Compat.Prelude (
     partition,
 
     -- * Data.List.NonEmpty
-    NonEmpty((:|)), foldl1, foldr1,
+    NonEmpty((:|)), nonEmpty, foldl1, foldr1,
     head, tail, last, init,
 
     -- * Data.Foldable
@@ -187,7 +187,7 @@ import Data.Function                 (on)
 import Data.Functor.Identity         (Identity (..))
 import Data.Int                      (Int16, Int32, Int64, Int8)
 import Data.List                     (intercalate, intersperse, isPrefixOf, isSuffixOf, nub, nubBy, partition, sort, sortBy, unfoldr)
-import Data.List.NonEmpty            (NonEmpty ((:|)), head, init, last, tail)
+import Data.List.NonEmpty            (NonEmpty ((:|)), nonEmpty, head, init, last, tail)
 import Data.Map                      (Map)
 import Data.Maybe                    (catMaybes, fromMaybe, isJust, isNothing, listToMaybe, mapMaybe, maybeToList)
 import Data.Ord                      (comparing)

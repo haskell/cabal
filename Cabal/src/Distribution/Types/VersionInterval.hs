@@ -142,7 +142,7 @@ insertInterval :: VersionInterval -> VersionIntervals -> VersionIntervals
 insertInterval i is = unionVersionIntervals (VersionIntervals [i]) is
 
 validInterval :: (LowerBound, UpperBound) -> Bool
-validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
+validInterval i@(l, u) = validLower l && validUpper u && nonEmptyVI i
   where
     validLower (LowerBound v _) = validVersion v
     validUpper NoUpperBound     = True
@@ -150,9 +150,9 @@ validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
 
 -- Check an interval is non-empty
 --
-nonEmpty :: VersionInterval -> Bool
-nonEmpty (_,               NoUpperBound   ) = True
-nonEmpty (LowerBound l lb, UpperBound u ub) =
+nonEmptyVI :: VersionInterval -> Bool
+nonEmptyVI (_,               NoUpperBound   ) = True
+nonEmptyVI (LowerBound l lb, UpperBound u ub) =
   (l < u) || (l == u && lb == InclusiveBound && ub == InclusiveBound)
 
 -- Check an upper bound does not intersect, or even touch a lower bound:

@@ -147,14 +147,7 @@ Specifying Packages from Remote Version Control Locations
 
 Starting with Cabal 2.4, there is now a stanza
 ``source-repository-package`` for specifying packages from an external
-version control which supports the following fields:
-
-- :pkg-field:`source-repository:type`
-- :pkg-field:`source-repository:location`
-- :pkg-field:`source-repository:tag`
-- :pkg-field:`source-repository:subdir`
-
-A simple example is shown below:
+version control.
 
 .. code-block:: cabal
 
@@ -170,6 +163,29 @@ A simple example is shown below:
         location: https://github.com/well-typed/cborg
         tag: 3d274c14ca3077c3a081ba7ad57c5182da65c8c1
         subdir: cborg
+
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/network.git
+        tag: e76fdc753e660dfa615af6c8b6a2ad9ddf6afe70
+        post-checkout-command: autoreconf -i
+
+cabal-install 3.4 sdists the ``source-repository-package`` repositories and uses resulting tarballs as project packages.
+This allows sharing of packages across different projects.
+
+.. cfg-field:: type: VCS kind
+
+.. cfg-field:: location: VCS location (usually URL)
+
+.. cfg-field:: type: VCS tag
+
+.. cfg-field:: subdir: subdirectory list
+
+    Use one or more subdirectories of the repository.
+
+.. cfg-field:: post-checkout-command: command
+
+    Run command in the checked out repository, prior sdisting.
 
 Global configuration options
 ----------------------------

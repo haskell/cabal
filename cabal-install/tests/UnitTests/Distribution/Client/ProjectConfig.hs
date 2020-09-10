@@ -735,17 +735,15 @@ instance f ~ [] => Arbitrary (SourceRepositoryPackage f) where
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> arbitrary)
         <*> (fmap getShortToken <$> shortListOf 3 arbitrary)
+        <*> (fmap getShortToken <$> shortListOf 3 arbitrary)
 
-    shrink (SourceRepositoryPackage x1 x2 x3 x4 x5) =
-        [ SourceRepositoryPackage
-            x1'
-            (getShortToken x2')
-            (fmap getShortToken x3')
-            (fmap getShortToken x4')
-            (fmap getShortToken x5')
-        | (x1', x2', x3', x4', x5') <- shrink
-          (x1, ShortToken x2, fmap ShortToken x3, fmap ShortToken x4, fmap ShortToken x5)
-        ]
+    shrink SourceRepositoryPackage {..} = runShrinker $ pure SourceRepositoryPackage
+        <*> shrinker srpType
+        <*> shrinkerAla ShortToken srpLocation
+        <*> shrinkerAla (fmap ShortToken) srpTag
+        <*> shrinkerAla (fmap ShortToken) srpBranch
+        <*> shrinkerAla (fmap ShortToken) srpSubdir
+        <*> shrinkerAla (fmap ShortToken) srpCommand
 
 instance Arbitrary RemoteRepo where
     arbitrary =
