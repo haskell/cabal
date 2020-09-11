@@ -28,6 +28,7 @@ import Distribution.Compiler
 import Distribution.Version
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import Distribution.Simple.Utils (toUTF8BS)
 import Distribution.Types.PackageVersionConstraint
 
 import Distribution.Parsec
@@ -99,10 +100,12 @@ tests =
 -- Round trip: conversion to/from legacy types
 --
 
-roundtrip :: (Eq a, ToExpr a) => (a -> b) -> (b -> a) -> a -> Property
+roundtrip :: (Eq a, ToExpr a, Show b) => (a -> b) -> (b -> a) -> a -> Property
 roundtrip f f_inv x =
-    let y = f x
-    in x `ediffEq` f_inv y -- no counterexample with y, as they not have ToExpr
+    counterexample (show y) $
+    x `ediffEq` f_inv y -- no counterexample with y, as they not have ToExpr
+  where
+    y = f x
 
 roundtrip_legacytypes :: ProjectConfig -> Property
 roundtrip_legacytypes =
@@ -155,10 +158,10 @@ prop_roundtrip_legacytypes_specific config =
 
 roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
-    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig str) of
-      ParseOk _ x     -> counterexample ("shown: " ++ str) $
+    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig (toUTF8BS str)) of
+      ParseOk _ x     -> counterexample ("shown:\n" ++ str) $
           x `ediffEq` config { projectConfigProvenance = mempty }
-      ParseFailed err -> counterexample (show err) False
+      ParseFailed err -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
   where
     str :: String
     str = showLegacyProjectConfig (convertToLegacyProjectConfig config)
@@ -344,6 +347,7 @@ instance Arbitrary PackageLocationString where
       , arbitraryGlobLikeStr
       , show <$> (arbitrary :: Gen URI)
       ]
+      `suchThat` (\xs -> not ("{" `isPrefixOf` xs))
 
 arbitraryGlobLikeStr :: Gen String
 arbitraryGlobLikeStr = outerTerm

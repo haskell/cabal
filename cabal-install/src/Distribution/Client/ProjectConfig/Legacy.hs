@@ -95,6 +95,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Parsec (ParsecParser)
 
 import qualified Data.Map as Map
+import qualified Data.ByteString as BS
 
 import Network.URI (URI (..))
 
@@ -121,7 +122,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacyAllConfig         :: LegacyPackageConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
        legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacyProjectConfig where
   mempty  = gmempty
@@ -136,7 +137,7 @@ data LegacyPackageConfig = LegacyPackageConfig {
        legacyHaddockFlags      :: HaddockFlags,
        legacyTestFlags         :: TestFlags,
        legacyBenchmarkFlags    :: BenchmarkFlags
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacyPackageConfig where
   mempty  = gmempty
@@ -152,7 +153,7 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyInstallFlags      :: InstallFlags,
        legacyClientInstallFlags:: ClientInstallFlags,
        legacyProjectFlags      :: ProjectFlags
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacySharedConfig where
   mempty  = gmempty
@@ -843,7 +844,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig :: BS.ByteString -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig =
     parseConfig legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs

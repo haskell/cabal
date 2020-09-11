@@ -6,7 +6,7 @@ module Test.QuickCheck.Instances.Cabal () where
 import Control.Applicative        (liftA2)
 import Data.Bits                  (shiftR)
 import Data.Char                  (isAlphaNum, isDigit)
-import Data.List                  (intercalate, isPrefixOf)
+import Data.List                  (intercalate)
 import Data.List.NonEmpty         (NonEmpty (..))
 import Distribution.Utils.Generic (lowercase)
 import Test.QuickCheck
@@ -525,7 +525,7 @@ shortListOf1 bound gen = sized $ \n -> do
 
 arbitraryShortToken :: Gen String
 arbitraryShortToken =
-    shortListOf1 5 (choose ('#', '~')) `suchThat` (not . ("[]" `isPrefixOf`))
+    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` "{}[]" ]
 
 -- |
 intSqrt :: Int -> Int
