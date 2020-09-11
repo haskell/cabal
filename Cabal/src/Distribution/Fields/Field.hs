@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable    #-}
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 -- | Cabal-like file AST types: 'Field', 'Section' etc
 --
@@ -21,13 +21,19 @@ module Distribution.Fields.Field (
     mkName,
     getName,
     nameAnn,
+    -- * Conversions to String
+    sectionArgsToString,
+    fieldLinesToString,
     ) where
 
-import           Prelude ()
-import           Distribution.Compat.Prelude
 import           Data.ByteString             (ByteString)
 import qualified Data.ByteString.Char8       as B
 import qualified Data.Char                   as Char
+import           Distribution.Compat.Prelude
+import           Distribution.Pretty         (showTokenStr)
+import           Distribution.Simple.Utils   (fromUTF8BS)
+import           Prelude ()
+
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -106,3 +112,30 @@ getName (Name _ bs) = bs
 
 nameAnn :: Name ann -> ann
 nameAnn (Name ann _) = ann
+
+-------------------------------------------------------------------------------
+-- To Strings
+-------------------------------------------------------------------------------
+
+-- |
+--
+-- @since 3.6.0.0
+sectionArgsToString :: [SectionArg ann] -> String
+sectionArgsToString = unwords . map toStr where
+    toStr :: SectionArg ann -> String
+    toStr (SecArgName _ bs)  = showTokenStr (fromUTF8BS bs)
+    toStr (SecArgStr _ bs)   = showTokenStr (fromUTF8BS bs)
+    toStr (SecArgOther _ bs) = fromUTF8BS bs
+
+-- | Convert @['FieldLine']@ into String.
+--
+-- /Note:/ this doesn't preserve indentation or empty lines,
+-- as the annotations (e.g. positions) are ignored.
+--
+-- @since 3.6.0.0
+fieldLinesToString :: [FieldLine ann] -> String
+fieldLinesToString =
+    -- intercalate to avoid trailing newline.
+    intercalate "\n" . map toStr
+  where
+    toStr (FieldLine _ bs) = fromUTF8BS bs

@@ -111,7 +111,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
-         ( die', notice, warn, lowercase, cabalVersion )
+         ( die', notice, warn, lowercase, cabalVersion, toUTF8BS )
 import Distribution.Client.Utils
          ( cabalInstallVersion )
 import Distribution.Compiler
@@ -142,6 +142,7 @@ import System.IO.Error
 import Distribution.Compat.Environment
          ( getEnvironment, lookupEnv )
 import qualified Data.Map as M
+import qualified Data.ByteString as BS
 
 --
 -- * Configuration saved in the config file
@@ -781,7 +782,7 @@ readConfigFile
   :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
   fmap (Just . parseConfig (ConstraintSourceMainConfig file) initial)
-       (readFile file)
+       (BS.readFile file)
 
   where
     handleNotExists action = catchIO action $ \ioe ->
@@ -1101,7 +1102,7 @@ liftReportFlag = liftField
 
 parseConfig :: ConstraintSource
             -> SavedConfig
-            -> String
+            -> BS.ByteString
             -> ParseResult SavedConfig
 parseConfig src initial = \str -> do
   fields <- readFields str
@@ -1402,7 +1403,7 @@ withProgramOptionsFields =
 parseExtraLines :: Verbosity -> [String] -> IO SavedConfig
 parseExtraLines verbosity extraLines =
   case parseConfig (ConstraintSourceMainConfig "additional lines")
-       mempty (unlines extraLines) of
+       mempty (toUTF8BS (unlines extraLines)) of
     ParseFailed err ->
       let (line, msg) = locatedErrorMsg err
       in die' verbosity $
