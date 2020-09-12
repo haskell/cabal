@@ -43,7 +43,7 @@ import Distribution.Types.Dependency
        (Dependency(..))
 import Distribution.Verbosity                        (silent)
 import Distribution.Version
-       (Version, VersionRange, LowerBound(..), UpperBound(..)
+       (Version, VersionInterval (..), VersionRange, LowerBound(..), UpperBound(..)
        ,asVersionIntervals, majorBoundVersion)
 import Distribution.PackageDescription.Parsec
        (readGenericPackageDescription)
@@ -207,7 +207,7 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
     relaxMinor vr =
       let vis = asVersionIntervals vr
       in maybe vr relax (safeLast vis)
-      where relax (LowerBound v0 _, upper) =
+      where relax (VersionInterval (LowerBound v0 _) upper) =
               case upper of
                 NoUpperBound     -> vr
                 UpperBound _v1 _ -> majorBoundVersion v0

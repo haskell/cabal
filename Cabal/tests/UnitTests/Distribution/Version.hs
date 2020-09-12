@@ -1,4 +1,5 @@
-{-# LANGUAGE StandaloneDeriving, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
                 -fno-warn-unused-binds #-} --FIXME
@@ -7,23 +8,23 @@ module UnitTests.Distribution.Version (versionTests) where
 import Distribution.Compat.Prelude.Internal
 import Prelude ()
 
-import Distribution.Version
-import Distribution.Types.VersionRange.Internal
-import Distribution.Parsec (simpleParsec)
+import Distribution.Parsec                      (simpleParsec)
 import Distribution.Pretty
+import Distribution.Types.VersionRange.Internal
 import Distribution.Utils.Generic
+import Distribution.Version
 
-import Data.Typeable (typeOf)
-import Math.NumberTheory.Logarithms (intLog2)
-import Text.PrettyPrint as Disp (text, render, hcat
-                                ,punctuate, int, char)
-import Test.Tasty
-import Test.Tasty.QuickCheck
-import qualified Test.Laws as Laws
 
+import Data.Maybe                      (fromJust)
+import Data.Typeable                   (typeOf)
+import Test.QuickCheck                 (Arbitrary (..), NonEmptyList (..), NonNegative (..), Property, Testable, counterexample, property, (===), (==>), vectorOf, sized, choose, arbitrarySizedNatural)
 import Test.QuickCheck.Instances.Cabal ()
+import Test.Tasty                      (TestTree)
+import Test.Tasty.QuickCheck           (testProperty)
 
-import Data.Maybe (fromJust)
+import qualified Distribution.Types.VersionInterval        as New
+import qualified Distribution.Types.VersionInterval.Legacy as Old
+import qualified Text.PrettyPrint                          as Disp
 
 versionTests :: [TestTree]
 versionTests =
@@ -38,8 +39,16 @@ versionTests =
     , tp "readMaybe . show = Just"                             prop_ShowRead
     , tp "read example"                                        prop_ShowRead_example
 
-    , tp "normaliseVersionRange involutive"                    prop_normalise_inv
     , tp "parsec . prettyShow involutive"                      prop_parsec_disp_inv
+
+    , tp "normaliseVersionRange involutive"                    prop_normalise_inv
+    , tp "normaliseVersionRange equivalent"                    prop_normalise_equiv
+    , tp "normaliseVersionRange caretequiv"                    prop_normalise_caret_equiv
+    , tp "normaliseVersionRange model"                         prop_normalise_model
+
+    , tp "simplifyVersionRange involutive"                     prop_simplify_inv
+    , tp "simplifyVersionRange equivalent"                     prop_simplify_equiv
+    -- , tp "simplifyVersionRange caretequiv"                     prop_simplify_caret_equiv
 
     , tp "simpleParsec . prettyShow = Just" prop_parse_disp
     ]
@@ -52,8 +61,6 @@ versionTests =
     [ typProperty prop_nonNull
     , typProperty prop_gen_intervals1
     , typProperty prop_gen_intervals2
-  --, typProperty prop_equivalentVersionRange --FIXME: runs out of test cases
-    , typProperty prop_intermediateVersion
 
     , typProperty prop_anyVersion
     , typProperty prop_noVersion
@@ -65,47 +72,11 @@ versionTests =
     , typProperty prop_orEarlierVersion
     , typProperty prop_unionVersionRanges
     , typProperty prop_intersectVersionRanges
-    , typProperty prop_differenceVersionRanges
-    , typProperty prop_invertVersionRange
     , typProperty prop_withinVersion
     , typProperty prop_foldVersionRange
 
-      -- the semantic query functions
-  --, typProperty prop_isAnyVersion1       --FIXME: runs out of test cases
-  --, typProperty prop_isAnyVersion2       --FIXME: runs out of test cases
-  --, typProperty prop_isNoVersion         --FIXME: runs out of test cases
-  --, typProperty prop_isSpecificVersion1  --FIXME: runs out of test cases
-  --, typProperty prop_isSpecificVersion2  --FIXME: runs out of test cases
-    , typProperty prop_simplifyVersionRange1
-    , typProperty prop_simplifyVersionRange1'
-  --, typProperty prop_simplifyVersionRange2   --FIXME: runs out of test cases
-  --, typProperty prop_simplifyVersionRange2'  --FIXME: runs out of test cases
-  --, typProperty prop_simplifyVersionRange2'' --FIXME: actually wrong
-
       -- converting between version ranges and version intervals
-    , typProperty prop_to_intervals
-  --, typProperty prop_to_intervals_canonical  --FIXME: runs out of test cases
-  --, typProperty prop_to_intervals_canonical' --FIXME: runs out of test cases
-    , typProperty prop_from_intervals
     , typProperty prop_to_from_intervals
-    , typProperty prop_from_to_intervals
-    , typProperty prop_from_to_intervals'
-
-      -- union and intersection of version intervals
-    , typProperty prop_unionVersionIntervals
-    , typProperty prop_unionVersionIntervals_idempotent
-    , typProperty prop_unionVersionIntervals_commutative
-    , typProperty prop_unionVersionIntervals_associative
-    , typProperty prop_intersectVersionIntervals
-    , typProperty prop_intersectVersionIntervals_idempotent
-    , typProperty prop_intersectVersionIntervals_commutative
-    , typProperty prop_intersectVersionIntervals_associative
-    , typProperty prop_union_intersect_distributive
-    , typProperty prop_intersect_union_distributive
-
-      -- inversion of version intervals
-    , typProperty prop_invertVersionIntervals
-    , typProperty prop_invertVersionIntervalsTwice
     ]
   where
     tp :: Testable p => String -> p -> TestTree
@@ -113,21 +84,9 @@ versionTests =
 
     typProperty p = (typeOf p, property p)
 
-
--- parseTests :: [TestTree]
--- parseTests =
---   zipWith (\n p -> testProperty ("Parse Property " ++ show n) p) [1::Int ..]
---    -- parsing and pretty printing
---   [ -- property prop_parse_disp1  --FIXME: actually wrong
-
---     --  These are also wrong, see
---     --  https://github.com/haskell/cabal/issues/3037#issuecomment-177671011
-
---     --   property prop_parse_disp2
---     -- , property prop_parse_disp3
---     -- , property prop_parse_disp4
---     -- , property prop_parse_disp5
---   ]
+-------------------------------------------------------------------------------
+-- Arbitrary for inputs of mkVersion
+-------------------------------------------------------------------------------
 
 newtype VersionArb = VersionArb [Int]
                    deriving (Eq,Ord,Show)
@@ -190,8 +149,44 @@ prop_ShowRead_example = show (mkVersion [1,2,3]) == "mkVersion [1,2,3]"
 --
 
 prop_normalise_inv :: VersionRange -> Property
-prop_normalise_inv vr =
-    normaliseVersionRange vr === normaliseVersionRange (normaliseVersionRange vr)
+prop_normalise_inv vr = normaliseVersionRange vr === normaliseVersionRange (normaliseVersionRange vr)
+
+prop_normalise_equiv :: VersionRange -> Version -> Property
+prop_normalise_equiv vr =
+    prop_equivalentVersionRange vr (normaliseVersionRange vr)
+
+prop_normalise_caret_equiv :: VersionRange -> Version -> Property
+prop_normalise_caret_equiv vr = prop_equivalentVersionRange
+    (transformCaretUpper vr)
+    (transformCaretUpper (normaliseVersionRange vr))
+
+prop_normalise_model :: VersionRange -> Property
+prop_normalise_model vr =
+    oldNormaliseVersionRange vr' === newNormaliseVersionRange vr'
+  where
+    vr' = transformCaret vr
+
+    oldNormaliseVersionRange :: VersionRange -> VersionRange
+    oldNormaliseVersionRange = Old.fromVersionIntervals . Old.toVersionIntervals
+
+    newNormaliseVersionRange :: VersionRange -> VersionRange
+    newNormaliseVersionRange = New.normaliseVersionRange2
+
+prop_simplify_inv :: VersionRange -> Property
+prop_simplify_inv vr =
+    simplifyVersionRange vr === simplifyVersionRange (simplifyVersionRange vr)
+
+prop_simplify_equiv :: VersionRange -> Version -> Property
+prop_simplify_equiv vr v =
+    counterexample (show vr') $ prop_equivalentVersionRange vr vr' v
+  where
+    vr' = simplifyVersionRange vr
+
+-- TODO: Doesn't hold yet
+-- prop_simplify_caret_equiv :: VersionRange -> Version -> Property
+-- prop_simplify_caret_equiv vr = prop_equivalentVersionRange
+--     (transformCaretUpper vr)
+--     (transformCaretUpper (simplifyVersionRange vr))
 
 prop_nonNull :: Version -> Bool
 prop_nonNull = (/= nullVersion)
@@ -243,16 +238,6 @@ prop_intersectVersionRanges :: VersionRange -> VersionRange -> Version -> Bool
 prop_intersectVersionRanges vr1 vr2 v' =
      withinRange v' (intersectVersionRanges vr1 vr2)
   == (withinRange v' vr1 && withinRange v' vr2)
-
-prop_differenceVersionRanges :: VersionRange -> VersionRange -> Version -> Bool
-prop_differenceVersionRanges vr1 vr2 v' =
-     withinRange v' (differenceVersionRanges vr1 vr2)
-  == (withinRange v' vr1 && not (withinRange v' vr2))
-
-prop_invertVersionRange :: VersionRange -> Version -> Bool
-prop_invertVersionRange vr v' =
-     withinRange v' (invertVersionRange vr)
-  == not (withinRange v' vr)
 
 prop_withinVersion :: Version -> Version -> Property
 prop_withinVersion v v' =
@@ -323,49 +308,12 @@ prop_isSpecificVersion2 range =
   where
     version = isSpecificVersion range
 
--- | 'simplifyVersionRange' is a semantic identity on 'VersionRange'.
---
-prop_simplifyVersionRange1 :: VersionRange -> Version -> Bool
-prop_simplifyVersionRange1 range version =
-  withinRange version range == withinRange version (simplifyVersionRange range)
-
-prop_simplifyVersionRange1' :: VersionRange -> Bool
-prop_simplifyVersionRange1' range =
-  range `equivalentVersionRange` (simplifyVersionRange range)
-
--- | 'simplifyVersionRange' produces a canonical form for ranges with
--- equivalent semantics.
---
-prop_simplifyVersionRange2 :: VersionRange -> VersionRange -> Version -> Property
-prop_simplifyVersionRange2 r r' v =
-  r /= r' && simplifyVersionRange r == simplifyVersionRange r' ==>
-    withinRange v r == withinRange v r'
-
-prop_simplifyVersionRange2' :: VersionRange -> VersionRange -> Property
-prop_simplifyVersionRange2' r r' =
-  r /= r' && simplifyVersionRange r == simplifyVersionRange r' ==>
-    r `equivalentVersionRange` r'
-
---FIXME: see equivalentVersionRange for details
-prop_simplifyVersionRange2'' :: VersionRange -> VersionRange -> Property
-prop_simplifyVersionRange2'' r r' =
-  r /= r' && r `equivalentVersionRange` r' ==>
-       simplifyVersionRange r == simplifyVersionRange r'
-    || isNoVersion r
-    || isNoVersion r'
-
 -- | Check that our VersionIntervals' arbitrary instance generates intervals
 -- that satisfies the invariant.
 --
 prop_gen_intervals1 :: VersionIntervals -> Property
-prop_gen_intervals1 i
-    = label ("length i ≈ 2 ^ " ++ show metric ++ " - 1")
-    $ xs === ys
-  where
-    metric = intLog2 (length xs + 1)
+prop_gen_intervals1 = property . New.invariantVersionIntervals
 
-    xs = versionIntervals i
-    ys = versionIntervals (mkVersionIntervals xs)
 -- | Check that constructing our intervals type and converting it to a
 -- 'VersionRange' and then into the true intervals type gives us back
 -- the exact same sequence of intervals. This tells us that our arbitrary
@@ -374,38 +322,7 @@ prop_gen_intervals1 i
 prop_gen_intervals2 :: VersionIntervals -> Property
 prop_gen_intervals2 intervals =
     toVersionIntervals (fromVersionIntervals intervals) === intervals
-
--- | Check that 'VersionIntervals' models 'VersionRange' via
--- 'toVersionIntervals'.
 --
-prop_to_intervals :: VersionRange -> Version -> Bool
-prop_to_intervals range version =
-  withinRange version range == withinIntervals version intervals
-  where
-    intervals = toVersionIntervals range
-
--- | Check that semantic equality on 'VersionRange's is the same as converting
--- to 'VersionIntervals' and doing syntactic equality.
---
-prop_to_intervals_canonical :: VersionRange -> VersionRange -> Property
-prop_to_intervals_canonical r r' =
-  r /= r' && r `equivalentVersionRange` r' ==>
-    toVersionIntervals r == toVersionIntervals r'
-
-prop_to_intervals_canonical' :: VersionRange -> VersionRange -> Property
-prop_to_intervals_canonical' r r' =
-  r /= r' && toVersionIntervals r == toVersionIntervals r' ==>
-    r `equivalentVersionRange` r'
-
--- | Check that 'VersionIntervals' models 'VersionRange' via
--- 'fromVersionIntervals'.
---
-prop_from_intervals :: VersionIntervals -> Version -> Bool
-prop_from_intervals intervals version =
-  withinRange version range == withinIntervals version intervals
-  where
-    range = fromVersionIntervals intervals
-
 -- | @'toVersionIntervals' . 'fromVersionIntervals'@ is an exact identity on
 -- 'VersionIntervals'.
 --
@@ -413,167 +330,13 @@ prop_to_from_intervals :: VersionIntervals -> Bool
 prop_to_from_intervals intervals =
   toVersionIntervals (fromVersionIntervals intervals) == intervals
 
--- | @'fromVersionIntervals' . 'toVersionIntervals'@ is a semantic identity on
--- 'VersionRange', though not necessarily a syntactic identity.
---
-prop_from_to_intervals :: VersionRange -> Bool
-prop_from_to_intervals range =
-  range' `equivalentVersionRange` range
-  where
-    range' = fromVersionIntervals (toVersionIntervals range)
-
--- | Equivalent of 'prop_from_to_intervals'
---
-prop_from_to_intervals' :: VersionRange -> Version -> Bool
-prop_from_to_intervals' range version =
-  withinRange version range' == withinRange version range
-  where
-    range' = fromVersionIntervals (toVersionIntervals range)
-
--- | The semantics of 'unionVersionIntervals' is (||).
---
-prop_unionVersionIntervals :: VersionIntervals -> VersionIntervals
-                           -> Version -> Bool
-prop_unionVersionIntervals is1 is2 v =
-     withinIntervals v (unionVersionIntervals is1 is2)
-  == (withinIntervals v is1 || withinIntervals v is2)
-
--- | 'unionVersionIntervals' is idempotent
---
-prop_unionVersionIntervals_idempotent :: VersionIntervals -> Bool
-prop_unionVersionIntervals_idempotent =
-  Laws.idempotent_binary unionVersionIntervals
-
--- | 'unionVersionIntervals' is commutative
---
-prop_unionVersionIntervals_commutative :: VersionIntervals
-                                       -> VersionIntervals -> Bool
-prop_unionVersionIntervals_commutative =
-  Laws.commutative unionVersionIntervals
-
--- | 'unionVersionIntervals' is associative
---
-prop_unionVersionIntervals_associative :: VersionIntervals
-                                       -> VersionIntervals
-                                       -> VersionIntervals -> Bool
-prop_unionVersionIntervals_associative =
-  Laws.associative unionVersionIntervals
-
--- | The semantics of 'intersectVersionIntervals' is (&&).
---
-prop_intersectVersionIntervals :: VersionIntervals -> VersionIntervals
-                               -> Version -> Bool
-prop_intersectVersionIntervals is1 is2 v =
-     withinIntervals v (intersectVersionIntervals is1 is2)
-  == (withinIntervals v is1 && withinIntervals v is2)
-
--- | 'intersectVersionIntervals' is idempotent
---
-prop_intersectVersionIntervals_idempotent :: VersionIntervals -> Bool
-prop_intersectVersionIntervals_idempotent =
-  Laws.idempotent_binary intersectVersionIntervals
-
--- | 'intersectVersionIntervals' is commutative
---
-prop_intersectVersionIntervals_commutative :: VersionIntervals
-                                           -> VersionIntervals -> Bool
-prop_intersectVersionIntervals_commutative =
-  Laws.commutative intersectVersionIntervals
-
--- | 'intersectVersionIntervals' is associative
---
-prop_intersectVersionIntervals_associative :: VersionIntervals
-                                           -> VersionIntervals
-                                           -> VersionIntervals -> Bool
-prop_intersectVersionIntervals_associative =
-  Laws.associative intersectVersionIntervals
-
--- | 'unionVersionIntervals' distributes over 'intersectVersionIntervals'
---
-prop_union_intersect_distributive :: Property
-prop_union_intersect_distributive =
-      Laws.distributive_left  unionVersionIntervals intersectVersionIntervals
-  .&. Laws.distributive_right unionVersionIntervals intersectVersionIntervals
-
--- | 'intersectVersionIntervals' distributes over 'unionVersionIntervals'
---
-prop_intersect_union_distributive :: Property
-prop_intersect_union_distributive =
-      Laws.distributive_left  intersectVersionIntervals unionVersionIntervals
-  .&. Laws.distributive_right intersectVersionIntervals unionVersionIntervals
-
--- | The semantics of 'invertVersionIntervals' is 'not'.
---
-prop_invertVersionIntervals :: VersionIntervals
-                               -> Version -> Bool
-prop_invertVersionIntervals vi v =
-     withinIntervals v (invertVersionIntervals vi)
-  == not (withinIntervals v vi)
-
--- | Double application of 'invertVersionIntervals' is the identity function
-prop_invertVersionIntervalsTwice :: VersionIntervals -> Bool
-prop_invertVersionIntervalsTwice vi =
-    invertVersionIntervals (invertVersionIntervals vi) == vi
-
-
-
 --------------------------------
 -- equivalentVersionRange helper
 
-prop_equivalentVersionRange :: VersionRange  -> VersionRange
-                            -> Version -> Property
+prop_equivalentVersionRange
+    :: VersionRange  -> VersionRange -> Version -> Property
 prop_equivalentVersionRange range range' version =
-  equivalentVersionRange range range' && range /= range' ==>
-    withinRange version range == withinRange version range'
-
---FIXME: this is wrong. consider version ranges "<=1" and "<1.0"
---       this algorithm cannot distinguish them because there is no version
---       that is included by one that is excluded by the other.
---       Alternatively we must reconsider the semantics of '<' and '<='
---       in version ranges / version intervals. Perhaps the canonical
---       representation should use just < v and interpret "<= v" as "< v.0".
-equivalentVersionRange :: VersionRange -> VersionRange -> Bool
-equivalentVersionRange vr1 vr2 =
-  let allVersionsUsed = nub (sort (versionsUsed vr1 ++ versionsUsed vr2))
-      minPoint = mkVersion [0]
-      maxPoint | null allVersionsUsed = minPoint
-               | otherwise = alterVersion (++[1]) (maximum allVersionsUsed)
-      probeVersions = minPoint : maxPoint
-                    : intermediateVersions allVersionsUsed
-
-  in all (\v -> withinRange v vr1 == withinRange v vr2) probeVersions
-
-  where
-    versionsUsed = foldVersionRange [] (\x->[x]) (\x->[x]) (\x->[x]) (++) (++)
-    intermediateVersions (v1:v2:vs) = v1 : intermediateVersion v1 v2
-                                         : intermediateVersions (v2:vs)
-    intermediateVersions vs = vs
-
-intermediateVersion :: Version -> Version -> Version
-intermediateVersion v1 v2 | v1 >= v2 = error "intermediateVersion: v1 >= v2"
-intermediateVersion v1 v2 =
-  mkVersion (intermediateList (versionNumbers v1) (versionNumbers v2))
-  where
-    intermediateList :: [Int] -> [Int] -> [Int]
-    intermediateList []     (_:_) = [0]
-    intermediateList (x:xs) (y:ys)
-        | x <  y    = x : xs ++ [0]
-        | otherwise = x : intermediateList xs ys
-
-prop_intermediateVersion :: Version -> Version -> Property
-prop_intermediateVersion v1 v2 =
-  (v1 /= v2) && not (adjacentVersions v1 v2) ==>
-  if v1 < v2
-    then let v = intermediateVersion v1 v2
-          in (v1 < v && v < v2)
-    else let v = intermediateVersion v2 v1
-          in v1 > v && v > v2
-
-adjacentVersions :: Version -> Version -> Bool
-adjacentVersions ver1 ver2 = v1 ++ [0] == v2 || v2 ++ [0] == v1
-  where
-    v1 = versionNumbers ver1
-    v2 = versionNumbers ver2
+    withinRange version range === withinRange version range'
 
 --------------------------------
 -- Parsing and pretty printing

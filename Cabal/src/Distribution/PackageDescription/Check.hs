@@ -1413,12 +1413,13 @@ checkPackageVersions pkg =
       -- then we will just skip the check, since boundedAbove noVersion = True
       _          -> noVersion
 
+    -- TODO: move to Distribution.Version
     boundedAbove :: VersionRange -> Bool
     boundedAbove vr = case asVersionIntervals vr of
       []     -> True -- this is the inconsistent version range.
       (x:xs) -> case last (x:|xs) of
-        (_,   UpperBound _ _) -> True
-        (_, NoUpperBound    ) -> False
+        VersionInterval _ UpperBound {} -> True
+        VersionInterval _ NoUpperBound  -> False
 
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
