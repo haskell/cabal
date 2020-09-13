@@ -4,8 +4,8 @@ import Test.Cabal.Prelude
 -- Test that checkRelocate doesn't fail when library directory of dependee
 -- contains '..'
 main = setupAndCabalTest $ withPackageDb $ do
-  skipIf =<< isWindows
-  skipUnless =<< ghcVersionIs (>= mkVersion [7,6])
+  skipIfWindows
+  skipUnlessGhcVersion ">= 7.6"
   env <- getTestEnv
   let pkgroot = takeDirectory $ testPackageDbDir env
       prefix = testTmpDir env </> "prefix"

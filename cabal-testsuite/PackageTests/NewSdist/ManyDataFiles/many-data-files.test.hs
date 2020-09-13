@@ -14,4 +14,4 @@ main = cabalTest . withSourceCopy $ do
             forM_ [1 .. n + 100] $ \i -> 
                 liftIO $ BS.writeFile (cwd </> "data" </> ("data-file-" ++ show i) <.> "txt") (BS.pack "a data file\n")
             cabal "v2-sdist" ["many-data-files"]
-        Nothing -> skip
+        Nothing -> skip "no open file limit"

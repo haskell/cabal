@@ -39,12 +39,9 @@ module Test.Cabal.Monad (
     skip,
     skipIf,
     skipUnless,
-    skipExitCode,
     -- * Known broken tests
     expectedBroken,
     unexpectedSuccess,
-    expectedBrokenExitCode,
-    unexpectedSuccessExitCode,
     -- whenHasSharedLibraries,
     -- * Arguments (TODO: move me)
     CommonArgs(..),
@@ -55,6 +52,7 @@ module Test.Cabal.Monad (
 import Test.Cabal.Script
 import Test.Cabal.Plan
 import Test.Cabal.OutputNormalizer
+import Test.Cabal.TestCode
 
 import Distribution.Simple.Compiler
     ( PackageDBStack, PackageDB(..), compilerFlavor
@@ -146,55 +144,44 @@ testArgParser = TestArgs
     <*> argument str ( metavar "FILE")
     <*> commonArgParser
 
-skip :: TestM ()
-skip = liftIO $ do
-    putStrLn "SKIP"
-    exitWith (ExitFailure skipExitCode)
+skip :: String -> TestM ()
+skip reason = liftIO $ do
+    putStrLn ("SKIP " ++ reason)
+    E.throwIO (TestCodeSkip reason)
 
-skipIf :: Bool -> TestM ()
-skipIf b = when b skip
+skipIf :: String -> Bool -> TestM ()
+skipIf reason b = when b (skip reason)
 
-skipUnless :: Bool -> TestM ()
-skipUnless b = unless b skip
+skipUnless :: String -> Bool -> TestM ()
+skipUnless reason b = unless b (skip reason)
 
 expectedBroken :: TestM ()
 expectedBroken = liftIO $ do
     putStrLn "EXPECTED FAIL"
-    exitWith (ExitFailure expectedBrokenExitCode)
+    E.throwIO TestCodeKnownFail
 
 unexpectedSuccess :: TestM ()
 unexpectedSuccess = liftIO $ do
     putStrLn "UNEXPECTED OK"
-    exitWith (ExitFailure unexpectedSuccessExitCode)
+    E.throwIO TestCodeUnexpectedOk
 
-skipExitCode :: Int
-skipExitCode = 64
-
-expectedBrokenExitCode :: Int
-expectedBrokenExitCode = 65
-
-unexpectedSuccessExitCode :: Int
-unexpectedSuccessExitCode = 66
-
-catchSkip :: IO a -> IO a -> IO a
-catchSkip m r = m `E.catch` \e ->
-                case e of
-                    ExitFailure c | c == skipExitCode
-                        -> r
-                    _ -> E.throwIO e
+trySkip :: IO a -> IO (Either String a)
+trySkip m = fmap Right m `E.catch` \e -> case e of
+    TestCodeSkip msg -> return (Left msg)
+    _                -> E.throwIO e
 
 setupAndCabalTest :: TestM () -> IO ()
 setupAndCabalTest m = do
-    r1 <- (setupTest m >> return False) `catchSkip` return True
-    r2 <- (cabalTest' "cabal" m >> return False) `catchSkip` return True
-    when (r1 && r2) $ do
-        putStrLn "SKIP"
-        exitWith (ExitFailure skipExitCode)
+    r1 <- trySkip (setupTest m)
+    r2 <- trySkip (cabalTest' "cabal" m)
+    case (r1, r2) of
+        (Left msg1, Left msg2) -> E.throwIO (TestCodeSkip (msg1 ++ "; " ++ msg2))
+        _                      -> return ()
 
 setupTest :: TestM () -> IO ()
 setupTest m = runTestM "" $ do
     env <- getTestEnv
-    skipIf (testSkipSetupTests env)
+    skipIf "setup test" (testSkipSetupTests env)
     m
 
 cabalTest :: TestM () -> IO ()
@@ -202,7 +189,7 @@ cabalTest = cabalTest' ""
 
 cabalTest' :: String -> TestM () -> IO ()
 cabalTest' mode m = runTestM mode $ do
-    skipUnless =<< isAvailableProgram cabalProgram
+    skipUnless "no cabal-install" =<< isAvailableProgram cabalProgram
     withReaderT (\nenv -> nenv { testCabalInstallAsSetup = True }) m
 
 type TestM = ReaderT TestEnv IO

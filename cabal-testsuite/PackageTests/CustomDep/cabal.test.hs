@@ -1,9 +1,9 @@
 import Test.Cabal.Prelude
 main = cabalTest $ do
     -- NB: This variant seems to use the bootstrapped Cabal?
-    skipUnless =<< hasCabalForGhc
+    skipUnless "no Cabal for GHC" =<< hasCabalForGhc
     -- implicit setup-depends conflict with GHC >= 8.2; c.f. #415
-    skipIf =<< (ghcVersionIs (>= mkVersion [8,2]))
+    skipUnlessGhcVersion "< 8.2"
     -- This test depends heavily on what packages are in the global
     -- database, don't record the output
     recordMode DoNotRecord $ do

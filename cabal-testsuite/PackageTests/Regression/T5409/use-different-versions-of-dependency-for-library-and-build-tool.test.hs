@@ -12,7 +12,7 @@ import Test.Cabal.Prelude
 -- violated the version constraints.
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
-    skipUnless =<< hasNewBuildCompatBootCabal
+    skipUnless "not v2-build compatible boot Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $
             cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]

@@ -7,7 +7,7 @@ main = cabalTest $ do
   --
   -- Note: we bundle the configure script so no need to autoreconf
   -- while building
-  skipIf =<< isWindows
+  skipIfWindows
   traverse_ check
     [ "foo bar"
     , "foo\tbar"

@@ -7,6 +7,7 @@ import Test.Cabal.Workdir
 import Test.Cabal.Script
 import Test.Cabal.Server
 import Test.Cabal.Monad
+import Test.Cabal.TestCode
 
 import Distribution.Verbosity        (normal, verbose, Verbosity)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
@@ -111,7 +112,11 @@ main = do
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
     -- Get ready to go!
     senv <- mkScriptEnv verbosity
-    let runTest runner path
+
+    let runTest :: (Maybe cwd -> [unusedEnv] -> FilePath -> [String] -> IO result)
+                -> FilePath
+                -> IO result
+        runTest runner path
             = runner Nothing [] path $
                 ["--builddir", dist_dir, path] ++ renderCommonArgs (mainCommonArgs args)
 
@@ -144,6 +149,7 @@ main = do
             work_queue <- newMVar all_tests
             unexpected_fails_var  <- newMVar []
             unexpected_passes_var <- newMVar []
+            skipped_var <- newMVar []
 
             chan <- newChan
             let logAll msg = writeChan chan (ServerLogMsg AllServers msg)
@@ -174,25 +180,16 @@ main = do
                             r <- runTest (runOnServer server) path
                             end <- getTime
                             let time = end - start
-                                code = serverResultExitCode r
-                                status
-                                  | code == ExitSuccess
-                                  = "OK"
-                                  | code == ExitFailure skipExitCode
-                                  = "SKIP"
-                                  | code == ExitFailure expectedBrokenExitCode
-                                  = "KNOWN FAIL"
-                                  | code == ExitFailure unexpectedSuccessExitCode
-                                  = "UNEXPECTED OK"
-                                  | otherwise
-                                  = "FAIL"
-                            unless (mainArgHideSuccesses args && status == "OK") $ do
+                                code = serverResultTestCode r
+
+                            unless (mainArgHideSuccesses args && code == TestCodeOk) $ do
                                 logMeta $
-                                    path ++ replicate (margin - length path) ' ' ++ status ++
+                                    path ++ replicate (margin - length path) ' ' ++ displayTestCode code ++
                                     if time >= 0.01
                                         then printf " (%.2fs)" time
                                         else ""
-                            when (status == "FAIL") $ do -- TODO: ADT
+
+                            when (code == TestCodeFail) $ do
                                 let description
                                       | mainArgQuiet args = serverResultStderr r
                                       | otherwise =
@@ -204,9 +201,15 @@ main = do
                                        ++ "*** unexpected failure for " ++ path ++ "\n\n"
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
-                            when (status == "UNEXPECTED OK") $
+
+                            when (code == TestCodeUnexpectedOk) $
                                 modifyMVar_ unexpected_passes_var $ \paths ->
                                     return (path:paths)
+
+                            when (isTestCodeSkip code) $
+                                modifyMVar_ skipped_var $ \paths ->
+                                    return (path:paths)
+
                             go server
 
             mask $ \restore -> do
@@ -244,14 +247,22 @@ main = do
 
             unexpected_fails  <- takeMVar unexpected_fails_var
             unexpected_passes <- takeMVar unexpected_passes_var
-            if not (null (unexpected_fails ++ unexpected_passes))
-                then do
-                    unless (null unexpected_passes) . logAll $
-                        "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
-                    unless (null unexpected_fails) . logAll $
-                        "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
-                    exitFailure
-                else logAll "OK"
+            skipped           <- takeMVar skipped_var
+
+            -- print skipped
+            logAll $ "SKIPPED " ++ show (length skipped) ++ " tests"
+            unless (null skipped) $ logAll $
+                "SKIPPED: " ++ intercalate " " skipped
+
+            -- print failed or ook
+            if null (unexpected_fails ++ unexpected_passes)
+            then logAll "OK"
+            else do
+                unless (null unexpected_passes) . logAll $
+                    "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
+                unless (null unexpected_fails) . logAll $
+                    "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
+                exitFailure
 
 findTests :: IO [FilePath]
 findTests = getDirectoryContentsRecursive "."

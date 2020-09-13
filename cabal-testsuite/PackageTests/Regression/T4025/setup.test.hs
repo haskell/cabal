@@ -3,7 +3,7 @@ import Test.Cabal.Prelude
 -- an executable RPATH.  Don't test on Windows, which doesn't
 -- support RPATH.
 main = setupAndCabalTest $ do
-    skipIf =<< isWindows
+    skipIfWindows
     setup "configure" ["--enable-executable-dynamic"]
     setup "build" []
     -- This should fail as it we should NOT be able to find the

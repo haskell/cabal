@@ -46,6 +46,7 @@ library
     Test.Cabal.Run
     Test.Cabal.Script
     Test.Cabal.Server
+    Test.Cabal.TestCode
     Test.Cabal.Workdir
 
   other-modules:

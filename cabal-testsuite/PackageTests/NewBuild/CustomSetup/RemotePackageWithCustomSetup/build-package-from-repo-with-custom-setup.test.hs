@@ -6,9 +6,9 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
 
     -- TODO: Debug this failure on Windows.
-    skipIf =<< isWindows
+    skipIfWindows
 
-    skipUnless =<< hasNewBuildCompatBootCabal
+    skipUnless "no v2-build compatible boot-Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $ cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
       -- remote-pkg's setup script should print out a message that it imported from
