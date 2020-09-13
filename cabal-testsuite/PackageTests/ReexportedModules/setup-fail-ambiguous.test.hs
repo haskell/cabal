@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
-    skipUnless =<< ghcVersionIs (>= mkVersion [7,9])
+    skipUnlessGhcVersion ">= 7.9"
     withPackageDb $ do
         withDirectory "containers-dupe" $
             setup_install []

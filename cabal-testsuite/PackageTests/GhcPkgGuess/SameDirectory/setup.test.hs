@@ -1,7 +1,7 @@
 import Test.Cabal.Prelude
 -- TODO: Enable this test on Windows
 main = setupAndCabalTest $ do
-    skipIf =<< isWindows
+    skipIfWindows
     env <- getTestEnv
     let cwd = testCurrentDir env
     ghc_path <- programPathM ghcProgram

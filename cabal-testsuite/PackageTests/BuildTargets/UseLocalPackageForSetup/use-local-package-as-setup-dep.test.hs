@@ -12,7 +12,7 @@ import Test.Cabal.Prelude
 -- qualifiers.
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $ do
-    skipUnless =<< hasNewBuildCompatBootCabal
+    skipUnless "no v2-build compatible boot-Cabal" =<< hasNewBuildCompatBootCabal
     withRepo "repo" $ do
       fails $ cabalG ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe", "--dry-run"]
       -- Disabled recording because whether or not we get

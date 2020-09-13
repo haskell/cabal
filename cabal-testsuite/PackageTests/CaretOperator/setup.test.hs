@@ -14,7 +14,7 @@ import Language.Haskell.Extension (Language(..))
 main = setupTest $ do
     -- Don't run this for GHC 7.0/7.2, which doesn't have a recent
     -- enough version of pretty. (But this is pretty dumb.)
-    skipUnless =<< ghcVersionIs (>= mkVersion [7,3])
+    skipUnlessGhcVersion ">= 7.3"
     assertOutputDoesNotContain "Parse of field 'build-depends' failed"
         =<< setup' "configure" []
     lbi <- getLocalBuildInfoM

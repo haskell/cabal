@@ -1,7 +1,7 @@
 import Test.Cabal.Prelude
 -- Test internal custom preprocessor
 main = cabalTest $ do
-    skipUnless =<< hasCabalForGhc
+    skipUnless "no Cabal for GHC" =<< hasCabalForGhc
 
     -- old Cabal's ./Setup.hs output is difficult to normalise
     recordMode DoNotRecord $

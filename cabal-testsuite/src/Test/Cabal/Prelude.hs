@@ -34,6 +34,8 @@ import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
 import Distribution.Package
+import Distribution.Parsec (eitherParsec)
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -495,7 +497,7 @@ withRepo repo_dir m = do
     env <- getTestEnv
 
     -- Check if hackage-repo-tool is available, and skip if not
-    skipUnless =<< isAvailableProgram hackageRepoToolProgram
+    skipUnless "no hackage-repo-tool program" =<< isAvailableProgram hackageRepoToolProgram
 
     -- 1. Generate keys
     hackageRepoTool "create-keys" ["--keys", testKeysDir env]
@@ -769,6 +771,15 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+skipIfWindows :: TestM ()
+skipIfWindows = skipIf "Windows" =<< isWindows
+
+skipUnlessGhcVersion :: String -> TestM ()
+skipUnlessGhcVersion str =
+    case eitherParsec str of
+        Right vr -> skipUnless ("ghc" ++ prettyShow vr) =<< ghcVersionIs (`withinRange` vr)
+        Left err -> fail err
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS

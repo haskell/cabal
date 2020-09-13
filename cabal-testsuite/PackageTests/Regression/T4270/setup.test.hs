@@ -3,8 +3,8 @@ import Test.Cabal.Prelude
 -- when linked dynamically
 -- See https://github.com/haskell/cabal/issues/4270
 main = setupAndCabalTest $ do
-  skipUnless =<< hasSharedLibraries
-  skipUnless =<< hasCabalShared
-  skipUnless =<< hasCabalForGhc
+  skipUnless "no shared libs"   =<< hasSharedLibraries
+  skipUnless "no shared Cabal"  =<< hasCabalShared
+  skipUnless "no Cabal for GHC" =<< hasCabalForGhc
   setup_build ["--enable-tests", "--enable-executable-dynamic"]
   setup "test" []

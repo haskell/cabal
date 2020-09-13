@@ -5,6 +5,6 @@ import System.Directory
 -- Test for 'build-type: Configure' example from the setup manual.
 main = setupTest $ do
     hasAutoreconf <- liftIO $ fmap isJust $ findExecutable "autoreconf"
-    skipUnless hasAutoreconf
+    skipUnless "no autoreconf" hasAutoreconf
     _ <- shell "autoreconf" ["-i"]
     setup_build []
