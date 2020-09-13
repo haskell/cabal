@@ -28,7 +28,7 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectFlags
          ( ProjectFlags (..) )
 import Distribution.Client.Types
-         ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
+         ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), repoName )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
@@ -49,7 +49,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
-         , currentIndexTimestamp, indexBaseName )
+         , currentIndexTimestamp, indexBaseName, updatePackageIndexCacheFile )
 
 import qualified Data.Maybe as Unsafe (fromJust)
 import qualified Distribution.Compat.CharParsing as P
@@ -126,13 +126,16 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
     $ \repoCtxt -> do
-    let repos       = filter isRepoRemote $ repoContextRepos repoCtxt
-        repoName    = remoteRepoName . repoRemote
+
+    let repos :: [Repo]
+        repos = repoContextRepos repoCtxt
+
         parseArg :: String -> IO UpdateRequest
         parseArg s = case simpleParsec s of
           Just r -> return r
           Nothing -> die' verbosity $
                      "'v2-update' unable to parse repo: \"" ++ s ++ "\""
+
     updateRepoRequests <- traverse parseArg extraArgs
 
     unless (null updateRepoRequests) $ do
@@ -156,7 +159,8 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                                | (UpdateRequest name state) <- updateRequests ]
 
     case reposToUpdate of
-      [] -> return ()
+      [] ->
+        notice verbosity "No remote repositories configured"
       [(remoteRepo, _)] ->
         notice verbosity $ "Downloading the latest package list from "
                         ++ unRepoName (repoName remoteRepo)
@@ -164,10 +168,11 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
               $ "Downloading the latest package lists from: "
               : map (("- " ++) . unRepoName . repoName . fst) reposToUpdate
 
-    jobCtrl <- newParallelJobControl (length reposToUpdate)
-    traverse_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
-      reposToUpdate
-    traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
+    unless (null reposToUpdate) $ do
+      jobCtrl <- newParallelJobControl (length reposToUpdate)
+      traverse_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
+        reposToUpdate
+      traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -179,7 +184,10 @@ updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, RepoIndexState)
 updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
-    RepoLocalNoIndex{} -> return ()
+    RepoLocalNoIndex{} -> do
+      let index = RepoIndex repoCtxt repo
+      updatePackageIndexCacheFile verbosity index
+
     RepoRemote{..} -> do
       downloadResult <- downloadIndex transport verbosity
                         repoRemote repoLocalDir
