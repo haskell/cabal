@@ -16,11 +16,15 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
     withRepo "repo" $ do
       r1 <- recordMode DoNotRecord $
             cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["pkg:my-exe"]
-      let msg = "In order, the following will be built:"
-             ++ "  - build-tool-pkg-1 (lib) (requires download & build)"
-             ++ "  - build-tool-pkg-2 (lib) (requires download & build)"  -- dependency of build-tool-exe
-             ++ "  - build-tool-pkg-2 (exe:build-tool-exe) (requires download & build)"
-             ++ "  - pkg-1.0 (exe:my-exe) (first run)"
+
+      let msg = concat
+              [ "In order, the following will be built:"
+              , "  - build-tool-pkg-1 (lib) (requires build)"
+              , "  - build-tool-pkg-2 (lib) (requires build)"
+              , "  - build-tool-pkg-2 (exe:build-tool-exe) (requires build)"
+              , "  - pkg-1.0 (exe:my-exe) (first run)"
+              ]
+
       assertOutputContains msg r1
       withPlan $ do
         r2 <- runPlanExe' "pkg" "my-exe" []

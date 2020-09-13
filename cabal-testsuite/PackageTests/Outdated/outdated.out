@@ -1,8 +1,8 @@
-# cabal v1-update
+# cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal outdated
 Outdated dependencies:
-base ==3.* (latest: 4.0.0.0)
+base >=3 && <4 (latest: 4.0.0.0)
 template-haskell >=2.3.0.0 && <2.4 (latest: 2.4.0.0)
 # cabal outdated
 Outdated dependencies:
