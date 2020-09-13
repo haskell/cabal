@@ -74,11 +74,12 @@ storeAnonymous reports = sequence_
              -> [(Repo, [BuildReport])]
     separate = map (\rs@((_,repo,_):_) -> (repo, [ r | (r,_,_) <- rs ]))
              . map (concatMap toList)
-             . L.groupBy (equating (repoName . head))
-             . sortBy (comparing (repoName . head))
-             . groupBy (equating repoName)
+             . L.groupBy (equating (repoName' . head))
+             . sortBy (comparing (repoName' . head))
+             . groupBy (equating repoName')
              . onlyRemote
-    repoName (_,_,rrepo) = remoteRepoName rrepo
+
+    repoName' (_,_,rrepo) = remoteRepoName rrepo
 
     onlyRemote :: [(BuildReport, Maybe Repo)]
                -> [(BuildReport, Repo, RemoteRepo)]
