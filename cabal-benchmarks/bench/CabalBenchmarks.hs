@@ -1,4 +1,4 @@
-{-# OPTIONS -Wno-deprecations #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module Main where
 
 import Criterion.Main                         (bench, bgroup, defaultMain, env, nf, whnf)
