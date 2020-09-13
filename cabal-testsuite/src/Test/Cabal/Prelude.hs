@@ -778,7 +778,7 @@ skipIfWindows = skipIf "Windows" =<< isWindows
 skipUnlessGhcVersion :: String -> TestM ()
 skipUnlessGhcVersion str =
     case eitherParsec str of
-        Right vr -> skipUnless ("ghc" ++ prettyShow vr) =<< ghcVersionIs (`withinRange` vr)
+        Right vr -> skipUnless ("needs ghc" ++ prettyShow vr) =<< ghcVersionIs (`withinRange` vr)
         Left err -> fail err
 
 getOpenFilesLimit :: TestM (Maybe Integer)
