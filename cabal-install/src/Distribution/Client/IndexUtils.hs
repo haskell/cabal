@@ -230,10 +230,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
 
   pkgss <- for (repoContextRepos repoCtxt) $ \r -> do
       let rname :: RepoName
-          rname = case r of
-              RepoRemote remote _      -> remoteRepoName remote
-              RepoSecure remote _      -> remoteRepoName remote
-              RepoLocalNoIndex local _ -> localRepoName local
+          rname = repoName r
 
       info verbosity ("Reading available packages of " ++ unRepoName rname ++ "...")
 
@@ -311,6 +308,8 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
       totalIndexState = makeTotalIndexState IndexStateHead $ Map.fromList
           [ (n, IndexStateTime ts)
           | (RepoData n ts _idx _prefs, _strategy) <- pkgss'
+          -- e.g. file+noindex have nullTimestamp as their timestamp
+          , ts /= nullTimestamp
           ]
 
   let addIndex
