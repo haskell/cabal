@@ -184,36 +184,39 @@ validate-dockerfiles : .docker/validate-7.6.3.dockerfile
 .docker/validate-%.dockerfile : .docker/validate.dockerfile.zinza cabal-dev-scripts/src/GenValidateDockerfile.hs
 	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate-dockerfile -- $* $< $@
 
+# This is good idea anyway
+# and we have a test relying on this limit being sufficiently small
+DOCKERARGS:=--ulimit nofile=1024:1024
+
 validate-via-docker-7.6.3:
-	docker build -t cabal-validate -f .docker/validate-7.6.3.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:7.6.3 -f .docker/validate-7.6.3.dockerfile .
 
 validate-via-docker-7.8.4:
-	docker build -t cabal-validate -f .docker/validate-7.8.4.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:7.8.4 -f .docker/validate-7.8.4.dockerfile .
 
 validate-via-docker-7.10.3:
-	docker build -t cabal-validate -f .docker/validate-7.10.3.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:7.10.3 -f .docker/validate-7.10.3.dockerfile .
 
 validate-via-docker-8.0.2:
-	docker build -t cabal-validate -f .docker/validate-8.0.2.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.0.2 -f .docker/validate-8.0.2.dockerfile .
 
 validate-via-docker-8.2.2:
-	docker build -t cabal-validate -f .docker/validate-8.2.2.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.2.2 -f .docker/validate-8.2.2.dockerfile .
 
 validate-via-docker-8.4.4:
-	docker build -t cabal-validate -f .docker/validate-8.4.4.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.4.4 -f .docker/validate-8.4.4.dockerfile .
 
 validate-via-docker-8.6.5:
-	docker build -t cabal-validate -f .docker/validate-8.6.5.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
 validate-via-docker-8.8.3:
-	docker build -t cabal-validate -f .docker/validate-8.8.3.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.8.3 -f .docker/validate-8.8.3.dockerfile .
 
-# Only library ATM
 validate-via-docker-8.10.1:
-	docker build -t cabal-validate -f .docker/validate-8.10.1.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:8.10.1 -f .docker/validate-8.10.1.dockerfile .
 
 validate-via-docker-old:
-	docker build -t cabal-validate -f .docker/validate-old.dockerfile .
+	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
 
 # Weeder
 weeder :
