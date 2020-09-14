@@ -494,10 +494,6 @@ infixr 4 `archiveTo`
 -- external repository corresponding to all of these packages
 withRepo :: FilePath -> TestM a -> TestM a
 withRepo repo_dir m = do
-    -- https://github.com/haskell/cabal/issues/7065
-    -- you don't simply put a windows path into URL...
-    skipIfWindows
-
     env <- getTestEnv
 
     -- 1. Initialize repo directory
@@ -531,7 +527,17 @@ withRepo repo_dir m = do
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    repoUri env ="file+noindex://" ++ testRepoDir env
+    repoUri env = "file+noindex://" ++ localRepoPathToUriPath (testRepoDir env)
+
+    -- encode path as UNC path on windows.
+    localRepoPathToUriPath :: FilePath -> String
+    localRepoPathToUriPath p
+        | buildOS == Windows = "/" ++ convertDirSeparators p
+        | otherwise          = p
+
+    convertDirSeparators = map $ \c -> case c of
+        '\\' -> '/'
+        _    -> c
 
 ------------------------------------------------------------------------
 -- * Subprocess run results

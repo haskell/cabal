@@ -27,7 +27,7 @@ import Distribution.Types.Flag (parsecFlagAssignment)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
-import Distribution.Client.Types.Repo (RemoteRepo(..), LocalRepo (..), emptyRemoteRepo)
+import Distribution.Client.Types.Repo (RemoteRepo(..), LocalRepo (..), emptyRemoteRepo, localRepoPathToUriPath)
 import Distribution.Client.Types.AllowNewer (AllowNewer(..), AllowOlder(..))
 import Distribution.Client.Types.SourceRepo (sourceRepositoryPackageGrammar, SourceRepoList)
 
@@ -1450,7 +1450,7 @@ remoteRepoSectionDescr = SectionDescr
 
     localToRemote :: LocalRepo -> RemoteRepo
     localToRemote (LocalRepo name path sharedCache) = (emptyRemoteRepo name)
-        { remoteRepoURI = URI "file+noindex:" Nothing path "" (if sharedCache then "#shared-cache" else "")
+        { remoteRepoURI = URI "file+noindex:" Nothing (localRepoPathToUriPath path) "" (if sharedCache then "#shared-cache" else "")
         }
 
 -------------------------------

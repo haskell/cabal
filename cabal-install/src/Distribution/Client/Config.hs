@@ -58,6 +58,7 @@ import Distribution.Client.Types
          ( RemoteRepo(..), LocalRepo (..), emptyRemoteRepo
          , AllowOlder(..), AllowNewer(..), RelaxDeps(..), isRelaxDeps
          , RepoName (..), unRepoName
+         , localRepoPathFromUriPath
          )
 import Distribution.Client.Types.Credentials (Username (..), Password (..))
 import Distribution.Client.BuildReports.Types
@@ -1259,7 +1260,7 @@ postProcessRepo lineno reponameStr repo0 = do
         -- Note: the trailing colon is important
         "file+noindex:" -> do
             let uri = remoteRepoURI repo0
-            return $ Left $ LocalRepo reponame (uriPath uri) (uriFragment uri == "#shared-cache")
+            return $ Left $ LocalRepo reponame (localRepoPathFromUriPath (uriPath uri)) (uriFragment uri == "#shared-cache")
 
         _              -> do
             let repo = repo0 { remoteRepoName = reponame }

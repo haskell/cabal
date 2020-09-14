@@ -7,6 +7,8 @@ module Distribution.Client.Types.Repo (
     LocalRepo (..),
     emptyLocalRepo,
     localRepoCacheKey,
+    localRepoPathFromUriPath,
+    localRepoPathToUriPath,
     -- * Repository
     Repo (..),
     repoName,
@@ -17,11 +19,10 @@ module Distribution.Client.Types.Repo (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Network.URI (URI (..), nullURI, parseAbsoluteURI, uriToString)
-
-import Distribution.Simple.Utils (toUTF8BS)
-
 import Distribution.Client.HashValue (hashValue, showHashValue, truncateHash)
+import Distribution.Simple.Utils     (toUTF8BS)
+import Distribution.System           (OS (Windows), buildOS)
+import Network.URI                   (URI (..), nullURI, parseAbsoluteURI, uriToString)
 
 import qualified Data.ByteString.Lazy.Char8      as LBS
 import qualified Distribution.Compat.CharParsing as P
@@ -133,6 +134,32 @@ localRepoCacheKey local = unRepoName (localRepoName local) ++ "-" ++ hashPart wh
     hashPart
         = showHashValue $ truncateHash 8 $ hashValue
         $ LBS.fromStrict $ toUTF8BS $ localRepoPath local
+
+-- TODO: This and @To@ variant are really 'HostPath Absolute <-> UriPath' conversions,
+-- where UriPath is kind of SymPath.
+--
+-- https://github.com/haskell/cabal/issues/6667
+-- https://oleg.fi/gists/posts/2020-09-13-a-design-for-paths.html
+--
+localRepoPathFromUriPath :: String -> FilePath
+localRepoPathFromUriPath p
+    | buildOS == Windows = case p of
+        '/':rest -> convertDirSeparators rest
+        _        -> p
+    | otherwise = p
+  where
+    convertDirSeparators = map $ \c -> case c of
+        '/' -> '\\'
+        _   -> c
+
+localRepoPathToUriPath :: FilePath -> String
+localRepoPathToUriPath p
+    | buildOS == Windows = "/" ++ convertDirSeparators p
+    | otherwise          = p
+  where
+    convertDirSeparators = map $ \c -> case c of
+        '\\' -> '/'
+        _    -> c
 
 -------------------------------------------------------------------------------
 -- Any repository
