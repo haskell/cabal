@@ -686,7 +686,11 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
-  , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
+  , -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+    let cxxflag = case compilerCompatVersion GHC comp of
+                Just v | v >= mkVersion [8, 10] -> "-optcxx"
+                _ -> "-optc"
+    in [ cxxflag ++ opt | opt <- ghcOptCxxOptions opts]
   , [ "-opta" ++ opt | opt <- ghcOptAsmOptions opts]
 
   -----------------
