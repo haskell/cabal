@@ -43,8 +43,8 @@ normalizeOutput nenv =
   . resub "/incoming/new-[0-9]+"
           "/incoming/new-<RAND>"
     -- look for PackageHash directories
-  . resub "/(([A-Za-z0-9]+)(-[A-Za-z0-9\\.]+)*)-[0-9a-f]{4,64}/"
-          "/\\1-<HASH>/"
+  . resub "/(([A-Za-z0-9_]+)(-[A-Za-z0-9\\._]+)*)-[0-9a-f]{4,64}/"
+          "/<PACKAGE>-<HASH>/"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
     -- Some GHC versions are chattier than others
