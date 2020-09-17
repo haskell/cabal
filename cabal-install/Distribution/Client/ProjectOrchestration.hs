@@ -551,8 +551,9 @@ resolveTargets selectPackageTargets selectComponentTarget
       | otherwise
       = Left (TargetProblemNoSuchPackage pkgid)
 
-    checkTarget (TargetPackage _ _ _)
-      = error "TODO: add support for multiple packages in a directory"
+    checkTarget (TargetPackage _ pkgids _)
+      = error ("TODO: add support for multiple packages in a directory.  Got\n"
+              ++ unlines (map prettyShow pkgids))
       -- For the moment this error cannot happen here, because it gets
       -- detected when the package config is being constructed. This case
       -- will need handling properly when we do add support.
