@@ -14,6 +14,8 @@ elseif exists("b:current_syntax")
   finish
 endif
 
+syn case ignore
+
 syn keyword cabalCategory	executable
 syn keyword cabalCategory	library
 syn keyword cabalCategory	foreign-library
