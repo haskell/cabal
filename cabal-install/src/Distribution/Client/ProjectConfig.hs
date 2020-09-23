@@ -572,7 +572,7 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-        . parseProjectConfig
+        . (parseProjectConfig extensionFile)
       =<< BS.readFile extensionFile
 
     addProjectFileProvenance config =
@@ -587,10 +587,10 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 -- For the moment this is implemented in terms of parsers for legacy
 -- configuration types, plus a conversion.
 --
-parseProjectConfig :: BS.ByteString -> OldParser.ParseResult ProjectConfig
-parseProjectConfig content =
+parseProjectConfig :: FilePath -> BS.ByteString -> OldParser.ParseResult ProjectConfig
+parseProjectConfig source content =
     convertLegacyProjectConfig <$>
-      parseLegacyProjectConfig content
+      (parseLegacyProjectConfig source content)
 
 
 -- | Render the 'ProjectConfig' format.
