@@ -395,7 +395,7 @@ ppHsc2hs bi lbi clbi =
       let isCross = hostPlatform lbi /= buildPlatform
           prependCrossFlags = if isCross then ("-x":) else id
       let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
-          pureArgs = genPureArgs gccProg inFile outFile
+          pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
       if hsc2hsSupportsResponseFiles
       then withResponseFile
              verbosity
@@ -411,13 +411,10 @@ ppHsc2hs bi lbi clbi =
   where
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
-    genPureArgs :: ConfiguredProgram -> String -> String -> [String]
-    genPureArgs gccProg inFile outFile =
-          [ "--cc=" ++ programPath gccProg
-          , "--ld=" ++ programPath gccProg ]
-
+    genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
+    genPureArgs hsc2hsVersion gccProg inFile outFile =
           -- Additional gcc options
-       ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
+          [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
        ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
@@ -475,7 +472,24 @@ ppHsc2hs bi lbi clbi =
                                  , opt <- Installed.libraryDirs    pkg ]
                 ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+       ++ preccldFlags
+       ++ hsc2hsOptions bi
+       ++ postccldFlags
+
        ++ ["-o", outFile, inFile]
+      where
+        -- hsc2hs flag parsing was wrong
+        -- (see -- https://github.com/haskell/hsc2hs/issues/35)
+        -- so we need to put -- --cc/--ld *after* hsc2hsOptions,
+        -- for older hsc2hs (pre 0.68.8) so that they can be overridden.
+        ccldFlags =
+          [ "--cc=" ++ programPath gccProg
+          , "--ld=" ++ programPath gccProg
+          ]
+
+        (preccldFlags, postccldFlags)
+          | hsc2hsVersion >= mkVersion [0,68,8] = (ccldFlags, [])
+          | otherwise                           = ([], ccldFlags)
 
     hacked_index = packageHacks (installedPkgs lbi)
     -- Look only at the dependencies of the current component

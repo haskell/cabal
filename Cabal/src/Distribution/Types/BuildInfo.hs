@@ -56,6 +56,7 @@ data BuildInfo = BuildInfo {
         ccOptions         :: [String],  -- ^ options for C compiler
         cxxOptions        :: [String],  -- ^ options for C++ compiler
         ldOptions         :: [String],  -- ^ options for linker
+        hsc2hsOptions     :: [String],  -- ^ options for hsc2hs
         pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
@@ -123,6 +124,7 @@ instance Monoid BuildInfo where
     ccOptions           = [],
     cxxOptions          = [],
     ldOptions           = [],
+    hsc2hsOptions       = [],
     pkgconfigDepends    = [],
     frameworks          = [],
     extraFrameworkDirs  = [],
@@ -171,6 +173,7 @@ instance Semigroup BuildInfo where
     ccOptions           = combine    ccOptions,
     cxxOptions          = combine    cxxOptions,
     ldOptions           = combine    ldOptions,
+    hsc2hsOptions       = combine    hsc2hsOptions,
     pkgconfigDepends    = combine    pkgconfigDepends,
     frameworks          = combineNub frameworks,
     extraFrameworkDirs  = combineNub extraFrameworkDirs,

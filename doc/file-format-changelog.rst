@@ -22,7 +22,7 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.6``
 ----------------------
 
-* TBW
+* Add :pkg-field:`hsc2hs-options`
 
 ``cabal-version: 3.4``
 ----------------------
