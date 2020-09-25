@@ -138,7 +138,7 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             { commandName = newMsg commandName
             , commandUsage = newMsg . commandUsage
             , commandDescription = (newMsg .) <$> commandDescription
-            , commandNotes = (newMsg .) <$> commandDescription
+            , commandNotes = (newMsg .) <$> commandNotes
             }
 
         defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
@@ -146,5 +146,5 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             { commandName = defaultMsg commandName
             , commandUsage = defaultMsg . commandUsage
             , commandDescription = (defaultMsg .) <$> commandDescription
-            , commandNotes = (defaultMsg .) <$> commandDescription
+            , commandNotes = (defaultMsg .) <$> commandNotes
             }
