@@ -1,6 +1,7 @@
 cabal-version: 2.0
 name: mixin
 version: 0
+build-type: Simple
 
 executable str-example
   main-is:             Main.hs

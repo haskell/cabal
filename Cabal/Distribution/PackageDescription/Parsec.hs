@@ -199,6 +199,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
     gpd1 <- view stateGpd <$> execStateT (goSections specVer sectionFields) (SectionS gpd Map.empty)
 
     checkForUndefinedFlags gpd1
+    checkForUndefinedCustomSetup gpd1
     gpd1 `deepseq` return gpd1
   where
     safeLast :: [a] -> Maybe a
@@ -672,9 +673,14 @@ onAllBranches p = go mempty
     goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
 
 -------------------------------------------------------------------------------
--- Flag check
+-- Post parsing checks
 -------------------------------------------------------------------------------
 
+-- | Check that we 
+--
+-- * don't use undefined flags (very bad)
+-- * define flags which are unused (just bad)
+--
 checkForUndefinedFlags :: GenericPackageDescription -> ParseResult ()
 checkForUndefinedFlags gpd = do
     let definedFlags, usedFlags :: Set.Set FlagName
@@ -688,6 +694,18 @@ checkForUndefinedFlags gpd = do
   where
     f :: CondTree ConfVar c a -> Const (Set.Set FlagName) (CondTree ConfVar c a)
     f ct = Const (Set.fromList (freeVars ct))
+
+-- | Since @cabal-version: 1.24@ one can specify @custom-setup@.
+-- Let us require it.
+--
+checkForUndefinedCustomSetup :: GenericPackageDescription -> ParseResult ()
+checkForUndefinedCustomSetup gpd = do
+    let pd  = packageDescription gpd
+    let csv = specVersion pd
+
+    when (buildType pd == Custom && isNothing (setupBuildInfo pd)) $
+        when (csv >= mkVersion [1,24]) $ parseFailure zeroPos $
+            "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
 
 -------------------------------------------------------------------------------
 -- Old syntax
