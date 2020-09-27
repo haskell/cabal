@@ -158,24 +158,28 @@ licenseIsFsfLibre _ = False
 
 licenseIdList :: LicenseListVersion -> [LicenseId]
 licenseIdList LicenseListVersion_3_0 =
-{{licenseList_3_0}}
+{{licenseList_perv.v_3_0}}
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_2 =
-{{licenseList_3_2}}
+{{licenseList_perv.v_3_2}}
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_6 =
-{{licenseList_3_6}}
+{{licenseList_perv.v_3_6}}
     ++ bulkOfLicenses
 licenseIdList LicenseListVersion_3_9 =
-{{licenseList_3_9}}
+{{licenseList_perv.v_3_9}}
+    ++ bulkOfLicenses
+licenseIdList LicenseListVersion_3_10 =
+{{licenseList_perv.v_3_9}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseId' from a 'String'.
 mkLicenseId :: LicenseListVersion -> String -> Maybe LicenseId
-mkLicenseId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
-mkLicenseId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseId LicenseListVersion_3_6 s = Map.lookup s stringLookup_3_6
-mkLicenseId LicenseListVersion_3_9 s = Map.lookup s stringLookup_3_9
+mkLicenseId LicenseListVersion_3_0  s = Map.lookup s stringLookup_3_0
+mkLicenseId LicenseListVersion_3_2  s = Map.lookup s stringLookup_3_2
+mkLicenseId LicenseListVersion_3_6  s = Map.lookup s stringLookup_3_6
+mkLicenseId LicenseListVersion_3_9  s = Map.lookup s stringLookup_3_9
+mkLicenseId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 
 stringLookup_3_0 :: Map String LicenseId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseId i, i)) $
@@ -192,6 +196,10 @@ stringLookup_3_6 = Map.fromList $ map (\i -> (licenseId i, i)) $
 stringLookup_3_9 :: Map String LicenseId
 stringLookup_3_9 = Map.fromList $ map (\i -> (licenseId i, i)) $
     licenseIdList LicenseListVersion_3_9
+
+stringLookup_3_10 :: Map String LicenseId
+stringLookup_3_10 = Map.fromList $ map (\i -> (licenseId i, i)) $
+    licenseIdList LicenseListVersion_3_10
 
 --  | Licenses in all SPDX License lists
 bulkOfLicenses :: [LicenseId]
