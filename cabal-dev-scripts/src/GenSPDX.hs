@@ -33,7 +33,8 @@ main = generate =<< O.execParser opts where
         <$> licenses "3.0"
         <*> licenses "3.2"
         <*> licenses "3.6"
-        <*> licenses "3.8"
+        <*> licenses "3.9"
+        <*> licenses "3.10"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"
@@ -63,29 +64,17 @@ generate'
     -> (Input -> IO String)
     -> IO String
 generate' lss template = template $ Input
-    { inputLicenseIds      = licenseIds
-    , inputLicenses        = licenseValues
-    , inputLicenseList_all = mkLicenseList (== allVers)
-    , inputLicenseList_3_0 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
-    , inputLicenseList_3_2 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
-    , inputLicenseList_3_6 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
-    , inputLicenseList_3_9 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_9 vers)
+    { inputLicenseIds       = licenseIds
+    , inputLicenses         = licenseValues
+    , inputLicenseList_all  = mkLicenseList (== allVers)
+    , inputLicenseList_perv = tabulate $ \ver -> mkLicenseList
+        (\vers -> vers /= allVers && Set.member ver vers)
     }
   where
-    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) (LL ls_3_9) = lss
-
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
-        $ combine licenseId $ \ver -> case ver of
-            SPDXLicenseListVersion_3_9 -> filterDeprecated ls_3_9
-            SPDXLicenseListVersion_3_6 -> filterDeprecated ls_3_6
-            SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
-            SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
+        $ combine licenseId $ \ver -> filterDeprecated $ unLL $ index ver lss
 
     filterDeprecated = filter (not . licenseDeprecated)
 
@@ -122,7 +111,7 @@ data License = License
     }
   deriving (Show)
 
-newtype LicenseList = LL [License]
+newtype LicenseList = LL { unLL :: [License] }
   deriving (Show)
 
 instance FromJSON License where

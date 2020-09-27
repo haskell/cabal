@@ -22,6 +22,9 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.6``
 ----------------------
 
+* License fields use identifiers from SPDX License List version
+  ``3.10 2020-08-03``
+
 * Add :pkg-field:`hsc2hs-options`
 
 ``cabal-version: 3.4``
