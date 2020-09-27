@@ -118,7 +118,7 @@ GenericPackageDescription
                           {author = "",
                            benchmarks = [],
                            bugReports = "",
-                           buildTypeRaw = Nothing,
+                           buildTypeRaw = Just Simple,
                            category = "",
                            copyright = "",
                            customFieldsPD = [],
