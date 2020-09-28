@@ -1717,6 +1717,12 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     (Platform _ hostOS) = hostPlatform lbi
     compid              = compilerId . compiler $ lbi
 
+    ghcInfoMap          = compilerProperties . compiler $ lbi
+    hasInstallNameTool  =
+      case Map.lookup "install_name_tool command" ghcInfoMap of
+        Just path -> not (null path)
+        Nothing   -> False
+
     -- The list of RPath-supported operating systems below reflects the
     -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
     -- reflect whether the OS supports RPATH.
@@ -1739,8 +1745,10 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     -- well as being part of GHC 9.2 onwards.
     --
     -- We know the GHC in question supports this if it knows about
-    -- `install_name_tool` or `otool`.
-    supportRPaths OSX         = False
+    -- `install_name_tool` or `otool`. Thus in those cases, we do not
+    -- want RPaths support in Cabal, but have this handeled completely in GHC in
+    -- a post processing step.
+    supportRPaths OSX         = not hasInstallNameTool
     supportRPaths FreeBSD     =
       case compid of
         CompilerId GHC ver | ver >= mkVersion [7,10,2] -> True
