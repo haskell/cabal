@@ -74,6 +74,7 @@ freezeCommand = CommandUI {
      ++ "solver flags such as '--constraint=\"pkg < 1.2\"' and once you have "
      ++ "a satisfactory solution to freeze it using the 'v2-freeze' command "
      ++ "with the same set of flags.",
+
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " v2-freeze\n"
@@ -81,17 +82,8 @@ freezeCommand = CommandUI {
      ++ "  " ++ pname ++ " v2-build --dry-run --constraint=\"aeson < 1\"\n"
      ++ "    Check what a solution with the given constraints would look like\n"
      ++ "  " ++ pname ++ " v2-freeze --constraint=\"aeson < 1\"\n"
-     ++ "    Freeze a solution using the given constraints\n\n"
+     ++ "    Freeze a solution using the given constraints\n"
 
-     ++ "Note: this command is part of the new project-based system (aka "
-     ++ "nix-style\nlocal builds). These features are currently in beta. "
-     ++ "Please see\n"
-     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
-     ++ "for\ndetails and advice on what you can expect to work. If you "
-     ++ "encounter problems\nplease file issues at "
-     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
-     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
-     ++ "is very much appreciated.\n"
    , commandDefaultFlags = defaultNixStyleFlags ()
    , commandOptions      = nixStyleOptions (const [])
    }
