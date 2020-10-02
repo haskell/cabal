@@ -65,9 +65,7 @@ benchCommand = CommandUI {
      ++ "  " ++ pname ++ " v2-bench cname\n"
      ++ "    Run the benchmark named cname\n"
      ++ "  " ++ pname ++ " v2-bench cname -O2\n"
-     ++ "    Run the benchmark built with '-O2' (including local libs used)\n\n"
-
-     ++ cmdCommonHelpTextNewBuildBeta
+     ++ "    Run the benchmark built with '-O2' (including local libs used)\n"
 
    , commandDefaultFlags = defaultNixStyleFlags ()
    , commandOptions      = nixStyleOptions (const [])
