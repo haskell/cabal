@@ -143,9 +143,8 @@ runCommand = CommandUI
       ++ "  " ++ pname ++ " v2-run pkgfoo:foo-tool\n"
       ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
       ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
-      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
+      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n"
 
-      ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags ()
   , commandOptions      = nixStyleOptions (const [])
   }

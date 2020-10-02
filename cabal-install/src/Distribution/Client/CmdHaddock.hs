@@ -57,9 +57,7 @@ haddockCommand = CommandUI {
   commandNotes        = Just $ \pname ->
         "Examples:\n"
      ++ "  " ++ pname ++ " v2-haddock pkgname"
-     ++ "    Build documentation for the package named pkgname\n\n"
-
-     ++ cmdCommonHelpTextNewBuildBeta
+     ++ "    Build documentation for the package named pkgname\n"
   , commandOptions      = nixStyleOptions (const [])
   , commandDefaultFlags = defaultNixStyleFlags ()
   }

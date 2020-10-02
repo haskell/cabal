@@ -73,9 +73,7 @@ testCommand = CommandUI
      ++ "  " ++ pname ++ " v2-test cname\n"
      ++ "    Run the test-suite named cname\n"
      ++ "  " ++ pname ++ " v2-test cname --enable-coverage\n"
-     ++ "    Run the test-suite built with code coverage (including local libs used)\n\n"
-
-     ++ cmdCommonHelpTextNewBuildBeta
+     ++ "    Run the test-suite built with code coverage (including local libs used)\n"
 
   , commandDefaultFlags = defaultNixStyleFlags ()
   , commandOptions      = nixStyleOptions (const [])

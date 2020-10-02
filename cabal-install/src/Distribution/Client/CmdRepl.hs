@@ -177,9 +177,8 @@ replCommand = Client.installCommand {
         ++ "(or no componentif there is no project present)\n"
      ++ "  " ++ pname ++ " v2-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
      ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
-        ++ "to the default component (or no component if there is no project present)\n"
+        ++ "to the default component (or no component if there is no project present)\n",
 
-     ++ cmdCommonHelpTextNewBuildBeta,
   commandDefaultFlags = defaultNixStyleFlags ([], defaultEnvFlags),
   commandOptions = nixStyleOptions $ \showOrParseArgs ->
     map (liftOptionL _1) (replOptions showOrParseArgs) ++

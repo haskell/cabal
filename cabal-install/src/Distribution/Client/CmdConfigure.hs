@@ -70,9 +70,8 @@ configureCommand = CommandUI {
      ++ "    program and check the resulting configuration works.\n"
      ++ "  " ++ pname ++ " v2-configure\n"
      ++ "    Reset the local configuration to empty and check the overall\n"
-     ++ "    project configuration works.\n\n"
+     ++ "    project configuration works.\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags ()
   , commandOptions      = filter (\o -> optionName o /= "ignore-project")
                         . nixStyleOptions (const [])
