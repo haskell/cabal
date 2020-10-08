@@ -469,11 +469,11 @@ getAppDir :: InitFlags -> IO InitFlags
 getAppDir flags = do
   appDirs <-
     if (packageType flags) == Flag Library
-    then return (Just [])
-    else return (applicationDirs flags)
-      ?>> guessAppDir flags
-      ?>> promptUserForApplicationDir
-      ?>> setDefault
+        then return (Just [])
+        else return (applicationDirs flags)
+          ?>> guessAppDir flags
+          ?>> promptUserForApplicationDir
+          ?>> setDefault
 
   return $ flags { applicationDirs = appDirs }
 
