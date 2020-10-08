@@ -468,20 +468,16 @@ getGenComments flags = do
 getAppDir :: InitFlags -> IO InitFlags
 getAppDir flags = do
   appDirs <-
-    return (applicationDirs flags)
-    ?>> noAppDirIfLibraryOnly
-    ?>> guessAppDir flags
-    ?>> promptUserForApplicationDir
-    ?>> setDefault
+    if (packageType flags) == Flag Library
+    then return (Just [])
+    else return (applicationDirs flags)
+      ?>> guessAppDir flags
+      ?>> promptUserForApplicationDir
+      ?>> setDefault
+
   return $ flags { applicationDirs = appDirs }
 
   where
-    -- If the packageType==Library, then there is no application dir.
-    noAppDirIfLibraryOnly :: IO (Maybe [String])
-    noAppDirIfLibraryOnly =
-      if (packageType flags) == Flag Library
-      then return (Just [])
-      else return Nothing
 
     -- Set the default application directory.
     setDefault :: IO (Maybe [String])
