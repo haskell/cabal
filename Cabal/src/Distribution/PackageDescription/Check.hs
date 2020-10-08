@@ -301,7 +301,7 @@ checkExecutable pkg exe =
         && takeExtension (modulePath exe) `notElem` [".hs", ".lhs"]) $
       PackageDistInexcusable $
            "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
+        ++ "To use this feature you must specify 'cabal-version: 1.18'."
 
   , check (not (null moduleDuplicates)) $
        PackageBuildImpossible $
@@ -355,7 +355,7 @@ checkTestSuite pkg test =
   , checkSpecVersion pkg CabalSpecV1_18 (mainIsNotHsExt && not mainIsWrongExt) $
       PackageDistInexcusable $
            "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
+        ++ "To use this feature you must specify 'cabal-version: 1.18'."
 
     -- check that all autogen-modules appear on other-modules
   , check
@@ -673,7 +673,7 @@ checkOldLicense pkg lic = catMaybes
       PackageDistInexcusable $
            "Unfortunately the license " ++ quote (prettyShow (license pkg))
         ++ " messes up the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "specify 'cabal-version: 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
 
   , case lic of
@@ -1140,7 +1140,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The 'test-suite' section is new in Cabal 1.10. "
         ++ "Unfortunately it messes up the parser in older Cabal versions "
-        ++ "so you must specify at least 'cabal-version: >= 1.8', but note "
+        ++ "so you must specify at least 'cabal-version: 1.8', but note "
         ++ "that only Cabal 1.10 and later can actually run such test suites."
 
     -- check use of default-language field
@@ -1177,7 +1177,7 @@ checkCabalVersion pkg =
     (any (not.null.reexportedModules) (allLibraries pkg)) $
       PackageDistInexcusable $
            "To use the 'reexported-module' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.22'."
+        ++ "at least 'cabal-version: 1.22'."
 
     -- check use of thinning and renaming
   , checkVersion CabalSpecV2_0 usesBackpackIncludes $
@@ -1190,7 +1190,7 @@ checkCabalVersion pkg =
       -- Just a warning, because this won't break on old Cabal versions.
       PackageDistSuspiciousWarn $
            "To use the 'extra-framework-dirs' field the package needs to specify"
-        ++ " at least 'cabal-version: >= 1.24'."
+        ++ " at least 'cabal-version: 1.24'."
 
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions
@@ -1239,7 +1239,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The 'source-repository' section is new in Cabal 1.6. "
         ++ "Unfortunately it messes up the parser in earlier Cabal versions "
-        ++ "so you need to specify 'cabal-version: >= 1.6'."
+        ++ "so you need to specify 'cabal-version: 1.6'."
 
     -- check for new language extensions
   , checkVersion CabalSpecV1_4 (not (null mentionedExtensionsThatNeedCabal12)) $
@@ -1247,7 +1247,7 @@ checkCabalVersion pkg =
            "Unfortunately the language extensions "
         ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal12)
         ++ " break the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "specify 'cabal-version: 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
@@ -1256,7 +1256,7 @@ checkCabalVersion pkg =
            "Unfortunately the language extensions "
         ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal14)
         ++ " break the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "specify 'cabal-version: 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
@@ -1264,7 +1264,7 @@ checkCabalVersion pkg =
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
       PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.24' with 'build-type: Custom' "
+           "Packages using 'cabal-version: 1.24' with 'build-type: Custom' "
         ++ "must use a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
@@ -1275,7 +1275,7 @@ checkCabalVersion pkg =
            && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
            "From version 1.24 cabal supports specifying explicit dependencies "
-        ++ "for Custom setup scripts. Consider using cabal-version >= 1.24 and "
+        ++ "for Custom setup scripts. Consider using 'cabal-version: 1.24' and "
         ++ "adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
