@@ -1164,7 +1164,7 @@ checkCabalVersion pkg =
     (not . null $ extraDocFiles pkg) $
       PackageDistInexcusable $
            "To use the 'extra-doc-files' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.18'."
+        ++ "at least 'cabal-version: 1.18'."
 
   , checkVersion CabalSpecV2_0
     (not (null (subLibraries pkg))) $
