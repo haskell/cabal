@@ -268,6 +268,17 @@ patches = Map.fromList
          (Fingerprint 17812331267506881875 3005293725141563863)
          (Fingerprint 3445957263137759540 12472369104312474458)
          (bsReplace "cabal-version:  2" "cabal-version: 2.0")
+
+    -- Empty filepath in not license-file or data-dir
+    -- These have hs-source-dirs: ""
+    , mk "\nname:                wai-middleware-hmac-client\nversion:             0.1.0.1\nlicense:             BSD3\nlicense-file:        LICENSE\nauthor:              Christopher Reichert\nmaintainer:          creichert07@gmail.com\ncopyright:           (c) 2015, Christo"
+         (Fingerprint 3112606538775065787 11984607507024462091)
+         (Fingerprint 6916432989977230500 6621389616675138128)
+         (bsReplace "\"\"" ".")
+    , mk "\nname:                wai-middleware-hmac-client\nversion:             0.1.0.2\nlicense:             BSD3\nlicense-file:        LICENSE\nauthor:              Christopher Reichert\nmaintainer:          creichert07@gmail.com\ncopyright:           (c) 2015, Christo"
+         (Fingerprint 12566783342663020458 17562089389615949789)
+         (Fingerprint 15745683452603944938 10556498036622072844)
+         (bsReplace "\"\"" ".")
     ]
   where
     mk a b c d = ((a, b), (c, d))

@@ -41,6 +41,8 @@ data PWarnType
 
     | PWTSpecVersion           -- ^ Warnings about cabal-version format.
 
+    | PWTEmptyFilePath         -- ^ Empty filepath, i.e. literally ""
+
     | PWTExperimental          -- ^ Experimental feature
     deriving (Eq, Ord, Show, Enum, Bounded, Generic)
 

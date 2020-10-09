@@ -145,7 +145,7 @@ GenericPackageDescription
                            copyright = "",
                            customFieldsPD = [_×_ "x-revision" "1",
                                              _×_ "x-follows-version-policy" ""],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = "",
                            executables = [],

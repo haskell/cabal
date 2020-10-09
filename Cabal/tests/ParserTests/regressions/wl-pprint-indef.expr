@@ -182,7 +182,7 @@ GenericPackageDescription
                            category = "Text",
                            copyright = "",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = concat
                                            ["This is a pretty printing library based on Wadler's paper \"A Prettier\n",

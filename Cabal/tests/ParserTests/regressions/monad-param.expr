@@ -116,7 +116,7 @@ GenericPackageDescription
                            category = "Control",
                            copyright = "Copyright (C) 2006-2007, Edward Kmett",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = "Implements parameterized monads by overloading the monad sugar with more liberal types.",
                            executables = [],

@@ -323,7 +323,7 @@ GenericPackageDescription
                            category = "Data",
                            copyright = "Copyright by Michal J. Gajda '2012",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = "Octree data structure is relatively shallow data structure for space partitioning.",
                            executables = [],

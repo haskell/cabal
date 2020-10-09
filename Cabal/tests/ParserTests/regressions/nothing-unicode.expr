@@ -139,7 +139,7 @@ GenericPackageDescription
                            category = "",
                            copyright = "",
                            customFieldsPD = [_×_ "x-\28961" "\28961"],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = "",
                            executables = [],

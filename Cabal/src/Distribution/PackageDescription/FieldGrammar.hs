@@ -1,5 +1,7 @@
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar (
     -- * Package description
@@ -55,6 +57,7 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
+import Distribution.Compat.Newtype       (Newtype)
 import Distribution.Compiler             (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
@@ -62,12 +65,12 @@ import Distribution.ModuleName           (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty               (prettyShow)
+import Distribution.Pretty               (Pretty (..), prettyShow, showToken)
 import Distribution.Types.Mixin          (Mixin)
 import Distribution.Types.ModuleReexport
 import Distribution.Version              (Version, VersionRange)
 
-import qualified Data.ByteString.Char8         as BS8
+import qualified Data.ByteString.Char8   as BS8
 import qualified Distribution.SPDX       as SPDX
 import qualified Distribution.Types.Lens as L
 
@@ -81,9 +84,11 @@ packageDescriptionFieldGrammar
        , c (Identity PackageName)
        , c (Identity Version)
        , c (List FSep FilePathNT String)
+       , c (List FSep CompatFilePath String)
        , c (List FSep TestedWith (CompilerFlavor, VersionRange))
        , c (List VCat FilePathNT String)
        , c FilePathNT
+       , c CompatFilePath
        , c SpecLicense
        , c SpecVersion
        )
@@ -93,6 +98,7 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
+        ^^^ fmap (filter (not . null)) -- strip empty filepaths
     <*> freeTextFieldDefST  "copyright"                                L.copyright
     <*> freeTextFieldDefST  "maintainer"                               L.maintainer
     <*> freeTextFieldDefST  "author"                                   L.author
@@ -117,7 +123,8 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> pure []       -- benchmarks
     --  * Files
     <*> monoidalFieldAla    "data-files"         (alaList' VCat FilePathNT) L.dataFiles
-    <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir ""
+    <*> optionalFieldDefAla "data-dir"           CompatFilePath             L.dataDir "."
+        ^^^ fmap (\x -> if null x then "." else x) -- map empty directories to "."
     <*> monoidalFieldAla    "extra-source-files" formatExtraSourceFiles     L.extraSrcFiles
     <*> monoidalFieldAla    "extra-tmp-files"    (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla    "extra-doc-files"    (alaList' VCat FilePathNT) L.extraDocFiles
@@ -130,8 +137,8 @@ packageDescriptionFieldGrammar = PackageDescription
         -- TODO: neither field is deprecated
         -- should we pretty print license-file if there's single license file
         -- and license-files when more
-        <$> monoidalFieldAla    "license-file"  (alaList' FSep FilePathNT)  L.licenseFiles
-        <*> monoidalFieldAla    "license-files"  (alaList' FSep FilePathNT) L.licenseFiles
+        <$> monoidalFieldAla    "license-file"  (alaList' FSep CompatFilePath)  L.licenseFiles
+        <*> monoidalFieldAla    "license-files"  (alaList' FSep CompatFilePath) L.licenseFiles
             ^^^ hiddenField
 
 -------------------------------------------------------------------------------
@@ -692,6 +699,44 @@ formatOtherExtensions = alaList' FSep MQuoted
 
 formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatOtherModules = alaList' VCat MQuoted
+
+-------------------------------------------------------------------------------
+-- newtypes
+-------------------------------------------------------------------------------
+
+-- | Compat FilePath accepts empty file path,
+-- but issues a warning.
+--
+-- There are simply too many (~1200) package definition files
+--
+-- @
+-- license-file: ""
+-- @
+--
+-- and
+--
+-- @
+-- data-dir: ""
+-- @
+--
+-- across Hackage to outrule them completely.
+-- I suspect some of them are generated (e.g. formatted) by machine.
+--
+newtype CompatFilePath = CompatFilePath { getCompatFilePath :: FilePath } -- TODO: Change to use SymPath
+
+instance Newtype String CompatFilePath
+
+instance Parsec CompatFilePath where
+    parsec = do
+        token <- parsecToken
+        if null token
+        then do
+            parsecWarning PWTEmptyFilePath "empty FilePath"
+            return (CompatFilePath "")
+        else return (CompatFilePath token)
+
+instance Pretty CompatFilePath where
+    pretty = showToken . getCompatFilePath
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions

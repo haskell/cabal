@@ -636,7 +636,7 @@ GenericPackageDescription
                            copyright = concat
                                          ["(c) 2010 Grant Monroe\n", "(c) 2011 Leon P Smith"],
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = concat
                                            ["This is a binding to libpq: the C application\n",

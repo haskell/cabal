@@ -708,7 +708,7 @@ GenericPackageDescription
                            category = "Generics",
                            copyright = "",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = concat
                                            ["A library to support the definition of generic functions.\n",
