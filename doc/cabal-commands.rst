@@ -173,10 +173,11 @@ cannot be excluded for technical reasons).
 cabal v2-run
 -------------
 
-``cabal v2-run [TARGET [ARGS]]`` runs the executable specified by the
-target, which can be a component, a package or can be left blank, as
-long as it can uniquely identify an executable within the project.
-Tests and benchmarks are also treated as executables.
+``cabal v2-run [TARGET [ARGS]]`` builds (if necessary) and runs the
+executable specified by the target, which can be a component, a
+package or can be left blank, as long as it can uniquely identify
+an executable within the project. Tests and benchmarks are also 
+treated as executables.
 
 See `the v2-build section <#cabal-v2-build>`__ for the target syntax.
 
@@ -273,7 +274,10 @@ cabal v2-exec
 
 ``cabal v2-exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
 using the project's environment. That is, passing the right flags to compiler
-invocations and bringing the project's executables into scope.
+invocations and bringing the project's executables into scope. 
+
+Note that unlike ``v2-run``, ``v2-exec`` will *not* (re)build anything; in particular,
+any changes since the last build will not be incorporated.
 
 cabal v2-install
 -----------------
