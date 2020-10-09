@@ -1,0 +1,88 @@
+cabal-version: 1.12
+name:          example
+version:       1
+synopsis:      Synopsis is short, Example file for highlighting testing
+author:        Oleg Grenrus
+maintainer:    Oleg Grenrus <oleg.grenrus@iki.fi>
+homepage:      http://example.com/url%20with%20spaces
+category:      Example
+license:       BSD-3-Clause
+license-file:  LICENSE
+build-type:    Simple
+description:
+  description: Trying to fool highlighter, successfully?
+  Description is long and often written on multiple lines Haskell2010
+  type subdir extensions:, the colon could fool highligher
+  DeriveFunctor
+  as if else elif should not be matched here
+tested-with:
+  GHC (>=7.0.4 && <8)
+   || ==8.0.2
+   || ==8.2.2
+   || ==8.4.4
+   || ==8.6.5
+   || ==8.8.4
+   || ==8.10.2
+
+flag some-flag
+  manual: True
+
+common name
+  default-language: Haskell2010
+  build-depends:    base ^>=1.2.3
+
+source-repository head
+  type:     git
+  location: https://example.com/url%20with%20spaces.git
+
+library
+  import:             deps
+  exposed-modules:    Foobar
+  build-depends:      base
+
+  buildable: True
+
+  if flag(some-flag)
+    build-depends: containers
+  elif !impl(ghc >=8.0) && True
+    build-depends: semigroups
+    if flag(some-flag)
+       build-depends: nested
+  else
+    build-depends: void
+
+  -- test empty lines
+  build-depends:
+    , containers >= 0.5.0.0 && <0.6
+    , base ^>=4.4.0.0 || ^>=4.5.0.0
+
+  -- Case insensitivity
+  default-extensions:
+    DeriveFoldable
+    DeriveFunctor
+
+  other-extensions:
+    ImpredicativeTypes
+    LinearTypes
+
+executable my-executable
+  import:  deps
+  main-is: Executable.hs
+
+test-suite my-tests
+  import:  deps
+
+  -- exitcode-stdio-1.0 or detailed-0.9
+  type:    exitcode-stdio-1.0
+  main-is: Tests.hs
+
+benchmark my-benchmark
+  import:  deps
+  type:    exitcode-stdio-1.0
+  main-is: Bench.hs
+
+foreign-library my-flib
+  import: deps
+
+  -- native-shared or native-static
+  type:   native-shared

@@ -702,7 +702,7 @@ formatOtherModules = alaList' VCat MQuoted
 --
 _syntaxFieldNames :: IO ()
 _syntaxFieldNames = sequence_
-    [ BS8.putStrLn $ "syn keyword cabalStatement " <> n <> ":"
+    [ BS8.putStrLn $ " \\ " <> n
     | n <- nub $ sort $ mconcat
         [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
         , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
@@ -718,11 +718,14 @@ _syntaxFieldNames = sequence_
 
 _syntaxExtensions :: IO ()
 _syntaxExtensions = sequence_
-    [ putStrLn $ "syn keyword cabalExtension " <> e
-    | e <- nub $ sort
-          [ prettyShow e'
-          | e <- [ minBound .. maxBound ]
-          , e' <- [EnableExtension e, DisableExtension e]
-          ]
-    , e `notElem` ["NoSafe", "NoUnsafe", "NoTrustworthy"]
+    [ putStrLn $ "  \\ " <> e
+    | e <- ["Safe","Trustworthy","Unsafe"]
+        ++ es
+        ++ map ("No"++) es
     ]
+  where
+    es = nub $ sort
+          [ prettyShow e
+          | e <- [ minBound .. maxBound ]
+          , e `notElem` [Safe,Unsafe,Trustworthy]
+          ]

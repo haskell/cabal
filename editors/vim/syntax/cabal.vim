@@ -1,457 +1,613 @@
 " Vim syntax file
-" Language:	Haskell Cabal Build file
-" Maintainer:	Cabal Development team <cabal-devel@haskell.org>
-"
-" This file is written so syntaxbased omnicompletion
-"
-" set omnifunc=syntaxcomplete#Complete
-"
-" is as useful as it could be.
-"
-if version < 600
-  syntax clear
-elseif exists("b:current_syntax")
+if exists("b:current_syntax")
   finish
 endif
 
+" this file uses line continuation
+let s:cpo_save = &cpo
+set cpo&vim
+
+" Lexical structure, keywords and comments
+""""""""""""""""""""""""""""""""""""""""""
+
+" set iskeyword for this syntax script
+syn iskeyword a-z,A-Z,48-57,192-255,-,.
+
+" Comments
+syn match cabalComment    /--.*$/
+
+" Enumerations
+""""""""""""""
+
+syn case match
+
+syn keyword cabalBuildType contained
+  \ Simple
+  \ Configure
+  \ Custom
+
+" test-suite,benchmark: exitcode-stdio-1.0, detailed-0.9
+" foreign-library:      native-shared, native-static
+" source-repository:    git, ...
+syn keyword cabalCompType contained
+  \ exitcode-stdio-1.0
+  \ detailed-0.0
+  \ native-shared native-static
+  \ cvs svn darcs mercurial git
+
+syn keyword cabalLanguage contained
+  \ Haskell98
+  \ Haskell2010
+
+" To update this in Cabal, `cabal repl Cabal` and:
+" >>> :m *Distribution.PackageDescription.FieldGrammar
+" >>> _syntaxFieldNames
+syn keyword cabalFieldName contained
+  \ asm-options
+  \ asm-sources
+  \ author
+  \ autogen-includes
+  \ autogen-modules
+  \ benchmark-module
+  \ branch
+  \ bug-reports
+  \ build-depends
+  \ build-tool-depends
+  \ build-tools
+  \ build-type
+  \ buildable
+  \ c-sources
+  \ cabal-version
+  \ category
+  \ cc-options
+  \ cmm-options
+  \ cmm-sources
+  \ copyright
+  \ cpp-options
+  \ cxx-options
+  \ cxx-sources
+  \ data-dir
+  \ data-files
+  \ default
+  \ default-extensions
+  \ default-language
+  \ description
+  \ exposed
+  \ exposed-modules
+  \ extensions
+  \ extra-bundled-libraries
+  \ extra-doc-files
+  \ extra-dynamic-library-flavours
+  \ extra-framework-dirs
+  \ extra-ghci-libraries
+  \ extra-lib-dirs
+  \ extra-libraries
+  \ extra-library-flavours
+  \ extra-source-files
+  \ extra-tmp-files
+  \ frameworks
+  \ ghc-options
+  \ ghc-prof-options
+  \ ghc-shared-options
+  \ ghcjs-options
+  \ ghcjs-prof-options
+  \ ghcjs-shared-options
+  \ homepage
+  \ hs-source-dir
+  \ hs-source-dirs
+  \ hsc2hs-options
+  \ hugs-options
+  \ include-dirs
+  \ includes
+  \ install-includes
+  \ jhc-options
+  \ js-sources
+  \ ld-options
+  \ lib-version-info
+  \ lib-version-linux
+  \ license
+  \ license-file
+  \ license-files
+  \ location
+  \ main-is
+  \ maintainer
+  \ manual
+  \ mixins
+  \ mod-def-file
+  \ module
+  \ name
+  \ nhc98-options
+  \ options
+  \ other-extensions
+  \ other-languages
+  \ other-modules
+  \ package-url
+  \ pkgconfig-depends
+  \ reexported-modules
+  \ scope
+  \ setup-depends
+  \ signatures
+  \ stability
+  \ subdir
+  \ synopsis
+  \ tag
+  \ test-module
+  \ tested-with
+  \ type
+  \ version
+  \ virtual-modules
+
+" To update this in Cabal, `cabal repl Cabal` and:
+" >>> :m *Distribution.PackageDescription.FieldGrammar
+" >>> _syntaxExtensions
+syn keyword cabalExtension contained
+  \ Safe
+  \ Trustworthy
+  \ Unsafe
+  \ AllowAmbiguousTypes
+  \ ApplicativeDo
+  \ Arrows
+  \ AutoDeriveTypeable
+  \ BangPatterns
+  \ BinaryLiterals
+  \ BlockArguments
+  \ CApiFFI
+  \ CPP
+  \ CUSKs
+  \ ConstrainedClassMethods
+  \ ConstraintKinds
+  \ DataKinds
+  \ DatatypeContexts
+  \ DefaultSignatures
+  \ DeriveAnyClass
+  \ DeriveDataTypeable
+  \ DeriveFoldable
+  \ DeriveFunctor
+  \ DeriveGeneric
+  \ DeriveLift
+  \ DeriveTraversable
+  \ DerivingStrategies
+  \ DerivingVia
+  \ DisambiguateRecordFields
+  \ DoAndIfThenElse
+  \ DoRec
+  \ DuplicateRecordFields
+  \ EmptyCase
+  \ EmptyDataDecls
+  \ EmptyDataDeriving
+  \ ExistentialQuantification
+  \ ExplicitForAll
+  \ ExplicitNamespaces
+  \ ExtendedDefaultRules
+  \ ExtensibleRecords
+  \ FlexibleContexts
+  \ FlexibleInstances
+  \ ForeignFunctionInterface
+  \ FunctionalDependencies
+  \ GADTSyntax
+  \ GADTs
+  \ GHCForeignImportPrim
+  \ GeneralisedNewtypeDeriving
+  \ GeneralizedNewtypeDeriving
+  \ Generics
+  \ HereDocuments
+  \ HexFloatLiterals
+  \ ImplicitParams
+  \ ImplicitPrelude
+  \ ImportQualifiedPost
+  \ ImpredicativeTypes
+  \ IncoherentInstances
+  \ InstanceSigs
+  \ InterruptibleFFI
+  \ JavaScriptFFI
+  \ KindSignatures
+  \ LambdaCase
+  \ LexicalNegation
+  \ LiberalTypeSynonyms
+  \ LinearTypes
+  \ MagicHash
+  \ MonadComprehensions
+  \ MonadFailDesugaring
+  \ MonoLocalBinds
+  \ MonoPatBinds
+  \ MonomorphismRestriction
+  \ MultiParamTypeClasses
+  \ MultiWayIf
+  \ NPlusKPatterns
+  \ NamedFieldPuns
+  \ NamedWildCards
+  \ NegativeLiterals
+  \ NewQualifiedOperators
+  \ NondecreasingIndentation
+  \ NullaryTypeClasses
+  \ NumDecimals
+  \ NumericUnderscores
+  \ OverlappingInstances
+  \ OverloadedLabels
+  \ OverloadedLists
+  \ OverloadedStrings
+  \ PackageImports
+  \ ParallelArrays
+  \ ParallelListComp
+  \ PartialTypeSignatures
+  \ PatternGuards
+  \ PatternSignatures
+  \ PatternSynonyms
+  \ PolyKinds
+  \ PolymorphicComponents
+  \ PostfixOperators
+  \ QualifiedDo
+  \ QuantifiedConstraints
+  \ QuasiQuotes
+  \ Rank2Types
+  \ RankNTypes
+  \ RebindableSyntax
+  \ RecordPuns
+  \ RecordWildCards
+  \ RecursiveDo
+  \ RegularPatterns
+  \ RelaxedPolyRec
+  \ RestrictedTypeSynonyms
+  \ RoleAnnotations
+  \ SafeImports
+  \ ScopedTypeVariables
+  \ StandaloneDeriving
+  \ StandaloneKindSignatures
+  \ StarIsType
+  \ StaticPointers
+  \ Strict
+  \ StrictData
+  \ TemplateHaskell
+  \ TemplateHaskellQuotes
+  \ TraditionalRecordSyntax
+  \ TransformListComp
+  \ TupleSections
+  \ TypeApplications
+  \ TypeFamilies
+  \ TypeFamilyDependencies
+  \ TypeInType
+  \ TypeOperators
+  \ TypeSynonymInstances
+  \ UnboxedSums
+  \ UnboxedTuples
+  \ UndecidableInstances
+  \ UndecidableSuperClasses
+  \ UnicodeSyntax
+  \ UnliftedFFITypes
+  \ UnliftedNewtypes
+  \ ViewPatterns
+  \ XmlSyntax
+  \ NoAllowAmbiguousTypes
+  \ NoApplicativeDo
+  \ NoArrows
+  \ NoAutoDeriveTypeable
+  \ NoBangPatterns
+  \ NoBinaryLiterals
+  \ NoBlockArguments
+  \ NoCApiFFI
+  \ NoCPP
+  \ NoCUSKs
+  \ NoConstrainedClassMethods
+  \ NoConstraintKinds
+  \ NoDataKinds
+  \ NoDatatypeContexts
+  \ NoDefaultSignatures
+  \ NoDeriveAnyClass
+  \ NoDeriveDataTypeable
+  \ NoDeriveFoldable
+  \ NoDeriveFunctor
+  \ NoDeriveGeneric
+  \ NoDeriveLift
+  \ NoDeriveTraversable
+  \ NoDerivingStrategies
+  \ NoDerivingVia
+  \ NoDisambiguateRecordFields
+  \ NoDoAndIfThenElse
+  \ NoDoRec
+  \ NoDuplicateRecordFields
+  \ NoEmptyCase
+  \ NoEmptyDataDecls
+  \ NoEmptyDataDeriving
+  \ NoExistentialQuantification
+  \ NoExplicitForAll
+  \ NoExplicitNamespaces
+  \ NoExtendedDefaultRules
+  \ NoExtensibleRecords
+  \ NoFlexibleContexts
+  \ NoFlexibleInstances
+  \ NoForeignFunctionInterface
+  \ NoFunctionalDependencies
+  \ NoGADTSyntax
+  \ NoGADTs
+  \ NoGHCForeignImportPrim
+  \ NoGeneralisedNewtypeDeriving
+  \ NoGeneralizedNewtypeDeriving
+  \ NoGenerics
+  \ NoHereDocuments
+  \ NoHexFloatLiterals
+  \ NoImplicitParams
+  \ NoImplicitPrelude
+  \ NoImportQualifiedPost
+  \ NoImpredicativeTypes
+  \ NoIncoherentInstances
+  \ NoInstanceSigs
+  \ NoInterruptibleFFI
+  \ NoJavaScriptFFI
+  \ NoKindSignatures
+  \ NoLambdaCase
+  \ NoLexicalNegation
+  \ NoLiberalTypeSynonyms
+  \ NoLinearTypes
+  \ NoMagicHash
+  \ NoMonadComprehensions
+  \ NoMonadFailDesugaring
+  \ NoMonoLocalBinds
+  \ NoMonoPatBinds
+  \ NoMonomorphismRestriction
+  \ NoMultiParamTypeClasses
+  \ NoMultiWayIf
+  \ NoNPlusKPatterns
+  \ NoNamedFieldPuns
+  \ NoNamedWildCards
+  \ NoNegativeLiterals
+  \ NoNewQualifiedOperators
+  \ NoNondecreasingIndentation
+  \ NoNullaryTypeClasses
+  \ NoNumDecimals
+  \ NoNumericUnderscores
+  \ NoOverlappingInstances
+  \ NoOverloadedLabels
+  \ NoOverloadedLists
+  \ NoOverloadedStrings
+  \ NoPackageImports
+  \ NoParallelArrays
+  \ NoParallelListComp
+  \ NoPartialTypeSignatures
+  \ NoPatternGuards
+  \ NoPatternSignatures
+  \ NoPatternSynonyms
+  \ NoPolyKinds
+  \ NoPolymorphicComponents
+  \ NoPostfixOperators
+  \ NoQualifiedDo
+  \ NoQuantifiedConstraints
+  \ NoQuasiQuotes
+  \ NoRank2Types
+  \ NoRankNTypes
+  \ NoRebindableSyntax
+  \ NoRecordPuns
+  \ NoRecordWildCards
+  \ NoRecursiveDo
+  \ NoRegularPatterns
+  \ NoRelaxedPolyRec
+  \ NoRestrictedTypeSynonyms
+  \ NoRoleAnnotations
+  \ NoSafeImports
+  \ NoScopedTypeVariables
+  \ NoStandaloneDeriving
+  \ NoStandaloneKindSignatures
+  \ NoStarIsType
+  \ NoStaticPointers
+  \ NoStrict
+  \ NoStrictData
+  \ NoTemplateHaskell
+  \ NoTemplateHaskellQuotes
+  \ NoTraditionalRecordSyntax
+  \ NoTransformListComp
+  \ NoTupleSections
+  \ NoTypeApplications
+  \ NoTypeFamilies
+  \ NoTypeFamilyDependencies
+  \ NoTypeInType
+  \ NoTypeOperators
+  \ NoTypeSynonymInstances
+  \ NoUnboxedSums
+  \ NoUnboxedTuples
+  \ NoUndecidableInstances
+  \ NoUndecidableSuperClasses
+  \ NoUnicodeSyntax
+  \ NoUnliftedFFITypes
+  \ NoUnliftedNewtypes
+  \ NoViewPatterns
+  \ NoXmlSyntax
+
+" Cabal format is (mostly) case-insensitive
 syn case ignore
 
-syn keyword cabalCategory	executable
-syn keyword cabalCategory	library
-syn keyword cabalCategory	foreign-library
-syn keyword cabalCategory	benchmark
-syn keyword cabalCategory	test-suite
-syn keyword cabalCategory	source-repository
-syn keyword cabalCategory	flag
-syn keyword cabalCategory	custom-setup
+" Structure regions
+"""""""""""""""""""
 
-syn keyword     cabalConditional    if else elif
-syn match       cabalOperator       "&&\|||\|!"
-syn keyword     cabalFunction       os arch impl flag
-syn match       cabalComment        /--.*$/
-syn match       cabalVersion        "\(==\|>=\|<=\|<\|>\|\^>=\)\s*\d\+\(\.\(\d\)\+\)*\(\.\*\)\?"
+" Top level stanzas, cannot be nested, only library can be have optional name
+syn match cabalStanzaLineRegion
+  \ /^\clibrary\(\s\+\k\+\)\=\s*$/
 
-syn keyword     cabalTruth      True
-syn keyword     cabalTruth      False
+" Top level stanzas with an identifier
+syn match cabalStanzaLineRegion
+  \ /^\c\(flag\|common\|source-repository\|executable\|test-suite\|benchmark\|foreign-library\)\s\+\k\+\s*$/
 
-syn match       cabalCompiler   "\c\<ghc\>"
-syn match       cabalCompiler   "\c\<ghcjs\>"
-syn match       cabalCompiler   "\c\<nhc\>"
-syn match       cabalCompiler   "\c\<yhc\>"
-syn match       cabalCompiler   "\c\<hugs\>"
-syn match       cabalCompiler   "\c\<hbc\>"
-syn match       cabalCompiler   "\c\<helium\>"
-syn match       cabalCompiler   "\c\<jhc\>"
-syn match       cabalCompiler   "\c\<lhc\>"
+" Conditionals are nested
+syn match cabalConditionalRegion
+  \ contains=cabalOperator,cabalBoolean
+  \ /^\c\s\+\(if\|elif\|else\)[^:]*$/
 
-syn keyword cabalOs linux osx windows
+" Unindented fields
+syn match cabalFieldRegion
+  \ /^[a-zA-Z0-9-]\+\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
 
-syn match	cabalXStatement	/^\c\s*\<x-[a-z_\-]\+\s*:/me=e-1
-
-syn keyword cabalLanguage Haskell2010 Haskell98
-syn keyword cabalType     exitcode-stdio-1.0
-
-" Regenerate by firing a repl: cabal repl Cabal
-" :m *Distribution.PackageDescription.FieldGrammar
-" _syntaxFieldNames
-" _syntaxExtensions
+" Indented fields
 "
-" For field names we take opinionated approach and treat
-" the colon as the part of the keyword.
-" This makes completion to add it automatically.
+" We use backreferences to fake the recognition of indentation.
+" Unfortunately I don't know a way to anchor contained
+" matches to the boundaries of the enclosing region.
+syn match cabalFieldRegion
+  \ /^\(\s\+\)[a-zA-Z0-9-]\+\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
+
+" Component stanzas
+"""""""""""""""""""
+
+syn match cabalCategoryTitle
+  \ contained
+  \ /\c[a-z0-9-]\+/
+
+syn keyword cabalCategory
+  \ contained containedin=cabalStanzaLineRegion
+  \ nextgroup=cabalCategoryTitle skipwhite
+  \ flag common source-repository library executable test-suite benchmark foreign-library
+
+" Version ranges
+""""""""""""""""
+
+syn match cabalOperator        contained /&&\|||\|!/
+syn match cabalVersionOperator contained /==\|\^\?>=\|<=\|<\|>/
+" match version: `[%]\@<!` is to exclude `%20` in http addresses.
+syn match cabalVersion         contained /[%$_-]\@<!\<\d\+\%(\.\d\+\)*\%(\.\*\)\?\>/
+" cabalVersionRegion which limits the scope of cabalVersion pattern.
+syn match cabalVersionRegion
+  \ contains=cabalVersionOperator,cabalVersion
+  \ keepend
+  \ /\%(==\|\^\?>=\|<=\|<\|>\)\s*\d\+\%(\.\d\+\)*\%(\.\*\)\?\>/
+
+" Compilers
+"""""""""""
+
+syn keyword cabalCompiler contained ghc nhc yhc hugs hbc helium jhc lhc
+
+" Conditionals
+""""""""""""""
+
+syn keyword cabalConditional contained containedin=cabalConditionalRegion
+  \ if elif else
+
+syn keyword cabalFunction contained
+  \ os arch impl flag
+
+syn region cabalFunctionRegion start=+\(os\|arch\|impl\|flag\)\s*(+ end=+)+
+  \ contained containedin=cabalConditionalRegion
+  \ contains=cabalOs,cabalFunction,cabalCompiler,cabalVersionRegion
+
+" Common stanzas
+""""""""""""""""
+
+syn match cabalImportName contained /\c\<[a-z0-9-]\+\>/
+syn keyword cabalImport contained import
+syn match cabalImportRegion
+  \ contains=cabalImport,cabalColon,cabalImportName
+  \ /^\c\(\s\+\)import\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
+
+" Fields names
+""""""""""""""
+
+syn match cabalFieldNameRegion contained containedin=cabalFieldRegion
+  \ contains=cabalFieldName
+  \ /^\s*[a-zA-Z0-9-]\+\s*:/
+
+syn match cabalColon contained containedin=cabalFieldNameRegion
+  \ /:/
+
+" Field Values
+"""""""""""""""""""""""""""""""""
+
+syn keyword cabalBoolean contained containedin=cabalFieldRegion
+  \ true false
+
+" cabal-version
+syn match cabalSpecVersion contained
+  \ /\(>=\s*1\.\(0\|2\|4\|6\|8\|10\)\|1\.\(12\|16\|18\|20\|22\|24\)\|2\.\(0\|2\|4\)\|3\.\(\0\|4\|6\)\)/
+syn match cabalSpecVersionRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalSpecVersion
+  \ /\c^cabal-version\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
+
+" version
+syn match cabalPkgVersionRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalVersion
+  \ /\c^version\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
+
+" description
+syn match cabalDescriptionNameRegion
+  \ contained
+  \ contains=cabalFieldName
+  \ /\c^description/
+syn match cabalDescriptionRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalDescriptionNameRegion
+  \ /\c^description\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
+
+" tested-with
+syn match cabalTestedWithRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalVersionRegion,cabalOperator,cabalCompiler
+  \ /\c^tested-with\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
+
+" build-depends,build-tool-depends
 "
-syn keyword cabalStatement asm-options:
-syn keyword cabalStatement asm-sources:
-syn keyword cabalStatement author:
-syn keyword cabalStatement autogen-includes:
-syn keyword cabalStatement autogen-modules:
-syn keyword cabalStatement benchmark-module:
-syn keyword cabalStatement branch:
-syn keyword cabalStatement bug-reports:
-syn keyword cabalStatement build-depends:
-syn keyword cabalStatement build-tool-depends:
-syn keyword cabalStatement build-tools:
-syn keyword cabalStatement build-type:
-syn keyword cabalStatement buildable:
-syn keyword cabalStatement c-sources:
-syn keyword cabalStatement cabal-version:
-syn keyword cabalStatement category:
-syn keyword cabalStatement cc-options:
-syn keyword cabalStatement cmm-options:
-syn keyword cabalStatement cmm-sources:
-syn keyword cabalStatement copyright:
-syn keyword cabalStatement cpp-options:
-syn keyword cabalStatement cxx-options:
-syn keyword cabalStatement cxx-sources:
-syn keyword cabalStatement data-dir:
-syn keyword cabalStatement data-files:
-syn keyword cabalStatement default:
-syn keyword cabalStatement default-extensions:
-syn keyword cabalStatement default-language:
-syn keyword cabalStatement description:
-syn keyword cabalStatement exposed:
-syn keyword cabalStatement exposed-modules:
-syn keyword cabalStatement extensions:
-syn keyword cabalStatement extra-bundled-libraries:
-syn keyword cabalStatement extra-doc-files:
-syn keyword cabalStatement extra-dynamic-library-flavours:
-syn keyword cabalStatement extra-framework-dirs:
-syn keyword cabalStatement extra-ghci-libraries:
-syn keyword cabalStatement extra-lib-dirs:
-syn keyword cabalStatement extra-libraries:
-syn keyword cabalStatement extra-library-flavours:
-syn keyword cabalStatement extra-source-files:
-syn keyword cabalStatement extra-tmp-files:
-syn keyword cabalStatement frameworks:
-syn keyword cabalStatement ghc-options:
-syn keyword cabalStatement ghc-prof-options:
-syn keyword cabalStatement ghc-shared-options:
-syn keyword cabalStatement ghcjs-options:
-syn keyword cabalStatement ghcjs-prof-options:
-syn keyword cabalStatement ghcjs-shared-options:
-syn keyword cabalStatement homepage:
-syn keyword cabalStatement hs-source-dir:
-syn keyword cabalStatement hs-source-dirs:
-syn keyword cabalStatement hugs-options:
-syn keyword cabalStatement include-dirs:
-syn keyword cabalStatement includes:
-syn keyword cabalStatement install-includes:
-syn keyword cabalStatement jhc-options:
-syn keyword cabalStatement js-sources:
-syn keyword cabalStatement ld-options:
-syn keyword cabalStatement lib-version-info:
-syn keyword cabalStatement lib-version-linux:
-syn keyword cabalStatement license:
-syn keyword cabalStatement license-file:
-syn keyword cabalStatement license-files:
-syn keyword cabalStatement location:
-syn keyword cabalStatement main-is:
-syn keyword cabalStatement maintainer:
-syn keyword cabalStatement manual:
-syn keyword cabalStatement mixins:
-syn keyword cabalStatement mod-def-file:
-syn keyword cabalStatement module:
-syn keyword cabalStatement name:
-syn keyword cabalStatement nhc98-options:
-syn keyword cabalStatement options:
-syn keyword cabalStatement other-extensions:
-syn keyword cabalStatement other-languages:
-syn keyword cabalStatement other-modules:
-syn keyword cabalStatement package-url:
-syn keyword cabalStatement pkgconfig-depends:
-syn keyword cabalStatement reexported-modules:
-syn keyword cabalStatement scope:
-syn keyword cabalStatement setup-depends:
-syn keyword cabalStatement signatures:
-syn keyword cabalStatement stability:
-syn keyword cabalStatement subdir:
-syn keyword cabalStatement synopsis:
-syn keyword cabalStatement tag:
-syn keyword cabalStatement test-module:
-syn keyword cabalStatement tested-with:
-syn keyword cabalStatement type:
-syn keyword cabalStatement version:
-syn keyword cabalStatement virtual-modules:
+" fields with version ranges
+syn match cabalDependsRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalVersionRegion,cabalOperator
+  \ /\c^\(\s\+\)\(build-depends\|build-tool-depends\)\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
 
-syn keyword cabalExtension AllowAmbiguousTypes
-syn keyword cabalExtension ApplicativeDo
-syn keyword cabalExtension Arrows
-syn keyword cabalExtension AutoDeriveTypeable
-syn keyword cabalExtension BangPatterns
-syn keyword cabalExtension BinaryLiterals
-syn keyword cabalExtension BlockArguments
-syn keyword cabalExtension CApiFFI
-syn keyword cabalExtension CPP
-syn keyword cabalExtension CUSKs
-syn keyword cabalExtension ConstrainedClassMethods
-syn keyword cabalExtension ConstraintKinds
-syn keyword cabalExtension DataKinds
-syn keyword cabalExtension DatatypeContexts
-syn keyword cabalExtension DefaultSignatures
-syn keyword cabalExtension DeriveAnyClass
-syn keyword cabalExtension DeriveDataTypeable
-syn keyword cabalExtension DeriveFoldable
-syn keyword cabalExtension DeriveFunctor
-syn keyword cabalExtension DeriveGeneric
-syn keyword cabalExtension DeriveLift
-syn keyword cabalExtension DeriveTraversable
-syn keyword cabalExtension DerivingStrategies
-syn keyword cabalExtension DerivingVia
-syn keyword cabalExtension DisambiguateRecordFields
-syn keyword cabalExtension DoAndIfThenElse
-syn keyword cabalExtension DoRec
-syn keyword cabalExtension DuplicateRecordFields
-syn keyword cabalExtension EmptyCase
-syn keyword cabalExtension EmptyDataDecls
-syn keyword cabalExtension EmptyDataDeriving
-syn keyword cabalExtension ExistentialQuantification
-syn keyword cabalExtension ExplicitForAll
-syn keyword cabalExtension ExplicitNamespaces
-syn keyword cabalExtension ExtendedDefaultRules
-syn keyword cabalExtension ExtensibleRecords
-syn keyword cabalExtension FlexibleContexts
-syn keyword cabalExtension FlexibleInstances
-syn keyword cabalExtension ForeignFunctionInterface
-syn keyword cabalExtension FunctionalDependencies
-syn keyword cabalExtension GADTSyntax
-syn keyword cabalExtension GADTs
-syn keyword cabalExtension GHCForeignImportPrim
-syn keyword cabalExtension GeneralisedNewtypeDeriving
-syn keyword cabalExtension GeneralizedNewtypeDeriving
-syn keyword cabalExtension Generics
-syn keyword cabalExtension HereDocuments
-syn keyword cabalExtension HexFloatLiterals
-syn keyword cabalExtension ImplicitParams
-syn keyword cabalExtension ImplicitPrelude
-syn keyword cabalExtension ImportQualifiedPost
-syn keyword cabalExtension ImpredicativeTypes
-syn keyword cabalExtension IncoherentInstances
-syn keyword cabalExtension InstanceSigs
-syn keyword cabalExtension InterruptibleFFI
-syn keyword cabalExtension JavaScriptFFI
-syn keyword cabalExtension KindSignatures
-syn keyword cabalExtension LambdaCase
-syn keyword cabalExtension LexicalNegation
-syn keyword cabalExtension LiberalTypeSynonyms
-syn keyword cabalExtension LinearTypes
-syn keyword cabalExtension MagicHash
-syn keyword cabalExtension MonadComprehensions
-syn keyword cabalExtension MonadFailDesugaring
-syn keyword cabalExtension MonoLocalBinds
-syn keyword cabalExtension MonoPatBinds
-syn keyword cabalExtension MonomorphismRestriction
-syn keyword cabalExtension MultiParamTypeClasses
-syn keyword cabalExtension MultiWayIf
-syn keyword cabalExtension NPlusKPatterns
-syn keyword cabalExtension NamedFieldPuns
-syn keyword cabalExtension NamedWildCards
-syn keyword cabalExtension NegativeLiterals
-syn keyword cabalExtension NewQualifiedOperators
-syn keyword cabalExtension NoAllowAmbiguousTypes
-syn keyword cabalExtension NoApplicativeDo
-syn keyword cabalExtension NoArrows
-syn keyword cabalExtension NoAutoDeriveTypeable
-syn keyword cabalExtension NoBangPatterns
-syn keyword cabalExtension NoBinaryLiterals
-syn keyword cabalExtension NoBlockArguments
-syn keyword cabalExtension NoCApiFFI
-syn keyword cabalExtension NoCPP
-syn keyword cabalExtension NoCUSKs
-syn keyword cabalExtension NoConstrainedClassMethods
-syn keyword cabalExtension NoConstraintKinds
-syn keyword cabalExtension NoDataKinds
-syn keyword cabalExtension NoDatatypeContexts
-syn keyword cabalExtension NoDefaultSignatures
-syn keyword cabalExtension NoDeriveAnyClass
-syn keyword cabalExtension NoDeriveDataTypeable
-syn keyword cabalExtension NoDeriveFoldable
-syn keyword cabalExtension NoDeriveFunctor
-syn keyword cabalExtension NoDeriveGeneric
-syn keyword cabalExtension NoDeriveLift
-syn keyword cabalExtension NoDeriveTraversable
-syn keyword cabalExtension NoDerivingStrategies
-syn keyword cabalExtension NoDerivingVia
-syn keyword cabalExtension NoDisambiguateRecordFields
-syn keyword cabalExtension NoDoAndIfThenElse
-syn keyword cabalExtension NoDoRec
-syn keyword cabalExtension NoDuplicateRecordFields
-syn keyword cabalExtension NoEmptyCase
-syn keyword cabalExtension NoEmptyDataDecls
-syn keyword cabalExtension NoEmptyDataDeriving
-syn keyword cabalExtension NoExistentialQuantification
-syn keyword cabalExtension NoExplicitForAll
-syn keyword cabalExtension NoExplicitNamespaces
-syn keyword cabalExtension NoExtendedDefaultRules
-syn keyword cabalExtension NoExtensibleRecords
-syn keyword cabalExtension NoFlexibleContexts
-syn keyword cabalExtension NoFlexibleInstances
-syn keyword cabalExtension NoForeignFunctionInterface
-syn keyword cabalExtension NoFunctionalDependencies
-syn keyword cabalExtension NoGADTSyntax
-syn keyword cabalExtension NoGADTs
-syn keyword cabalExtension NoGHCForeignImportPrim
-syn keyword cabalExtension NoGeneralisedNewtypeDeriving
-syn keyword cabalExtension NoGeneralizedNewtypeDeriving
-syn keyword cabalExtension NoGenerics
-syn keyword cabalExtension NoHereDocuments
-syn keyword cabalExtension NoHexFloatLiterals
-syn keyword cabalExtension NoImplicitParams
-syn keyword cabalExtension NoImplicitPrelude
-syn keyword cabalExtension NoImportQualifiedPost
-syn keyword cabalExtension NoImpredicativeTypes
-syn keyword cabalExtension NoIncoherentInstances
-syn keyword cabalExtension NoInstanceSigs
-syn keyword cabalExtension NoInterruptibleFFI
-syn keyword cabalExtension NoJavaScriptFFI
-syn keyword cabalExtension NoKindSignatures
-syn keyword cabalExtension NoLambdaCase
-syn keyword cabalExtension NoLexicalNegation
-syn keyword cabalExtension NoLiberalTypeSynonyms
-syn keyword cabalExtension NoLinearTypes
-syn keyword cabalExtension NoMagicHash
-syn keyword cabalExtension NoMonadComprehensions
-syn keyword cabalExtension NoMonadFailDesugaring
-syn keyword cabalExtension NoMonoLocalBinds
-syn keyword cabalExtension NoMonoPatBinds
-syn keyword cabalExtension NoMonomorphismRestriction
-syn keyword cabalExtension NoMultiParamTypeClasses
-syn keyword cabalExtension NoMultiWayIf
-syn keyword cabalExtension NoNPlusKPatterns
-syn keyword cabalExtension NoNamedFieldPuns
-syn keyword cabalExtension NoNamedWildCards
-syn keyword cabalExtension NoNegativeLiterals
-syn keyword cabalExtension NoNewQualifiedOperators
-syn keyword cabalExtension NoNondecreasingIndentation
-syn keyword cabalExtension NoNullaryTypeClasses
-syn keyword cabalExtension NoNumDecimals
-syn keyword cabalExtension NoNumericUnderscores
-syn keyword cabalExtension NoOverlappingInstances
-syn keyword cabalExtension NoOverloadedLabels
-syn keyword cabalExtension NoOverloadedLists
-syn keyword cabalExtension NoOverloadedStrings
-syn keyword cabalExtension NoPackageImports
-syn keyword cabalExtension NoParallelArrays
-syn keyword cabalExtension NoParallelListComp
-syn keyword cabalExtension NoPartialTypeSignatures
-syn keyword cabalExtension NoPatternGuards
-syn keyword cabalExtension NoPatternSignatures
-syn keyword cabalExtension NoPatternSynonyms
-syn keyword cabalExtension NoPolyKinds
-syn keyword cabalExtension NoPolymorphicComponents
-syn keyword cabalExtension NoPostfixOperators
-syn keyword cabalExtension NoQualifiedDo
-syn keyword cabalExtension NoQuantifiedConstraints
-syn keyword cabalExtension NoQuasiQuotes
-syn keyword cabalExtension NoRank2Types
-syn keyword cabalExtension NoRankNTypes
-syn keyword cabalExtension NoRebindableSyntax
-syn keyword cabalExtension NoRecordPuns
-syn keyword cabalExtension NoRecordWildCards
-syn keyword cabalExtension NoRecursiveDo
-syn keyword cabalExtension NoRegularPatterns
-syn keyword cabalExtension NoRelaxedPolyRec
-syn keyword cabalExtension NoRestrictedTypeSynonyms
-syn keyword cabalExtension NoRoleAnnotations
-syn keyword cabalExtension NoSafeImports
-syn keyword cabalExtension NoScopedTypeVariables
-syn keyword cabalExtension NoStandaloneDeriving
-syn keyword cabalExtension NoStandaloneKindSignatures
-syn keyword cabalExtension NoStarIsType
-syn keyword cabalExtension NoStaticPointers
-syn keyword cabalExtension NoStrict
-syn keyword cabalExtension NoStrictData
-syn keyword cabalExtension NoTemplateHaskell
-syn keyword cabalExtension NoTemplateHaskellQuotes
-syn keyword cabalExtension NoTraditionalRecordSyntax
-syn keyword cabalExtension NoTransformListComp
-syn keyword cabalExtension NoTupleSections
-syn keyword cabalExtension NoTypeApplications
-syn keyword cabalExtension NoTypeFamilies
-syn keyword cabalExtension NoTypeFamilyDependencies
-syn keyword cabalExtension NoTypeInType
-syn keyword cabalExtension NoTypeOperators
-syn keyword cabalExtension NoTypeSynonymInstances
-syn keyword cabalExtension NoUnboxedSums
-syn keyword cabalExtension NoUnboxedTuples
-syn keyword cabalExtension NoUndecidableInstances
-syn keyword cabalExtension NoUndecidableSuperClasses
-syn keyword cabalExtension NoUnicodeSyntax
-syn keyword cabalExtension NoUnliftedFFITypes
-syn keyword cabalExtension NoUnliftedNewtypes
-syn keyword cabalExtension NoViewPatterns
-syn keyword cabalExtension NoXmlSyntax
-syn keyword cabalExtension NondecreasingIndentation
-syn keyword cabalExtension NullaryTypeClasses
-syn keyword cabalExtension NumDecimals
-syn keyword cabalExtension NumericUnderscores
-syn keyword cabalExtension OverlappingInstances
-syn keyword cabalExtension OverloadedLabels
-syn keyword cabalExtension OverloadedLists
-syn keyword cabalExtension OverloadedStrings
-syn keyword cabalExtension PackageImports
-syn keyword cabalExtension ParallelArrays
-syn keyword cabalExtension ParallelListComp
-syn keyword cabalExtension PartialTypeSignatures
-syn keyword cabalExtension PatternGuards
-syn keyword cabalExtension PatternSignatures
-syn keyword cabalExtension PatternSynonyms
-syn keyword cabalExtension PolyKinds
-syn keyword cabalExtension PolymorphicComponents
-syn keyword cabalExtension PostfixOperators
-syn keyword cabalExtension QualifiedDo
-syn keyword cabalExtension QuantifiedConstraints
-syn keyword cabalExtension QuasiQuotes
-syn keyword cabalExtension Rank2Types
-syn keyword cabalExtension RankNTypes
-syn keyword cabalExtension RebindableSyntax
-syn keyword cabalExtension RecordPuns
-syn keyword cabalExtension RecordWildCards
-syn keyword cabalExtension RecursiveDo
-syn keyword cabalExtension RegularPatterns
-syn keyword cabalExtension RelaxedPolyRec
-syn keyword cabalExtension RestrictedTypeSynonyms
-syn keyword cabalExtension RoleAnnotations
-syn keyword cabalExtension Safe
-syn keyword cabalExtension SafeImports
-syn keyword cabalExtension ScopedTypeVariables
-syn keyword cabalExtension StandaloneDeriving
-syn keyword cabalExtension StandaloneKindSignatures
-syn keyword cabalExtension StarIsType
-syn keyword cabalExtension StaticPointers
-syn keyword cabalExtension Strict
-syn keyword cabalExtension StrictData
-syn keyword cabalExtension TemplateHaskell
-syn keyword cabalExtension TemplateHaskellQuotes
-syn keyword cabalExtension TraditionalRecordSyntax
-syn keyword cabalExtension TransformListComp
-syn keyword cabalExtension Trustworthy
-syn keyword cabalExtension TupleSections
-syn keyword cabalExtension TypeApplications
-syn keyword cabalExtension TypeFamilies
-syn keyword cabalExtension TypeFamilyDependencies
-syn keyword cabalExtension TypeInType
-syn keyword cabalExtension TypeOperators
-syn keyword cabalExtension TypeSynonymInstances
-syn keyword cabalExtension UnboxedSums
-syn keyword cabalExtension UnboxedTuples
-syn keyword cabalExtension UndecidableInstances
-syn keyword cabalExtension UndecidableSuperClasses
-syn keyword cabalExtension UnicodeSyntax
-syn keyword cabalExtension UnliftedFFITypes
-syn keyword cabalExtension UnliftedNewtypes
-syn keyword cabalExtension Unsafe
-syn keyword cabalExtension ViewPatterns
-syn keyword cabalExtension XmlSyntax
+" build-type
+syn match cabalBuildTypeRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalBuildType
+  \ /\c^build-type\s*:.*\n\(\s\+.*\n\|\s*\n\)*/
 
-" Define the default highlighting.
-" For version 5.7 and earlier: only when not done already
-" For version 5.8 and later: only when an item doesn't have highlighting yet
-if version >= 508 || !exists("did_cabal_syn_inits")
-  if version < 508
-    let did_cabal_syn_inits = 1
-    command -nargs=+ HiLink hi link <args>
-  else
-    command -nargs=+ HiLink hi def link <args>
-  endif
+" type
+syn match cabalCompTypeRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalCompType
+  \ /\c^\(\s\+\)type\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
 
-  HiLink cabalVersion       Number
-  HiLink cabalTruth         Boolean
-  HiLink cabalComment       Comment
-  HiLink cabalStatement     Statement
-  HiLink cabalXStatement    Keyword
-  HiLink cabalCategory      Type
-  HiLink cabalFunction      Function
-  HiLink cabalConditional   Conditional
-  HiLink cabalOperator      Operator
-  HiLink cabalCompiler      Constant
-  HiLink cabalOs            Constant
-  HiLink cabalLanguage      Constant
-  HiLink cabalType          Constant
-  HiLink cabalExtension     Constant
+" default-extensions other-extensions extensions
+syn match cabalExtensionsRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalExtension
+  \ /^\c\(\s\+\)\(default-extensions\|other-extensions\|extensions\)\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
 
-  delcommand HiLink
-endif
+" default-language other-languages
+syn match cabalLanguagesRegion
+  \ contained containedin=cabalFieldRegion
+  \ contains=cabalFieldNameRegion,cabalLanguage
+  \ /^\c\(\s\+\)\(default-language\|other-languages\)\s*:.*\n\(\1\s\+.*\n\|\s*\n\)*/
 
-let b:current_syntax = "cabal"
+" Define the default highlighting
+"""""""""""""""""""""""""""""""""
 
-" vim: ts=8
+hi link cabalComment           Comment
+
+" We highlight stanza region, as it makes component name highlighted
+hi link cabalStanzaLineRegion  NONE
+hi link cabalFieldRegion       NONE
+hi link cabalFieldNameRegion   NONE
+hi link cabalConditionalRegion NONE
+
+hi link cabalCategory          Type
+hi link cabalCategoryTitle     Title
+
+hi link cabalImport            Type
+hi link cabalImportName        Title
+
+hi link cabalFunction          Function
+
+hi link cabalConditional       Conditional
+hi link cabalOperator          Operator
+hi link cabalVersionOperator   Special
+hi link cabalSpecVersion       Special
+hi link cabalVersion           Special
+
+hi link cabalFieldName         Keyword
+hi link cabalColon             Operator
+hi link cabalBoolean           Boolean
+
+hi link cabalBuildType         Constant
+hi link cabalCompiler          Constant
+hi link cabalCompType          Constant
+hi link cabalExtension         Constant
+hi link cabalLanguage          Constant
+hi link cabalOs                Constant
+
+let b:current_syntax="mini-cabal"
+
+" vim: ts=2
