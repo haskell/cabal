@@ -56,7 +56,6 @@ import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
-import Distribution.Types.Mixin                      (Mixin (..), mkMixin)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version                          (Version, mkVersion, versionNumbers)
@@ -208,6 +207,12 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
     let gpd2 = postProcessInternalDeps specVer gpd1
     checkForUndefinedFlags gpd2
     checkForUndefinedCustomSetup gpd2
+    -- See nothunks test, without this deepseq we get (at least):
+    -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
+    --
+    -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
+    -- TODO: remove the need for deepseq if `deepseq` in fact matters
+    -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
     gpd2 `deepseq` return gpd2
   where
     safeLast :: [a] -> Maybe a

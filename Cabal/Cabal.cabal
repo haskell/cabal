@@ -848,3 +848,21 @@ test-suite rpmvercmp
 
   ghc-options: -Wall
   default-language: Haskell2010
+
+test-suite no-thunks-test
+  default-language: Haskell2010
+  ghc-options:      -Wall
+  type:             exitcode-stdio-1.0
+  main-is:          NoThunks.hs
+
+  if !impl(ghc >= 8.6)
+    buildable: False
+
+  hs-source-dirs: tests
+  build-depends:
+    base,
+    Cabal,
+    tasty >= 1.2.3 && < 1.4,
+    bytestring,
+    tasty-hunit,
+    nothunks

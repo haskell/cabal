@@ -26,7 +26,6 @@ import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription   as Source
-import qualified Distribution.Types.ModuleReexport as Source
 import Distribution.PackageDescription
          ( PackageFlag(..), unFlagName )
 import Distribution.PackageDescription.Configuration

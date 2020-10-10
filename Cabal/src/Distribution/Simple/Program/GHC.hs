@@ -36,7 +36,6 @@ import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Pretty
 import Distribution.Types.ComponentId
-import Distribution.Types.ModuleRenaming
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Utils.NubList

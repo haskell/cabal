@@ -29,14 +29,7 @@ import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetai
 import Distribution.System
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
-import Distribution.Types.IncludeRenaming          (IncludeRenaming)
-import Distribution.Types.Mixin
-import Distribution.Types.ModuleReexport
-import Distribution.Types.ModuleRenaming
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.PkgconfigName            (PkgconfigName)
-import Distribution.Types.PkgconfigVersion         (PkgconfigVersion)
-import Distribution.Types.PkgconfigVersionRange    (PkgconfigVersionRange)
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
