@@ -222,7 +222,7 @@ GenericPackageDescription
                            category = "Test",
                            copyright = "",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = "no type in all branches.",
                            executables = [],

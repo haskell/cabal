@@ -422,7 +422,7 @@ GenericPackageDescription
                            category = "Testing",
                            copyright = "(c) 2018 Symbiont.io",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = concat
                                            ["This is a small tool to convert JSON dumps obtained from a Jaeger\n",

@@ -533,7 +533,7 @@ GenericPackageDescription
                            category = "Template Haskell",
                            copyright = "Copyright (C) 2013-2014 Benno F\252nfst\252ck",
                            customFieldsPD = [_×_ "x-revision" "1"],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = [],
                            description = concat
                                            ["Most data types in haskell platform do not have Lift instances. This package provides orphan instances\n",

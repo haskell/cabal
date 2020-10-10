@@ -250,7 +250,11 @@ newtype FilePathNT = FilePathNT { getFilePathNT :: String }
 instance Newtype String FilePathNT
 
 instance Parsec FilePathNT where
-    parsec = pack <$> parsecToken
+    parsec = do
+        token <- parsecToken
+        if null token
+        then P.unexpected "empty FilePath"
+        else return (FilePathNT token)
 
 instance Pretty FilePathNT where
     pretty = showFilePath . unpack
