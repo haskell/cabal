@@ -14,6 +14,7 @@ module HackageBenchmark (
   , shouldContinueAfterFirstTrial
   ) where
 
+import Control.Concurrent.Async (concurrently)
 import Control.Monad (forM, replicateM, unless, when)
 import qualified Data.ByteString as BS
 import Data.List (nub, unzip4)
@@ -52,6 +53,7 @@ data Args = Args {
   , argMinRunTimeDifferenceToRerun :: Double
   , argPValue                      :: PValue Double
   , argTrials                      :: Int
+  , argConcurrently                :: Bool
   , argPrintTrials                 :: Bool
   , argPrintSkippedPackages        :: Bool
   , argTimeoutSeconds              :: Int
@@ -81,6 +83,10 @@ hackageBenchmarkMain = do
   pkgs <- getPackages args
   putStrLn ""
 
+  let concurrently' :: IO a -> IO b -> IO (a, b)
+      concurrently' | argConcurrently = concurrently
+                    | otherwise       = \ma mb -> do { a <- ma; b <- mb; return (a, b) }
+
   let -- The maximum length of the heading and package names.
       nameColumnWidth :: Int
       nameColumnWidth =
@@ -106,8 +112,7 @@ hackageBenchmarkMain = do
                    (show result1) (show result2)
                    (diffTimeToDouble time1) (diffTimeToDouble time2)
 
-    CabalTrial t1 r1 <- runCabal1 pkg
-    CabalTrial t2 r2 <- runCabal2 pkg
+    (CabalTrial t1 r1, CabalTrial t2 r2) <- runCabal1 pkg `concurrently'` runCabal2 pkg
 
     if not $
        shouldContinueAfterFirstTrial argMinRunTimeDifferenceToRerun t1 t2 r1 r2
@@ -122,8 +127,8 @@ hackageBenchmarkMain = do
       when argPrintTrials $ printTrial "trial" r1 r2 t1 t2
       (ts1, ts2, rs1, rs2) <- (unzip4 . ((t1, t2, r1, r2) :) <$>)
                             . replicateM (argTrials - 1) $ do
-        CabalTrial t1' r1' <- runCabal1 pkg
-        CabalTrial t2' r2' <- runCabal2 pkg
+
+        (CabalTrial t1' r1', CabalTrial t2' r2') <- runCabal1 pkg `concurrently'` runCabal2 pkg
         when argPrintTrials $ printTrial "trial" r1' r2' t1' t2'
         return (t1', t2', r1', r2')
 
@@ -405,6 +410,9 @@ argParser = Args
         <> value 10
         <> metavar "N"
         <> help "Number of trials for each package")
+    <*> switch
+         ( long "concurrently"
+        <> help "Run cabals concurrently")
     <*> switch
          ( long "print-trials"
         <> help "Whether to include the results from individual trials in the output")
