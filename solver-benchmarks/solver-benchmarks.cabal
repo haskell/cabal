@@ -29,6 +29,7 @@ library
   build-depends:
     base,
     bytestring,
+    containers,
     Cabal >= 2.3,
     directory,
     filepath,
