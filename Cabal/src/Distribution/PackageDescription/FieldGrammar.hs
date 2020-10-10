@@ -57,18 +57,16 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.Newtype       (Newtype)
-import Distribution.Compiler             (CompilerFlavor (..), PerCompilerFlavor (..))
+import Distribution.Compat.Newtype     (Newtype)
+import Distribution.Compiler           (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
-import Distribution.ModuleName           (ModuleName)
+import Distribution.ModuleName         (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty               (Pretty (..), prettyShow, showToken)
-import Distribution.Types.Mixin          (Mixin)
-import Distribution.Types.ModuleReexport
-import Distribution.Version              (Version, VersionRange)
+import Distribution.Pretty             (Pretty (..), prettyShow, showToken)
+import Distribution.Version            (Version, VersionRange)
 
 import qualified Data.ByteString.Char8   as BS8
 import qualified Distribution.SPDX       as SPDX

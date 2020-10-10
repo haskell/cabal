@@ -77,12 +77,9 @@ import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.PkgconfigVersion
-import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.GivenComponent
-import Distribution.Types.Mixin
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
