@@ -26,11 +26,11 @@ jobs:
           add-apt-repository ppa:deadsnakes/ppa
           apt-get update
           apt-get install -y python3.8
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       - name: Package project
-        run: python3.8 release.py
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install
+          python3.8 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarexe=sdist/sdist/cabal-install-*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-linux
@@ -61,11 +61,11 @@ jobs:
           echo "::add-path::/opt/ghc/8.6.5/bin"
           echo "::add-path::/opt/cabal/3.4/bin"
           echo "::add-path::$HOME/.cabal/bin"
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       - name: Package project
-        run: python3 release.py
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install
+          python3 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarexe=sdist/sdist/cabal-install-*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-macos
@@ -91,12 +91,14 @@ jobs:
           ghc --version
           cabal --version
           cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       - name: Package project
-        run: python release.py
+        # We hardcode version 3 here to make first glob not overlap with cabal-install
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install
+          New-Item -Path "_build" -ItemType "directory"
+          python release.py --tarlib=$(Resolve-Path -Path sdist/sdist/Cabal-3.*.tar.gz) --tarexe=$(Resolve-Path -Path sdist/sdist/cabal-install-3.*.tar.gz)
       - uses: actions/upload-artifact@v2
         with:
-          name: cabal-macos
+          name: cabal-windows
           path: _build/artifacts/*
