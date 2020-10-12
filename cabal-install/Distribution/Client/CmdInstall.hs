@@ -169,7 +169,6 @@ installCommand = CommandUI
       ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
-      ++ cmdCommonHelpTextNewBuildBeta
   , commandOptions      = nixStyleOptions clientInstallOptions
   , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }

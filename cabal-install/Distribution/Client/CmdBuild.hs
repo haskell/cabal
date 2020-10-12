@@ -64,9 +64,8 @@ buildCommand = CommandUI {
      ++ "    Build the component named cname in the project\n"
      ++ "  " ++ pname ++ " v2-build cname --enable-profiling\n"
      ++ "    Build the component in profiling mode "
-     ++ "(including dependencies as needed)\n\n"
+     ++ "(including dependencies as needed)\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
   , commandOptions      = filter (\o -> optionName o /= "ignore-project")
                         . nixStyleOptions (\showOrParseArgs ->
