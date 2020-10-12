@@ -35,10 +35,11 @@ Args = NamedTuple('Args', [
     ('compiler', Path),
     ('cabal', Path),
     ('indexstate', str),
-    ('rootdir', Path),
     ('builddir', Path),
     ('static', bool),
     ('ofdlocking', bool),
+    ('tarlib', Path),
+    ('tarexe', Path),
 ])
 
 # utils
@@ -110,7 +111,6 @@ def step_makedirs(args: Args):
     (args.builddir / 'bin').mkdir(parents=True, exist_ok=True)
     (args.builddir / 'cabal').mkdir(parents=True, exist_ok=True)
 
-# 57936384
 def step_config(args: Args):
     splitsections = ''
     if platform.system() == 'Linux':
@@ -123,6 +123,7 @@ def step_config(args: Args):
         if msysbin.is_dir():
             extraprogpath = extraprogpath + "," + str(msysbin)
 
+    # cabal.config
     config = dedent(f"""
         repository hackage.haskell.org
           url: http://hackage.haskell.org/
@@ -154,20 +155,34 @@ def step_config(args: Args):
     with open(args.builddir / 'cabal' / 'config', 'w') as f:
         f.write(config)
 
-    cabal_project_local =''
+    # cabal.project
+    cabal_project = dedent(f"""
+        packages: {args.tarlib}
+        packages: {args.tarexe}
+        tests: False
+        benchmarks: False
+        optimization: True
+
+        package Cabal
+          ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
+
+        package parsec
+          ghc-options: -fexpose-all-unfoldings
+    """)
+
     if args.static:
         # --enable-executable-static doesn't affect "non local" executables, as in v2-install project
-        cabal_project_local += dedent("""
+        cabal_project += dedent("""
             package cabal-install
                 executable-static: True
         """)
-    cabal_project_local += dedent(f"""
+    cabal_project += dedent(f"""
         package lukko
             flags: {'+' if args.ofdlocking else '-'}ofd_locking
     """)
 
-    with open(args.rootdir / 'cabal.project.release.local', 'w') as f:
-        f.write(cabal_project_local)
+    with open(args.builddir / 'cabal.project', 'w') as f:
+        f.write(cabal_project)
 
 def make_env(args: Args):
     env = {
@@ -197,7 +212,7 @@ def step_cabal_update(args: Args):
         'v2-update',
         '-v',
         f'--index-state={args.indexstate}',
-    ], check=True, env=env)
+    ], cwd=args.builddir, check=True, env=env)
 
 def step_cabal_install(args: Args):
     env = make_env(args)
@@ -206,9 +221,9 @@ def step_cabal_install(args: Args):
         'v2-install',
         '-v',
         'cabal-install:exe:cabal',
-        '--project-file=cabal.project.release',
+        '--project-file=cabal.project',
         f'--with-compiler={args.compiler}',
-    ], check=True, env=env)
+    ], cwd=args.builddir, check=True, env=env)
 
 def step_make_archive(args: Args):
     import tempfile
@@ -267,18 +282,21 @@ def main():
     parser.add_argument('-i', '--index-state', type=str, default=DEFAULT_INDEXSTATE, help='index state of Hackage to use')
     parser.add_argument('--enable-static-executable', '--disable-static-executable', dest='static', nargs=0, default=False, action=EnableDisable, help='Statically link cabal executable')
     parser.add_argument('--enable-ofd-locking', '--disable-ofd-locking', dest='ofd_locking', nargs=0, default=True, action=EnableDisable, help='OFD locking (lukko)')
+    parser.add_argument('--tarlib', dest='tarlib', required=True, metavar='LIBTAR', help='path to Cabal-version.tar.gz')
+    parser.add_argument('--tarexe', dest='tarexe', required=True, metavar='EXETAR', help='path to cabal-install-version.tar.gz')
+    parser.add_argument('--builddir', dest='builddir', type=str, default='_build', help='build directory')
 
     args = parser.parse_args()
 
-    rootdir = Path('.').resolve()
     args = Args(
         compiler   = Path(shutil.which(args.with_compiler)),
         cabal      = Path(shutil.which(args.with_cabal)),
         indexstate = args.index_state,
-        rootdir    = rootdir,
-        builddir   = rootdir.resolve() / '_build',
+        builddir   = Path(args.builddir).resolve(),
         static     = args.static,
-        ofdlocking = args.ofd_locking
+        ofdlocking = args.ofd_locking,
+        tarlib     = Path(args.tarlib).resolve(),
+        tarexe     = Path(args.tarexe).resolve()
     )
 
     print(dedent(f"""
@@ -288,6 +306,8 @@ def main():
         builddir:    {args.builddir}
         static:      {args.static}
         ofd-locking: {args.ofdlocking}
+        lib-tarball: {args.tarlib}
+        exe-tarball: {args.tarexe}
     """))
 
     # Check tools
