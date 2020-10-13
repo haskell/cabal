@@ -53,6 +53,7 @@ import Distribution.Pretty
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Simple.Utils
+import Distribution.Utils.Path
 
 import Data.List (stripPrefix)
 import System.FilePath ((</>), (<.>), normalise)
@@ -115,7 +116,7 @@ getLibSourceFiles verbosity lbi lib clbi = getSourceFiles verbosity searchpaths 
   where
     bi               = libBuildInfo lib
     modules          = allLibModules lib clbi
-    searchpaths      = componentBuildDir lbi clbi : hsSourceDirs bi ++
+    searchpaths      = componentBuildDir lbi clbi : map getSymbolicPath (hsSourceDirs bi) ++
                      [ autogenComponentModulesDir lbi clbi
                      , autogenPackageModulesDir lbi ]
 
@@ -126,14 +127,14 @@ getExeSourceFiles :: Verbosity
                      -> IO [(ModuleName.ModuleName, FilePath)]
 getExeSourceFiles verbosity lbi exe clbi = do
     moduleFiles <- getSourceFiles verbosity searchpaths modules
-    srcMainPath <- findFileEx verbosity (hsSourceDirs bi) (modulePath exe)
+    srcMainPath <- findFileEx verbosity (map getSymbolicPath $ hsSourceDirs bi) (modulePath exe)
     return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
     bi          = buildInfo exe
     modules     = otherModules bi
     searchpaths = autogenComponentModulesDir lbi clbi
                 : autogenPackageModulesDir lbi
-                : exeBuildDir lbi exe : hsSourceDirs bi
+                : exeBuildDir lbi exe : map getSymbolicPath (hsSourceDirs bi)
 
 getFLibSourceFiles :: Verbosity
                    -> LocalBuildInfo
@@ -146,7 +147,7 @@ getFLibSourceFiles verbosity lbi flib clbi = getSourceFiles verbosity searchpath
     modules     = otherModules bi
     searchpaths = autogenComponentModulesDir lbi clbi
                 : autogenPackageModulesDir lbi
-                : flibBuildDir lbi flib : hsSourceDirs bi
+                : flibBuildDir lbi flib : map getSymbolicPath (hsSourceDirs bi)
 
 getSourceFiles :: Verbosity -> [FilePath]
                   -> [ModuleName.ModuleName]

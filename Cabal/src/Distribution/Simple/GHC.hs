@@ -106,6 +106,7 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Pretty
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 
 import Control.Monad (msum, forM_)
@@ -1192,7 +1193,7 @@ gbuildSources verbosity specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFileEx verbosity (tmpDir : hsSourceDirs bnfo) modPath
+      main <- findFileEx verbosity (tmpDir : map getSymbolicPath (hsSourceDirs bnfo)) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 

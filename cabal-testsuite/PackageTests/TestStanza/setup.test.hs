@@ -7,6 +7,7 @@ import Distribution.PackageDescription
 import Distribution.Types.UnqualComponentName
 import Control.Monad.IO.Class
 import Distribution.Simple.Configure
+import Distribution.Utils.Path
 
 main = setupAndCabalTest $ do
     assertOutputDoesNotContain "unknown section type"
@@ -19,5 +20,8 @@ main = setupAndCabalTest $ do
                                 (testInterface gotTestSuite)
     -- NB: Not testing targetBuildDepends (testBuildInfo gotTestSuite)
     -- as dependency varies with cabal-install
-    assertEqual "testBuildInfo/hsSourceDirs" ["."] (hsSourceDirs (testBuildInfo gotTestSuite))
+    assertEqual
+        "testBuildInfo/hsSourceDirs"
+        [sameDirectory]
+        (hsSourceDirs (testBuildInfo gotTestSuite))
     return ()

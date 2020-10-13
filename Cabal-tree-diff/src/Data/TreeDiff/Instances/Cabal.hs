@@ -32,6 +32,7 @@ import Distribution.Types.ComponentId              (ComponentId)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
+import Distribution.Utils.Path                     (SymbolicPath)
 import Distribution.Utils.ShortText                (ShortText, fromShortText)
 import Distribution.Verbosity
 import Distribution.Verbosity.Internal
@@ -56,6 +57,8 @@ instance ToExpr Dependency where
     toExpr d@(Dependency pn vr cs)
         | cs == mainLibSet = App "Dependency" [toExpr pn, toExpr vr, App "mainLibSet" []]
         | otherwise        = genericToExpr d
+
+instance ToExpr (SymbolicPath from to)
 
 instance ToExpr AbiDependency
 instance ToExpr AbiHash

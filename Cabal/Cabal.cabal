@@ -90,6 +90,7 @@ library
     Distribution.Backpack.PreModuleShape
     Distribution.CabalSpecVersion
     Distribution.Utils.IOData
+    Distribution.Utils.Path
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Utils.MD5

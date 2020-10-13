@@ -62,6 +62,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program
 import Distribution.Pretty
 import Distribution.Verbosity
+import Distribution.Utils.Path
 
 import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
@@ -308,10 +309,10 @@ findMainExeFile
   -> FilePath -- ^ main-is
   -> IO FilePath
 findMainExeFile verbosity cwd exeBi pps mainPath = do
-  ppFile <- findFileCwdWithExtension cwd (ppSuffixes pps) (hsSourceDirs exeBi)
+  ppFile <- findFileCwdWithExtension cwd (ppSuffixes pps) (map getSymbolicPath (hsSourceDirs exeBi))
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFileCwd verbosity cwd (hsSourceDirs exeBi) mainPath
+    Nothing -> findFileCwd verbosity cwd (map getSymbolicPath (hsSourceDirs exeBi)) mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
@@ -320,7 +321,7 @@ findMainExeFile verbosity cwd exeBi pps mainPath = do
 findModDefFile
   :: Verbosity -> FilePath -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
 findModDefFile verbosity cwd flibBi _pps modDefPath =
-    findFileCwd verbosity cwd (".":hsSourceDirs flibBi) modDefPath
+    findFileCwd verbosity cwd ("." : map getSymbolicPath (hsSourceDirs flibBi)) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
@@ -437,13 +438,13 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
 allSourcesBuildInfo
     :: Verbosity
     -> (Verbosity -> String -> IO [FilePath])
-    -> FilePath          -- ^ cwd
+    -> FilePath          -- ^ cwd -- change me to 'BuildPath Absolute PackageDir'
     -> BuildInfo
     -> [PPSuffixHandler] -- ^ Extra preprocessors
     -> [ModuleName]      -- ^ Exposed modules
     -> IO [FilePath]
 allSourcesBuildInfo verbosity rip cwd bi pps modules = do
-  let searchDirs = hsSourceDirs bi
+  let searchDirs = map getSymbolicPath (hsSourceDirs bi)
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
       -- NB: *Not* findFileWithExtension, because the same source
@@ -455,7 +456,7 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
   bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
           fileExts = ["hs-boot", "lhs-boot"]
-      in findFileCwdWithExtension cwd fileExts (hsSourceDirs bi) file
+      in findFileCwdWithExtension cwd fileExts (map getSymbolicPath (hsSourceDirs bi)) file
     | module_ <- modules ++ otherModules bi ]
 
   return $ sources ++ catMaybes bootFiles ++ cSources bi ++ cxxSources bi ++

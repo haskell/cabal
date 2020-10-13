@@ -72,6 +72,7 @@ import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Distribution.Compat.Stack
 import Distribution.Version (Version)
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
@@ -403,7 +404,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
-      ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)
+      ghcOptSourcePath      = toNubListR $ [odir] ++ (map getSymbolicPath (hsSourceDirs bi))
                                            ++ [autogenComponentModulesDir lbi clbi]
                                            ++ [autogenPackageModulesDir lbi],
       ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi

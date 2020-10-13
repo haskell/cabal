@@ -43,6 +43,7 @@ import Distribution.Types.MungedPackageId
 import Distribution.Types.MungedPackageName
 import Distribution.Types.ModuleRenaming
 import Distribution.Types.TargetInfo
+import Distribution.Utils.Path
 
 import Distribution.Package
 import Distribution.Backpack
@@ -555,7 +556,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
             modulePath = stubFilePath test,
             exeScope   = ExecutablePublic,
             buildInfo  = (testBuildInfo test) {
-                           hsSourceDirs       = [ testDir ],
+                           hsSourceDirs       = [ unsafeMakeSymbolicPath testDir ],
                            targetBuildDepends = testLibDep
                              : (targetBuildDepends $ testBuildInfo test)
                          }

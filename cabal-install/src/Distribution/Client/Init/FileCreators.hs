@@ -79,6 +79,7 @@ import Distribution.Fields.Pretty
 
 import qualified Distribution.SPDX as SPDX
 
+import Distribution.Utils.Path -- TODO
 
 ---------------------------------------------------------------------------
 --  File generation  ------------------------------------------------------
@@ -448,9 +449,9 @@ generateCabalFile fileName c =
        True
 
      , fieldPAla "hs-source-dirs" formatHsSourceDirs
-       (maybeToFlag (case buildType of
-                                              LibBuild -> sourceDirs c
-                                              ExecBuild -> applicationDirs c))
+       (maybeToFlag $ fmap (fmap unsafeMakeSymbolicPath) $ case buildType of
+         LibBuild -> sourceDirs c
+         ExecBuild -> applicationDirs c)
        ["Directories containing source files."]
        True
 
@@ -607,7 +608,7 @@ generateCabalFile fileName c =
        True
 
      , fieldPAla "hs-source-dirs" formatHsSourceDirs
-       (maybeToFlag (testDirs c))
+       (maybeToFlag $ fmap (fmap unsafeMakeSymbolicPath) $ testDirs c) -- TODO
        ["Directories containing source files."]
        True
 

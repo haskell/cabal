@@ -30,6 +30,7 @@ import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLib
+import Distribution.Utils.Path
 
 import Distribution.ModuleName
 
@@ -118,13 +119,13 @@ needMainFile bi mainPath = do
     -- whereas we need to get the file *prior* to preprocessing.
     ppFile <- findFileWithExtensionMonitored
                 (ppSuffixes knownSuffixHandlers)
-                (hsSourceDirs bi)
+                (map getSymbolicPath (hsSourceDirs bi))
                 (dropExtension mainPath)
     case ppFile of
         -- But check the original path in the end, because
         -- maybe it's a non-preprocessed file with a non-traditional
         -- extension.
-        Nothing -> findFileMonitored (hsSourceDirs bi) mainPath
+        Nothing -> findFileMonitored (map getSymbolicPath (hsSourceDirs bi)) mainPath
                     >>= maybe (return ()) need
         Just pp -> need pp
 
@@ -162,6 +163,6 @@ needBuildInfo pkg_descr bi modules = do
     findNeededModule exts m =
         findFileWithExtensionMonitored
             (ppSuffixes knownSuffixHandlers ++ exts)
-            (hsSourceDirs bi)
+            (map getSymbolicPath (hsSourceDirs bi))
             (toFilePath m)
           >>= maybe (return ()) need

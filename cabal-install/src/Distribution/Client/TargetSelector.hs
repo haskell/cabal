@@ -95,6 +95,7 @@ import System.FilePath
          ( (</>), (<.>), normalise, dropTrailingPathSeparator )
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
+import Distribution.Utils.Path
 
 import qualified Prelude (foldr1)
 
@@ -1815,7 +1816,7 @@ collectKnownComponentInfo pkg =
         cinfoName      = componentName c,
         cinfoStrName   = componentStringName (packageName pkg) (componentName c),
         cinfoPackageId = packageId pkg,
-        cinfoSrcDirs   = ordNub (hsSourceDirs bi),
+        cinfoSrcDirs   = ordNub (map getSymbolicPath (hsSourceDirs bi)),
         cinfoModules   = ordNub (componentModules c),
         cinfoHsFiles   = ordNub (componentHsFiles c),
         cinfoCFiles    = ordNub (cSources bi),

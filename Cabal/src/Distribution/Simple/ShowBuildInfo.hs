@@ -74,6 +74,7 @@ import Distribution.Simple.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
+import Distribution.Utils.Path
 
 -- | Construct a JSON document describing the build information for a
 -- package.
@@ -121,7 +122,7 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
       , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
       , "modules"       .= JsonArray (map (JsonString . display) modules)
       , "src-files"     .= JsonArray (map JsonString sourceFiles)
-      , "src-dirs"      .= JsonArray (map JsonString $ hsSourceDirs bi)
+      , "src-dirs"      .= JsonArray (map JsonString $ map getSymbolicPath $ hsSourceDirs bi)
       ]
       where
         bi = componentBuildInfo comp

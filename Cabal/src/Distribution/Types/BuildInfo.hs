@@ -24,6 +24,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
+import Distribution.Utils.Path
 
 import Distribution.ModuleName
 import Distribution.Compiler
@@ -65,7 +66,7 @@ data BuildInfo = BuildInfo {
         cSources          :: [FilePath],
         cxxSources        :: [FilePath],
         jsSources         :: [FilePath],
-        hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
+        hsSourceDirs      :: [SymbolicPath PackageDir SourceDir], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
         virtualModules    :: [ModuleName], -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
         autogenModules    :: [ModuleName], -- ^ not present on sdist, Paths_* or user-generated with a custom Setup.hs
