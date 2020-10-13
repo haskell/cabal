@@ -26,7 +26,7 @@ module Distribution.Deprecated.ParseUtils (
         runP, runE, ParseResult(..), parseFail, showPWarning,
         Field(..), lineNo,
         FieldDescr(..), readFields,
-        parseHaskellString, parseFilePathQ, parseTokenQ,
+        parseHaskellString, parseTokenQ,
         parseOptCommaList,
         showFilePath, showToken, showFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
@@ -321,11 +321,6 @@ posToLineNo :: Parsec.Position -> LineNo
 posToLineNo (Parsec.Position row _) = row
 
 ------------------------------------------------------------------------------
-
-parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseTokenQ
-  -- removed until normalise is no longer broken, was:
-  --   liftM normalise parseTokenQ
 
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
