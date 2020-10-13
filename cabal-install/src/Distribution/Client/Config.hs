@@ -97,7 +97,7 @@ import Distribution.Deprecated.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseOptCommaList, parseTokenQ, syntaxError
+         , parseOptCommaList, parseTokenQ, syntaxError
          , simpleFieldParsec, listFieldParsec
          )
 import Distribution.Client.ParseUtils
@@ -122,11 +122,9 @@ import qualified Distribution.Compat.CharParsing as P
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Solver.Types.ConstraintSource
 
-import qualified Distribution.Deprecated.ReadP as Parse
-         ( (<++), option )
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
-import Distribution.Parsec (parsecOptCommaList)
+import Distribution.Parsec (parsecOptCommaList, ParsecParser, parsecToken, parsecFilePath)
 import Text.PrettyPrint
          ( ($+$) )
 import Text.PrettyPrint.HughesPJ
@@ -958,15 +956,15 @@ configFieldDescriptions src =
        [let pkgs            = (Just . AllowOlder . RelaxDepsSome)
                               `fmap` parsecOptCommaList parsec
             parseAllowOlder = ((Just . AllowOlder . toRelaxDeps)
-                               `fmap` parsec) Parse.<++ pkgs
-         in simpleField "allow-older"
+                               `fmap` parsec) <|> pkgs
+         in simpleFieldParsec "allow-older"
             (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
             configAllowOlder (\v flags -> flags { configAllowOlder = v })
        ,let pkgs            = (Just . AllowNewer . RelaxDepsSome)
                               `fmap` parsecOptCommaList parsec
             parseAllowNewer = ((Just . AllowNewer . toRelaxDeps)
-                               `fmap` parsec) Parse.<++ pkgs
-         in simpleField "allow-newer"
+                               `fmap` parsec) <|> pkgs
+         in simpleFieldParsec "allow-newer"
             (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
             configAllowNewer (\v flags -> flags { configAllowNewer = v })
        ]
@@ -1032,18 +1030,18 @@ deprecatedFieldDescriptions =
       (fromNubList . globalRemoteRepos)
       (\rs cfg -> cfg { globalRemoteRepos = toNubList rs })
   , liftGlobalFlag $
-    simpleField "cachedir"
-      (Disp.text . fromFlagOrDefault "") (optional parseFilePathQ)
+    simpleFieldParsec "cachedir"
+      (Disp.text . fromFlagOrDefault "") (optionalFlag parsecFilePath)
       globalCacheDir    (\d cfg -> cfg { globalCacheDir = d })
   , liftUploadFlag $
-    simpleField "hackage-username"
+    simpleFieldParsec "hackage-username"
       (Disp.text . fromFlagOrDefault "" . fmap unUsername)
-      (optional (fmap Username parseTokenQ))
+      (optionalFlag (fmap Username parsecToken))
       uploadUsername    (\d cfg -> cfg { uploadUsername = d })
   , liftUploadFlag $
-    simpleField "hackage-password"
+    simpleFieldParsec "hackage-password"
       (Disp.text . fromFlagOrDefault "" . fmap unPassword)
-      (optional (fmap Password parseTokenQ))
+      (optionalFlag (fmap Password parsecToken))
       uploadPassword    (\d cfg -> cfg { uploadPassword = d })
   , liftUploadFlag $
     spaceListField "hackage-password-command"
@@ -1056,7 +1054,9 @@ deprecatedFieldDescriptions =
  ++ map (modifyFieldName ("global-"++) . liftGlobalInstallDirs)
     installDirsFields
   where
-    optional = Parse.option mempty . fmap toFlag
+    optionalFlag :: ParsecParser a -> ParsecParser (Flag a)
+    optionalFlag p = toFlag <$> p <|> pure mempty
+
     modifyFieldName :: (String -> String) -> FieldDescr a -> FieldDescr a
     modifyFieldName f d = d { fieldName = f (fieldName d) }
 

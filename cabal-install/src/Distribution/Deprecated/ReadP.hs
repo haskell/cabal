@@ -85,10 +85,6 @@ import Control.Monad( replicateM, (>=>) )
 
 import qualified Control.Monad.Fail as Fail
 
-import           Distribution.CabalSpecVersion   (cabalSpecLatest)
-import qualified Distribution.Compat.CharParsing as P
-import qualified Distribution.Parsec       as P
-
 import Distribution.ReadE (ReadE (..))
 
 infixr 5 +++, <++
@@ -440,33 +436,6 @@ readS_to_P :: ReadS a -> ReadP r a
 --   parser, and therefore a possible inefficiency.
 readS_to_P r =
   R (\k -> Look (\s -> final [bs'' | (a,s') <- r s, bs'' <- run (k a) s']))
-
--------------------------------------------------------------------------------
--- Instances
--------------------------------------------------------------------------------
-
-instance t ~ Char => P.Parsing (Parser r t) where
-  try        = id
-  (<?>)      = const
-  skipMany   = skipMany
-  skipSome   = skipMany1
-  unexpected = const pfail
-  eof        = eof
-
-  -- TODO: we would like to have <++ here
-  notFollowedBy p = ((Just <$> p) +++ pure Nothing)
-    >>= maybe (pure ()) (P.unexpected . show)
-
-instance t ~ Char => P.CharParsing (Parser r t) where
-  satisfy   = satisfy
-  char      = char
-  notChar c = satisfy (/= c)
-  anyChar   = get
-  string    = string
-
-instance t ~ Char => P.CabalParsing (Parser r t) where
-    parsecWarning _ _   = pure ()
-    askCabalSpecVersion = pure cabalSpecLatest
 
 -------------------------------------------------------------------------------
 -- ReadE
