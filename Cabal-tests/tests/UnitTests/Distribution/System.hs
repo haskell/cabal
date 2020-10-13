@@ -8,7 +8,9 @@ import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System
 import Test.Tasty
-import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck (testProperty)
+import Test.QuickCheck (Property, (===))
+import Test.QuickCheck.Instances.Cabal ()
 
 textRoundtrip :: (Show a, Eq a, Pretty a, Parsec a) => a -> Property
 textRoundtrip x = simpleParsec (prettyShow x) === Just x
@@ -19,12 +21,3 @@ tests =
     , testProperty "Text Arch round trip"     (textRoundtrip :: Arch -> Property)
     , testProperty "Text Platform round trip" (textRoundtrip :: Platform -> Property)
     ]
-
-instance Arbitrary OS where
-    arbitrary = elements knownOSs
-
-instance Arbitrary Arch where
-    arbitrary = elements knownArches
-
-instance Arbitrary Platform where
-    arbitrary = liftM2 Platform arbitrary arbitrary

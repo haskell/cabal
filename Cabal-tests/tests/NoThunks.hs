@@ -1,3 +1,10 @@
+{-# LANGUAGE CPP                 #-}
+#if !(__GLASGOW_HASKELL__ >= 806 && defined(MIN_VERSION_nothunks))
+module Main (main) where
+main :: IO ()
+main = putStrLn "Old GHC, no nothunks"
+#else
+
 {-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -36,7 +43,7 @@ main = defaultMain $ testGroup "nothunks"
 
 noThunksParse :: IO ()
 noThunksParse = do
-    bs <- BS.readFile "Cabal/Cabal.cabal" <|> BS.readFile "Cabal.cabal"
+    bs <- BS.readFile "Cabal/Cabal.cabal" <|> BS.readFile "../Cabal/Cabal.cabal"
     let res = parseGenericPackageDescription bs
     gpd <- either (assertFailure . show) return $ snd $
         runParseResult res
@@ -130,3 +137,5 @@ newtype CheckFoldableNamed f a = CheckFoldableNamed (f a)
 instance (NoThunks a, Foldable f, Typeable f) => NoThunks (CheckFoldableNamed f a) where
     showTypeOf _ = show (typeRep (Proxy :: Proxy f))
     wNoThunks ctxt (CheckFoldableNamed xs) = noThunksInValues ctxt (toList xs)
+
+#endif

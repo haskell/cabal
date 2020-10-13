@@ -61,6 +61,9 @@ jobs:
         run: cabal v2-build Cabal --only-dependencies
       - name: cabal v2-build
         run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
@@ -79,5 +82,5 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-{{ job.version }}\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-{{ job.version }}\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
 {% endfor %}

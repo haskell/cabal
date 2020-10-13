@@ -4,9 +4,10 @@ packages: cabal-install/
 packages: solver-benchmarks/
 tests: True
 
-packages: Cabal/Cabal-QuickCheck/
-packages: Cabal/Cabal-tree-diff/
-packages: Cabal/Cabal-described
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff/
+packages: Cabal-described
+packages: Cabal-tests/
 packages: cabal-benchmarks/
 
 -- Uncomment to allow picking up extra local unpacked deps:

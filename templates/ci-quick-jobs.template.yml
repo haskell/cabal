@@ -39,7 +39,6 @@ jobs:
       - name: Regenerate files
         run: |
           make lexer
-          make gen-extra-source-files
           make spdx
           make templates
           make github-actions
