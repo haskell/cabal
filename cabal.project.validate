@@ -4,9 +4,11 @@ packages: cabal-install/
 packages: solver-benchmarks/
 
 packages: cabal-install/cabal-install-solver/
-packages: Cabal/Cabal-QuickCheck/
-packages: Cabal/Cabal-tree-diff
-packages: Cabal/Cabal-described
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff
+packages: Cabal-described
+packages: Cabal-tests
+packages: cabal-benchmarks
 
 tests: True
 

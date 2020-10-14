@@ -272,8 +272,8 @@ if [ -z "$STEPS" ]; then
     STEPS="$STEPS time-summary"
 fi
 
-TARGETS="Cabal cabal-testsuite"
-if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver  Cabal-QuickCheck Cabal-tree-diff Cabal-described"; fi
+TARGETS="Cabal cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
+if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver cabal-benchmarks"; fi
 if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
 
 if $LISTSTEPS; then
@@ -383,24 +383,30 @@ timed doctest -package-env=doctest-Cabal --fast Cabal/Distribution Cabal/Languag
 step_lib_tests() {
 print_header "Cabal: tests"
 
-CMD="$($CABALPLANLISTBIN Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALPLANLISTBIN Cabal:test:check-tests) $TESTSUITEJOBS --hide-successes"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:check-tests) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALPLANLISTBIN Cabal:test:parser-tests) $TESTSUITEJOBS --hide-successes"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:parser-tests) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD=$($CABALPLANLISTBIN Cabal:test:hackage-tests)
-(cd Cabal && timed $CMD read-fields) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
+
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
+
+CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
+(cd Cabal-tests && timed $CMD read-fields) || exit 1
 
 if $HACKAGETESTSALL; then
-  (cd Cabal && timed $CMD parsec)    || exit 1
-  (cd Cabal && timed $CMD roundtrip) || exit 1
+  (cd Cabal-tests && timed $CMD parsec)    || exit 1
+  (cd Cabal-tests && timed $CMD roundtrip) || exit 1
 else
-  (cd Cabal && timed $CMD parsec d)    || exit 1
-  (cd Cabal && timed $CMD roundtrip k) || exit 1
+  (cd Cabal-tests && timed $CMD parsec d)    || exit 1
+  (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
 fi
 }
 

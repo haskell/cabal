@@ -1,0 +1,219 @@
+cabal-version: >=1.10
+name:          Cabal-tests
+version:       3
+copyright:     2003-2020, Cabal Development Team (see AUTHORS file)
+license:       BSD3
+license-file:  LICENSE
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      Tests for Cabal library
+description:   The tests are external for development flows convinience.
+category:      Distribution
+build-type:    Simple
+
+source-repository head
+  type:     git
+  location: https://github.com/haskell/cabal/
+  subdir:   Cabal-tests
+
+-- Small, fast running tests.
+test-suite unit-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  other-modules:
+    Test.Laws
+    Test.QuickCheck.Utils
+    UnitTests.Distribution.CabalSpecVersion
+    UnitTests.Distribution.Compat.CreatePipe
+    UnitTests.Distribution.Compat.Graph
+    UnitTests.Distribution.Compat.Time
+    UnitTests.Distribution.Described
+    UnitTests.Distribution.PkgconfigVersion
+    UnitTests.Distribution.Simple.Glob
+    UnitTests.Distribution.Simple.Program.GHC
+    UnitTests.Distribution.Simple.Program.Internal
+    UnitTests.Distribution.Simple.Utils
+    UnitTests.Distribution.SPDX
+    UnitTests.Distribution.System
+    UnitTests.Distribution.Types.GenericPackageDescription
+    UnitTests.Distribution.Utils.CharSet
+    UnitTests.Distribution.Utils.Generic
+    UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.Utils.ShortText
+    UnitTests.Distribution.Utils.Structured
+    UnitTests.Distribution.Version
+    UnitTests.Orphans
+
+  main-is:          UnitTests.hs
+  build-depends:
+      array
+    , async               >=2.2.2 && <2.3
+    , base                >=0     && <5
+    , binary
+    , bytestring
+    , Cabal
+    , Cabal-described
+    , Cabal-QuickCheck
+    , containers
+    , deepseq
+    , Diff                >=0.4   && <0.5
+    , directory
+    , filepath
+    , integer-logarithms  >=1.0.2 && <1.1
+    , pretty
+    , QuickCheck          >=2.14  && <2.15
+    , rere                >=0.1   && <0.2
+    , tagged
+    , tasty               >=1.2.3 && <1.4
+    , tasty-hunit
+    , tasty-quickcheck
+    , temporary
+    , text
+    , transformers
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+  if !impl(ghc >=7.10)
+    build-depends: void
+
+  if !impl(ghc >=8.0)
+    build-depends: semigroups
+
+test-suite parser-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          ParserTests.hs
+  build-depends:
+      base
+    , base-compat       >=0.11.0  && <0.12
+    , bytestring
+    , Cabal
+    , Cabal-tree-diff
+    , Diff              >=0.4     && <0.5
+    , directory
+    , filepath
+    , tasty             >=1.2.3   && <1.4
+    , tasty-golden      >=2.3.1.1 && <2.4
+    , tasty-hunit
+    , tasty-quickcheck
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+  if !impl(ghc >=8.0)
+    build-depends: semigroups
+
+  if impl(ghc >=7.8)
+    build-depends: tree-diff ==0.1.*
+
+test-suite check-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests
+  main-is:          CheckTests.hs
+  build-depends:
+      base
+    , bytestring
+    , Cabal
+    , Diff          >=0.4     && <0.5
+    , directory
+    , filepath
+    , tasty         >=1.2.3   && <1.4
+    , tasty-golden  >=2.3.1.1 && <2.4
+
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+  if !impl(ghc >=8.0)
+    build-depends: semigroups
+
+test-suite custom-setup-tests
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests/custom-setup
+  main-is:          CustomSetupTests.hs
+  other-modules:
+    CabalDoctestSetup
+    IdrisSetup
+
+  build-depends:
+      base
+    , Cabal
+    , directory
+    , filepath
+    , process
+
+  default-language: Haskell2010
+
+test-suite hackage-tests
+  type:               exitcode-stdio-1.0
+  main-is:            HackageTests.hs
+
+  -- TODO: need to get 01-index.tar on appveyor
+  if os(windows)
+    buildable: False
+
+  hs-source-dirs:     tests
+  build-depends:
+      base
+    , bytestring
+    , Cabal
+    , Cabal-tree-diff
+    , containers
+    , deepseq
+    , directory
+    , filepath
+
+  build-depends:
+      base-compat           >=0.11.0   && <0.12
+    , base-orphans          >=0.6      && <0.9
+    , clock                 >=0.8      && <0.9
+    , optparse-applicative  >=0.13.2.0 && <0.17
+    , stm                   >=2.4.5.0  && <2.6
+    , tar                   >=0.5.0.3  && <0.6
+
+  if impl(ghc >=7.8)
+    build-depends: tree-diff ==0.1.*
+
+  ghc-options:        -Wall -rtsopts -threaded
+  default-extensions: CPP
+  default-language:   Haskell2010
+
+test-suite rpmvercmp
+  type:             exitcode-stdio-1.0
+  main-is:          RPMVerCmp.hs
+  hs-source-dirs:   tests
+  build-depends:
+      base
+    , bytestring
+    , Cabal
+
+  build-depends:
+      QuickCheck
+    , tasty             >=1.2.3 && <1.4
+    , tasty-hunit
+    , tasty-quickcheck
+
+  c-sources:        tests/cbits/rpmvercmp.c
+  cc-options:       -Wall
+  ghc-options:      -Wall
+  default-language: Haskell2010
+
+test-suite no-thunks-test
+  default-language: Haskell2010
+  ghc-options:      -Wall
+  type:             exitcode-stdio-1.0
+  main-is:          NoThunks.hs
+  hs-source-dirs:   tests
+  build-depends:
+      base
+    , bytestring
+    , Cabal
+    , tasty        >=1.2.3 && <1.4
+    , tasty-hunit
+
+  -- this is test is buildable on old GHCs
+  -- but it doesn't do anything.
+  if impl(ghc >=8.6)
+    build-depends: nothunks >=0.1.1.0 && <0.2

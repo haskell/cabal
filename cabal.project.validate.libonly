@@ -1,5 +1,9 @@
 packages: Cabal/
 packages: cabal-testsuite/
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff
+packages: Cabal-described
+packages: Cabal-tests
 
 tests: True
 

@@ -1,5 +1,4 @@
 .PHONY : all lexer sdpx lib exe doctest
-.PHONY : gen-extra-source-files gen-extra-source-files-lib gen-extra-source-files-cli
 .PHONY : cabal-install-dev cabal-install-prod
 .PHONY : phony
 
@@ -85,13 +84,6 @@ cabal-install-dev : cabal-install/cabal-install.cabal.dev
 	cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
 	@echo "tell git to ignore changes to cabal-install.cabal:"
 	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
-
-# extra-source-files generation
-
-gen-extra-source-files : gen-extra-source-files-lib
-
-gen-extra-source-files-lib :
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-extra-source-files -- $$(pwd)/Cabal/Cabal.cabal
 
 # analyse-imports
 analyse-imports : phony
@@ -228,7 +220,7 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/src Cabal/Cabal-described/src cabal-install/src cabal-testsuite/src
+	hasktags -b Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
 # boostrapping
 ##############################################################################
