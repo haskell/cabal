@@ -5,6 +5,8 @@ packages: Cabal-tree-diff
 packages: Cabal-described
 packages: Cabal-tests
 
+packages: vendor/cabal-doctest-1.0.8
+
 tests: True
 
 write-ghc-environment-files: never
