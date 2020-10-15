@@ -17,10 +17,12 @@ import qualified Distribution.Types.VersionInterval        as New
 
 main :: IO ()
 main = defaultMain
-    [ env (BS.readFile "Cabal/Cabal.cabal") $ \bs ->
-      bench "Cabal" $ whnf parseGenericPackageDescriptionMaybe bs
-    , env (BS.readFile "cabal-benchmarks/cabal-benchmarks.cabal") $ \bs ->
-      bench "cabal-benchmarks" $ whnf parseGenericPackageDescriptionMaybe bs
+    [ bgroup "parseGPD"
+        [ env (BS.readFile "Cabal/Cabal.cabal") $ \bs ->
+          bench "Cabal" $ whnf parseGenericPackageDescriptionMaybe bs
+        , env (BS.readFile "cabal-benchmarks/cabal-benchmarks.cabal") $ \bs ->
+          bench "cabal-benchmarks" $ whnf parseGenericPackageDescriptionMaybe bs
+        ]
 
     , bgroup "normaliseVersionRange" $
         let suite name f = bgroup name

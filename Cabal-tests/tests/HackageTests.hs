@@ -341,7 +341,8 @@ main = join (O.execParser opts)
         putStrLn $ show n ++ " files processed"
         putStrLn $ show w ++ " files contained warnings"
         putStrLn $ show f ++ " files failed to parse"
-        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9 :: Double) " seconds elapsed"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e9                  :: Double) " seconds elapsed"
+        putStrLn $ showFFloat (Just 6) (fromInteger diff / 1e6 / fromIntegral n :: Double) " milliseconds per file"
 
     roundtripP = roundtripA <$> prefixP <*> testFieldsP
     roundtripA pfx testFieldsTransform = do
