@@ -542,6 +542,7 @@ unsnocNE (x:|xs) = go x xs where
 isAbsoluteOnAnyPlatform :: FilePath -> Bool
 -- C:\\directory
 isAbsoluteOnAnyPlatform (drive:':':'\\':_) = isAlpha drive
+isAbsoluteOnAnyPlatform (drive:':':'/':_)  = isAlpha drive
 -- UNC
 isAbsoluteOnAnyPlatform ('\\':'\\':_) = True
 -- Posix root
