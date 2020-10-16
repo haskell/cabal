@@ -560,6 +560,7 @@ trdOf3 (_,_,c) = c
 isAbsoluteOnAnyPlatform :: FilePath -> Bool
 -- C:\\directory
 isAbsoluteOnAnyPlatform (drive:':':'\\':_) = isAlpha drive
+isAbsoluteOnAnyPlatform (drive:':':'/':_)  = isAlpha drive
 -- UNC
 isAbsoluteOnAnyPlatform ('\\':'\\':_) = True
 -- Posix root

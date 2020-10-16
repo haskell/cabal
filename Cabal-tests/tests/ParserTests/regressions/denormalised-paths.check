@@ -1,0 +1,12 @@
+The 'subdir' field of a source-repository is not a good relative path: "trailing same directory segment: ."
+'hs-source-dirs: ../../assoc/src' is a relative path outside of the source tree. This will not work when generating a tarball with 'sdist'.
+'extra-source-files: files/**/*.txt/' is not good relative path: trailing slash
+'extra-source-files: files/../foo.txt' is not good relative path: parent directory segment: ..
+'license-file: LICENSE2/' is not good relative path: trailing slash
+'license-file: .' is not good relative path: trailing dot segment
+'hs-source-dirs: src/.' is not good relative path: trailing same directory segment: .
+'hs-source-dirs: src/../src' is not good relative path: parent directory segment: ..
+'hs-source-dirs: src/../../assoc/src' is not good relative path: parent directory segment: ..
+'hs-source-dirs: C:foo/bar' is not good relative path: reserved character ':'
+'hs-source-dirs: ||s' is not good relative path: reserved character '|'
+'hs-source-dirs: ../../assoc/src' is not good relative path: parent directory segment: ..
