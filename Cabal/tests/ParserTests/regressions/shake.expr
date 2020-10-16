@@ -2420,7 +2420,7 @@ GenericPackageDescription
                            category = "Development, Shake",
                            copyright = "Neil Mitchell 2011-2017",
                            customFieldsPD = [],
-                           dataDir = "",
+                           dataDir = ".",
                            dataFiles = ["html/viz.js",
                                         "html/profile.html",
                                         "html/progress.html",

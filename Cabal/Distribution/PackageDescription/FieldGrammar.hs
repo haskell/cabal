@@ -117,7 +117,7 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> pure []       -- benchmarks
     --  * Files
     <*> monoidalFieldAla    "data-files"         (alaList' VCat FilePathNT) L.dataFiles
-    <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir ""
+    <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir "."
     <*> monoidalFieldAla    "extra-source-files" formatExtraSourceFiles     L.extraSrcFiles
     <*> monoidalFieldAla    "extra-tmp-files"    (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla    "extra-doc-files"    (alaList' VCat FilePathNT) L.extraDocFiles

@@ -138,6 +138,8 @@ extra-source-files:
   tests/ParserTests/regressions/common3.format
   tests/ParserTests/regressions/cxx-options-with-optimization.cabal
   tests/ParserTests/regressions/cxx-options-with-optimization.check
+  tests/ParserTests/regressions/denormalised-paths.cabal
+  tests/ParserTests/regressions/denormalised-paths.check
   tests/ParserTests/regressions/elif.cabal
   tests/ParserTests/regressions/elif.expr
   tests/ParserTests/regressions/elif.format
