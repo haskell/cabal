@@ -54,6 +54,7 @@ import           Distribution.Pretty
 import           Distribution.Simple.Utils
 import           Distribution.System
 import           Distribution.Types.Component
+import Distribution.Utils.Path
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.DependencyMap
 import           Distribution.Types.PackageVersionConstraint
@@ -563,7 +564,7 @@ benchFillInDefaults bm@(Benchmark { benchmarkBuildInfo = bi }) =
 biFillInDefaults :: BuildInfo -> BuildInfo
 biFillInDefaults bi =
     if null (hsSourceDirs bi)
-    then bi { hsSourceDirs = [currentDir] }
+    then bi { hsSourceDirs = [sameDirectory] }
     else bi
 
 -- Walk a 'GenericPackageDescription' and apply @onBuildInfo@/@onSetupBuildInfo@

@@ -7,6 +7,7 @@ import Distribution.Package
 import Distribution.Types.Dependency
 import Distribution.PackageDescription
 import Language.Haskell.Extension (Language(..))
+import Distribution.Utils.Path
 
 -- Test that setup parses '^>=' operator correctly.
 -- Don't bother with the cabal-install test as the build-depends
@@ -26,5 +27,5 @@ main = setupTest $ do
         when (pn == mkPackageName "pretty") $
             assertEqual "targetBuildDepends/pretty"
                          vr (majorBoundVersion (mkVersion [1,1,1,0]))
-    assertEqual "hsSourceDirs" ["."] (hsSourceDirs bi)
+    assertEqual "hsSourceDirs" [sameDirectory] (hsSourceDirs bi)
     return ()

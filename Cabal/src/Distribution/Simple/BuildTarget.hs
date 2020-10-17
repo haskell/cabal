@@ -53,6 +53,7 @@ import Distribution.Pretty
 import Distribution.Parsec
 import Distribution.Simple.Utils
 import Distribution.Verbosity
+import Distribution.Utils.Path
 
 import qualified Distribution.Compat.CharParsing as P
 
@@ -490,7 +491,7 @@ pkgComponentInfo pkg =
     [ ComponentInfo {
         cinfoName    = componentName c,
         cinfoStrName = componentStringName pkg (componentName c),
-        cinfoSrcDirs = hsSourceDirs bi,
+        cinfoSrcDirs = map getSymbolicPath $ hsSourceDirs bi,
         cinfoModules = componentModules c,
         cinfoHsFiles = componentHsFiles c,
         cinfoAsmFiles= asmSources bi,

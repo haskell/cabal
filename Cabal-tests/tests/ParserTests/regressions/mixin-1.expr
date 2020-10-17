@@ -43,7 +43,8 @@ GenericPackageDescription
                                                             extraLibFlavours = [],
                                                             extraLibs = [],
                                                             frameworks = [],
-                                                            hsSourceDirs = ["str-example"],
+                                                            hsSourceDirs = [SymbolicPath
+                                                                              "str-example"],
                                                             hsc2hsOptions = [],
                                                             includeDirs = [],
                                                             includes = [],

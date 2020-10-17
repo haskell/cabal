@@ -22,6 +22,7 @@ import Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
 import Distribution.System (Platform)
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 import Distribution.Simple.Program.Builtin
 
@@ -159,7 +160,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   let odir = buildDir lbi
       bi = libBuildInfo lib
-      srcDirs = hsSourceDirs bi ++ [odir]
+      srcDirs = map getSymbolicPath (hsSourceDirs bi) ++ [odir]
       dbStack = withPackageDB lbi
       language = fromMaybe Haskell98 (defaultLanguage bi)
       progdb = withPrograms lbi

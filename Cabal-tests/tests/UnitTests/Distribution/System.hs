@@ -3,7 +3,6 @@ module UnitTests.Distribution.System
     ( tests
     ) where
 
-import Control.Monad (liftM2)
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.System

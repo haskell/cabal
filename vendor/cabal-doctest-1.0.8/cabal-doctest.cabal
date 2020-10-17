@@ -1,0 +1,47 @@
+name:               cabal-doctest
+version:            1.0.8
+x-revision:         2
+synopsis:           A Setup.hs helper for doctests running
+description:
+  Currently (beginning of 2017), there isn't @cabal doctest@
+  command. Yet, to properly work doctest needs plenty of configuration.
+  This library provides the common bits for writing custom Setup.hs
+  See <https://github.com/haskell/cabal/issues/2327 Cabal/2327> for the progress
+  of @cabal doctest@, i.e. whether this library is obsolete.
+
+homepage:           https://github.com/phadej/cabal-doctest
+license:            BSD3
+license-file:       LICENSE
+author:             Oleg Grenrus <oleg.grenrus@iki.fi>
+maintainer:         Oleg Grenrus <oleg.grenrus@iki.fi>
+copyright:          (c) 2017 Oleg Grenrus
+category:           Distribution
+build-type:         Simple
+cabal-version:      >=1.10
+extra-source-files:
+  ChangeLog.md
+  README.md
+
+tested-with:        GHC ==8.10.1 || >=7.4 && <8.10 || ==7.2.2 || ==7.0.4
+
+source-repository head
+  type:     git
+  location: https://github.com/phadej/cabal-doctest
+
+library
+  exposed-modules:  Distribution.Extra.Doctest
+  other-modules:
+  other-extensions:
+  build-depends:
+      base       >=4.3  && <4.16
+    , Cabal      >=1.10 && <3.6
+    , directory
+    , filepath
+
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  ghc-options:      -Wall
+
+  if !impl(ghc >=7.2)
+    -- Work around a pattern-match coverage checking bug in GHC 7.0
+    ghc-options: -fno-warn-overlapping-patterns

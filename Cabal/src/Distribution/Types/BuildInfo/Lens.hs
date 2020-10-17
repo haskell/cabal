@@ -4,9 +4,9 @@ module Distribution.Types.BuildInfo.Lens (
     HasBuildInfos (..),
     ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
 import Distribution.Compat.Lens
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Compiler                  (PerCompilerFlavor)
 import Distribution.ModuleName                (ModuleName)
@@ -16,6 +16,7 @@ import Distribution.Types.ExeDependency       (ExeDependency)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
 import Distribution.Types.Mixin               (Mixin)
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
+import Distribution.Utils.Path
 import Language.Haskell.Extension             (Extension, Language)
 
 import qualified Distribution.Types.BuildInfo as T
@@ -96,7 +97,7 @@ class HasBuildInfo a where
    jsSources = buildInfo . jsSources
    {-# INLINE jsSources #-}
 
-   hsSourceDirs :: Lens' a [FilePath]
+   hsSourceDirs :: Lens' a [SymbolicPath PackageDir SourceDir]
    hsSourceDirs = buildInfo . hsSourceDirs
    {-# INLINE hsSourceDirs #-}
 

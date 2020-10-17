@@ -66,6 +66,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
 import Distribution.Pretty             (Pretty (..), prettyShow, showToken)
+import Distribution.Utils.Path
 import Distribution.Version            (Version, VersionRange)
 
 import qualified Data.ByteString.Char8   as BS8
@@ -159,6 +160,7 @@ libraryFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -203,6 +205,7 @@ foreignLibFieldGrammar
        , c (List FSep (MQuoted Language) Language)
        , c (List FSep FilePathNT String)
        , c (List FSep Token String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String), c (List VCat Token String)
@@ -225,21 +228,22 @@ foreignLibFieldGrammar n = ForeignLib n
 
 executableFieldGrammar
     :: ( FieldGrammar c g, Applicative (g Executable), Applicative (g BuildInfo)
-       , c (Identity ExecutableScope),
-                       c (List CommaFSep (Identity ExeDependency) ExeDependency),
-                       c (List
-                            CommaFSep (Identity LegacyExeDependency) LegacyExeDependency),
-                       c (List
-                            CommaFSep (Identity PkgconfigDependency) PkgconfigDependency),
-                       c (List CommaVCat (Identity Dependency) Dependency),
-                       c (List CommaVCat (Identity Mixin) Mixin),
-                       c (List FSep (MQuoted Extension) Extension),
-                       c (List FSep (MQuoted Language) Language),
-                       c (List FSep FilePathNT String), c (List FSep Token String),
-                       c (List NoCommaFSep Token' String),
-                       c (List VCat (MQuoted ModuleName) ModuleName),
-                       c (List VCat FilePathNT String), c (List VCat Token String),
-                       c (MQuoted Language)
+       , c (Identity ExecutableScope)
+       , c (List CommaFSep (Identity ExeDependency) ExeDependency)
+       , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+       , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+       , c (List CommaVCat (Identity Dependency) Dependency)
+       , c (List CommaVCat (Identity Mixin) Mixin)
+       , c (List FSep (MQuoted Extension) Extension)
+       , c (List FSep (MQuoted Language) Language)
+       , c (List FSep FilePathNT String)
+       , c (List FSep Token String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+       , c (List NoCommaFSep Token' String)
+       , c (List VCat (MQuoted ModuleName) ModuleName)
+       , c (List VCat FilePathNT String)
+       , c (List VCat Token String)
+       , c (MQuoted Language)
        )
     => UnqualComponentName -> g Executable Executable
 executableFieldGrammar n = Executable n
@@ -299,6 +303,7 @@ testSuiteFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -418,6 +423,7 @@ benchmarkFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -493,6 +499,7 @@ buildInfoFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -575,17 +582,19 @@ buildInfoFieldGrammar = BuildInfo
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
 hsSourceDirsGrammar
-    :: (FieldGrammar c g, Applicative (g BuildInfo), c (List FSep FilePathNT FilePath))
-    => g BuildInfo [FilePath]
+    :: ( FieldGrammar c g, Applicative (g BuildInfo)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+       )
+    => g BuildInfo [SymbolicPath PackageDir SourceDir]
 hsSourceDirsGrammar = (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
-    <*> monoidalFieldAla "hs-source-dir"  (alaList' FSep FilePathNT) wrongLens
+    <*> monoidalFieldAla "hs-source-dir"  (alaList FSep) wrongLens
         --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
         ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
         ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     -- TODO: make pretty printer aware of CabalSpecVersion
-    wrongLens :: Functor f => LensLike' f BuildInfo [FilePath]
+    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath PackageDir SourceDir]
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
@@ -689,8 +698,8 @@ formatExtraSourceFiles = alaList' VCat FilePathNT
 formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatExposedModules = alaList' VCat MQuoted
 
-formatHsSourceDirs :: [FilePath] -> List FSep FilePathNT FilePath
-formatHsSourceDirs = alaList' FSep FilePathNT
+formatHsSourceDirs :: [SymbolicPath PackageDir SourceDir] -> List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir)
+formatHsSourceDirs = alaList FSep
 
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
 formatOtherExtensions = alaList' FSep MQuoted

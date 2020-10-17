@@ -55,6 +55,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 import System.FilePath
        (splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
@@ -1112,7 +1113,7 @@ checkPaths pkg =
            ++ [ (path, "cxx-sources")      | path <- cxxSources      bi ]
            ++ [ (path, "js-sources")       | path <- jsSources       bi ]
            ++ [ (path, "install-includes") | path <- installIncludes bi ]
-           ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]
+           ++ [ (getSymbolicPath path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]  -- TODO: this can be removed soon!
          | bi <- allBuildInfo pkg ]
     -- paths that are allowed to be absolute
     absPaths = concat
@@ -1884,7 +1885,7 @@ checkLocalPathsExist ops pkg = do
                ++ [ (dir, "extra-framework-dirs")
                   | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
-               ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
+               ++ [ (getSymbolicPath dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelativeOnAnyPlatform dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {

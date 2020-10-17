@@ -71,7 +71,7 @@ GenericPackageDescription
                                                           extraLibFlavours = [],
                                                           extraLibs = [],
                                                           frameworks = [],
-                                                          hsSourceDirs = ["src"],
+                                                          hsSourceDirs = [SymbolicPath "src"],
                                                           hsc2hsOptions = [],
                                                           includeDirs = [],
                                                           includes = [],
@@ -241,7 +241,8 @@ GenericPackageDescription
                                                                extraLibFlavours = [],
                                                                extraLibs = [],
                                                                frameworks = [],
-                                                               hsSourceDirs = ["tests"],
+                                                               hsSourceDirs = [SymbolicPath
+                                                                                 "tests"],
                                                                hsc2hsOptions = [],
                                                                includeDirs = [],
                                                                includes = [],
@@ -466,7 +467,8 @@ GenericPackageDescription
                                                                extraLibFlavours = [],
                                                                extraLibs = [],
                                                                frameworks = [],
-                                                               hsSourceDirs = ["tests"],
+                                                               hsSourceDirs = [SymbolicPath
+                                                                                 "tests"],
                                                                hsc2hsOptions = [],
                                                                includeDirs = [],
                                                                includes = [],

@@ -569,7 +569,7 @@ GenericPackageDescription
                                                           extraLibFlavours = [],
                                                           extraLibs = [],
                                                           frameworks = [],
-                                                          hsSourceDirs = ["src"],
+                                                          hsSourceDirs = [SymbolicPath "src"],
                                                           hsc2hsOptions = [],
                                                           includeDirs = ["cbits"],
                                                           includes = [],
