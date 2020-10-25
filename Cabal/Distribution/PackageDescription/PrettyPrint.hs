@@ -64,7 +64,9 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 showGenericPackageDescription :: GenericPackageDescription -> String
 showGenericPackageDescription gpd = showFields (const []) $ ppGenericPackageDescription v gpd
   where
-    v = cabalSpecFromVersionDigits
+    v :: CabalSpecVersion
+    v = fromMaybe cabalSpecLatest
+      $ cabalSpecFromVersionDigits
       $ versionNumbers
       $ specVersion
       $ packageDescription gpd

@@ -51,23 +51,59 @@ showCabalSpecVersion CabalSpecV1_0  = "1.0"
 cabalSpecLatest :: CabalSpecVersion
 cabalSpecLatest = CabalSpecV3_0
 
-cabalSpecFromVersionDigits :: [Int] -> CabalSpecVersion
+cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
 cabalSpecFromVersionDigits v
-    | v >= [2,5]  = CabalSpecV3_0
-    | v >= [2,3]  = CabalSpecV2_4
-    | v >= [2,1]  = CabalSpecV2_2
-    | v >= [1,25] = CabalSpecV2_0
-    | v >= [1,23] = CabalSpecV1_24
-    | v >= [1,21] = CabalSpecV1_22
-    | v >= [1,19] = CabalSpecV1_20
-    | v >= [1,17] = CabalSpecV1_18
-    | v >= [1,11] = CabalSpecV1_12
-    | v >= [1,9]  = CabalSpecV1_10
-    | v >= [1,7]  = CabalSpecV1_8
-    | v >= [1,5]  = CabalSpecV1_6
-    | v >= [1,3]  = CabalSpecV1_4
-    | v >= [1,1]  = CabalSpecV1_2
-    | otherwise   = CabalSpecV1_0
+    | v == [3,0]  = Just CabalSpecV3_0
+    | v == [2,4]  = Just CabalSpecV2_4
+    | v == [2,2]  = Just CabalSpecV2_2
+    | v == [2,0]  = Just CabalSpecV2_0
+    | v >= [1,25] = Nothing
+    | v >= [1,23] = Just CabalSpecV1_24
+    | v >= [1,21] = Just CabalSpecV1_22
+    | v >= [1,19] = Just CabalSpecV1_20
+    | v >= [1,17] = Just CabalSpecV1_18
+    | v >= [1,11] = Just CabalSpecV1_12
+    | v >= [1,9]  = Just CabalSpecV1_10
+    | v >= [1,7]  = Just CabalSpecV1_8
+    | v >= [1,5]  = Just CabalSpecV1_6
+    | v >= [1,3]  = Just CabalSpecV1_4
+    | v >= [1,1]  = Just CabalSpecV1_2
+    | otherwise   = Just CabalSpecV1_0
+
+cabalSpecToVersionDigits :: CabalSpecVersion -> [Int]
+cabalSpecToVersionDigits CabalSpecV3_0   = [3,0]
+cabalSpecToVersionDigits CabalSpecV2_4   = [2,4]
+cabalSpecToVersionDigits CabalSpecV2_2   = [2,2]
+cabalSpecToVersionDigits CabalSpecV2_0   = [2,0]
+cabalSpecToVersionDigits CabalSpecV1_24  = [1,24]
+cabalSpecToVersionDigits CabalSpecV1_22  = [1,22]
+cabalSpecToVersionDigits CabalSpecV1_20  = [1,20]
+cabalSpecToVersionDigits CabalSpecV1_18  = [1,18]
+cabalSpecToVersionDigits CabalSpecV1_12  = [1,12]
+cabalSpecToVersionDigits CabalSpecV1_10  = [1,10]
+cabalSpecToVersionDigits CabalSpecV1_8   = [1,8]
+cabalSpecToVersionDigits CabalSpecV1_6   = [1,6]
+cabalSpecToVersionDigits CabalSpecV1_4   = [1,4]
+cabalSpecToVersionDigits CabalSpecV1_2   = [1,2]
+cabalSpecToVersionDigits CabalSpecV1_0   = [1,0]
+
+-- | What is the minimum Cabal library version which knows how handle
+-- this spec version.
+--
+-- /Note:/ this is a point where we could decouple cabal-spec and Cabal
+-- versions, if we ever want that.
+--
+-- >>> cabalSpecMinimumLibraryVersion CabalSpecV3_0
+-- [2,5]
+--
+-- >>> cabalSpecMinimumLibraryVersion CabalSpecV2_4
+-- [2,3]
+--
+cabalSpecMinimumLibraryVersion :: CabalSpecVersion -> [Int]
+cabalSpecMinimumLibraryVersion CabalSpecV1_0 = [1,0]
+cabalSpecMinimumLibraryVersion csv = case cabalSpecToVersionDigits (pred csv) of
+    [x,y] -> [x, y+1]
+    xs    -> xs
 
 specHasCommonStanzas :: CabalSpecVersion -> HasCommonStanzas
 specHasCommonStanzas v =

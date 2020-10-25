@@ -70,7 +70,7 @@ runghc :: ScriptEnv -> Maybe FilePath -> [(String, Maybe String)]
        -> FilePath -> [String] -> IO Result
 runghc senv mb_cwd env_overrides script_path args = do
     (real_path, real_args) <- runnerCommand senv mb_cwd env_overrides script_path args
-    run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args
+    run (runnerVerbosity senv) mb_cwd env_overrides real_path real_args Nothing
 
 -- | Compute the command line which should be used to run a Haskell
 -- script with 'runghc'.

@@ -24,6 +24,21 @@
 # 3.0.1.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
   * Add GHC-8.8 flags to `normaliseGhcFlags`
     ([#6379](https://github.com/haskell/cabal/pull/6379)).
+    `Language.Haskell.Extension`
+  * Use more `NonEmpty` instead of ordinary lists
+  * Add `Distribution.Utils.Structured` for fingeprinting `Binary` blobs
+  * Add `null`, `length` and `unsafeFromUTF8BS` to `Distribution.Utils.ShortText`
+  * Refactor `Distribution.Utils.IOData` module
+  * Rename `Distribution.Compat.MD5` to `Distribution.Utils.MD5`
+  * Add `safeHead`, `safeTail`, `safeLast` to `Distribution.Utils.Generic`
+  * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`
+  * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
+  * Add `Distribution.Compat.Async`
+  * Add `Distribution.Compat.Process` with `enableProcessJobs`
+
+# 3.0.1.0 TBW
+  * Add GHC-8.8 flags to normaliseGhcFlags
+    ([#6379](https://github.com/haskell/cabal/pull/6379))
   * Typo fixes
     ([#6372](https://github.com/haskell/cabal/pull/6372)).
   * Limit version number parts to contain at most 9 digits

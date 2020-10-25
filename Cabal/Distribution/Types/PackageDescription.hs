@@ -246,7 +246,7 @@ emptyPackageDescription
                       testSuites   = [],
                       benchmarks   = [],
                       dataFiles    = [],
-                      dataDir      = "",
+                      dataDir      = ".",
                       extraSrcFiles = [],
                       extraTmpFiles = [],
                       extraDocFiles = []
