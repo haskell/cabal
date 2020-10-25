@@ -33,6 +33,11 @@ jobs:
       - name: Set PATH
         run: |
           echo "::add-path::$HOME/.cabal/bin"
+      - name: Install git
+        run: |
+          add-apt-repository -y ppa:git-core/ppa
+          apt-get update
+          apt-get install -y git
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -56,12 +61,12 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_REF:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
+      - uses: actions/checkout@v2
+        # - name: Checkout
+        # - run: |
+        # -   git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+        # -   git fetch origin $GITHUB_REF:temporary-ci-branch
+        # -   git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 {% for step in job.steps %}
       - name: Validate {{step}}
         run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
