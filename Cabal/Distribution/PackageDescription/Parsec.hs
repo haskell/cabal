@@ -179,7 +179,7 @@ parseGenericPackageDescription' cabalVerM lexWarnings utf8WarnPos fs = do
 
                 return v
 
-    specVer <- case cabalSpecFromVersionDigits (versionNumbers cabalVer) of
+    specVer <- case cabalSpecFromVersionDigitsMaybe (versionNumbers cabalVer) of
         Just csv -> return csv
         Nothing  -> parseFatalFailure zeroPos $
             "Unsupported cabal-version " ++ prettyShow cabalVer ++ ". See https://github.com/haskell/cabal/issues/4899."
