@@ -51,8 +51,12 @@ showCabalSpecVersion CabalSpecV1_0  = "1.0"
 cabalSpecLatest :: CabalSpecVersion
 cabalSpecLatest = CabalSpecV3_0
 
-cabalSpecFromVersionDigits :: [Int] -> Maybe CabalSpecVersion
+cabalSpecFromVersionDigits :: [Int] -> CabalSpecVersion
 cabalSpecFromVersionDigits v
+    = fromMaybe cabalSpecLatest (cabalSpecFromVersionDigitsMaybe v)
+
+cabalSpecFromVersionDigitsMaybe :: [Int] -> Maybe CabalSpecVersion
+cabalSpecFromVersionDigitsMaybe v
     | v == [3,0]  = Just CabalSpecV3_0
     | v == [2,4]  = Just CabalSpecV2_4
     | v == [2,2]  = Just CabalSpecV2_2

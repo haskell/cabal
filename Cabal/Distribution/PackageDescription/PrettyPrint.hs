@@ -65,8 +65,7 @@ showGenericPackageDescription :: GenericPackageDescription -> String
 showGenericPackageDescription gpd = showFields (const []) $ ppGenericPackageDescription v gpd
   where
     v :: CabalSpecVersion
-    v = fromMaybe cabalSpecLatest
-      $ cabalSpecFromVersionDigits
+    v = cabalSpecFromVersionDigits
       $ versionNumbers
       $ specVersion
       $ packageDescription gpd
