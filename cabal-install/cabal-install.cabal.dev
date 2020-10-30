@@ -60,8 +60,6 @@ library cabal-lib-client
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -285,8 +283,6 @@ library cabal-install-solver-dsl
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -311,8 +307,6 @@ executable cabal
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -341,8 +335,6 @@ Test-Suite unit-tests
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -415,8 +407,6 @@ Test-Suite memory-usage-tests
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -449,8 +439,6 @@ Test-Suite solver-quickcheck
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
@@ -488,8 +476,6 @@ test-suite integration-tests2
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages

@@ -74,8 +74,6 @@ Version:            3.5.0.0
                      -Wnoncanonical-monad-instances
       if impl(ghc < 8.8)
         ghc-options: -Wnoncanonical-monadfail-instances
-      if impl(ghc >=8.10)
-        ghc-options: -Wunused-packages
 
       if impl(ghc >=8.10)
         ghc-options: -Wunused-packages
