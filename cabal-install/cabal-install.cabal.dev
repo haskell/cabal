@@ -54,7 +54,7 @@ Flag lukko
 
 library cabal-lib-client
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -277,7 +277,7 @@ library cabal-lib-client
 
 library cabal-install-solver-dsl
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -301,7 +301,7 @@ executable cabal
     main-is:        Main.hs
     hs-source-dirs: main
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -329,7 +329,7 @@ executable cabal
 --
 Test-Suite unit-tests
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -401,7 +401,7 @@ Test-Suite unit-tests
 --
 Test-Suite memory-usage-tests
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -433,7 +433,7 @@ Test-Suite memory-usage-tests
 --
 Test-Suite solver-quickcheck
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
@@ -470,7 +470,7 @@ Test-Suite solver-quickcheck
 -- but still build whole projects
 test-suite integration-tests2
     default-language: Haskell2010
-    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
+    ghc-options:    -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
