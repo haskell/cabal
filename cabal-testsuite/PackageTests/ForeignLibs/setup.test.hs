@@ -35,7 +35,8 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
 
         -- Link a C program against the library
         _ <- runProgramM gccProgram
-            [ "-o", "uselib"
+            [ "-std=c11", "-Wall"
+            , "-o", "uselib"
             , "UseLib.c"
             , "-l", "myforeignlib"
             , "-L", flibdir installDirs ]
