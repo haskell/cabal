@@ -38,11 +38,11 @@ jobs:
       - uses: actions/checkout@v2
       - name: Regenerate files
         run: |
-          make lexer
-          make spdx
-          make templates
-          make github-actions
-          make cabal-install-cabal
+          make -B lexer
+          make -B spdx
+          make -B templates
+          make -B github-actions
+          make -B cabal-install-cabal
       - name: Check that diff is clean
         run: |
           git status > /dev/null
