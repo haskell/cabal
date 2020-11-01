@@ -9,7 +9,7 @@ module Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Compat.Prelude
 import Prelude ()
 import Distribution.Types.ComponentRequestedSpec
-            (ComponentRequestedSpec(..), defaultComponentRequestedSpec)
+            (ComponentRequestedSpec(..))
 
 data OptionalStanza
     = TestStanzas
@@ -23,11 +23,14 @@ showStanza BenchStanzas = "bench"
 
 -- | Convert a list of 'OptionalStanza' into the corresponding
 -- 'ComponentRequestedSpec' which records what components are enabled.
+
+-- Note: [OptionalStanza] could become PerOptionalStanza Bool.
+-- See https://github.com/haskell/cabal/issues/6918
 enableStanzas :: [OptionalStanza] -> ComponentRequestedSpec
-enableStanzas = foldl' addStanza defaultComponentRequestedSpec
-  where
-    addStanza enabled TestStanzas  = enabled { testsRequested = True }
-    addStanza enabled BenchStanzas = enabled { benchmarksRequested = True }
+enableStanzas optionalStanzas = ComponentRequestedSpec {
+    testsRequested      = any (== TestStanzas)  optionalStanzas
+  , benchmarksRequested = any (== BenchStanzas) optionalStanzas
+  }
 
 instance Binary OptionalStanza
 instance Structured OptionalStanza
