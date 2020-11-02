@@ -54,7 +54,7 @@ import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
 import Distribution.Simple.Configure (findDistPrefOrDefault)
-import Distribution.Simple.Glob
+import Distribution.Simple.Glob (matchDirFileGlobWithDie)
 import Distribution.Simple.Utils
 import Distribution.Simple.Setup
 import Distribution.Simple.PreProcess
@@ -223,16 +223,16 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
         let srcDataDirRaw                   = dataDir pkg_descr
             srcDataDir | null srcDataDirRaw = "."
                        | otherwise          = srcDataDirRaw
-        matchDirFileGlob verbosity (specVersion pkg_descr) cwd (srcDataDir </> filename)
+        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
 
     -- Extra source files.
   , fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
-    matchDirFileGlob verbosity (specVersion pkg_descr) cwd fpath
+    matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd fpath
 
     -- Extra doc files.
   , fmap concat
     . for (extraDocFiles pkg_descr) $ \ filename ->
-        matchDirFileGlob verbosity (specVersion pkg_descr) cwd filename
+        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd filename
 
     -- License file(s).
   , return (licenseFiles pkg_descr)

@@ -1,0 +1,3 @@
+# cabal v2-sdist
+Wrote source list to <TMPDIR>/pkg-a-0.list
+cabal: sdist of pkg-b-0: filepath wildcard './data.txt' does not match any files.

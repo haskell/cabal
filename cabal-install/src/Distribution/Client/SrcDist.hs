@@ -18,7 +18,6 @@ import Distribution.Package                          (Package (packageId))
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec        (readGenericPackageDescription)
 import Distribution.Simple.PreProcess                (knownSuffixHandlers)
-import Distribution.Simple.SrcDist                   (listPackageSources)
 import Distribution.Simple.SrcDist                   (listPackageSourcesWithDie)
 import Distribution.Simple.Utils                     (die')
 import Distribution.Types.GenericPackageDescription  (GenericPackageDescription)
@@ -52,7 +51,10 @@ packageDirToSdist
     -> FilePath                   -- ^ directory containing that GPD
     -> IO BSL.ByteString          -- ^ resulting sdist tarball
 packageDirToSdist verbosity gpd dir = do
-    files' <- listPackageSources verbosity dir (flattenPackageDescription gpd) knownSuffixHandlers
+    let thisDie :: Verbosity -> String -> IO a
+        thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
+
+    files' <- listPackageSourcesWithDie verbosity thisDie dir (flattenPackageDescription gpd) knownSuffixHandlers
     let files = nub $ sort $ map normalise files'
 
     let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
