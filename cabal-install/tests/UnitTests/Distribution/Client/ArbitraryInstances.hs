@@ -26,7 +26,7 @@ import Data.Char (isLetter)
 import Data.List ((\\))
 
 import Distribution.Simple.Setup
-import Distribution.Types.Flag         (mkFlagAssignment)
+import Distribution.Types.Flag   (mkFlagAssignment)
 
 import Distribution.Client.BuildReports.Types            (BuildReport, InstallOutcome, Outcome, ReportLevel (..))
 import Distribution.Client.CmdInstall.ClientInstallFlags (InstallMethod)
@@ -34,12 +34,12 @@ import Distribution.Client.Glob                          (FilePathGlob (..), Fil
 import Distribution.Client.IndexUtils.ActiveRepos        (ActiveRepoEntry (..), ActiveRepos (..), CombineStrategy (..))
 import Distribution.Client.IndexUtils.IndexState         (RepoIndexState (..), TotalIndexState, makeTotalIndexState)
 import Distribution.Client.IndexUtils.Timestamp          (Timestamp, epochTimeToTimestamp)
-import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Targets
 import Distribution.Client.Types                         (RepoName (..), WriteGhcEnvironmentFilesPolicy)
 import Distribution.Client.Types.AllowNewer
+import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.World                         (WorldPkgInfo (..))
-import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..))
+import Distribution.Solver.Types.OptionalStanza          (OptionalStanza (..), OptionalStanzaMap, OptionalStanzaSet, optStanzaSetFromList, optStanzaTabulate)
 import Distribution.Solver.Types.PackageConstraint       (PackageProperty (..))
 
 import Data.Coerce                      (Coercible, coerce)
@@ -291,6 +291,17 @@ instance Arbitrary PackageProperty where
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
+
+instance Arbitrary OptionalStanzaSet where
+    arbitrary = fmap optStanzaSetFromList arbitrary
+
+instance Arbitrary a => Arbitrary (OptionalStanzaMap a) where
+    arbitrary = do
+        x1 <- arbitrary
+        x2 <- arbitrary
+        return $ optStanzaTabulate $ \x -> case x of
+            TestStanzas  -> x1
+            BenchStanzas -> x2
 
 -------------------------------------------------------------------------------
 -- BuildReport

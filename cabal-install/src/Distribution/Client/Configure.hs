@@ -414,9 +414,9 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- NB: if the user explicitly specified
       -- --enable-tests/--enable-benchmarks, always respect it.
       -- (But if they didn't, let solver decide.)
-      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas)
+      configBenchmarks         = toFlag (BenchStanzas `optStanzaSetMember` stanzas)
                                     `mappend` configBenchmarks configFlags,
-      configTests              = toFlag (TestStanzas `elem` stanzas)
+      configTests              = toFlag (TestStanzas `optStanzaSetMember` stanzas)
                                     `mappend` configTests configFlags
     }
 

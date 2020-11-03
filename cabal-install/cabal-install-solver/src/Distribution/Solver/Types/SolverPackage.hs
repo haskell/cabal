@@ -23,7 +23,7 @@ import Distribution.Solver.Types.SourcePackage
 data SolverPackage loc = SolverPackage {
         solverPkgSource  :: SourcePackage loc,
         solverPkgFlags   :: FlagAssignment,
-        solverPkgStanzas :: [OptionalStanza],
+        solverPkgStanzas :: OptionalStanzaSet,
         solverPkgLibDeps :: ComponentDeps [SolverId],
         solverPkgExeDeps :: ComponentDeps [SolverId]
     }

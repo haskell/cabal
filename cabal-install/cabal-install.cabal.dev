@@ -368,6 +368,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL.TestCaseUtils
     UnitTests.Distribution.Solver.Modular.WeightedPSQ
+    UnitTests.Distribution.Solver.Types.OptionalStanza
     UnitTests.Options
     UnitTests.TempTestDir
   build-depends:

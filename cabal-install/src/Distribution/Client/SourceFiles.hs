@@ -21,7 +21,6 @@ import Distribution.Simple.PreProcess
 
 import Distribution.Types.PackageDescription
 import Distribution.Types.Component
-import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Library
 import Distribution.Types.Executable
 import Distribution.Types.Benchmark
@@ -38,7 +37,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import System.FilePath
-import qualified Data.Set as Set
 
 needElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Rebuild ()
 needElaboratedConfiguredPackage elab =
@@ -52,12 +50,7 @@ needElaboratedPackage elab epkg =
   where
     pkg_descr = elabPkgDescription elab
     enabled_stanzas = pkgStanzasEnabled epkg
-    -- TODO: turn this into a helper function somewhere
-    enabled =
-        ComponentRequestedSpec {
-            testsRequested      = TestStanzas  `Set.member` enabled_stanzas,
-            benchmarksRequested = BenchStanzas `Set.member` enabled_stanzas
-        }
+    enabled = enableStanzas enabled_stanzas
 
 needElaboratedComponent :: ElaboratedConfiguredPackage -> ElaboratedComponent -> Rebuild ()
 needElaboratedComponent elab ecomp =

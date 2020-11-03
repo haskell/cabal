@@ -856,7 +856,7 @@ printPlan verbosity
         then prettyShow (installedUnitId elab)
         else prettyShow (packageId elab)
       , case elabPkgOrComp elab of
-          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
+          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
           ElabComponent comp ->
             "(" ++ showComp elab comp ++ ")"
       , showFlagAssignment (nonDefaultFlags elab)
@@ -878,12 +878,6 @@ printPlan verbosity
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
     nonDefaultFlags elab =
       elabFlagAssignment elab `diffFlagAssignment` elabFlagDefaults elab
-
-    showStanzas pkg = concat
-                    $ [ " *test"
-                      | TestStanzas  `Set.member` pkgStanzasEnabled pkg ]
-                   ++ [ " *bench"
-                      | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
 
     showTargets elab
       | null (elabBuildTargets elab) = ""

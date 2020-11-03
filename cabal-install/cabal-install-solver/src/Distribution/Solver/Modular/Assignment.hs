@@ -72,11 +72,10 @@ toCPs (A pa fa sa) rdm =
            M.toList $
            fa
     -- Stanzas per package.
-    sapp :: Map QPN [OptionalStanza]
-    sapp = M.fromListWith (++) $
-           L.map (\ ((SN qpn sn), b) -> (qpn, if b then [sn] else [])) $
-           M.toList $
-           sa
+    sapp :: Map QPN OptionalStanzaSet
+    sapp = M.fromListWith mappend
+         $ L.map (\ ((SN qpn sn), b) -> (qpn, if b then optStanzaSetSingleton sn else mempty))
+         $ M.toList sa
     -- Dependencies per package.
     depp :: QPN -> [(Component, PI QPN)]
     depp qpn = let v :: Vertex

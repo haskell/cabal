@@ -239,14 +239,14 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
                             (packageHashInputs sharedConfig elab))
 
     -- the stanzas explicitly disabled should not be available
-  . assert (Set.null (Map.keysSet (Map.filter not elabStanzasRequested)
-                `Set.intersection` elabStanzasAvailable))
+  . assert (optStanzaSetNull $
+        optStanzaKeysFilteredByValue (maybe False not) elabStanzasRequested `optStanzaSetIntersection` elabStanzasAvailable)
 
     -- either a package is built inplace, or we are not attempting to
     -- build any test suites or benchmarks (we never build these
     -- for remote packages!)
   . assert (elabBuildStyle == BuildInplaceOnly ||
-     Set.null elabStanzasAvailable)
+     optStanzaSetNull elabStanzasAvailable)
 
 sanityCheckElaboratedComponent
     :: ElaboratedConfiguredPackage
@@ -279,12 +279,12 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
                              ElaboratedPackage{..} =
     -- we should only have enabled stanzas that actually can be built
     -- (according to the solver)
-    assert (pkgStanzasEnabled `Set.isSubsetOf` elabStanzasAvailable)
+    assert (pkgStanzasEnabled `optStanzaSetIsSubset` elabStanzasAvailable)
 
     -- the stanzas that the user explicitly requested should be
     -- enabled (by the previous test, they are also available)
-  . assert (Map.keysSet (Map.filter id elabStanzasRequested)
-                `Set.isSubsetOf` pkgStanzasEnabled)
+  . assert (optStanzaKeysFilteredByValue (fromMaybe False) elabStanzasRequested
+                `optStanzaSetIsSubset` pkgStanzasEnabled)
 
 ------------------------------------------------------------------------------
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
@@ -1714,7 +1714,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- However, we start off by enabling everything that was
         -- requested, so that we can maintain an invariant that
         -- pkgStanzasEnabled is a superset of elabStanzasRequested
-        pkgStanzasEnabled  = Map.keysSet (Map.filter (id :: Bool -> Bool) elabStanzasRequested)
+        pkgStanzasEnabled  = optStanzaKeysFilteredByValue (fromMaybe False) elabStanzasRequested
 
     elaborateSolverToCommon :: SolverPackage UnresolvedPkgLoc
                             -> ElaboratedConfiguredPackage
@@ -1748,18 +1748,18 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                               | flag <- PD.genPackageFlags gdesc ]
 
         elabEnabledSpec      = enableStanzas stanzas
-        elabStanzasAvailable = Set.fromList stanzas
-        elabStanzasRequested =
+        elabStanzasAvailable = stanzas
+
+        elabStanzasRequested :: OptionalStanzaMap (Maybe Bool)
+        elabStanzasRequested = optStanzaTabulate $ \o -> case o of
             -- NB: even if a package stanza is requested, if the package
             -- doesn't actually have any of that stanza we omit it from
             -- the request, to ensure that we don't decide that this
             -- package needs to be rebuilt.  (It needs to be done here,
             -- because the ElaboratedConfiguredPackage is where we test
             -- whether or not there have been changes.)
-            Map.fromList $ [ (TestStanzas,  v) | v <- maybeToList tests
-                                               , _ <- PD.testSuites elabPkgDescription ]
-                        ++ [ (BenchStanzas, v) | v <- maybeToList benchmarks
-                                               , _ <- PD.benchmarks elabPkgDescription ]
+            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ] 
+            BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
             tests      = perPkgOptionMaybe pkgid packageConfigTests
@@ -2469,8 +2469,8 @@ availableSourceTargets elab =
 
           -- it is not an optional stanza, so a testsuite or benchmark
           Just stanza ->
-            case (Map.lookup stanza (elabStanzasRequested elab),
-                  Set.member stanza (elabStanzasAvailable elab)) of
+            case (optStanzaLookup stanza (elabStanzasRequested elab), -- TODO
+                  optStanzaSetMember stanza (elabStanzasAvailable elab)) of
               _ | not withinPlan -> TargetNotLocal
               (Just False,   _)  -> TargetDisabledByUser
               (Nothing,  False)  -> TargetDisabledBySolver
@@ -2722,7 +2722,7 @@ pruneInstallPlanPass1 pkgs =
             elabPkgOrComp = ElabPackage (pkg { pkgStanzasEnabled = stanzas })
         }
       where
-        stanzas :: Set OptionalStanza
+        stanzas :: OptionalStanzaSet
                -- By default, we enabled all stanzas requested by the user,
                -- as per elabStanzasRequested, done in
                -- 'elaborateSolverToPackage'
@@ -2771,15 +2771,15 @@ pruneInstallPlanPass1 pkgs =
     pruneOptionalDependencies ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg }
         = (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
       where
-        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
-        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `optStanzaSetMember` stanzas
+        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
         keepNeeded _                     _ = True
         stanzas = pkgStanzasEnabled pkg
 
     optionalStanzasRequiredByTargets :: ElaboratedConfiguredPackage
-                                     -> Set OptionalStanza
+                                     -> OptionalStanzaSet
     optionalStanzasRequiredByTargets pkg =
-      Set.fromList
+      optStanzaSetFromList
         [ stanza
         | ComponentTarget cname _ <- elabBuildTargets pkg
                                   ++ elabTestTargets pkg
@@ -2805,11 +2805,11 @@ pruneInstallPlanPass1 pkgs =
 optionalStanzasWithDepsAvailable :: Set UnitId
                                  -> ElaboratedConfiguredPackage
                                  -> ElaboratedPackage
-                                 -> Set OptionalStanza
+                                 -> OptionalStanzaSet
 optionalStanzasWithDepsAvailable availablePkgs elab pkg =
-    Set.fromList
+    optStanzaSetFromList
       [ stanza
-      | stanza <- Set.toList (elabStanzasAvailable elab)
+      | stanza <- optStanzaSetToList (elabStanzasAvailable elab)
       , let deps :: [UnitId]
             deps = CD.select (optionalStanzaDeps stanza)
                              -- TODO: probably need to select other
@@ -2866,8 +2866,8 @@ pruneInstallPlanPass2 pkgs =
               ElabPackage pkg ->
                 let stanzas = pkgStanzasEnabled pkg
                            <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
-                    keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
-                    keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+                    keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `optStanzaSetMember` stanzas
+                    keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
                     keepNeeded _                     _ = True
                 in ElabPackage $ pkg {
                   pkgStanzasEnabled = stanzas,
@@ -3418,10 +3418,10 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configPackageDBs          = Nothing : map Just elabBuildPackageDBStack
 
     configTests               = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (TestStanzas  `Set.member` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (TestStanzas  `optStanzaSetMember` pkgStanzasEnabled pkg)
                                     ElabComponent _ -> mempty
     configBenchmarks          = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (BenchStanzas `Set.member` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (BenchStanzas `optStanzaSetMember` pkgStanzasEnabled pkg)
                                     ElabComponent _ -> mempty
 
     configExactConfiguration  = toFlag True
