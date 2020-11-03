@@ -696,9 +696,6 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                                confPkgSource cpkg))
       in  confPkgFlags cpkg `diffFlagAssignment` defaultAssignment
 
-    showStanzas :: [OptionalStanza] -> String
-    showStanzas = unwords . map (("*" ++) . showStanza)
-
     change (OnlyInLeft pkgid)        = prettyShow pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = prettyShow pkgid ++ " -> "
                                     ++ prettyShow (mungedVersion pkgid')
@@ -1212,7 +1209,7 @@ installReadyPackage platform cinfo configFlags
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
-    configTests              = toFlag (TestStanzas `elem` stanzas)
+    configTests              = toFlag (TestStanzas `optStanzaSetMember` stanzas)
   } source pkg pkgoverride
   where
     pkg = case finalizePD flags (enableStanzas stanzas)

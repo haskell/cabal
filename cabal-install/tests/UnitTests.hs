@@ -13,6 +13,7 @@ import qualified UnitTests.Distribution.Solver.Modular.Builder
 import qualified UnitTests.Distribution.Solver.Modular.WeightedPSQ
 import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
+import qualified UnitTests.Distribution.Solver.Types.OptionalStanza
 import qualified UnitTests.Distribution.Client.BuildReport
 import qualified UnitTests.Distribution.Client.Described
 import qualified UnitTests.Distribution.Client.FileMonitor
@@ -49,6 +50,7 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Solver.Modular.Solver.tests
   , testGroup "UnitTests.Distribution.Solver.Modular.RetryLog"
         UnitTests.Distribution.Solver.Modular.RetryLog.tests
+  , UnitTests.Distribution.Solver.Types.OptionalStanza.tests
   , testGroup "UnitTests.Distribution.Client.FileMonitor" $
         UnitTests.Distribution.Client.FileMonitor.tests mtimeChange
   , testGroup "UnitTests.Distribution.Client.Glob"

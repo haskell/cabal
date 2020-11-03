@@ -115,7 +115,7 @@ doctest :
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
-	doctest -D__DOCTEST__ --fast cabal-install/src
+	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install/cabal-install-solver/src cabal-install/cabal-install-solver/src-assertion
 
 # tests
 
@@ -142,6 +142,14 @@ cabal-install-test:
 	$(CABALBUILD) -j3 cabal-tests cabal
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
+
+# hackage-benchmarks (solver)
+
+hackage-benchmarks-run:
+	$(CABALBUILD) -j3 hackage-benchmark cabal
+	rm -rf .ghc.environment.*
+	$$(cabal-plan list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal-plan list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
+
 
 # This doesn't run build, as you first need to test with cabal-install-test :)
 cabal-install-test-accept:
