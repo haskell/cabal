@@ -21,7 +21,8 @@ line flags that ``cabal install`` and other commands take. For example,
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
-following sources (later entries override earlier ones):
+following sources (later entries override earlier ones, except for appendable
+options):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
@@ -64,6 +65,9 @@ project are:
        and built.
 
     There is no command line variant of this field; see :issue:`3585`.
+    Note that the default value is only included if there is no
+    ``cabal.project`` file. The field is appendable which means there would be
+    no way to drop the default value if it was included.
 
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
     :synopsis: Optional project packages.
