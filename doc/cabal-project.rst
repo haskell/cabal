@@ -4,7 +4,8 @@ cabal.project Reference
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
 similar to that of a Cabal file: there are a number of fields, some of
-which live inside stanzas:
+which live inside stanzas (groups of fields that apply to only part of a
+project or can be referenced as a unit):
 
 ::
 
