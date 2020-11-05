@@ -190,7 +190,6 @@ library cabal-lib-client
         Distribution.Client.Types.SourcePackageDb
         Distribution.Client.Types.SourceRepo
         Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
-        Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Json
