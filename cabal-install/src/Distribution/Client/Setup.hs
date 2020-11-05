@@ -29,7 +29,7 @@ module Distribution.Client.Setup
     , filterHaddockArgs, filterHaddockFlags, haddockOptions
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..), listNeedsCompiler
-    , updateCommand, UpdateFlags(..), defaultUpdateFlags
+    ,UpdateFlags(..), defaultUpdateFlags
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
@@ -1260,34 +1260,6 @@ defaultUpdateFlags
         updateVerbosity  = toFlag normal,
         updateIndexState = toFlag headTotalIndexState
     }
-
-updateCommand  :: CommandUI UpdateFlags
-updateCommand = CommandUI {
-    commandName         = "update",
-    commandSynopsis     = "Updates list of known packages.",
-    commandDescription  = Just $ \_ ->
-      "For all known remote repositories, download the package list.\n",
-    commandNotes        = Just $ \_ ->
-      relevantConfigValuesText ["remote-repo"
-                               ,"remote-repo-cache"
-                               ,"local-repo"],
-    commandUsage        = usageFlags "v1-update",
-    commandDefaultFlags = defaultUpdateFlags,
-    commandOptions      = \_ -> [
-        optionVerbosity updateVerbosity (\v flags -> flags { updateVerbosity = v }),
-        option [] ["index-state"]
-          ("Update the source package index to its state as it existed at a previous time. " ++
-           "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
-           "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD').")
-          updateIndexState (\v flags -> flags { updateIndexState = v })
-          (reqArg "STATE" (parsecToReadE (const $ "index-state must be a  " ++
-                                       "unix-timestamps (e.g. '@1474732068'), " ++
-                                       "a ISO8601 UTC timestamp " ++
-                                       "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
-                                      (toFlag `fmap` parsec))
-                          (flagToList . fmap prettyShow))
-    ]
-  }
 
 -- ------------------------------------------------------------
 -- * Other commands

@@ -32,7 +32,6 @@ import Distribution.Client.Setup
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
-         , UpdateFlags(..), updateCommand
          , ListFlags(..), listCommand, listNeedsCompiler
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
@@ -95,7 +94,6 @@ import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
-import Distribution.Client.Update             (update)
 import Distribution.Client.Exec               (exec)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
@@ -270,7 +268,6 @@ mainWorker args = do
       , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
 
       , legacyCmd configureExCommand configureAction
-      , legacyCmd updateCommand updateAction
       , legacyCmd buildCommand buildAction
       , legacyCmd replCommand replAction
       , legacyCmd freezeCommand freezeAction
@@ -745,16 +742,6 @@ infoAction infoFlags extraArgs globalFlags = do
        globalFlags'
        infoFlags
        targets
-
-updateAction :: UpdateFlags -> [String] -> Action
-updateAction updateFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (updateVerbosity updateFlags)
-  unless (null extraArgs) $
-    die' verbosity $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  withRepoContext verbosity globalFlags' $ \repoContext ->
-    update verbosity updateFlags repoContext
 
 fetchAction :: FetchFlags -> [String] -> Action
 fetchAction fetchFlags extraArgs globalFlags = do

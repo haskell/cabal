@@ -209,7 +209,6 @@ Version:            3.5.0.0
         Distribution.Client.Types.SourcePackageDb
         Distribution.Client.Types.SourceRepo
         Distribution.Client.Types.WriteGhcEnvironmentFilesPolicy
-        Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.Json
