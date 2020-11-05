@@ -49,7 +49,7 @@ project are:
     1. They can specify a Cabal file, or a directory containing a Cabal
        file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``.
 
-    2. They can specify a glob-style wildcards, which must match one or
+    2. They can specify glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
        files (extension ``.cabal``), or (c) tarballs which contain Cabal
        packages (extension ``.tar.gz``).
