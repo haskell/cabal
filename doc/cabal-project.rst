@@ -552,12 +552,7 @@ feature was added.
 
         flags: +foo -bar
 
-    If there is no leading punctuation, it is assumed that the flag
-    should be enabled; e.g., this is equivalent:
-
-    ::
-
-        flags: foo -bar
+    Exactly one of + or - is required before each flag.
 
     Flags are *per-package*, so it doesn't make much sense to specify
     flags at the top-level, unless you happen to know that *all* of your
