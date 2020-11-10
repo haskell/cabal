@@ -2000,7 +2000,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
 
     copyModuleFiles ext =
       findModuleFilesEx verbosity [builtDir] [ext] (allLibModules lib clbi)
-      >>= installOrdinaryFiles verbosity targetDir
+      >>= installDirectoriesContents verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
     platform = hostPlatform lbi

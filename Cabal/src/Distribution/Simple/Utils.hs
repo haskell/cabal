@@ -79,6 +79,7 @@ module Distribution.Simple.Utils (
         installExecutableFiles,
         installMaybeExecutableFiles,
         installDirectoryContents,
+        installDirectoriesContents,
         copyDirectoryRecursive,
 
         -- * File permissions
@@ -217,7 +218,7 @@ import qualified Data.ByteString.Lazy as BS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
-    , doesDirectoryExist, doesFileExist, removeFile
+    , doesDirectoryExist, doesFileExist, doesPathExist, removeFile
     , getModificationTime, createDirectory, removeDirectoryRecursive )
 import System.Environment
     ( getProgName )
@@ -1078,7 +1079,7 @@ findFileWithExtension' extensions searchPath baseName =
 findFirstFile :: (a -> FilePath) -> [a] -> IO (Maybe a)
 findFirstFile file = findFirst
   where findFirst []     = return Nothing
-        findFirst (x:xs) = do exists <- doesFileExist (file x)
+        findFirst (x:xs) = do exists <- doesPathExist (file x)
                               if exists
                                 then return (Just x)
                                 else findFirst xs
@@ -1365,15 +1366,24 @@ installMaybeExecutableFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)]
                                -> IO ()
 installMaybeExecutableFiles v fp fs = withFrozenCallStack (copyFilesWith installMaybeExecutableFile v fp fs)
 
+-- | This is like 'copyFiles' but uses 'installDirectoryContents'.
+--
+installDirectoriesContents :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
+installDirectoriesContents v fp fs = withFrozenCallStack (copyFilesWith installDirectoryContents v fp fs)
+
 -- | This installs all the files in a directory to a target location,
 -- preserving the directory layout. All the files are assumed to be ordinary
 -- rather than executable files.
 --
 installDirectoryContents :: Verbosity -> FilePath -> FilePath -> IO ()
 installDirectoryContents verbosity srcDir destDir = withFrozenCallStack $ do
-  info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
-  srcFiles <- getDirectoryContentsRecursive srcDir
-  installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+  isFile <- doesFileExist srcDir
+  if isFile
+    then installOrdinaryFile verbosity srcDir destDir
+    else do
+      info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
+      srcFiles <- getDirectoryContentsRecursive srcDir
+      installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
 
 -- | Recursively copy the contents of one directory to another path.
 copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
