@@ -29,18 +29,10 @@ jobs:
     needs: test-windows-{{ mangleVersion needs }}
 {% endfor %}
     steps:
-      - name: Install Cabal
-        run: choco install -fy cabal --version 3.2.0.0
-      - name: Install GHC
-        run: |
-          choco uninstall -y ghc --all-versions
-          choco install -y ghc --version {{ job.version }}
-      - name: Set PATH
-        run: |
-          [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\cabal\tools\cabal-3.2.0.0"
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\ghc\tools\ghc-{{ job.version }}\bin"
-          [Environment]::GetEnvironmentVariable("Path")
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '{{ job.version }}'
+          cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")
