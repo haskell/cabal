@@ -49,9 +49,9 @@ jobs:
           sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/{{job.version}}/bin"
-          echo "::add-path::/opt/cabal/3.4/bin"
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "/opt/ghc/{{job.version}}/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install cabal-plan

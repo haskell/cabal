@@ -22,18 +22,10 @@ jobs:
     name: test ghc-8.6.5
     runs-on: windows-latest
     steps:
-      - name: Install Cabal
-        run: choco install -fy cabal --version 3.2.0.0
-      - name: Install GHC
-        run: |
-          choco uninstall -y ghc --all-versions
-          choco install -y ghc --version 8.6.5
-      - name: Set PATH
-        run: |
-          [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\cabal\tools\cabal-3.2.0.0"
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
-          [Environment]::GetEnvironmentVariable("Path")
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.6.5'
+          cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")
@@ -80,18 +72,10 @@ jobs:
     name: test ghc-8.8.4
     runs-on: windows-latest
     steps:
-      - name: Install Cabal
-        run: choco install -fy cabal --version 3.2.0.0
-      - name: Install GHC
-        run: |
-          choco uninstall -y ghc --all-versions
-          choco install -y ghc --version 8.8.4
-      - name: Set PATH
-        run: |
-          [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\cabal\tools\cabal-3.2.0.0"
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\ghc\tools\ghc-8.8.4\bin"
-          [Environment]::GetEnvironmentVariable("Path")
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.8.4'
+          cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")

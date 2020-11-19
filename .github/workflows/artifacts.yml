@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Set PATH
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install newer Python3
         run: |
           add-apt-repository ppa:deadsnakes/ppa
@@ -58,9 +58,9 @@ jobs:
           sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/8.6.5/bin"
-          echo "::add-path::/opt/cabal/3.4/bin"
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "/opt/ghc/8.6.5/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
       - name: Package project
         run: |
@@ -84,8 +84,8 @@ jobs:
       - name: Set PATH
         run: |
           [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0"
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
+          Write-Output "C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0" | Out-File $Env:GITHUB_PATH
+          Write-Output "C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin" | Out-File $Env:GITHUB_PATH
       - name: Print versions
         run: |
           ghc --version
