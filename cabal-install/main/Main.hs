@@ -39,7 +39,6 @@ import Distribution.Client.Setup
          , runCommand
          , InitFlags(initVerbosity, initHcPath), initCommand
          , ActAsSetupFlags(..), actAsSetupCommand
-         , ExecFlags(..), execCommand
          , UserConfigFlags(..), userConfigCommand
          , reportCommand
          , manpageCommand
@@ -94,7 +93,6 @@ import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure, writeConfigFlags)
-import Distribution.Client.Exec               (exec)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
@@ -110,8 +108,7 @@ import Distribution.Client.Nix                (nixInstantiate
                                               )
 import Distribution.Client.Sandbox            (loadConfigOrSandboxConfig
                                               ,findSavedDistPref
-                                              ,updateInstallDirs
-                                              ,getPersistOrConfigCompiler)
+                                              ,updateInstallDirs)
 import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types.Credentials  (Password (..))
 import Distribution.Client.Init               (initCabal)
@@ -276,7 +273,6 @@ mainWorker args = do
       , legacyCmd runCommand runAction
       , legacyCmd testCommand testAction
       , legacyCmd benchmarkCommand benchmarkAction
-      , legacyCmd execCommand execAction
       , legacyCmd cleanCommand cleanAction
       , legacyCmd doctestCommand doctestAction
       , legacyWrapperCmd copyCommand copyVerbosity copyDistPref
@@ -951,16 +947,6 @@ initAction initFlags extraArgs globalFlags = do
             comp
             progdb
             initFlags'
-
-execAction :: ExecFlags -> [String] -> Action
-execAction execFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (execVerbosity execFlags)
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  distPref <- findSavedDistPref config (execDistPref execFlags)
-  let configFlags = savedConfigureFlags config
-      configFlags' = configFlags { configDistPref = Flag distPref }
-  (comp, platform, progdb) <- getPersistOrConfigCompiler configFlags'
-  exec verbosity comp platform progdb extraArgs
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
