@@ -116,7 +116,6 @@ executable cabal
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Types
         Distribution.Client.DistDirLayout
-        Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
