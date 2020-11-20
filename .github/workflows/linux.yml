@@ -29,10 +29,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -76,10 +76,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -124,10 +124,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -172,10 +172,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -220,10 +220,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -268,10 +268,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -316,10 +316,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -364,10 +364,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -406,10 +406,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -452,10 +452,10 @@ jobs:
       - name: System info
         run: |
           uname -a
-      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
