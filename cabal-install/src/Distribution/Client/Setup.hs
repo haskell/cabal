@@ -43,16 +43,13 @@ module Distribution.Client.Setup
     , runCommand
     , initCommand, initOptions, IT.InitFlags(..)
     , actAsSetupCommand, ActAsSetupFlags(..)
-    , execCommand, ExecFlags(..), defaultExecFlags
     , userConfigCommand, UserConfigFlags(..)
     , manpageCommand
     , haddockCommand
     , cleanCommand
-    , doctestCommand
     , copyCommand
     , registerCommand
 
-    , parsePackageArgs
     , liftOptions
     , yesNoOpt
     ) where
@@ -98,7 +95,7 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
          , TestFlags, BenchmarkFlags
          , HaddockFlags(..)
-         , CleanFlags(..), DoctestFlags(..)
+         , CleanFlags(..)
          , CopyFlags(..), RegisterFlags(..)
          , readPackageDbList, showPackageDbList
          , BooleanFlag(..), optionVerbosity
@@ -2322,12 +2319,8 @@ initOptions _ =
   ]
 
 -- ------------------------------------------------------------
--- * SDist flags
+-- * Copy and Register
 -- ------------------------------------------------------------
-
-doctestCommand :: CommandUI DoctestFlags
-doctestCommand = Cabal.doctestCommand
-  { commandUsage = \pname ->  "Usage: " ++ pname ++ " v1-doctest [FLAGS]\n" }
 
 copyCommand :: CommandUI CopyFlags
 copyCommand = Cabal.copyCommand
@@ -2384,75 +2377,6 @@ instance Monoid ActAsSetupFlags where
   mappend = (<>)
 
 instance Semigroup ActAsSetupFlags where
-  (<>) = gmappend
-
--- ------------------------------------------------------------
--- * Exec Flags
--- ------------------------------------------------------------
-
-data ExecFlags = ExecFlags {
-  execVerbosity :: Flag Verbosity,
-  execDistPref  :: Flag FilePath
-} deriving Generic
-
-defaultExecFlags :: ExecFlags
-defaultExecFlags = ExecFlags {
-  execVerbosity = toFlag normal,
-  execDistPref  = NoFlag
-  }
-
-execCommand :: CommandUI ExecFlags
-execCommand = CommandUI {
-  commandName         = "exec",
-  commandSynopsis     = "Give a command access to the sandbox package repository.",
-  commandDescription  = Just $ \pname -> wrapText $
-       -- TODO: this is too GHC-focused for my liking..
-       "A directly invoked GHC will not automatically be aware of any"
-    ++ " sandboxes: the GHC_PACKAGE_PATH environment variable controls what"
-    ++ " GHC uses. `" ++ pname ++ " v1-exec` can be used to modify this variable:"
-    ++ " COMMAND will be executed in a modified environment and thereby uses"
-    ++ " the sandbox package database.\n"
-    ++ "\n"
-    ++ "If there is no sandbox, behaves as identity (executing COMMAND).\n"
-    ++ "\n"
-    ++ "Note that other " ++ pname ++ " commands change the environment"
-    ++ " variable appropriately already, so there is no need to wrap those"
-    ++ " in `" ++ pname ++ " v1-exec`. But with `" ++ pname ++ " v1-exec`, the user"
-    ++ " has more control and can, for example, execute custom scripts which"
-    ++ " indirectly execute GHC.\n"
-    ++ "\n"
-    ++ "Note that `" ++ pname ++ " v1-repl` is different from `" ++ pname
-    ++ " v1-exec -- ghci` as the latter will not forward any additional flags"
-    ++ " being defined in the local package to ghci.\n"
-    ++ "\n"
-    ++ "See `" ++ pname ++ " sandbox`.\n",
-  commandNotes        = Just $ \pname ->
-       "Examples:\n"
-    ++ "  " ++ pname ++ " v1-exec -- ghci -Wall\n"
-    ++ "    Start a repl session with sandbox packages and all warnings;\n"
-    ++ "  " ++ pname ++ " v1-exec gitit -- -f gitit.cnf\n"
-    ++ "    Give gitit access to the sandbox packages, and pass it a flag;\n"
-    ++ "  " ++ pname ++ " v1-exec runghc Foo.hs\n"
-    ++ "    Execute runghc on Foo.hs with runghc configured to use the\n"
-    ++ "    sandbox package database (if a sandbox is being used).\n",
-  commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " v1-exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
-
-  commandDefaultFlags = defaultExecFlags,
-  commandOptions      = \showOrParseArgs ->
-    [ optionVerbosity execVerbosity
-      (\v flags -> flags { execVerbosity = v })
-    , Cabal.optionDistPref
-       execDistPref (\d flags -> flags { execDistPref = d })
-       showOrParseArgs
-    ]
-  }
-
-instance Monoid ExecFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ExecFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
@@ -2624,14 +2548,9 @@ usageFlags :: String -> String -> String
 usageFlags name pname =
   "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
 
---TODO: do we want to allow per-package flags?
-parsePackageArgs :: [String] -> Either String [PackageVersionConstraint]
-parsePackageArgs = traverse p where
-    p arg = case eitherParsec arg of
-        Right pvc -> Right pvc
-        Left err  -> Left $
-          show arg ++ " is not valid syntax for a package name or"
-                   ++ " package dependency. " ++ err 
+-- ------------------------------------------------------------
+-- * Repo helpers
+-- ------------------------------------------------------------
 
 showRemoteRepo :: RemoteRepo -> String
 showRemoteRepo = prettyShow
