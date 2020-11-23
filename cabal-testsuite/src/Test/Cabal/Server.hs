@@ -112,9 +112,9 @@ bracketWithInit :: IO a -> (a -> IO a) -> (a -> IO b) -> (a -> IO c) -> IO c
 bracketWithInit before initialize after thing =
   mask $ \restore -> do
     a0 <- before
-    a <- restore (initialize a0) `onException` after a0
-    r <- restore (thing a) `onException` after a
-    _ <- after a
+    a <- restore (initialize a0) `onException` uninterruptibleMask_  (after a0)
+    r <- restore (thing a) `onException` uninterruptibleMask_  (after a)
+    _ <- uninterruptibleMask_ (after a)
     return r
 
 -- | Run an hs script on the GHCi server, returning the 'ServerResult' of
