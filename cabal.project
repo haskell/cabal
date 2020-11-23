@@ -22,6 +22,13 @@ allow-newer:
 allow-newer:
   hackage-security:Cabal
 
+-- https://github.com/haskell-hvr/windns/pull/2
+allow-newer: windns-0.1.0.1:base
+
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc
+
 program-options
   -- So us hackers get all the assertion failures early:
   --
