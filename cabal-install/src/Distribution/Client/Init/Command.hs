@@ -134,7 +134,7 @@ extendFlags verbosity pkgIx sourcePkgDb =
       getSimpleProject
   >=> getLibOrExec
   >=> getCabalVersion
-  >=> getPackageName verbosity sourcePkgDb
+  >=> getPackageName verbosity sourcePkgDb False
   >=> getVersion
   >=> getLicense
   >=> getAuthorInfo
@@ -210,12 +210,12 @@ getCabalVersion flags = do
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid
 --   using an existing package name.
-getPackageName :: Verbosity -> SourcePackageDb -> InitFlags -> IO InitFlags
-getPackageName verbosity sourcePkgDb flags = do
+getPackageName :: Verbosity -> SourcePackageDb -> Bool -> InitFlags -> IO InitFlags
+getPackageName verbosity sourcePkgDb forceAsk flags = do
   guess <- maybe (getCurrentDirectory >>= guessPackageName) pure
              =<< traverse guessPackageName (flagToMaybe $ packageDir flags)
 
-  pkgName' <- case flagToMaybe $ packageName flags of
+  pkgName' <- case (flagToMaybe $ packageName flags) >>= maybeForceAsk of
     Just pkgName -> return $ Just $ pkgName
     _ -> maybePrompt flags (prompt "Package name" (Just guess))
   let pkgName = fromMaybe guess pkgName'
@@ -230,10 +230,12 @@ getPackageName verbosity sourcePkgDb flags = do
                    return False
 
   if chooseAgain
-    then getPackageName verbosity sourcePkgDb flags
+    then getPackageName verbosity sourcePkgDb True flags
     else return $ flags { packageName = Flag pkgName }
 
   where
+    maybeForceAsk x = if forceAsk then Nothing else Just x
+
     isPkgRegistered pkg = elemByPackageName (packageIndex sourcePkgDb) pkg
 
     inUseMsg pkgName = "The name " ++ (P.unPackageName pkgName) ++
