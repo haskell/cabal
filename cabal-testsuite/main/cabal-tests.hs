@@ -18,7 +18,6 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Exception
 import Control.Monad
-import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
 import Data.List
 import Text.Printf
@@ -212,38 +211,10 @@ main = do
 
                             go server
 
-            mask $ \restore -> do
-                -- Start as many threads as requested by -j to spawn
-                -- GHCi servers and start running tests off of the
-                -- run queue.
-                -- NB: we don't use 'withAsync' because it's more
-                -- convenient to generate n threads this way (and when
-                -- one fails, we can cancel everyone at once.)
-                as <- replicateM (mainArgThreads args)
-                                 (async (restore (withNewServer chan senv go)))
-                restore (mapM_ wait as) `E.catch` \e -> do
-                    -- Be patient, because if you ^C again, you might
-                    -- leave some zombie GHCi processes around!
-                    logAll "Shutting down GHCi sessions (please be patient)..."
-                    -- Start cleanup on all threads concurrently.
-                    mapM_ (async . cancel) as
-                    -- Wait for the threads to finish cleaning up.  NB:
-                    -- do NOT wait on the cancellation asynchronous actions;
-                    -- these complete when the message is *delivered*, not
-                    -- when cleanup is done.
-                    rs <- mapM waitCatch as
-                    -- Take a look at the returned exit codes, and figure out
-                    -- if something errored in an unexpected way.  This
-                    -- could mean there's a zombie.
-                    forM_ rs $ \r -> case r of
-                        Left err
-                          | Just ThreadKilled <- fromException err
-                          -> return ()
-                          | otherwise
-                          -> logAll ("Unexpected failure on GHCi exit: " ++ show e)
-                        _ -> return ()
-                    -- Propagate the exception
-                    throwIO (e :: SomeException)
+            -- Start as many threads as requested by -j to spawn
+            -- GHCi servers and start running tests off of the
+            -- run queue.
+            replicateConcurrently_ (mainArgThreads args) (withNewServer chan senv go)
 
             unexpected_fails  <- takeMVar unexpected_fails_var
             unexpected_passes <- takeMVar unexpected_passes_var
