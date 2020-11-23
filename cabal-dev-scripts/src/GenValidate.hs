@@ -4,6 +4,7 @@
 module Main (main) where
 
 import Data.List          (isPrefixOf)
+import Data.Maybe         (fromMaybe)
 import GHC.Generics       (Generic)
 import System.Environment (getArgs)
 import System.Exit        (exitFailure)
@@ -47,9 +48,9 @@ main = do
                     -- Unexpected failure on GHCi exit: fd:10: hClose: resource vanished (Broken pipe)
                     -- cabal-tests: fd:10: hClose: resource vanished (Broken pipe)
                     -- [ WinGhcJob "8.8.1" ["8.6.5"]
-                    [ WinGhcJob "8.6.5" []
-                    , WinGhcJob "8.8.4" []
-                    , WinGhcJob "8.10.2" []
+                    [ mkWinGhcJob "8.6.5"  Nothing           []
+                    , mkWinGhcJob "8.8.4"  (Just "8.8.4.1")  []
+                    , mkWinGhcJob "8.10.2" (Just "8.10.2.2") []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)
@@ -123,12 +124,6 @@ data MacGhcJob = MacGhcJob
     }
   deriving (Generic)
 
-data WinGhcJob = WinGhcJob
-    { wgjVersion :: String
-    , wgjNeeds   :: [String]
-    }
-  deriving (Generic)
-
 mkMacGhcJob :: String -> String -> MacGhcJob
 mkMacGhcJob v u = MacGhcJob
     { mgjVersion = v
@@ -137,6 +132,16 @@ mkMacGhcJob v u = MacGhcJob
     , mgjNeeds   = ["8.8.3" | not $ "8.8" `isPrefixOf` v ]
     , mgjSteps   = defSteps
     }
+
+data WinGhcJob = WinGhcJob
+    { wgjVersion      :: String
+    , wgjChocoVersion :: String
+    , wgjNeeds        :: [String]
+    }
+  deriving (Generic)
+
+mkWinGhcJob :: String -> Maybe String -> [String] -> WinGhcJob
+mkWinGhcJob v mv = WinGhcJob v (fromMaybe v mv)
 
 instance Zinza Z where
     toType    = genericToTypeSFP

@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/setup-haskell@v1.1.4
         with:
-          ghc-version: '8.8.4'
+          ghc-version: '8.8.4.1'
           cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
@@ -124,7 +124,7 @@ jobs:
     steps:
       - uses: actions/setup-haskell@v1.1.4
         with:
-          ghc-version: '8.10.2'
+          ghc-version: '8.10.2.2'
           cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
