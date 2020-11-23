@@ -222,10 +222,10 @@ getPackageName verbosity sourcePkgDb flags = do
 
   chooseAgain <- if isPkgRegistered pkgName
                    then do
-                     answer' <- maybePrompt flags (promptYesNo promptOtherNameMsg (Just True))
+                     answer' <- maybePrompt flags (promptYesNo (promptOtherNameMsg pkgName) (Just True))
                      case answer' of
                        Just answer -> return answer
-                       _ -> die' verbosity $ deathNameMsg pkgName
+                       _ -> die' verbosity $ inUseMsg pkgName
                  else
                    return False
 
@@ -236,12 +236,11 @@ getPackageName verbosity sourcePkgDb flags = do
   where
     isPkgRegistered pkg = elemByPackageName (packageIndex sourcePkgDb) pkg
 
-    deathNameMsg pkgName = "The name " ++ (P.unPackageName pkgName) ++
-                           " is already used by another package on Hackage."
+    inUseMsg pkgName = "The name " ++ (P.unPackageName pkgName) ++
+                       " is already in use by another package on Hackage."
 
-    promptOtherNameMsg = "This package name is already used by another " ++
-                         "package on hackage. Do you want to choose a " ++
-                         "different name"
+    promptOtherNameMsg pkgName = (inUseMsg pkgName) ++
+                                 " Do you want to choose a different name"
 
 -- | Package version: use 0.1.0.0 as a last resort, but try prompting the user
 --  if possible.
