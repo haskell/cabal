@@ -144,7 +144,6 @@ library
     Distribution.Simple.GHC
     Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
-    Distribution.Simple.Doctest
     Distribution.Simple.Glob
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc

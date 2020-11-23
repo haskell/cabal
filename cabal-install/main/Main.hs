@@ -44,13 +44,11 @@ import Distribution.Client.Setup
          , manpageCommand
          , haddockCommand
          , cleanCommand
-         , doctestCommand
          , copyCommand
          , registerCommand
          )
 import Distribution.Simple.Setup
          ( HaddockTarget(..)
-         , DoctestFlags(..)
          , HaddockFlags(..), defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
@@ -274,7 +272,6 @@ mainWorker args = do
       , legacyCmd testCommand testAction
       , legacyCmd benchmarkCommand benchmarkAction
       , legacyCmd cleanCommand cleanAction
-      , legacyCmd doctestCommand doctestAction
       , legacyWrapperCmd copyCommand copyVerbosity copyDistPref
       , legacyWrapperCmd registerCommand regVerbosity regDistPref
       , legacyCmd reconfigureCommand reconfigureAction
@@ -670,13 +667,6 @@ haddockAction haddockFlags extraArgs globalFlags = do
           docDir = distPref </> "doc" </> "html"
       createTarGzFile dest docDir name
       notice verbosity $ "Documentation tarball created: " ++ dest
-
-doctestAction :: DoctestFlags -> [String] -> Action
-doctestAction doctestFlags extraArgs _globalFlags = do
-  let verbosity = fromFlag (doctestVerbosity doctestFlags)
-
-  setupWrapper verbosity defaultSetupScriptOptions Nothing
-    doctestCommand (const doctestFlags) (const extraArgs)
 
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
