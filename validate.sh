@@ -458,7 +458,7 @@ CMD="$($CABALPLANLISTBIN cabal-install:test:integration-tests2) -j1 --hide-succe
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 
