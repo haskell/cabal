@@ -31,7 +31,7 @@ import           System.Process (waitForProcess)
 enableProcessJobs :: CreateProcess -> CreateProcess
 #ifdef MIN_VERSION_process
 #if MIN_VERSION_process(1,6,9)
-enableProcessJobs cp = cp {Process.use_process_jobs = True}
+enableProcessJobs cp = cp -- {Process.use_process_jobs = True}
 #else
 enableProcessJobs cp = cp
 #endif
