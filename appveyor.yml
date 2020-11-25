@@ -20,6 +20,8 @@ branches:
 skip_branch_with_pr: true
 
 install:
+  # https://github.com/Mistuke/GhcChoco/issues/10
+  - ps: Set-Service wuauserv -StartupType Manual
   # Using '-y' and 'refreshenv' as a workaround to:
   # https://github.com/haskell/cabal/issues/3687
   - choco source add -n mistuke -s https://www.myget.org/F/mistuke/api/v2
