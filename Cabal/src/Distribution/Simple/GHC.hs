@@ -780,9 +780,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   when has_code . unless forRepl $ do
     info verbosity "Linking..."
     let cProfObjs            = map (`replaceExtension` ("p_" ++ objExtension))
-                               (cSources libBi ++ cxxSources libBi)
+                               cLikeFiles
         cSharedObjs          = map (`replaceExtension` ("dyn_" ++ objExtension))
-                               (cSources libBi ++ cxxSources libBi)
+                               cLikeFiles
         compiler_id          = compilerId (compiler lbi)
         vanillaLibFilePath   = libTargetDir </> mkLibName uid
         profileLibFilePath   = libTargetDir </> mkProfLibName uid
@@ -1365,7 +1365,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                              [tmpDir </> x | x <- cObjs ++ cxxObjs]
                     }
       dynLinkerOpts = mempty {
-                      ghcOptRPaths         = rpaths
+                      ghcOptRPaths         = rpaths,
+                      ghcOptInputFiles     = toNubListR
+                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
                    }
       replOpts   = baseOpts {
                     ghcOptExtra            = Internal.filterGhciFlags
