@@ -120,13 +120,13 @@ doctest-cli :
 # tests
 
 check-tests :
-	$(CABALRUN) check-tests -- --cwd Cabal ${TEST}
+	$(CABALRUN) check-tests -- --cwd Cabal-tests ${TEST}
 
 parser-tests :
-	$(CABALRUN) parser-tests -- --cwd Cabal ${TEST}
+	$(CABALRUN) parser-tests -- --cwd Cabal-tests ${TEST}
 
 parser-tests-accept :
-	$(CABALRUN) parser-tests -- --cwd Cabal --accept ${TEST}
+	$(CABALRUN) parser-tests -- --cwd Cabal-tests --accept ${TEST}
 
 custom-setup-tests :
 	$(CABALRUN) custom-setup-tests --

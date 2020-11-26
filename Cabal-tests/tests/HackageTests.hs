@@ -231,16 +231,9 @@ roundtripTest testFieldsTransform fpath bs = do
     let bs' = showGenericPackageDescription x0
     y0 <- parse "2nd" (toUTF8BS bs')
 
-    -- we mungled license here
-    let y1 = y0
-
-    -- license-files: ""
-    let stripEmpty = filter (/="")
-    let x1 = x0 & L.packageDescription . L.licenseFiles %~ stripEmpty
-    let y2 = y1 & L.packageDescription . L.licenseFiles %~ stripEmpty
-
-    let y = y2 & L.packageDescription . L.description .~ mempty
-    let x = x1 & L.packageDescription . L.description .~ mempty
+    -- strip description, there are format variations
+    let y = y0 & L.packageDescription . L.description .~ mempty
+    let x = x0 & L.packageDescription . L.description .~ mempty
 
     assertEqual' bs' x y
 

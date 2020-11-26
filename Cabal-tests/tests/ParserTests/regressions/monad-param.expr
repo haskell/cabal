@@ -126,7 +126,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "http://comonad.com/haskell/monad-param/dist/doc/html/Control-Monad-Parameterized.html",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Right BSD3,
                            maintainer = "Edward Kmett <ekmett@gmail.com>",
                            package = PackageIdentifier

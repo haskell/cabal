@@ -444,7 +444,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Left
                                           (License (ELicense (ELicenseId BSD_3_Clause) Nothing)),
                            maintainer = "Sam Halliday",

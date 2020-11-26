@@ -1135,7 +1135,7 @@ checkPaths pkg =
       [ (path, "extra-doc-files",    PathKindGlob)      | path <- extraDocFiles pkg ] ++
       [ (path, "data-files",         PathKindGlob)      | path <- dataFiles     pkg ] ++
       [ (path, "data-dir",           PathKindDirectory) | path <- [dataDir      pkg]] ++
-      [ (path, "license-file",       PathKindFile)      | path <- licenseFiles  pkg ] ++
+      [ (path, "license-file",       PathKindFile)      | path <- map getSymbolicPath $ licenseFiles  pkg ] ++
       concat
         [ [ (path, "asm-sources",      PathKindFile)      | path <- asmSources      bi ] ++
           [ (path, "cmm-sources",      PathKindFile)      | path <- cmmSources      bi ] ++
@@ -1875,11 +1875,11 @@ checkLicensesExist :: (Monad m, Applicative m)
                    -> PackageDescription
                    -> m [PackageCheck]
 checkLicensesExist ops pkg = do
-    exists <- traverse (doesFileExist ops) (licenseFiles pkg)
+    exists <- traverse (doesFileExist ops . getSymbolicPath) (licenseFiles pkg)
     return
       [ PackageBuildWarning $
            "The '" ++ fieldname ++ "' field refers to the file "
-        ++ quote file ++ " which does not exist."
+        ++ quote (getSymbolicPath file) ++ " which does not exist."
       | (file, False) <- zip (licenseFiles pkg) exists ]
   where
     fieldname | length (licenseFiles pkg) == 1 = "license-file"

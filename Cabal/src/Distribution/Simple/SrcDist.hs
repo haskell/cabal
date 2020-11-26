@@ -235,7 +235,7 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
         matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd filename
 
     -- License file(s).
-  , return (licenseFiles pkg_descr)
+  , return (map getSymbolicPath $ licenseFiles pkg_descr)
 
     -- Install-include files, without autogen-include files
   , fmap concat

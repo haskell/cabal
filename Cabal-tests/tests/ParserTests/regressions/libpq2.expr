@@ -652,7 +652,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "https://github.com/phadej/postgresql-libpq",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Left
                                           (License (ELicense (ELicenseId BSD_3_Clause) Nothing)),
                            maintainer = "Oleg Grenrus <oleg.grenrus@iki.fi>",
