@@ -1,0 +1,13 @@
+# cabal v2-run
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - cmmexperiment-0 (lib) (first run)
+ - cmmexperiment-0 (exe:demo) (first run)
+Configuring library for cmmexperiment-0..
+Preprocessing library for cmmexperiment-0..
+Building library for cmmexperiment-0..
+Configuring executable 'demo' for cmmexperiment-0..
+Warning: The package has an extraneous version range for a dependency on an internal library: cmmexperiment >=0 && ==0. This version range includes the current package but isn't needed as the current package's library will always be used.
+Preprocessing executable 'demo' for cmmexperiment-0..
+Building executable 'demo' for cmmexperiment-0..
