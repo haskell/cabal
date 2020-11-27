@@ -81,6 +81,7 @@ import qualified Distribution.System                    as C
 import           Distribution.Text (display)
 import qualified Distribution.Verbosity                 as C
 import qualified Distribution.Version                   as C
+import qualified Distribution.Utils.Path                as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
 -- cabal-install
@@ -437,7 +438,7 @@ exAvSrcPkg ex =
                   , C.maintainer = "maintainer"
                   , C.description = "description"
                   , C.synopsis = "synopsis"
-                  , C.licenseFiles = ["LICENSE"]
+                  , C.licenseFiles = [C.unsafeMakeSymbolicPath "LICENSE"]
                     -- Version 2.0 is required for internal libraries.
                   , C.specVersion = C.CabalSpecV2_0
                   }

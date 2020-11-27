@@ -551,7 +551,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "http://github.com/bennofs/th-lift-instances/",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Right BSD3,
                            maintainer = "Benno F\252nfst\252ck <benno.fuenfstueck@gmail.com>",
                            package = PackageIdentifier

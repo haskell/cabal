@@ -333,7 +333,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "https://github.com/mgajda/octree",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Right BSD3,
                            maintainer = "mjgajda@googlemail.com",
                            package = PackageIdentifier

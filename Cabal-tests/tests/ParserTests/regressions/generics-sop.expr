@@ -744,7 +744,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Right BSD3,
                            maintainer = "andres@well-typed.com",
                            package = PackageIdentifier

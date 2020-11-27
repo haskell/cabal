@@ -2499,7 +2499,7 @@ GenericPackageDescription
                            foreignLibs = [],
                            homepage = "http://shakebuild.com",
                            library = Nothing,
-                           licenseFiles = ["LICENSE"],
+                           licenseFiles = [SymbolicPath "LICENSE"],
                            licenseRaw = Right BSD3,
                            maintainer = "Neil Mitchell <ndmitchell@gmail.com>",
                            package = PackageIdentifier

@@ -30,6 +30,7 @@ import Distribution.Types.SetupBuildInfo     (SetupBuildInfo)
 import Distribution.Types.SourceRepo         (SourceRepo)
 import Distribution.Types.TestSuite          (TestSuite, testModules)
 import Distribution.Types.TestSuite.Lens     (testBuildInfo, testName)
+import Distribution.Utils.Path               (LicenseFile, PackageDir, SymbolicPath)
 import Distribution.Utils.ShortText          (ShortText)
 import Distribution.Version                  (VersionRange)
 
@@ -44,7 +45,7 @@ licenseRaw :: Lens' PackageDescription (Either SPDX.License License)
 licenseRaw f s = fmap (\x -> s { T.licenseRaw = x }) (f (T.licenseRaw s))
 {-# INLINE licenseRaw #-}
 
-licenseFiles :: Lens' PackageDescription [FilePath]
+licenseFiles :: Lens' PackageDescription [SymbolicPath PackageDir LicenseFile]
 licenseFiles f s = fmap (\x -> s { T.licenseFiles = x }) (f (T.licenseFiles s))
 {-# INLINE licenseFiles #-}
 
