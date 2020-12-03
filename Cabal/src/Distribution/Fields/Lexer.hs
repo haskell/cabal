@@ -455,6 +455,15 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
 
       case fromIntegral c of { (I# (ord_c)) ->
         let
+#if __GLASGOW_HASKELL__ >= 901
+                base   = extendInt32# (alexIndexInt32OffAddr alex_base s)
+                offset = (base +# ord_c)
+                check  = extendInt16# (alexIndexInt16OffAddr alex_check offset)
+
+                new_s = if GTE(offset,0#) && EQ(check,ord_c)
+                          then extendInt16# (alexIndexInt16OffAddr alex_table offset)
+                          else extendInt16# (alexIndexInt16OffAddr alex_deflt s)
+#else
                 base   = alexIndexInt32OffAddr alex_base s
                 offset = (base +# ord_c)
                 check  = alexIndexInt16OffAddr alex_check offset
@@ -462,6 +471,7 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
                 new_s = if GTE(offset,0#) && EQ(check,ord_c)
                           then alexIndexInt16OffAddr alex_table offset
                           else alexIndexInt16OffAddr alex_deflt s
+#endif
         in
         case new_s of
             -1# -> (new_acc, input__)
