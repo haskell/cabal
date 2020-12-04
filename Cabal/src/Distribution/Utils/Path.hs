@@ -70,7 +70,7 @@ unsafeMakeSymbolicPath = SymbolicPath
 -- ** Parsing and pretty printing
 -------------------------------------------------------------------------------
 
-instance KnownPathEndKind (PathEndKindFam to) => Parsec (SymbolicPath from to) where
+instance (IsDir from, KnownPathEndKind (PathEndKindFam to)) => Parsec (SymbolicPath from to) where
     parsec = do
         token <- parsecToken
         parsecSymbolicPath token
@@ -79,13 +79,17 @@ instance Pretty (SymbolicPath from to) where
     pretty = showFilePath . getSymbolicPath
 
 parsecSymbolicPath
-    :: forall from to m. (KnownPathEndKind (PathEndKindFam to), CabalParsing m)
+    :: forall from to m. (IsDir from, KnownPathEndKind (PathEndKindFam to), CabalParsing m)
     => String
     -> m (SymbolicPath from to)
 parsecSymbolicPath token
     | null token = P.unexpected "empty FilePath"
     | otherwise =  case pathEndKind :: SPathEndKind (PathEndKindFam to) of
-        SKindDir  -> maybe (return (SymbolicPath token)) P.unexpected $ isGoodRelativeDirectoryPath token
+        SKindDir
+            | token == "./." -> do
+                  parsecWarning PWTOther "TODO"
+                  return (SymbolicPath ".")
+            | otherwise -> maybe (return (SymbolicPath token)) P.unexpected $ isGoodRelativeDirectoryPath token
         SKindFile -> maybe (return (SymbolicPath token)) P.unexpected $ isGoodRelativeFilePath token
 
 -------------------------------------------------------------------------------
