@@ -751,15 +751,18 @@ newtype CompatLicenseFile = CompatLicenseFile { getCompatLicenseFile :: [Symboli
 
 instance Newtype [SymbolicPath PackageDir LicenseFile] CompatLicenseFile
 
--- TODO
 instance Parsec CompatLicenseFile where
-    parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
-      where
-        emptyToken = P.try $ do
+    parsec = nonEmptyP <|> pure (CompatLicenseFile []) where
+        nonEmptyP = do
             token <- parsecToken
             if null token
-            then return (CompatLicenseFile [])
-            else P.unexpected "non-empty-token"
+            then do
+                parsecWarning PWTEmptyFilePath "Empty file path"
+                return (CompatLicenseFile [])
+            else do
+                p <- parsecSymbolicPath token
+                P.spaces
+                CompatLicenseFile . (p:) . unpack' (alaList FSep) <$> parsec
 
 instance Pretty CompatLicenseFile where
     pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
