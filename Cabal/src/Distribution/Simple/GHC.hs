@@ -113,7 +113,7 @@ import Control.Monad (msum, forM_)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
-         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
+         ( doesFileExist, getXdgDirectory, XdgDirectory(XdgData), createDirectoryIfMissing
          , canonicalizePath, removeFile, renameFile, getDirectoryContents )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
@@ -369,7 +369,7 @@ toPackageIndex verbosity pkgss progdb = do
 --
 -- @since 3.4.0.0
 getGhcAppDir :: IO FilePath
-getGhcAppDir = getAppUserDataDirectory "ghc"
+getGhcAppDir = getXdgDirectory XdgData "ghc"
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =

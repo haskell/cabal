@@ -130,7 +130,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
+         ( createDirectoryIfMissing, getXdgDirectory, XdgDirectory(XdgData), renameFile )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -584,7 +584,7 @@ initialSavedConfig = do
   }
 
 defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabal"
+defaultCabalDir = getXdgDirectory XdgData "cabal"
 
 getCabalDir :: IO FilePath
 getCabalDir = do

@@ -76,7 +76,7 @@ import Control.Monad (msum)
 import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
-         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
+         ( doesFileExist, getXdgDirectory, XdgDirectory(XdgData), createDirectoryIfMissing
          , canonicalizePath, removeFile, renameFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
@@ -299,7 +299,7 @@ getUserPackageDB _verbosity ghcjsProg platform = do
     -- It's rather annoying that we have to reconstruct this, because ghc
     -- hides this information from us otherwise. But for certain use cases
     -- like change monitoring it really can't remain hidden.
-    appdir <- getAppUserDataDirectory "ghcjs"
+    appdir <- getXdgDirectory XdgData "ghcjs"
     return (appdir </> platformAndVersion </> packageConfFileName)
   where
     platformAndVersion = Internal.ghcPlatformAndVersionString
@@ -1801,7 +1801,7 @@ pkgRoot verbosity lbi = pkgRoot'
       let ghcjsProg = fromMaybe (error "GHCJS.pkgRoot: no ghcjs program") $ lookupProgram ghcjsProgram (withPrograms lbi)
       in  fmap takeDirectory (getGlobalPackageDB verbosity ghcjsProg)
     pkgRoot' UserPackageDB = do
-      appDir <- getAppUserDataDirectory "ghcjs"
+      appDir <- getXdgDirectory XdgData "ghcjs"
       -- fixme correct this version
       let ver      = compilerVersion (compiler lbi)
           subdir   = System.Info.arch ++ '-':System.Info.os

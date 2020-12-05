@@ -59,7 +59,7 @@ import Distribution.System
 import Distribution.Compiler
 import Distribution.Simple.InstallDirs.Internal
 
-import System.Directory (getAppUserDataDirectory)
+import System.Directory (getXdgDirectory, XdgDirectory(XdgData))
 import System.FilePath
   ( (</>), isPathSeparator
   , pathSeparator, dropDrive
@@ -188,7 +188,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
       then do
         mDir <- lookupEnv "CABAL_DIR"
         case mDir of
-          Nothing -> getAppUserDataDirectory "cabal"
+          Nothing -> getXdgDirectory XdgData "cabal"
           Just dir -> return dir
       else case buildOS of
            Windows -> do windowsProgramFilesDir <- getWindowsProgramFilesDir

@@ -25,7 +25,7 @@ import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescriptio
 import Distribution.PackageDescription.Quirks      (patchQuirks)
 import Distribution.Simple.Utils                   (fromUTF8BS, toUTF8BS)
 import Numeric                                     (showFFloat)
-import System.Directory                            (getAppUserDataDirectory)
+import System.Directory                            (getXdgDirectory, XdgDirectory(XdgData))
 import System.Environment                          (lookupEnv)
 import System.Exit                                 (exitFailure)
 import System.FilePath                             ((</>))
@@ -63,7 +63,7 @@ import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    cabalDir   <- getAppUserDataDirectory "cabal"
+    cabalDir   <- getXdgDirectory XdgData "cabal"
     configPath <- getCabalConfigPath cabalDir
     cfg        <- B.readFile configPath
     cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
