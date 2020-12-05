@@ -81,6 +81,8 @@ import Distribution.Simple.Program
   ( ProgramDb )
 import Distribution.Simple.PackageIndex
   ( InstalledPackageIndex, moduleNameIndex )
+import Distribution.Simple.Utils
+  ( die' )
 
 import Distribution.Solver.Types.PackageIndex
   ( elemByPackageName )
@@ -106,7 +108,7 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 
   hSetBuffering stdout NoBuffering
 
-  initFlags' <- extendFlags installedPkgIndex sourcePkgDb initFlags
+  initFlags' <- extendFlags verbosity installedPkgIndex sourcePkgDb initFlags
 
   case license initFlags' of
     Flag SPDX.NONE -> return ()
@@ -127,12 +129,12 @@ initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 
 -- | Fill in more details in InitFlags by guessing, discovering, or prompting
 -- the user.
-extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
-extendFlags pkgIx sourcePkgDb =
+extendFlags :: Verbosity -> InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
+extendFlags verbosity pkgIx sourcePkgDb =
       getSimpleProject
   >=> getLibOrExec
   >=> getCabalVersion
-  >=> getPackageName sourcePkgDb
+  >=> getPackageName verbosity sourcePkgDb False
   >=> getVersion
   >=> getLicense
   >=> getAuthorInfo
@@ -208,33 +210,39 @@ getCabalVersion flags = do
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid
 --   using an existing package name.
-getPackageName :: SourcePackageDb -> InitFlags -> IO InitFlags
-getPackageName sourcePkgDb flags = do
-  guess    <-     traverse guessPackageName (flagToMaybe $ packageDir flags)
-              ?>> Just `fmap` (getCurrentDirectory >>= guessPackageName)
+getPackageName :: Verbosity -> SourcePackageDb -> Bool -> InitFlags -> IO InitFlags
+getPackageName verbosity sourcePkgDb forceAsk flags = do
+  guess <- maybe (getCurrentDirectory >>= guessPackageName) pure
+             =<< traverse guessPackageName (flagToMaybe $ packageDir flags)
 
-  let guess' | isPkgRegistered guess = Nothing
-             | otherwise = guess
+  pkgName' <- case (flagToMaybe $ packageName flags) >>= maybeForceAsk of
+    Just pkgName -> return $ Just $ pkgName
+    _ -> maybePrompt flags (prompt "Package name" (Just guess))
+  let pkgName = fromMaybe guess pkgName'
 
-  pkgName' <-     return (flagToMaybe $ packageName flags)
-              ?>> maybePrompt flags (prompt "Package name" guess')
-              ?>> return guess'
-
-  chooseAgain <- if isPkgRegistered pkgName'
-                    then promptYesNo promptOtherNameMsg (Just True)
-                    else return False
+  chooseAgain <- if isPkgRegistered pkgName
+                   then do
+                     answer' <- maybePrompt flags (promptYesNo (promptOtherNameMsg pkgName) (Just True))
+                     case answer' of
+                       Just answer -> return answer
+                       _ -> die' verbosity $ inUseMsg pkgName
+                 else
+                   return False
 
   if chooseAgain
-    then getPackageName sourcePkgDb flags
-    else return $ flags { packageName = maybeToFlag pkgName' }
+    then getPackageName verbosity sourcePkgDb True flags
+    else return $ flags { packageName = Flag pkgName }
 
   where
-    isPkgRegistered (Just pkg) = elemByPackageName (packageIndex sourcePkgDb) pkg
-    isPkgRegistered Nothing    = False
+    maybeForceAsk x = if forceAsk then Nothing else Just x
 
-    promptOtherNameMsg = "This package name is already used by another " ++
-                         "package on hackage. Do you want to choose a " ++
-                         "different name"
+    isPkgRegistered pkg = elemByPackageName (packageIndex sourcePkgDb) pkg
+
+    inUseMsg pkgName = "The name " ++ (P.unPackageName pkgName) ++
+                       " is already in use by another package on Hackage."
+
+    promptOtherNameMsg pkgName = (inUseMsg pkgName) ++
+                                 " Do you want to choose a different name"
 
 -- | Package version: use 0.1.0.0 as a last resort, but try prompting the user
 --  if possible.
