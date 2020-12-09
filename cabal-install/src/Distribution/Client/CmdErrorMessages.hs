@@ -136,9 +136,9 @@ renderTargetSelector (TargetComponentUnknown pkgname (Right cname) subtarget) =
 renderSubComponentTarget :: SubComponentTarget -> String
 renderSubComponentTarget WholeComponent         = ""
 renderSubComponentTarget (FileTarget filename)  =
-  "the file " ++ filename ++ "in "
+  "the file " ++ filename ++ " in "
 renderSubComponentTarget (ModuleTarget modname) =
-  "the module" ++ prettyShow modname ++ "in "
+  "the module " ++ prettyShow modname ++ " in "
 
 
 renderOptionalStanza :: Plural -> OptionalStanza -> String
