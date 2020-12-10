@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP          #-}
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists.
 -----------------------------------------------------------------------------
@@ -182,7 +183,11 @@ downloadURI transport verbosity uri path = do
     fragmentParser = do
         _ <- P.string "#sha256="
         str <- some P.hexDigit
+#if MIN_VERSION_base16_bytestring(1,0,0)
+        return  (Base16.decodeLenient (BS8.pack str))
+#else
         return (fst (Base16.decode (BS8.pack str)))
+#endif
 
 ------------------------------------------------------------------------------
 -- Utilities for repo url management
