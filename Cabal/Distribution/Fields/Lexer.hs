@@ -372,6 +372,7 @@ uncheckedShiftL# = shiftL#
 #endif
 
 {-# INLINE alexIndexInt16OffAddr #-}
+alexIndexInt16OffAddr :: AlexAddr -> Int# -> Int#
 alexIndexInt16OffAddr (AlexA# arr) off =
 #ifdef WORDS_BIGENDIAN
   narrow16Int# i
@@ -381,10 +382,14 @@ alexIndexInt16OffAddr (AlexA# arr) off =
         low  = int2Word# (ord# (indexCharOffAddr# arr off'))
         off' = off *# 2#
 #else
-  indexInt16OffAddr# arr off
+#if __GLASGOW_HASKELL__ >= 901
+  int16ToInt#
+#endif
+    (indexInt16OffAddr# arr off)
 #endif
 
 {-# INLINE alexIndexInt32OffAddr #-}
+alexIndexInt32OffAddr :: AlexAddr -> Int# -> Int#
 alexIndexInt32OffAddr (AlexA# arr) off =
 #ifdef WORDS_BIGENDIAN
   narrow32Int# i
@@ -398,7 +403,10 @@ alexIndexInt32OffAddr (AlexA# arr) off =
    b0   = int2Word# (ord# (indexCharOffAddr# arr off'))
    off' = off *# 4#
 #else
-  indexInt32OffAddr# arr off
+#if __GLASGOW_HASKELL__ >= 901
+  int32ToInt#
+#endif
+    (indexInt32OffAddr# arr off)
 #endif
 
 #if __GLASGOW_HASKELL__ < 503
