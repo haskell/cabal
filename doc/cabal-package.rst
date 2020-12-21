@@ -144,6 +144,7 @@ Example: A package containing executable programs
       hs-source-dirs: prog1
 
     executable program2
+      -- A different Main.hs because of hs-source-dirs.
       main-is:        Main.hs
       build-depends:  HUnit >= 1.1.1 && < 1.2
       hs-source-dirs: prog2
@@ -171,11 +172,14 @@ Example: A package containing a library and executable programs
     executable program1
       main-is:         Main.hs
       hs-source-dirs:  prog1
+      -- These modules are distinct from the library modules.
       other-modules:   A, B
 
     executable program2
+      -- A different Main.hs because of hs-source-dirs.
       main-is:         Main.hs
       hs-source-dirs:  prog2
+      -- These modules are distinct from the library and program1 modules.
       other-modules:   A, C, Utils
 
 with ``Setup.hs`` the same as above. Note that any library modules
