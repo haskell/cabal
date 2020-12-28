@@ -10,40 +10,32 @@ This Cabal Git repository contains the following packages:
 The canonical upstream repository is located at
 https://github.com/haskell/cabal.
 
-Installing Cabal (by downloading the binary)
---------------------------------------------
+Installing cabal-install (by downloading the binary)
+----------------------------------------------------
 
 Prebuilt binary releases can be obtained from https://www.haskell.org/cabal/download.html.
 The `cabal-install` binary download for your platform should contain the `cabal` executable.
 
-Installing Cabal (with cabal)
------------------------------
+Installing cabal-install (preferred, with cabal-install)
+--------------------------------------------------------
 
-Assuming that you have a pre-existing, older version of `cabal-install`,
-run:
+Assuming that you have a pre-existing, recent version of `cabal-install`, run:
 
 ~~~~
 cabal install cabal-install
 ~~~~
 
-To get the latest version of `cabal-install`. (You may want to `cabal
-update` first.)
+To get the latest version of `cabal-install`. (You may want to `cabal update` first.)
 
 To install the latest version from the Git repository, clone the
 Git repository and then run:
 
 ~~~~
-(cd Cabal; cabal install)
-(cd cabal-install; cabal install)
+cabal install --project-file=cabal.project.release cabal-install
 ~~~~
 
-Installing Cabal (without cabal)
---------------------------------
+Installing cabal-install without cabal-install
+----------------------------------------------
 
-Assuming you don't have a pre-existing copy of `cabal-install`, run:
-
-~~~~
-cabal-install $ ./bootstrap.sh # running ./bootstrap.sh from within in cabal-install folder.
-~~~~
-
-For more details, and non-unix like systems, see the [README.md in cabal-install](cabal-install/README.md) and [Contributing Guidelines](CONTRIBUTING.md).
+Assuming you don't have a pre-existing copy of `cabal-install`,
+look into `bootstrap` directory.
