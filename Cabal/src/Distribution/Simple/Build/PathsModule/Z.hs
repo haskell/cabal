@@ -6,6 +6,7 @@ data Z
          zVersionDigits :: String,
          zSupportsCpp :: Bool,
          zSupportsNoRebindableSyntax :: Bool,
+         zSupportsNoMissingSafeHaskellMode :: Bool,
          zAbsolute :: Bool,
          zRelocatable :: Bool,
          zIsWindows :: Bool,
@@ -42,6 +43,12 @@ render z_root = execWriter $ do
   else do
     return ()
   tell "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
+  if (zSupportsNoMissingSafeHaskellMode z_root)
+  then do
+    tell "{-# OPTIONS_GHC -Wno-missing-safe-haskell-mode #-}\n"
+    return ()
+  else do
+    return ()
   tell "module Paths_"
   tell (zManglePkgName z_root (zPackageName z_root))
   tell " (\n"
