@@ -64,8 +64,9 @@ generatePathsModule pkg_descr lbi clbi =
         | otherwise =
           "{-# OPTIONS_GHC -fffi #-}\n"
 
-       warning_pragmas =
-        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
+       warning_pragmas = unlines $
+        [ "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}" ] ++
+        [ "{-# OPTIONS_GHC -Wno-missing-safe-haskell-mode #-}" | supports_missing_safehaskell ]
 
        foreign_imports
         | absolute = ""
@@ -250,6 +251,7 @@ generatePathsModule pkg_descr lbi clbi =
         supports_cpp = supports_language_pragma
         supports_rebindable_syntax= ghc_newer_than (mkVersion [7,0,1])
         supports_language_pragma = ghc_newer_than (mkVersion [6,6,1])
+        supports_missing_safehaskell = ghc_newer_than (mkVersion [8,10,1])
 
         ghc_newer_than minVersion =
           case compilerCompatVersion GHC (compiler lbi) of
