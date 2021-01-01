@@ -90,8 +90,8 @@ convId ipi = (pn, I ver $ Inst $ IPI.installedUnitId ipi)
 convIP :: SI.InstalledPackageIndex -> IPI.InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   case traverse (convIPId (DependencyReason pn M.empty S.empty) comp idx) (IPI.depends ipi) of
-        Nothing  -> (pn, i, PInfo [] M.empty M.empty (Just Broken))
-        Just fds -> ( pn, i, PInfo fds components M.empty Nothing)
+        Left u    -> (pn, i, PInfo [] M.empty M.empty (Just (Broken u)))
+        Right fds -> (pn, i, PInfo fds components M.empty Nothing)
  where
   -- TODO: Handle sub-libraries and visibility.
   components =
@@ -141,13 +141,13 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep PN)
+convIPId :: DependencyReason PN -> Component -> SI.InstalledPackageIndex -> UnitId -> Either UnitId (FlaggedDep PN)
 convIPId dr comp idx ipid =
   case SI.lookupUnitId idx ipid of
-    Nothing  -> Nothing
+    Nothing  -> Left ipid
     Just ipi -> let (pn, i) = convId ipi
                     name = ExposedLib LMainLibName  -- TODO: Handle sub-libraries.
-                in  Just (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
+                in  Right (D.Simple (LDep dr (Dep (PkgComponent pn name) (Fixed i))) comp)
                 -- NB: something we pick up from the
                 -- InstalledPackageIndex is NEVER an executable
 
