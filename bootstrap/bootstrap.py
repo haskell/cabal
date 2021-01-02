@@ -107,6 +107,19 @@ class BadTarball(Exception):
             f'  found:    {self.found_sha256}',
         ])
 
+class MissingSourceFile(Exception):
+    def __init__(self, url: str, expected_sha256: SHA256Hash, path: Path):
+        self.url = url
+        self.expected_sha256 = expected_sha256
+        self.path = path
+
+    def __str__(self):
+        return '\n'.join([
+            f'Missing source file and network access is disallowed: {str(self.path)}',
+            f'  url:      {self.url}',
+            f'  expected: {self.expected_sha256}',
+        ])
+
 def package_url(package: PackageName, version: Version) -> str:
     return f'http://hackage.haskell.org/package/{package}-{version}/{package}-{version}.tar.gz'
 
@@ -118,8 +131,11 @@ def verify_sha256(expected_hash: SHA256Hash, f: Path):
     if h != expected_hash:
         raise BadTarball(f, expected_hash, h)
 
-def fetch_file(dest: Path, url: str, sha256: SHA256Hash):
+def fetch_file(dest: Path, url: str, sha256: SHA256Hash, network_allowed: bool):
     if not dest.exists():
+        if not network_allowed:
+            raise MissingSourceFile(url, sha256, dest)
+
         dest.parent.mkdir(parents=True, exist_ok=True)
         with urllib.request.urlopen(url) as resp:
             shutil.copyfileobj(resp, dest.open('wb'))
@@ -131,20 +147,23 @@ def fetch_package(package: PackageName,
                   src_sha256: SHA256Hash,
                   revision: Optional[int],
                   cabal_sha256: Optional[SHA256Hash],
+                  network_allowed: bool
                   ) -> (Path, Path):
     import urllib.request
 
     # Download source distribution
     print(f'Fetching {package}-{version}...')
     tarball = TARBALLS / f'{package}-{version}.tar.gz'
-    fetch_file(tarball, package_url(package, version), src_sha256)
+    fetch_file(tarball, package_url(package, version), src_sha256,
+               network_allowed = network_allowed)
 
     # Download revised cabal file
     if revision is not None:
         assert cabal_sha256 is not None
         cabal_file = TARBALLS / f'{package}.cabal'
         url = package_cabal_url(package, version, revision)
-        fetch_file(cabal_file, url, sha256 = cabal_sha256)
+        fetch_file(cabal_file, url, sha256 = cabal_sha256,
+                   network_allowed = network_allowed)
 
     return (tarball, cabal_file)
 
@@ -169,13 +188,14 @@ def check_builtin(dep: BuiltinDep, ghc: Compiler) -> None:
     print(f'Using {dep.package}-{dep.version} from GHC...')
     return
 
-def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
+def install_dep(dep: BootstrapDep, ghc: Compiler, network_allowed: bool) -> None:
     dist_dir = (DISTDIR / f'{dep.package}-{dep.version}').resolve()
 
     if dep.source == PackageSource.HACKAGE:
         assert dep.src_sha256 is not None
         (tarball, cabal_file) = fetch_package(dep.package, dep.version, dep.src_sha256,
-                                dep.revision, dep.cabal_sha256)
+                                              dep.revision, dep.cabal_sha256,
+                                              network_allowed = network_allowed)
         UNPACKED.mkdir(parents=True, exist_ok=True)
         shutil.unpack_archive(tarball.resolve(), UNPACKED, 'gztar')
         sdist_dir = UNPACKED / f'{dep.package}-{dep.version}'
@@ -239,7 +259,7 @@ def hash_file(h, f: BinaryIO) -> SHA256Hash:
 UnitId = NewType('UnitId', str)
 PlanUnit = NewType('PlanUnit', dict)
 
-def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
+def bootstrap(info: BootstrapInfo, ghc: Compiler, network_allowed: bool) -> None:
     if not PKG_DB.exists():
         print(f'Creating package database {PKG_DB}')
         PKG_DB.parent.mkdir(parents=True, exist_ok=True)
@@ -249,7 +269,7 @@ def bootstrap(info: BootstrapInfo, ghc: Compiler) -> None:
         check_builtin(dep, ghc)
 
     for dep in info.dependencies:
-        install_dep(dep, ghc)
+        install_dep(dep, ghc, network_allowed)
 
 # Steps
 #######################################################################
@@ -334,7 +354,11 @@ def main() -> None:
                         help='bootstrap dependency file')
     parser.add_argument('-w', '--with-compiler', type=Path,
                         help='path to GHC')
+    parser.add_argument('--no-network', action='store_true',
+                        help='disable automatic downloading of source files')
     args = parser.parse_args()
+
+    network_allowed = not args.no_network
 
     # Find compiler
     if args.with_compiler is None:
@@ -354,7 +378,7 @@ def main() -> None:
     """))
 
     info = read_bootstrap_info(args.deps)
-    bootstrap(info, ghc)
+    bootstrap(info, ghc, network_allowed)
     cabal_path = (BINDIR / 'cabal').resolve()
 
     archive = make_archive(cabal_path)
