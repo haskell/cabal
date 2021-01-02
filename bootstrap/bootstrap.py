@@ -118,6 +118,14 @@ def verify_sha256(expected_hash: SHA256Hash, f: Path):
     if h != expected_hash:
         raise BadTarball(f, expected_hash, h)
 
+def fetch_file(dest: Path, url: str, sha256: SHA256Hash):
+    if not dest.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(url) as resp:
+            shutil.copyfileobj(resp, dest.open('wb'))
+
+    verify_sha256(sha256, dest)
+
 def fetch_package(package: PackageName,
                   version: Version,
                   src_sha256: SHA256Hash,
@@ -127,24 +135,16 @@ def fetch_package(package: PackageName,
     import urllib.request
 
     # Download source distribution
+    print(f'Fetching {package}-{version}...')
     tarball = TARBALLS / f'{package}-{version}.tar.gz'
-    if not tarball.exists():
-        print(f'Fetching {package}-{version}...')
-        tarball.parent.mkdir(parents=True, exist_ok=True)
-        url = package_url(package, version)
-        with urllib.request.urlopen(url) as resp:
-            shutil.copyfileobj(resp, tarball.open('wb'))
-
-    verify_sha256(src_sha256, tarball)
+    fetch_file(tarball, package_url(package, version), src_sha256)
 
     # Download revised cabal file
-    cabal_file = TARBALLS / f'{package}.cabal'
-    if revision is not None and not cabal_file.exists():
+    if revision is not None:
         assert cabal_sha256 is not None
+        cabal_file = TARBALLS / f'{package}.cabal'
         url = package_cabal_url(package, version, revision)
-        with urllib.request.urlopen(url) as resp:
-            shutil.copyfileobj(resp, cabal_file.open('wb'))
-            verify_sha256(cabal_sha256, cabal_file)
+        fetch_file(cabal_file, url, sha256 = cabal_sha256)
 
     return (tarball, cabal_file)
 
