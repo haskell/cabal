@@ -45,7 +45,7 @@ import Distribution.Utils.LogProgress
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Distribution.Pretty (pretty)
-import Text.PrettyPrint (Doc, hang, text, vcat, ($+$), hsep, quotes)
+import Text.PrettyPrint (Doc, hang, text, vcat, ($+$), hsep, hcat, quotes, ($$), punctuate)
 
 -- | A linked component is a component that has been mix-in linked, at
 -- which point we have determined how all the dependencies of the
@@ -210,12 +210,19 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- Read out all the final results by converting back
         -- into a pure representation.
         let convertIncludeU (ComponentInclude dep_aid rns i) = do
-                uid <- convertUnitIdU (ann_id dep_aid)
-                return (ComponentInclude {
-                            ci_ann_id = dep_aid { ann_id = uid },
-                            ci_renaming = rns,
-                            ci_implicit = i
-                        })
+                x <- convertUnitIdU (ann_id dep_aid)
+                case x of
+                    Right uid -> return (ComponentInclude {
+                                    ci_ann_id = dep_aid { ann_id = uid },
+                                    ci_renaming = rns,
+                                    ci_implicit = i
+                                })
+                    Left mod_names ->
+                        let sigsList = hcat $ punctuate (text ", ") $ map (quotes . pretty) mod_names in
+                        failWith $ text "Cannot instantiate requirement in " <+> (pretty $ ann_cname dep_aid)  $$
+                            text "Check that \"build-depends:\" doesn't include library with signatures: " <+> sigsList $$
+                            text "as this creates a cyclic dependency, which GHC does not support."
+
         shape <- convertModuleScopeU shape_u
         let (includes_u, sig_includes_u) = partitionEithers all_includes_u
         incls <- traverse convertIncludeU includes_u
