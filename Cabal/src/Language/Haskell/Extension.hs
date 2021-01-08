@@ -783,10 +783,6 @@ data KnownExtension =
   -- | Allow recursive (and therefore undecidable) super-class relationships.
   | UndecidableSuperClasses
 
-  -- | A temporary extension to help library authors check if their
-  -- code will compile with the new planned desugaring of fail.
-  | MonadFailDesugaring
-
   -- | A subset of @TemplateHaskell@ including only quoting.
   | TemplateHaskellQuotes
 

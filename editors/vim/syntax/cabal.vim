@@ -207,7 +207,6 @@ syn keyword cabalExtension contained
   \ LinearTypes
   \ MagicHash
   \ MonadComprehensions
-  \ MonadFailDesugaring
   \ MonoLocalBinds
   \ MonoPatBinds
   \ MonomorphismRestriction
