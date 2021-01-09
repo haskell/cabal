@@ -287,6 +287,20 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
 
                 pure def
 
+    availableSinceWarn vs (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
+      where
+        parser' v values
+            | v >= vs = parser v values
+            | otherwise = do
+                let unknownFields = Map.intersection values $ Map.fromSet (const ()) names
+                for_ (Map.toList unknownFields) $ \(name, fields) ->
+                    for_ fields $ \(MkNamelessField pos _) ->
+                        parseWarning pos PWTUnknownField $
+                            "The field " <> show name <> " is available only since the Cabal specification version " ++ showCabalSpecVersion vs ++ "."
+
+                parser v values
+
+
     -- todo we know about this field
     deprecatedSince vs msg (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
