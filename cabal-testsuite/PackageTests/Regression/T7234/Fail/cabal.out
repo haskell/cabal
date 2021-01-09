@@ -1,0 +1,7 @@
+# cabal v2-build
+Resolving dependencies...
+cabal: Could not resolve dependencies:
+[__0] next goal: issue7234 (user goal)
+[__0] rejecting: issue7234-0 (conflict: requires HopefullyThisExtensionWontOccur)
+[__0] fail (backjumping, conflict set: issue7234)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: issue7234 (2)
