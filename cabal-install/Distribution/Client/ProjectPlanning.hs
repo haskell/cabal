@@ -2480,7 +2480,7 @@ availableSourceTargets elab =
               (Nothing,   True)  -> TargetBuildable (elabUnitId elab, cname)
                                                     TargetNotRequestedByDefault
               (Just True, False) ->
-                error "componentAvailableTargetStatus: impossible"
+                error $ "componentAvailableTargetStatus: impossible; cname=" ++ prettyShow cname
       where
         cname      = componentName component
         buildable  = PD.buildable (componentBuildInfo component)
