@@ -51,6 +51,7 @@ main = do
                     [ mkWinGhcJob "8.6.5"  Nothing           []
                     , mkWinGhcJob "8.8.4"  (Just "8.8.4.1")  []
                     , mkWinGhcJob "8.10.2" (Just "8.10.2.2") []
+                    , mkWinGhcJob "8.10.3" (Just "8.10.3")   []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)

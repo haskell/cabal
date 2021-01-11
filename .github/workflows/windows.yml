@@ -168,3 +168,53 @@ jobs:
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
         run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.2\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
+  test-windows-8_10_3:
+    name: test ghc-8.10.3
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.10.3'
+          cabal-version: '3.2.0.0'
+      - name: Print versions
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v2
+      - name: make cabal-install-dev
+        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
+      # We cannot ask for all dependencies, but we can for Cabal.
+      - name: cabal v2-build Cabal --only-dependencies
+        run: cabal v2-build Cabal --only-dependencies
+      - name: cabal v2-build
+        run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
+      - name: cabal-install memory-usage-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:memory-usage-tests
+      - name: cabal-install solver-quickcheck
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:solver-quickcheck
+      - name: cabal-install integration-tests2
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:integration-tests2
+      - name: cabal-install unit-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
+      - name: cabal-tests
+        # Using only one job, -j1, to fail less.
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.3\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
