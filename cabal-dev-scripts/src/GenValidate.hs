@@ -43,14 +43,7 @@ main = do
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
                     ]
                 , zWinJobs =
-                    -- 8.8.1 fails atm,
-                    -- Shutting down GHCi sessions (please be patient)...
-                    -- Unexpected failure on GHCi exit: fd:10: hClose: resource vanished (Broken pipe)
-                    -- cabal-tests: fd:10: hClose: resource vanished (Broken pipe)
-                    -- [ WinGhcJob "8.8.1" ["8.6.5"]
                     [ mkWinGhcJob "8.6.5"  Nothing           []
-                    , mkWinGhcJob "8.8.4"  (Just "8.8.4.1")  []
-                    , mkWinGhcJob "8.10.2" (Just "8.10.2.2") []
                     , mkWinGhcJob "8.10.3" (Just "8.10.3")   []
                     ]
                 , zMangleVersion = map mangleChar
