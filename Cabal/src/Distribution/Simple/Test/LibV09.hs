@@ -158,7 +158,12 @@ runTest pkg_descr lbi clbi flags suite = do
     notice verbosity $ summarizeSuiteFinish suiteLog
 
     when isCoverageEnabled $
-        markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite
+        case PD.library pkg_descr of
+            Nothing ->
+                die' verbosity $ "Error: test coverage is only supported for packages with a library component"
+
+            Just library ->
+                markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
 
     return suiteLog
   where
