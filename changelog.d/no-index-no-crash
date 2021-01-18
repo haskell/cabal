@@ -1,0 +1,2 @@
+synopsis: No crash on bad package file (local repo with no index).
+prs: #7254

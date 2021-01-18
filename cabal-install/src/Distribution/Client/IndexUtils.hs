@@ -111,9 +111,13 @@ import Distribution.Compat.Directory (listDirectory)
 import Distribution.Utils.Generic (fstOf3)
 
 import qualified Codec.Compression.GZip as GZip
+import qualified Codec.Compression.Zlib.Internal as Zlib
 
 import qualified Hackage.Security.Client    as Sec
 import qualified Hackage.Security.Util.Some as Sec
+
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Maybe (MaybeT (..))
 
 -- | Reduced-verbosity version of 'Configure.getInstalledPackages'
 getInstalledPackages :: Verbosity -> Compiler
@@ -716,15 +720,15 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
                     return (CacheGPD gpd contents)
               where
                 cabalPath = prettyShow pkgid ++ ".cabal"
-            Just pkgId -> do
+            Just pkgId -> runMaybeT $ do
                 -- check for the right named .cabal file in the compressed tarball
-                tarGz <- BS.readFile (localDir </> file)
-                let tar = GZip.decompress tarGz
-                    entries = Tar.read tar
-
-                case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
+                tarGz <- lift $ BS.readFile (localDir </> file)
+                tar <- MaybeT $ (Just <$> evaluate (GZip.decompress tarGz)) `catch` \ (e :: Zlib.DecompressError) ->
+                  Nothing <$ warn verbosity ("Cannot read " ++ file ++ ": " ++ show e)
+                let entries = Tar.read tar
+                MaybeT $ case Tar.foldEntries (readCabalEntry pkgId) Nothing (const Nothing) entries of
                     Just ce -> return (Just ce)
-                    Nothing -> die' verbosity $ "Cannot read .cabal file inside " ++ file
+                    Nothing -> Nothing <$ warn verbosity ("Cannot read .cabal file inside " ++ file)
 
     info verbosity $ "Entries in file+noindex repository " ++ unRepoName name
     for_ entries $ \(CacheGPD gpd _) ->
