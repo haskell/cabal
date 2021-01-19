@@ -33,6 +33,8 @@ import System.FilePath
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map as M
+import qualified Data.Set as Set
+
 import Control.Monad
   ( (>=>) )
 import Control.Arrow
@@ -595,7 +597,7 @@ getModulesBuildToolsAndDeps pkgIx flags = do
   let sourceFiles = filter (isSourceFile (sourceDirs flags)) sourceFiles0
 
   Just mods <-      return (exposedModules flags)
-           ?>> (return . Just . map moduleName $ sourceFiles)
+           ?>> (return . Just . sortNub . map moduleName $ sourceFiles)
 
   tools <-     return (buildTools flags)
            ?>> (return . Just . neededBuildPrograms $ sourceFiles)
@@ -644,6 +646,10 @@ getModulesBuildToolsAndDeps pkgIx flags = do
                  , dependencies   = deps
                  , otherExts      = exts
                  }
+
+  where
+  sortNub :: Ord a => [a] -> [a]
+  sortNub = Set.toList . Set.fromList
 
 -- | Given a list of imported modules, retrieve the list of dependencies that
 -- provide those modules.
