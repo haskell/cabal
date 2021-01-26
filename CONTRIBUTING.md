@@ -221,6 +221,48 @@ We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
+Changelog
+---------
+
+When opening a pull request, you should write a changelog entry.
+This is done by adding a file in the `changelog.d` directory.
+
+The files follow a simple key-value format similar to the one for .cabal files.
+
+Here's an exhaustive example:
+
+```cabal
+synopsis: Add feature xyz
+packages: cabal-install
+prs: #0000
+issues: #0000 #0000
+significance: significant
+
+description: {
+
+- Detail number 1
+- Detail number 2
+
+}
+```
+
+Only the `synopsis` field is actually required, but you should also set the others where applicable.
+
+| Field          | Description                                                                                                        |
+| -----          | -----------                                                                                                        |
+| `synopsis`     | Brief description of the change. Often just the pr title.                                                          |
+| `description`  | Longer description, with a list of sub-changes. Not needed for small/atomic changes.                               |
+| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's an overarching or non-package change.  |
+| `prs`          | Space-separated hash-prefixed pull request numbers containing the change (usually just one).                       |
+| `issues`       | Space-separated hash-prefixed issue numbers that the change fixes/closes/affects.                                  |
+| `significance` | Set to `significant` if the change is significant, that is if it warrants being put near the top of the changelog. |
+
+You can find a large number of real-world examples of changelog files
+[here](https://github.com/haskell/cabal/tree/bc83de27569fda22dbe1e10be1a921bebf4d3430/changelog.d).
+
+At release time, the entries will be merged with
+[this tool](https://github.com/phadej/changelog-d).
+
 Communicating
 -------------
 
