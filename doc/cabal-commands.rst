@@ -308,6 +308,9 @@ by using ``--install-method`` flag:
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
 
+Adding libraries to GHC package environments
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:
 
@@ -315,10 +318,10 @@ example, this command will build the latest Cabal library and install it:
 
     $ cabal v2-install --lib Cabal
 
-This works by managing GHC environments. By default, it is writing to the
-global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
-``v2-install`` provides the ``--package-env`` flag to control which of
-these environments is modified.
+This works by managing GHC package environment files. By default, it is writing
+to the global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
+``v2-install`` provides the ``--package-env`` flag to control which of these
+environments is modified.
 
 This command will modify the environment file in the current directory:
 
