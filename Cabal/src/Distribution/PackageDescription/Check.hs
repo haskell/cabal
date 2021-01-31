@@ -24,7 +24,6 @@ module Distribution.PackageDescription.Check (
         -- * Package Checking
         PackageCheck(..),
         checkPackage,
-        checkConfiguredPackage,
 
         -- ** Checking package contents
         checkPackageFiles,
@@ -146,7 +145,7 @@ checkPackage :: GenericPackageDescription
              -> Maybe PackageDescription
              -> [PackageCheck]
 checkPackage gpkg mpkg =
-     checkConfiguredPackage pkg
+     checkConfiguredPackage
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
   ++ checkDevelopmentOnlyFlags gpkg
@@ -159,20 +158,18 @@ checkPackage gpkg mpkg =
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
---TODO: make this variant go away
---      we should always know the GenericPackageDescription
-checkConfiguredPackage :: PackageDescription -> [PackageCheck]
-checkConfiguredPackage pkg =
-    checkSanity pkg
- ++ checkFields pkg
- ++ checkLicense pkg
- ++ checkSourceRepos pkg
- ++ checkAllGhcOptions pkg
- ++ checkCCOptions pkg
- ++ checkCxxOptions pkg
- ++ checkCPPOptions pkg
- ++ checkPaths pkg
- ++ checkCabalVersion pkg
+    checkConfiguredPackage :: [PackageCheck]
+    checkConfiguredPackage =
+         checkSanity pkg
+      ++ checkFields pkg
+      ++ checkLicense pkg
+      ++ checkSourceRepos pkg
+      ++ checkAllGhcOptions pkg
+      ++ checkCCOptions pkg
+      ++ checkCxxOptions pkg
+      ++ checkCPPOptions pkg
+      ++ checkPaths pkg
+      ++ checkCabalVersion pkg
 
 
 -- ------------------------------------------------------------

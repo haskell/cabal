@@ -71,12 +71,13 @@ import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
 import System.FilePath ((</>), (<.>), dropExtension, isRelative)
 
 -- |Create a source distribution.
-sdist :: PackageDescription     -- ^ information from the tarball
-      -> SDistFlags             -- ^ verbosity & snapshot
-      -> (FilePath -> FilePath) -- ^ build prefix (temp dir)
-      -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
+sdist :: GenericPackageDescription
+      -> PackageDescription         -- ^ information from the tarball
+      -> SDistFlags                 -- ^ verbosity & snapshot
+      -> (FilePath -> FilePath)     -- ^ build prefix (temp dir)
+      -> [PPSuffixHandler]          -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg flags mkTmpDir pps = do
+sdist gpkg pkg flags mkTmpDir pps = do
 
   distPref <- findDistPrefOrDefault $ sDistDistPref flags
   let targetPref   = distPref
@@ -91,7 +92,7 @@ sdist pkg flags mkTmpDir pps = do
 
     NoFlag    -> do
       -- do some QA
-      printPackageProblems verbosity pkg
+      printPackageProblems verbosity gpkg pkg
 
       date <- getCurrentTime
       let pkg' | snapshot  = snapshotPackage date pkg
@@ -494,10 +495,13 @@ allSourcesBuildInfo verbosity rip cwd bi pps modules = do
 
 -- | Note: must be called with the CWD set to the directory containing
 -- the '.cabal' file.
-printPackageProblems :: Verbosity -> PackageDescription -> IO ()
-printPackageProblems verbosity pkg_descr = do
+printPackageProblems :: Verbosity
+                     -> GenericPackageDescription
+                     -> PackageDescription
+                     -> IO ()
+printPackageProblems verbosity gpkg pkg_descr = do
   ioChecks      <- checkPackageFiles verbosity pkg_descr "."
-  let pureChecks = checkConfiguredPackage pkg_descr
+  let pureChecks = checkPackage gpkg (Just pkg_descr)
       isDistError (PackageDistSuspicious     _) = False
       isDistError (PackageDistSuspiciousWarn _) = False
       isDistError _                             = True

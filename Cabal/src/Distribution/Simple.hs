@@ -376,7 +376,7 @@ sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
 sdistAction _hooks flags _args = do
     (_, ppd) <- confPkgDescr emptyUserHooks verbosity Nothing
     let pkg_descr = flattenPackageDescription ppd
-    sdist pkg_descr flags srcPref knownSuffixHandlers
+    sdist ppd pkg_descr flags srcPref knownSuffixHandlers
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
