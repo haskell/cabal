@@ -13,12 +13,30 @@
 --
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Init.Command (
-
-    -- * Commands
+module Distribution.Client.Init.Command
+  ( -- * Commands
     initCabal
   , incVersion
 
+    -- * Helpers
+  , getSimpleProject
+  , getLibOrExec
+  , getCabalVersion
+  , getPackageName
+  , getVersion
+  , getLicense
+  , getAuthorInfo
+  , getHomepage
+  , getSynopsis
+  , getCategory
+  , getExtraSourceFiles
+  , getAppDir
+  , getSrcDir
+  , getGenTests
+  , getTestDir
+  , getLanguage
+  , getGenComments
+  , getModulesBuildToolsAndDeps
   ) where
 
 import Prelude ()
@@ -475,21 +493,17 @@ getGenComments flags = do
 -- | Ask for the application root directory.
 getAppDir :: InitFlags -> IO InitFlags
 getAppDir flags = do
-  appDirs <-
-    return (applicationDirs flags)
-    ?>> noAppDirIfLibraryOnly
+  appDirs <- noAppDirIfLibraryOnly
     ?>> guessAppDir flags
     ?>> promptUserForApplicationDir
     ?>> setDefault
   return $ flags { applicationDirs = appDirs }
-
   where
-    -- If the packageType==Library, then there is no application dir.
+    -- If the packageType==Library, ignore defined appdir.
     noAppDirIfLibraryOnly :: IO (Maybe [String])
-    noAppDirIfLibraryOnly =
-      if (packageType flags) == Flag Library
-      then return (Just [])
-      else return Nothing
+    noAppDirIfLibraryOnly
+      | packageType flags == Flag Library = return $ Just []
+      | otherwise = return $ applicationDirs flags
 
     -- Set the default application directory.
     setDefault :: IO (Maybe [String])
@@ -530,9 +544,7 @@ guessAppDir flags = do
 -- | Ask for the source (library) root directory.
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
-  srcDirs <-
-    return (sourceDirs flags)
-    ?>> noSourceDirIfExecutableOnly
+  srcDirs <- noSourceDirIfExecutableOnly
     ?>> guessSourceDir flags
     ?>> promptUserForSourceDir
     ?>> setDefault
@@ -540,12 +552,11 @@ getSrcDir flags = do
   return $ flags { sourceDirs = srcDirs }
 
   where
-    -- If the packageType==Executable, then there is no source dir.
+    -- If the packageType==Executable, then ignore source dir
     noSourceDirIfExecutableOnly :: IO (Maybe [String])
-    noSourceDirIfExecutableOnly =
-      if (packageType flags) == Flag Executable
-      then return (Just [])
-      else return Nothing
+    noSourceDirIfExecutableOnly
+      | packageType flags == Flag Executable = return $ Just []
+      | otherwise = return $ sourceDirs flags
 
     -- Set the default source directory.
     setDefault :: IO (Maybe [String])

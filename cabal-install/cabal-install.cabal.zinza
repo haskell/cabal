@@ -420,7 +420,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Get
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
-    UnitTests.Distribution.Client.Init.FileCreators
+    UnitTests.Distribution.Client.Init
     UnitTests.Distribution.Client.Store
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.TreeDiffInstances

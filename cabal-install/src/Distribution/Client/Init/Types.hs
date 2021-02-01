@@ -79,7 +79,7 @@ data InitFlags =
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool
               }
-  deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
 
   -- the Monoid instance for Flag has later values override earlier
   -- ones, which is why we want Maybe [foo] for collecting foo values,
