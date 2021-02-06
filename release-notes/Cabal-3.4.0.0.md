@@ -4,7 +4,7 @@
   
   See various changes in https://cabal.readthedocs.io/en/latest/file-format-changelog.html#cabal-version-3-4
   
-- Support GHC-8.12 [#6903](https://github.com/haskell/cabal/issues/6903) [#6904](https://github.com/haskell/cabal/issues/6904) [#6905](https://github.com/haskell/cabal/issues/6905) [!6545](https://github.com/haskell/cabal/pull/6545) [!6552](https://github.com/haskell/cabal/pull/6552) [!6553](https://github.com/haskell/cabal/pull/6553) [!6563](https://github.com/haskell/cabal/pull/6563) [!6735](https://github.com/haskell/cabal/pull/6735) [!6844](https://github.com/haskell/cabal/pull/6844) [!6848](https://github.com/haskell/cabal/pull/6848) [!6865](https://github.com/haskell/cabal/pull/6865) [!6908](https://github.com/haskell/cabal/pull/6908) [!6947](https://github.com/haskell/cabal/pull/6947)
+- Support GHC-9.0 [#6903](https://github.com/haskell/cabal/issues/6903) [#6904](https://github.com/haskell/cabal/issues/6904) [#6905](https://github.com/haskell/cabal/issues/6905) [!6545](https://github.com/haskell/cabal/pull/6545) [!6552](https://github.com/haskell/cabal/pull/6552) [!6553](https://github.com/haskell/cabal/pull/6553) [!6563](https://github.com/haskell/cabal/pull/6563) [!6735](https://github.com/haskell/cabal/pull/6735) [!6844](https://github.com/haskell/cabal/pull/6844) [!6848](https://github.com/haskell/cabal/pull/6848) [!6865](https://github.com/haskell/cabal/pull/6865) [!6908](https://github.com/haskell/cabal/pull/6908) [!6947](https://github.com/haskell/cabal/pull/6947)
   
   - Support for `-this-package-key` deprecation
   - Use process `createPipe`
@@ -12,7 +12,7 @@
   - Adopt to simplfied subsumption changes
   
   There are no magical `IO = WithCallStack Prelude.IO` alias in Cabal,
-  as it is hard to get working with GHC-8.12's simplified subsumption.
+  as it is hard to get working with GHC-9.0's simplified subsumption.
   
 - Treat `pkg:sublib` dependency syntax as is in `cabal-version: 3.4` [#6083](https://github.com/haskell/cabal/issues/6083) [!6893](https://github.com/haskell/cabal/pull/6893) [!6907](https://github.com/haskell/cabal/pull/6907)
   
