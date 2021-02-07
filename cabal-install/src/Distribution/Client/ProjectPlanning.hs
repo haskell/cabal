@@ -163,7 +163,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Control.Monad.State as State
 import           Control.Exception (assert)
-import           Data.List (groupBy)
+import           Data.List (groupBy, deleteBy)
 import qualified Data.List.NonEmpty as NE
 import           System.FilePath
 
@@ -1758,7 +1758,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- package needs to be rebuilt.  (It needs to be done here,
             -- because the ElaboratedConfiguredPackage is where we test
             -- whether or not there have been changes.)
-            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ] 
+            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ]
             BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
@@ -2503,7 +2503,7 @@ availableSourceTargets elab =
 -- We also allow for information associated with each component target, and
 -- whenever we targets subsume each other we aggregate their associated info.
 --
-nubComponentTargets :: [(ComponentTarget, a)] -> [(ComponentTarget, [a])]
+nubComponentTargets :: [(ComponentTarget, a)] -> [(ComponentTarget, NonEmpty a)]
 nubComponentTargets =
     concatMap (wholeComponentOverrides . map snd)
   . groupBy ((==)    `on` fst)
@@ -2514,11 +2514,17 @@ nubComponentTargets =
     -- If we're building the whole component then that the only target all we
     -- need, otherwise we can have several targets within the component.
     wholeComponentOverrides :: [(ComponentTarget,  a )]
-                            -> [(ComponentTarget, [a])]
+                            -> [(ComponentTarget, NonEmpty a)]
     wholeComponentOverrides ts =
-      case [ t | (t@(ComponentTarget _ WholeComponent), _) <- ts ] of
-        (t:_) -> [ (t, map snd ts) ]
-        []    -> [ (t,[x]) | (t,x) <- ts ]
+      case [ ta | ta@(ComponentTarget _ WholeComponent, _) <- ts ] of
+        ((t, x):_) -> 
+                let
+                    -- Delete tuple (t, x) from original list to avoid duplicates.
+                    -- Use 'deleteBy', to avoid additional Class constraint on 'nubComponentTargets'.
+                    ts' = deleteBy (\(t1, _) (t2, _) -> t1 == t2) (t, x) ts
+                in
+                    [ (t, x :| map snd ts') ]
+        []    -> [ (t, x :| []) | (t,x) <- ts ]
 
     -- Not all Cabal Setup.hs versions support sub-component targets, so switch
     -- them over to the whole component
