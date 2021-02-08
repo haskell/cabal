@@ -1,11 +1,12 @@
-module UnitTests.Distribution.Client.Init.FileCreators (
-  tests
+module UnitTests.Distribution.Client.Init
+  ( tests
   ) where
 
 import Distribution.Client.Init.FileCreators
   ( generateCabalFile )
 
 import Test.Tasty
+import Test.Tasty.HUnit
 import Test.Tasty.Golden (goldenVsString)
 
 import System.FilePath
@@ -13,6 +14,8 @@ import System.FilePath
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS8
 
+import Distribution.Client.Init.Command
+  ( getLibOrExec, getAppDir, getSrcDir )
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), defaultInitFlags )
 import Distribution.Simple.Setup
@@ -40,6 +43,11 @@ tests = [ testGroup "cabal init goldens"
           , checkCabalFileGolden libExeAndTestFlags "lib-exe-and-test-golden.cabal"
           , checkCabalFileGolden libExeAndTestWithCommentsFlags "lib-exe-and-test-with-comments-golden.cabal"
           ]
+        , testGroup "Check init flag outputs against init script builds"
+          [ checkInitFlags "Check library-only build flags"  libFlags Library
+          , checkInitFlags "Check lib+exe build flags" libAndExeFlags LibraryAndExecutable
+          , checkInitFlags "Check exe-only build flags" exeFlags Executable
+          ]
         ]
 
 checkCabalFileGolden :: InitFlags -> FilePath -> TestTree
@@ -51,6 +59,22 @@ checkCabalFileGolden flags goldenFileName =
 
     generatedCabalFile :: IO BS.ByteString
     generatedCabalFile = pure . BS8.pack $ generateCabalFile goldenFileName flags
+
+checkInitFlags :: String -> InitFlags -> PackageType -> TestTree
+checkInitFlags label flags pkgType = testCase label $ do
+    flags' <- getLibOrExec rawFlags
+      >>= getAppDir
+      >>= getSrcDir
+
+    flags @=? flags'
+ where
+   rawFlags
+     | pkgType == Executable = baseFlags
+       { packageType = Flag pkgType
+       , exposedModules = Nothing
+       }
+     | otherwise = baseFlags { packageType = Flag pkgType }
+
 
 -- ==================================================
 -- Base flags to set common InitFlags values.
@@ -90,11 +114,22 @@ baseFlags = defaultInitFlags {
   , mainIs = Flag "Main.hs"
   , applicationDirs = Just ["app"]
   , sourceDirs = Nothing
-  , exposedModules = Nothing
+  , exposedModules = Just [ModuleName.fromString "MyLib"]
   , initializeTestSuite = Flag False
   , testDirs = Nothing
   }
 
+
+-- ==================================================
+-- Simple library flags
+
+libFlags :: InitFlags
+libFlags = baseFlags
+  { packageType = Flag Library
+  , mainIs = NoFlag
+  , sourceDirs = Just ["src"]
+  , applicationDirs = Just []
+  }
 
 -- ==================================================
 -- Simple exe.
@@ -104,7 +139,9 @@ exeFlags = baseFlags {
   -- Create an executable only, with main living in app/Main.hs.
     packageType = Flag Executable
   , mainIs = Flag "Main.hs"
+  , sourceDirs = Just []
   , applicationDirs = Just ["app"]
+  , exposedModules = Nothing
   }
 
 
@@ -127,7 +164,6 @@ libAndExeFlags = baseFlags {
 
   -- Library sources live in src/ and expose the module MyLib.
   , sourceDirs = Just ["src"]
-  , exposedModules = Just (map ModuleName.fromString ["MyLib"])
   }
 
 

@@ -147,6 +147,13 @@ There are also other test suites:
 For these test executables, `-p` which applies a regex filter to the test
 names.
 
+**Testing `cabal-install` Locally**
+
+If you are testing `cabal-install` locally, you may refer to its [TESTING.md](cabal-install/TESTING.md) for
+instructions on how to use the `Makefile` to produce the appropriate `.cabal` file
+with test targets. From there, you may add tests in the usual way.
+
+
 Conventions
 -----------
 
