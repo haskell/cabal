@@ -158,7 +158,7 @@ prop_roundtrip_legacytypes_specific config =
 
 roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
-    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig (toUTF8BS str)) of
+    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig "unused" (toUTF8BS str)) of
       ParseOk _ x     -> counterexample ("shown:\n" ++ str) $
           x `ediffEq` config { projectConfigProvenance = mempty }
       ParseFailed err -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
@@ -275,7 +275,7 @@ prop_roundtrip_printparse_RelaxDeps rdep =
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    Right rdep `ediffEq` eitherParsec rdep' 
+    Right rdep `ediffEq` eitherParsec rdep'
   where
     rdep' = go (prettyShow rdep)
 
@@ -522,7 +522,7 @@ instance Arbitrary ProjectConfigShared where
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource =
-    ConstraintSourceProjectConfig "TODO"
+    ConstraintSourceProjectConfig "unused"
 
 instance Arbitrary ProjectConfigProvenance where
     arbitrary = elements [Implicit, Explicit "cabal.project"]
