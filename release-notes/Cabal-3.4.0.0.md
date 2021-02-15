@@ -22,14 +22,14 @@
   build-depends: somesublib
   ```
   
-  is not using in-package sublibraries. You have to be explicit and write
+  does not use in-package sublibraries. You have to be explicit and write
   
   ```cabal
   build-depends: thispkg:somesublib
   ```
   
-  This fixes an issue, where it was impossible to refer to extenral
-  library, if you had sublibrary of the same name.
+  This fixes an issue where it was impossible to refer to an external
+  library if you had a sublibrary of the same name.
   
 - Dependency type refactorings [#5570](https://github.com/haskell/cabal/issues/5570) [#6894](https://github.com/haskell/cabal/issues/6894) [!6768](https://github.com/haskell/cabal/pull/6768) [!6798](https://github.com/haskell/cabal/pull/6798) [!6895](https://github.com/haskell/cabal/pull/6895) [!6896](https://github.com/haskell/cabal/pull/6896) [!6897](https://github.com/haskell/cabal/pull/6897) [!6898](https://github.com/haskell/cabal/pull/6898)
   
