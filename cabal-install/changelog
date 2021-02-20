@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+3.4.0.0 Oleg Grenrus <oleg.grenrus@iki.fi> February 2021
+	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.4.0.0.md
+
 3.2.0.0 Herbert Valerio Riedel <hvr@gnu.org> April 2020
 	* `v2-build` (and other `v2-`prefixed commands) now accept the
 	  `--benchmark-option(s)` flags, which pass options to benchmark executables
