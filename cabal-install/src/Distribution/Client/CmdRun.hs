@@ -107,7 +107,7 @@ import qualified Text.Parsec as P
 import System.Directory
          ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
 import System.FilePath
-         ( (</>), isValid, isPathSeparator, takeExtension )
+         ( (</>), isValid, dropExtension, isPathSeparator, takeExtension )
 
 
 runCommand :: CommandUI (NixStyleFlags ())
@@ -174,8 +174,9 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     let
       scriptOrError script err = do
         exists <- doesFileExist script
-        let pol | takeExtension script == ".lhs" = LiterateHaskell
-                | otherwise                      = PlainHaskell
+        let pol | takeExtension script == ".lhs"                 = LiterateHaskell
+                | takeExtension (dropExtension script) == ".lhs" = LiterateHaskell
+                | otherwise                                      = PlainHaskell
         if exists
           then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tmpDir
           else reportTargetSelectorProblems verbosity err

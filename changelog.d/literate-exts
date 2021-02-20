@@ -1,0 +1,11 @@
+synopsis: Allow Literate Haskell extension in penultimate position
+packages: cabal cabal-install
+
+prs: #7288
+
+description: {
+  Allows Literate Haskell files with extra format extensions like "Main.lhs.md".
+
+  Together with -pgmL option this will make such files compilable and renderable
+  without forcing users to make symlinks.
+}
