@@ -17,11 +17,11 @@ import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.ProjectConfig
 import qualified UnitTests.Distribution.Client.JobControl
+import qualified UnitTests.Distribution.Client.IndexUtils
 import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
 import qualified UnitTests.Distribution.Client.Init
 import qualified UnitTests.Distribution.Client.InstallPlan
 import qualified UnitTests.Distribution.Client.Get
-
 
 main :: IO ()
 main =
@@ -53,6 +53,8 @@ main =
         UnitTests.Distribution.Client.ProjectConfig.tests
     , testGroup "UnitTests.Distribution.Client.JobControl"
         UnitTests.Distribution.Client.JobControl.tests
+    , testGroup "UnitTests.Distribution.Client.IndexUtils"
+        UnitTests.Distribution.Client.IndexUtils.tests
     , testGroup "UnitTests.Distribution.Client.IndexUtils.Timestamp"
         UnitTests.Distribution.Client.IndexUtils.Timestamp.tests
     , testGroup "UnitTests.Distribution.Client.InstallPlan"
