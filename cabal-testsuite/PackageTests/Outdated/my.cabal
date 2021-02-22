@@ -7,7 +7,7 @@ build-type:     Simple
 library
     default-language: Haskell2010
     exposed-modules:    Foo
-    build-depends:      base >= 3 && < 4
+    build-depends:      base >= 3 && < 4, binary == 0.8.6.*
 
 test-suite tests-Foo
     default-language: Haskell2010
