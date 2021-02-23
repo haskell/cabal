@@ -279,6 +279,7 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.UserConfig
       UnitTests.Distribution.Client.ProjectConfig
       UnitTests.Distribution.Client.JobControl
+      UnitTests.Distribution.Client.IndexUtils
       UnitTests.Distribution.Client.IndexUtils.Timestamp
       UnitTests.Distribution.Client.InstallPlan
       UnitTests.Distribution.Solver.Modular.Builder
