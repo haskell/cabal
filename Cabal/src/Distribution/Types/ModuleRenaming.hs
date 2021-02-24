@@ -41,6 +41,11 @@ data ModuleRenaming
         -- | Hiding renaming, e.g., @hiding (A, B)@, bringing all
         -- exported modules into scope except the hidden ones.
         | HidingRenaming [ModuleName]
+        -- | Qualified renaming, @(qualified P)@, brining all
+        -- exported modules into scope with P prefix.  So if M
+        -- was provided by the package, it is now in scope as
+        -- P.M
+        | QualifiedRenaming ModuleName
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 -- | Interpret a 'ModuleRenaming' as a partial map from 'ModuleName'
@@ -54,6 +59,8 @@ interpModuleRenaming (ModuleRenaming rns) =
 interpModuleRenaming (HidingRenaming hs) =
     let s = Set.fromList hs
     in \k -> if k `Set.member` s then Nothing else Just k
+interpModuleRenaming (QualifiedRenaming prefix) =
+    \k -> Just (prefix `joinModuleName` k)
 
 -- | The default renaming, if something is specified in @build-depends@
 -- only.
@@ -79,6 +86,8 @@ instance Pretty ModuleRenaming where
   pretty DefaultRenaming = mempty
   pretty (HidingRenaming hides)
         = text "hiding" <+> parens (hsep (punctuate comma (map pretty hides)))
+  pretty (QualifiedRenaming prefix)
+        = text "qualified" <+> pretty prefix
   pretty (ModuleRenaming rns)
         = parens . hsep $ punctuate comma (map dispEntry rns)
     where dispEntry (orig, new)
@@ -109,7 +118,7 @@ moduleRenamingParsec
     -> m ModuleRenaming
 moduleRenamingParsec bp mn =
     -- NB: try not necessary as the first token is obvious
-    P.choice [ parseRename, parseHiding, return DefaultRenaming ]
+    P.choice [ parseRename, parseHiding, parseQualified, return DefaultRenaming ]
   where
     cma = P.char ',' >> P.spaces
     parseRename = do
@@ -121,6 +130,11 @@ moduleRenamingParsec bp mn =
         P.spaces -- space isn't strictly required as next is an open paren
         hides <- bp (P.sepBy mn cma)
         return (HidingRenaming hides)
+    parseQualified = do
+        _ <- P.string "qualified"
+        P.spaces
+        prefix <- mn
+        return (QualifiedRenaming prefix)
     parseList =
         P.sepBy parseEntry cma
     parseEntry = do

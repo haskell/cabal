@@ -18,6 +18,7 @@ module Distribution.ModuleName (
         fromString,
         fromComponents,
         components,
+        joinModuleName,
         toFilePath,
         main,
         -- * Internal
@@ -43,6 +44,12 @@ newtype ModuleName = ModuleName ShortText
 
 unModuleName :: ModuleName -> String
 unModuleName (ModuleName s) = fromShortText s
+
+-- Guaranteed to be valid by invariants on the initial module
+-- names (in particular, empty module name is not valid)
+joinModuleName :: ModuleName -> ModuleName -> ModuleName
+joinModuleName a b =
+  ModuleName (toShortText (unModuleName a ++ "." ++ unModuleName b))
 
 instance Binary ModuleName
 instance Structured ModuleName

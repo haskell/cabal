@@ -1,0 +1,19 @@
+name:                QualifiedIncludes
+version:             0.1.0.0
+license:             BSD3
+author:              Edward Z. Yang
+maintainer:          ezyang@cs.stanford.edu
+build-type:          Simple
+cabal-version:       2.0
+
+library impl
+  build-depends: base
+  exposed-modules: Foobar, Quxbaz
+  hs-source-dirs: impl
+  default-language:    Haskell2010
+
+library good
+  build-depends: base, impl
+  mixins: impl qualified Prefix
+  exposed-modules: A
+  default-language:    Haskell2010
