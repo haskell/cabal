@@ -414,9 +414,27 @@ instance Described ForeignLibType where
     describe _ = REUnion ["native-shared","native-static"]
 
 instance Described IncludeRenaming where
-    describe _ = mr <> REOpt (RESpaces <> "requires" <> RESpaces1 <> mr)
+    -- Unfortunately, we can't directly use ModuleRenaming, as
+    -- there is some ambiguity in the grammar that we can't express
+    -- compositionally with regular expressions
+    describe _ = REUnion
+      [ reEps
+      , "requires" <> RESpaces1 <> mr
+      , nonempty_mr <> REOpt (RESpaces1 <> "requires" <> RESpaces1 <> mr)
+      ]
       where
         mr = describe (Proxy :: Proxy ModuleRenaming)
+
+        nonempty_mr = REUnion
+          [ "hiding" <> RESpaces <> bp (REMunch reSpacedComma mn)
+          , "qualified" <> RESpaces1 <> mn
+          , bp (REMunch reSpacedComma entry)
+          ]
+          where
+            bp r = "(" <> RESpaces <> r <> RESpaces <> ")"
+            mn = RENamed "module-name" $ describe (Proxy :: Proxy ModuleName)
+
+            entry = mn <> REOpt (RESpaces1 <> "as" <> RESpaces1 <> mn)
 
 instance Described Language where
     describe _ = REUnion ["Haskell98", "Haskell2010"]
@@ -448,6 +466,7 @@ instance Described ModuleRenaming where
     describe _ = REUnion
         [ reEps
         , "hiding" <> RESpaces <> bp (REMunch reSpacedComma mn)
+        , "qualified" <> RESpaces1 <> mn
         , bp (REMunch reSpacedComma entry)
         ]
       where

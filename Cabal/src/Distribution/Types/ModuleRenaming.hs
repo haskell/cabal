@@ -132,7 +132,7 @@ moduleRenamingParsec bp mn =
         return (HidingRenaming hides)
     parseQualified = do
         _ <- P.string "qualified"
-        P.spaces
+        P.skipSpaces1 -- no parenthesis after, space required
         prefix <- mn
         return (QualifiedRenaming prefix)
     parseList =
