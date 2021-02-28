@@ -159,7 +159,7 @@ relative to the respective preceding *published* version.
 ----------------------
 
 * New :pkg-field:`library:signatures` and :pkg-field:`mixins` fields
-  added for supporting Backpack_.
+  added for supporting :ref:`Backpack`.
 
 * New :pkg-field:`build-tool-depends` field added for adding
   build-time dependencies of executable components.
