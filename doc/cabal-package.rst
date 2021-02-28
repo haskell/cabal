@@ -2171,7 +2171,20 @@ system-dependent values for these fields.
 
     Supported only in GHC 8.2 and later. A list of packages mentioned in the
     :pkg-field:`build-depends` field, each optionally accompanied by a list of
-    module and module signature renamings.
+    module and module signature renamings.  A valid mixin obeys the
+    following syntax:
+
+    ::
+
+        Mixin ::= PackageName IncludeRenaming
+        IncludeRenaming ::= ModuleRenaming { "requires" ModuleRenaming }
+        ModuleRenaming ::=
+            {- empty -}
+          | "(" Renaming "," ... "," Renaming ")"
+          | "hiding" "(" ModuleName "," ... "," ModuleName ")"
+        Renaming ::=
+            ModuleName
+          | ModuleName "as" ModuleName
 
     The simplest mixin syntax is simply the name of a package mentioned in the
     :pkg-field:`build-depends` field. For example:
@@ -3332,6 +3345,8 @@ a few options:
    packages <installing-packages.html>`__, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
+
+.. _Backpack:
 
 Backpack
 --------
