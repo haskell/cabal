@@ -4,7 +4,8 @@ cabal.project Reference
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
 similar to that of a Cabal file: there are a number of fields, some of
-which live inside stanzas:
+which live inside stanzas (groups of fields that apply to only part of a
+project or can be referenced as a unit):
 
 ::
 
@@ -20,7 +21,8 @@ line flags that ``cabal install`` and other commands take. For example,
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
-following sources (later entries override earlier ones):
+following sources (later entries override earlier ones, except for appendable
+options):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
@@ -49,7 +51,7 @@ project are:
     1. They can specify a Cabal file, or a directory containing a Cabal
        file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``.
 
-    2. They can specify a glob-style wildcards, which must match one or
+    2. They can specify glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
        files (extension ``.cabal``), or (c) tarballs which contain Cabal
        packages (extension ``.tar.gz``).
@@ -63,6 +65,9 @@ project are:
        and built.
 
     There is no command line variant of this field; see :issue:`3585`.
+    Note that the default value is only included if there is no
+    ``cabal.project`` file. The field is appendable which means there would be
+    no way to drop the default value if it was included.
 
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
     :synopsis: Optional project packages.
