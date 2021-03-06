@@ -15,7 +15,7 @@ library
     , containers
     , pretty
     , QuickCheck
-    , rere              ^>=0.1
+    , rere              >=0.1 && <0.3
     , tasty
     , tasty-quickcheck
     , transformers
