@@ -1,2 +1,2 @@
-module Main (main) where
+module Main (module Demo) where
 import Demo (main)
