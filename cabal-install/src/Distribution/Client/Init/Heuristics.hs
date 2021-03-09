@@ -21,10 +21,12 @@ module Distribution.Client.Init.Heuristics (
 ) where
 
 import Prelude ()
+import qualified Data.ByteString as BS
 import Distribution.Client.Compat.Prelude
 import Distribution.Utils.Generic (safeHead, safeTail, safeLast)
 
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
+import Distribution.Simple.Utils (fromUTF8BS)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
 import qualified Distribution.Package as P
@@ -156,9 +158,11 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
     ignoreDir ('.':_)  = True
     ignoreDir dir      = dir `elem` ["dist", "_darcs"]
 
+-- | Read the contents of the handle and parse for Language pragmas
+-- and other module names that might be part of this project.
 findImportsAndExts :: FilePath -> SourceFileEntry -> IO SourceFileEntry
 findImportsAndExts projectRoot sf = do
-  s <- readFile (sfToFileName projectRoot sf)
+  s <- fromUTF8BS <$> BS.readFile (sfToFileName projectRoot sf)
 
   let modules = mapMaybe
                 ( getModName
