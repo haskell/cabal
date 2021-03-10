@@ -273,6 +273,7 @@ syn keyword cabalExtension contained
   \ UndecidableInstances
   \ UndecidableSuperClasses
   \ UnicodeSyntax
+  \ UnliftedDatatypes
   \ UnliftedFFITypes
   \ UnliftedNewtypes
   \ ViewPatterns
@@ -406,6 +407,7 @@ syn keyword cabalExtension contained
   \ NoUndecidableInstances
   \ NoUndecidableSuperClasses
   \ NoUnicodeSyntax
+  \ NoUnliftedDatatypes
   \ NoUnliftedFFITypes
   \ NoUnliftedNewtypes
   \ NoViewPatterns

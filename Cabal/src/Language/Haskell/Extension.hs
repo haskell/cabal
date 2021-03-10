@@ -849,6 +849,9 @@ data KnownExtension =
   -- | Enable linear types.
   | LinearTypes
 
+  -- | Enable unlifted data types.
+  | UnliftedDatatypes
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
