@@ -183,10 +183,11 @@ downloadURI transport verbosity uri path = do
     fragmentParser = do
         _ <- P.string "#sha256="
         str <- some P.hexDigit
+        let bs = Base16.decode (BS8.pack str)
 #if MIN_VERSION_base16_bytestring(1,0,0)
-        return  (Base16.decodeLenient (BS8.pack str))
+        either fail return bs
 #else
-        return (fst (Base16.decode (BS8.pack str)))
+        return (fst bs)
 #endif
 
 ------------------------------------------------------------------------------
