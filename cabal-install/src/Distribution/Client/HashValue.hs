@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 module Distribution.Client.HashValue (
@@ -72,14 +71,8 @@ hashFromTUF (Sec.Hash hashstr) =
     --TODO: [code cleanup] either we should get TUF to use raw bytestrings or
     -- perhaps we should also just use a base16 string as the internal rep.
     case Base16.decode (BS.pack hashstr) of
-#if MIN_VERSION_base16_bytestring(1,0,0)
       Right hash -> HashValue hash
       Left _ -> error "hashFromTUF: cannot decode base16"
-#else
-      (hash, trailing) | not (BS.null hash) && BS.null trailing
-        -> HashValue hash
-      _ -> error "hashFromTUF: cannot decode base16 hash"
-#endif
 
 -- | Truncate a 32 byte SHA256 hash to
 --
