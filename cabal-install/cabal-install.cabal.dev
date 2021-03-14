@@ -151,6 +151,7 @@ library cabal-lib-client
         Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectFlags
+        Distribution.Client.ProjectLogging
         Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanOutput
         Distribution.Client.ProjectPlanning

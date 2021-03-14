@@ -110,7 +110,8 @@ import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
 import Distribution.Compat.Process (createProcess)
-import System.Process      ( StdStream(..), proc, waitForProcess
+import System.Process      ( createProcess_
+                           , StdStream(..), proc, waitForProcess
                            , ProcessHandle )
 import qualified System.Process as Process
 import Data.List           ( foldl1' )
@@ -250,7 +251,17 @@ data SetupScriptOptions = SetupScriptOptions {
     -- | Is the task we are going to run an interactive foreground task,
     -- or an non-interactive background task? Based on this flag we
     -- decide whether or not to delegate ctrl+c to the spawned task
-    isInteractive            :: Bool
+    isInteractive            :: Bool,
+
+
+    -- | When running Setup in an external process, should we close the log
+    -- handle ('useLoggingHandle') in the parent process after spawning the
+    -- child?
+    processCloseHandle       :: Bool,
+
+    -- | When running Setup in an external process, should we close all
+    -- non-standard file descriptors before executing the child process?
+    processCloseFds          :: Bool
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -273,7 +284,9 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing,
-    isInteractive            = False
+    isInteractive            = False,
+    processCloseHandle       = True,
+    processCloseFds          = False
   }
 
 workingDir :: SetupScriptOptions -> FilePath
@@ -449,16 +462,19 @@ runProcess' :: FilePath                 -- ^ Filename of the executable
             -> Maybe Handle             -- ^ Handle for @stdout@
             -> Maybe Handle             -- ^ Handle for @stderr@
             -> Bool                     -- ^ Delegate Ctrl+C ?
+            -> Bool                     -- ^ Close handles ?
+            -> Bool                     -- ^ Close nonstandard fds before exec ?
             -> IO ProcessHandle
-runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr _delegate = do
+runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr delegate close_handles close_fds  = do
   (_,_,_,ph) <-
-    createProcess
+    (if close_handles then createProcess else createProcess_ "runProcess'")
       (proc cmd args){ Process.cwd = mb_cwd
                      , Process.env = mb_env
                      , Process.std_in  = mbToStd mb_stdin
                      , Process.std_out = mbToStd mb_stdout
                      , Process.std_err = mbToStd mb_stderr
-                     , Process.delegate_ctlc = _delegate
+                     , Process.delegate_ctlc = delegate
+                     , Process.close_fds = close_fds
                      }
   return ph
   where
@@ -494,7 +510,8 @@ selfExecSetupMethod verbosity options bt args0 = do
   process <- runProcess' path args
              (useWorkingDir options) env Nothing
              (useLoggingHandle options) (useLoggingHandle options)
-             (isInteractive options)
+             (isInteractive options) (processCloseHandle options)
+             (processCloseFds options)
   exitCode <- waitForProcess process
   unless (exitCode == ExitSuccess) $ exitWith exitCode
 
@@ -531,7 +548,8 @@ externalSetupMethod path verbosity options _ args = do
       process <- runProcess' path' args
                   (useWorkingDir options) env Nothing
                   (useLoggingHandle options) (useLoggingHandle options)
-                  (isInteractive options)
+                  (isInteractive options) (processCloseHandle options)
+                  (processCloseFds options)
       exitCode <- waitForProcess process
       unless (exitCode == ExitSuccess) $ exitWith exitCode
 
