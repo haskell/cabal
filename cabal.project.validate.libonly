@@ -19,3 +19,6 @@ package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite
   ghc-options: -Werror -fno-ignore-asserts
+
+-- https://github.com/haskell-hvr/cryptohash-sha256/issues/12
+allow-newer: cryptohash-sha256:base
