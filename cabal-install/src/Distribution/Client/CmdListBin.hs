@@ -77,7 +77,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
 
     -- elaborate target selectors
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-        =<< readTargetSelectors localPkgs Nothing [target]
+        =<< readTargetSelectors localPkgs (Just ExeKind) [target]
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
