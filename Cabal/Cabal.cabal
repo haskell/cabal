@@ -705,7 +705,7 @@ test-suite unit-tests
     filepath,
     integer-logarithms >= 1.0.2 && <1.1,
     pretty,
-    rere >=0.1 && <0.2,
+    rere >=0.1 && <0.3,
     tagged,
     tasty >= 1.2.3 && < 1.4,
     tasty-hunit,
