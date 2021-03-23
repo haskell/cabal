@@ -1740,7 +1740,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     -- ghc/ghc:4ff93292 (https://gitlab.haskell.org/ghc/ghc/-/commit/4ff93292243888545da452ea4d4c1987f2343591)
     -- to patch the -rpath's into the library *after* linking them
     -- with dead_strip_dylib. GHC relies on proper passing of -L values to find
-    -- the referened lirbaries and subsequently produce the correct -rpath entries
+    -- the referenced libraries and subsequently produce the correct -rpath entries
     -- in the library.  This will be backported to GHC 8.8, 8.10, and 9.0, as
     -- well as being part of GHC 9.2 onwards.
     --
