@@ -294,6 +294,7 @@ instance Semigroup SavedConfig where
         installDocumentation         = combine installDocumentation,
         installHaddockIndex          = combine installHaddockIndex,
         installDryRun                = combine installDryRun,
+        installOnlyDownload          = combine installOnlyDownload,
         installDest                  = combine installDest,
         installMaxBackjumps          = combine installMaxBackjumps,
         installReorderGoals          = combine installReorderGoals,

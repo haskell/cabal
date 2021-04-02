@@ -1623,6 +1623,7 @@ data InstallFlags = InstallFlags {
     installHaddockIndex     :: Flag PathTemplate,
     installDest             :: Flag Cabal.CopyDest,
     installDryRun           :: Flag Bool,
+    installOnlyDownload     :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
     installCountConflicts   :: Flag CountConflicts,
@@ -1665,6 +1666,7 @@ defaultInstallFlags = InstallFlags {
     installHaddockIndex    = Flag docIndexFile,
     installDest            = Flag Cabal.NoCopyDest,
     installDryRun          = Flag False,
+    installOnlyDownload    = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
     installCountConflicts  = Flag (CountConflicts True),
@@ -1876,6 +1878,11 @@ installOptions showOrParseArgs =
       , option [] ["dry-run"]
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
+          trueArg
+
+      , option [] ["only-download"]
+          "Do not build anything, only fetch the packages."
+          installOnlyDownload (\v flags -> flags { installOnlyDownload = v })
           trueArg
 
       , option "" ["target-package-db"]
