@@ -269,7 +269,7 @@ executable cabal
         base       >= 4.8      && < 4.15,
         base16-bytestring >= 0.1.1 && < 1.1.0.0,
         binary     >= 0.7.3    && < 0.9,
-        bytestring >= 0.10.6.0 && < 0.11,
+        bytestring >= 0.10.6.0 && < 0.12,
         Cabal      == 3.5.*,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,

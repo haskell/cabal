@@ -12,7 +12,7 @@ library
   build-depends:
     , base
     , Cabal      ^>=3.5.0.0
-    , tree-diff  ^>=0.1
+    , tree-diff  ^>=0.1 || ^>=0.2
 
   exposed-modules:  Data.TreeDiff.Instances.Cabal
   other-modules:
