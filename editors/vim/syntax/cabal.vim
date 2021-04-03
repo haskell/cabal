@@ -186,6 +186,7 @@ syn keyword cabalExtension contained
   \ FunctionalDependencies
   \ GADTSyntax
   \ GADTs
+  \ GHC2021
   \ GHCForeignImportPrim
   \ GeneralisedNewtypeDeriving
   \ GeneralizedNewtypeDeriving
@@ -242,6 +243,7 @@ syn keyword cabalExtension contained
   \ Rank2Types
   \ RankNTypes
   \ RebindableSyntax
+  \ RecordDotSyntax
   \ RecordPuns
   \ RecordWildCards
   \ RecursiveDo
@@ -273,6 +275,7 @@ syn keyword cabalExtension contained
   \ UndecidableInstances
   \ UndecidableSuperClasses
   \ UnicodeSyntax
+  \ UnliftedDatatypes
   \ UnliftedFFITypes
   \ UnliftedNewtypes
   \ ViewPatterns
@@ -313,6 +316,7 @@ syn keyword cabalExtension contained
   \ NoExplicitNamespaces
   \ NoExtendedDefaultRules
   \ NoExtensibleRecords
+  \ NoFieldSelectors
   \ NoFlexibleContexts
   \ NoFlexibleInstances
   \ NoForeignFunctionInterface
