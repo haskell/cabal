@@ -38,6 +38,7 @@ syn keyword cabalCompType contained
 syn keyword cabalLanguage contained
   \ Haskell98
   \ Haskell2010
+  \ GHC2021
 
 " To update this in Cabal, `cabal repl Cabal` and:
 " >>> :m *Distribution.PackageDescription.FieldGrammar
@@ -186,7 +187,6 @@ syn keyword cabalExtension contained
   \ FunctionalDependencies
   \ GADTSyntax
   \ GADTs
-  \ GHC2021
   \ GHCForeignImportPrim
   \ GeneralisedNewtypeDeriving
   \ GeneralizedNewtypeDeriving
