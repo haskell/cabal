@@ -54,6 +54,10 @@ data Language =
   -- <http://www.haskell.org/onlinereport/haskell2010>
   | Haskell2010
 
+  -- | The GHC2021 collection of language extensions.
+  -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>
+  | GHC2021
+
   -- | An unknown language, identified by its name.
   | UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Typeable, Data)
@@ -854,9 +858,6 @@ data KnownExtension =
 
   -- | Enable the use of record dot-accessor and updater syntax
   | RecordDotSyntax
-
-  -- | Enable the use of the GHC2021 collection of language extensions.
-  | GHC2021
 
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
