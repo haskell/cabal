@@ -139,10 +139,10 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   -- Cabal currently supports ghc >= 7.0.1 && < 9.3
   -- ... and the following odd development version
-  unless (ghcVersion < mkVersion [9,3]) $
+  unless (ghcVersion < mkVersion [9,4]) $
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
-      ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 9.1): "
+      ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 9.4): "
       ++ programPath ghcProg ++ " is version " ++ prettyShow ghcVersion
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
