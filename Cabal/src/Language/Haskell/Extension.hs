@@ -67,8 +67,9 @@ instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
+-- | List of known (supported) languages for GHC
 knownLanguages :: [Language]
-knownLanguages = [Haskell98, Haskell2010]
+knownLanguages = [Haskell98, Haskell2010, GHC2021]
 
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
