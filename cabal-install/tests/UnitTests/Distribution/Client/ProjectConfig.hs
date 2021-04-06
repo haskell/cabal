@@ -201,10 +201,11 @@ prop_roundtrip_printparse_buildonly config =
 hackProjectConfigBuildOnly :: ProjectConfigBuildOnly -> ProjectConfigBuildOnly
 hackProjectConfigBuildOnly config =
     config {
-      -- These two fields are only command line transitory things, not
+      -- These fields are only command line transitory things, not
       -- something to be recorded persistently in a config file
-      projectConfigOnlyDeps = mempty,
-      projectConfigDryRun   = mempty
+      projectConfigOnlyDeps     = mempty,
+      projectConfigOnlyDownload = mempty,
+      projectConfigDryRun       = mempty
     }
 
 prop_roundtrip_printparse_shared :: ProjectConfigShared -> Property
@@ -377,6 +378,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <$> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
         <*> (toNubList <$> shortListOf 2 arbitrary)
         <*> arbitrary
         <*> arbitrary
@@ -398,6 +400,7 @@ instance Arbitrary ProjectConfigBuildOnly where
     shrink ProjectConfigBuildOnly { projectConfigVerbosity = x00
                                   , projectConfigDryRun = x01
                                   , projectConfigOnlyDeps = x02
+                                  , projectConfigOnlyDownload = x18
                                   , projectConfigSummaryFile = x03
                                   , projectConfigLogFile = x04
                                   , projectConfigBuildReports = x05
@@ -416,6 +419,7 @@ instance Arbitrary ProjectConfigBuildOnly where
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
+                               , projectConfigOnlyDownload = x18'
                                , projectConfigSummaryFile = x03'
                                , projectConfigLogFile = x04'
                                , projectConfigBuildReports = x05'
@@ -434,12 +438,12 @@ instance Arbitrary ProjectConfigBuildOnly where
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12',       x14'),
-         (            x17'            ))
+         (            x17', x18'      ))
           <- shrink
                ((x00, x01, x02, x03, x04),
                 (x05, x06, x07, x08, preShrink_NumJobs x09),
                 (x10, x11, x12,      x14),
-                (          x17          ))
+                (          x17, x18     ))
       ]
       where
         preShrink_NumJobs  = fmap (fmap Positive)

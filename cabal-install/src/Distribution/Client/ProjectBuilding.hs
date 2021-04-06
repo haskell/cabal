@@ -652,8 +652,14 @@ rebuildTarget verbosity
               registerLock cacheLock
               sharedPackageConfig
               plan rpkg@(ReadyPackage pkg)
-              pkgBuildStatus =
-
+              pkgBuildStatus
+    | buildSettingOnlyDownload buildSettings = do
+        case pkgBuildStatus of
+          BuildStatusDownload ->
+            void $ waitAsyncPackageDownload verbosity downloadMap pkg
+          _ -> return ()
+        return $ BuildResult DocsNotTried TestsNotTried Nothing
+    | otherwise =
     -- We rely on the 'BuildStatus' to decide which phase to start from:
     case pkgBuildStatus of
       BuildStatusDownload              -> downloadPhase

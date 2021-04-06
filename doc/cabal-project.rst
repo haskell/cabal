@@ -269,6 +269,31 @@ package, and thus apply globally:
 
     Specifies the name of the directory of the global package store.
 
+Phase control
+-------------
+
+The following settings apply to commands that result in build actions
+(``build``, ``run``, ``repl``, ``test``...), and control which phases of the
+build are executed.
+
+.. option:: --dry-run
+
+    Do not download, build, or install anything, only print what would happen.
+
+.. option:: --only-configure
+
+    Instead of performing a full build just run the configure step.
+    Only accepted by the ``build`` command.
+
+.. option:: --only-download
+
+    Do not build anything, only fetch the packages.
+
+.. option:: --only-dependencies
+
+    Install only the dependencies necessary to build the given packages.
+    Not accepted by the ``repl`` command.
+
 Solver configuration options
 ----------------------------
 
