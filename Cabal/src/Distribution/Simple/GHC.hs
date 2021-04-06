@@ -137,9 +137,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
-  -- Cabal currently supports ghc >= 7.0.1 && < 9.1
+  -- Cabal currently supports ghc >= 7.0.1 && < 9.3
   -- ... and the following odd development version
-  unless (ghcVersion < mkVersion [9,2]) $
+  unless (ghcVersion < mkVersion [9,3]) $
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
       ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 9.1): "
