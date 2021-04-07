@@ -11,6 +11,9 @@
 {% if supportsNoMissingSafeHaskellMode %}
 {-# OPTIONS_GHC -Wno-missing-safe-haskell-mode #-}
 {% endif %}
+{% if supportsNoPrepositiveQualifiedModule %}
+{-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}
+{% endif %}
 module Paths_{{ manglePkgName packageName }} (
     version,
     getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,

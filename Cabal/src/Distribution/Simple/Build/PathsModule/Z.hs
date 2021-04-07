@@ -7,6 +7,7 @@ data Z
          zSupportsCpp :: Bool,
          zSupportsNoRebindableSyntax :: Bool,
          zSupportsNoMissingSafeHaskellMode :: Bool,
+         zSupportsNoPrepositiveQualifiedModule :: Bool,
          zAbsolute :: Bool,
          zRelocatable :: Bool,
          zIsWindows :: Bool,
@@ -46,6 +47,12 @@ render z_root = execWriter $ do
   if (zSupportsNoMissingSafeHaskellMode z_root)
   then do
     tell "{-# OPTIONS_GHC -Wno-missing-safe-haskell-mode #-}\n"
+    return ()
+  else do
+    return ()
+  if (supportsNoPrepositiveQualifiedModule z_root)
+  then do
+    tell "{-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}\n"
     return ()
   else do
     return ()

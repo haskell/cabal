@@ -42,6 +42,7 @@ generatePathsModule pkg_descr lbi clbi = Z.render Z.Z
     , Z.zSupportsCpp                = supports_cpp
     , Z.zSupportsNoRebindableSyntax = supports_rebindable_syntax
     , Z.zSupportsNoMissingSafeHaskellMode = supports_missing_safehaskell
+    , Z.zSupportsNoPrepositiveQualifiedModule = supports_prepositive_qualified_module
     , Z.zAbsolute                   = absolute
     , Z.zRelocatable                = relocatable lbi
     , Z.zIsWindows                  = isWindows
@@ -63,6 +64,7 @@ generatePathsModule pkg_descr lbi clbi = Z.render Z.Z
     supports_rebindable_syntax   = ghc_newer_than (mkVersion [7,0,1])
     supports_language_pragma     = ghc_newer_than (mkVersion [6,6,1])
     supports_missing_safehaskell = ghc_newer_than (mkVersion [8,10,1])
+    supports_prepositive_qualified_module = ghc_newer_than (mkVersion [8,10,1])
 
     ghc_newer_than minVersion =
         case compilerCompatVersion GHC (compiler lbi) of
