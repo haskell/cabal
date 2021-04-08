@@ -62,7 +62,7 @@ getImplInfo comp =
 ghcVersionImplInfo :: Version -> GhcImplInfo
 ghcVersionImplInfo ver = GhcImplInfo
   { supportsHaskell2010  = v >= [7]
-  , supportsGHC2021      = v >= [9,2]
+  , supportsGHC2021      = v >= [9,1]
   , reportsNoExt         = v >= [7]
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
