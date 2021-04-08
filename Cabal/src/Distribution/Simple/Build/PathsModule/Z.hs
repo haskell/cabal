@@ -50,7 +50,7 @@ render z_root = execWriter $ do
     return ()
   else do
     return ()
-  if (supportsNoPrepositiveQualifiedModule z_root)
+  if (zSupportsNoPrepositiveQualifiedModule z_root)
   then do
     tell "{-# OPTIONS_GHC -Wno-prepositive-qualified-module #-}\n"
     return ()
