@@ -156,7 +156,8 @@ installCommand = CommandUI
     ++ "If you want the installed executables to be available globally, "
     ++ "make sure that the PATH environment variable contains that directory. "
     ++ "\n\n"
-    ++ "If TARGET is a library, it will be added to the global environment. "
+    ++ "If TARGET is a library and --lib (provisional) is used, "
+    ++ "it will be added to the global environment. "
     ++ "When doing this, cabal will try to build a plan that includes all "
     ++ "the previously installed libraries. This is currently not implemented."
   , commandNotes        = Just $ \pname ->
@@ -681,10 +682,16 @@ warnIfNoExes verbosity buildCtx =
     "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
     "@ WARNING: Installation might not be completed as desired! @\n" <>
     "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
-    "Without flags, the command \"cabal install\" doesn't expose" <>
-    " libraries in a usable manner.  You might have wanted to run" <>
-    " \"cabal install --lib " <>
-    unwords (showTargetSelector <$> selectors) <> "\". "
+    "The command \"cabal install [TARGETS]\" doesn't expose libraries.\n" <>
+    "* You might have wanted to add them as dependencies to your package." <>
+    " In this case add \"" <>
+    intercalate ", " (showTargetSelector <$> selectors) <>
+    "\" to the build-depends field(s) of your package's .cabal file.\n" <>
+    "* You might have wanted to add them to a GHC environment. In this case" <>
+    " use \"cabal install --lib " <>
+    unwords (showTargetSelector <$> selectors) <> "\". " <>
+    " The \"--lib\" flag is provisional: see" <>
+    " https://github.com/haskell/cabal/issues/6481 for more information."
   where
     targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
