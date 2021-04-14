@@ -487,6 +487,13 @@ convertInclude ci@(ComponentInclude {
     req_rename_list <-
       case req_rns of
         DefaultRenaming -> return []
+        QualifiedRenaming _ -> do
+            -- TODO: support this for requires (req_rename_list
+            -- is a bad representation for this, alas, need
+            -- a bigger refactor here)
+            addErr $ text "Unsupported syntax" <+>
+                     quotes (text "requires qualified (...)")
+            return []
         HidingRenaming _ -> do
             -- Not valid here for requires!
             addErr $ text "Unsupported syntax" <+>
@@ -561,6 +568,12 @@ convertInclude ci@(ComponentInclude {
     (pre_prov_scope, prov_rns') <-
         case prov_rns of
             DefaultRenaming -> return (Map.toList provs, prov_rns)
+            QualifiedRenaming prefix ->
+                let prov_scope0 = [ (prefix `joinModuleName` k,v) | (k,v) <- Map.toList provs ]
+                    prov_rns0 = [ (k, prefix `joinModuleName` k) | (k,_) <- Map.toList provs  ]
+                    -- GHC doesn't understand qualification, so return
+                    -- the expanded version
+                    in return (prov_scope0, ModuleRenaming prov_rns0)
             HidingRenaming hides ->
                 let hides_set = Set.fromList hides
                 in let r = [ (k,v)
