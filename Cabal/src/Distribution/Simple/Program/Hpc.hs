@@ -42,9 +42,9 @@ markup :: ConfiguredProgram
        -> FilePath            -- ^ Path to .tix file
        -> [FilePath]          -- ^ Paths to .mix file directories
        -> FilePath            -- ^ Path where html output should be located
-       -> [ModuleName]        -- ^ List of modules to exclude from report
+       -> [ModuleName]        -- ^ List of modules to include in the report
        -> IO ()
-markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
+markup hpc hpcVer verbosity tixFile hpcDirs destDir included = do
     hpcDirs' <- if withinRange hpcVer (orLaterVersion version07)
         then return hpcDirs
         else do
@@ -63,7 +63,7 @@ markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
     hpcDirs'' <- traverse makeRelativeToCurrentDirectory hpcDirs'
 
     runProgramInvocation verbosity
-      (markupInvocation hpc tixFile hpcDirs'' destDir excluded)
+      (markupInvocation hpc tixFile hpcDirs'' destDir included)
   where
     version07 = mkVersion [0, 7]
     (passedDirs, droppedDirs) = splitAt 1 hpcDirs
@@ -73,16 +73,15 @@ markupInvocation :: ConfiguredProgram
                  -> [FilePath]          -- ^ Paths to .mix file directories
                  -> FilePath            -- ^ Path where html output should be
                                         -- located
-                 -> [ModuleName]        -- ^ List of modules to exclude from
-                                        -- report
+                 -> [ModuleName]        -- ^ List of modules to include
                  -> ProgramInvocation
-markupInvocation hpc tixFile hpcDirs destDir excluded =
+markupInvocation hpc tixFile hpcDirs destDir included =
     let args = [ "markup", tixFile
                , "--destdir=" ++ destDir
                ]
             ++ map ("--hpcdir=" ++) hpcDirs
-            ++ ["--exclude=" ++ prettyShow moduleName
-               | moduleName <- excluded ]
+            ++ ["--include=" ++ prettyShow moduleName
+               | moduleName <- included ]
     in programInvocation hpc args
 
 union :: ConfiguredProgram

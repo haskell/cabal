@@ -29,10 +29,13 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
 import Distribution.ModuleName ( main )
+import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription
-    ( TestSuite(..)
+    ( Library(..)
+    , TestSuite(..)
     , testModules
     )
+import Distribution.Pretty
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program
     ( hpcProgram
@@ -100,8 +103,9 @@ markupTest :: Verbosity
            -> FilePath     -- ^ \"dist/\" prefix
            -> String       -- ^ Library name
            -> TestSuite
+           -> Library
            -> IO ()
-markupTest verbosity lbi distPref libName suite = do
+markupTest verbosity lbi distPref libraryName suite library = do
     tixFileExists <- doesFileExist $ tixFilePath distPref way $ testName'
     when tixFileExists $ do
         -- behaviour of 'markup' depends on version, so we need *a* version
@@ -112,22 +116,22 @@ markupTest verbosity lbi distPref libName suite = do
         markup hpc hpcVer verbosity
             (tixFilePath distPref way testName') mixDirs
             htmlDir_
-            (testModules suite ++ [ main ])
+            (exposedModules library)
         notice verbosity $ "Test coverage report written to "
                             ++ htmlDir_ </> "hpc_index" <.> "html"
   where
     way = guessWay lbi
     testName' = unUnqualComponentName $ testName suite
-    mixDirs = map (mixDir distPref way) [ testName', libName ]
+    mixDirs = map (mixDir distPref way) [ testName', libraryName ]
 
 -- | Generate the HTML markup for all of a package's test suites.
 markupPackage :: Verbosity
               -> LocalBuildInfo
               -> FilePath       -- ^ \"dist/\" prefix
-              -> String         -- ^ Library name
+              -> PD.PackageDescription
               -> [TestSuite]
               -> IO ()
-markupPackage verbosity lbi distPref libName suites = do
+markupPackage verbosity lbi distPref pkg_descr suites = do
     let tixFiles = map (tixFilePath distPref way) testNames
     tixFilesExist <- traverse doesFileExist tixFiles
     when (and tixFilesExist) $ do
@@ -135,15 +139,17 @@ markupPackage verbosity lbi distPref libName suites = do
         -- but no particular one
         (hpc, hpcVer, _) <- requireProgramVersion verbosity
             hpcProgram anyVersion (withPrograms lbi)
-        let outFile = tixFilePath distPref way libName
-            htmlDir' = htmlDir distPref way libName
+        let outFile = tixFilePath distPref way libraryName
+            htmlDir' = htmlDir distPref way libraryName
             excluded = concatMap testModules suites ++ [ main ]
         createDirectoryIfMissing True $ takeDirectory outFile
         union hpc verbosity tixFiles outFile excluded
-        markup hpc hpcVer verbosity outFile mixDirs htmlDir' excluded
+        markup hpc hpcVer verbosity outFile mixDirs htmlDir' included
         notice verbosity $ "Package coverage report written to "
                            ++ htmlDir' </> "hpc_index.html"
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites
-    mixDirs = map (mixDir distPref way) $ libName : testNames
+    mixDirs = map (mixDir distPref way) $ libraryName : testNames
+    included = concatMap (exposedModules) $ PD.allLibraries pkg_descr
+    libraryName = prettyShow $ PD.package pkg_descr
