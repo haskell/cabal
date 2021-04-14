@@ -105,7 +105,7 @@ markupTest :: Verbosity
            -> TestSuite
            -> Library
            -> IO ()
-markupTest verbosity lbi distPref libName suite library = do
+markupTest verbosity lbi distPref libraryName suite library = do
     tixFileExists <- doesFileExist $ tixFilePath distPref way $ testName'
     when tixFileExists $ do
         -- behaviour of 'markup' depends on version, so we need *a* version
@@ -122,7 +122,7 @@ markupTest verbosity lbi distPref libName suite library = do
   where
     way = guessWay lbi
     testName' = unUnqualComponentName $ testName suite
-    mixDirs = map (mixDir distPref way) [ testName', libName ]
+    mixDirs = map (mixDir distPref way) [ testName', libraryName ]
 
 -- | Generate the HTML markup for all of a package's test suites.
 markupPackage :: Verbosity
@@ -139,8 +139,8 @@ markupPackage verbosity lbi distPref pkg_descr suites = do
         -- but no particular one
         (hpc, hpcVer, _) <- requireProgramVersion verbosity
             hpcProgram anyVersion (withPrograms lbi)
-        let outFile = tixFilePath distPref way libName
-            htmlDir' = htmlDir distPref way libName
+        let outFile = tixFilePath distPref way libraryName
+            htmlDir' = htmlDir distPref way libraryName
             excluded = concatMap testModules suites ++ [ main ]
         createDirectoryIfMissing True $ takeDirectory outFile
         union hpc verbosity tixFiles outFile excluded
@@ -150,6 +150,6 @@ markupPackage verbosity lbi distPref pkg_descr suites = do
   where
     way = guessWay lbi
     testNames = fmap (unUnqualComponentName . testName) suites
-    mixDirs = map (mixDir distPref way) $ libName : testNames
+    mixDirs = map (mixDir distPref way) $ libraryName : testNames
     included = concatMap (exposedModules) $ PD.allLibraries pkg_descr
-    libName = prettyShow $ PD.package pkg_descr
+    libraryName = prettyShow $ PD.package pkg_descr
