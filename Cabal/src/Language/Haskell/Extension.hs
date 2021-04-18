@@ -853,11 +853,11 @@ data KnownExtension =
   -- | Enable linear types.
   | LinearTypes
 
-  -- | Disable the generation of selector functions corresponding to record fields.
-  | NoFieldSelectors
+  -- | Enable the generation of selector functions corresponding to record fields.
+  | FieldSelectors
 
   -- | Enable the use of record dot-accessor and updater syntax
-  | RecordDotSyntax
+  | OverloadedRecordDot
 
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
