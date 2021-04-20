@@ -54,8 +54,8 @@ data Language =
   -- <http://www.haskell.org/onlinereport/haskell2010>
   | Haskell2010
 
-  -- | The GHC2021 language as defined by GHC Proposal #380
-  -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>.
+  -- | The GHC2021 collection of language extensions.
+  -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>
   | GHC2021
 
   -- | An unknown language, identified by its name.
@@ -67,6 +67,7 @@ instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
+-- | List of known (supported) languages for GHC
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010, GHC2021]
 
