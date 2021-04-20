@@ -181,6 +181,7 @@ syn keyword cabalExtension contained
   \ ExplicitNamespaces
   \ ExtendedDefaultRules
   \ ExtensibleRecords
+  \ FieldSelectors
   \ FlexibleContexts
   \ FlexibleInstances
   \ ForeignFunctionInterface
@@ -226,6 +227,7 @@ syn keyword cabalExtension contained
   \ OverlappingInstances
   \ OverloadedLabels
   \ OverloadedLists
+  \ OverloadedRecordDot
   \ OverloadedStrings
   \ PackageImports
   \ ParallelArrays
@@ -243,7 +245,6 @@ syn keyword cabalExtension contained
   \ Rank2Types
   \ RankNTypes
   \ RebindableSyntax
-  \ RecordDotSyntax
   \ RecordPuns
   \ RecordWildCards
   \ RecursiveDo
@@ -362,6 +363,7 @@ syn keyword cabalExtension contained
   \ NoOverlappingInstances
   \ NoOverloadedLabels
   \ NoOverloadedLists
+  \ NoOverloadedRecordDot
   \ NoOverloadedStrings
   \ NoPackageImports
   \ NoParallelArrays
@@ -410,6 +412,7 @@ syn keyword cabalExtension contained
   \ NoUndecidableInstances
   \ NoUndecidableSuperClasses
   \ NoUnicodeSyntax
+  \ NoUnliftedDatatypes
   \ NoUnliftedFFITypes
   \ NoUnliftedNewtypes
   \ NoViewPatterns
