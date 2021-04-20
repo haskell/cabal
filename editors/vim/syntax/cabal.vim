@@ -187,6 +187,7 @@ syn keyword cabalExtension contained
   \ FunctionalDependencies
   \ GADTSyntax
   \ GADTs
+  \ GHC2021
   \ GHCForeignImportPrim
   \ GeneralisedNewtypeDeriving
   \ GeneralizedNewtypeDeriving
