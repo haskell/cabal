@@ -3411,7 +3411,7 @@ just depending on both ``str-impl`` and ``parametrized``:
     library
       build-depends: base, str-impl, parametrized
 
-Note that due to technical limmitations, you cannot directly define
+Note that due to technical limitations, you cannot directly define
 ``Str`` in the ``combined`` library; it must be placed in its own
 library (you can use :ref:`Internal Libraries <sublibs>` to conveniently
 define a sub-library).
@@ -3451,6 +3451,14 @@ create many separate Cabal packages.  You may also find it useful to use
 :pkg-field:`library:reexported-modules` to reexport instantiated
 libraries to Backpack-unware users (e.g., Backpack can be used entirely
 as an implementation detail.)
+
+Backpack imposes a limitation on Template Haskell that goes beyond the usual TH
+stage restriction: it's not possible to splice TH code imported from a
+compilation unit that is still "indefinite", that is, a unit for which some
+module signatures still haven't been matched with implementations. The reason
+is that indefinite units are typechecked, but not compiled, so there's no
+actual TH code to run while splicing. Splicing TH code from a definite
+compilation unit into an indefinite one works normally.
 
 For more information about Backpack, check out the
 `GHC wiki page <https://gitlab.haskell.org/ghc/ghc/-/wikis/backpack>`__.

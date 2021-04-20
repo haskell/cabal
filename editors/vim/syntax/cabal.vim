@@ -38,6 +38,7 @@ syn keyword cabalCompType contained
 syn keyword cabalLanguage contained
   \ Haskell98
   \ Haskell2010
+  \ GHC2021
 
 " To update this in Cabal, `cabal repl Cabal` and:
 " >>> :m *Distribution.PackageDescription.FieldGrammar
@@ -180,6 +181,7 @@ syn keyword cabalExtension contained
   \ ExplicitNamespaces
   \ ExtendedDefaultRules
   \ ExtensibleRecords
+  \ FieldSelectors
   \ FlexibleContexts
   \ FlexibleInstances
   \ ForeignFunctionInterface
@@ -225,6 +227,7 @@ syn keyword cabalExtension contained
   \ OverlappingInstances
   \ OverloadedLabels
   \ OverloadedLists
+  \ OverloadedRecordDot
   \ OverloadedStrings
   \ PackageImports
   \ ParallelArrays
@@ -273,6 +276,7 @@ syn keyword cabalExtension contained
   \ UndecidableInstances
   \ UndecidableSuperClasses
   \ UnicodeSyntax
+  \ UnliftedDatatypes
   \ UnliftedFFITypes
   \ UnliftedNewtypes
   \ ViewPatterns
@@ -313,6 +317,7 @@ syn keyword cabalExtension contained
   \ NoExplicitNamespaces
   \ NoExtendedDefaultRules
   \ NoExtensibleRecords
+  \ NoFieldSelectors
   \ NoFlexibleContexts
   \ NoFlexibleInstances
   \ NoForeignFunctionInterface
@@ -358,6 +363,7 @@ syn keyword cabalExtension contained
   \ NoOverlappingInstances
   \ NoOverloadedLabels
   \ NoOverloadedLists
+  \ NoOverloadedRecordDot
   \ NoOverloadedStrings
   \ NoPackageImports
   \ NoParallelArrays
@@ -406,6 +412,7 @@ syn keyword cabalExtension contained
   \ NoUndecidableInstances
   \ NoUndecidableSuperClasses
   \ NoUnicodeSyntax
+  \ NoUnliftedDatatypes
   \ NoUnliftedFFITypes
   \ NoUnliftedNewtypes
   \ NoViewPatterns
