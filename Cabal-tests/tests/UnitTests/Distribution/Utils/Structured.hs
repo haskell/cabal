@@ -27,9 +27,9 @@ tests = testGroup "Distribution.Utils.Structured"
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
     , testCase "GenericPackageDescription" $
-      md5Check (Proxy :: Proxy GenericPackageDescription) 0x3db7c2079b4c443b9ef682ec397ce51a
+      md5Check (Proxy :: Proxy GenericPackageDescription) 0x9b7d0415b1d2522d72ac9e9739c97574
     , testCase "LocalBuildInfo" $
-      md5Check (Proxy :: Proxy LocalBuildInfo) 0x1cd68f1cf9a57335d506c85680499f4f
+      md5Check (Proxy :: Proxy LocalBuildInfo) 0x0ca1dc5da4c4695a9da40e080bf4f536
 #endif
     ]
 
