@@ -551,13 +551,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let cLikeFiles  = fromNubListR $ mconcat
+  let cLikeSources  = fromNubListR $ mconcat
                       [ toNubListR (cSources   libBi)
                       , toNubListR (cxxSources libBi)
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
                       ]
-      cObjs       = map (`replaceExtension` objExtension) cLikeFiles
+      cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
@@ -598,7 +598,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
-                                             [libTargetDir </> x | x <- cObjs]
+                                             [libTargetDir </> x | x <- cLikeObjs]
                    }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = Internal.filterGhciFlags
@@ -779,10 +779,10 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- link:
   when has_code . unless forRepl $ do
     info verbosity "Linking..."
-    let cProfObjs            = map (`replaceExtension` ("p_" ++ objExtension))
-                               cLikeFiles
-        cSharedObjs          = map (`replaceExtension` ("dyn_" ++ objExtension))
-                               cLikeFiles
+    let cLikeProfObjs        = map (`replaceExtension` ("p_" ++ objExtension))
+                               cLikeSources
+        cLikeSharedObjs      = map (`replaceExtension` ("dyn_" ++ objExtension))
+                               cLikeSources
         compiler_id          = compilerId (compiler lbi)
         vanillaLibFilePath   = libTargetDir </> mkLibName uid
         profileLibFilePath   = libTargetDir </> mkProfLibName uid
@@ -827,20 +827,20 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
 
-    unless (null hObjs && null cObjs && null stubObjs) $ do
+    unless (null hObjs && null cLikeObjs && null stubObjs) $ do
       rpaths <- getRPaths lbi clbi
 
       let staticObjectFiles =
                  hObjs
-              ++ map (libTargetDir </>) cObjs
+              ++ map (libTargetDir </>) cLikeObjs
               ++ stubObjs
           profObjectFiles =
                  hProfObjs
-              ++ map (libTargetDir </>) cProfObjs
+              ++ map (libTargetDir </>) cLikeProfObjs
               ++ stubProfObjs
           dynamicObjectFiles =
                  hSharedObjs
-              ++ map (libTargetDir </>) cSharedObjs
+              ++ map (libTargetDir </>) cLikeSharedObjs
               ++ stubSharedObjs
           -- After the relocation lib is created we invoke ghc -shared
           -- with the dependencies spelled out as -package arguments
@@ -1307,7 +1307,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       inputModules        = inputSourceModules buildSources
       isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      cObjs               = map (`replaceExtension` objExtension) cSrcs
+      cLikeObjs           = map (`replaceExtension` objExtension) cSrcs
       cxxObjs             = map (`replaceExtension` objExtension) cxxSrcs
       needDynamic         = gbuildNeedDynamic lbi bm
       needProfiling       = withProfExe lbi
@@ -1362,12 +1362,12 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs bnfo,
                       ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
+                                             [tmpDir </> x | x <- cLikeObjs ++ cxxObjs]
                     }
       dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths,
                       ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
+                                             [tmpDir </> x | x <- cLikeObjs ++ cxxObjs]
                    }
       replOpts   = baseOpts {
                     ghcOptExtra            = Internal.filterGhciFlags
