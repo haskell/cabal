@@ -9,7 +9,9 @@ then the `linux-ghcvec.json` file is available in `bootstrap/` folder:
 
 On a (linux) system you are boostrapping, run
 
-    bootstrap.py -d linux-ghcver.json -w /path/to-ghc
+    ./bootstrap/bootstrap.py -d ./bootstrap/linux-ghcver.json -w /path/to-ghc
+    
+From the top directory of the source checkout.
 
 To generate the `platform-ghcver` files for other platforms, do:
 
