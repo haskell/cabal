@@ -599,6 +599,8 @@ configCompilerAux' configFlags =
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion  :: Flag Version,
+    configAppend        :: Flag Bool,
+    configBackup        :: Flag Bool, 
     configExConstraints :: [(UserConstraint, ConstraintSource)],
     configPreferences   :: [PackageVersionConstraint],
     configSolver        :: Flag PreSolver,
@@ -637,6 +639,14 @@ configureExOptions _showOrParseArgs src =
       (reqArg "VERSION" (parsecToReadE ("Cannot parse cabal lib version: "++)
                                     (fmap toFlag parsec))
                         (map prettyShow. flagToList))
+  , option "" ["append"]
+      "appending the new config to the old config file"
+      configAppend (\v flags -> flags { configAppend = v })
+      (boolOpt [] [])
+  , option "" ["backup"]
+      "the backup of the config file before any alterations"
+      configBackup (\v flags -> flags { configBackup = v })
+      (boolOpt [] [])
   , option [] ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
