@@ -1,0 +1,3 @@
+synopsis: Documented limitation to compiler section of cabal project files
+issues:
+  #7370
