@@ -703,9 +703,8 @@ feature was added.
 
     The command line variant of this flag is ``--compiler=ghc``.
 
-    At the moment, it's not possible to set :cfg-field:`compiler` on a
-    per-package basis, but eventually we plan on relaxing this
-    restriction. If this is something you need, give us a shout.
+    It's not possible to set :cfg-field:`compiler` on a
+    per-package basis. 
 
 .. cfg-field:: tests: boolean
                --enable-tests
