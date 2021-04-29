@@ -1,4 +1,4 @@
-Developing packages
+Package Decription
 ===================
 
 The Cabal package is the unit of distribution. When installed, its
