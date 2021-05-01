@@ -1162,6 +1162,15 @@ legacyPackageConfigFieldDescrs =
       []
   . commandOptionsToFields
   ) (benchmarkOptions' ParseArgs)
+  ++
+    programOptionsFieldDescrs
+       (configProgramArgs . legacyConfigureFlags)
+       (\args pkgconf -> pkgconf {
+           legacyConfigureFlags = (legacyConfigureFlags pkgconf) {
+             configProgramArgs  = args
+           }
+         }
+       )
 
 
   where
