@@ -153,7 +153,6 @@ import Distribution.Verbosity as Verbosity
          ( normal )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
-import qualified Paths_cabal_install (version)
 
 import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
@@ -164,7 +163,7 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (try)
-import Data.Version             (showVersion)
+
 
 -- | Entry point
 --
@@ -220,9 +219,9 @@ mainWorker args = do
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
+    printNumericVersion = putStrLn $ display cabalVersion
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ showVersion Paths_cabal_install.version
+                                  ++ display cabalVersion
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
@@ -694,7 +693,7 @@ listAction listFlags extraArgs globalFlags = do
         , configHcPath     = listHcPath listFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  compProgdb <- if listNeedsCompiler listFlags 
+  compProgdb <- if listNeedsCompiler listFlags
       then do
           (comp, _, progdb) <- configCompilerAux' configFlags
           return (Just (comp, progdb))
