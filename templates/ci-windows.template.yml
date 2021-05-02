@@ -44,8 +44,6 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      - name: make cabal-install-dev
-        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # We cannot ask for all dependencies, but we can for Cabal.
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies
@@ -58,10 +56,10 @@ jobs:
         run: |
           cd cabal-install
           cabal v2-run cabal-install:memory-usage-tests
-      - name: cabal-install solver-quickcheck
+      - name: cabal-install long-tests
         run: |
           cd cabal-install
-          cabal v2-run cabal-install:solver-quickcheck
+          cabal v2-run cabal-install:long-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-install integration-tests2
         run: |
           cd cabal-install

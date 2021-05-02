@@ -28,8 +28,8 @@ main = do
                     , GhcJob "8.6.5"  False "--complete-hackage-tests"  False ["8.8.3"] defSteps
                     , GhcJob "8.4.4"  False ""                          False ["8.8.3"] defSteps
                     , GhcJob "8.2.2"  False ""                          False ["8.8.3"] defSteps
-                    , GhcJob "8.0.2"  False ""                          False ["8.8.3"] defSteps
-                    , GhcJob "7.10.3" False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "8.0.2"  False "--lib-only"                False ["8.8.3"] libSteps
+                    , GhcJob "7.10.3" False "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "7.8.4"  False "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "7.6.3"  True  "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "8.8.3"  True  "--lib-only"                True  ["8.8.3"] $
@@ -72,7 +72,6 @@ defSteps :: [String]
 defSteps =
     [ "print-config"
     , "print-tool-versions"
-    , "make-cabal-install-dev"
     , "build"
     , "lib-tests"
     , "lib-suite"
