@@ -9,6 +9,7 @@ import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Solver.Types.OptionalStanza
 import qualified UnitTests.Distribution.Client.BuildReport
+import qualified UnitTests.Distribution.Client.Configure
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Store
@@ -39,6 +40,8 @@ main = do
     , UnitTests.Distribution.Solver.Types.OptionalStanza.tests
     , testGroup "UnitTests.Distribution.Client.Glob"
           UnitTests.Distribution.Client.Glob.tests
+    , testGroup "UnitTests.Distribution.Client.Configure"
+        UnitTests.Distribution.Client.Configure.tests
     , testGroup "Distribution.Client.GZipUtils"
         UnitTests.Distribution.Client.GZipUtils.tests
     , testGroup "Distribution.Client.Init"
