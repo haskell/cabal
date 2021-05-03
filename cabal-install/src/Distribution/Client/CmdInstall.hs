@@ -382,10 +382,11 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     -- Now that we built everything we can do the installation part.
     -- First, figure out if / what parts we want to install:
     let
-      dryRun = buildSettingDryRun $ buildSettings baseCtx
+      dryRun = buildSettingDryRun (buildSettings baseCtx)
+            || buildSettingOnlyDownload (buildSettings baseCtx)
 
     -- Then, install!
-    when (not dryRun) $
+    unless dryRun $
       if installLibs
       then installLibraries verbosity
            buildCtx compiler packageDbs progDb envFile nonGlobalEnvEntries
