@@ -625,7 +625,7 @@ feature was added.
     other.
 
     It's not possible to set :cfg-field:`with-compiler` on a
-    per-package basis. 
+    per-package basis.
 
     The command line variant of this flag is
     ``--with-compiler=ghc-7.8``; there is also a short version
@@ -703,7 +703,7 @@ feature was added.
     The command line variant of this flag is ``--compiler=ghc``.
 
     It's not possible to set :cfg-field:`compiler` on a
-    per-package basis. 
+    per-package basis.
 
 .. cfg-field:: tests: boolean
                --enable-tests

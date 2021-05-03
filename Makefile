@@ -1,5 +1,4 @@
 .PHONY : all lexer sdpx lib exe doctest
-.PHONY : cabal-install-dev cabal-install-prod
 .PHONY : phony
 
 CABALBUILD := cabal v2-build
@@ -67,24 +66,6 @@ buildinfo-fields-reference : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
 	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
-# cabal-install.cabal file generation
-
-cabal-install-cabal : phony cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal.prod
-
-cabal-install/cabal-install.cabal.dev : cabal-install/cabal-install.cabal.zinza
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- True cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.dev
-
-cabal-install/cabal-install.cabal.prod : cabal-install/cabal-install.cabal.zinza
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- False cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.prod
-
-cabal-install-prod : cabal-install/cabal-install.cabal.prod
-	cp cabal-install/cabal-install.cabal.prod cabal-install/cabal-install.cabal
-
-cabal-install-dev : cabal-install/cabal-install.cabal.dev
-	cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
-	@echo "tell git to ignore changes to cabal-install.cabal:"
-	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
-
 # analyse-imports
 analyse-imports : phony
 	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
@@ -115,7 +96,7 @@ doctest :
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
-	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install/cabal-install-solver/src cabal-install/cabal-install-solver/src-assertion
+	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install-solver/src cabal-install-solver/src-assertion
 
 # tests
 
@@ -237,17 +218,17 @@ bootstrap-plans-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.3  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.3.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.1 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.1.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.4.plan.json
 
 bootstrap-jsons-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python -m json.tool | tee bootstrap/linux-8.6.5.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.3.plan.json  | python -m json.tool | tee bootstrap/linux-8.8.3.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.1.plan.json | python -m json.tool | tee bootstrap/linux-8.10.1.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.6.5.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.4.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.8.4.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.4.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.4.json
 
 # documentation
 ##############################################################################

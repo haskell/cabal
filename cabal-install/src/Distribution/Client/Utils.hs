@@ -61,9 +61,7 @@ import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
 
-#ifndef __DOCTEST__
-import qualified Paths_cabal_install (version)
-#endif
+
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -362,8 +360,4 @@ progressMessage verbosity phase subject = do
         ProgressCompleted   -> "Completed    "
 
 cabalInstallVersion :: Version
-#ifdef __DOCTEST__
-cabalInstallVersion = mkVersion [3,3]
-#else
-cabalInstallVersion = mkVersion' Paths_cabal_install.version
-#endif
+cabalInstallVersion = mkVersion [3,5]

@@ -1,0 +1,21 @@
+synopsis: Expose `cabal-install` as library
+prs: #7358
+issues: #7224 #6090 #4798 #3781 #1597
+significance: significant
+description {
+
+- Exposes `cabal-install` as a library, bumping the `cabal-install` cabal version to 2.2, and removing the dogfooding framework surrounding `cabal-install` to facilitate easier testing.
+
+- Moves `cabal-install-solver` out to its own directory, and treats it as its own separate project. Addresses #6090, #7224, and #3781
+
+- Enable HPC coverage:
+
+  - absorb `cabal-install-solver-dsl` module into the test modules, and
+    incorporate it into its own test target.
+
+  -  Splits out `cabal-install` unit tests from long-running tests.
+
+  - Adds proper subcomponent coverage masking so we can finally generate
+    baseline coverage reports for `cabal-install`.
+
+}
