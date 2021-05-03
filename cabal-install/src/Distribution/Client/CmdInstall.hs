@@ -2,7 +2,6 @@
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns        #-}
 
 -- | cabal-install CLI command: build
 --
@@ -46,7 +45,8 @@ import Distribution.Types.PackageId
 import Distribution.Client.ProjectConfig
          ( ProjectPackageLocation(..)
          , fetchAndReadSourcePackages
-         )
+         , projectConfigWithBuilderRepoContext
+         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
@@ -78,9 +78,6 @@ import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(..) )
 import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.ProjectConfig
-         ( projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import Distribution.Client.ProjectPlanning.Types
