@@ -273,6 +273,7 @@ Test-Suite unit-tests
     other-modules:
       UnitTests.Distribution.Client.ArbitraryInstances
       UnitTests.Distribution.Client.BuildReport
+      UnitTests.Distribution.Client.Configure
       UnitTests.Distribution.Client.Targets
       UnitTests.Distribution.Client.Get
       UnitTests.Distribution.Client.Glob
