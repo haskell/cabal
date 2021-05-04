@@ -13,7 +13,6 @@
 -- Entry point to the default cabal-install front-end.
 -----------------------------------------------------------------------------
 
-{-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Main (main) where
 
 import Distribution.Client.Setup

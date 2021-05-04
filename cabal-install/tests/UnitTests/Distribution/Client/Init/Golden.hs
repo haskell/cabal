@@ -71,32 +71,6 @@ tests v initFlags _comp pkgIx srcDb = testGroup "golden"
     pkgName = evalPrompt (packageNamePrompt srcDb initFlags)
       $ fromList ["test-package", "y"]
 
--- goldenCabalTests
---     :: Verbosity
---     -> InstalledPackageIndex
---     -> FilePath
---     -> PackageName
---     -> SourcePackageDb
---     -> TestTree
--- goldenCabalTests v pkgIx pkgDir pkgName srcDb = testGroup ".cabal golden tests"
---     [ goldenVsString "Create lib .cabal project" (goldenCabal "lib-cabal.golden") $
---         runGoldenCabal emptyFlags { packageType = Flag Library }
---     , goldenVsString "Create lib+test .cabal project" (goldenCabal "lib-test-cabal.golden") $
---         runGoldenCabal emptyFlags
---           { packageType = Flag Library
---           , initializeTestSuite = Flag True
---           }
---     , goldenVsString "Create lib .cabal project" (goldenCabal "exe-cabal.golden") $
---         runGoldenCabal emptyFlags { packageType = Flag Executable }
---     ]
---   where
---     runGoldenCabal flags =
---       case _runPrompt (createProject v pkgIx srcDb flags)  of
---         Right (t, _) -> return . BS8.pack $ showFields'
---           annCommentLines postProcessFieldLines
---           4 [mkCabalStanza opts t]
---         Left e -> assertFailure $ show e
-
 goldenPkgDescTests
     :: Verbosity
     -> SourcePackageDb
