@@ -8,9 +8,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {% endif %}
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
-{% if supportsNoMissingSafeHaskellMode %}
-{-# OPTIONS_GHC -Wno-missing-safe-haskell-mode #-}
-{% endif %}
+{-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
     version,
     getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,
