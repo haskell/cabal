@@ -1082,6 +1082,16 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             , "False"
             ]
           ]
+      , testGroup "Check dependenciesHeuristics output"
+          [ testSimple "base version bounds is correct"
+            (fmap
+              (flip foldl' anyVersion $ \a (Dependency n v _) -> 
+                if unPackageName n == "base" then v else a)
+            . (\x -> dependenciesHeuristics x "" pkgIx))
+            (baseVersion comp)
+            [ "[]"
+            ]
+          ]
       , testSimple "Check buildToolsHeuristics output" (`buildToolsHeuristics` "") ["happy"]
           ["[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"]
       , testSimple "Check otherExtsHeuristics output" (`otherExtsHeuristics` "")
