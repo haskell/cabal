@@ -144,13 +144,14 @@ guessPackageType flags = do
 --   using a default value as fallback.
 guessApplicationDirectories :: Interactive m => InitFlags -> m [FilePath]
 guessApplicationDirectories flags = do
-  pkgDirs <- listDirectory =<< fromFlagOrDefault getCurrentDirectory
+  pkgDirs <- fromFlagOrDefault getCurrentDirectory
                 (fmap return $ packageDir flags)
+  pkgDirsContents <- listDirectory pkgDirs
 
   let candidates = [defaultApplicationDir, "app", "src-exe"] in
-    return $ case [y | x <- candidates, y <- pkgDirs, x == y] of
+    return $ case [y | x <- candidates, y <- pkgDirsContents, x == y] of
       [] -> [defaultApplicationDir]
-      x  -> nub x
+      x  -> map (</> pkgDirs) . nub $ x
 
 -- | Try to guess the source directories, using a default value as fallback.
 guessSourceDirectories :: Interactive m => InitFlags -> m [FilePath]
