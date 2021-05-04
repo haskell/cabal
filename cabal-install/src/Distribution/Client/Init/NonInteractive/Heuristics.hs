@@ -85,7 +85,7 @@ guessLanguage = do
 -- | Guess the package name based on the given root directory.
 guessPackageName :: Interactive m => FilePath -> m PackageName
 guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . splitDirectories)
-                 . tryCanonicalizePath
+                 . canonicalizePathNoThrow
   where
     -- Treat each span of non-alphanumeric characters as a hyphen. Each
     -- hyphenated component of a package name must contain at least one

@@ -301,7 +301,7 @@ class Monad m => Interactive m where
     listDirectory :: FilePath -> m [FilePath]
     doesDirectoryExist :: FilePath -> m Bool
     doesFileExist :: FilePath -> m Bool
-    tryCanonicalizePath :: FilePath -> m FilePath
+    canonicalizePathNoThrow :: FilePath -> m FilePath
     readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
     getEnvironment :: m [(String, String)]
     listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
@@ -329,7 +329,7 @@ instance Interactive IO where
     listDirectory = P.listDirectory
     doesDirectoryExist = P.doesDirectoryExist
     doesFileExist = P.doesFileExist
-    tryCanonicalizePath = P.tryCanonicalizePath
+    canonicalizePathNoThrow = P.canonicalizePathNoThrow
     readProcessWithExitCode = P.readProcessWithExitCode
     getEnvironment = P.getEnvironment
     listFilesInside = P.listFilesInside
@@ -356,7 +356,7 @@ instance Interactive PurePrompt where
     listDirectory !_ = popList
     doesDirectoryExist !_ = popBool
     doesFileExist !_ = popBool
-    tryCanonicalizePath !_ = popAbsolute
+    canonicalizePathNoThrow !_ = popAbsolute
     readProcessWithExitCode !_ !_ !_ = do
       input <- pop
       return (ExitSuccess, input, "")
