@@ -58,12 +58,12 @@ tests
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> TestTree
-tests v initFlags _comp pkgIx srcDb = testGroup "golden"
+tests v initFlags comp pkgIx srcDb = testGroup "golden"
     [ goldenLibTests v pkgIx pkgDir pkgName
     , goldenExeTests v pkgIx pkgDir pkgName
     , goldenTestTests v pkgIx pkgDir pkgName
     , goldenPkgDescTests v srcDb pkgDir pkgName
-    , goldenCabalTests v pkgIx srcDb
+    , goldenCabalTests v comp pkgIx srcDb
     ]
   where
     pkgDir = evalPrompt (getPackageDir initFlags)
@@ -232,10 +232,11 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
 -- | Full cabal file golden tests
 goldenCabalTests
     :: Verbosity
+    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> TestTree
-goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
+goldenCabalTests v comp pkgIx srcDb = testGroup ".cabal file golden tests"
     [ goldenVsString "Library and executable, empty flags, not simple, with comments + no minimal"
       (goldenCabal "cabal-lib-and-exe-with-comments.golden") $
         runGoldenTest (fullProjArgs "Y") emptyFlags
@@ -254,7 +255,7 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
     ]
   where
     runGoldenTest args flags =
-      case _runPrompt (createProject v pkgIx srcDb flags) args of
+      case _runPrompt (createProject v comp pkgIx srcDb flags) args of
         Left e -> assertFailure $ show e
 
         (Right (ProjectSettings opts pkgDesc (Just libTarget) (Just exeTarget) (Just testTarget), _)) -> do

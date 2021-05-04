@@ -44,6 +44,7 @@ import Distribution.CabalSpecVersion
 import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.Types.PackageName (PackageName, mkPackageName)
+import Distribution.Simple.Compiler
 
 
 
@@ -72,15 +73,12 @@ guessCabalSpecVersion = do
     format' (x:xs) = x : format' xs
 
 -- | Guess the language specification based on the GHC version
-guessLanguage :: Interactive m => m Language
-guessLanguage = do
-  (_, verString, _) <- readProcessWithExitCode "ghc" ["--version"] ""
-  case simpleParsec <$> runParser versionParser () "" verString of
-    Right (Just ver) -> return $
-      if ver < mkVersion [7,0,1]
-        then Haskell98
-        else Haskell2010
-    _ -> return defaultLanguage
+guessLanguage :: Interactive m => Compiler -> m Language
+guessLanguage Compiler {compilerId = CompilerId GHC ver} =
+    return $ if ver < mkVersion [7,0,1]
+      then Haskell98
+      else Haskell2010
+guessLanguage _ = return defaultLanguage
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: Interactive m => FilePath -> m PackageName

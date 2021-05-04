@@ -18,16 +18,18 @@ import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep)
 import Distribution.Client.Init.Defaults
 import Distribution.Simple.Flag (fromFlagOrDefault, flagElim)
 import Distribution.Client.Init.FlagExtractors
+import Distribution.Simple.Compiler
 
 
 createProject
     :: Interactive m
     => Verbosity
+    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v _pkgIx _srcDb initFlags = do
+createProject v _comp _pkgIx _srcDb initFlags = do
     pkgType <- packageTypePrompt initFlags
     isMinimal <- getMinimal initFlags
     doOverwrite <- getOverwrite initFlags

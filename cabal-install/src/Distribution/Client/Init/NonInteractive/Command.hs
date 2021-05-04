@@ -60,6 +60,7 @@ import Distribution.Utils.Generic (safeHead)
 import Language.Haskell.Extension (Language(..), Extension(..))
 
 import System.FilePath (splitDirectories, (</>))
+import Distribution.Simple.Compiler
 
 
 -- | Main driver for interactive prompt code.
@@ -67,11 +68,12 @@ import System.FilePath (splitDirectories, (</>))
 createProject
     :: Interactive m
     => Verbosity
+    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v pkgIx srcDb initFlags = do
+createProject v comp pkgIx srcDb initFlags = do
 
   -- The workflow is as follows:
   --
@@ -109,24 +111,24 @@ createProject v pkgIx srcDb initFlags = do
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags pkgIx
-      testTarget <- genTestTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags comp pkgIx
+      testTarget <- genTestTarget initFlags comp pkgIx
 
       return $ ProjectSettings
         (mkOpts comments) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
-      exeTarget <- genExeTarget initFlags pkgIx
+      exeTarget <- genExeTarget initFlags comp pkgIx
 
       return $ ProjectSettings
         (mkOpts comments) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags pkgIx
-      exeTarget <- genExeTarget initFlags pkgIx
-      testTarget <- genTestTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags comp pkgIx
+      exeTarget <- genExeTarget initFlags comp pkgIx
+      testTarget <- genTestTarget initFlags comp pkgIx
 
       return $ ProjectSettings
         (mkOpts comments) pkgDesc (Just libTarget)
@@ -152,13 +154,14 @@ genPkgDescription flags srcDb = PkgDescription
 genLibTarget
   :: Interactive m
   => InitFlags
+  -> Compiler
   -> InstalledPackageIndex
   -> m LibTarget
-genLibTarget flags pkgs = do
+genLibTarget flags comp pkgs = do
   srcDirs   <- srcDirsHeuristics flags
   let srcDir = fromMaybe defaultSourceDir $ safeHead srcDirs
   LibTarget srcDirs
-    <$> languageHeuristics flags
+    <$> languageHeuristics flags comp
     <*> exposedModulesHeuristics flags
     <*> libOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags srcDir
@@ -168,15 +171,16 @@ genLibTarget flags pkgs = do
 genExeTarget
   :: Interactive m
   => InitFlags
+  -> Compiler
   -> InstalledPackageIndex
   -> m ExeTarget
-genExeTarget flags pkgs = do
+genExeTarget flags comp pkgs = do
   appDirs   <- appDirsHeuristics flags
   let appDir = fromMaybe defaultApplicationDir $ safeHead appDirs
   ExeTarget
     <$> mainFileHeuristics flags
     <*> pure appDirs
-    <*> languageHeuristics flags
+    <*> languageHeuristics flags comp
     <*> exeOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags appDir
     <*> dependenciesHeuristics flags appDir pkgs
@@ -185,9 +189,10 @@ genExeTarget flags pkgs = do
 genTestTarget
   :: Interactive m
   => InitFlags
+  -> Compiler
   -> InstalledPackageIndex
   -> m (Maybe TestTarget)
-genTestTarget flags pkgs = do
+genTestTarget flags comp pkgs = do
   initialized <- initializeTestSuiteHeuristics flags
   testDirs' <- testDirsHeuristics flags
   let testDir = fromMaybe defaultTestDir $ safeHead testDirs'
@@ -196,7 +201,7 @@ genTestTarget flags pkgs = do
   else fmap Just $ TestTarget
     <$> testMainHeuristics flags
     <*> pure testDirs'
-    <*> languageHeuristics flags
+    <*> languageHeuristics flags comp
     <*> testOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags testDir
     <*> dependenciesHeuristics flags testDir pkgs
@@ -304,8 +309,8 @@ testDirsHeuristics :: Interactive m => InitFlags -> m [String]
 testDirsHeuristics flags = getTestDirs flags $ return [defaultTestDir]
 
 -- | Ask for the Haskell base language of the package.
-languageHeuristics :: Interactive m => InitFlags -> m Language
-languageHeuristics flags = getLanguage flags guessLanguage
+languageHeuristics :: Interactive m => InitFlags -> Compiler -> m Language
+languageHeuristics flags comp = getLanguage flags $ guessLanguage comp
 
 -- | Ask whether to generate explanatory comments.
 noCommentsHeuristics :: Interactive m => InitFlags -> m Bool

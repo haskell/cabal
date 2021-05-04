@@ -20,6 +20,7 @@ import Distribution.Verbosity
 import Distribution.CabalSpecVersion
 import Distribution.ModuleName (fromString)
 import Distribution.Simple.Flag
+import Data.List (foldl')
 
 tests
     :: Verbosity
@@ -28,24 +29,25 @@ tests
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> TestTree
-tests _v _initFlags _comp pkgIx srcDb =
+tests _v _initFlags comp pkgIx srcDb =
   testGroup "cabal init non-interactive"
     [ testGroup "driver function test"
-      [ driverFunctionTest pkgIx srcDb
+      [ driverFunctionTest pkgIx srcDb comp
       ]
     , testGroup "target creator tests"
-      [ fileCreatorTests pkgIx srcDb
+      [ fileCreatorTests pkgIx srcDb comp
       ]
     , testGroup "non-interactive tests"
-      [ nonInteractiveTests pkgIx srcDb
+      [ nonInteractiveTests pkgIx srcDb comp
       ]
     ]
 
 driverFunctionTest
   :: InstalledPackageIndex
   -> SourcePackageDb
+  -> Compiler
   -> TestTree
-driverFunctionTest pkgIx srcDb = testGroup "createProject"
+driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
   [ testGroup "with flags"
     [ testCase "Check the non-interactive workflow 1" $ do
         let dummyFlags' = dummyFlags
@@ -65,7 +67,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               [ "[\"quxTest/Main.hs\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb dummyFlags') inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -143,7 +145,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "False"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb dummyFlags') inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -221,8 +223,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- source dirs
               , "src"
               , "True"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 8.8.4"
               -- exposed modules
               , "src"
               , "True"
@@ -261,8 +261,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "test-package"
               , "[\"test-package/app/\"]"
               , "[]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -284,8 +282,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- test target
               -- main file
               , "[\"test-package/test/\"]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -306,7 +302,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -381,8 +377,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- source dirs
               , "src"
               , "True"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 8.8.4"
               -- exposed modules
               , "src"
               , "True"
@@ -416,8 +410,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- test target
               -- main file
               , "[\"test-package/test/\"]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -438,7 +430,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -508,8 +500,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- source dirs
               , "src"
               , "True"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 8.8.4"
               -- exposed modules
               , "src"
               , "True"
@@ -548,8 +538,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "test-package"
               , "[\"test-package/app/\"]"
               , "[]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -570,7 +558,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -639,8 +627,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               -- source dirs
               , "src"
               , "True"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 8.8.4"
               -- exposed modules
               , "src"
               , "True"
@@ -673,7 +659,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -738,8 +724,6 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "test-package"
               , "[\"test-package/app/\"]"
               , "[]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -760,7 +744,7 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -800,8 +784,9 @@ driverFunctionTest pkgIx srcDb = testGroup "createProject"
 fileCreatorTests
   :: InstalledPackageIndex
   -> SourcePackageDb
+  -> Compiler
   -> TestTree
-fileCreatorTests pkgIx srcDb = testGroup "generators"
+fileCreatorTests pkgIx srcDb comp = testGroup "generators"
   [ testGroup "genPkgDescription"
     [ testCase "Check common package flags workflow" $ do
         let inputs = NEL.fromList
@@ -831,8 +816,6 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
               -- source dirs
               [ "src"
               , "True"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- exposed modules
               , "src"
               , "True"
@@ -865,7 +848,7 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ genLibTarget emptyFlags pkgIx) inputs of
+        case (_runPrompt $ genLibTarget emptyFlags comp pkgIx) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -879,8 +862,6 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
               , "test-package"
               , "[\"test-package/app/\"]"
               , "[]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -901,7 +882,7 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ genExeTarget emptyFlags pkgIx) inputs of
+        case (_runPrompt $ genExeTarget emptyFlags comp pkgIx) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -910,8 +891,6 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
         let inputs = NEL.fromList
               -- main file
               [ "[]"
-              -- language
-              , "The Glorious Glasgow Haskell Compilation System, version 7.10.3"
               -- other modules
               , "test-package"
               , "True"
@@ -932,7 +911,7 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ genTestTarget (emptyFlags {initializeTestSuite = Flag True}) pkgIx) inputs of
+        case (_runPrompt $ genTestTarget (emptyFlags {initializeTestSuite = Flag True}) comp pkgIx) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -941,8 +920,9 @@ fileCreatorTests pkgIx srcDb = testGroup "generators"
 nonInteractiveTests
   :: InstalledPackageIndex
   -> SourcePackageDb
+  -> Compiler
   -> TestTree
-nonInteractiveTests _pkgIx srcDb = testGroup "Check top level getter functions"
+nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functions"
     [ testGroup "Simple heuristics tests"
       [ testGroup "Check packageNameHeuristics output"
         [ testSimple "New package name" (packageNameHeuristics srcDb)
@@ -993,12 +973,15 @@ nonInteractiveTests _pkgIx srcDb = testGroup "Check top level getter functions"
             ["cabal-install version 2.4.0.0\ncompiled using version 2.4.0.0 of the Cabal library \n"]
           ]
       , testGroup "Check languageHeuristics output"
-          [ testSimple "No compiler at all" languageHeuristics Haskell2010
-            [""]
-          , testSimple "Higher version compiler" languageHeuristics Haskell2010
-            ["The Glorious Glasgow Haskell Compilation System, version 7.10.3"]
-          , testSimple "Lower version compiler" languageHeuristics Haskell98
-            ["The Glorious Glasgow Haskell Compilation System, version 6.4.2"]
+          [ testSimple "Non GHC compiler" 
+              (`languageHeuristics` (comp {compilerId = CompilerId Helium $ mkVersion [1,8,1]}))
+            Haskell2010 []
+          , testSimple "Higher version compiler" 
+              (`languageHeuristics` (comp {compilerId = CompilerId GHC $ mkVersion [8,10,4]}))
+            Haskell2010 []
+          , testSimple "Lower version compiler"
+              (`languageHeuristics` (comp {compilerId = CompilerId GHC $ mkVersion [6,0,1]}))
+            Haskell98 []
           ]
       , testGroup "Check extraSourceFilesHeuristics output"
           [ testSimple "No extra sources" extraSourceFilesHeuristics

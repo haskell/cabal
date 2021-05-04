@@ -61,6 +61,7 @@ import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 
 import Language.Haskell.Extension (Language(..))
+import Distribution.Simple.Compiler
 
 
 
@@ -69,11 +70,12 @@ import Language.Haskell.Extension (Language(..))
 createProject
     :: Interactive m
     => Verbosity
+    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v pkgIx srcDb initFlags = do
+createProject v _comp pkgIx srcDb initFlags = do
 
   -- The workflow is as follows:
   --
