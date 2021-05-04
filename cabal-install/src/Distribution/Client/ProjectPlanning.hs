@@ -84,7 +84,7 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import           Distribution.Client.Init (incVersion)
+import           Distribution.Client.Utils (incVersion)
 import           Distribution.Client.Targets (userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
@@ -1758,7 +1758,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- package needs to be rebuilt.  (It needs to be done here,
             -- because the ElaboratedConfiguredPackage is where we test
             -- whether or not there have been changes.)
-            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ] 
+            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ]
             BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool

@@ -841,8 +841,8 @@ commentSavedConfig = do
             IT.cabalVersion    = toFlag IT.defaultCabalVersion,
             IT.language        = toFlag Haskell2010,
             IT.license         = NoFlag,
-            IT.sourceDirs      = Just [IT.defaultSourceDir],
-            IT.applicationDirs = Just [IT.defaultApplicationDir]
+            IT.sourceDirs      = Flag [IT.defaultSourceDir],
+            IT.applicationDirs = Flag [IT.defaultApplicationDir]
             },
         savedInstallFlags      = defaultInstallFlags,
         savedClientInstallFlags= defaultClientInstallFlags,

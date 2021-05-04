@@ -1,27 +1,33 @@
 {-# LANGUAGE ForeignFunctionInterface, CPP #-}
 
-module Distribution.Client.Utils ( MergeResult(..)
-                                 , mergeBy, duplicates, duplicatesBy
-                                 , readMaybe
-                                 , inDir, withEnv, withEnvOverrides
-                                 , logDirChange, withExtraPathEnv
-                                 , determineNumJobs, numberOfProcessors
-                                 , removeExistingFile
-                                 , withTempFileName
-                                 , makeAbsoluteToCwd
-                                 , makeRelativeToCwd, makeRelativeToDir
-                                 , makeRelativeCanonical
-                                 , filePathToByteString
-                                 , byteStringToFilePath, tryCanonicalizePath
-                                 , canonicalizePathNoThrow
-                                 , moreRecentFile, existsAndIsMoreRecentThan
-                                 , tryFindAddSourcePackageDesc
-                                 , tryFindPackageDesc
-                                 , relaxEncodingErrors
-                                 , ProgressPhase (..)
-                                 , progressMessage
-                                 , cabalInstallVersion)
-       where
+module Distribution.Client.Utils
+  ( MergeResult(..)
+  , mergeBy, duplicates, duplicatesBy
+  , readMaybe
+  , inDir, withEnv, withEnvOverrides
+  , logDirChange, withExtraPathEnv
+  , determineNumJobs, numberOfProcessors
+  , removeExistingFile
+  , withTempFileName
+  , makeAbsoluteToCwd
+  , makeRelativeToCwd, makeRelativeToDir
+  , makeRelativeCanonical
+  , filePathToByteString
+  , byteStringToFilePath, tryCanonicalizePath
+  , canonicalizePathNoThrow
+  , moreRecentFile, existsAndIsMoreRecentThan
+  , tryFindAddSourcePackageDesc
+  , tryFindPackageDesc
+  , relaxEncodingErrors
+  , ProgressPhase (..)
+  , progressMessage
+  , cabalInstallVersion
+  , pvpize
+  , incVersion
+  , getCurrentYear
+  , listFilesRecursive
+  , listFilesInside
+  ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
@@ -44,7 +50,7 @@ import qualified Control.Exception as Exception
          ( finally, bracket )
 import System.Directory
          ( canonicalizePath, doesFileExist, getCurrentDirectory
-         , removeFile, setCurrentDirectory )
+         , removeFile, setCurrentDirectory, getDirectoryContents, doesDirectoryExist )
 import System.IO
          ( Handle, hClose, openTempFile
          , hGetEncoding, hSetEncoding
@@ -55,12 +61,14 @@ import GHC.IO.Encoding
          ( recover, TextEncoding(TextEncoding) )
 import GHC.IO.Encoding.Failure
          ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
-
+import Data.Time.Clock.POSIX (getCurrentTime)
+import Data.Time.LocalTime (getCurrentTimeZone, localDay)
+import Data.Time (utcToLocalTime)
+import Data.Time.Calendar (toGregorian)
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import qualified System.Directory as Dir
 import qualified System.IO.Error as IOError
 #endif
-
 
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
@@ -359,5 +367,86 @@ progressMessage verbosity phase subject = do
         ProgressInstalling  -> "Installing   "
         ProgressCompleted   -> "Completed    "
 
+-- TODO: write a test around this. Don't abuse Paths_cabal_install.
+--
 cabalInstallVersion :: Version
 cabalInstallVersion = mkVersion [3,5]
+
+-- | Given a version, return an API-compatible (according to PVP) version range.
+--
+-- If the boolean argument denotes whether to use a desugared
+-- representation (if 'True') or the new-style @^>=@-form (if
+-- 'False').
+--
+-- Example: @pvpize True (mkVersion [0,4,1])@ produces the version range @>= 0.4 && < 0.5@ (which is the
+-- same as @0.4.*@).
+pvpize :: Bool -> Version -> VersionRange
+pvpize False  v = majorBoundVersion v
+pvpize True   v = orLaterVersion v'
+           `intersectVersionRanges`
+           earlierVersion (incVersion 1 v')
+  where v' = alterVersion (take 2) v
+
+-- | Increment the nth version component (counting from 0).
+incVersion :: Int -> Version -> Version
+incVersion n = alterVersion (incVersion' n)
+  where
+    incVersion' 0 []     = [1]
+    incVersion' 0 (v:_)  = [v+1]
+    incVersion' m []     = replicate m 0 ++ [1]
+    incVersion' m (v:vs) = v : incVersion' (m-1) vs
+
+-- | Returns the current calendar year.
+getCurrentYear :: IO Integer
+getCurrentYear = do
+  u <- getCurrentTime
+  z <- getCurrentTimeZone
+  let l = utcToLocalTime z u
+      (y, _, _) = toGregorian $ localDay l
+  return y
+
+-- | From System.Directory.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+listFilesInside :: (FilePath -> IO Bool) -> FilePath -> IO [FilePath]
+listFilesInside test dir = ifM (notM $ test $ dropTrailingPathSeparator dir) (pure []) $ do
+    (dirs,files) <- partitionM doesDirectoryExist =<< listContents dir
+    rest <- concatMapM (listFilesInside test) dirs
+    pure $ files ++ rest
+
+-- | From System.Directory.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+listFilesRecursive :: FilePath -> IO [FilePath]
+listFilesRecursive = listFilesInside (const $ pure True)
+
+-- | From System.Directory.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+listContents :: FilePath -> IO [FilePath]
+listContents dir = do
+    xs <- getDirectoryContents dir
+    pure $ sort [dir </> x | x <- xs, not $ all (== '.') x]
+
+-- | From Control.Monad.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM b t f = do b' <- b; if b' then t else f
+
+-- | From Control.Monad.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+{-# INLINE concatMapM #-}
+concatMapM op = foldr f (pure [])
+    where f x xs = do x' <- op x; if null x' then xs else do xs' <- xs; pure $ x' ++ xs'
+
+-- | From Control.Monad.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+partitionM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
+partitionM _ [] = pure ([], [])
+partitionM f (x:xs) = do
+    res <- f x
+    (as,bs) <- partitionM f xs
+    pure ([x | res]++as, [x | not res]++bs)
+
+-- | From Control.Monad.Extra
+--   https://hackage.haskell.org/package/extra-1.7.9
+notM :: Functor m => m Bool -> m Bool
+notM = fmap not
