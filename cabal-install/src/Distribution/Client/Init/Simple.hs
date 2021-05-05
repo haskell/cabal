@@ -77,10 +77,10 @@ createProject v _pkgIx _srcDb initFlags = do
 genSimplePkgDesc :: Interactive m => InitFlags -> m PkgDescription
 genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
   where
-    defaultExtraSrc = defaultChangelog NEL.:| []
+    defaultExtraDoc = defaultChangelog NEL.:| []
 
-    extractExtraSrc [] = defaultExtraSrc
-    extractExtraSrc as = NEL.fromList as
+    extractExtraDoc [] = defaultExtraDoc
+    extractExtraDoc as = NEL.fromList as
 
     mkPkgDesc pkgName = PkgDescription
       (fromFlagOrDefault defaultCabalVersion (cabalVersion flags))
@@ -93,7 +93,7 @@ genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
       (fromFlagOrDefault "" (synopsis flags))
       (fromFlagOrDefault "" (category flags))
       (fromFlagOrDefault [] (extraSrc flags))
-      (flagElim defaultExtraSrc extractExtraSrc (extraDoc flags))
+      (flagElim defaultExtraDoc extractExtraDoc (extraDoc flags))
 
 genSimpleLibTarget :: Interactive m => InitFlags -> m LibTarget
 genSimpleLibTarget flags = return $ LibTarget

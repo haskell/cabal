@@ -2222,6 +2222,10 @@ initOptions _ =
     IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
     (reqArg' "FILE" (Flag . (:[]))
                     (fromFlagOrDefault []))
+  , option [] ["extra-doc-file"]
+    "Extra doc file to be distributed with tarball."
+    IT.extraDoc (\v flags -> flags { IT.extraDoc = v })
+    (reqArg' "FILE" (Flag . (:[])) (fromFlagOrDefault []))
 
   , option [] ["lib", "is-library"]
     "Build a library."
