@@ -26,16 +26,14 @@ module Distribution.Client.Init.NonInteractive.Heuristics
   , guessApplicationDirectories
   ) where
 
-import Prelude (read)
 import Distribution.Client.Compat.Prelude hiding (readFile, (<|>), many)
 import Distribution.Utils.Generic (safeLast)
 
 import Distribution.Simple.Setup (fromFlagOrDefault)
 
-import Text.Parsec
 import qualified Data.List as L
 import Distribution.Client.Init.Defaults
-import Distribution.Client.Init.Types     hiding (break)
+import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
 import qualified Distribution.SPDX as SPDX
 import System.FilePath
@@ -52,7 +50,6 @@ import qualified Data.Set as Set
 guessMainFile :: Interactive m => FilePath -> m HsFilePath
 guessMainFile pkgDir = do
   files  <- filter isMain <$> listFilesRecursive pkgDir
-
   return $ if null files
     then defaultMainIs
     else toHsFilePath $ L.head files
@@ -62,15 +59,12 @@ guessMainFile pkgDir = do
 guessCabalSpecVersion :: Interactive m => m CabalSpecVersion
 guessCabalSpecVersion = do
   (_, verString, _) <- readProcessWithExitCode "cabal" ["--version"] ""
-  case runParser versionParser () "" verString of
-    Right ver@(_:_) -> return $
-      read $ "CabalSpecV" ++ format' ver
-    _ -> return defaultCabalVersion
-
-  where
-    format' [] = []
-    format' ('.':xs) = '_' : takeWhile (/= '.') xs
-    format' (x:xs) = x : format' xs
+  case simpleParsec $ takeWhile (not . isSpace) $ dropWhile (not . isDigit) verString of
+    Just v -> pure $ fromMaybe defaultCabalVersion $ case versionNumbers v of
+      [x,y,_,_] -> cabalSpecFromVersionDigits [x,y]
+      [x,y,_] -> cabalSpecFromVersionDigits [x,y]
+      _ -> Just defaultCabalVersion
+    Nothing -> pure defaultCabalVersion
 
 -- | Guess the language specification based on the GHC version
 guessLanguage :: Interactive m => Compiler -> m Language
@@ -94,7 +88,7 @@ guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . spli
     repair = repair' ('x' :) id
     repair' invalid valid x = case dropWhile (not . isAlphaNum) x of
         "" -> repairComponent ""
-        x' -> let (c, r) = first repairComponent $ break (not . isAlphaNum) x'
+        x' -> let (c, r) = first repairComponent $ span isAlphaNum x'
               in c ++ repairRest r
       where
         repairComponent c | all isDigit c = invalid c
@@ -109,7 +103,7 @@ guessLicense _ = return SPDX.NONE
 
 guessExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set FilePath))
 guessExtraDocFiles flags = do
-  pkgDir <- fromFlagOrDefault getCurrentDirectory $ fmap return $ packageDir flags
+  pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
   files  <- getDirectoryContents pkgDir
 
   let extraDocCandidates = ["CHANGES", "CHANGELOG", "README"]
@@ -127,7 +121,7 @@ guessPackageType flags = do
       srcCandidates  = [defaultSourceDir, "src", "source"]
       testCandidates = [defaultTestDir, "test", "tests"]
 
-  pkgDir <- fromFlagOrDefault getCurrentDirectory $ fmap return $ packageDir flags
+  pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
   files  <- listFilesInside (\x -> return $ lastDir x `notElem` testCandidates) pkgDir
 
   let hasExe = not $ null [f | f <- files, isMain $ takeFileName f]
@@ -143,7 +137,7 @@ guessPackageType flags = do
 guessApplicationDirectories :: Interactive m => InitFlags -> m [FilePath]
 guessApplicationDirectories flags = do
   pkgDirs <- fromFlagOrDefault getCurrentDirectory
-                (fmap return $ packageDir flags)
+                (return <$> packageDir flags)
   pkgDirsContents <- listDirectory pkgDirs
 
   let candidates = [defaultApplicationDir, "app", "src-exe"] in
@@ -154,7 +148,7 @@ guessApplicationDirectories flags = do
 -- | Try to guess the source directories, using a default value as fallback.
 guessSourceDirectories :: Interactive m => InitFlags -> m [FilePath]
 guessSourceDirectories flags = do
-  pkgDir <- fromFlagOrDefault getCurrentDirectory $ fmap return $ packageDir flags
+  pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
 
   doesDirectoryExist (pkgDir </> "src") >>= return . \case
     False -> [defaultSourceDir]

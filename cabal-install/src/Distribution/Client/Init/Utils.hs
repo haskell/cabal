@@ -11,7 +11,6 @@ module Distribution.Client.Init.Utils
 , isMain
 , isHaskell
 , isSourceFile
-, versionParser
 , trim
 , currentDirPkgName
 , filePathToPkgName
@@ -42,7 +41,7 @@ import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Types
-import Text.Parsec
+import Distribution.Client.Utils (pvpize)
 import Distribution.Types.PackageName
 import Distribution.Types.Dependency (Dependency, mkDependency)
 import qualified Distribution.Compat.NonEmptySet as NES
@@ -222,39 +221,6 @@ chooseDep flags (m, mipi) = case mipi of
     desugar = case cabalVersion flags of
       Flag x -> x                   < CabalSpecV2_0
       NoFlag -> defaultCabalVersion < CabalSpecV2_0
-
--- | Given a version, return an API-compatible (according to PVP) version range.
---
--- If the boolean argument denotes whether to use a desugared
--- representation (if 'True') or the new-style @^>=@-form (if
--- 'False').
---
--- Example: @pvpize True (mkVersion [0,4,1])@ produces the version range @>= 0.4 && < 0.5@ (which is the
--- same as @0.4.*@).
-pvpize :: Bool -> Version -> VersionRange
-pvpize False  v = majorBoundVersion v
-pvpize True   v = orLaterVersion v'
-           `intersectVersionRanges`
-           earlierVersion (incVersion 1 v')
-  where
-    v' = alterVersion (take 2) v
-
-    -- Increment the nth version component (counting from 0).
-    incVersion :: Int -> Version -> Version
-    incVersion n = alterVersion (incVersion' n)
-      where
-        incVersion' 0 []     = [1]
-        incVersion' 0 (v'':_)  = [v'' + 1]
-        incVersion' m []     = replicate m 0 ++ [1]
-        incVersion' m (v'':vs) = v'' : incVersion' (m-1) vs
-
-versionParser :: Parsec String () String
-versionParser = do
-  skipMany (noneOf "1234567890")
-  many $ choice
-    [ oneOf "1234567890"
-    , oneOf "."
-    ]
 
 filePathToPkgName :: FilePath -> P.PackageName
 filePathToPkgName = PN.mkPackageName . Prelude.last . splitDirectories

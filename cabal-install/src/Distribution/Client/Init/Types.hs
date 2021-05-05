@@ -395,13 +395,10 @@ popBool = pop >>= \case
     s -> throwPrompt $ BreakException $ "popBool: " ++ s
 
 popList :: PurePrompt [String]
-popList = pop >>= \a -> case safeRead a of
+popList = pop >>= \a -> case P.safeRead a of
     Nothing -> throwPrompt $ BreakException ("popList: " ++ show a)
     Just as -> return as
-    where
-      safeRead s
-        | [(x, "")] <- reads s = Just x
-        | otherwise = Nothing
+
 
 -- | A pure exception thrown exclusively by the pure prompter
 -- to cancel infinite loops in the prompting process.

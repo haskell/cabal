@@ -27,6 +27,7 @@ module Distribution.Client.Utils
   , getCurrentYear
   , listFilesRecursive
   , listFilesInside
+  , safeRead
   ) where
 
 import Prelude ()
@@ -450,3 +451,8 @@ partitionM f (x:xs) = do
 --   https://hackage.haskell.org/package/extra-1.7.9
 notM :: Functor m => m Bool -> m Bool
 notM = fmap not
+
+safeRead :: Read a => String -> Maybe a
+safeRead s
+  | [(x, "")] <- reads s = Just x
+  | otherwise = Nothing
