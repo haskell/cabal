@@ -16,7 +16,7 @@ module Distribution.Client.Init.NonInteractive.Heuristics
   ( guessPackageName
   , guessMainFile
   , guessLicense
-  , guessExtraSourceFiles
+  , guessExtraDocFiles
   , guessAuthorName
   , guessAuthorEmail
   , guessCabalSpecVersion
@@ -107,17 +107,17 @@ guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . spli
 guessLicense :: Interactive m => InitFlags -> m SPDX.License
 guessLicense _ = return SPDX.NONE
 
-guessExtraSourceFiles :: Interactive m => InitFlags -> m (NonEmpty FilePath)
-guessExtraSourceFiles flags = do
+guessExtraDocFiles :: Interactive m => InitFlags -> m (NonEmpty FilePath)
+guessExtraDocFiles flags = do
   pkgDir <- fromFlagOrDefault getCurrentDirectory $ fmap return $ packageDir flags
   files  <- getDirectoryContents pkgDir
 
-  let extSrcCandidates = ["CHANGES", "CHANGELOG", "README"]
-      extraSrc' = [y | x <- extSrcCandidates, y <- files, x == map toUpper (takeBaseName y)]
+  let extraDocCandidates = ["CHANGES", "CHANGELOG", "README"]
+      extraDocs = [y | x <- extraDocCandidates, y <- files, x == map toUpper (takeBaseName y)]
 
-  return $ if null extraSrc'
+  return $ if null extraDocs
     then defaultChangelog NEL.:| []
-    else NEL.fromList extraSrc'
+    else NEL.fromList extraDocs
 
 -- | Try to guess the package type from the files in the package directory,
 --   looking for unique characteristics from each type, defaults to Executable.

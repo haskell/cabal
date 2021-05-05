@@ -174,7 +174,7 @@ genPkgDescription flags srcDb = PkgDescription
     <*> synopsisPrompt flags
     <*> categoryPrompt flags
     <*> getExtraSrcFiles flags
-
+    <*> getExtraDocFiles flags
 
 -- | Extract flags relevant to a library target and interactively
 -- generate a 'LibTarget' object for creation. If the user specifies

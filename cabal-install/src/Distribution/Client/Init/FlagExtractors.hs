@@ -14,6 +14,7 @@ module Distribution.Client.Init.FlagExtractors
 , getSynopsis
 , getCategory
 , getExtraSrcFiles
+, getExtraDocFiles
 , getPackageType
 , getMainFile
 , getInitializeTestSuite
@@ -121,10 +122,14 @@ getCategory :: Interactive m => InitFlags -> m String -> m String
 getCategory flags = fromFlagOrPrompt (category flags)
 
 -- | Try to guess extra source files (don't prompt the user).
-getExtraSrcFiles :: Interactive m => InitFlags -> m (NonEmpty String)
-getExtraSrcFiles = pure
-    . flagElim (defaultChangelog NEL.:| []) NEL.fromList
-    . extraSrc
+getExtraSrcFiles :: Interactive m => InitFlags -> m [String]
+getExtraSrcFiles = pure . fromFlagOrDefault [] . extraSrc
+
+-- | Try to guess extra source files (don't prompt the user).
+getExtraDocFiles :: Interactive m => InitFlags -> m (NonEmpty String)
+getExtraDocFiles = pure
+  . flagElim (defaultChangelog NEL.:| []) NEL.fromList
+  . extraDoc
 
 -- | Ask whether the project builds a library or executable.
 getPackageType :: Interactive m => InitFlags -> m PackageType -> m PackageType
@@ -163,9 +168,9 @@ getSrcDirs flags = fromFlagOrPrompt (sourceDirs flags)
 getExposedModules :: Interactive m => InitFlags -> m (NonEmpty ModuleName)
 getExposedModules = return
     . fromMaybe (myLibModule NEL.:| [])
-    . join 
-    . flagToMaybe 
-    . fmap NEL.nonEmpty 
+    . join
+    . flagToMaybe
+    . fmap NEL.nonEmpty
     . exposedModules
 
 -- | Retrieve the list of other modules

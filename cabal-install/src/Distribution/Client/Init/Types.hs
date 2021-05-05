@@ -98,6 +98,7 @@ data InitFlags =
     , synopsis :: Flag String
     , category :: Flag String
     , extraSrc :: Flag [String]
+    , extraDoc :: Flag [String]
     , packageType :: Flag PackageType
     , mainIs :: Flag FilePath
     , language :: Flag Language
@@ -139,7 +140,8 @@ data PkgDescription = PkgDescription
     , _pkgHomePage :: String
     , _pkgSynopsis :: String
     , _pkgCategory :: String
-    , _pkgExtraSrcFiles :: NonEmpty String
+    , _pkgExtraSrcFiles :: [String]
+    , _pkgExtraDocFiles :: NonEmpty String
     } deriving (Show, Eq)
 
 -- | 'LibTarget' represents the relevant options set by the

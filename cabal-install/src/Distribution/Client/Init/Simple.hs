@@ -92,7 +92,8 @@ genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
       (fromFlagOrDefault "" (homepage flags))
       (fromFlagOrDefault "" (synopsis flags))
       (fromFlagOrDefault "" (category flags))
-      (flagElim defaultExtraSrc extractExtraSrc (extraSrc flags))
+      (fromFlagOrDefault [] (extraSrc flags))
+      (flagElim defaultExtraSrc extractExtraSrc (extraDoc flags))
 
 genSimpleLibTarget :: Interactive m => InitFlags -> m LibTarget
 genSimpleLibTarget flags = return $ LibTarget

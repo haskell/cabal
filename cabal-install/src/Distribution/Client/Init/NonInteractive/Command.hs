@@ -25,7 +25,7 @@ module Distribution.Client.Init.NonInteractive.Command
 , homepageHeuristics
 , synopsisHeuristics
 , categoryHeuristics
-, extraSourceFilesHeuristics
+, extraDocFileHeuristics
 , appDirsHeuristics
 , srcDirsHeuristics
 , languageHeuristics
@@ -149,7 +149,8 @@ genPkgDescription flags srcDb = PkgDescription
   <*> homepageHeuristics flags
   <*> synopsisHeuristics flags
   <*> categoryHeuristics flags
-  <*> extraSourceFilesHeuristics flags
+  <*> getExtraSrcFiles flags
+  <*> extraDocFileHeuristics flags
 
 genLibTarget
   :: Interactive m
@@ -278,13 +279,13 @@ synopsisHeuristics flags = getSynopsis flags $ return ""
 --   Note that it should be possible to do some smarter guessing here too, i.e.
 --   look at the name of the top level source directory.
 categoryHeuristics :: Interactive m => InitFlags -> m String
-categoryHeuristics flags = getCategory flags $ return "(none)"
+categoryHeuristics flags = getCategory flags $ return ""
 
 -- | Try to guess extra source files.
-extraSourceFilesHeuristics :: Interactive m => InitFlags -> m (NonEmpty FilePath)
-extraSourceFilesHeuristics flags = case extraSrc flags of
+extraDocFileHeuristics :: Interactive m => InitFlags -> m (NonEmpty FilePath)
+extraDocFileHeuristics flags = case extraDoc flags of
   Flag x | not (null x) -> return $ NEL.fromList x
-  _ -> guessExtraSourceFiles flags
+  _ -> guessExtraDocFiles flags
 
 -- | Try to guess if the project builds a library, an executable, or both.
 packageTypeHeuristics :: Interactive m => InitFlags -> m PackageType

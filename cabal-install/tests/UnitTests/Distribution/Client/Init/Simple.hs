@@ -125,6 +125,7 @@ simplePkgDesc pkgName = PkgDescription
     defaultVersion
     defaultLicense
     "" "" "" "" ""
+    []
     (defaultChangelog NEL.:| [])
 
 simpleLibTarget :: LibTarget

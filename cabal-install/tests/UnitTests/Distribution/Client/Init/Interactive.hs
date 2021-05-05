@@ -89,7 +89,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "We are Qux, and this is our package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _libSourceDirs     lib @?= ["quxSrc"]
             _libLanguage       lib @?= Haskell98
@@ -191,7 +192,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "Qux's package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell98
@@ -284,7 +286,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "Qux's package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell98
@@ -372,7 +375,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "Qux's package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell98
@@ -452,7 +456,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "Qux's package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell98
@@ -524,7 +529,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "Qux's package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" :| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" :| []
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["exe"]

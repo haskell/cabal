@@ -264,6 +264,7 @@ instance Semigroup SavedConfig where
         IT.email               = combine IT.email,
         IT.exposedModules      = combineMonoid savedInitFlags IT.exposedModules,
         IT.extraSrc            = combineMonoid savedInitFlags IT.extraSrc,
+        IT.extraDoc            = combineMonoid savedInitFlags IT.extraDoc,
         IT.homepage            = combine IT.homepage,
         IT.initHcPath          = combine IT.initHcPath,
         IT.initVerbosity       = combine IT.initVerbosity,

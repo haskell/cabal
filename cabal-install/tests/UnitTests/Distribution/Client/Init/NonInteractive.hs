@@ -55,7 +55,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , minimal = Flag False
               , overwrite = Flag False
               , packageDir = Flag "/home/test/test-package"
-              , extraSrc = Flag ["CHANGELOG.md"]
+              , extraDoc = Flag ["CHANGELOG.md"]
               , exposedModules = Flag []
               , otherModules = Flag []
               , otherExts = Flag []
@@ -86,7 +86,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "We are Qux, and this is our package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["quxSrc"]
             _libLanguage       lib @?= Haskell98
@@ -164,7 +165,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "We are Qux, and this is our package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["quxSrc"]
             _libLanguage       lib @?= Haskell98
@@ -320,8 +322,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
-            _pkgCategory      desc @?= "(none)"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgCategory      desc @?= ""
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -448,8 +451,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
-            _pkgCategory      desc @?= "(none)"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgCategory      desc @?= ""
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -576,8 +580,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
-            _pkgCategory      desc @?= "(none)"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgCategory      desc @?= ""
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -677,8 +682,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
-            _pkgCategory      desc @?= "(none)"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgCategory      desc @?= ""
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -762,8 +768,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
-            _pkgCategory      desc @?= "(none)"
-            _pkgExtraSrcFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgCategory      desc @?= ""
+            _pkgExtraSrcFiles desc @?= []
+            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -983,13 +990,13 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
               (`languageHeuristics` (comp {compilerId = CompilerId GHC $ mkVersion [6,0,1]}))
             Haskell98 []
           ]
-      , testGroup "Check extraSourceFilesHeuristics output"
-          [ testSimple "No extra sources" extraSourceFilesHeuristics
+      , testGroup "Check extraDocFileHeuristics output"
+          [ testSimple "No extra sources" extraDocFileHeuristics
             (defaultChangelog NEL.:| [])
             [ "test-package"
             , "[]"
             ]
-          , testSimple "Extra source files present" extraSourceFilesHeuristics
+          , testSimple "Extra doc files present" extraDocFileHeuristics
             ("README.md" NEL.:| [])
             [ "test-package"
             , "[\"README.md\"]"
@@ -1105,7 +1112,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
       , testSimple "Check homepageHeuristics output" homepageHeuristics "" [""]
       , testSimple "Check synopsisHeuristics output" synopsisHeuristics "" [""]
       , testSimple "Check testDirsHeuristics output" testDirsHeuristics ["test"] [""]
-      , testSimple "Check categoryHeuristics output" categoryHeuristics "(none)" [""]
+      , testSimple "Check categoryHeuristics output" categoryHeuristics "" [""]
       , testSimple "Check minimalHeuristics output" minimalHeuristics False [""]
       , testSimple "Check overwriteHeuristics output" overwriteHeuristics False [""]
       , testSimple "Check initializeTestSuiteHeuristics output" initializeTestSuiteHeuristics False [""]
