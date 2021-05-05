@@ -44,7 +44,6 @@ module Distribution.Client.Init.Interactive.Command
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (putStr, putStrLn, getLine, last)
 
-
 import Distribution.CabalSpecVersion (CabalSpecVersion(..), showCabalSpecVersion)
 import Distribution.Version (Version)
 import Distribution.Types.Dependency (Dependency(..))
@@ -95,7 +94,7 @@ createProject v pkgIx srcDb initFlags = do
   isMinimal <- getMinimal initFlags
   doOverwrite <- getOverwrite initFlags
   pkgDir <- getPackageDir initFlags
-  pkgDesc <- genPkgDescription initFlags srcDb
+  pkgDesc <- fixupDocFiles <$> genPkgDescription initFlags srcDb
 
   let pkgName = _pkgName pkgDesc
       mkOpts cs = WriteOpts
@@ -262,7 +261,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
     ppVersions = displayCabalVersion <$> defaultCabalVersions
 
     parseCabalVersion :: String -> CabalSpecVersion
-    parseCabalVersion "1.10" = CabalSpecV1_10
+    parseCabalVersion "1.24" = CabalSpecV1_24
     parseCabalVersion "2.0" = CabalSpecV2_0
     parseCabalVersion "2.2" = CabalSpecV2_2
     parseCabalVersion "2.4" = CabalSpecV2_4
@@ -272,7 +271,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
 
     displayCabalVersion :: CabalSpecVersion -> String
     displayCabalVersion v = case v of
-      CabalSpecV1_10 -> "1.10  (legacy)"
+      CabalSpecV1_24 -> "1.24  (legacy)"
       CabalSpecV2_0  -> "2.0   (+ support for Backpack, internal sub-libs, '^>=' operator)"
       CabalSpecV2_2  -> "2.2   (+ support for 'common', 'elif', redundant commas, SPDX)"
       CabalSpecV2_4  -> "2.4   (+ support for '**' globbing)"

@@ -318,16 +318,24 @@ mkPkgDescription opts pkgDesc =
            []
            False
            opts
-    , field "extra-doc-files" formatExtraSourceFiles  (toList $ _pkgExtraDocFiles pkgDesc)
-      ["Extra doc files to be distributed with the package, such as a CHANGELOG or a README."]
-      True
-      opts
+    , case _pkgExtraDocFiles pkgDesc of
+        Nothing -> PrettyEmpty
+        Just fs
+          | null fs -> PrettyEmpty
+          | otherwise ->
+            field "extra-doc-files" formatExtraSourceFiles  (toList fs)
+            ["Extra doc files to be distributed with the package, such as a CHANGELOG or a README."]
+            True
+            opts
+
     , case _pkgExtraSrcFiles pkgDesc of
-        [] -> PrettyEmpty
-        lst -> field "extra-source-files" formatExtraSourceFiles lst
-          ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
-          True
-          opts
+        fs
+          | null fs -> PrettyEmpty
+          | otherwise ->
+            field "extra-source-files" formatExtraSourceFiles (toList fs)
+            ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
+            True
+            opts
     ]
   where
     cabalSpec = _pkgCabalVersion pkgDesc

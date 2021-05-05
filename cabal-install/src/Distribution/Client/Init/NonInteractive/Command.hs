@@ -61,6 +61,7 @@ import Language.Haskell.Extension (Language(..), Extension(..))
 
 import System.FilePath (splitDirectories, (</>))
 import Distribution.Simple.Compiler
+import qualified Data.Set as Set
 
 
 -- | Main driver for interactive prompt code.
@@ -101,7 +102,7 @@ createProject comp v pkgIx srcDb initFlags = do
   isMinimal <- getMinimal initFlags
   doOverwrite <- getOverwrite initFlags
   pkgDir <- packageDirHeuristics initFlags
-  pkgDesc <- genPkgDescription initFlags srcDb
+  pkgDesc <- fixupDocFiles <$> genPkgDescription initFlags srcDb
   comments <- noCommentsHeuristics initFlags
 
   let pkgName = _pkgName pkgDesc
@@ -282,9 +283,9 @@ categoryHeuristics :: Interactive m => InitFlags -> m String
 categoryHeuristics flags = getCategory flags $ return ""
 
 -- | Try to guess extra source files.
-extraDocFileHeuristics :: Interactive m => InitFlags -> m (NonEmpty FilePath)
+extraDocFileHeuristics :: Interactive m => InitFlags -> m (Maybe (Set FilePath))
 extraDocFileHeuristics flags = case extraDoc flags of
-  Flag x | not (null x) -> return $ NEL.fromList x
+  Flag x -> return $ Just $ Set.fromList x
   _ -> guessExtraDocFiles flags
 
 -- | Try to guess if the project builds a library, an executable, or both.

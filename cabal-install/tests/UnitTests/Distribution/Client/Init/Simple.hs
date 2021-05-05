@@ -24,6 +24,7 @@ import Distribution.Simple.Setup
 import qualified Data.List.NonEmpty as NEL
 import Distribution.Types.Dependency
 import Distribution.Client.Init.Utils (mkPackageNameDep)
+import qualified Data.Set as Set
 
 tests
     :: Verbosity
@@ -125,8 +126,8 @@ simplePkgDesc pkgName = PkgDescription
     defaultVersion
     defaultLicense
     "" "" "" "" ""
-    []
-    (defaultChangelog NEL.:| [])
+    mempty
+    (Just $ Set.singleton defaultChangelog)
 
 simpleLibTarget :: LibTarget
 simpleLibTarget = LibTarget

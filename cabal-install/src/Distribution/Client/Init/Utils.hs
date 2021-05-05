@@ -16,6 +16,7 @@ module Distribution.Client.Init.Utils
 , currentDirPkgName
 , filePathToPkgName
 , mkPackageNameDep
+, fixupDocFiles
 ) where
 
 
@@ -263,3 +264,16 @@ currentDirPkgName = filePathToPkgName <$> getCurrentDirectory
 
 mkPackageNameDep :: PackageName -> Dependency
 mkPackageNameDep pkg = mkDependency pkg anyVersion (NES.singleton LMainLibName)
+
+-- when cabal-version < 1.18, extra-doc-files is not supported
+-- so whatever the user wants as doc files should be dumped into
+-- extra-src-files.
+--
+fixupDocFiles :: PkgDescription -> PkgDescription
+fixupDocFiles pkgDesc
+  | _pkgCabalVersion pkgDesc < CabalSpecV1_18 = pkgDesc
+    { _pkgExtraSrcFiles =_pkgExtraSrcFiles pkgDesc
+      <> fromMaybe mempty (_pkgExtraDocFiles pkgDesc)
+    , _pkgExtraDocFiles = Nothing
+    }
+  | otherwise = pkgDesc

@@ -11,8 +11,6 @@
 -- Default values to use in cabal init (if not specified in config/flags).
 --
 -----------------------------------------------------------------------------
-
-{-# OPTIONS_GHC -Wno-deferred-type-errors #-}
 module Distribution.Client.Init.Defaults
 
 ( -- * default init values

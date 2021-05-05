@@ -18,6 +18,7 @@ import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep)
 import Distribution.Client.Init.Defaults
 import Distribution.Simple.Flag (fromFlagOrDefault, flagElim)
 import Distribution.Client.Init.FlagExtractors
+import qualified Data.Set as Set
 
 
 createProject
@@ -77,10 +78,10 @@ createProject v _pkgIx _srcDb initFlags = do
 genSimplePkgDesc :: Interactive m => InitFlags -> m PkgDescription
 genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
   where
-    defaultExtraDoc = defaultChangelog NEL.:| []
+    defaultExtraDoc = Just $ Set.singleton defaultChangelog
 
     extractExtraDoc [] = defaultExtraDoc
-    extractExtraDoc as = NEL.fromList as
+    extractExtraDoc fs = Just $ Set.fromList fs
 
     mkPkgDesc pkgName = PkgDescription
       (fromFlagOrDefault defaultCabalVersion (cabalVersion flags))
@@ -92,7 +93,7 @@ genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
       (fromFlagOrDefault "" (homepage flags))
       (fromFlagOrDefault "" (synopsis flags))
       (fromFlagOrDefault "" (category flags))
-      (fromFlagOrDefault [] (extraSrc flags))
+      (flagElim mempty Set.fromList (extraSrc flags))
       (flagElim defaultExtraDoc extractExtraDoc (extraDoc flags))
 
 genSimpleLibTarget :: Interactive m => InitFlags -> m LibTarget

@@ -140,8 +140,8 @@ data PkgDescription = PkgDescription
     , _pkgHomePage :: String
     , _pkgSynopsis :: String
     , _pkgCategory :: String
-    , _pkgExtraSrcFiles :: [String]
-    , _pkgExtraDocFiles :: NonEmpty String
+    , _pkgExtraSrcFiles :: Set String
+    , _pkgExtraDocFiles :: Maybe (Set String)
     } deriving (Show, Eq)
 
 -- | 'LibTarget' represents the relevant options set by the

@@ -55,6 +55,7 @@ import Distribution.Simple.Flag (flagElim)
 
 import Language.Haskell.Extension (Language(..), Extension(..))
 import Distribution.Client.Init.Prompt
+import qualified Data.Set as Set
 
 
 
@@ -122,13 +123,14 @@ getCategory :: Interactive m => InitFlags -> m String -> m String
 getCategory flags = fromFlagOrPrompt (category flags)
 
 -- | Try to guess extra source files (don't prompt the user).
-getExtraSrcFiles :: Interactive m => InitFlags -> m [String]
-getExtraSrcFiles = pure . fromFlagOrDefault [] . extraSrc
+getExtraSrcFiles :: Interactive m => InitFlags -> m (Set String)
+getExtraSrcFiles = pure . flagElim mempty Set.fromList . extraSrc
 
 -- | Try to guess extra source files (don't prompt the user).
-getExtraDocFiles :: Interactive m => InitFlags -> m (NonEmpty String)
+getExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set String))
 getExtraDocFiles = pure
-  . flagElim (defaultChangelog NEL.:| []) NEL.fromList
+  . Just
+  . flagElim (Set.singleton defaultChangelog) Set.fromList
   . extraDoc
 
 -- | Ask whether the project builds a library or executable.

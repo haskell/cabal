@@ -34,7 +34,6 @@ import Distribution.Simple.Setup (fromFlagOrDefault)
 
 import Text.Parsec
 import qualified Data.List as L
-import qualified Data.List.NonEmpty as NEL
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Types     hiding (break)
 import Distribution.Client.Init.Utils
@@ -45,6 +44,7 @@ import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Simple.Compiler
+import qualified Data.Set as Set
 
 
 
@@ -107,7 +107,7 @@ guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . spli
 guessLicense :: Interactive m => InitFlags -> m SPDX.License
 guessLicense _ = return SPDX.NONE
 
-guessExtraDocFiles :: Interactive m => InitFlags -> m (NonEmpty FilePath)
+guessExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set FilePath))
 guessExtraDocFiles flags = do
   pkgDir <- fromFlagOrDefault getCurrentDirectory $ fmap return $ packageDir flags
   files  <- getDirectoryContents pkgDir
@@ -115,9 +115,9 @@ guessExtraDocFiles flags = do
   let extraDocCandidates = ["CHANGES", "CHANGELOG", "README"]
       extraDocs = [y | x <- extraDocCandidates, y <- files, x == map toUpper (takeBaseName y)]
 
-  return $ if null extraDocs
-    then defaultChangelog NEL.:| []
-    else NEL.fromList extraDocs
+  return $ Just $ if null extraDocs
+    then Set.singleton defaultChangelog
+    else Set.fromList extraDocs
 
 -- | Try to guess the package type from the files in the package directory,
 --   looking for unique characteristics from each type, defaults to Executable.

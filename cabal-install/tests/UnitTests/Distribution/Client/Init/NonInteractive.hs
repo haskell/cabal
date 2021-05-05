@@ -21,6 +21,7 @@ import Distribution.CabalSpecVersion
 import Distribution.ModuleName (fromString)
 import Distribution.Simple.Flag
 import Data.List (foldl')
+import qualified Data.Set as Set
 
 tests
     :: Verbosity
@@ -86,8 +87,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "We are Qux, and this is our package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["quxSrc"]
             _libLanguage       lib @?= Haskell98
@@ -165,8 +166,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= "qux.com"
             _pkgSynopsis      desc @?= "We are Qux, and this is our package"
             _pkgCategory      desc @?= "Control"
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["quxSrc"]
             _libLanguage       lib @?= Haskell98
@@ -323,8 +324,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
             _pkgCategory      desc @?= ""
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -452,8 +453,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
             _pkgCategory      desc @?= ""
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -581,8 +582,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
             _pkgCategory      desc @?= ""
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -683,8 +684,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
             _pkgCategory      desc @?= ""
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell2010
@@ -769,8 +770,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgHomePage      desc @?= ""
             _pkgSynopsis      desc @?= ""
             _pkgCategory      desc @?= ""
-            _pkgExtraSrcFiles desc @?= []
-            _pkgExtraDocFiles desc @?= "CHANGELOG.md" NEL.:| []
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -992,12 +993,12 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           ]
       , testGroup "Check extraDocFileHeuristics output"
           [ testSimple "No extra sources" extraDocFileHeuristics
-            (defaultChangelog NEL.:| [])
+            (pure (Set.singleton "CHANGELOG.md"))
             [ "test-package"
             , "[]"
             ]
           , testSimple "Extra doc files present" extraDocFileHeuristics
-            ("README.md" NEL.:| [])
+            (pure $ Set.singleton "README.md")
             [ "test-package"
             , "[\"README.md\"]"
             ]
