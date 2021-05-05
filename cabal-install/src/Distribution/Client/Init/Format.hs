@@ -320,13 +320,11 @@ mkPkgDescription opts pkgDesc =
            opts
     , case _pkgExtraDocFiles pkgDesc of
         Nothing -> PrettyEmpty
-        Just fs
-          | null fs -> PrettyEmpty
-          | otherwise ->
-            field "extra-doc-files" formatExtraSourceFiles  (toList fs)
-            ["Extra doc files to be distributed with the package, such as a CHANGELOG or a README."]
-            True
-            opts
+        Just fs ->
+          field "extra-doc-files" formatExtraSourceFiles  (toList fs)
+          ["Extra doc files to be distributed with the package, such as a CHANGELOG or a README."]
+          True
+          opts
 
     , field "extra-source-files" formatExtraSourceFiles (toList $ _pkgExtraSrcFiles pkgDesc)
       ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
