@@ -1734,10 +1734,10 @@ getRPaths lbi clbi | supportRPaths hostOS = do
       case compid of
         CompilerId GHC ver | ver >= mkVersion [7,10,2] -> True
         _                                              -> False
-    supportRPaths OpenBSD     = False
-    supportRPaths NetBSD      = False
-    supportRPaths DragonFly   = False
-    supportRPaths Solaris     = False
+    supportRPaths OpenBSD     = True
+    supportRPaths NetBSD      = True
+    supportRPaths DragonFly   = True
+    supportRPaths Solaris     = True
     supportRPaths AIX         = False
     supportRPaths HPUX        = False
     supportRPaths IRIX        = False
