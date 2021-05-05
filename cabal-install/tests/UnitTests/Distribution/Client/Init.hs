@@ -36,10 +36,10 @@ tests = do
       srcDb <- getSourcePackages v repoCtx
 
       return
-         [ Interactive.tests v initFlags' comp pkgIx srcDb
+         [ Interactive.tests v initFlags' pkgIx srcDb
          , NonInteractive.tests v initFlags' comp pkgIx srcDb
-         , Golden.tests v initFlags' comp pkgIx srcDb
-         , Simple.tests v initFlags' comp pkgIx srcDb
+         , Golden.tests v initFlags' pkgIx srcDb
+         , Simple.tests v initFlags' pkgIx srcDb
          ]
   where
     v :: Verbosity

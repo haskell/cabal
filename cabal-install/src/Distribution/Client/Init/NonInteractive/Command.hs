@@ -67,13 +67,13 @@ import Distribution.Simple.Compiler
 --
 createProject
     :: Interactive m
-    => Verbosity
-    -> Compiler
+    => Compiler
+    -> Verbosity
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v comp pkgIx srcDb initFlags = do
+createProject comp v pkgIx srcDb initFlags = do
 
   -- The workflow is as follows:
   --

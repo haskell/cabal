@@ -45,7 +45,7 @@ initCmd v packageDBs repoCtxt comp progdb initFlags = do
     installedPkgIndex <- getInstalledPackages v comp packageDBs progdb
     sourcePkgDb <- getSourcePackages v repoCtxt
     hSetBuffering stdout NoBuffering
-    settings <- createProject v comp installedPkgIndex sourcePkgDb initFlags
+    settings <- createProject v installedPkgIndex sourcePkgDb initFlags
     writeProject settings
   where
     -- When no flag is set, default to interactive.
@@ -62,4 +62,4 @@ initCmd v packageDBs repoCtxt comp progdb initFlags = do
         | fromFlagOrDefault False (simpleProject initFlags) ->
           Simple.createProject
         | otherwise -> Interactive.createProject
-      Flag False -> NonInteractive.createProject
+      Flag False -> NonInteractive.createProject comp

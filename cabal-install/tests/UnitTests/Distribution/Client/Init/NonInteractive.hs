@@ -67,7 +67,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               [ "[\"quxTest/Main.hs\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb dummyFlags') inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -145,7 +145,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "False"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb dummyFlags') inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -302,7 +302,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -430,7 +430,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -558,7 +558,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -659,7 +659,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -744,7 +744,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -973,10 +973,10 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             ["cabal-install version 2.4.0.0\ncompiled using version 2.4.0.0 of the Cabal library \n"]
           ]
       , testGroup "Check languageHeuristics output"
-          [ testSimple "Non GHC compiler" 
+          [ testSimple "Non GHC compiler"
               (`languageHeuristics` (comp {compilerId = CompilerId Helium $ mkVersion [1,8,1]}))
             Haskell2010 []
-          , testSimple "Higher version compiler" 
+          , testSimple "Higher version compiler"
               (`languageHeuristics` (comp {compilerId = CompilerId GHC $ mkVersion [8,10,4]}))
             Haskell2010 []
           , testSimple "Lower version compiler"
@@ -1085,7 +1085,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
       , testGroup "Check dependenciesHeuristics output"
           [ testSimple "base version bounds is correct"
             (fmap
-              (flip foldl' anyVersion $ \a (Dependency n v _) -> 
+              (flip foldl' anyVersion $ \a (Dependency n v _) ->
                 if unPackageName n == "base" then v else a)
             . (\x -> dependenciesHeuristics x "" pkgIx))
             (baseVersion comp)

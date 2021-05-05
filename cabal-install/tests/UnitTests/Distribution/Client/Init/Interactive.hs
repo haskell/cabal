@@ -15,7 +15,6 @@ import qualified Distribution.SPDX as SPDX
 
 import Data.List.NonEmpty hiding (zip)
 import Distribution.Client.Types
-import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex hiding (fromList)
 import Distribution.Types.PackageName
 import Distribution.Types.Version
@@ -35,13 +34,12 @@ import Distribution.CabalSpecVersion
 tests
     :: Verbosity
     -> InitFlags
-    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> TestTree
-tests _v initFlags comp pkgIx srcDb =
+tests _v initFlags pkgIx srcDb =
   testGroup "Distribution.Client.Init.Interactive.Command.hs"
-    [ createProjectTest comp pkgIx srcDb
+    [ createProjectTest pkgIx srcDb
     , fileCreatorTests pkgIx srcDb pkgName
     , interactiveTests srcDb
     ]
@@ -52,11 +50,10 @@ tests _v initFlags comp pkgIx srcDb =
     -- pkgNm  = evalPrompt (getPackageName srcDb initFlags) $ fromList ["test-package", "y"]
 
 createProjectTest
-  :: Compiler
-  -> InstalledPackageIndex
+  :: InstalledPackageIndex
   -> SourcePackageDb
   -> TestTree
-createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
+createProjectTest pkgIx srcDb = testGroup "createProject tests"
   [ testGroup "with flags"
     [ testCase "Check the non-interactive workflow" $ do
         let dummyFlags' = dummyFlags
@@ -73,7 +70,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , dependencies = Flag []
               }
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb dummyFlags') (fromList ["3", "quxTest/Main.hs"]) of
+        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["3", "quxTest/Main.hs"]) of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -175,7 +172,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -268,7 +265,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -356,7 +353,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -436,7 +433,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -508,7 +505,7 @@ createProjectTest comp pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent comp pkgIx srcDb emptyFlags) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc Nothing (Just exe) Nothing, _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -732,7 +729,7 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
             , "1"
             ]
         ]
-    , testGroup "Check srcDirsPrompt output" 
+    , testGroup "Check srcDirsPrompt output"
         [ testNumberedPrompt "Soruce dirs indices" srcDirsPrompt
             [[defaultSourceDir], ["lib"], ["src-lib"]]
         , testSimplePrompt "Other source dir"

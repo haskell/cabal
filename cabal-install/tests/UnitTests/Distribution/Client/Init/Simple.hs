@@ -14,7 +14,6 @@ import Distribution.Client.Init.Types
 
 import Data.List.NonEmpty hiding (zip)
 import Distribution.Client.Types
-import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex hiding (fromList)
 import Distribution.Types.PackageName
 import Distribution.Verbosity
@@ -29,24 +28,22 @@ import Distribution.Client.Init.Utils (mkPackageNameDep)
 tests
     :: Verbosity
     -> InitFlags
-    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> TestTree
-tests v _initFlags comp pkgIx srcDb = testGroup "Distribution.Client.Init.Simple.hs"
-    [ simpleCreateProjectTests v comp pkgIx srcDb pkgName
+tests v _initFlags pkgIx srcDb = testGroup "Distribution.Client.Init.Simple.hs"
+    [ simpleCreateProjectTests v pkgIx srcDb pkgName
     ]
   where
     pkgName = mkPackageName "simple-test"
 
 simpleCreateProjectTests
     :: Verbosity
-    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> PackageName
     -> TestTree
-simpleCreateProjectTests v comp pkgIx srcDb pkgName =
+simpleCreateProjectTests v pkgIx srcDb pkgName =
     testGroup "Simple createProject tests"
     [ testCase "Simple lib createProject - no tests" $ do
       let inputs = fromList
@@ -61,7 +58,7 @@ simpleCreateProjectTests v comp pkgIx srcDb pkgName =
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             Nothing Nothing
 
-      case _runPrompt (createProject v comp pkgIx srcDb flags) inputs of
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib project: " ++ show e
         Right (settings', _) -> settings @=? settings'
 
@@ -73,7 +70,7 @@ simpleCreateProjectTests v comp pkgIx srcDb pkgName =
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             Nothing (Just $ simpleTestTarget (Just pkgName))
 
-      case _runPrompt (createProject v comp pkgIx srcDb flags) inputs of
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib (with tests)project: " ++ show e
         Right (settings', _) -> settings @=? settings'
 
@@ -85,7 +82,7 @@ simpleCreateProjectTests v comp pkgIx srcDb pkgName =
             (simplePkgDesc pkgName) Nothing
             (Just $ simpleExeTarget Nothing) Nothing
 
-      case _runPrompt (createProject v comp pkgIx srcDb flags) inputs of
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple exe project: " ++ show e
         Right (settings', _) -> settings @=? settings'
 
@@ -97,7 +94,7 @@ simpleCreateProjectTests v comp pkgIx srcDb pkgName =
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             (Just $ simpleExeTarget (Just pkgName)) Nothing
 
-      case _runPrompt (createProject v comp pkgIx srcDb flags) inputs of
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib+exe project: " ++ show e
         Right (settings', _) -> settings @=? settings'
     , testCase "Simple lib+exe createProject - with tests" $ do
@@ -109,7 +106,7 @@ simpleCreateProjectTests v comp pkgIx srcDb pkgName =
             (Just $ simpleExeTarget (Just pkgName))
             (Just $ simpleTestTarget (Just pkgName))
 
-      case _runPrompt (createProject v comp pkgIx srcDb flags) inputs of
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib+exe (with tests) project: " ++ show e
         Right (settings', _) -> settings @=? settings'
     ]

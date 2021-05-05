@@ -75,6 +75,8 @@ promptList
       -- ^ optional default value
     -> Maybe (String -> String)
       -- ^ modify the default value to present in-prompt
+      -- e.g. empty string maps to "(none)", but only in the
+      -- prompt.
     -> Bool
       -- ^ whether to allow an 'other' option
     -> m String

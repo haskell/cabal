@@ -61,8 +61,6 @@ import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 
 import Language.Haskell.Extension (Language(..))
-import Distribution.Simple.Compiler
-
 
 
 -- | Main driver for interactive prompt code.
@@ -70,12 +68,11 @@ import Distribution.Simple.Compiler
 createProject
     :: Interactive m
     => Verbosity
-    -> Compiler
     -> InstalledPackageIndex
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v _comp pkgIx srcDb initFlags = do
+createProject v pkgIx srcDb initFlags = do
 
   -- The workflow is as follows:
   --
