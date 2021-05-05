@@ -102,7 +102,7 @@ createProject comp v pkgIx srcDb initFlags = do
   isMinimal <- getMinimal initFlags
   doOverwrite <- getOverwrite initFlags
   pkgDir <- packageDirHeuristics initFlags
-  pkgDesc <- fixupDocFiles <$> genPkgDescription initFlags srcDb
+  pkgDesc <- fixupDocFiles v =<< genPkgDescription initFlags srcDb
   comments <- noCommentsHeuristics initFlags
 
   let pkgName = _pkgName pkgDesc

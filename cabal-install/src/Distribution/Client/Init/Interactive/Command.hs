@@ -94,7 +94,7 @@ createProject v pkgIx srcDb initFlags = do
   isMinimal <- getMinimal initFlags
   doOverwrite <- getOverwrite initFlags
   pkgDir <- getPackageDir initFlags
-  pkgDesc <- fixupDocFiles <$> genPkgDescription initFlags srcDb
+  pkgDesc <- fixupDocFiles v =<< genPkgDescription initFlags srcDb
 
   let pkgName = _pkgName pkgDesc
       mkOpts cs = WriteOpts

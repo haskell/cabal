@@ -14,7 +14,7 @@ import Distribution.Verbosity
 import Distribution.Simple.PackageIndex
 import Distribution.Client.Types.SourcePackageDb (SourcePackageDb(..))
 import qualified Data.List.NonEmpty as NEL
-import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep)
+import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep, fixupDocFiles)
 import Distribution.Client.Init.Defaults
 import Distribution.Simple.Flag (fromFlagOrDefault, flagElim)
 import Distribution.Client.Init.FlagExtractors
@@ -33,7 +33,7 @@ createProject v _pkgIx _srcDb initFlags = do
     isMinimal <- getMinimal initFlags
     doOverwrite <- getOverwrite initFlags
     pkgDir <- getPackageDir initFlags
-    pkgDesc <- genSimplePkgDesc initFlags
+    pkgDesc <- fixupDocFiles v =<< genSimplePkgDesc initFlags
 
     let pkgName = _pkgName pkgDesc
         mkOpts cs = WriteOpts

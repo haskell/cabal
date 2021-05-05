@@ -269,11 +269,17 @@ mkPackageNameDep pkg = mkDependency pkg anyVersion (NES.singleton LMainLibName)
 -- so whatever the user wants as doc files should be dumped into
 -- extra-src-files.
 --
-fixupDocFiles :: PkgDescription -> PkgDescription
-fixupDocFiles pkgDesc
-  | _pkgCabalVersion pkgDesc < CabalSpecV1_18 = pkgDesc
-    { _pkgExtraSrcFiles =_pkgExtraSrcFiles pkgDesc
-      <> fromMaybe mempty (_pkgExtraDocFiles pkgDesc)
-    , _pkgExtraDocFiles = Nothing
-    }
-  | otherwise = pkgDesc
+fixupDocFiles :: Interactive m => Verbosity -> PkgDescription -> m PkgDescription
+fixupDocFiles v pkgDesc
+  | _pkgCabalVersion pkgDesc < CabalSpecV1_18 = do
+    message v $ concat
+      [ "Cabal spec versions < 1.18 do not support extra-doc-files. "
+      , "Doc files will be treated as extra-src-files."
+      ]
+
+    return $ pkgDesc
+      { _pkgExtraSrcFiles =_pkgExtraSrcFiles pkgDesc
+        <> fromMaybe mempty (_pkgExtraDocFiles pkgDesc)
+      , _pkgExtraDocFiles = Nothing
+      }
+  | otherwise = return pkgDesc
