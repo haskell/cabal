@@ -127,7 +127,7 @@ defaultCategories =
 
 defaultCabalVersions :: [CabalSpecVersion]
 defaultCabalVersions =
-    [ CabalSpecV1_10
+    [ CabalSpecV1_24
     , CabalSpecV2_0
     , CabalSpecV2_2
     , CabalSpecV2_4

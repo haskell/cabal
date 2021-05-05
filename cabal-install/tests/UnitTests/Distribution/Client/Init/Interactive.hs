@@ -56,13 +56,13 @@ createProjectTest
   -> TestTree
 createProjectTest pkgIx srcDb = testGroup "createProject tests"
   [ testGroup "with flags"
-    [ testCase "Check the non-interactive workflow" $ do
+    [ testCase "Check the interactive workflow" $ do
         let dummyFlags' = dummyFlags
               { packageType = Flag LibraryAndExecutable
               , minimal = Flag False
               , overwrite = Flag False
               , packageDir = Flag "/home/test/test-package"
-              , extraSrc = Flag ["CHANGELOG.md"]
+              , extraSrc = NoFlag
               , exposedModules = Flag []
               , otherModules = Flag []
               , otherExts = Flag []
@@ -459,6 +459,85 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCategory      desc @?= "Control"
             _pkgExtraSrcFiles desc @?= mempty
             _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+
+            _libSourceDirs     lib @?= ["src"]
+            _libLanguage       lib @?= Haskell98
+            _libExposedModules lib @?= myLibModule :| []
+            _libOtherModules   lib @?= []
+            _libOtherExts      lib @?= []
+            _libDependencies   lib @?! []
+            _libBuildTools     lib @?= []
+
+          Right (ProjectSettings _ _ lib exe test, _) -> do
+            lib  @?! Nothing
+            exe  @?= Nothing
+            test @?= Nothing
+          Left e -> assertFailure $ show e
+
+    , testCase "Check the interactive library workflow - cabal < 1.18" $ do
+        let inputs = fromList
+              -- package type
+              [ "1"
+              -- package dir
+              , "test-package"
+              -- package description
+              -- cabal version
+              , "4"
+              -- package name
+              , "test-package"
+              , "test-package"
+              -- version
+              , "3.1.2.3"
+              -- license
+              , "3"
+              -- author
+              , "Foobar"
+              -- email
+              , "foobar@qux.com"
+              -- homepage
+              , "qux.com"
+              -- synopsis
+              , "Qux's package"
+              -- category
+              , "3"
+              -- library target
+              -- source dir
+              , "1"
+              -- language
+              , "2"
+              -- test suite
+              , "n"
+              -- comments
+              , "y"
+              ]
+
+            flags = emptyFlags
+              { cabalVersion = Flag CabalSpecV1_10
+              , extraDoc = Flag [defaultChangelog]
+              , extraSrc = Flag ["README.md"]
+              }
+
+        case (_runPrompt $ createProject silent pkgIx srcDb flags) inputs of
+          Right (ProjectSettings opts desc (Just lib) Nothing Nothing, _) -> do
+            _optOverwrite  opts @?= False
+            _optMinimal    opts @?= False
+            _optNoComments opts @?= False
+            _optVerbosity  opts @?= silent
+            _optPkgDir     opts @?= "/home/test/test-package"
+            _optPkgType    opts @?= Library
+            _optPkgName    opts @?= mkPackageName "test-package"
+
+            _pkgCabalVersion  desc @?= CabalSpecV1_10
+            _pkgName          desc @?= mkPackageName "test-package"
+            _pkgVersion       desc @?= mkVersion [3,1,2,3]
+            _pkgLicense       desc @?! SPDX.NONE
+            _pkgAuthor        desc @?= "Foobar"
+            _pkgEmail         desc @?= "foobar@qux.com"
+            _pkgHomePage      desc @?= "qux.com"
+            _pkgSynopsis      desc @?= "Qux's package"
+            _pkgCategory      desc @?= "Control"
+            _pkgExtraSrcFiles desc @?= Set.fromList [defaultChangelog, "README.md"]
+            _pkgExtraDocFiles desc @?= Nothing
 
             _libSourceDirs     lib @?= ["src"]
             _libLanguage       lib @?= Haskell98

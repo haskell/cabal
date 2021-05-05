@@ -328,14 +328,10 @@ mkPkgDescription opts pkgDesc =
             True
             opts
 
-    , case _pkgExtraSrcFiles pkgDesc of
-        fs
-          | null fs -> PrettyEmpty
-          | otherwise ->
-            field "extra-source-files" formatExtraSourceFiles (toList fs)
-            ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
-            True
-            opts
+    , field "extra-source-files" formatExtraSourceFiles (toList $ _pkgExtraSrcFiles pkgDesc)
+      ["Extra source files to be distributed with the package, such as examples, or a tutorial module."]
+      True
+      opts
     ]
   where
     cabalSpec = _pkgCabalVersion pkgDesc

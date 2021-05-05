@@ -31,7 +31,7 @@ tests
     -> SourcePackageDb
     -> TestTree
 tests _v _initFlags comp pkgIx srcDb =
-  testGroup "cabal init non-interactive"
+  testGroup "Distribution.Client.Init.NonInteractive.Command"
     [ testGroup "driver function test"
       [ driverFunctionTest pkgIx srcDb comp
       ]
