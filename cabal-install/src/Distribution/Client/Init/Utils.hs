@@ -134,13 +134,17 @@ retrieveModuleExtensions m = do
   catMaybes <$> map (simpleParsec . trim) . grabModuleExtensions <$> readFile m
 
   where
-    stop c = (c /= '\n') && (c /= ' ') && (c /= ',')
+    stop c = (c /= '\n') && (c /= ' ') && (c /= ',') && (c /= '#')
 
     grabModuleExtensions [] = []
     grabModuleExtensions ('-':'-':xs) = grabModuleExtensions $ dropWhile' (/= '\n') xs
-    grabModuleExtensions ('L':'A':'N':'G':'U':'A':'G':'E':' ':xs) = takeWhile' stop xs : grabModuleExtensions (dropWhile' stop xs)
-    grabModuleExtensions (',':xs) = takeWhile' stop xs : grabModuleExtensions (dropWhile' stop xs)
+    grabModuleExtensions ('L':'A':'N':'G':'U':'A':'G':'E':xs) = takeWhile' stop xs : grabModuleExtensions' (dropWhile' stop xs)
     grabModuleExtensions (_:xs) = grabModuleExtensions xs
+ 
+    grabModuleExtensions' [] = []
+    grabModuleExtensions' ('#':xs) = grabModuleExtensions xs
+    grabModuleExtensions' (',':xs) = takeWhile' stop xs : grabModuleExtensions' (dropWhile' stop xs)
+    grabModuleExtensions' (_:xs) = grabModuleExtensions xs
 
 takeWhile' :: (Char -> Bool) -> String -> String
 takeWhile' p = takeWhile p . trim
