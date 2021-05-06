@@ -106,9 +106,10 @@ retrieveModuleName m = do
   fromString . trim . grabModuleName <$> readFile m
 
   where
-    stop c = (c /= '\\') && (c /= ' ')
+    stop c = (c /= '\n') && (c /= ' ')
 
     grabModuleName [] = []
+    grabModuleName ('-':'-':xs) = grabModuleName $ dropWhile' (/= '\n') xs
     grabModuleName ('m':'o':'d':'u':'l':'e':' ':xs) = takeWhile' stop xs
     grabModuleName (_:xs) = grabModuleName xs
 
@@ -118,9 +119,10 @@ retrieveModuleImports m = do
   map (fromString . trim) . grabModuleImports <$> readFile m
 
   where
-    stop c = (c /= '\\') && (c /= ' ') && (c /= '(')
+    stop c = (c /= '\n') && (c /= ' ') && (c /= '(')
 
     grabModuleImports [] = []
+    grabModuleImports ('-':'-':xs) = grabModuleImports $ dropWhile' (/= '\n') xs
     grabModuleImports ('i':'m':'p':'o':'r':'t':' ':xs) = case trim xs of -- in case someone uses a weird formatting
       ('q':'u':'a':'l':'i':'f':'i':'e':'d':' ':ys) -> takeWhile' stop ys : grabModuleImports (dropWhile' stop ys)
       _                                            -> takeWhile' stop xs : grabModuleImports (dropWhile' stop xs)
@@ -132,9 +134,10 @@ retrieveModuleExtensions m = do
   catMaybes <$> map (simpleParsec . trim) . grabModuleExtensions <$> readFile m
 
   where
-    stop c = (c /= '\\') && (c /= ' ') && (c /= ',')
+    stop c = (c /= '\n') && (c /= ' ') && (c /= ',')
 
     grabModuleExtensions [] = []
+    grabModuleExtensions ('-':'-':xs) = grabModuleExtensions $ dropWhile' (/= '\n') xs
     grabModuleExtensions ('L':'A':'N':'G':'U':'A':'G':'E':' ':xs) = takeWhile' stop xs : grabModuleExtensions (dropWhile' stop xs)
     grabModuleExtensions (',':xs) = takeWhile' stop xs : grabModuleExtensions (dropWhile' stop xs)
     grabModuleExtensions (_:xs) = grabModuleExtensions xs
