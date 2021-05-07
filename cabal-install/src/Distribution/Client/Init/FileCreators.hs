@@ -52,7 +52,9 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
     | otherwise = do
 
       -- clear prompt history a bit"
-      message opts ""
+      message opts
+        $ "\nUsing cabal specification: "
+        ++ show (_optCabalSpec opts)
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc

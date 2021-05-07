@@ -180,8 +180,16 @@ getOtherModules :: Interactive m => InitFlags -> m [ModuleName]
 getOtherModules = return . fromFlagOrDefault [] . otherModules
 
 -- | Retrieve the list of build tools
-getBuildTools :: Interactive m => InitFlags -> m [String]
-getBuildTools = return . fromFlagOrDefault [] . buildTools
+getBuildTools :: Interactive m => InitFlags -> m [Dependency]
+getBuildTools = flagElim (return []) (foldM go []) . buildTools
+  where
+    go acc dep = case eitherParsec dep of
+      Left e -> do
+        putStrLn $ "Failed to parse dependency: " ++ e
+        putStrLn "Skipping..."
+
+        return acc
+      Right d -> return $ acc ++ [d]
 
 -- | Retrieve the list of dependencies
 getDependencies

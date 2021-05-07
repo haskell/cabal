@@ -22,6 +22,7 @@ import Distribution.ModuleName (fromString)
 import Distribution.Simple.Flag
 import Data.List (foldl')
 import qualified Data.Set as Set
+import Distribution.Client.Init.Utils (mkStringyDep)
 
 tests
     :: Verbosity
@@ -333,7 +334,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= ["happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy"]
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -341,7 +342,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= ["happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy"]
 
             _testMainIs       test @?= HsFilePath "Main.hs" Standard
             _testDirs         test @?= ["test"]
@@ -349,7 +350,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherModules test @?= map fromString ["Foo", "Bar"]
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
-            _testBuildTools   test @?= ["happy"]
+            _testBuildTools   test @?= [mkStringyDep "happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -462,7 +463,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= ["happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy"]
 
             _testMainIs       test @?= HsFilePath "Main.hs" Standard
             _testDirs         test @?= ["test"]
@@ -470,7 +471,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherModules test @?= map fromString ["Foo", "Bar"]
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
-            _testBuildTools   test @?= ["happy"]
+            _testBuildTools   test @?= [mkStringyDep "happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -591,7 +592,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= ["happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy"]
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -599,7 +600,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= ["happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -693,7 +694,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= ["happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -779,7 +780,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= ["happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?= Nothing
@@ -1100,7 +1101,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             [ "[]"
             ]
           ]
-      , testSimple "Check buildToolsHeuristics output" (`buildToolsHeuristics` "") ["happy"]
+      , testSimple "Check buildToolsHeuristics output" (`buildToolsHeuristics` "") [mkStringyDep "happy"]
           ["[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"]
       , testSimple "Check otherExtsHeuristics output" (`otherExtsHeuristics` "")
           (map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards])

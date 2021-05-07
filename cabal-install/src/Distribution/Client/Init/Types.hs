@@ -155,7 +155,7 @@ data LibTarget = LibTarget
     , _libOtherModules :: [ModuleName]
     , _libOtherExts :: [Extension]
     , _libDependencies :: [P.Dependency]
-    , _libBuildTools :: [String]
+    , _libBuildTools :: [P.Dependency]
     } deriving (Show, Eq)
 
 -- | 'ExeTarget' represents the relevant options set by the
@@ -168,7 +168,7 @@ data ExeTarget = ExeTarget
     , _exeOtherModules :: [ModuleName]
     , _exeOtherExts :: [Extension]
     , _exeDependencies :: [P.Dependency]
-    , _exeBuildTools :: [String]
+    , _exeBuildTools :: [P.Dependency]
     } deriving (Show, Eq)
 
 -- | 'TestTarget' represents the relevant options set by the
@@ -181,7 +181,7 @@ data TestTarget = TestTarget
     , _testOtherModules :: [ModuleName]
     , _testOtherExts :: [Extension]
     , _testDependencies :: [P.Dependency]
-    , _testBuildTools :: [String]
+    , _testBuildTools :: [P.Dependency]
     } deriving (Show, Eq)
 
 -- -------------------------------------------------------------------- --
@@ -195,6 +195,7 @@ data WriteOpts = WriteOpts
     , _optPkgDir :: FilePath
     , _optPkgType :: PackageType
     , _optPkgName :: P.PackageName
+    , _optCabalSpec :: CabalSpecVersion
     } deriving (Eq, Show)
 
 data ProjectSettings = ProjectSettings

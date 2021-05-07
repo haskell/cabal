@@ -106,6 +106,7 @@ createProject comp v pkgIx srcDb initFlags = do
   comments <- noCommentsHeuristics initFlags
 
   let pkgName = _pkgName pkgDesc
+      cabalSpec = _pkgCabalVersion pkgDesc
       mkOpts cs = WriteOpts
         doOverwrite isMinimal cs
         v pkgDir pkgType pkgName
@@ -116,14 +117,14 @@ createProject comp v pkgIx srcDb initFlags = do
       testTarget <- genTestTarget initFlags comp pkgIx
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc
+        (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
       exeTarget <- genExeTarget initFlags comp pkgIx
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc Nothing
+        (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
@@ -132,7 +133,7 @@ createProject comp v pkgIx srcDb initFlags = do
       testTarget <- genTestTarget initFlags comp pkgIx
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc (Just libTarget)
+        (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
 
 genPkgDescription
@@ -412,9 +413,9 @@ testOtherModulesHeuristics flags = case otherModules flags of
       else return []
 
 -- | Retrieve the list of build tools
-buildToolsHeuristics :: Interactive m => InitFlags -> FilePath -> m [String]
+buildToolsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Dependency]
 buildToolsHeuristics flags fp = case buildTools flags of
-  Flag x -> return x
+  Flag{} -> getBuildTools flags
   NoFlag -> retrieveBuildTools fp
 
 -- | Retrieve the list of dependencies

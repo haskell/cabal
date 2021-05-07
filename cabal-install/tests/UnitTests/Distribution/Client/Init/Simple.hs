@@ -55,7 +55,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
 
           flags = emptyFlags { packageType = Flag Library }
           settings = ProjectSettings
-            (WriteOpts False False False v "/home/test/1" Library pkgName)
+            (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             Nothing Nothing
 
@@ -67,7 +67,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       let inputs = fromList ["1", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag Library }
           settings = ProjectSettings
-            (WriteOpts False False False v "/home/test/1" Library pkgName)
+            (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             Nothing (Just $ simpleTestTarget (Just pkgName))
 
@@ -79,7 +79,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       let inputs = fromList ["2", "simple-test"]
           flags = emptyFlags { packageType = Flag Executable }
           settings = ProjectSettings
-            (WriteOpts False False False v "/home/test/2" Executable pkgName)
+            (WriteOpts False False False v "/home/test/2" Executable pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) Nothing
             (Just $ simpleExeTarget Nothing) Nothing
 
@@ -91,7 +91,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       let inputs = fromList ["2", "simple-test", "n"]
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
-            (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName)
+            (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             (Just $ simpleExeTarget (Just pkgName)) Nothing
 
@@ -102,7 +102,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       let inputs = fromList ["2", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
-            (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName)
+            (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) (Just simpleLibTarget)
             (Just $ simpleExeTarget (Just pkgName))
             (Just $ simpleTestTarget (Just pkgName))

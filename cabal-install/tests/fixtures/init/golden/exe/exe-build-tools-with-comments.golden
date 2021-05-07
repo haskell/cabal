@@ -1,6 +1,6 @@
 executable y
     -- .hs or .lhs file containing the Main module.
-    main-is:          Main.hs
+    main-is:            Main.hs
 
     -- Modules included in this executable, other than Main.
     -- other-modules:
@@ -9,13 +9,13 @@ executable y
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base
+    build-depends:      base
 
     -- Directories containing source files.
-    hs-source-dirs:   exe
+    hs-source-dirs:     exe
 
     -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-    build-tools:      happy
+    build-tool-depends: happy
 
     -- Base language which the package is written in.
-    default-language: Haskell2010
+    default-language:   Haskell2010

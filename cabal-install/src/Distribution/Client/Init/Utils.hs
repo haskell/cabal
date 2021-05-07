@@ -16,6 +16,7 @@ module Distribution.Client.Init.Utils
 , filePathToPkgName
 , mkPackageNameDep
 , fixupDocFiles
+, mkStringyDep
 ) where
 
 
@@ -81,11 +82,16 @@ isHaskell f = isSuffixOf ".hs" f || isSuffixOf ".lhs" f
 isBuildTool :: String -> Bool
 isBuildTool f = not . null . knownSuffixHandlers $ takeExtension f
 
-retrieveBuildTools :: Interactive m => FilePath -> m [String]
+retrieveBuildTools :: Interactive m => FilePath -> m [Dependency]
 retrieveBuildTools fp = do
-  files <- map takeExtension <$> listFilesRecursive fp
+  files <- fmap takeExtension <$> listFilesRecursive fp
 
-  return [knownSuffixHandlers f | f <- files, isBuildTool f]
+  let tools =
+        [ mkStringyDep (knownSuffixHandlers f)
+        | f <- files, isBuildTool f
+        ]
+
+  return tools
 
 retrieveSourceFiles :: Interactive m => FilePath -> m [SourceFileEntry]
 retrieveSourceFiles fp = do
@@ -140,7 +146,7 @@ retrieveModuleExtensions m = do
     grabModuleExtensions ('-':'-':xs) = grabModuleExtensions $ dropWhile' (/= '\n') xs
     grabModuleExtensions ('L':'A':'N':'G':'U':'A':'G':'E':xs) = takeWhile' stop xs : grabModuleExtensions' (dropWhile' stop xs)
     grabModuleExtensions (_:xs) = grabModuleExtensions xs
- 
+
     grabModuleExtensions' [] = []
     grabModuleExtensions' ('#':xs) = grabModuleExtensions xs
     grabModuleExtensions' (',':xs) = takeWhile' stop xs : grabModuleExtensions' (dropWhile' stop xs)
@@ -256,3 +262,6 @@ fixupDocFiles v pkgDesc
       , _pkgExtraDocFiles = Nothing
       }
   | otherwise = return pkgDesc
+
+mkStringyDep :: String -> Dependency
+mkStringyDep = mkPackageNameDep . PN.mkPackageName

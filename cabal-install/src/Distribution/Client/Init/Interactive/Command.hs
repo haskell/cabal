@@ -97,6 +97,7 @@ createProject v pkgIx srcDb initFlags = do
   pkgDesc <- fixupDocFiles v =<< genPkgDescription initFlags srcDb
 
   let pkgName = _pkgName pkgDesc
+      cabalSpec = _pkgCabalVersion pkgDesc
       mkOpts cs = WriteOpts
         doOverwrite isMinimal cs
         v pkgDir pkgType pkgName
@@ -110,7 +111,7 @@ createProject v pkgIx srcDb initFlags = do
       comments <- noCommentsPrompt initFlags
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc
+        (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
@@ -118,7 +119,7 @@ createProject v pkgIx srcDb initFlags = do
       comments <- noCommentsPrompt initFlags
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc Nothing
+        (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
@@ -133,7 +134,7 @@ createProject v pkgIx srcDb initFlags = do
       comments <- noCommentsPrompt initFlags
 
       return $ ProjectSettings
-        (mkOpts comments) pkgDesc (Just libTarget)
+        (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
   where
     -- Add package name as dependency of test suite

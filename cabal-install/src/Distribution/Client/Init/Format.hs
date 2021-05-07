@@ -138,7 +138,7 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
       True
       opts
 
-    , field "build-tools" listFieldS tools
+    , field (buildToolTag opts) formatDependencyList tools
       ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
       False
       opts
@@ -177,7 +177,7 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
         True
         opts
 
-      , field "build-tools" listFieldS tools
+      , field (buildToolTag opts) formatDependencyList tools
         ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
         False
         opts
@@ -189,7 +189,6 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
       ]
     where
       exeName = pretty $ _optPkgName opts
-
 
 mkTestStanza :: WriteOpts -> TestTarget -> PrettyField FieldAnnotation
 mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
@@ -229,7 +228,7 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
          True
          opts
 
-       , field "build-tools" listFieldS tools
+       , field (buildToolTag opts) formatDependencyList tools
          ["Extra tools (e.g. alex, hsc2hs, ...) needed to build the source."]
          False
          opts
@@ -343,3 +342,8 @@ listFieldS = text . intercalate ", "
 
 unsafeFromHs :: HsFilePath -> Doc
 unsafeFromHs = text . _hsFilePath
+
+buildToolTag :: WriteOpts -> FieldName
+buildToolTag opts
+  | _optCabalSpec opts < CabalSpecV3_0 = "build-tools"
+  | otherwise = "build-tool-depends"

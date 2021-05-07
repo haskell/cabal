@@ -1,6 +1,6 @@
 library
     -- Modules exported by the library.
-    exposed-modules:  MyLib
+    exposed-modules:    MyLib
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -9,13 +9,13 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base
+    build-depends:      base
 
     -- Directories containing source files.
-    hs-source-dirs:   src
+    hs-source-dirs:     src
 
     -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-    build-tools:      happy
+    build-tool-depends: happy
 
     -- Base language which the package is written in.
-    default-language: Haskell98
+    default-language:   Haskell98
