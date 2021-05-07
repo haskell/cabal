@@ -312,7 +312,7 @@ testArgs = fromList ["y", "1", "test", "1"]
 
 pkgArgs :: NonEmpty String
 pkgArgs = fromList
-    [ "4"
+    [ "5"
     , "foo-package"
     , "y"
     , "0.1.0.0"
