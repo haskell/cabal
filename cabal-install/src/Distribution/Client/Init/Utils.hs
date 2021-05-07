@@ -59,15 +59,26 @@ data SourceFileEntry = SourceFileEntry
     } deriving Show
 
 -- Unfortunately we cannot use the version exported by Distribution.Simple.Program
-knownSuffixHandlers :: String -> String
-knownSuffixHandlers ".gc"    = "greencard"
-knownSuffixHandlers ".chs"   = "chs"
-knownSuffixHandlers ".hsc"   = "hsc2hs"
-knownSuffixHandlers ".x"     = "alex"
-knownSuffixHandlers ".y"     = "happy"
-knownSuffixHandlers ".ly"    = "happy"
-knownSuffixHandlers ".cpphs" = "cpp"
-knownSuffixHandlers _       = ""
+knownSuffixHandlers :: CabalSpecVersion -> String -> String
+knownSuffixHandlers v s
+  | v < CabalSpecV3_0 = case s of
+      ".gc" -> "greencard"
+      ".chs" -> "chs"
+      ".hsc" -> "hsc2hs"
+      ".x" -> "alex"
+      ".y" -> "happy"
+      ".ly" -> "happy"
+      ".cpphs" -> "cpp"
+      _ -> ""
+  | otherwise = case s of
+      ".gc" -> "greencard:greencard"
+      ".chs" -> "chs:chs"
+      ".hsc" -> "hsc2hs:hsc2hs"
+      ".x" -> "alex:alex"
+      ".y" -> "happy:happy"
+      ".ly" -> "happy:happy"
+      ".cpphs" -> "cpp:cpp"
+      _ -> ""
 
 
 -- | Check if a given file has main file characteristics
@@ -79,16 +90,16 @@ isMain f = (isInfixOf "Main" f || isInfixOf "main" f)
 isHaskell :: String -> Bool
 isHaskell f = isSuffixOf ".hs" f || isSuffixOf ".lhs" f
 
-isBuildTool :: String -> Bool
-isBuildTool f = not . null . knownSuffixHandlers $ takeExtension f
+isBuildTool :: CabalSpecVersion -> String -> Bool
+isBuildTool v = not . null . knownSuffixHandlers v . takeExtension
 
-retrieveBuildTools :: Interactive m => FilePath -> m [Dependency]
-retrieveBuildTools fp = do
+retrieveBuildTools :: Interactive m => CabalSpecVersion -> FilePath -> m [Dependency]
+retrieveBuildTools v fp = do
   files <- fmap takeExtension <$> listFilesRecursive fp
 
   let tools =
-        [ mkStringyDep (knownSuffixHandlers f)
-        | f <- files, isBuildTool f
+        [ mkStringyDep (knownSuffixHandlers v f)
+        | f <- files, isBuildTool v f
         ]
 
   return tools
@@ -264,4 +275,4 @@ fixupDocFiles v pkgDesc
   | otherwise = return pkgDesc
 
 mkStringyDep :: String -> Dependency
-mkStringyDep = mkPackageNameDep . PN.mkPackageName
+mkStringyDep = mkPackageNameDep . mkPackageName

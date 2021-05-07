@@ -334,7 +334,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= [mkStringyDep "happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy:happy"]
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -342,7 +342,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= [mkStringyDep "happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy:happy"]
 
             _testMainIs       test @?= HsFilePath "Main.hs" Standard
             _testDirs         test @?= ["test"]
@@ -350,7 +350,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherModules test @?= map fromString ["Foo", "Bar"]
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
-            _testBuildTools   test @?= [mkStringyDep "happy"]
+            _testBuildTools   test @?= [mkStringyDep "happy:happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -463,7 +463,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= [mkStringyDep "happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy:happy"]
 
             _testMainIs       test @?= HsFilePath "Main.hs" Standard
             _testDirs         test @?= ["test"]
@@ -471,7 +471,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherModules test @?= map fromString ["Foo", "Bar"]
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
-            _testBuildTools   test @?= [mkStringyDep "happy"]
+            _testBuildTools   test @?= [mkStringyDep "happy:happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -592,7 +592,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= [mkStringyDep "happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy:happy"]
 
             _exeMainIs          exe @?= HsFilePath "Main.hs" Standard
             _exeApplicationDirs exe @?= ["app"]
@@ -600,7 +600,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= [mkStringyDep "happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy:happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -694,7 +694,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _libOtherModules   lib @?= map fromString ["Baz.Internal"]
             _libOtherExts      lib @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _libDependencies   lib @?! []
-            _libBuildTools     lib @?= [mkStringyDep "happy"]
+            _libBuildTools     lib @?= [mkStringyDep "happy:happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -780,7 +780,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherModules    exe @?= map fromString ["Foo", "Bar"]
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
-            _exeBuildTools      exe @?= [mkStringyDep "happy"]
+            _exeBuildTools      exe @?= [mkStringyDep "happy:happy"]
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?= Nothing
@@ -857,7 +857,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ genLibTarget emptyFlags comp pkgIx) inputs of
+        case (_runPrompt $ genLibTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -891,7 +891,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
-        case (_runPrompt $ genExeTarget emptyFlags comp pkgIx) inputs of
+        case (_runPrompt $ genExeTarget emptyFlags comp pkgIx defaultCabalVersion) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -919,8 +919,9 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               -- build tools
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
+            flags = emptyFlags {initializeTestSuite = Flag True}
 
-        case (_runPrompt $ genTestTarget (emptyFlags {initializeTestSuite = Flag True}) comp pkgIx) inputs of
+        case (_runPrompt $ genTestTarget flags comp pkgIx defaultCabalVersion) inputs of
           Left e -> assertFailure $ show e
           Right{} -> return ()
     ]
@@ -1101,7 +1102,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             [ "[]"
             ]
           ]
-      , testSimple "Check buildToolsHeuristics output" (`buildToolsHeuristics` "") [mkStringyDep "happy"]
+      , testSimple "Check buildToolsHeuristics output" (\a -> buildToolsHeuristics a "" defaultCabalVersion) [mkStringyDep "happy:happy"]
           ["[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"]
       , testSimple "Check otherExtsHeuristics output" (`otherExtsHeuristics` "")
           (map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards])

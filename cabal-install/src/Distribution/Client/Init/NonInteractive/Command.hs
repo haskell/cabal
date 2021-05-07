@@ -113,24 +113,24 @@ createProject comp v pkgIx srcDb initFlags = do
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags comp pkgIx
-      testTarget <- genTestTarget initFlags comp pkgIx
+      libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
+      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
-      exeTarget <- genExeTarget initFlags comp pkgIx
+      exeTarget <- genExeTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags comp pkgIx
-      exeTarget <- genExeTarget initFlags comp pkgIx
-      testTarget <- genTestTarget initFlags comp pkgIx
+      libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
+      exeTarget <- genExeTarget initFlags comp pkgIx cabalSpec
+      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
@@ -159,8 +159,9 @@ genLibTarget
   => InitFlags
   -> Compiler
   -> InstalledPackageIndex
+  -> CabalSpecVersion
   -> m LibTarget
-genLibTarget flags comp pkgs = do
+genLibTarget flags comp pkgs v = do
   srcDirs   <- srcDirsHeuristics flags
   let srcDir = fromMaybe defaultSourceDir $ safeHead srcDirs
   LibTarget srcDirs
@@ -169,16 +170,17 @@ genLibTarget flags comp pkgs = do
     <*> libOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags srcDir
     <*> dependenciesHeuristics flags srcDir pkgs
-    <*> buildToolsHeuristics flags srcDir
+    <*> buildToolsHeuristics flags srcDir v
 
 genExeTarget
   :: Interactive m
   => InitFlags
   -> Compiler
   -> InstalledPackageIndex
+  -> CabalSpecVersion
   -> m ExeTarget
-genExeTarget flags comp pkgs = do
-  appDirs   <- appDirsHeuristics flags
+genExeTarget flags comp pkgs v = do
+  appDirs  <- appDirsHeuristics flags
   let appDir = fromMaybe defaultApplicationDir $ safeHead appDirs
   ExeTarget
     <$> mainFileHeuristics flags
@@ -187,15 +189,16 @@ genExeTarget flags comp pkgs = do
     <*> exeOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags appDir
     <*> dependenciesHeuristics flags appDir pkgs
-    <*> buildToolsHeuristics flags appDir
+    <*> buildToolsHeuristics flags appDir v
 
 genTestTarget
   :: Interactive m
   => InitFlags
   -> Compiler
   -> InstalledPackageIndex
+  -> CabalSpecVersion
   -> m (Maybe TestTarget)
-genTestTarget flags comp pkgs = do
+genTestTarget flags comp pkgs v = do
   initialized <- initializeTestSuiteHeuristics flags
   testDirs' <- testDirsHeuristics flags
   let testDir = fromMaybe defaultTestDir $ safeHead testDirs'
@@ -208,7 +211,7 @@ genTestTarget flags comp pkgs = do
     <*> testOtherModulesHeuristics flags
     <*> otherExtsHeuristics flags testDir
     <*> dependenciesHeuristics flags testDir pkgs
-    <*> buildToolsHeuristics flags testDir
+    <*> buildToolsHeuristics flags testDir v
 
 -- -------------------------------------------------------------------- --
 -- Get flags from init config
@@ -413,10 +416,15 @@ testOtherModulesHeuristics flags = case otherModules flags of
       else return []
 
 -- | Retrieve the list of build tools
-buildToolsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Dependency]
-buildToolsHeuristics flags fp = case buildTools flags of
+buildToolsHeuristics
+    :: Interactive m
+    => InitFlags
+    -> FilePath
+    -> CabalSpecVersion
+    -> m [Dependency]
+buildToolsHeuristics flags fp v = case buildTools flags of
   Flag{} -> getBuildTools flags
-  NoFlag -> retrieveBuildTools fp
+  NoFlag -> retrieveBuildTools v fp
 
 -- | Retrieve the list of dependencies
 dependenciesHeuristics :: Interactive m => InitFlags -> FilePath -> InstalledPackageIndex -> m [Dependency]
