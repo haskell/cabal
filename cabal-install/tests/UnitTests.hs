@@ -16,6 +16,7 @@ import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.ProjectConfig
+import qualified UnitTests.Distribution.Client.ProjectPlanning
 import qualified UnitTests.Distribution.Client.JobControl
 import qualified UnitTests.Distribution.Client.IndexUtils
 import qualified UnitTests.Distribution.Client.IndexUtils.Timestamp
@@ -51,6 +52,8 @@ main =
         UnitTests.Distribution.Client.UserConfig.tests
     , testGroup "UnitTests.Distribution.Client.ProjectConfig"
         UnitTests.Distribution.Client.ProjectConfig.tests
+    , testGroup "UnitTests.Distribution.Client.ProjectPlanning"
+        UnitTests.Distribution.Client.ProjectPlanning.tests
     , testGroup "UnitTests.Distribution.Client.JobControl"
         UnitTests.Distribution.Client.JobControl.tests
     , testGroup "UnitTests.Distribution.Client.IndexUtils"
