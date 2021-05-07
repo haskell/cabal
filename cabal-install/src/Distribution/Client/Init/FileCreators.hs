@@ -40,6 +40,7 @@ import System.Directory hiding (doesDirectoryExist, doesFileExist, createDirecto
 import System.FilePath ((</>), (<.>))
 
 import Distribution.Client.Init.Format
+import Distribution.CabalSpecVersion (showCabalSpecVersion)
 
 
 -- -------------------------------------------------------------------- --
@@ -54,7 +55,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       -- clear prompt history a bit"
       message opts
         $ "\nUsing cabal specification: "
-        ++ show (_optCabalSpec opts)
+        ++ showCabalSpecVersion (_optCabalSpec opts)
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc

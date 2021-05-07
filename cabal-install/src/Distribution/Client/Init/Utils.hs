@@ -21,7 +21,7 @@ module Distribution.Client.Init.Utils
 
 
 import qualified Prelude
-import Distribution.Client.Compat.Prelude hiding (empty, readFile, Parsec, many)
+import Distribution.Client.Compat.Prelude hiding (putStrLn, empty, readFile, Parsec, many)
 import Distribution.Utils.Generic (isInfixOf)
 
 import Control.Monad (forM)
@@ -118,11 +118,21 @@ retrieveSourceFiles fp = do
     return $ SourceFileEntry {..}
 
 -- | Given a module, retrieve its name
-retrieveModuleName :: Interactive m => FilePath -> m ModuleName
+retrieveModuleName :: Interactive m => FilePath -> m (Maybe ModuleName)
 retrieveModuleName m = do
-  fromString . trim . grabModuleName <$> readFile m
+  rawModule <- trim . grabModuleName <$> readFile m
+
+  if rawModule == dirToModuleName m
+  then return $ Just $ fromString rawModule
+  else do
+    putStrLn
+      $ "Warning: found module that doesn't match directory structure: "
+      ++ rawModule
+    return Nothing
 
   where
+    dirToModuleName = error "TODO"
+
     stop c = (c /= '\n') && (c /= ' ')
 
     grabModuleName [] = []
