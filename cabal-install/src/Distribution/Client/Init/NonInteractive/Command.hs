@@ -339,7 +339,7 @@ exposedModulesHeuristics flags = do
       srcDir <- fromMaybe defaultSourceDir . safeHead <$> srcDirsHeuristics flags
 
       modules      <- filter isHaskell <$> listFilesRecursive srcDir
-      modulesNames <- traverse retrieveModuleName modules
+      modulesNames <- catMaybes <$> traverse retrieveModuleName modules
 
       otherModules' <- libOtherModulesHeuristics flags
       return $ filter (`notElem` otherModules') modulesNames
@@ -368,7 +368,7 @@ libOtherModulesHeuristics flags = case otherModules flags of
       then do
         otherModules' <- filter isHaskell <$> listFilesRecursive libDir
         filter ((`elem` otherCandidates) . last . components)
-          <$> traverse retrieveModuleName otherModules'
+          . catMaybes <$> traverse retrieveModuleName otherModules'
       else return []
 
 -- | Retrieve the list of other modules for Executables, it lists everything
@@ -390,7 +390,7 @@ exeOtherModulesHeuristics flags = case otherModules flags of
       then do
         otherModules' <- filter (\f -> not (isMain f) && isHaskell f)
           <$> listFilesRecursive exeDir
-        traverse retrieveModuleName otherModules'
+        catMaybes <$> traverse retrieveModuleName otherModules'
       else return []
 
 -- | Retrieve the list of other modules for Tests, it lists everything
@@ -412,7 +412,7 @@ testOtherModulesHeuristics flags = case otherModules flags of
       then do
         otherModules' <- filter (\f -> not (isMain f) && isHaskell f)
           <$> listFilesRecursive testDir'
-        traverse retrieveModuleName otherModules'
+        catMaybes <$> traverse retrieveModuleName otherModules'
       else return []
 
 -- | Retrieve the list of build tools

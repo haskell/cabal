@@ -106,32 +106,49 @@ retrieveBuildTools v fp = do
 
 retrieveSourceFiles :: Interactive m => FilePath -> m [SourceFileEntry]
 retrieveSourceFiles fp = do
-  files <- filter isHaskell <$> listFilesRecursive fp
+  exists <- doesDirectoryExist fp
+  if exists
+    then do
+      files <- filter isHaskell <$> listFilesRecursive fp
 
-  forM files $ \f -> do
-    let fileExtension   = takeExtension f
-    relativeSourcePath <- makeRelative f <$> getCurrentDirectory
-    moduleName         <- retrieveModuleName f
-    imports            <- retrieveModuleImports f
-    extensions         <- retrieveModuleExtensions f
+      entries <- forM files $ \f -> do
+        exists' <- doesFileExist f
+        if exists'
+          then do
+            maybeModuleName <- retrieveModuleName f
+            case maybeModuleName of
+              Nothing -> return Nothing
+              Just moduleName -> do
 
-    return $ SourceFileEntry {..}
+                let fileExtension   = takeExtension f
+                relativeSourcePath <- makeRelative f <$> getCurrentDirectory
+                imports            <- retrieveModuleImports f
+                extensions         <- retrieveModuleExtensions f
+
+                return . Just $ SourceFileEntry {..}
+          else
+            return Nothing
+      
+      return . catMaybes $ entries
+  
+  else
+    return []
 
 -- | Given a module, retrieve its name
 retrieveModuleName :: Interactive m => FilePath -> m (Maybe ModuleName)
 retrieveModuleName m = do
-  rawModule <- trim . grabModuleName <$> readFile m
+    rawModule <- trim . grabModuleName <$> readFile m
 
-  if rawModule == dirToModuleName m
-  then return $ Just $ fromString rawModule
-  else do
-    putStrLn
-      $ "Warning: found module that doesn't match directory structure: "
-      ++ rawModule
-    return Nothing
-
+    if isInfixOf rawModule (dirToModuleName m)
+      then 
+        return $ Just $ fromString rawModule
+      else do
+        putStrLn
+          $ "Warning: found module that doesn't match directory structure: "
+          ++ rawModule
+        return Nothing
   where
-    dirToModuleName = error "TODO"
+    dirToModuleName = map (\x -> if x == '/' || x == '\\' then '.' else x)
 
     stop c = (c /= '\n') && (c /= ' ')
 
