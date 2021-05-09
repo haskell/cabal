@@ -130,7 +130,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
+         ( createDirectoryIfMissing, getAppUserDataDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), renameFile )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -595,25 +595,21 @@ getCabalDir = do
     Just dir -> return dir
 
 defaultConfigFile :: IO FilePath
-defaultConfigFile = do
-  dir <- getCabalDir
-  return $ dir </> "config"
+defaultConfigFile =
+  getXdgDirectory XdgConfig $ "cabal" </> "config"
 
 defaultCacheDir :: IO FilePath
-defaultCacheDir = do
-  dir <- getCabalDir
-  return $ dir </> "packages"
+defaultCacheDir =
+  getXdgDirectory XdgCache $ "cabal" </> "packages"
 
 defaultLogsDir :: IO FilePath
-defaultLogsDir = do
-  dir <- getCabalDir
-  return $ dir </> "logs"
+defaultLogsDir =
+  getXdgDirectory XdgCache $ "cabal" </> "logs"
 
 -- | Default position of the world file
 defaultWorldFile :: IO FilePath
-defaultWorldFile = do
-  dir <- getCabalDir
-  return $ dir </> "world"
+defaultWorldFile =
+  getXdgDirectory XdgCache $ "cabal" </> "world"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
