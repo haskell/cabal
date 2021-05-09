@@ -160,6 +160,7 @@ test-suite hackage-tests
     , bytestring
     , Cabal
     , Cabal-tree-diff
+    , cabal-install
     , containers
     , deepseq
     , directory
