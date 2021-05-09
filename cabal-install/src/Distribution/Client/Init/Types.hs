@@ -1,4 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -79,7 +81,12 @@ data InitFlags =
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool
               }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid InitFlags
 
   -- the Monoid instance for Flag has later values override earlier
   -- ones, which is why we want Maybe [foo] for collecting foo values,
@@ -95,13 +102,6 @@ data PackageType = Library | Executable | LibraryAndExecutable
 displayPackageType :: PackageType -> String
 displayPackageType LibraryAndExecutable = "Library and Executable"
 displayPackageType pkgtype              = show pkgtype
-
-instance Monoid InitFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup InitFlags where
-  (<>) = gmappend
 
 defaultInitFlags :: InitFlags
 defaultInitFlags  = mempty

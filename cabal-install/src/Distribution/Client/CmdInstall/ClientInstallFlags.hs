@@ -1,5 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE LambdaCase         #-}
+
 module Distribution.Client.CmdInstall.ClientInstallFlags
 ( InstallMethod(..)
 , ClientInstallFlags(..)
@@ -30,14 +33,13 @@ data ClientInstallFlags = ClientInstallFlags
   , cinstOverwritePolicy :: Flag OverwritePolicy
   , cinstInstallMethod   :: Flag InstallMethod
   , cinstInstalldir      :: Flag FilePath
-  } deriving (Eq, Show, Generic)
+  }
+  deriving
+  stock (Eq, Show, Generic)
 
-instance Monoid ClientInstallFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ClientInstallFlags where
-  (<>) = gmappend
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ClientInstallFlags
 
 instance Binary ClientInstallFlags
 instance Structured ClientInstallFlags
@@ -66,7 +68,7 @@ clientInstallOptions _ =
     "How to handle already existing symlinks."
     cinstOverwritePolicy (\v flags -> flags { cinstOverwritePolicy = v })
     $ reqArg "always|never"
-        (parsecToReadE (\err -> "Error parsing overwrite-policy: " ++ err) (toFlag `fmap` parsec)) 
+        (parsecToReadE (\err -> "Error parsing overwrite-policy: " ++ err) (toFlag `fmap` parsec))
         (map prettyShow . flagToList)
   , option [] ["install-method"]
     "How to install the executables."

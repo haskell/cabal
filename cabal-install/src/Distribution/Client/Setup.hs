@@ -1,8 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DerivingStrategies  #-}
+{-# LANGUAGE DerivingVia         #-}
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -607,7 +609,12 @@ data ConfigExFlags = ConfigExFlags {
     configWriteGhcEnvironmentFilesPolicy
       :: Flag WriteGhcEnvironmentFilesPolicy
   }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ConfigExFlags
 
 defaultConfigExFlags :: ConfigExFlags
 defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
@@ -707,13 +714,6 @@ relaxDepsPrinter Nothing                     = []
 relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
 relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . prettyShow) $ pkgs
 
-
-instance Monoid ConfigExFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ConfigExFlags where
-  (<>) = gmappend
 
 reconfigureCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 reconfigureCommand
@@ -1340,7 +1340,13 @@ data ReportFlags = ReportFlags {
     reportUsername  :: Flag Username,
     reportPassword  :: Flag Password,
     reportVerbosity :: Flag Verbosity
-  } deriving Generic
+  }
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ReportFlags
 
 defaultReportFlags :: ReportFlags
 defaultReportFlags = ReportFlags {
@@ -1375,13 +1381,6 @@ reportCommand = CommandUI {
       ]
   }
 
-instance Monoid ReportFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ReportFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Get flags
 -- ------------------------------------------------------------
@@ -1393,7 +1392,13 @@ data GetFlags = GetFlags {
     getActiveRepos      :: Flag ActiveRepos,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
-  } deriving Generic
+  }
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid GetFlags
 
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
@@ -1467,13 +1472,6 @@ unpackCommand = getCommand {
   commandUsage = usagePackages "unpack"
   }
 
-instance Monoid GetFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup GetFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * List flags
 -- ------------------------------------------------------------
@@ -1486,7 +1484,12 @@ data ListFlags = ListFlags
     , listPackageDBs      :: [Maybe PackageDB]
     , listHcPath          :: Flag FilePath
     }
-  deriving Generic
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ListFlags
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags
@@ -1557,13 +1560,6 @@ listNeedsCompiler f =
     flagElim False (const True) (listHcPath f)
     || fromFlagOrDefault False (listInstalled f)
 
-instance Monoid ListFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ListFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Info flags
 -- ------------------------------------------------------------
@@ -1571,7 +1567,13 @@ instance Semigroup ListFlags where
 data InfoFlags = InfoFlags {
     infoVerbosity  :: Flag Verbosity,
     infoPackageDBs :: [Maybe PackageDB]
-  } deriving Generic
+  }
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid InfoFlags
 
 defaultInfoFlags :: InfoFlags
 defaultInfoFlags = InfoFlags {
@@ -1604,13 +1606,6 @@ infoCommand = CommandUI {
 
         ]
   }
-
-instance Monoid InfoFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup InfoFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Install flags
@@ -1656,7 +1651,12 @@ data InstallFlags = InstallFlags {
     installRunTests         :: Flag Bool,
     installOfflineMode      :: Flag Bool
   }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid InstallFlags
 
 instance Binary InstallFlags
 
@@ -2019,13 +2019,6 @@ installOptions showOrParseArgs =
           _ -> []
 
 
-instance Monoid InstallFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup InstallFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Upload flags
 -- ------------------------------------------------------------
@@ -2041,7 +2034,13 @@ data UploadFlags = UploadFlags {
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
     uploadVerbosity   :: Flag Verbosity
-  } deriving Generic
+  }
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid UploadFlags
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
@@ -2099,13 +2098,6 @@ uploadCommand = CommandUI {
         (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
       ]
   }
-
-instance Monoid UploadFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup UploadFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Init flags
@@ -2353,7 +2345,13 @@ registerCommand = Cabal.registerCommand
 
 data ActAsSetupFlags = ActAsSetupFlags {
     actAsSetupBuildType :: Flag BuildType
-} deriving Generic
+}
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ActAsSetupFlags
 
 defaultActAsSetupFlags :: ActAsSetupFlags
 defaultActAsSetupFlags = ActAsSetupFlags {
@@ -2378,13 +2376,6 @@ actAsSetupCommand = CommandUI {
                               (map prettyShow . flagToList))
       ]
 }
-
-instance Monoid ActAsSetupFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ActAsSetupFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * UserConfig flags

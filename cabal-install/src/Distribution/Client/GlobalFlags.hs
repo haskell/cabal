@@ -1,9 +1,11 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Client.GlobalFlags (
     GlobalFlags(..)
@@ -71,7 +73,13 @@ data GlobalFlags = GlobalFlags
     , globalNix               :: Flag Bool  -- ^ Integrate with Nix
     , globalStoreDir          :: Flag FilePath
     , globalProgPathExtra     :: NubList FilePath -- ^ Extra program path used for packagedb lookups in a global context (i.e. for http transports)
-    } deriving (Show, Generic)
+    }
+    deriving
+    stock (Show, Generic)
+
+    deriving
+      (Semigroup, Monoid)
+    via GenericMonoid GlobalFlags
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags
@@ -91,13 +99,6 @@ defaultGlobalFlags  = GlobalFlags
     , globalStoreDir          = mempty
     , globalProgPathExtra     = mempty
     }
-
-instance Monoid GlobalFlags where
-    mempty = gmempty
-    mappend = (<>)
-
-instance Semigroup GlobalFlags where
-    (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Repo context

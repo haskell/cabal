@@ -1,5 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase    #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE LambdaCase         #-}
+
 module Distribution.Client.ManpageFlags
 ( ManpageFlags (..)
 , defaultManpageFlags
@@ -15,14 +18,13 @@ import Distribution.Verbosity      (normal)
 data ManpageFlags = ManpageFlags
   { manpageVerbosity :: Flag Verbosity
   , manpageRaw       :: Flag Bool
-  } deriving (Eq, Show, Generic)
+  }
+  deriving
+  stock (Eq, Show, Generic)
 
-instance Monoid ManpageFlags  where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ManpageFlags where
-  (<>) = gmappend
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ManpageFlags
 
 defaultManpageFlags :: ManpageFlags
 defaultManpageFlags = ManpageFlags

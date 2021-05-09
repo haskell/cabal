@@ -33,6 +33,7 @@ module Distribution.Compat.Prelude (
 
     -- * Common type-classes
     Semigroup (..),
+    GenericMonoid (..),
     gmappend, gmempty,
     Typeable, TypeRep, typeRep,
     Data,
@@ -197,7 +198,7 @@ import Data.String                   (IsString (..))
 import Data.Void                     (Void, absurd, vacuous)
 import Data.Word                     (Word, Word16, Word32, Word64, Word8)
 import Distribution.Compat.Binary    (Binary (..))
-import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
+import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty, GenericMonoid (..))
 import Distribution.Compat.Typeable  (TypeRep, Typeable, typeRep)
 import GHC.Generics                  ((:*:) ((:*:)), (:+:) (L1, R1), Generic, K1 (unK1), M1 (unM1), Rep (..), U1 (U1), V1)
 import System.Exit                   (ExitCode (..), exitFailure, exitSuccess, exitWith)
