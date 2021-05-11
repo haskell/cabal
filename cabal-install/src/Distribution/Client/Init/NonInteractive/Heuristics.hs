@@ -49,10 +49,15 @@ import qualified Data.Set as Set
 -- | Guess the main file, returns a default value if none is found.
 guessMainFile :: Interactive m => FilePath -> m HsFilePath
 guessMainFile pkgDir = do
-  files  <- filter isMain <$> listFilesRecursive pkgDir
-  return $ if null files
-    then defaultMainIs
-    else toHsFilePath $ L.head files
+  exists <- doesDirectoryExist pkgDir
+  if exists
+    then do
+      files  <- filter isMain <$> listFilesRecursive pkgDir
+      return $ if null files
+        then defaultMainIs
+        else toHsFilePath $ L.head files
+    else
+      return defaultMainIs
 
 -- | Juggling characters around to guess the desired cabal version based on
 --   the system's cabal version.

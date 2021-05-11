@@ -338,11 +338,18 @@ exposedModulesHeuristics flags = do
     NoFlag -> do
       srcDir <- fromMaybe defaultSourceDir . safeHead <$> srcDirsHeuristics flags
 
-      modules      <- filter isHaskell <$> listFilesRecursive srcDir
-      modulesNames <- catMaybes <$> traverse retrieveModuleName modules
+      exists <- doesDirectoryExist srcDir
 
-      otherModules' <- libOtherModulesHeuristics flags
-      return $ filter (`notElem` otherModules') modulesNames
+      if exists
+        then do
+          modules      <- filter isHaskell <$> listFilesRecursive srcDir
+          modulesNames <- catMaybes <$> traverse retrieveModuleName modules
+
+          otherModules' <- libOtherModulesHeuristics flags
+          return $ filter (`notElem` otherModules') modulesNames
+        
+        else
+          return []
 
   return $ if null mods
     then myLibModule NEL.:| []
@@ -447,7 +454,12 @@ otherExtsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Extension]
 otherExtsHeuristics flags fp = case otherExts flags of
   Flag x -> return x
   NoFlag -> do
-    sources     <- listFilesRecursive fp
-    extensions' <- traverse retrieveModuleExtensions . filter isHaskell $ sources
+    exists <- doesDirectoryExist fp
+    if exists
+      then do
+        sources     <- listFilesRecursive fp
+        extensions' <- traverse retrieveModuleExtensions . filter isHaskell $ sources
 
-    return $ nub . join $ extensions'
+        return $ nub . join $ extensions'
+      else
+        return []

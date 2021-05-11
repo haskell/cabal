@@ -95,14 +95,20 @@ isBuildTool v = not . null . knownSuffixHandlers v . takeExtension
 
 retrieveBuildTools :: Interactive m => CabalSpecVersion -> FilePath -> m [Dependency]
 retrieveBuildTools v fp = do
-  files <- fmap takeExtension <$> listFilesRecursive fp
+  exists <- doesDirectoryExist fp
+  if exists
+    then do
+      files <- fmap takeExtension <$> listFilesRecursive fp
 
-  let tools =
-        [ mkStringyDep (knownSuffixHandlers v f)
-        | f <- files, isBuildTool v f
-        ]
+      let tools =
+            [ mkStringyDep (knownSuffixHandlers v f)
+            | f <- files, isBuildTool v f
+            ]
 
-  return tools
+      return tools
+      
+    else
+      return []
 
 retrieveSourceFiles :: Interactive m => FilePath -> m [SourceFileEntry]
 retrieveSourceFiles fp = do
