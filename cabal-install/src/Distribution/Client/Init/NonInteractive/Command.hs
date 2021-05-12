@@ -442,12 +442,11 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
         Flag x -> x
         NoFlag -> map moduleName sources
 
-  retrieveDependencies flags
-    ( nub                    -- skips duplicates
-    ( fromString "Prelude"    -- gets base as dependency
-    : (filter (`notElem` mods) -- skips modules from this own package
-    . concatMap imports $ sources)))
-    pkgIx
+      groupedDeps  = concatMap (\s -> map (\i -> (moduleName s, i)) (imports s)) sources
+      filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
+      preludeNub   = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
+
+  retrieveDependencies flags preludeNub pkgIx
 
 -- | Retrieve the list of extensions
 otherExtsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Extension]

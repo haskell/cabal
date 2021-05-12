@@ -213,15 +213,15 @@ isSourceFile :: Maybe [FilePath] -> SourceFileEntry -> Bool
 isSourceFile Nothing        sf = isSourceFile (Just ["."]) sf
 isSourceFile (Just srcDirs) sf = any (equalFilePath (relativeSourcePath sf)) srcDirs
 
-retrieveDependencies :: Interactive m => InitFlags -> [ModuleName] -> InstalledPackageIndex -> m [P.Dependency]
+retrieveDependencies :: Interactive m => InitFlags -> [(ModuleName, ModuleName)] -> InstalledPackageIndex -> m [P.Dependency]
 retrieveDependencies flags mods' pkgIx = do
   let mods = mods'
 
       modMap :: M.Map ModuleName [InstalledPackageInfo]
       modMap  = M.map (filter exposed) $ moduleNameIndex pkgIx
 
-      modDeps :: [(ModuleName, Maybe [InstalledPackageInfo])]
-      modDeps = map (\mn -> (mn, M.lookup mn modMap)) mods
+      modDeps :: [(ModuleName, ModuleName, Maybe [InstalledPackageInfo])]
+      modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
       -- modDeps = map (id &&& flip M.lookup modMap) mods
 
   message (fromFlagOrDefault silent $ initVerbosity flags) "\nGuessing dependencies..."
@@ -233,9 +233,9 @@ retrieveDependencies flags mods' pkgIx = do
 chooseDep
   :: Interactive m
   => InitFlags
-  -> (ModuleName, Maybe [InstalledPackageInfo])
+  -> (ModuleName, ModuleName, Maybe [InstalledPackageInfo])
   -> m (Maybe P.Dependency)
-chooseDep flags (m, mipi) = case mipi of
+chooseDep flags (importer, m, mipi) = case mipi of
   -- We found some packages: group them by name.
   Just ps@(_:_) ->
     case NE.groupBy (\x y -> P.pkgName x == P.pkgName y) $ map P.packageId ps of
@@ -268,7 +268,7 @@ chooseDep flags (m, mipi) = case mipi of
         return Nothing
 
   _ -> do
-    message v ("\nWarning: no package found providing " ++ prettyShow m ++ ".")
+    message v ("\nWarning: no package found providing " ++ prettyShow m ++ " in " ++ prettyShow importer ++ ".")
     return Nothing
 
   where

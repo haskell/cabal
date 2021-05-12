@@ -455,4 +455,4 @@ dependenciesPrompt
     -> InitFlags
     -> m [Dependency]
 dependenciesPrompt pkgIx flags = getDependencies flags $
-    retrieveDependencies flags [fromString "Prelude"] pkgIx
+    retrieveDependencies flags [(fromString "Prelude", fromString "Prelude")] pkgIx
