@@ -66,7 +66,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , dependencies = Flag []
               }
             inputs = NEL.fromList
-              [ "[\"quxTest/Main.hs\"]"
+              [ "True"
+              , "[\"quxTest/Main.hs\"]"
               ]
 
         case (_runPrompt $ createProject comp silent pkgIx srcDb dummyFlags') inputs of
@@ -143,6 +144,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- exe other modules
               , "False"
               -- test main file
+              , "True"
               , "[\"quxTest/Main.hs\"]"
               -- test other modules
               , "False"
@@ -230,6 +232,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- exposed modules
               , "src"
               , "True"
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "module Foo where"
               , "module Bar where"
@@ -246,6 +249,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Bar where"
               , "module Baz.Internal where"
               -- other extensions
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -258,6 +262,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               -- executable target
               -- application dirs
@@ -266,6 +271,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- main file
               , "test-package"
               , "[\"test-package/app/\"]"
+              , "True"
               , "[]"
               -- other modules
               , "test-package"
@@ -274,6 +280,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"app/Foo.hs\", \"app/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -286,9 +293,11 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, DataKinds #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               -- test target
               -- main file
+              , "True"
               , "[\"test-package/test/\"]"
               -- other modules
               , "test-package"
@@ -297,6 +306,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"test/Foo.hs\", \"test/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -309,6 +319,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Test.Tasty\nimport Test.Tasty.HUnit"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
@@ -391,6 +402,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- exposed modules
               , "src"
               , "True"
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "module Foo where"
               , "module Bar where"
@@ -407,6 +419,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Bar where"
               , "module Baz.Internal where"
               -- other extensions
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -419,9 +432,11 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               -- test target
               -- main file
+              , "True"
               , "[\"test-package/test/\"]"
               -- other modules
               , "test-package"
@@ -430,6 +445,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"test/Foo.hs\", \"test/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -442,6 +458,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Test.Tasty\nimport Test.Tasty.HUnit"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
@@ -519,6 +536,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- exposed modules
               , "src"
               , "True"
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "module Foo where"
               , "module Bar where"
@@ -535,6 +553,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Bar where"
               , "module Baz.Internal where"
               -- other extensions
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -547,6 +566,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               -- executable target
               -- application dirs
@@ -555,6 +575,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- main file
               , "test-package"
               , "[\"test-package/app/\"]"
+              , "True"
               , "[]"
               -- other modules
               , "test-package"
@@ -563,6 +584,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"app/Foo.hs\", \"app/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -575,6 +597,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, DataKinds #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
@@ -651,6 +674,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- exposed modules
               , "src"
               , "True"
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "module Foo where"
               , "module Bar where"
@@ -667,6 +691,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Bar where"
               , "module Baz.Internal where"
               -- other extensions
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -679,6 +704,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
@@ -747,6 +773,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- main file
               , "test-package"
               , "[\"test-package/app/\"]"
+              , "True"
               , "[]"
               -- other modules
               , "test-package"
@@ -755,6 +782,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"app/Foo.hs\", \"app/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -767,6 +795,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, DataKinds #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
@@ -846,6 +875,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               -- exposed modules
               , "src"
               , "True"
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "module Foo where"
               , "module Bar where"
@@ -862,6 +892,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "module Bar where"
               , "module Baz.Internal where"
               -- other extensions
+              , "True"
               , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -874,6 +905,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
@@ -890,6 +922,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               -- main file
               , "test-package"
               , "[\"test-package/app/\"]"
+              , "True"
               , "[]"
               -- other modules
               , "test-package"
@@ -898,6 +931,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"app/Foo.hs\", \"app/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -910,6 +944,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "import Control.Monad.Extra"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
               ]
 
@@ -921,7 +956,8 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
     [ testCase "Check test package flags workflow" $ do
         let inputs = NEL.fromList
               -- main file
-              [ "[]"
+              [ "True"
+              , "[]"
               -- other modules
               , "test-package"
               , "True"
@@ -929,6 +965,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "module Foo where"
               , "module Bar where"
               -- other extensions
+              , "True"
               , "[\"test/Foo.hs\", \"test/Bar.hs\"]"
               , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
               , "\"{-# LANGUAGE RecordWildCards #-}\""
@@ -941,6 +978,7 @@ fileCreatorTests pkgIx srcDb comp = testGroup "generators"
               , "import Test.Tasty\nimport Test.Tasty.HUnit"
               , "{-# LANGUAGE OverloadedStrings, LambdaCase #-}"
               -- build tools
+              , "True"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
             flags = emptyFlags {initializeTestSuite = Flag True}
@@ -1034,18 +1072,21 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             (toHsFilePath "Main.hs")
             [ "test-package"
             , "[\"test-package/app/\"]"
+            , "True"
             , "[]"
             ]
           , testSimple "Main file already defined" mainFileHeuristics
             (toHsFilePath "app/Main.hs")
             [ "test-package"
             , "[\"test-package/app/\"]"
+            , "True"
             , "[\"app/Main.hs\"]"
             ]
           , testSimple "Main lhs file already defined" mainFileHeuristics
             (toHsFilePath "app/Main.lhs")
             [ "test-package"
             , "[\"test-package/app/\"]"
+            , "True"
             , "[\"app/Main.lhs\"]"
             ]
           ]
@@ -1053,6 +1094,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           [ testSimple "Default exposed modules" exposedModulesHeuristics
             (myLibModule NEL.:| [])
             [ "src"
+            , "True"
             , "True"
             , "[]"
             , "test-package"
@@ -1062,6 +1104,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           , testSimple "Contains exposed modules" exposedModulesHeuristics
             (NEL.fromList $ map fromString ["Foo", "Bar"])
             [ "src"
+            , "True"
             , "True"
             , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
             , "module Foo where"
@@ -1127,11 +1170,15 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
             , "[]"
             ]
           ]
-      , testSimple "Check buildToolsHeuristics output" (\a -> buildToolsHeuristics a "" defaultCabalVersion) [mkStringyDep "happy:happy"]
-          ["[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"]
+      , testSimple "Check buildToolsHeuristics output" (\a -> buildToolsHeuristics a "" defaultCabalVersion)
+          [mkStringyDep "happy:happy"]
+          [ "True"
+          , "[\"app/Main.hs\", \"src/Foo.hs\", \"src/bar.y\"]"
+          ]
       , testSimple "Check otherExtsHeuristics output" (`otherExtsHeuristics` "")
           (map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards])
-          [ "[\"src/Foo.hs\", \"src/Bar.hs\"]"
+          [ "True"
+          , "[\"src/Foo.hs\", \"src/Bar.hs\"]"
           , "\"{-# LANGUAGE OverloadedStrings, LambdaCase #-}\n{-# LANGUAGE RankNTypes #-}\""
           , "\"{-# LANGUAGE RecordWildCards #-}\""
           ]
