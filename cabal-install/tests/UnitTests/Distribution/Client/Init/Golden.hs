@@ -126,7 +126,7 @@ goldenExeTests v pkgIx pkgDir pkgName = testGroup "exe golden tests"
         in runGoldenExe opts exeArgs emptyFlags
 
     , goldenVsString "Empty flags, not simple, with minimal + comments"
-      (goldenExe "exe-simple-with-comments.golden") $
+      (goldenExe "exe-simple-minimal-with-comments.golden") $
         let opts = WriteOpts False True False v pkgDir Executable pkgName defaultCabalVersion
         in runGoldenExe opts exeArgs emptyFlags
 
@@ -168,7 +168,7 @@ goldenLibTests v pkgIx pkgDir pkgName = testGroup "lib golden tests"
         in runGoldenLib opts libArgs emptyFlags
 
     , goldenVsString "Empty flags, not simple, with minimal + comments"
-      (goldenLib "lib-simple-with-comments.golden") $
+      (goldenLib "lib-simple-minimal-with-comments.golden") $
         let opts = WriteOpts False True False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenLib opts libArgs emptyFlags
 
@@ -206,12 +206,7 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
         in runGoldenTest opts testArgs emptyFlags
 
     , goldenVsString "Empty flags, not simple, with minimal + comments"
-      (goldenTest "test-simple-with-comments.golden") $
-        let opts = WriteOpts False True False v pkgDir Library pkgName defaultCabalVersion
-        in runGoldenTest opts testArgs emptyFlags
-
-    , goldenVsString "Empty flags, not simple, with minimal + comments"
-      (goldenTest "test-simple-with-comments.golden") $
+      (goldenTest "test-simple-minimal-with-comments.golden") $
         let opts = WriteOpts False True False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs emptyFlags
 
