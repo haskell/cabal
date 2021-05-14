@@ -67,10 +67,11 @@ fieldD fieldName fieldContents fieldComments includeField opts
       -- If there is no content, optionally produce a commented out field.
       fieldSEmptyContents fieldComments
     | otherwise =
-        -- If the "--no-comments" flag is set, strip comments.
-        let comments = if hasNoComments
-              then []
-              else fieldComments
+        -- If the "--no-comments" or "--minimal" flag is set, strip comments.
+        let comments
+              | isMinimal = []
+              | hasNoComments = []
+              | otherwise = fieldComments
 
         -- If the "--minimal" flag is set, strip comments.
         in fieldSWithContents comments
