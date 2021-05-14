@@ -56,10 +56,9 @@ initCmd v packageDBs repoCtxt comp progdb initFlags = do
     -- If `--simple` is not set, default to interactive. When the flag
     -- is explicitly set to `--non-interactive`, then we choose non-interactive.
     --
-    createProject = case interactive initFlags of
-      NoFlag -> Interactive.createProject
-      Flag True
-        | fromFlagOrDefault False (simpleProject initFlags) ->
+    createProject
+      | fromFlagOrDefault False (simpleProject initFlags) =
           Simple.createProject
-        | otherwise -> Interactive.createProject
-      Flag False -> NonInteractive.createProject comp
+      | otherwise = case interactive initFlags of
+        Flag False -> NonInteractive.createProject comp
+        _ -> Interactive.createProject

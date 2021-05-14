@@ -26,6 +26,7 @@ module Distribution.Client.Init.FileCreators
 import Prelude hiding (writeFile)
 import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile)
 
+import qualified Data.Set as Set (member)
 import Distribution.Client.Utils (getCurrentYear)
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Licenses
@@ -56,6 +57,7 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       message opts
         $ "\nUsing cabal specification: "
         ++ showCabalSpecVersion (_optCabalSpec opts)
+        ++ "\n"
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc
@@ -204,9 +206,9 @@ writeLicense writeOpts pkgDesc = do
 --
 writeChangeLog :: WriteOpts -> PkgDescription -> IO ()
 writeChangeLog opts pkgDesc
-  | defaultChangelog `elem` _pkgExtraSrcFiles pkgDesc = do
-    message opts ("Creating " ++ defaultChangelog ++"...")
-    writeFileSafe opts defaultChangelog changeLog
+  | Just docs <- _pkgExtraDocFiles pkgDesc
+  , defaultChangelog `Set.member` docs = go
+  | defaultChangelog `elem` _pkgExtraSrcFiles pkgDesc = go
   | otherwise = return ()
  where
   changeLog = unlines
@@ -216,6 +218,10 @@ writeChangeLog opts pkgDesc
     , ""
     , "* First version. Released on an unsuspecting world."
     ]
+
+  go = do
+    message opts ("Creating " ++ defaultChangelog ++"...")
+    writeFileSafe opts defaultChangelog changeLog
 
 -- -------------------------------------------------------------------- --
 -- Utilities
@@ -265,9 +271,10 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
     exists <- doesDirectoryExist dir
     moveExistingDir dir exists
 
-    let action = if doOverwrite
-          then "Overwriting"
-          else "Creating or using already existing"
+    let action
+          | doOverwrite = "Overwriting"
+          | exists = "Using pre-existing"
+          | otherwise = "Creating"
 
     message opts $ action ++ " directory ./" ++ dir ++ "..."
     unless exists $
