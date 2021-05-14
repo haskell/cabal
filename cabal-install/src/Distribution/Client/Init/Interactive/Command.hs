@@ -58,6 +58,7 @@ import Distribution.Simple.Setup (Flag(..))
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
+import Distribution.Verbosity
 
 import Language.Haskell.Extension (Language(..))
 
@@ -455,4 +456,4 @@ dependenciesPrompt
     -> InitFlags
     -> m [Dependency]
 dependenciesPrompt pkgIx flags = getDependencies flags $
-    retrieveDependencies flags [(fromString "Prelude", fromString "Prelude")] pkgIx
+    retrieveDependencies silent flags [(fromString "Prelude", fromString "Prelude")] pkgIx

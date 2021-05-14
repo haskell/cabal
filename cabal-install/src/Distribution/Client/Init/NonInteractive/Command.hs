@@ -51,11 +51,12 @@ import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.NonInteractive.Heuristics
 import Distribution.Client.Init.Utils
 import Distribution.Client.Init.FlagExtractors
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 import Distribution.Utils.Generic (safeHead)
+import Distribution.Verbosity
 
 import Language.Haskell.Extension (Language(..), Extension(..))
 
@@ -446,7 +447,7 @@ dependenciesHeuristics flags fp pkgIx = getDependencies flags $ do
       filteredDeps = filter ((`notElem` mods) . snd) groupedDeps
       preludeNub   = nubBy (\a b -> snd a == snd b) $ (fromString "Prelude", fromString "Prelude") : filteredDeps
 
-  retrieveDependencies flags preludeNub pkgIx
+  retrieveDependencies (fromFlagOrDefault normal $ initVerbosity flags) flags preludeNub pkgIx
 
 -- | Retrieve the list of extensions
 otherExtsHeuristics :: Interactive m => InitFlags -> FilePath -> m [Extension]

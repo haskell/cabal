@@ -213,8 +213,8 @@ isSourceFile :: Maybe [FilePath] -> SourceFileEntry -> Bool
 isSourceFile Nothing        sf = isSourceFile (Just ["."]) sf
 isSourceFile (Just srcDirs) sf = any (equalFilePath (relativeSourcePath sf)) srcDirs
 
-retrieveDependencies :: Interactive m => InitFlags -> [(ModuleName, ModuleName)] -> InstalledPackageIndex -> m [P.Dependency]
-retrieveDependencies flags mods' pkgIx = do
+retrieveDependencies :: Interactive m => Verbosity -> InitFlags -> [(ModuleName, ModuleName)] -> InstalledPackageIndex -> m [P.Dependency]
+retrieveDependencies v flags mods' pkgIx = do
   let mods = mods'
 
       modMap :: M.Map ModuleName [InstalledPackageInfo]
@@ -224,18 +224,19 @@ retrieveDependencies flags mods' pkgIx = do
       modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
       -- modDeps = map (id &&& flip M.lookup modMap) mods
 
-  message (fromFlagOrDefault silent $ initVerbosity flags) "\nGuessing dependencies..."
-  nub . catMaybes <$> traverse (chooseDep flags) modDeps
+  message v "\nGuessing dependencies..."
+  nub . catMaybes <$> traverse (chooseDep v flags) modDeps
 
 -- Given a module and a list of installed packages providing it,
 -- choose a dependency (i.e. package + version range) to use for that
 -- module.
 chooseDep
   :: Interactive m
-  => InitFlags
+  => Verbosity
+  -> InitFlags
   -> (ModuleName, ModuleName, Maybe [InstalledPackageInfo])
   -> m (Maybe P.Dependency)
-chooseDep flags (importer, m, mipi) = case mipi of
+chooseDep v flags (importer, m, mipi) = case mipi of
   -- We found some packages: group them by name.
   Just ps@(_:_) ->
     case NE.groupBy (\x y -> P.pkgName x == P.pkgName y) $ map P.packageId ps of
@@ -272,8 +273,6 @@ chooseDep flags (importer, m, mipi) = case mipi of
     return Nothing
 
   where
-    v = fromFlagOrDefault normal (initVerbosity flags)
-
     -- desugar if cabal version lower than 2.0
     desugar = case cabalVersion flags of
       Flag x -> x                   < CabalSpecV2_0
