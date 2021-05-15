@@ -37,8 +37,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo, exposed)
 import qualified Distribution.Package as P
 import qualified Distribution.Types.PackageName as PN
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
-import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
-import Distribution.Verbosity
+import Distribution.Simple.Setup (Flag(..))
 import Distribution.Version
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Types
@@ -106,7 +105,7 @@ retrieveBuildTools v fp = do
             ]
 
       return tools
-      
+
     else
       return []
 
@@ -134,9 +133,9 @@ retrieveSourceFiles fp = do
                 return . Just $ SourceFileEntry {..}
           else
             return Nothing
-      
+
       return . catMaybes $ entries
-  
+
   else
     return []
 
@@ -146,7 +145,7 @@ retrieveModuleName m = do
     rawModule <- trim . grabModuleName <$> readFile m
 
     if isInfixOf rawModule (dirToModuleName m)
-      then 
+      then
         return $ Just $ fromString rawModule
       else do
         putStrLn
