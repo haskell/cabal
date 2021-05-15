@@ -300,6 +300,12 @@ renderTargetProblem verb _ (TargetProblemNoSuchComponent pkgid cname) =
   ++ "for the project plan, which would suggest an inconsistency "
   ++ "between readTargetSelectors and resolveTargets."
 
+renderTargetProblem verb _ (TargetProblemNotSinglePackage []) =
+    "Internal error when trying to " ++ verb ++ ". Found no package."
+renderTargetProblem verb _ (TargetProblemNotSinglePackage pkgids) =
+    "Internal error when trying to " ++ verb ++ ". Found multiple packages:\n"
+  ++ unlines (map prettyShow pkgids)
+
 
 ------------------------------------------------------------
 -- Rendering error messages for TargetProblemNoneEnabled
