@@ -147,9 +147,12 @@ writeCabalFile opts fields = do
     exists <- doesFileExist cabalFileName
 
     if exists && doOverwrite then do
-      removeFile cabalFileName
       writeFileSafe opts cabalFileName cabalContents
-    else writeFileSafe opts cabalFileName cabalContents
+    else message opts $ concat
+      [ "Warning: "
+      , cabalFileName
+      , " already exists. Skipping..."
+      ]
   where
     doOverwrite = _optOverwrite opts
 
@@ -244,8 +247,8 @@ writeFileSafe opts fileName content = do
     doOverwrite = _optOverwrite opts
 
     moveExistingFile exists
-      | exists && doOverwrite = do
-        newName <- findNewName fileName (0 :: Int)
+      | exists, doOverwrite = do
+        newName <- findNewPath fileName
         message opts $ concat
           [ "Warning: "
           , fileName
@@ -254,22 +257,16 @@ writeFileSafe opts fileName content = do
           ]
 
         copyFile fileName newName
-      | exists && not doOverwrite = message opts $ concat
+      | exists, not doOverwrite = message opts $ concat
           [ "Warning: "
           , fileName
           , " already exists. Skipping..."
           ]
       | otherwise = return ()
 
-    findNewName oldName n = do
-      let newName = oldName <.> ("save" ++ show n)
-      e <- doesFileExist newName
-      if e then findNewName oldName (n+1) else return newName
-
 writeDirectoriesSafe :: WriteOpts -> [String] -> IO ()
 writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
     exists <- doesDirectoryExist dir
-    moveExistingDir dir exists
 
     let action
           | doOverwrite = "Overwriting"
@@ -277,26 +274,33 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
           | otherwise = "Creating"
 
     message opts $ action ++ " directory ./" ++ dir ++ "..."
-    unless exists $
-      createDirectory dir
+    go dir exists
   where
     doOverwrite = _optOverwrite opts
 
-    moveExistingDir oldDir exists
+    go dir exists
       | exists && doOverwrite = do
-        newDir <- findNewDir oldDir (0 :: Int)
+        newDir <- findNewPath dir
         message opts $ concat
           [ "Warning: "
-          , oldDir
+          , dir
           , " already exists. Backing up old version in "
           , newDir
           ]
 
-        renameDirectory oldDir newDir
-      | exists && doOverwrite = removeDirectoryRecursive oldDir
-      | otherwise = return ()
+        renameDirectory dir newDir
+        createDirectory dir
+      | exists, not doOverwrite = message opts $ concat
+          [ "Warning: "
+          , dir
+          , "already exists. Skipping..."
+          ]
+      | otherwise = createDirectory dir
 
-    findNewDir oldDir n = do
-      let newDir = oldDir <.> ("save" ++ show n)
+findNewPath :: Interactive m => FilePath -> m FilePath
+findNewPath dir = go (0 :: Int)
+  where
+    go n = do
+      let newDir = dir <.> ("save" ++ show n)
       e <- doesDirectoryExist newDir
-      if e then findNewDir oldDir (n+1) else return newDir
+      if e then go (succ n) else return newDir

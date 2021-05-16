@@ -101,7 +101,7 @@ promptList msg choices def modDef hasOther = do
      let cs = if hasOther
            then choices ++ ["Other (specify)"]
            else choices
-     in zip [1::Int .. numChoices + 1] cs
+     in zip [1::Int .. length choices + 1] cs
 
    numChoices = length choices
 
@@ -111,7 +111,7 @@ promptList msg choices def modDef hasOther = do
             else concat
               [ input
               , " is not a valid choice. Please choose a number from 1 to "
-              , show (numChoices +1)
+              , show (length prettyChoices)
               , "."
               ]
 
