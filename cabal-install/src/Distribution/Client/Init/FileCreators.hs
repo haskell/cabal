@@ -27,6 +27,7 @@ import Prelude hiding (writeFile)
 import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile)
 
 import qualified Data.Set as Set (member)
+
 import Distribution.Client.Utils (getCurrentYear)
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Licenses
@@ -36,12 +37,11 @@ import qualified Distribution.Client.Init.Types as T
 import Distribution.Fields.Pretty (PrettyField(..), showFields')
 import qualified Distribution.SPDX as SPDX
 import Distribution.Types.PackageName
-
-import System.Directory hiding (doesDirectoryExist, doesFileExist, createDirectory, renameDirectory, copyFile)
-import System.FilePath ((</>), (<.>))
-
 import Distribution.Client.Init.Format
 import Distribution.CabalSpecVersion (showCabalSpecVersion)
+
+import System.FilePath ((</>), (<.>))
+
 
 
 -- -------------------------------------------------------------------- --
