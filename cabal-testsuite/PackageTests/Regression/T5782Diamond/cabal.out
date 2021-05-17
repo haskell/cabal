@@ -34,9 +34,8 @@ Warning: 'hs-source-dirs: src2' directory does not exist.
 Preprocessing executable 'E' for issue5782-0.1..
 Building executable 'E' for issue5782-0.1..
 Installing executable E in <PATH>
-Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
-Warning: installdir is not defined. Set it in your cabal config file or use --installdir=<path>. Using default installdir: "<ROOT>/cabal.dist/home/.cabal/bin"
-Symlinking 'E' to '<ROOT>/cabal.dist/home/.cabal/bin/E'
+Warning: The directory <GBLTMPDIR>/ghc-<GHCVER>/incoming/new-<RAND><GBLTMPDIR>/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
+Symlinking 'E' to '<GBLTMPDIR>/E'
 # issue5782 E
 "AAA"
 # cabal v2-install
@@ -75,9 +74,8 @@ Warning: 'hs-source-dirs: src2' directory does not exist.
 Preprocessing executable 'E' for issue5782-0.1..
 Building executable 'E' for issue5782-0.1..
 Installing executable E in <PATH>
-Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
-Warning: installdir is not defined. Set it in your cabal config file or use --installdir=<path>. Using default installdir: "<ROOT>/cabal.dist/home/.cabal/bin"
-Symlinking 'E' to '<ROOT>/cabal.dist/home/.cabal/bin/E'
+Warning: The directory <GBLTMPDIR>/ghc-<GHCVER>/incoming/new-<RAND><GBLTMPDIR>/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
+Symlinking 'E' to '<GBLTMPDIR>/E'
 # issue5782 E
 "BBB"
 # cabal v2-install
@@ -116,8 +114,7 @@ Warning: 'hs-source-dirs: src2' directory does not exist.
 Preprocessing executable 'E' for issue5782-0.1..
 Building executable 'E' for issue5782-0.1..
 Installing executable E in <PATH>
-Warning: The directory <ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/incoming/new-<RAND><ROOT>/cabal.dist/home/.cabal/store/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
-Warning: installdir is not defined. Set it in your cabal config file or use --installdir=<path>. Using default installdir: "<ROOT>/cabal.dist/home/.cabal/bin"
-Symlinking 'E' to '<ROOT>/cabal.dist/home/.cabal/bin/E'
+Warning: The directory <GBLTMPDIR>/ghc-<GHCVER>/incoming/new-<RAND><GBLTMPDIR>/ghc-<GHCVER>/<PACKAGE>-<HASH>/bin is not in the system search path.
+Symlinking 'E' to '<GBLTMPDIR>/E'
 # issue5782 E
 "CCC"
