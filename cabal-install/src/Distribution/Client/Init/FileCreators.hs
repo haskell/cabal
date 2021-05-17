@@ -28,7 +28,7 @@ import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile)
 
 import qualified Data.Set as Set (member)
 
-import Distribution.Client.Utils (getCurrentYear)
+import Distribution.Client.Utils (getCurrentYear, removeExistingFile)
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Licenses
   ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20, isc )
@@ -41,8 +41,6 @@ import Distribution.Client.Init.Format
 import Distribution.CabalSpecVersion (showCabalSpecVersion)
 
 import System.FilePath ((</>), (<.>))
-
-
 
 -- -------------------------------------------------------------------- --
 --  File generation
@@ -142,20 +140,9 @@ writeCabalFile
     -> [PrettyField FieldAnnotation]
       -- ^ .cabal fields
     -> IO ()
-writeCabalFile opts fields = do
-    message opts $ "\nGenerating " ++ cabalFileName ++ "..."
-    exists <- doesFileExist cabalFileName
-
-    if exists && doOverwrite then do
-      writeFileSafe opts cabalFileName cabalContents
-    else message opts $ concat
-      [ "Warning: "
-      , cabalFileName
-      , " already exists. Skipping..."
-      ]
+writeCabalFile opts fields =
+    writeFileSafe opts cabalFileName cabalContents
   where
-    doOverwrite = _optOverwrite opts
-
     cabalContents = showFields'
       annCommentLines
       postProcessFieldLines
@@ -238,16 +225,24 @@ message opts = T.message (_optVerbosity opts)
 --   the overwrite flag is set.
 writeFileSafe :: WriteOpts -> FilePath -> String -> IO ()
 writeFileSafe opts fileName content = do
-    litExists <- doesFileExist fileName
-    moveExistingFile litExists
+    exists <- doesFileExist fileName
 
-    when (doOverwrite || not litExists) $
-      writeFile fileName content
+    let action
+          | doOverwrite = "Overwriting"
+          | exists = "Creating fresh"
+          | otherwise = "Creating"
+
+    go exists
+
+    message opts $ action ++ " file " ++ fileName ++ "..."
+    writeFile fileName content
   where
     doOverwrite = _optOverwrite opts
 
-    moveExistingFile exists
+    go exists
       | exists, doOverwrite = do
+        removeExistingFile fileName
+      | exists, not doOverwrite = do
         newName <- findNewPath fileName
         message opts $ concat
           [ "Warning: "
@@ -257,11 +252,7 @@ writeFileSafe opts fileName content = do
           ]
 
         copyFile fileName newName
-      | exists, not doOverwrite = message opts $ concat
-          [ "Warning: "
-          , fileName
-          , " already exists. Skipping..."
-          ]
+        removeExistingFile fileName
       | otherwise = return ()
 
 writeDirectoriesSafe :: WriteOpts -> [String] -> IO ()
@@ -270,16 +261,20 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
 
     let action
           | doOverwrite = "Overwriting"
-          | exists = "Using pre-existing"
+          | exists = "Creating fresh"
           | otherwise = "Creating"
 
-    message opts $ action ++ " directory ./" ++ dir ++ "..."
     go dir exists
+
+    message opts $ action ++ " directory ./" ++ dir ++ "..."
+    createDirectory dir
   where
     doOverwrite = _optOverwrite opts
 
     go dir exists
-      | exists && doOverwrite = do
+      | exists, doOverwrite = do
+        removeDirectory dir
+      | exists, not doOverwrite = do
         newDir <- findNewPath dir
         message opts $ concat
           [ "Warning: "
@@ -289,13 +284,7 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
           ]
 
         renameDirectory dir newDir
-        createDirectory dir
-      | exists, not doOverwrite = message opts $ concat
-          [ "Warning: "
-          , dir
-          , "already exists. Skipping..."
-          ]
-      | otherwise = createDirectory dir
+      | otherwise = return ()
 
 findNewPath :: Interactive m => FilePath -> m FilePath
 findNewPath dir = go (0 :: Int)

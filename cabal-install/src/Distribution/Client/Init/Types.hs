@@ -314,6 +314,7 @@ class Monad m => Interactive m where
     putStr :: String -> m ()
     putStrLn :: String -> m ()
     createDirectory :: FilePath -> m ()
+    removeDirectory :: FilePath -> m ()
     writeFile :: FilePath -> String -> m ()
     copyFile :: FilePath -> FilePath -> m ()
     renameDirectory :: FilePath -> FilePath -> m ()
@@ -341,6 +342,7 @@ instance Interactive IO where
     putStr = P.putStr
     putStrLn = P.putStrLn
     createDirectory = P.createDirectory
+    removeDirectory = P.removeDirectoryRecursive
     writeFile = P.writeFile
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
@@ -372,6 +374,7 @@ instance Interactive PurePrompt where
     putStr !_ = return ()
     putStrLn !_ = return ()
     createDirectory !_ = return ()
+    removeDirectory !_ = return ()
     writeFile !_ !_ = return ()
     copyFile !_ !_ = return ()
     renameDirectory !_ !_ = return ()
