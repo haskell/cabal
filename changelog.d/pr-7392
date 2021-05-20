@@ -1,0 +1,44 @@
+synopsis: Prefer canonicalized path when guessing tools from GHC path
+packages: Cabal
+prs: #7392
+issues: #7390
+
+description: {
+
+Motivation
+----------
+Often times, the user facing `ghc` binary is
+symlinked by other forces, such as the package manager,
+tooling like ghcup etc. As such, the naming convention
+(version suffix in particular) may not align with the
+assumptions made in Cabal and it may find an incorrect ghc-pkg.
+
+See:
+  - https://github.com/haskell/cabal/issues/7390
+  - https://gitlab.haskell.org/ghc/ghc/-/issues/18807
+  - https://gitlab.haskell.org/haskell/ghcup-hs/-/issues/73
+
+Solution
+--------
+Guessing the ghc-pkg path is already a hack and will be solved
+more appropriately in the future, see
+  - https://gitlab.haskell.org/ghc/ghc/-/merge_requests/4214
+  - https://gitlab.haskell.org/ghc/ghc/-/snippets/2710
+These patches will solve the issue for future GHC versions.
+
+As such, this patch provides a workaround for
+older, already existing GHC versions by first always
+following the symbolic link of the ghc binary (if it is one)
+and prefering its target directory as the guess lookup
+location.
+
+Rationale
+---------
+The canonicalized path of the ghc binary usually points to the
+bin/ directory unpacked from a bindist, which is less likely to be
+tampered with by distributions and tools. As such, prefering the
+canoncialized path should get us more robust results.
+
+}
+
+
