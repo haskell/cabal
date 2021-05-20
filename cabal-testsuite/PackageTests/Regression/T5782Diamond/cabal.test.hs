@@ -11,25 +11,35 @@
 -- The dummy "--installdir=." is needed for cabal <= 3.2
 -- and also to match cabal output on different OSes
 -- (default installdir is different on various OSes).
+--
+-- `withShorterPathForNewBuildStore` is needed to avoid some path mismatches, etc.,
+-- in the output, but MacOS still insists on processing internal libraries
+-- in a different order and Windows additionally still can't recognize
+-- the paths match. Hence `recordMode DoNotRecord` to mute the output,
+-- which is fine in this case, because the problem manifests either
+-- as failed compilation or wrong exe output, which I do check.
 
 import Test.Cabal.Prelude
 main = withShorterPathForNewBuildStore $ \storeDir ->
   cabalTest $
     withSourceCopy . withDelay $ do
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"AAA\""
-        cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+        recordMode DoNotRecord $
+          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "AAA"
         delay
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"BBB\""
-        cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+        recordMode DoNotRecord $
+          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "BBB"
         writeSourceFile "issue5782/src/Module.hs" "module Module where\nf = \"CCC\""
         delay  -- different spot to try another scenario
-        cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
+        recordMode DoNotRecord $
+          cabalG ["--store-dir=" ++ storeDir, "--installdir=" ++ storeDir, "--overwrite-policy=always"] "v2-install" ["issue5782"]
         withPlan $
             runPlanExe' "issue5782" "E" []
                 >>= assertOutputContains "CCC"
