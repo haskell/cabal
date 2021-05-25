@@ -64,17 +64,16 @@ executable in the top level directory.
 
 ::
 
-    Generating Setup.hs...
     Generating CHANGELOG.md...
     Generating Main.hs...
     Generating proglet.cabal...
 
-Check out the files created using the ``ls`` command.
+Use the ``ls`` command to see the creaed files:
 
 ::
 
    $ ls
-   CHANGELOG.md  Main.hs  proglet.cabal  Setup.hs
+   CHANGELOG.md  Main.hs  proglet.cabal
 
 
 Running the program
@@ -104,20 +103,13 @@ About the Cabal package structure
 ---------------------------------
 
 It is assumed that all the files that make up a package live under a common
-root directory (apart from external dependencies). This simple example will
-have all the package files in one directory, but most packages will use one
-or more subdirectories.
+root directory (apart from external dependencies). This simple example has
+all the package files in one directory, but most packages use one or more
+subdirectories.
 
-Cabal needs two extra files in the package's root directory:
+Cabal needs one extra file in the package's root directory:
 
 -  ``proglet.cabal``: contains package metadata and build information.
-
--  ``Setup.hs``: contains a few standardized lines of code, but can be
-   customized if necessary.
-
-.. NOTE::
-   ``Setup.hs`` is optional if you're not using a custom setup, but ``cabal
-   init`` still creates it so we included it for completeness.
 
 
 Editing the .cabal file
@@ -422,9 +414,9 @@ Operating system packages
 Unit of distribution
 --------------------
 
-The Cabal package is the unit of distribution. What this means is that
-each Cabal package can be distributed on its own in source or binary
-form. Of course there may dependencies between packages, but there is
+The Cabal package is the unit of distribution. This means that
+each Cabal package can be distributed on its own, in source or binary
+form. There may be dependencies between packages, but there is
 usually a degree of flexibility in which versions of packages can work
 together so distributing them independently makes sense.
 
