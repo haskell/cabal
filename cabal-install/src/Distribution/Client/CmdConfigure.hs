@@ -107,17 +107,22 @@ configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
           if exists
             then firstFreeBackup' (i + 1)
             else return backup
+        dryRun = buildSettingDryRun (buildSettings baseCtx)
+              || buildSettingOnlyDownload (buildSettings baseCtx)
 
-    -- If cabal.project.local already exists, back up to cabal.project.local~[n]
-    exists <- doesFileExist localFile
-    when exists $ do
-        backup <- firstFreeBackup
-        notice verbosity $
-          quote (takeFileName localFile) <> " already exists, backing it up to "
-          <> quote (takeFileName backup) <> "."
-        copyFile localFile backup
-    writeProjectLocalExtraConfig (distDirLayout baseCtx)
-                                 cliConfig
+    if dryRun
+       then notice verbosity "Config file not written due to flag(s)."
+       else do
+          -- If cabal.project.local already exists, back up to cabal.project.local~[n]
+          exists <- doesFileExist localFile
+          when exists $ do
+              backup <- firstFreeBackup
+              notice verbosity $
+                quote (takeFileName localFile) <> " already exists, backing it up to "
+                <> quote (takeFileName backup) <> "."
+              copyFile localFile backup
+          writeProjectLocalExtraConfig (distDirLayout baseCtx)
+                                       cliConfig
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan ->

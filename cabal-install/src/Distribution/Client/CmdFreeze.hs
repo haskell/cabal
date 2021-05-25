@@ -106,7 +106,8 @@ freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
       distDirLayout,
       cabalDirLayout,
       projectConfig,
-      localPackages
+      localPackages,
+      buildSettings
     } <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     (_, elaboratedPlan, _, totalIndexState, activeRepos) <-
@@ -116,16 +117,20 @@ freezeAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                          localPackages
 
     let freezeConfig = projectFreezeConfig elaboratedPlan totalIndexState activeRepos
-    writeProjectLocalFreezeConfig distDirLayout freezeConfig
-    notice verbosity $
-      "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
+        dryRun = buildSettingDryRun buildSettings
+              || buildSettingOnlyDownload buildSettings
+
+    if dryRun
+       then notice verbosity "Freeze file not written due to flag(s)"
+       else do
+         writeProjectLocalFreezeConfig distDirLayout freezeConfig
+         notice verbosity $
+           "Wrote freeze file: " ++ distProjectFile distDirLayout "freeze"
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
-
-
 
 -- | Given the install plan, produce a config value with constraints that
 -- freezes the versions of packages used in the plan.
