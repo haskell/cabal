@@ -29,6 +29,7 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalExtraConfig,
     readProjectLocalFreezeConfig,
+    showProjectConfig,
     withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,

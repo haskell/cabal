@@ -89,39 +89,54 @@ configureCommand = CommandUI {
 -- "Distribution.Client.ProjectOrchestration"
 --
 configureAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-configureAction flags extraArgs globalFlags = do
-  (baseCtx, projConfig) <- configureAction' flags extraArgs globalFlags
-  writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
+configureAction flags@NixStyleFlags {..} extraArgs globalFlags = do
+    (baseCtx, projConfig) <- configureAction' flags extraArgs globalFlags
+
+    if shouldNotWriteFile baseCtx
+      then notice v "Config file not written due to flag(s)."
+      else writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
+  where
+    v = fromFlagOrDefault normal (configVerbosity configFlags)
 
 configureAction' :: NixStyleFlags () -> [String] -> GlobalFlags -> IO (ProjectBaseContext, ProjectConfig)
 configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
-    
+
     baseCtx <- establishProjectBaseContext v cliConfig OtherCommand
 
     let localFile  = distProjectFile (distDirLayout baseCtx) "local"
     -- If cabal.project.local already exists, and the flags allow, back up to cabal.project.local~
-    exists <- doesFileExist localFile
     let backups = fromFlagOrDefault True  $ configBackup configExFlags
         appends = fromFlagOrDefault False $ configAppend configExFlags
         backupFile = localFile <> "~"
 
-    when (exists && backups) $ do
-      notice v $
-        quote (takeFileName localFile) <> " already exists, backing it up to "
-        <> quote (takeFileName backupFile) <> "."
-      copyFile localFile backupFile
-
-    -- If the flag @configAppend@ is set to true, append and do not overwrite
-    if exists && appends
-      then do
-        conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
-          readProjectLocalExtraConfig v (distDirLayout baseCtx)
-        return (baseCtx, conf <> cliConfig)
-      else
+    if shouldNotWriteFile baseCtx
+      then
         return (baseCtx, cliConfig)
+      else do
+        exists <- doesFileExist localFile
+        when (exists && backups) $ do
+          notice v $
+            quote (takeFileName localFile) <> " already exists, backing it up to "
+            <> quote (takeFileName backupFile) <> "."
+          copyFile localFile backupFile
+
+         -- If the flag @configAppend@ is set to true, append and do not overwrite
+        if exists && appends
+          then do
+            conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
+              readProjectLocalExtraConfig v (distDirLayout baseCtx)
+            return (baseCtx, conf <> cliConfig)
+          else
+            return (baseCtx, cliConfig)
   where
     v = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
     quote s = "'" <> s <> "'"
+
+-- Config file should not be written when certain flags are present
+shouldNotWriteFile :: ProjectBaseContext -> Bool
+shouldNotWriteFile baseCtx =
+     buildSettingDryRun (buildSettings baseCtx)
+  || buildSettingOnlyDownload (buildSettings baseCtx)
