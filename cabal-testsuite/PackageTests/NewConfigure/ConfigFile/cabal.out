@@ -1,0 +1,15 @@
+# cabal v2-configure
+Config file not written due to flag(s).
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - ConfigFile-0.1.0.0 (first run)
+# cabal v2-configure
+Config file not written due to flag(s).
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - ConfigFile-0.1.0.0 (first run)
+# cabal v2-configure
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following would be built:
+ - ConfigFile-0.1.0.0 (first run)
