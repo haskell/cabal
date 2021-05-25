@@ -1,7 +1,9 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DerivingStrategies  #-}
+{-# LANGUAGE DerivingVia         #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Distribution.Simple.Program.GHC (
@@ -528,7 +530,13 @@ data GhcOptions = GhcOptions {
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
-} deriving (Show, Generic)
+}
+  deriving
+  stock (Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid GhcOptions
 
 
 data GhcMode = GhcModeCompile     -- ^ @ghc -c@
@@ -838,13 +846,3 @@ packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
 packageDbArgs implInfo
   | flagPackageConf implInfo = packageDbArgsConf
   | otherwise                = packageDbArgsDb
-
--- -----------------------------------------------------------------------------
--- Boilerplate Monoid instance for GhcOptions
-
-instance Monoid GhcOptions where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup GhcOptions where
-  (<>) = gmappend

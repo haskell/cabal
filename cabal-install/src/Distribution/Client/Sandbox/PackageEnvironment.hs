@@ -1,4 +1,6 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -25,7 +27,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
-import Distribution.Client.Config      ( SavedConfig(..) 
+import Distribution.Client.Config      ( SavedConfig(..)
                                        , configFieldDescriptions
                                        , haddockFlagsFields
                                        , installDirsFields, withProgramsFields
@@ -45,7 +47,7 @@ import Distribution.Deprecated.ParseUtils         ( FieldDescr(..), ParseResult(
                                        , commaListFieldParsec, commaNewLineListFieldParsec
                                        , liftField, lineNo, locatedErrorMsg
                                        , readFields
-                                       , showPWarning 
+                                       , showPWarning
                                        , syntaxError, warning )
 import System.Directory                ( doesFileExist )
 import System.FilePath                 ( (</>) )
@@ -64,14 +66,13 @@ import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) 
 -- D.C.Sandbox.PackageEnvironment and D.C.Config.
 data PackageEnvironment = PackageEnvironment {
   pkgEnvSavedConfig   :: SavedConfig
-} deriving Generic
+}
+  deriving
+  stock Generic
 
-instance Monoid PackageEnvironment where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup PackageEnvironment where
-  (<>) = gmappend
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid PackageEnvironment
 
 -- | Optional package environment file that can be used to customize the default
 -- settings. Created by the user.

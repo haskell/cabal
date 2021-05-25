@@ -1,5 +1,8 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE OverloadedStrings  #-}
+
 module Distribution.Client.ProjectFlags (
     ProjectFlags(..),
     defaultProjectFlags,
@@ -27,7 +30,12 @@ data ProjectFlags = ProjectFlags
       -- ^ Whether to ignore the local project (i.e. don't search for cabal.project)
       -- The exact interpretation might be slightly different per command.
     }
-  deriving (Show, Generic)
+    deriving
+    stock (Show, Generic)
+
+    deriving
+      (Semigroup, Monoid)
+    via GenericMonoid ProjectFlags
 
 defaultProjectFlags :: ProjectFlags
 defaultProjectFlags = ProjectFlags
@@ -47,13 +55,6 @@ projectFlagsOptions showOrParseArgs =
         flagIgnoreProject (\v flags -> flags { flagIgnoreProject = v })
         (yesNoOpt showOrParseArgs)
     ]
-
-instance Monoid ProjectFlags where
-    mempty = gmempty
-    mappend = (<>)
-
-instance Semigroup ProjectFlags where
-    (<>) = gmappend
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf

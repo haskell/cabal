@@ -1,6 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE RankNTypes         #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -123,7 +125,13 @@ data HaddockArgs = HaddockArgs {
  -- ^ Re-exported modules
  argTargets :: [FilePath]
  -- ^ Modules to process.
-} deriving Generic
+}
+  deriving
+  stock Generic
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid HaddockArgs
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)
@@ -911,13 +919,6 @@ haddockToHscolour flags =
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
-instance Monoid HaddockArgs where
-    mempty = gmempty
-    mappend = (<>)
-
-instance Semigroup HaddockArgs where
-    (<>) = gmappend
-
 instance Monoid Directory where
     mempty = Dir "."
     mappend = (<>)

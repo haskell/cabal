@@ -1,9 +1,11 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveFunctor      #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE RankNTypes         #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -99,17 +101,16 @@ data InstallDirs dir = InstallDirs {
         htmldir      :: dir,
         haddockdir   :: dir,
         sysconfdir   :: dir
-    } deriving (Eq, Read, Show, Functor, Generic, Typeable)
+    }
+  deriving
+  stock (Eq, Read, Show, Functor, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid (InstallDirs dir)
 
 instance Binary dir => Binary (InstallDirs dir)
 instance Structured dir => Structured (InstallDirs dir)
-
-instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup dir => Semigroup (InstallDirs dir) where
-  (<>) = gmappend
 
 combineInstallDirs :: (a -> b -> c)
                    -> InstallDirs a

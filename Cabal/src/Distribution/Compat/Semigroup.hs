@@ -3,7 +3,10 @@
 {-# LANGUAGE DeriveGeneric               #-}
 {-# LANGUAGE FlexibleContexts            #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving  #-}
+{-# LANGUAGE InstanceSigs                #-}
+{-# LANGUAGE StandaloneKindSignatures    #-}
 {-# LANGUAGE TypeOperators               #-}
+{-# LANGUAGE UndecidableInstances        #-}
 
 -- | Compatibility layer for "Data.Semigroup"
 module Distribution.Compat.Semigroup
@@ -17,6 +20,7 @@ module Distribution.Compat.Semigroup
 
     , Option'(..)
 
+    , GenericMonoid(..)
     , gmappend
     , gmempty
     ) where
@@ -25,6 +29,7 @@ import Distribution.Compat.Binary (Binary)
 import Distribution.Utils.Structured (Structured)
 import Data.Typeable (Typeable)
 
+import Data.Kind (Type, Constraint)
 import GHC.Generics
 -- Data.Semigroup is available since GHC 8.0/base-4.9 in `base`
 -- for older GHC/base, it's provided by `semigroups`
@@ -82,17 +87,21 @@ instance Semigroup a => Monoid (Option' a) where
 gmappend :: (Generic a, GSemigroup (Rep a)) => a -> a -> a
 gmappend x y = to (gmappend' (from x) (from y))
 
+type  GSemigroup :: (Type -> Type) -> Constraint
 class GSemigroup f where
-    gmappend' :: f p -> f p -> f p
+  gmappend' :: f a -> f a -> f a
 
 instance Semigroup a => GSemigroup (K1 i a) where
-    gmappend' (K1 x) (K1 y) = K1 (x <> y)
+  gmappend' :: K1 info a b -> K1 info a b -> K1 info a b
+  gmappend' = (<>)
 
 instance GSemigroup f => GSemigroup (M1 i c f) where
-    gmappend' (M1 x) (M1 y) = M1 (gmappend' x y)
+  gmappend' :: M1 info meta f a -> M1 info meta f a -> M1 info meta f a
+  gmappend' (M1 x) (M1 y) = M1 (gmappend' x y)
 
 instance (GSemigroup f, GSemigroup g) => GSemigroup (f :*: g) where
-    gmappend' (x1 :*: x2) (y1 :*: y2) = gmappend' x1 y1 :*: gmappend' x2 y2
+  gmappend' :: (f :*: g) a -> (f :*: g) a -> (f :*: g) a
+  gmappend' (x1 :*: x2) (y1 :*: y2) = gmappend' x1 y1 :*: gmappend' x2 y2
 
 -- | Generically generate a 'Monoid' 'mempty' for any product-like type
 -- implementing 'Generic'.
@@ -106,14 +115,44 @@ instance (GSemigroup f, GSemigroup g) => GSemigroup (f :*: g) where
 gmempty :: (Generic a, GMonoid (Rep a)) => a
 gmempty = to gmempty'
 
+type  GMonoid :: (Type -> Type) -> Constraint
 class GSemigroup f => GMonoid f where
-    gmempty' :: f p
+  gmempty' :: f a
 
-instance (Semigroup a, Monoid a) => GMonoid (K1 i a) where
-    gmempty' = K1 mempty
+instance (Semigroup a, Monoid a) => GMonoid (K1 info a) where
+  gmempty' :: K1 info a b
+  gmempty' = mempty
 
-instance GMonoid f => GMonoid (M1 i c f) where
-    gmempty' = M1 gmempty'
+instance GMonoid f => GMonoid (M1 info meta f) where
+  gmempty' :: M1 info meta f a
+  gmempty' = M1 gmempty'
 
 instance (GMonoid f, GMonoid g) => GMonoid (f :*: g) where
-    gmempty' = gmempty' :*: gmempty'
+  gmempty' :: (f :*: g) a
+  gmempty' = gmempty' :*: gmempty'
+
+-- | Generic instance for 'Semigroup' and 'Monoid' defined pointwise
+-- for any product-like type implementing 'Generic'.
+--
+-- Can be used with @-XDerivingVia@
+--
+-- @
+-- {-# Language DerivingVia #-}
+--
+-- data T = MkT [Int] (Maybe Ordering)
+--   deriving
+--   stock Generic
+--
+--   deriving (Semigroup, Monoid)
+--   via GenericMonoid T
+-- @
+type    GenericMonoid :: Type -> Type
+newtype GenericMonoid a = GenericMonoid a
+
+instance (Generic a, GSemigroup (Rep a)) => Semigroup (GenericMonoid a) where
+  (<>) :: GenericMonoid a -> GenericMonoid a -> GenericMonoid a
+  GenericMonoid a <> GenericMonoid b = GenericMonoid (gmappend a b)
+
+instance (Generic a, GMonoid (Rep a)) => Monoid (GenericMonoid a) where
+  mempty :: GenericMonoid a
+  mempty = GenericMonoid gmempty

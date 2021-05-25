@@ -1,4 +1,9 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds #-}
+{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE NamedFieldPuns     #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
@@ -122,14 +127,13 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacyAllConfig         :: LegacyPackageConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
        legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
-     } deriving (Show, Generic)
+     }
+  deriving
+  stock (Show, Generic)
 
-instance Monoid LegacyProjectConfig where
-  mempty  = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacyProjectConfig where
-  (<>) = gmappend
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid LegacyProjectConfig
 
 data LegacyPackageConfig = LegacyPackageConfig {
        legacyConfigureFlags    :: ConfigFlags,
@@ -137,14 +141,13 @@ data LegacyPackageConfig = LegacyPackageConfig {
        legacyHaddockFlags      :: HaddockFlags,
        legacyTestFlags         :: TestFlags,
        legacyBenchmarkFlags    :: BenchmarkFlags
-     } deriving (Show, Generic)
+     }
+  deriving
+  stock (Show, Generic)
 
-instance Monoid LegacyPackageConfig where
-  mempty  = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacyPackageConfig where
-  (<>) = gmappend
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid LegacyPackageConfig
 
 data LegacySharedConfig = LegacySharedConfig {
        legacyGlobalFlags       :: GlobalFlags,
@@ -153,15 +156,13 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyInstallFlags      :: InstallFlags,
        legacyClientInstallFlags:: ClientInstallFlags,
        legacyProjectFlags      :: ProjectFlags
-     } deriving (Show, Generic)
+     }
+  deriving
+  stock (Show, Generic)
 
-instance Monoid LegacySharedConfig where
-  mempty  = gmempty
-  mappend = (<>)
-
-instance Semigroup LegacySharedConfig where
-  (<>) = gmappend
-
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid LegacySharedConfig
 
 ------------------------------------------------------------------
 -- Converting from and to the legacy types

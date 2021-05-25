@@ -1,8 +1,10 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE RankNTypes         #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -123,7 +125,13 @@ defaultDistPref = "dist"
 data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool
-  } deriving (Generic, Typeable)
+  }
+  deriving
+  stock (Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid GlobalFlags
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -172,13 +180,6 @@ globalCommand commands = CommandUI
 
 emptyGlobalFlags :: GlobalFlags
 emptyGlobalFlags = mempty
-
-instance Monoid GlobalFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup GlobalFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Config flags
@@ -279,7 +280,12 @@ data ConfigFlags = ConfigFlags {
       -- tools (like cabal-install) so they can add multiple-public-libraries
       -- compatibility to older ghcs by checking visibility externally.
   }
-  deriving (Generic, Read, Show, Typeable)
+  deriving
+  stock (Generic, Read, Show, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ConfigFlags
 
 instance Binary ConfigFlags
 instance Structured ConfigFlags
@@ -828,13 +834,6 @@ installDirsOptions =
 emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty
 
-instance Monoid ConfigFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ConfigFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Copy flags
 -- ------------------------------------------------------------
@@ -850,7 +849,12 @@ data CopyFlags = CopyFlags {
     copyArgs :: [String],
     copyCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic)
+  deriving
+  stock (Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid CopyFlags
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
@@ -915,13 +919,6 @@ copyOptions showOrParseArgs =
 emptyCopyFlags :: CopyFlags
 emptyCopyFlags = mempty
 
-instance Monoid CopyFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup CopyFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Install flags
 -- ------------------------------------------------------------
@@ -938,7 +935,12 @@ data InstallFlags = InstallFlags {
     -- change the hooks API.
     installCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic)
+  deriving
+  stock (Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid InstallFlags
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
@@ -1003,13 +1005,6 @@ installOptions showOrParseArgs =
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = mempty
 
-instance Monoid InstallFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup InstallFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * SDist flags
 -- ------------------------------------------------------------
@@ -1022,7 +1017,12 @@ data SDistFlags = SDistFlags {
     sDistListSources :: Flag FilePath,
     sDistVerbosity   :: Flag Verbosity
   }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid SDistFlags
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
@@ -1070,13 +1070,6 @@ sdistCommand = CommandUI
 emptySDistFlags :: SDistFlags
 emptySDistFlags = mempty
 
-instance Monoid SDistFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup SDistFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Register flags
 -- ------------------------------------------------------------
@@ -1095,7 +1088,12 @@ data RegisterFlags = RegisterFlags {
     regArgs        :: [String],
     regCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid RegisterFlags
 
 defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags = RegisterFlags {
@@ -1188,13 +1186,6 @@ unregisterCommand = CommandUI
 emptyRegisterFlags :: RegisterFlags
 emptyRegisterFlags = mempty
 
-instance Monoid RegisterFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup RegisterFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * HsColour flags
 -- ------------------------------------------------------------
@@ -1209,7 +1200,12 @@ data HscolourFlags = HscolourFlags {
     hscolourVerbosity   :: Flag Verbosity,
     hscolourCabalFilePath :: Flag FilePath
     }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid HscolourFlags
 
 emptyHscolourFlags :: HscolourFlags
 emptyHscolourFlags = mempty
@@ -1225,13 +1221,6 @@ defaultHscolourFlags = HscolourFlags {
     hscolourVerbosity   = Flag normal,
     hscolourCabalFilePath = mempty
   }
-
-instance Monoid HscolourFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup HscolourFlags where
-  (<>) = gmappend
 
 hscolourCommand :: CommandUI HscolourFlags
 hscolourCommand = CommandUI
@@ -1344,7 +1333,12 @@ data HaddockFlags = HaddockFlags {
     haddockCabalFilePath :: Flag FilePath,
     haddockArgs         :: [String]
   }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid HaddockFlags
 
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags  = HaddockFlags {
@@ -1500,13 +1494,6 @@ haddockOptions showOrParseArgs =
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
 
-instance Monoid HaddockFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup HaddockFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Clean flags
 -- ------------------------------------------------------------
@@ -1517,7 +1504,12 @@ data CleanFlags = CleanFlags {
     cleanVerbosity :: Flag Verbosity,
     cleanCabalFilePath :: Flag FilePath
   }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid CleanFlags
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
@@ -1553,13 +1545,6 @@ cleanCommand = CommandUI
 emptyCleanFlags :: CleanFlags
 emptyCleanFlags = mempty
 
-instance Monoid CleanFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup CleanFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Build flags
 -- ------------------------------------------------------------
@@ -1575,7 +1560,12 @@ data BuildFlags = BuildFlags {
     buildArgs :: [String],
     buildCabalFilePath :: Flag FilePath
   }
-  deriving (Read, Show, Generic, Typeable)
+  deriving
+  stock (Read, Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid BuildFlags
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
@@ -1646,13 +1636,6 @@ buildOptions progDb showOrParseArgs =
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
 
-instance Monoid BuildFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup BuildFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * REPL Flags
 -- ------------------------------------------------------------
@@ -1665,7 +1648,12 @@ data ReplFlags = ReplFlags {
     replReload      :: Flag Bool,
     replReplOptions :: [String]
   }
-  deriving (Show, Generic, Typeable)
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ReplFlags
 
 defaultReplFlags :: ReplFlags
 defaultReplFlags  = ReplFlags {
@@ -1676,13 +1664,6 @@ defaultReplFlags  = ReplFlags {
     replReload      = Flag False,
     replReplOptions = []
   }
-
-instance Monoid ReplFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ReplFlags where
-  (<>) = gmappend
 
 replCommand :: ProgramDb -> CommandUI ReplFlags
 replCommand progDb = CommandUI
@@ -1803,7 +1784,13 @@ data TestFlags = TestFlags {
     testFailWhenNoTestSuites :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
-  } deriving (Show, Generic, Typeable)
+  }
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid TestFlags
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -1908,13 +1895,6 @@ testOptions' showOrParseArgs =
 emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
 
-instance Monoid TestFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup TestFlags where
-  (<>) = gmappend
-
 -- ------------------------------------------------------------
 -- * Benchmark flags
 -- ------------------------------------------------------------
@@ -1923,7 +1903,13 @@ data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
     benchmarkOptions   :: [PathTemplate]
-  } deriving (Show, Generic, Typeable)
+  }
+  deriving
+  stock (Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid BenchmarkFlags
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
@@ -1983,13 +1969,6 @@ benchmarkOptions' showOrParseArgs =
 
 emptyBenchmarkFlags :: BenchmarkFlags
 emptyBenchmarkFlags = mempty
-
-instance Monoid BenchmarkFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup BenchmarkFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Shared options utils

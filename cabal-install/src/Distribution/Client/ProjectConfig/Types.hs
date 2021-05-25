@@ -1,4 +1,8 @@
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DerivingStrategies         #-}
+{-# LANGUAGE DerivingVia                #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | Handling project configuration, types.
 --
@@ -124,7 +128,12 @@ data ProjectConfig
        projectConfigLocalPackages   :: PackageConfig,
        projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
      }
-  deriving (Eq, Show, Generic, Typeable)
+  deriving
+  stock (Eq, Show, Generic, Typeable)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ProjectConfig
 
 -- | That part of the project configuration that only affects /how/ we build
 -- and not the /value/ of the things we build. This means this information
@@ -153,8 +162,12 @@ data ProjectConfigBuildOnly
        projectConfigLogsDir               :: Flag FilePath,
        projectConfigClientInstallFlags    :: ClientInstallFlags
      }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
 
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ProjectConfigBuildOnly
 
 -- | Project configuration that is shared between all packages in the project.
 -- In particular this includes configuration that affects the solver.
@@ -215,8 +228,12 @@ data ProjectConfigShared
      --projectConfigOverrideReinstall :: Flag Bool,
      --projectConfigUpgradeDeps       :: Flag Bool
      }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
 
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid ProjectConfigShared
 
 -- | Specifies the provenance of project configuration, whether defaults were
 -- used or if the configuration was read from an explicit file path.
@@ -298,7 +315,12 @@ data PackageConfig
        -- Benchmark options
        packageConfigBenchmarkOptions    :: [PathTemplate]
      }
-  deriving (Eq, Show, Generic)
+  deriving
+  stock (Eq, Show, Generic)
+
+  deriving
+    (Semigroup, Monoid)
+  via GenericMonoid PackageConfig
 
 instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
@@ -342,38 +364,6 @@ instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
 instance (Semigroup v, Ord k) => Semigroup (MapMappend k v) where
   MapMappend a <> MapMappend b = MapMappend (Map.unionWith (<>) a b)
   -- rather than Map.union which is the normal Map monoid instance
-
-
-instance Monoid ProjectConfig where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ProjectConfig where
-  (<>) = gmappend
-
-
-instance Monoid ProjectConfigBuildOnly where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ProjectConfigBuildOnly where
-  (<>) = gmappend
-
-
-instance Monoid ProjectConfigShared where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup ProjectConfigShared where
-  (<>) = gmappend
-
-
-instance Monoid PackageConfig where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup PackageConfig where
-  (<>) = gmappend
 
 ----------------------------------------
 -- Resolving configuration to settings
