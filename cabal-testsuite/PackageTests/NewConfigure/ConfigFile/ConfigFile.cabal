@@ -1,0 +1,7 @@
+name:                ConfigFile
+version:             0.1.0.0
+author:              Foo Bar
+maintainer:          cabal-dev@haskell.org
+build-type:          Simple
+cabal-version:       >=1.10
+
