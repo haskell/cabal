@@ -1,5 +1,3 @@
-Package Description
-=======
 Quickstart
 ==========
 
