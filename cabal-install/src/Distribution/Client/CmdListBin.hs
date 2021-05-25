@@ -210,17 +210,21 @@ selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either ListBinTargetProblem [k]
 selectPackageTargets targetSelector targets
 
-    -- If there is exactly one buildable executable then we select that
+  -- If there is a single executable component, select that. See #7403
   | [target] <- targetsExesBuildable
   = Right [target]
 
+  -- Otherwise, if there is a single executable-like component left, select that.
+  | [target] <- targetsExeLikesBuildable
+  = Right [target]
+
     -- but fail if there are multiple buildable executables.
-  | not (null targetsExesBuildable)
-  = Left (matchesMultipleProblem targetSelector targetsExesBuildable')
+  | not (null targetsExeLikesBuildable)
+  = Left (matchesMultipleProblem targetSelector targetsExeLikesBuildable')
 
     -- If there are executables but none are buildable then we report those
-  | not (null targetsExes)
-  = Left (TargetProblemNoneEnabled targetSelector targetsExes)
+  | not (null targetsExeLikes')
+  = Left (TargetProblemNoneEnabled targetSelector targetsExeLikes')
 
     -- If there are no executables but some other targets then we report that
   | not (null targets)
@@ -230,14 +234,19 @@ selectPackageTargets targetSelector targets
   | otherwise
   = Left (TargetProblemNoTargets targetSelector)
   where
-    -- Targets that can be executed
-    targetsExecutableLike =
-      concatMap (\kind -> filterTargetsKind kind targets)
-                [ExeKind, TestKind, BenchKind]
-    (targetsExesBuildable,
-     targetsExesBuildable') = selectBuildableTargets' targetsExecutableLike
+    -- Targets that are precisely executables
+    targetsExes = filterTargetsKind ExeKind targets
+    targetsExesBuildable = selectBuildableTargets targetsExes
 
-    targetsExes             = forgetTargetsDetail targetsExecutableLike
+    -- Any target that could be executed
+    targetsExeLikes = targetsExes
+                   ++ filterTargetsKind TestKind targets
+                   ++ filterTargetsKind BenchKind targets
+
+    (targetsExeLikesBuildable,
+     targetsExeLikesBuildable') = selectBuildableTargets' targetsExeLikes
+
+    targetsExeLikes'             = forgetTargetsDetail targetsExeLikes
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be

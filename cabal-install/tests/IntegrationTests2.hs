@@ -865,6 +865,17 @@ testTargetProblemsRepl config reportSubCase = do
 testTargetProblemsRun :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsRun config reportSubCase = do
 
+    reportSubCase "one-of-each"
+    do (_,elaboratedPlan,_) <- planProject "targets/one-of-each" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdRun.selectPackageTargets
+         CmdRun.selectComponentTarget
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
+         ]
+         [ ("p-0.1-inplace-p1",      CExeName   "p1")
+         ]
+
     reportSubCase "multiple-exes"
     assertProjectTargetProblems
       "targets/multiple-exes" config
