@@ -27,7 +27,7 @@ import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
 import Distribution.Simple.Command               (CommandUI (..))
 import Distribution.Simple.Setup                 (configVerbosity, fromFlagOrDefault)
-import Distribution.Simple.Utils                 (die', ordNub, wrapText)
+import Distribution.Simple.Utils                 (die', wrapText)
 import Distribution.System                       (Platform)
 import Distribution.Types.ComponentName          (showComponentName)
 import Distribution.Types.UnitId                 (UnitId)
@@ -341,7 +341,7 @@ renderListBinProblem (TargetProblemMatchesMultiple targetSelector targets) =
 renderListBinProblem (TargetProblemMultipleTargets selectorMap) =
     "The list-bin command is for finding a single binary at once. The targets "
  ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
+                       | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different executables."
 
 renderListBinProblem (TargetProblemComponentNotRightKind pkgid cname) =
