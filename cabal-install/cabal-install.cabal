@@ -119,12 +119,16 @@ library
         Distribution.Client.IndexUtils.IndexState
         Distribution.Client.IndexUtils.Timestamp
         Distribution.Client.Init
-        Distribution.Client.Init.Command
         Distribution.Client.Init.Defaults
         Distribution.Client.Init.FileCreators
-        Distribution.Client.Init.Heuristics
+        Distribution.Client.Init.FlagExtractors
+        Distribution.Client.Init.Format
+        Distribution.Client.Init.Interactive.Command
+        Distribution.Client.Init.NonInteractive.Command
+        Distribution.Client.Init.NonInteractive.Heuristics
         Distribution.Client.Init.Licenses
         Distribution.Client.Init.Prompt
+        Distribution.Client.Init.Simple
         Distribution.Client.Init.Types
         Distribution.Client.Init.Utils
         Distribution.Client.Install
@@ -203,6 +207,7 @@ library
         directory  >= 1.2.2.0  && < 1.4,
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
+        exceptions,
         filepath   >= 1.4.0.0  && < 1.5,
         hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
@@ -273,6 +278,11 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.Glob
       UnitTests.Distribution.Client.GZipUtils
       UnitTests.Distribution.Client.Init
+      UnitTests.Distribution.Client.Init.Golden
+      UnitTests.Distribution.Client.Init.Interactive
+      UnitTests.Distribution.Client.Init.NonInteractive
+      UnitTests.Distribution.Client.Init.Simple
+      UnitTests.Distribution.Client.Init.Utils
       UnitTests.Distribution.Client.Store
       UnitTests.Distribution.Client.Tar
       UnitTests.Distribution.Client.TreeDiffInstances

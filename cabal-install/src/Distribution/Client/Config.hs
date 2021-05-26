@@ -264,6 +264,7 @@ instance Semigroup SavedConfig where
         IT.email               = combine IT.email,
         IT.exposedModules      = combineMonoid savedInitFlags IT.exposedModules,
         IT.extraSrc            = combineMonoid savedInitFlags IT.extraSrc,
+        IT.extraDoc            = combineMonoid savedInitFlags IT.extraDoc,
         IT.homepage            = combine IT.homepage,
         IT.initHcPath          = combine IT.initHcPath,
         IT.initVerbosity       = combine IT.initVerbosity,
@@ -841,8 +842,8 @@ commentSavedConfig = do
             IT.cabalVersion    = toFlag IT.defaultCabalVersion,
             IT.language        = toFlag Haskell2010,
             IT.license         = NoFlag,
-            IT.sourceDirs      = Just [IT.defaultSourceDir],
-            IT.applicationDirs = Just [IT.defaultApplicationDir]
+            IT.sourceDirs      = Flag [IT.defaultSourceDir],
+            IT.applicationDirs = Flag [IT.defaultApplicationDir]
             },
         savedInstallFlags      = defaultInstallFlags,
         savedClientInstallFlags= defaultClientInstallFlags,

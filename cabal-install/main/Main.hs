@@ -109,11 +109,12 @@ import Distribution.Client.Sandbox            (loadConfigOrSandboxConfig
                                               ,updateInstallDirs)
 import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types.Credentials  (Password (..))
-import Distribution.Client.Init               (initCabal)
+import Distribution.Client.Init               (initCmd)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
 import Distribution.Client.Utils              (determineNumJobs
                                               ,relaxEncodingErrors
+                                              ,cabalInstallVersion
                                               )
 
 import Distribution.Package (packageId)
@@ -219,9 +220,9 @@ mainWorker args = do
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ display cabalVersion
+    printNumericVersion = putStrLn $ display cabalInstallVersion
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ display cabalVersion
+                                  ++ display cabalInstallVersion
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
@@ -918,24 +919,24 @@ unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> Action
-initAction initFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (initVerbosity initFlags)
-  when (extraArgs /= []) $
-    die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  let configFlags  = savedConfigureFlags config `mappend`
-                     -- override with `--with-compiler` from CLI if available
-                     mempty { configHcPath = initHcPath initFlags }
-  let initFlags'   = savedInitFlags      config `mappend` initFlags
-  let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, progdb) <- configCompilerAux' configFlags
-  withRepoContext verbosity globalFlags' $ \repoContext ->
-    initCabal verbosity
-            (configPackageDB' configFlags)
-            repoContext
-            comp
-            progdb
-            initFlags'
+initAction initFlags extraArgs globalFlags
+    | not (null extraArgs) =
+      die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
+    | otherwise = do
+      confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
+      -- override with `--with-compiler` from CLI if available
+      let confFlags' = savedConfigureFlags confFlags `mappend` compFlags
+          initFlags' = savedInitFlags confFlags `mappend` initFlags
+          globalFlags' = savedGlobalFlags confFlags `mappend` globalFlags
+
+      (comp, _, progdb) <- configCompilerAux' confFlags'
+
+      withRepoContext verbosity globalFlags' $ \repoContext ->
+        initCmd verbosity (configPackageDB' confFlags')
+          repoContext comp progdb initFlags'
+  where
+    verbosity = fromFlag (initVerbosity initFlags)
+    compFlags = mempty { configHcPath = initHcPath initFlags }
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do

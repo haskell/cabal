@@ -84,7 +84,7 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import           Distribution.Client.Init (incVersion)
+import           Distribution.Client.Utils (incVersion)
 import           Distribution.Client.Targets (userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper

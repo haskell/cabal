@@ -25,7 +25,8 @@ import qualified UnitTests.Distribution.Client.InstallPlan
 import qualified UnitTests.Distribution.Client.Get
 
 main :: IO ()
-main =
+main = do
+  initTests <- UnitTests.Distribution.Client.Init.tests
   defaultMain $ testGroup "Unit Tests"
     [ testGroup "UnitTests.Distribution.Solver.Modular.Builder"
           UnitTests.Distribution.Solver.Modular.Builder.tests
@@ -41,7 +42,7 @@ main =
     , testGroup "Distribution.Client.GZipUtils"
         UnitTests.Distribution.Client.GZipUtils.tests
     , testGroup "Distribution.Client.Init"
-        UnitTests.Distribution.Client.Init.tests
+        initTests
     , testGroup "Distribution.Client.Store"
         UnitTests.Distribution.Client.Store.tests
     , testGroup "Distribution.Client.Tar"

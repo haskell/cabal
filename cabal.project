@@ -1,7 +1,8 @@
 packages: Cabal/ cabal-testsuite/
-packages: cabal-install-solver/
 packages: cabal-install/
+packages: cabal-install-solver/
 packages: solver-benchmarks/
+
 tests: True
 
 packages: Cabal-QuickCheck/
