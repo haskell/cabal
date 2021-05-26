@@ -42,6 +42,15 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
+There are two ways of modifying the ``cabal.project.local`` file through
+``cabal v2-configure``, either by appending new configurations to it, or 
+by simply overwriting it all. Overwriting is the default behaviour, as
+such, there's a flag ``--enable-append`` to append the new configurations
+instead. Since overwriting is rather destructive in nature, a backup system
+is in place, which moves the old configuration to a ``cabal.project.local~``
+file, this feature can also be disabled by using the ``--enable-overwrite``
+flag.
+
 cabal v2-update
 ----------------
 
