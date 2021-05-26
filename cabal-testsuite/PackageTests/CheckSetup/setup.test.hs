@@ -3,7 +3,7 @@ import Test.Cabal.Prelude
 -- Test that setup shows all the 'autogen-modules' warnings.
 main = cabalTest $ do
 
-        checkResult <- fails $ cabal_raw' ["check"]
+        checkResult <- fails $ cabal_raw' ["check"] Nothing
 
         -- Package check messages.
         let libWarning=
