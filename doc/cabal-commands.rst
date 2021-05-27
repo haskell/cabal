@@ -194,6 +194,19 @@ Tests and benchmarks are also treated as executables.
 
 See `the v2-build section <#cabal-v2-build>`__ for the target syntax.
 
+When ``TARGET`` is one of the following:
+
+- A component target: execute the specified executable, benchmark or test suite
+
+- A package target:
+   1. If the package has exactly one executable component, it will be selected.
+   2. If the package has multiple executable components, an error is raised.
+   3. If the package has exactly one test or benchmark component, it will be selected.
+   4. Otherwise an issue is raised
+
+- Empty target: Same as package target, implicitly using the package from the current
+  working directory.
+
 Except in the case of the empty target, the strings after it will be
 passed to the executable as arguments.
 

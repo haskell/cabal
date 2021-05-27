@@ -121,8 +121,9 @@ runCommand = CommandUI
 
       ++ "Any executable-like component in any package in the project can be "
       ++ "specified. A package can be specified if contains just one "
-      ++ "executable-like. The default is to use the package in the current "
-      ++ "directory if it contains just one executable-like.\n\n"
+      ++ "executable-like, preferring a single executable. The default is to "
+      ++ "use the package in the current directory if it contains just one "
+      ++ "executable-like.\n\n"
 
       ++ "Extra arguments can be passed to the program, but use '--' to "
       ++ "separate arguments for the program from arguments for " ++ pname
