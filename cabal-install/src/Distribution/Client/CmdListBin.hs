@@ -6,6 +6,14 @@
 module Distribution.Client.CmdListBin (
     listbinCommand,
     listbinAction,
+
+    -- * Internals exposed for testing
+    selectPackageTargets,
+    selectComponentTarget,
+    noComponentsProblem,
+    matchesMultipleProblem,
+    multipleTargetsProblem,
+    componentNotRightKindProblem
 ) where
 
 import Distribution.Client.Compat.Prelude

@@ -43,6 +43,7 @@ import qualified Distribution.Client.CmdRun     as CmdRun
 import qualified Distribution.Client.CmdTest    as CmdTest
 import qualified Distribution.Client.CmdBench   as CmdBench
 import qualified Distribution.Client.CmdHaddock as CmdHaddock
+import qualified Distribution.Client.CmdListBin as CmdListBin
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -109,6 +110,7 @@ tests config =
     , testCaseSteps "problems (build)"   (testTargetProblemsBuild config)
     , testCaseSteps "problems (repl)"    (testTargetProblemsRepl config)
     , testCaseSteps "problems (run)"     (testTargetProblemsRun config)
+    , testCaseSteps "problems (list-bin)" (testTargetProblemsListBin config)
     , testCaseSteps "problems (test)"    (testTargetProblemsTest config)
     , testCaseSteps "problems (bench)"   (testTargetProblemsBench config)
     , testCaseSteps "problems (haddock)" (testTargetProblemsHaddock config)
@@ -861,10 +863,75 @@ testTargetProblemsRepl config reportSubCase = do
          [ TargetPackage TargetExplicitNamed ["p-0.1"] (Just BenchKind) ]
          [ ("p-0.1-inplace-a-benchmark", CBenchName "a-benchmark") ]
 
+testTargetProblemsListBin :: ProjectConfig -> (String -> IO ()) -> Assertion
+testTargetProblemsListBin config reportSubCase = do
+    reportSubCase "one-of-each"
+    do (_,elaboratedPlan,_) <- planProject "targets/one-of-each" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdListBin.selectPackageTargets
+         CmdListBin.selectComponentTarget
+         [ TargetPackage TargetExplicitNamed ["p-0.1"] Nothing
+         ]
+         [ ("p-0.1-inplace-p1",      CExeName   "p1")
+         ]
+
+    reportSubCase "multiple-exes"
+    assertProjectTargetProblems
+      "targets/multiple-exes" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( flip CmdListBin.matchesMultipleProblem
+               [ AvailableTarget "p-0.1" (CExeName "p2")
+                   (TargetBuildable () TargetRequestedByDefault) True
+               , AvailableTarget "p-0.1" (CExeName "p1")
+                   (TargetBuildable () TargetRequestedByDefault) True
+               ]
+        , mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "multiple targets"
+    do (_,elaboratedPlan,_) <- planProject "targets/multiple-exes" config
+       assertProjectDistinctTargets
+         elaboratedPlan
+         CmdListBin.selectPackageTargets
+         CmdListBin.selectComponentTarget
+         [ mkTargetComponent "p-0.1" (CExeName "p1")
+         , mkTargetComponent "p-0.1" (CExeName "p2")
+         ]
+         [ ("p-0.1-inplace-p1", CExeName "p1")
+         , ("p-0.1-inplace-p2", CExeName "p2")
+         ]
+
+    reportSubCase "exes-disabled"
+    assertProjectTargetProblems
+      "targets/exes-disabled" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( flip TargetProblemNoneEnabled
+               [ AvailableTarget "p-0.1" (CExeName "p") TargetNotBuildable True
+               ]
+        , mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "empty-pkg"
+    assertProjectTargetProblems
+      "targets/empty-pkg" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ ( TargetProblemNoTargets, mkTargetPackage "p-0.1" )
+      ]
+
+    reportSubCase "lib-only"
+    assertProjectTargetProblems
+      "targets/lib-only" config
+      CmdListBin.selectPackageTargets
+      CmdListBin.selectComponentTarget
+      [ (CmdListBin.noComponentsProblem, mkTargetPackage "p-0.1" )
+      ]
 
 testTargetProblemsRun :: ProjectConfig -> (String -> IO ()) -> Assertion
 testTargetProblemsRun config reportSubCase = do
-
     reportSubCase "one-of-each"
     do (_,elaboratedPlan,_) <- planProject "targets/one-of-each" config
        assertProjectDistinctTargets
