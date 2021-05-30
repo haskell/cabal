@@ -25,7 +25,8 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
                                 PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
-                                ppHappy, ppAlex, ppUnlit, platformDefines
+                                ppHappy, ppAlex, ppUnlit, platformDefines,
+                                unsorted
                                )
     where
 
@@ -124,6 +125,9 @@ data PreProcessor = PreProcessor {
                   -> IO ()     -- Should exit if the preprocessor fails
   }
 
+-- | Just present the modules in the order given; this is the default and it is
+-- appropriate for preprocessors which do not have any sort of dependencies
+-- between modules.
 unsorted :: Verbosity
          -> [FilePath]
          -> [ModuleName]
