@@ -180,21 +180,25 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
     let hndlrs = localHandlers bi
     mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
     for_ (map ModuleName.toFilePath mods) $
-      pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
+      pre dirs (componentBuildDir lbi clbi) hndlrs
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
-      pre dirs flibDir (localHandlers bi)
+    let hndlrs = localHandlers bi
+    mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
+    for_ (map ModuleName.toFilePath mods) $
+      pre dirs flibDir hndlrs
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ otherModules bi) $
-      pre dirs exeDir (localHandlers bi)
+    let hndlrs = localHandlers bi
+    mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
+    for_ (map ModuleName.toFilePath mods) $
+      pre dirs exeDir hndlrs
     pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
   CTest test@TestSuite{ testName = nm } -> do
