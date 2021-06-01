@@ -33,7 +33,8 @@ main = defaultMainWithHooks
         platformIndependent = True,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
           do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
-             callProcess progPath [inFile, outFile]
+             callProcess progPath [inFile, outFile],
+        ppOrdering = unsorted
         }
       where
         builddir = buildDir lbi
