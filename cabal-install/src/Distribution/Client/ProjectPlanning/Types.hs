@@ -754,6 +754,7 @@ instance Semigroup BuildStyle where
     _ <> _ = BuildAndInstall
 instance Monoid BuildStyle where
     mempty = BuildAndInstall
+    mappend = (<>)
 
 type CabalFileText = LBS.ByteString
 
