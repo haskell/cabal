@@ -664,9 +664,7 @@ rebuildInstallPlan verbosity
                   defaultInstallDirs
                   elaboratedShared
                   elaboratedPlan
-        liftIO $ notice verbosity "--- Instantiated plan:"
-        liftIO $ noticeNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
-        liftIO $ notice verbosity "---"
+        liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan instantiatedPlan)
         return (instantiatedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
