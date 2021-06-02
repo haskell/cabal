@@ -97,4 +97,4 @@ configureTests = testGroup "Configure tests"
     ]
 
 projectFile :: FilePath
-projectFile = "tests" </> "fixtures" </> "reconfigure" </> "cabal.project"
+projectFile = "tests" </> "fixtures" </> "configure" </> "cabal.project"
