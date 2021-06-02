@@ -5,6 +5,7 @@ import Distribution.Client.CmdConfigure
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Control.Monad
 import System.Directory
 import System.FilePath
 import Distribution.Verbosity
@@ -85,7 +86,10 @@ configureTests = testGroup "Configure tests"
               }
             backup = projectFile <.> "local~"
 
-        removeFile backup
+        exists <- doesFileExist backup
+        when exists $ 
+          removeFile backup
+
         _ <- configureAction' flags [] defaultGlobalFlags
 
         doesFileExist backup >>=
