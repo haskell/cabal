@@ -2135,7 +2135,7 @@ initOptions _ =
     (noArg (Flag IT.LibraryAndExecutable))
 
       , option [] ["tests"]
-        "Generate a test suite for the library."
+        "Generate a test suite, standalone or for a library."
         IT.initializeTestSuite
         (\v flags -> flags { IT.initializeTestSuite = v })
         trueArg
