@@ -106,7 +106,7 @@ configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
         appends = fromFlagOrDefault False $ configAppend configExFlags
         backupFile = localFile <> "~"
 
-    when (exists && not backups) $ do
+    when (exists && backups) $ do
       notice v $
         quote (takeFileName localFile) <> " already exists, backing it up to "
         <> quote (takeFileName backupFile) <> "."
