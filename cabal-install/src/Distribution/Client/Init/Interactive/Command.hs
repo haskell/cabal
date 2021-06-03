@@ -137,6 +137,16 @@ createProject v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
+    
+    TestSuite -> do
+      testTarget <- addLibDepToTest pkgName <$>
+        genTestTarget initFlags pkgIx
+      
+      comments <- noCommentsPrompt initFlags
+
+      return $ ProjectSettings
+        (mkOpts comments cabalSpec) pkgDesc
+        Nothing Nothing testTarget
   where
     -- Add package name as dependency of test suite
     --
@@ -229,7 +239,7 @@ genTestTarget
     => InitFlags
     -> InstalledPackageIndex
     -> m (Maybe TestTarget)
-genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
+genTestTarget flags pkgs = initializeTestSuitePrompt (flags {initializeTestSuite = NoFlag}) >>= go
   where
     go initialized
       | not initialized = return Nothing
