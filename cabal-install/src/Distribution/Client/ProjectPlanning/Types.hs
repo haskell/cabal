@@ -237,6 +237,10 @@ data ElaboratedConfiguredPackage
        elabBuildPackageDBStack    :: PackageDBStack,
        elabRegisterPackageDBStack :: PackageDBStack,
 
+       elabInplaceSetupPackageDBStack    :: PackageDBStack,
+       elabInplaceBuildPackageDBStack    :: PackageDBStack,
+       elabInplaceRegisterPackageDBStack :: PackageDBStack,
+
        elabPkgDescriptionOverride  :: Maybe CabalFileText,
 
        -- TODO: make per-component variants of these flags
@@ -744,6 +748,13 @@ data BuildStyle =
 
 instance Binary BuildStyle
 instance Structured BuildStyle
+instance Semigroup BuildStyle where
+    BuildInplaceOnly <> _ = BuildInplaceOnly
+    _ <> BuildInplaceOnly = BuildInplaceOnly
+    _ <> _ = BuildAndInstall
+instance Monoid BuildStyle where
+    mempty = BuildAndInstall
+    mappend = (<>)
 
 type CabalFileText = LBS.ByteString
 
