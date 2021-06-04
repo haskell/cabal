@@ -71,7 +71,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               , dependencies = Flag []
               }
 
-        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["y", "3", "quxTest/Main.hs"]) of
+        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["3", "quxTest/Main.hs"]) of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -341,7 +341,6 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- category
               , "3"
               -- test target
-              , "y"
               -- main file
               , "1"
               -- test dir

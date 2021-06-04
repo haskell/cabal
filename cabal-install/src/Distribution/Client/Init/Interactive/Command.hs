@@ -139,9 +139,10 @@ createProject v pkgIx srcDb initFlags = do
         (Just exeTarget) testTarget
     
     TestSuite -> do
-      testTarget <- genTestTarget initFlags pkgIx
+      let initFlags' = initFlags { initializeTestSuite = Flag True }
+      testTarget <- genTestTarget initFlags' pkgIx
       
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
@@ -238,7 +239,7 @@ genTestTarget
     => InitFlags
     -> InstalledPackageIndex
     -> m (Maybe TestTarget)
-genTestTarget flags pkgs = initializeTestSuitePrompt (flags {initializeTestSuite = NoFlag}) >>= go
+genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
   where
     go initialized
       | not initialized = return Nothing
