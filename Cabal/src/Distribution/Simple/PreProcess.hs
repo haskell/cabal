@@ -31,7 +31,6 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
     where
 
 import Prelude ()
-import Control.Monad ((>=>))
 import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
@@ -227,8 +226,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           die' verbosity $ "No support for preprocessing benchmark "
                         ++ "type " ++ prettyShow tt
   where
-    orderingFromHandlers v d = threadM . fmap (($d) . ($v) . ppOrdering . snd)
-    threadM = foldr (>=>) pure
+    orderingFromHandlers v d hndlrs mods =
+      foldM (\acc (_,pp) -> ppOrdering pp v d acc) mods hndlrs
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
