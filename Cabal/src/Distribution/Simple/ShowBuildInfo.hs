@@ -148,11 +148,26 @@ mkComponentInfo wdir pkg_descr lbi clbi = JsonObject $
     modules = case comp of
       CLib lib -> explicitLibModules lib
       CExe exe -> exeModules exe
-      _        -> []
+      CTest test ->
+        case testInterface test of
+          TestSuiteExeV10 _ _ -> []
+          TestSuiteLibV09 _ modName -> [modName]
+          TestSuiteUnsupported _ -> []
+      CBench bench -> benchmarkModules bench
+      CFLib flib -> foreignLibModules flib
     sourceFiles = case comp of
       CLib _   -> []
       CExe exe -> [modulePath exe]
-      _        -> []
+      CTest test ->
+        case testInterface test of
+          TestSuiteExeV10 _ fp -> [fp]
+          TestSuiteLibV09 _ _ -> []
+          TestSuiteUnsupported _ -> []
+      CBench bench -> case benchmarkInterface bench of
+        BenchmarkExeV10 _ fp -> [fp]
+        BenchmarkUnsupported _ -> []
+
+      CFLib _ -> []
     cabalFile
       | Just fp <- pkgDescrFile lbi = [("cabal-file", JsonString (T.pack fp))]
       | otherwise                   = []
