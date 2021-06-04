@@ -64,7 +64,7 @@ createProject v _pkgIx _srcDb initFlags = do
           (Just libTarget) (Just exeTarget) testTarget
       
       TestSuite -> do
-        testTarget <- addLibDepToTest pkgName <$> genSimpleTestTarget initFlags
+        testTarget <- genSimpleTestTarget initFlags
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           Nothing Nothing testTarget

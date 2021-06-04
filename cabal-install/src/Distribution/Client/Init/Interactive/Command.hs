@@ -139,8 +139,7 @@ createProject v pkgIx srcDb initFlags = do
         (Just exeTarget) testTarget
     
     TestSuite -> do
-      testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+      testTarget <- genTestTarget initFlags pkgIx
       
       comments <- noCommentsPrompt initFlags
 

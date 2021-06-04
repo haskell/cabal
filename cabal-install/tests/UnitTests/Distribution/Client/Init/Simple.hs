@@ -117,7 +117,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" TestSuite pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) Nothing Nothing
-            (Just $ simpleTestTarget (Just pkgName))
+            (Just $ simpleTestTarget Nothing)
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple standalone test project: " ++ show e
