@@ -71,7 +71,7 @@ import Distribution.Client.IndexUtils.ActiveRepos
 import Distribution.Client.IndexUtils.IndexState
          ( TotalIndexState, headTotalIndexState )
 import qualified Distribution.Client.Init.Types as IT
-         ( InitFlags(..), PackageType(..), defaultInitFlags )
+import qualified Distribution.Client.Init.Defaults as IT
 import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 import Distribution.Utils.NubList
@@ -599,6 +599,8 @@ configCompilerAux' configFlags =
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion  :: Flag Version,
+    configAppend        :: Flag Bool,
+    configBackup        :: Flag Bool, 
     configExConstraints :: [(UserConstraint, ConstraintSource)],
     configPreferences   :: [PackageVersionConstraint],
     configSolver        :: Flag PreSolver,
@@ -637,6 +639,14 @@ configureExOptions _showOrParseArgs src =
       (reqArg "VERSION" (parsecToReadE ("Cannot parse cabal lib version: "++)
                                     (fmap toFlag parsec))
                         (map prettyShow. flagToList))
+  , option "" ["append"]
+      "appending the new config to the old config file"
+      configAppend (\v flags -> flags { configAppend = v })
+      (boolOpt [] [])
+  , option "" ["backup"]
+      "the backup of the config file before any alterations"
+      configBackup (\v flags -> flags { configBackup = v })
+      (boolOpt [] [])
   , option [] ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
@@ -2215,14 +2225,17 @@ initOptions _ =
   , option ['c'] ["category"]
     "Project category."
     IT.category (\v flags -> flags { IT.category = v })
-    (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
-                        (flagToList . fmap (either id show)))
+    (reqArgFlag "CATEGORY")
 
   , option ['x'] ["extra-source-file"]
     "Extra source file to be distributed with tarball."
     IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
-    (reqArg' "FILE" (Just . (:[]))
-                    (fromMaybe []))
+    (reqArg' "FILE" (Flag . (:[]))
+                    (fromFlagOrDefault []))
+  , option [] ["extra-doc-file"]
+    "Extra doc file to be distributed with tarball."
+    IT.extraDoc (\v flags -> flags { IT.extraDoc = v })
+    (reqArg' "FILE" (Flag . (:[])) (fromFlagOrDefault []))
 
   , option [] ["lib", "is-library"]
     "Build a library."
@@ -2250,8 +2263,8 @@ initOptions _ =
       , option [] ["test-dir"]
         "Directory containing tests."
         IT.testDirs (\v flags -> flags { IT.testDirs = v })
-        (reqArg' "DIR" (Just . (:[]))
-                       (fromMaybe []))
+        (reqArg' "DIR" (Flag . (:[]))
+                       (fromFlagOrDefault []))
 
   , option [] ["simple"]
     "Create a simple project with sensible defaults."
@@ -2278,41 +2291,41 @@ initOptions _ =
     IT.exposedModules
     (\v flags -> flags { IT.exposedModules = v })
     (reqArg "MODULE" (parsecToReadE ("Cannot parse module name: "++)
-                                 ((Just . (:[])) `fmap` parsec))
-                     (maybe [] (fmap prettyShow)))
+                                 (Flag . (:[]) <$> parsec))
+                     (flagElim [] (fmap prettyShow)))
 
   , option [] ["extension"]
     "Use a LANGUAGE extension (in the other-extensions field)."
     IT.otherExts
     (\v flags -> flags { IT.otherExts = v })
     (reqArg "EXTENSION" (parsecToReadE ("Cannot parse extension: "++)
-                                    ((Just . (:[])) `fmap` parsec))
-                        (maybe [] (fmap prettyShow)))
+                                    (Flag . (:[]) <$> parsec))
+                        (flagElim [] (fmap prettyShow)))
 
   , option ['d'] ["dependency"]
     "Package dependency."
     IT.dependencies (\v flags -> flags { IT.dependencies = v })
     (reqArg "PACKAGE" (parsecToReadE ("Cannot parse dependency: "++)
-                                  ((Just . (:[])) `fmap` parsec))
-                      (maybe [] (fmap prettyShow)))
+                                  (Flag . (:[]) <$> parsec))
+                      (flagElim [] (fmap prettyShow)))
 
   , option [] ["application-dir"]
     "Directory containing package application executable."
     IT.applicationDirs (\v flags -> flags { IT.applicationDirs = v})
-    (reqArg' "DIR" (Just . (:[]))
-                   (fromMaybe []))
+    (reqArg' "DIR" (Flag . (:[]))
+                   (fromFlagOrDefault []))
 
   , option [] ["source-dir", "sourcedir"]
     "Directory containing package library source."
     IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
-    (reqArg' "DIR" (Just . (:[]))
-                   (fromMaybe []))
+    (reqArg' "DIR" (Flag. (:[]))
+                   (fromFlagOrDefault []))
 
   , option [] ["build-tool"]
     "Required external build tool."
     IT.buildTools (\v flags -> flags { IT.buildTools = v })
-    (reqArg' "TOOL" (Just . (:[]))
-                    (fromMaybe []))
+    (reqArg' "TOOL" (Flag . (:[]))
+                    (fromFlagOrDefault []))
 
     -- NB: this is a bit of a transitional hack and will likely be
     -- removed again if `cabal init` is migrated to the v2-* command

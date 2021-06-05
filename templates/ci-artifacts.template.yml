@@ -27,8 +27,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Package project
         run: |
-          cabal v2-sdist --builddir=sdist Cabal cabal-install
-          python3.8 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarexe=sdist/sdist/cabal-install-*.tar.gz
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
+          python3.8 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarsolver=sdist/sdist/cabal-install-solver-3.*.tar.gz --tarexe=sdist/sdist/cabal-install-3.*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-linux
@@ -62,8 +62,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Package project
         run: |
-          cabal v2-sdist --builddir=sdist Cabal cabal-install
-          python3 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarexe=sdist/sdist/cabal-install-*.tar.gz
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
+          python3 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarsolver=sdist/sdist/cabal-install-solver-3.*.tar.gz --tarexe=sdist/sdist/cabal-install-3.*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-macos
@@ -93,9 +93,9 @@ jobs:
       - name: Package project
         # We hardcode version 3 here to make first glob not overlap with cabal-install
         run: |
-          cabal v2-sdist --builddir=sdist Cabal cabal-install
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
           New-Item -Path "_build" -ItemType "directory"
-          python release.py --tarlib=$(Resolve-Path -Path sdist/sdist/Cabal-3.*.tar.gz) --tarexe=$(Resolve-Path -Path sdist/sdist/cabal-install-3.*.tar.gz)
+          python release.py --tarlib=$(Resolve-Path -Path sdist/sdist/Cabal-3.*.tar.gz) --tarsolver=$(Resolve-Path -Path sdist/sdist/cabal-install-solver-3.*.tar.gz) --tarexe=$(Resolve-Path -Path sdist/sdist/cabal-install-3.*.tar.gz)
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-windows

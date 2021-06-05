@@ -35,6 +35,7 @@ import Distribution.Client.ProjectOrchestration
   , distDirLayout
   , commandLineFlagsToProjectConfig
   , ProjectBaseContext(..)
+  , BuildTimeSettings(..)
   )
 import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
@@ -81,6 +82,7 @@ import Distribution.Simple.Utils
   , createDirectoryIfMissingVerbose
   , withTempDirectory
   , wrapText
+  , notice
   )
 import Distribution.Verbosity
   ( normal
@@ -185,7 +187,12 @@ execAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                            argOverrides'
                            program
             invocation = programInvocation program' args
-        runProgramInvocation verbosity invocation
+            dryRun = buildSettingDryRun (buildSettings baseCtx)
+                  || buildSettingOnlyDownload (buildSettings baseCtx)
+
+        if dryRun
+           then notice verbosity "Running of executable suppressed by flag(s)"
+           else runProgramInvocation verbosity invocation
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags

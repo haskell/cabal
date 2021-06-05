@@ -41,7 +41,6 @@ jobs:
           make -B spdx
           make -B templates
           make -B github-actions
-          make -B cabal-install-cabal
       - name: Check that diff is clean
         run: |
           git status > /dev/null

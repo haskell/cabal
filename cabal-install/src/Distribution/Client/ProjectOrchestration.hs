@@ -58,6 +58,8 @@ module Distribution.Client.ProjectOrchestration (
     reportTargetSelectorProblems,
     resolveTargets,
     TargetsMap,
+    allTargetSelectors,
+    uniqueTargetSelectors,
     TargetSelector(..),
     TargetImplicitCwd(..),
     PackageId,
@@ -151,7 +153,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
-                   ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose )
+                   ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose, ordNub )
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
@@ -473,7 +475,15 @@ runProjectPostBuildPhase verbosity
 -- possible to for different selectors to match the same target. This extra
 -- information is primarily to help make helpful error messages.
 --
-type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector])]
+type TargetsMap = Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+
+-- | Get all target selectors.
+allTargetSelectors :: TargetsMap -> [TargetSelector]
+allTargetSelectors = concatMap (NE.toList . snd) . concat . Map.elems
+
+-- | Get all unique target selectors.
+uniqueTargetSelectors :: TargetsMap -> [TargetSelector]
+uniqueTargetSelectors = ordNub . allTargetSelectors
 
 -- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
 -- 'ComponentTarget's they ought to refer to.
@@ -529,7 +539,7 @@ resolveTargets selectPackageTargets selectComponentTarget
                  -> TargetsMap
     mkTargetsMap targets =
         Map.map nubComponentTargets
-      $ Map.fromListWith (++)
+      $ Map.fromListWith (<>)
           [ (uid, [(ct, ts)])
           | (ts, cts) <- targets
           , (uid, ct) <- cts ]

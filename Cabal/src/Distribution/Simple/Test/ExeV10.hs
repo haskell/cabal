@@ -118,7 +118,7 @@ runTest pkg_descr lbi clbi flags suite = do
     let suiteLog = buildLog exit
 
     -- Write summary notice to log file indicating start of test suite
-    appendFile (logFile suiteLog) $ summarizeSuiteStart $ testName'
+    appendFile (logFile suiteLog) $ summarizeSuiteStart testName'
 
     -- Append contents of temporary log file to the final human-
     -- readable log file
@@ -144,7 +144,7 @@ runTest pkg_descr lbi clbi flags suite = do
     when isCoverageEnabled $
         case PD.library pkg_descr of
             Nothing ->
-                die' verbosity $ "Error: test coverage is only supported for packages with a library component"
+                die' verbosity "Error: test coverage is only supported for packages with a library component"
 
             Just library ->
                 markupTest verbosity lbi distPref (prettyShow $ PD.package pkg_descr) suite library
