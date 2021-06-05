@@ -23,8 +23,8 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Setup hiding (quiet)
 import Distribution.Client.Targets
 import Distribution.Client.Types
+import qualified Distribution.Client.Types.SourcePackageDb as SourcePackageDb
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Solver.Types.PackageIndex
 import Distribution.Client.Sandbox.PackageEnvironment
 import Distribution.Utils.Generic
 
@@ -83,7 +83,6 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
       "--project-file must only be used with --v2-freeze-file."
 
   sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
-  let pkgIndex = packageIndex sourcePkgDb
   deps <- if freezeFile
           then depsFromFreezeFile verbosity
           else if newFreezeFile
@@ -91,7 +90,7 @@ outdated verbosity0 outdatedFlags repoContext comp platform = do
                else depsFromPkgDesc verbosity comp platform
   debug verbosity $ "Dependencies loaded: "
     ++ (intercalate ", " $ map prettyShow deps)
-  let outdatedDeps = listOutdated deps pkgIndex
+  let outdatedDeps = listOutdated deps sourcePkgDb
                      (ListOutdatedSettings ignorePred minorPred)
   when (not quiet) $
     showResult verbosity outdatedDeps simpleOutput
@@ -168,23 +167,23 @@ depsFromPkgDesc verbosity comp platform = do
 data ListOutdatedSettings = ListOutdatedSettings {
   -- | Should this package be ignored?
   listOutdatedIgnorePred :: PackageName -> Bool,
-  -- | Should major version bumps should be ignored for this package?
+  -- | Should major version bumps be ignored for this package?
   listOutdatedMinorPred  :: PackageName -> Bool
   }
 
 -- | Find all outdated dependencies.
 listOutdated :: [PackageVersionConstraint]
-             -> PackageIndex UnresolvedSourcePackage
+             -> SourcePackageDb
              -> ListOutdatedSettings
              -> [(PackageVersionConstraint, Version)]
-listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
+listOutdated deps sourceDb (ListOutdatedSettings ignorePred minorPred) =
   mapMaybe isOutdated $ map simplifyPackageVersionConstraint deps
   where
     isOutdated :: PackageVersionConstraint -> Maybe (PackageVersionConstraint, Version)
     isOutdated dep@(PackageVersionConstraint pname vr)
       | ignorePred pname = Nothing
-      | otherwise                   =
-          let this   = map packageVersion $ lookupDependency pkgIndex pname vr
+      | otherwise =
+          let this   = map packageVersion $ SourcePackageDb.lookupDependency sourceDb pname vr
               latest = lookupLatest dep
           in (\v -> (dep, v)) `fmap` isOutdated' this latest
 
@@ -199,9 +198,9 @@ listOutdated deps pkgIndex (ListOutdatedSettings ignorePred minorPred) =
     lookupLatest :: PackageVersionConstraint -> [Version]
     lookupLatest (PackageVersionConstraint pname vr)
       | minorPred pname =
-        map packageVersion $ lookupDependency pkgIndex  pname (relaxMinor vr)
+        map packageVersion $ SourcePackageDb.lookupDependency sourceDb  pname (relaxMinor vr)
       | otherwise =
-        map packageVersion $ lookupPackageName pkgIndex pname
+        map packageVersion $ SourcePackageDb.lookupPackageName sourceDb pname
 
     relaxMinor :: VersionRange -> VersionRange
     relaxMinor vr =
