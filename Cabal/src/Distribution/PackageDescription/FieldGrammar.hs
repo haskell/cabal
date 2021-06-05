@@ -554,7 +554,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "default-extensions"   (alaList' FSep MQuoted)       L.defaultExtensions
         ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "other-extensions"     formatOtherExtensions         L.otherExtensions
-        ^^^ availableSince CabalSpecV1_10 []
+        ^^^ availableSinceWarn CabalSpecV1_10
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."

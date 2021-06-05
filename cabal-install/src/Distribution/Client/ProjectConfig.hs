@@ -27,7 +27,9 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     readProjectConfig,
     readGlobalConfig,
+    readProjectLocalExtraConfig,
     readProjectLocalFreezeConfig,
+    showProjectConfig,
     withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
@@ -303,6 +305,7 @@ resolveBuildTimeSettings verbosity
   where
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
+    buildSettingOnlyDownload  = fromFlag    projectConfigOnlyDownload
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
     --buildSettingLogFile       -- defined below, more complicated
     --buildSettingLogVerbosity  -- defined below, more complicated
@@ -328,6 +331,7 @@ resolveBuildTimeSettings verbosity
     defaults = mempty {
       projectConfigDryRun                = toFlag False,
       projectConfigOnlyDeps              = toFlag False,
+      projectConfigOnlyDownload          = toFlag False,
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigKeepGoing             = toFlag False,
@@ -572,7 +576,7 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-        . parseProjectConfig
+        . (parseProjectConfig extensionFile)
       =<< BS.readFile extensionFile
 
     addProjectFileProvenance config =
@@ -587,10 +591,10 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 -- For the moment this is implemented in terms of parsers for legacy
 -- configuration types, plus a conversion.
 --
-parseProjectConfig :: BS.ByteString -> OldParser.ParseResult ProjectConfig
-parseProjectConfig content =
+parseProjectConfig :: FilePath -> BS.ByteString -> OldParser.ParseResult ProjectConfig
+parseProjectConfig source content =
     convertLegacyProjectConfig <$>
-      parseLegacyProjectConfig content
+      (parseLegacyProjectConfig source content)
 
 
 -- | Render the 'ProjectConfig' format.

@@ -218,6 +218,11 @@ getLanguages :: Verbosity -> GhcImplInfo -> ConfiguredProgram
              -> IO [(Language, String)]
 getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
+  | supportsGHC2021 implInfo = return
+    [ (GHC2021, "-XGHC2021")
+    , (Haskell2010, "-XHaskell2010")
+    , (Haskell98, "-XHaskell98")
+    ]
   | supportsHaskell2010 implInfo = return [(Haskell98,   "-XHaskell98")
                                           ,(Haskell2010, "-XHaskell2010")]
   | otherwise                    = return [(Haskell98,   "")]

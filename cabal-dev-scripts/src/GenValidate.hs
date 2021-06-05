@@ -22,13 +22,14 @@ main = do
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
                 { zJobs =
-                    [ GhcJob "8.10.1" False ""                          False ["8.8.3"] defSteps
+                    [ GhcJob "9.0.1"  False "--lib-only"                False ["8.8.3"] libSteps
+                    , GhcJob "8.10.1" False ""                          False ["8.8.3"] defSteps
                     , GhcJob "8.8.3"  False "--solver-benchmarks"       False []        defSteps
                     , GhcJob "8.6.5"  False "--complete-hackage-tests"  False ["8.8.3"] defSteps
                     , GhcJob "8.4.4"  False ""                          False ["8.8.3"] defSteps
                     , GhcJob "8.2.2"  False ""                          False ["8.8.3"] defSteps
-                    , GhcJob "8.0.2"  False ""                          False ["8.8.3"] defSteps
-                    , GhcJob "7.10.3" False ""                          False ["8.8.3"] defSteps
+                    , GhcJob "8.0.2"  False "--lib-only"                False ["8.8.3"] libSteps
+                    , GhcJob "7.10.3" False "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "7.8.4"  False "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "7.6.3"  True  "--lib-only"                False ["8.8.3"] libSteps
                     , GhcJob "8.8.3"  True  "--lib-only"                True  ["8.8.3"] $
@@ -43,14 +44,8 @@ main = do
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
                     ]
                 , zWinJobs =
-                    -- 8.8.1 fails atm,
-                    -- Shutting down GHCi sessions (please be patient)...
-                    -- Unexpected failure on GHCi exit: fd:10: hClose: resource vanished (Broken pipe)
-                    -- cabal-tests: fd:10: hClose: resource vanished (Broken pipe)
-                    -- [ WinGhcJob "8.8.1" ["8.6.5"]
                     [ mkWinGhcJob "8.6.5"  Nothing           []
-                    , mkWinGhcJob "8.8.4"  (Just "8.8.4.1")  []
-                    , mkWinGhcJob "8.10.2" (Just "8.10.2.2") []
+                    , mkWinGhcJob "8.10.3" (Just "8.10.3")   []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)
@@ -77,7 +72,6 @@ defSteps :: [String]
 defSteps =
     [ "print-config"
     , "print-tool-versions"
-    , "make-cabal-install-dev"
     , "build"
     , "lib-tests"
     , "lib-suite"

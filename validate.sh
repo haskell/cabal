@@ -259,7 +259,6 @@ fi
 
 if [ -z "$STEPS" ]; then
     STEPS="print-config print-tool-versions"
-    if ! $LIBONLY;  then STEPS="$STEPS make-cabal-install-dev"; fi
     STEPS="$STEPS build"
     if $DOCTEST;    then STEPS="$STEPS doctest";   fi
     if $LIBTESTS;   then STEPS="$STEPS lib-tests"; fi
@@ -359,11 +358,6 @@ step_time_summary() {
 # build
 #######################################################################
 
-step_make_cabal_install_dev() {
-print_header "make cabal-install-dev"
-timed cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
-}
-
 step_build() {
 print_header "build"
 timed $CABALNEWBUILD $TARGETS --dry-run || exit 1
@@ -436,7 +430,7 @@ step_cli_tests() {
 print_header "cabal-install: tests"
 
 # this are sorted in asc time used, quicker tests first.
-CMD="$($CABALPLANLISTBIN cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:long-tests) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This doesn't work in parallel either
@@ -487,7 +481,6 @@ for step in $STEPS; do
     case $step in
         print-config)             step_print_config            ;;
         print-tool-versions)      step_print_tool_versions     ;;
-        make-cabal-install-dev)   step_make_cabal_install_dev  ;;
         build)                    step_build                   ;;
         doctest)                  step_doctest                 ;;
         lib-tests)                step_lib_tests               ;;
@@ -498,7 +491,7 @@ for step in $STEPS; do
         solver-benchmarks-tests)  step_solver_benchmarks_tests ;;
         solver-benchmarks-run)    step_solver_benchmarks_run   ;;
         time-summary)             step_time_summary            ;;
-        *) 
+        *)
             echo "Invalid step $step"
             exit 1
             ;;

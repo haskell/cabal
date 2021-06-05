@@ -35,6 +35,12 @@ Once you have an empty directory we can initialize our package:
 
     $ cabal init --cabal-version=2.4 --license=NONE -p myfirstapp
 
+.. note:: ``cabal-version`` refers to the
+          `version of the .cabal file format specification <file-format-changelog.html>`__,
+          that can be different from the versions of the cabal library and tool
+          in use. It is common to use a slightly older cabal-version, to strike
+          a compromise between feature availability and backward compatibility.
+
 This will generate the following files:
 
 .. code-block:: console

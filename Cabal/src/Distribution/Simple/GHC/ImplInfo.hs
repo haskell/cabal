@@ -35,6 +35,7 @@ import Distribution.Version
 
 data GhcImplInfo = GhcImplInfo
   { supportsHaskell2010  :: Bool -- ^ -XHaskell2010 and -XHaskell98 flags
+  , supportsGHC2021      :: Bool -- ^ -XGHC2021 flag
   , reportsNoExt         :: Bool -- ^ --supported-languages gives Ext and NoExt
   , alwaysNondecIndent   :: Bool -- ^ NondecreasingIndentation is always on
   , flagGhciScript       :: Bool -- ^ -ghci-script flag supported
@@ -61,6 +62,7 @@ getImplInfo comp =
 ghcVersionImplInfo :: Version -> GhcImplInfo
 ghcVersionImplInfo ver = GhcImplInfo
   { supportsHaskell2010  = v >= [7]
+  , supportsGHC2021      = v >= [9,1]
   , reportsNoExt         = v >= [7]
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
@@ -79,6 +81,7 @@ ghcjsVersionImplInfo :: Version  -- ^ The GHCJS version
                      -> GhcImplInfo
 ghcjsVersionImplInfo _ghcjsver ghcver = GhcImplInfo
   { supportsHaskell2010  = True
+  , supportsGHC2021      = True
   , reportsNoExt         = True
   , alwaysNondecIndent   = False
   , flagGhciScript       = True

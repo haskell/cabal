@@ -64,7 +64,7 @@ test-suite unit-tests
     , integer-logarithms  >=1.0.2 && <1.1
     , pretty
     , QuickCheck          >=2.14  && <2.15
-    , rere                >=0.1   && <0.2
+    , rere                >=0.1   && <0.3
     , tagged
     , tasty               >=1.2.3 && <1.4
     , tasty-hunit
@@ -107,7 +107,7 @@ test-suite parser-tests
     build-depends: semigroups
 
   if impl(ghc >=7.8)
-    build-depends: tree-diff ==0.1.*
+    build-depends: tree-diff >=0.1 && <0.3
 
 test-suite check-tests
   type:             exitcode-stdio-1.0
@@ -174,7 +174,7 @@ test-suite hackage-tests
     , tar                   >=0.5.0.3  && <0.6
 
   if impl(ghc >=7.8)
-    build-depends: tree-diff ==0.1.*
+    build-depends: tree-diff >=0.1 && <0.3
 
   ghc-options:        -Wall -rtsopts -threaded
   default-extensions: CPP

@@ -3,7 +3,7 @@ packages: cabal-testsuite/
 packages: cabal-install/
 packages: solver-benchmarks/
 
-packages: cabal-install/cabal-install-solver/
+packages: cabal-install-solver/
 packages: Cabal-QuickCheck/
 packages: Cabal-tree-diff
 packages: Cabal-described

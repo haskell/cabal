@@ -652,8 +652,22 @@ rebuildTarget verbosity
               registerLock cacheLock
               sharedPackageConfig
               plan rpkg@(ReadyPackage pkg)
-              pkgBuildStatus =
-
+              pkgBuildStatus
+    -- Technically, doing the --only-download filtering only in this function is
+    -- not perfect. We could also prune the plan at an earlier stage, like it's
+    -- done with --only-dependencies. But...
+    --   * the benefit would be minimal (practically just avoiding to print the
+    --     "requires build" parts of the plan)
+    --   * we currently don't have easy access to the BuildStatus of packages
+    --     in the pruning phase
+    --   * we still have to check it here to avoid performing successive phases
+    | buildSettingOnlyDownload buildSettings = do
+        case pkgBuildStatus of
+          BuildStatusDownload ->
+            void $ waitAsyncPackageDownload verbosity downloadMap pkg
+          _ -> return ()
+        return $ BuildResult DocsNotTried TestsNotTried Nothing
+    | otherwise =
     -- We rely on the 'BuildStatus' to decide which phase to start from:
     case pkgBuildStatus of
       BuildStatusDownload              -> downloadPhase

@@ -42,6 +42,15 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
+There are two ways of modifying the ``cabal.project.local`` file through
+``cabal v2-configure``, either by appending new configurations to it, or 
+by simply overwriting it all. Overwriting is the default behaviour, as
+such, there's a flag ``--enable-append`` to append the new configurations
+instead. Since overwriting is rather destructive in nature, a backup system
+is in place, which moves the old configuration to a ``cabal.project.local~``
+file, this feature can also be disabled by using the ``--enable-overwrite``
+flag.
+
 cabal v2-update
 ----------------
 
@@ -308,6 +317,9 @@ by using ``--install-method`` flag:
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
 
+Adding libraries to GHC package environments
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:
 
@@ -315,10 +327,10 @@ example, this command will build the latest Cabal library and install it:
 
     $ cabal v2-install --lib Cabal
 
-This works by managing GHC environments. By default, it is writing to the
-global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
-``v2-install`` provides the ``--package-env`` flag to control which of
-these environments is modified.
+This works by managing GHC package environment files. By default, it is writing
+to the global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
+``v2-install`` provides the ``--package-env`` flag to control which of these
+environments is modified.
 
 This command will modify the environment file in the current directory:
 

@@ -18,7 +18,7 @@ module Distribution.Client.GenBounds (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Client.Init
+import Distribution.Client.Utils
          ( incVersion )
 import Distribution.Client.Freeze
          ( getFreezePkgs )
@@ -93,7 +93,7 @@ genBounds
     -> GlobalFlags
     -> FreezeFlags
     -> IO ()
-genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do 
+genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
     let cinfo = compilerInfo comp
 
     cwd <- getCurrentDirectory

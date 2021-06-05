@@ -1,0 +1,124 @@
+cabal-version: 2.2
+name:          cabal-install-solver
+version:       3.5.0.0
+synopsis:      The command-line interface for Cabal and Hackage.
+description:
+  The solver component used in cabal-install command-line program
+
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+license:       BSD-3-Clause
+license-file:  LICENSE
+author:        Cabal Development Team (see AUTHORS file)
+maintainer:    Cabal Development Team <cabal-devel@haskell.org>
+copyright:     2003-2020, Cabal Development Team
+category:      Distribution
+build-type:    Simple
+
+source-repository head
+  type:     git
+  location: https://github.com/haskell/cabal/
+  subdir:   cabal-install-solver
+
+flag debug-expensive-assertions
+  description: Enable expensive assertions for testing or debugging
+  default:     False
+  manual:      True
+
+flag debug-conflict-sets
+  description: Add additional information to ConflictSets
+  default:     False
+  manual:      True
+
+flag debug-tracetree
+  description: Compile in support for tracetree (used to debug the solver)
+  default:     False
+  manual:      True
+
+library
+  default-language: Haskell2010
+  hs-source-dirs:   src
+  hs-source-dirs:   src-assertion
+  ghc-options:
+    -Wall -Wcompat -Wnoncanonical-monad-instances
+    -fwarn-tabs -fwarn-incomplete-uni-patterns
+
+  if impl(ghc <8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
+  if impl(ghc >=8.10)
+    ghc-options: -Wunused-packages
+
+  exposed-modules:
+    Distribution.Client.Utils.Assertion
+
+    Distribution.Solver.Compat.Prelude
+    Distribution.Solver.Modular
+    Distribution.Solver.Modular.Assignment
+    Distribution.Solver.Modular.Builder
+    Distribution.Solver.Modular.Configured
+    Distribution.Solver.Modular.ConfiguredConversion
+    Distribution.Solver.Modular.ConflictSet
+    Distribution.Solver.Modular.Cycles
+    Distribution.Solver.Modular.Dependency
+    Distribution.Solver.Modular.Explore
+    Distribution.Solver.Modular.Flag
+    Distribution.Solver.Modular.Index
+    Distribution.Solver.Modular.IndexConversion
+    Distribution.Solver.Modular.LabeledGraph
+    Distribution.Solver.Modular.Linking
+    Distribution.Solver.Modular.Log
+    Distribution.Solver.Modular.Message
+    Distribution.Solver.Modular.Package
+    Distribution.Solver.Modular.Preference
+    Distribution.Solver.Modular.PSQ
+    Distribution.Solver.Modular.RetryLog
+    Distribution.Solver.Modular.Solver
+    Distribution.Solver.Modular.Tree
+    Distribution.Solver.Modular.Validate
+    Distribution.Solver.Modular.Var
+    Distribution.Solver.Modular.Version
+    Distribution.Solver.Modular.WeightedPSQ
+    Distribution.Solver.Types.ComponentDeps
+    Distribution.Solver.Types.ConstraintSource
+    Distribution.Solver.Types.DependencyResolver
+    Distribution.Solver.Types.Flag
+    Distribution.Solver.Types.InstalledPreference
+    Distribution.Solver.Types.InstSolverPackage
+    Distribution.Solver.Types.LabeledPackageConstraint
+    Distribution.Solver.Types.OptionalStanza
+    Distribution.Solver.Types.PackageConstraint
+    Distribution.Solver.Types.PackageFixedDeps
+    Distribution.Solver.Types.PackageIndex
+    Distribution.Solver.Types.PackagePath
+    Distribution.Solver.Types.PackagePreferences
+    Distribution.Solver.Types.PkgConfigDb
+    Distribution.Solver.Types.Progress
+    Distribution.Solver.Types.ResolverPackage
+    Distribution.Solver.Types.Settings
+    Distribution.Solver.Types.SolverId
+    Distribution.Solver.Types.SolverPackage
+    Distribution.Solver.Types.SourcePackage
+    Distribution.Solver.Types.Variable
+
+  build-depends:
+    , array         >=0.4      && <0.6
+    , base          >=4.10     && <4.15
+    , binary        >=0.7.3    && <0.9
+    , bytestring    >=0.10.6.0 && <0.12
+    , Cabal         ^>=3.5
+    , containers    >=0.5.6.2  && <0.7
+    , filepath      ^>=1.4.0.0
+    , mtl           >=2.0      && <2.3
+    , pretty        ^>=1.1
+    , transformers  >=0.4.2.0  && <0.6
+
+  if flag(debug-expensive-assertions)
+    cpp-options: -DDEBUG_EXPENSIVE_ASSERTIONS
+
+  if flag(debug-conflict-sets)
+    cpp-options:   -DDEBUG_CONFLICT_SETS
+    build-depends: base >=4.8
+
+  if flag(debug-tracetree)
+    cpp-options:   -DDEBUG_TRACETREE
+    build-depends: tracetree ^>=0.1

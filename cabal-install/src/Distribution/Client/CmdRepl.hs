@@ -96,7 +96,7 @@ import Distribution.Utils.Generic
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', debugNoWrap, ordNub, createTempDirectory, handleDoesNotExist )
+         ( wrapText, die', debugNoWrap, createTempDirectory, handleDoesNotExist )
 import Language.Haskell.Extension
          ( Language(..) )
 import Distribution.CabalSpecVersion
@@ -571,7 +571,7 @@ renderReplProblem (TargetProblemMultipleTargets selectorMap) =
     "Cannot open a repl for multiple components at once. The targets "
  ++ renderListCommaAnd
       [ "'" ++ showTargetSelector ts ++ "'"
-      | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
+      | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different components."
  ++ ".\n\n" ++ explanationSingleComponentLimitation
 

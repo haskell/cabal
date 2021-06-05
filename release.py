@@ -39,6 +39,7 @@ Args = NamedTuple('Args', [
     ('static', bool),
     ('ofdlocking', bool),
     ('tarlib', Path),
+    ('tarsolver', Path),
     ('tarexe', Path),
 ])
 
@@ -159,6 +160,7 @@ def step_config(args: Args):
     cabal_project = dedent(f"""
         packages: {args.tarlib}
         packages: {args.tarexe}
+        packages: {args.tarsolver}
         tests: False
         benchmarks: False
         optimization: True
@@ -283,6 +285,7 @@ def main():
     parser.add_argument('--enable-static-executable', '--disable-static-executable', dest='static', nargs=0, default=False, action=EnableDisable, help='Statically link cabal executable')
     parser.add_argument('--enable-ofd-locking', '--disable-ofd-locking', dest='ofd_locking', nargs=0, default=True, action=EnableDisable, help='OFD locking (lukko)')
     parser.add_argument('--tarlib', dest='tarlib', required=True, metavar='LIBTAR', help='path to Cabal-version.tar.gz')
+    parser.add_argument('--tarsolver', dest='tarsolver', required=True, metavar='SOLVERTAR', help='path to cabal-install-solver-version.tar.gz')
     parser.add_argument('--tarexe', dest='tarexe', required=True, metavar='EXETAR', help='path to cabal-install-version.tar.gz')
     parser.add_argument('--builddir', dest='builddir', type=str, default='_build', help='build directory')
 
@@ -296,7 +299,8 @@ def main():
         static     = args.static,
         ofdlocking = args.ofd_locking,
         tarlib     = Path(args.tarlib).resolve(),
-        tarexe     = Path(args.tarexe).resolve()
+        tarexe     = Path(args.tarexe).resolve(),
+        tarsolver  = Path(args.tarsolver).resolve()
     )
 
     print(dedent(f"""
@@ -307,6 +311,7 @@ def main():
         static:      {args.static}
         ofd-locking: {args.ofdlocking}
         lib-tarball: {args.tarlib}
+        solver-tarball: {args.tarsolver}
         exe-tarball: {args.tarexe}
     """))
 

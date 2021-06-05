@@ -146,6 +146,19 @@ class
         -> g s a
         -> g s a
 
+    -- | Annotate field with since spec-version.
+    -- This is used to recognise, but warn about the field.
+    -- It is used to process @other-extensions@ field.
+    --
+    -- Default implementation is to not warn.
+    --
+    -- @since 3.4.0.0
+    availableSinceWarn
+        :: CabalSpecVersion  -- ^ spec version
+        -> g s a
+        -> g s a
+    availableSinceWarn _ = id
+
 -- | Field which can be defined at most once.
 uniqueField
     :: (FieldGrammar c g, c (Identity a))
