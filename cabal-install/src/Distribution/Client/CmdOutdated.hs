@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.Outdated
+-- Module      :  Distribution.Client.CmdOutdated
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
@@ -9,7 +9,7 @@
 -- dependencies in the package description file or freeze file.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Outdated ( outdated
+module Distribution.Client.CmdOutdated ( outdated
                                     , ListOutdatedSettings(..), listOutdated )
 where
 

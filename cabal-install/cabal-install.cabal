@@ -140,7 +140,7 @@ library
         Distribution.Client.ManpageFlags
         Distribution.Client.Nix
         Distribution.Client.NixStyleOptions
-        Distribution.Client.Outdated
+        Distribution.Client.CmdOutdated
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding

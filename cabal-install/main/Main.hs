@@ -94,7 +94,7 @@ import Distribution.Client.Configure          (configure, writeConfigFlags)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
-import Distribution.Client.Outdated           (outdated)
+import Distribution.Client.CmdOutdated           (outdated)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
