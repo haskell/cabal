@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.CmdOutdated
@@ -9,100 +10,260 @@
 -- dependencies in the package description file or freeze file.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.CmdOutdated ( outdated
-                                    , ListOutdatedSettings(..), listOutdated )
+module Distribution.Client.CmdOutdated
+    ( outdatedCommand, outdatedAction
+    , ListOutdatedSettings(..), listOutdated )
 where
 
-import Prelude ()
-import Distribution.Client.Config
-import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Compat.Prelude
-import Distribution.Client.ProjectConfig
-import Distribution.Client.DistDirLayout
-import Distribution.Client.RebuildMonad
-import Distribution.Client.Setup hiding (quiet)
-import Distribution.Client.Targets
-import Distribution.Client.Types
-import qualified Distribution.Client.Types.SourcePackageDb as SourcePackageDb
-import Distribution.Solver.Types.PackageConstraint
-import Distribution.Client.Sandbox.PackageEnvironment
-import Distribution.Utils.Generic
+import Prelude ()
 
-import Distribution.Package                          (PackageName, packageVersion)
-import Distribution.PackageDescription               (allBuildDepends)
-import Distribution.PackageDescription.Configuration (finalizePD)
-import Distribution.Simple.Compiler                  (Compiler, compilerInfo)
+import Distribution.Client.Config
+    ( SavedConfig(savedGlobalFlags, savedConfigureFlags
+                 , savedConfigureExFlags) )
+import Distribution.Client.IndexUtils as IndexUtils
+import Distribution.Client.ProjectConfig
+    ( ProjectConfig(projectConfigShared),
+      ProjectConfigShared(projectConfigConstraints), findProjectRoot,
+      readProjectLocalFreezeConfig )
+import Distribution.Client.DistDirLayout
+    ( defaultDistDirLayout
+    , DistDirLayout(distProjectRootDirectory, distProjectFile) )
+import Distribution.Client.RebuildMonad
+    ( runRebuild )
+import Distribution.Client.Sandbox
+    ( loadConfigOrSandboxConfig )
+import Distribution.Client.Setup
+    ( withRepoContext, GlobalFlags, configCompilerAux'
+    , ConfigExFlags(configExConstraints) )
+import Distribution.Client.Targets
+    ( userToPackageConstraint, UserConstraint )
+import Distribution.Client.Types.SourcePackageDb as SourcePackageDb
+import Distribution.Solver.Types.PackageConstraint
+    ( packageConstraintToDependency )
+import Distribution.Client.Sandbox.PackageEnvironment
+    ( loadUserConfig )
+import Distribution.Utils.Generic
+    ( safeLast, wrapText )
+
+import Distribution.Package
+    ( PackageName, packageVersion )
+import Distribution.PackageDescription
+    ( allBuildDepends )
+import Distribution.PackageDescription.Configuration
+    ( finalizePD )
+import Distribution.Simple.Compiler
+    ( Compiler, compilerInfo )
 import Distribution.Simple.Setup
-       (fromFlagOrDefault, flagToMaybe)
+    ( optionVerbosity, trueArg )
 import Distribution.Simple.Utils
-       (die', notice, debug, tryFindPackageDesc)
-import Distribution.System                           (Platform)
+    ( die', notice, debug, tryFindPackageDesc )
+import Distribution.System
+    ( Platform )
 import Distribution.Types.ComponentRequestedSpec
-       (ComponentRequestedSpec(..))
+    ( ComponentRequestedSpec(..) )
 import Distribution.Types.Dependency
-       (Dependency(..))
-import Distribution.Verbosity                        (silent)
+    ( Dependency(..) )
+import Distribution.Verbosity
+    ( silent, normal )
 import Distribution.Version
-       (Version, VersionInterval (..), VersionRange, LowerBound(..), UpperBound(..)
-       ,asVersionIntervals, majorBoundVersion)
+    ( Version, VersionInterval (..), VersionRange, LowerBound(..)
+    , UpperBound(..) , asVersionIntervals, majorBoundVersion )
 import Distribution.PackageDescription.Parsec
-       (readGenericPackageDescription)
+    ( readGenericPackageDescription )
 import Distribution.Types.PackageVersionConstraint
-       (PackageVersionConstraint (..), simplifyPackageVersionConstraint)
+    ( PackageVersionConstraint (..), simplifyPackageVersionConstraint )
+import Distribution.Simple.Flag
+    ( Flag(..), flagToList, flagToMaybe, fromFlagOrDefault, toFlag )
+import Distribution.Simple.Command
+    ( ShowOrParseArgs, OptionField, CommandUI(..), optArg, option, reqArg )
+import qualified Distribution.Compat.CharParsing as P
+import Distribution.ReadE
+    ( parsecToReadE, succeedReadE )
 
 import qualified Data.Set as S
-import System.Directory                              (getCurrentDirectory)
+import System.Directory
+    ( getCurrentDirectory )
+
+-------------------------------------------------------------------------------
+-- Command
+-------------------------------------------------------------------------------
+
+outdatedCommand :: CommandUI OutdatedFlags
+outdatedCommand = CommandUI
+  { commandName = "outdated"
+  , commandSynopsis = "Check for outdated dependencies"
+  , commandDescription  = Just $ \_ -> wrapText $
+      "Checks for outdated dependencies in the package description file "
+      ++ "or freeze file"
+  , commandNotes = Nothing
+  , commandUsage = \pname ->
+      "Usage: " ++ pname ++ " outdated [FLAGS] [PACKAGES]\n"
+  , commandDefaultFlags = defaultOutdatedFlags
+  , commandOptions      = outdatedOptions
+  }
+
+-------------------------------------------------------------------------------
+-- Flags
+-------------------------------------------------------------------------------
+
+data IgnoreMajorVersionBumps = IgnoreMajorVersionBumpsNone
+                             | IgnoreMajorVersionBumpsAll
+                             | IgnoreMajorVersionBumpsSome [PackageName]
+
+instance Monoid IgnoreMajorVersionBumps where
+  mempty  = IgnoreMajorVersionBumpsNone
+  mappend = (<>)
+
+instance Semigroup IgnoreMajorVersionBumps where
+  IgnoreMajorVersionBumpsNone       <> r                               = r
+  l@IgnoreMajorVersionBumpsAll      <> _                               = l
+  l@(IgnoreMajorVersionBumpsSome _) <> IgnoreMajorVersionBumpsNone     = l
+  (IgnoreMajorVersionBumpsSome   _) <> r@IgnoreMajorVersionBumpsAll    = r
+  (IgnoreMajorVersionBumpsSome   a) <> (IgnoreMajorVersionBumpsSome b) =
+    IgnoreMajorVersionBumpsSome (a ++ b)
+
+data OutdatedFlags = OutdatedFlags
+  { outdatedVerbosity     :: Flag Verbosity
+  , outdatedFreezeFile    :: Flag Bool
+  , outdatedNewFreezeFile :: Flag Bool
+  , outdatedProjectFile   :: Flag FilePath
+  , outdatedSimpleOutput  :: Flag Bool
+  , outdatedExitCode      :: Flag Bool
+  , outdatedQuiet         :: Flag Bool
+  , outdatedIgnore        :: [PackageName]
+  , outdatedMinor         :: Maybe IgnoreMajorVersionBumps
+  }
+
+defaultOutdatedFlags :: OutdatedFlags
+defaultOutdatedFlags = OutdatedFlags
+  { outdatedVerbosity     = toFlag normal
+  , outdatedFreezeFile    = mempty
+  , outdatedNewFreezeFile = mempty
+  , outdatedProjectFile   = mempty
+  , outdatedSimpleOutput  = mempty
+  , outdatedExitCode      = mempty
+  , outdatedQuiet         = mempty
+  , outdatedIgnore        = mempty
+  , outdatedMinor         = mempty
+  }
+
+outdatedOptions :: ShowOrParseArgs -> [OptionField OutdatedFlags]
+outdatedOptions _showOrParseArgs =
+  [ optionVerbosity
+      outdatedVerbosity
+      (\v flags -> flags {outdatedVerbosity = v})
+  , option [] ["freeze-file", "v1-freeze-file"]
+      "Act on the freeze file"
+      outdatedFreezeFile (\v flags -> flags {outdatedFreezeFile = v})
+      trueArg
+  , option [] ["v2-freeze-file", "new-freeze-file"]
+      "Act on the new-style freeze file (default: cabal.project.freeze)"
+      outdatedNewFreezeFile (\v flags -> flags {outdatedNewFreezeFile = v})
+      trueArg
+  , option [] ["project-file"]
+      "Act on the new-style freeze file named PROJECTFILE.freeze rather than the default cabal.project.freeze"
+      outdatedProjectFile (\v flags -> flags {outdatedProjectFile = v})
+      (reqArg "PROJECTFILE" (succeedReadE Flag) flagToList)
+  , option [] ["simple-output"]
+      "Only print names of outdated dependencies, one per line"
+      outdatedSimpleOutput (\v flags -> flags {outdatedSimpleOutput = v})
+      trueArg
+  , option [] ["exit-code"]
+      "Exit with non-zero when there are outdated dependencies"
+      outdatedExitCode (\v flags -> flags {outdatedExitCode = v})
+      trueArg
+  , option ['q'] ["quiet"]
+      "Don't print any output. Implies '--exit-code' and '-v0'"
+      outdatedQuiet (\v flags -> flags {outdatedQuiet = v})
+      trueArg
+  , option [] ["ignore"]
+      "Packages to ignore"
+      outdatedIgnore (\v flags -> flags {outdatedIgnore = v})
+      (reqArg "PKGS" pkgNameListParser (map prettyShow))
+  , option [] ["minor"]
+      "Ignore major version bumps for these packages"
+      outdatedMinor (\v flags -> flags {outdatedMinor = v})
+      ( optArg
+          "PKGS"
+          ignoreMajorVersionBumpsParser
+          (Just IgnoreMajorVersionBumpsAll)
+          ignoreMajorVersionBumpsPrinter
+      )
+  ]
+  where
+    ignoreMajorVersionBumpsPrinter :: Maybe IgnoreMajorVersionBumps
+                                   -> [Maybe String]
+    ignoreMajorVersionBumpsPrinter Nothing = []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsNone)= []
+    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsAll) = [Nothing]
+    ignoreMajorVersionBumpsPrinter (Just (IgnoreMajorVersionBumpsSome pkgs)) =
+      map (Just . prettyShow) pkgs
+
+    ignoreMajorVersionBumpsParser  =
+      (Just . IgnoreMajorVersionBumpsSome) `fmap` pkgNameListParser
+
+    pkgNameListParser = parsecToReadE
+      ("Couldn't parse the list of package names: " ++)
+      (fmap toList (P.sepByNonEmpty parsec (P.char ',')))
+
+-------------------------------------------------------------------------------
+-- Action
+-------------------------------------------------------------------------------
 
 -- | Entry point for the 'outdated' command.
-outdated :: Verbosity -> OutdatedFlags -> RepoContext
-         -> Compiler -> Platform
-         -> IO ()
-outdated verbosity0 outdatedFlags repoContext comp platform = do
-  let freezeFile    = fromFlagOrDefault False (outdatedFreezeFile outdatedFlags)
-      newFreezeFile = fromFlagOrDefault False
-                      (outdatedNewFreezeFile outdatedFlags)
-      mprojectFile  = flagToMaybe
-                      (outdatedProjectFile outdatedFlags)
-      simpleOutput  = fromFlagOrDefault False
-                      (outdatedSimpleOutput outdatedFlags)
-      quiet         = fromFlagOrDefault False (outdatedQuiet outdatedFlags)
-      exitCode      = fromFlagOrDefault quiet (outdatedExitCode outdatedFlags)
-      ignorePred    = let ignoreSet = S.fromList (outdatedIgnore outdatedFlags)
-                      in \pkgname -> pkgname `S.member` ignoreSet
-      minorPred     = case outdatedMinor outdatedFlags of
-                        Nothing -> const False
-                        Just IgnoreMajorVersionBumpsNone -> const False
-                        Just IgnoreMajorVersionBumpsAll  -> const True
-                        Just (IgnoreMajorVersionBumpsSome pkgs) ->
-                          let minorSet = S.fromList pkgs
-                          in \pkgname -> pkgname `S.member` minorSet
-      verbosity     = if quiet then silent else verbosity0
+outdatedAction :: OutdatedFlags -> [String] -> GlobalFlags -> IO ()
+outdatedAction OutdatedFlags{..} _targetStrings globalFlags = do
+  config <- loadConfigOrSandboxConfig verbosity globalFlags
+  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+      configFlags  = savedConfigureFlags config
+  (comp, platform, _progdb) <- configCompilerAux' configFlags
+  withRepoContext verbosity globalFlags' $ \repoContext -> do
+    when (not newFreezeFile && isJust mprojectFile) $
+      die' verbosity $
+        "--project-file must only be used with --v2-freeze-file."
 
-  when (not newFreezeFile && isJust mprojectFile) $
-    die' verbosity $
-      "--project-file must only be used with --v2-freeze-file."
+    sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
+    deps <- if freezeFile
+            then depsFromFreezeFile verbosity
+            else if newFreezeFile
+                then depsFromNewFreezeFile verbosity mprojectFile
+                else depsFromPkgDesc verbosity comp platform
+    debug verbosity $ "Dependencies loaded: "
+      ++ intercalate ", " (map prettyShow deps)
+    let outdatedDeps = listOutdated deps sourcePkgDb
+                      (ListOutdatedSettings ignorePred minorPred)
+    when (not quiet) $
+      showResult verbosity outdatedDeps simpleOutput
+    if exitCode && (not . null $ outdatedDeps)
+      then exitFailure
+      else return ()
+  where
+    verbosity     = if quiet
+                      then silent
+                      else fromFlagOrDefault normal outdatedVerbosity
+    freezeFile    = fromFlagOrDefault False outdatedFreezeFile
+    newFreezeFile = fromFlagOrDefault False outdatedNewFreezeFile
+    mprojectFile  = flagToMaybe outdatedProjectFile
+    simpleOutput  = fromFlagOrDefault False outdatedSimpleOutput
+    quiet         = fromFlagOrDefault False outdatedQuiet
+    exitCode      = fromFlagOrDefault quiet outdatedExitCode
+    ignorePred    = let ignoreSet = S.fromList outdatedIgnore
+                    in \pkgname -> pkgname `S.member` ignoreSet
+    minorPred     = case outdatedMinor of
+                      Nothing -> const False
+                      Just IgnoreMajorVersionBumpsNone -> const False
+                      Just IgnoreMajorVersionBumpsAll  -> const True
+                      Just (IgnoreMajorVersionBumpsSome pkgs) ->
+                        let minorSet = S.fromList pkgs
+                        in \pkgname -> pkgname `S.member` minorSet
 
-  sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
-  deps <- if freezeFile
-          then depsFromFreezeFile verbosity
-          else if newFreezeFile
-               then depsFromNewFreezeFile verbosity mprojectFile
-               else depsFromPkgDesc verbosity comp platform
-  debug verbosity $ "Dependencies loaded: "
-    ++ (intercalate ", " $ map prettyShow deps)
-  let outdatedDeps = listOutdated deps sourcePkgDb
-                     (ListOutdatedSettings ignorePred minorPred)
-  when (not quiet) $
-    showResult verbosity outdatedDeps simpleOutput
-  if (exitCode && (not . null $ outdatedDeps))
-    then exitFailure
-    else return ()
 
 -- | Print either the list of all outdated dependencies, or a message
 -- that there are none.
 showResult :: Verbosity -> [(PackageVersionConstraint,Version)] -> Bool -> IO ()
 showResult verbosity outdatedDeps simpleOutput =
-  if (not . null $ outdatedDeps)
+  if not . null $ outdatedDeps
     then
     do when (not simpleOutput) $
          notice verbosity "Outdated dependencies:"
@@ -164,11 +325,11 @@ depsFromPkgDesc verbosity comp platform = do
     toPVC (Dependency pn vr _) = PackageVersionConstraint pn vr
 
 -- | Various knobs for customising the behaviour of 'listOutdated'.
-data ListOutdatedSettings = ListOutdatedSettings {
-  -- | Should this package be ignored?
-  listOutdatedIgnorePred :: PackageName -> Bool,
-  -- | Should major version bumps be ignored for this package?
-  listOutdatedMinorPred  :: PackageName -> Bool
+data ListOutdatedSettings = ListOutdatedSettings
+  { -- | Should this package be ignored?
+    listOutdatedIgnorePred :: PackageName -> Bool
+  , -- | Should major version bumps be ignored for this package?
+    listOutdatedMinorPred  :: PackageName -> Bool
   }
 
 -- | Find all outdated dependencies.
