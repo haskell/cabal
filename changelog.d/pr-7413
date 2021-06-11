@@ -1,5 +1,5 @@
 synopsis: Fix instantiating an indefinite Backpack from Hackage with an inplace package
-packages: Cabal
+packages: cabal-install
 prs: #7413
 issues: #6835
 description: {
