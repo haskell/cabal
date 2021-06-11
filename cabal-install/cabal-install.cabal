@@ -85,6 +85,7 @@ library
         Distribution.Client.CmdInstall.ClientInstallTargetSelector
         Distribution.Client.CmdLegacy
         Distribution.Client.CmdListBin
+        Distribution.Client.CmdOutdated
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdSdist
@@ -140,7 +141,6 @@ library
         Distribution.Client.ManpageFlags
         Distribution.Client.Nix
         Distribution.Client.NixStyleOptions
-        Distribution.Client.Outdated
         Distribution.Client.PackageHash
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
