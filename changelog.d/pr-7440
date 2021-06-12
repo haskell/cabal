@@ -1,0 +1,9 @@
+synopsis: Print error message if not freeze file can be found
+packages: cabal-install
+prs: #7440
+issues: #7406
+description: {
+
+Instead of ignoring a missing .freeze file, abort execution and print an error message.
+
+}
