@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.CmdOutdated
@@ -16,19 +17,24 @@ module Distribution.Client.CmdOutdated
 where
 
 import Distribution.Client.Compat.Prelude
+import Distribution.Compat.Lens
+    ( _1, _2 )
 import Prelude ()
 
 import Distribution.Client.Config
     ( SavedConfig(savedGlobalFlags, savedConfigureFlags
                  , savedConfigureExFlags) )
 import Distribution.Client.IndexUtils as IndexUtils
+import Distribution.Client.DistDirLayout
+    ( defaultDistDirLayout
+    , DistDirLayout(distProjectRootDirectory, distProjectFile) )
 import Distribution.Client.ProjectConfig
     ( ProjectConfig(projectConfigShared),
       ProjectConfigShared(projectConfigConstraints), findProjectRoot,
       readProjectLocalFreezeConfig )
-import Distribution.Client.DistDirLayout
-    ( defaultDistDirLayout
-    , DistDirLayout(distProjectRootDirectory, distProjectFile) )
+import Distribution.Client.ProjectFlags
+    ( projectFlagsOptions, ProjectFlags(..), defaultProjectFlags
+    , removeIgnoreProjectOption )
 import Distribution.Client.RebuildMonad
     ( runRebuild )
 import Distribution.Client.Sandbox
@@ -74,12 +80,12 @@ import Distribution.PackageDescription.Parsec
 import Distribution.Types.PackageVersionConstraint
     ( PackageVersionConstraint (..), simplifyPackageVersionConstraint )
 import Distribution.Simple.Flag
-    ( Flag(..), flagToList, flagToMaybe, fromFlagOrDefault, toFlag )
+    ( Flag(..), flagToMaybe, fromFlagOrDefault, toFlag )
 import Distribution.Simple.Command
-    ( ShowOrParseArgs, OptionField, CommandUI(..), optArg, option, reqArg )
+    ( ShowOrParseArgs, OptionField, CommandUI(..), optArg, option, reqArg, liftOptionL )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.ReadE
-    ( parsecToReadE, succeedReadE )
+    ( parsecToReadE )
 
 import qualified Data.Set as S
 import System.Directory
@@ -89,7 +95,7 @@ import System.Directory
 -- Command
 -------------------------------------------------------------------------------
 
-outdatedCommand :: CommandUI OutdatedFlags
+outdatedCommand :: CommandUI (ProjectFlags, OutdatedFlags)
 outdatedCommand = CommandUI
   { commandName = "outdated"
   , commandSynopsis = "Check for outdated dependencies"
@@ -99,8 +105,11 @@ outdatedCommand = CommandUI
   , commandNotes = Nothing
   , commandUsage = \pname ->
       "Usage: " ++ pname ++ " outdated [FLAGS] [PACKAGES]\n"
-  , commandDefaultFlags = defaultOutdatedFlags
-  , commandOptions      = outdatedOptions
+  , commandDefaultFlags = (defaultProjectFlags, defaultOutdatedFlags)
+  , commandOptions      = \showOrParseArgs ->
+        map (liftOptionL _1)
+            (removeIgnoreProjectOption (projectFlagsOptions showOrParseArgs)) ++
+        map (liftOptionL _2) (outdatedOptions showOrParseArgs)
   }
 
 -------------------------------------------------------------------------------
@@ -127,7 +136,6 @@ data OutdatedFlags = OutdatedFlags
   { outdatedVerbosity     :: Flag Verbosity
   , outdatedFreezeFile    :: Flag Bool
   , outdatedNewFreezeFile :: Flag Bool
-  , outdatedProjectFile   :: Flag FilePath
   , outdatedSimpleOutput  :: Flag Bool
   , outdatedExitCode      :: Flag Bool
   , outdatedQuiet         :: Flag Bool
@@ -140,7 +148,6 @@ defaultOutdatedFlags = OutdatedFlags
   { outdatedVerbosity     = toFlag normal
   , outdatedFreezeFile    = mempty
   , outdatedNewFreezeFile = mempty
-  , outdatedProjectFile   = mempty
   , outdatedSimpleOutput  = mempty
   , outdatedExitCode      = mempty
   , outdatedQuiet         = mempty
@@ -161,10 +168,6 @@ outdatedOptions _showOrParseArgs =
       "Act on the new-style freeze file (default: cabal.project.freeze)"
       outdatedNewFreezeFile (\v flags -> flags {outdatedNewFreezeFile = v})
       trueArg
-  , option [] ["project-file"]
-      "Act on the new-style freeze file named PROJECTFILE.freeze rather than the default cabal.project.freeze"
-      outdatedProjectFile (\v flags -> flags {outdatedProjectFile = v})
-      (reqArg "PROJECTFILE" (succeedReadE Flag) flagToList)
   , option [] ["simple-output"]
       "Only print names of outdated dependencies, one per line"
       outdatedSimpleOutput (\v flags -> flags {outdatedSimpleOutput = v})
@@ -212,8 +215,8 @@ outdatedOptions _showOrParseArgs =
 -------------------------------------------------------------------------------
 
 -- | Entry point for the 'outdated' command.
-outdatedAction :: OutdatedFlags -> [String] -> GlobalFlags -> IO ()
-outdatedAction OutdatedFlags{..} _targetStrings globalFlags = do
+outdatedAction :: (ProjectFlags, OutdatedFlags) -> [String] -> GlobalFlags -> IO ()
+outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStrings globalFlags = do
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       configFlags  = savedConfigureFlags config
@@ -244,7 +247,7 @@ outdatedAction OutdatedFlags{..} _targetStrings globalFlags = do
                       else fromFlagOrDefault normal outdatedVerbosity
     freezeFile    = fromFlagOrDefault False outdatedFreezeFile
     newFreezeFile = fromFlagOrDefault False outdatedNewFreezeFile
-    mprojectFile  = flagToMaybe outdatedProjectFile
+    mprojectFile  = flagToMaybe flagProjectFileName
     simpleOutput  = fromFlagOrDefault False outdatedSimpleOutput
     quiet         = fromFlagOrDefault False outdatedQuiet
     exitCode      = fromFlagOrDefault quiet outdatedExitCode
