@@ -17,6 +17,8 @@ import Distribution.Simple.Flag
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( writeProjectLocalExtraConfig, readProjectLocalExtraConfig )
+import Distribution.Client.ProjectFlags
+         ( removeIgnoreProjectOption )
 
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
@@ -26,7 +28,7 @@ import Distribution.Verbosity
          ( normal )
 
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, optionName )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
          ( wrapText, notice )
 
@@ -74,7 +76,7 @@ configureCommand = CommandUI {
      ++ "    project configuration works.\n"
 
   , commandDefaultFlags = defaultNixStyleFlags ()
-  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+  , commandOptions      = removeIgnoreProjectOption
                         . nixStyleOptions (const [])
   }
 
