@@ -89,7 +89,7 @@ import Distribution.ReadE
 
 import qualified Data.Set as S
 import System.Directory
-    ( getCurrentDirectory )
+    ( getCurrentDirectory, doesFileExist )
 
 -------------------------------------------------------------------------------
 -- Command
@@ -304,8 +304,18 @@ depsFromNewFreezeFile verbosity mprojectFile = do
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs
+      freezeFile = distProjectFile distDirLayout "freeze"
+  freezeFileExists <- doesFileExist freezeFile
+
+  unless freezeFileExists $
+    die' verbosity $
+      "Couldn't find a freeze file expected at: " ++ freezeFile ++ "\n\n"
+      ++ "We are looking for this file because you supplied '--project-file' or '--v2-freeze-file'. "
+      ++ "When one of these flags is given, we try to read the dependencies from a freeze file. "
+      ++ "If it is undesired behaviour, you should not use these flags, otherwise please generate "
+      ++ "a freeze file via 'cabal freeze'."
   debug verbosity $
-    "Reading the list of dependencies from the new-style freeze file " ++ distProjectFile distDirLayout "freeze"
+    "Reading the list of dependencies from the new-style freeze file " ++ freezeFile
   return deps
 
 -- | Read the list of dependencies from the package description.
