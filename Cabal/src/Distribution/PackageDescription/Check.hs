@@ -2108,9 +2108,11 @@ checkGlobFiles verbosity pkg root =
 -- error, all other packages emit warning.
 checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
 checkSetupVersions pkg =
-    [ emitMessage $ unPackageName name
+    [ emitError nameStr
     | (name, vr) <- Map.toList deps
     , not (boundedAbove vr)
+    , let nameStr = unPackageName name
+    , nameStr `elem` criticalPkgs
     ]
   where
     criticalPkgs = ["Cabal", "base"]
@@ -2122,9 +2124,6 @@ checkSetupVersions pkg =
           , Dependency pname vr _ <- setupDepends sbi
           ]
       _ -> Map.empty
-    emitMessage nm
-      | nm `elem` criticalPkgs = emitError nm
-      | otherwise = emitWarning nm
     emitError nm =
       PackageDistInexcusable $
            "The dependency 'setup-depends: '"++nm++"' does not specify an "
@@ -2133,10 +2132,6 @@ checkSetupVersions pkg =
         ++ "packages will need some changes to compile with it.If you are "
         ++ "not sure what upper bound to use then use the next major "
         ++ "version."
-    emitWarning nm =
-      PackageDistSuspiciousWarn $
-           "The dependency 'build-depends: '"++nm++"' does not specify an upper "
-        ++ "bound on the version number. "
 
 -- ------------------------------------------------------------
 -- * Utils
