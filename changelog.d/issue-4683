@@ -1,4 +1,4 @@
-synopsis: 'cabal check' to warn when no upper bounds in setup-depends
+synopsis: 'cabal check' to warn when no upper bounds for base or Cabal are present in setup dependencies
 packages: cabal-install
 issues: #4683
 prs: #5370, #7409

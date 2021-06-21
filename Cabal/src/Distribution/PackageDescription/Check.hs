@@ -2104,8 +2104,7 @@ checkGlobFiles verbosity pkg root =
       ]
 
 -- | Check that setup dependencies, have proper upper bounds.
--- @base@ and @Cabal@ upper dependencies are mandatory and emit
--- error, all other packages emit warning.
+-- In particular, @base@ and @Cabal@ upper dependencies are mandatory.
 checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
 checkSetupVersions pkg =
     [ emitError nameStr
@@ -2129,7 +2128,7 @@ checkSetupVersions pkg =
            "The dependency 'setup-depends: '"++nm++"' does not specify an "
         ++ "upper bound on the version number. Each major release of the "
         ++ "'"++nm++"' package changes the API in various ways and most "
-        ++ "packages will need some changes to compile with it.If you are "
+        ++ "packages will need some changes to compile with it. If you are "
         ++ "not sure what upper bound to use then use the next major "
         ++ "version."
 
