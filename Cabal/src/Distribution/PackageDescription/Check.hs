@@ -2103,8 +2103,8 @@ checkGlobFiles verbosity pkg root =
           ++ " directory by that name."
       ]
 
--- | Check that setup dependencies, have proper upper bounds.
--- In particular, @base@ and @Cabal@ upper dependencies are mandatory.
+-- | Check that setup dependencies, have proper bounds.
+-- In particular, @base@ and @Cabal@ upper bounds are mandatory.
 checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
 checkSetupVersions pkg =
     [ emitError nameStr
