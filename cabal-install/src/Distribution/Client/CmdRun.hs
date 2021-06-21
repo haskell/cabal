@@ -36,10 +36,11 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
+import Distribution.Compat.Lens
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, option, reqArg, liftOptionL )
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
@@ -80,6 +81,7 @@ import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
 import Distribution.Parsec
          ( Position(..) )
+import Distribution.ReadE (succeedReadE)
 import Distribution.Fields
          ( ParseResult, parseString, parseFatalFailure, readFields )
 import qualified Distribution.SPDX.License as SPDX
@@ -109,7 +111,7 @@ import System.FilePath
          ( (</>), isValid, isPathSeparator, takeExtension )
 
 
-runCommand :: CommandUI (NixStyleFlags ())
+runCommand :: CommandUI (NixStyleFlags [String])
 runCommand = CommandUI
   { commandName         = "v2-run"
   , commandSynopsis     = "Run an executable."
@@ -144,8 +146,13 @@ runCommand = CommandUI
       ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
       ++ "    Build with '-O2' and run the program, passing it extra arguments.\n"
 
-  , commandDefaultFlags = defaultNixStyleFlags ()
-  , commandOptions      = nixStyleOptions (const [])
+  , commandDefaultFlags = defaultNixStyleFlags []
+  , commandOptions      = nixStyleOptions $ const
+      [ option [] ["target-options"]
+        (  "use this option to pass arguments to the executable, "
+        ++ "the \"--\" delimiter is an alias for this flag")
+        id const (reqArg "FLAG" (succeedReadE (:[])) id)
+      ]
   }
 
 -- | The @run@ command runs a specified executable-like component, building it
@@ -156,7 +163,7 @@ runCommand = CommandUI
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+runAction :: NixStyleFlags [String] -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     globalTmp <- getTemporaryDirectory
     tmpDir <- createTempDirectory globalTmp "cabal-repl."
@@ -282,10 +289,8 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                                   pkg
                                   exeName
                </> exeName
-    let args = drop 1 targetStrings
-        dryRun = buildSettingDryRun (buildSettings baseCtx)
+    let dryRun = buildSettingDryRun (buildSettings baseCtx)
               || buildSettingOnlyDownload (buildSettings baseCtx)
-
     if dryRun
        then notice verbosity "Running of executable suppressed by flag(s)"
        else
@@ -293,7 +298,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
            verbosity
            emptyProgramInvocation {
              progInvokePath  = exePath,
-             progInvokeArgs  = args,
+             progInvokeArgs  = words . join $ extraFlags,
              progInvokeEnv   = dataDirsEnvironmentForPlan
                                  (distDirLayout baseCtx)
                                  elaboratedPlan

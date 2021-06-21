@@ -60,6 +60,7 @@ import Distribution.Simple.Setup
          )
 
 import Prelude ()
+import qualified Data.List as DL (foldl1')
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Client.SetupWrapper
@@ -177,8 +178,22 @@ main = do
   -- when writing to stderr and stdout.
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
-  (args0, args1) <- break (== "--") <$> getArgs
-  mainWorker =<< (++ args1) <$> expandResponse args0
+
+  (args0, args1) <- fmap (drop 1) . break (== "--") <$> getArgs
+
+  let concatWith = DL.foldl1' (\acc x -> acc <> " " <> x)
+  -- Case for @--@, if no @--target-options@ flag is provided, supply
+  -- everything after @--@ as a value for a new @--target-options@,
+  -- otherwise append it to an already existing @--target-options@.
+  if not (null args1) 
+    && not (null args0)
+    && elem (take 1 args0)
+      (map return ["run", "v2-run", "new-run", "test", "v2-test", "new-test", "bench", "v2-bench", "new-bench"])
+    then
+      mainWorker =<< expandResponse
+        (args0 <> ["--target-options=" <> concatWith args1])
+    else 
+      mainWorker . (<> ["--"] <> args1) =<< expandResponse args0
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
