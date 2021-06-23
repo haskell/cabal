@@ -320,7 +320,10 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True, packageType = Flag LibraryAndExecutable })) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+            { initializeTestSuite = Flag True
+            , packageType = Flag LibraryAndExecutable
+            })) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -456,7 +459,10 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True, packageType = Flag Library})) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+            { initializeTestSuite = Flag True
+            , packageType = Flag Library
+            })) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
