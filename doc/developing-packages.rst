@@ -47,20 +47,22 @@ The ``cabal init --interactive`` command is interactive. If we answer
        1) Executable
        2) Library
        3) Library and Executable
+       4) Test suite
     Your choice?
     ...
 
 One of the important questions is whether the package contains a library
 and/or an executable. Libraries are collections of Haskell modules that
 can be re-used by other Haskell libraries and programs, while executables
-are standalone programs.
+are standalone programs. Test suites can both depend on a library or be
+standalonely generated.
 
 For the moment these are the only choices. For more complex packages
-(e.g. a library and multiple executables or test suites) the ``.cabal``
+(e.g. a library and multiple executables) the ``.cabal``
 file can be edited afterwards.
 
-After you make your selection (executable; library; or: library
-and executable) cabal asks us a number of questions starting with
+After you make your selection (executable; library; library
+and executable; or: test suite) cabal asks us a number of questions starting with
 which version of the cabal specification to use, our package's name
 (for example, "proglet"), and our package's version.
 

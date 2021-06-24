@@ -1,0 +1,10 @@
+synopsis: standalone tests for cabal init
+packages: cabal-install
+prs: #7424
+issues: #7410
+
+description: {
+- changes the behaviour of the --tests flag for cabal init,
+  see https://github.com/haskell/cabal/issues/7410#issuecomment-849913926
+- adds a new value TestSuite for the PackageType type
+}

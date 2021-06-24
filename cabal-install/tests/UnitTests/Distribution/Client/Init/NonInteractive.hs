@@ -205,11 +205,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
   , testGroup "with tests"
     [ testCase "Check the non-interactive library and executable workflow" $ do
         let inputs = NEL.fromList
-              -- package type
-              [ "test-package"
-              , "[\".\", \"..\", \"src/\", \"app/Main.hs\"]"
               -- package dir
-              , "test-package"
+              [ "test-package"
               -- package description
               -- cabal version
               , "cabal-install version 3.4.0.0\ncompiled using version 3.4.0.0 of the Cabal library \n"
@@ -323,7 +320,10 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+            { initializeTestSuite = Flag True
+            , packageType = Flag LibraryAndExecutable
+            })) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -377,11 +377,8 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
 
     , testCase "Check the non-interactive library workflow" $ do
         let inputs = NEL.fromList
-              -- package type
-              [ "test-package"
-              , "[\".\", \"..\", \"src/\", \"test/Main.hs\"]"
               -- package dir
-              , "test-package"
+              [ "test-package"
               -- package description
               -- cabal version
               , "cabal-install version 3.4.0.0\ncompiled using version 3.4.0.0 of the Cabal library \n"
@@ -462,7 +459,10 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               , "[\"test/Main.hs\", \"test/Foo.hs\", \"test/bar.y\"]"
               ]
 
-        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject comp silent pkgIx srcDb (emptyFlags 
+            { initializeTestSuite = Flag True
+            , packageType = Flag Library
+            })) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -511,6 +511,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
         let inputs = NEL.fromList
               -- package type
               [ "test-package"
+              , "[\".\", \"..\", \"src/\", \"app/Main.hs\"]"
               , "[\".\", \"..\", \"src/\", \"app/Main.hs\"]"
               -- package dir
               , "test-package"
@@ -650,6 +651,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
               -- package type
               [ "test-package"
               , "[\".\", \"..\", \"src/\"]"
+              , "[\".\", \"..\", \"src/\"]"
               -- package dir
               , "test-package"
               -- package description
@@ -748,6 +750,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
         let inputs = NEL.fromList
               -- package type
               [ "test-package"
+              , "[\".\", \"..\", \"app/Main.hs\"]"
               , "[\".\", \"..\", \"app/Main.hs\"]"
               -- package dir
               , "test-package"
@@ -1028,14 +1031,22 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           [ testSimple "Library" packageTypeHeuristics Library
             [ "test-package"
             , "[\".\", \"..\", \"test/Main.hs\", \"src/\"]"
+            , "[\".\", \"..\", \"test/Main.hs\", \"src/\"]"
             ]
           , testSimple "Executable" packageTypeHeuristics Executable
             [ "test-package"
+            , "[\".\", \"..\", \"app/Main.hs\"]"
             , "[\".\", \"..\", \"app/Main.hs\"]"
             ]
           , testSimple "Library and Executable" packageTypeHeuristics LibraryAndExecutable
             [ "test-package"
             , "[\".\", \"..\", \"src/\", \"app/Main.hs\"]"
+            , "[\".\", \"..\", \"src/\", \"app/Main.hs\"]"
+            ]
+          , testSimple "TestSuite" packageTypeHeuristics TestSuite
+            [ "test-package"
+            , "[\".\", \"..\", \"test/Main.hs\"]"
+            , "[\".\", \"..\", \"test/Main.hs\"]"
             ]
           ]
       , testGroup "Check cabalVersionHeuristics output"
