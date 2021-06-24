@@ -164,6 +164,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- language
               , "2"
               -- test target
+              , "y"
               -- main file
               , "1"
               -- test dir
@@ -174,7 +175,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -258,6 +259,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- language
               , "2"
               -- test target
+              , "y"
               -- main file
               , "1"
               -- test dir
@@ -268,7 +270,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               , "y"
               ]
 
-        case (_runPrompt $ createProject silent pkgIx srcDb (emptyFlags {initializeTestSuite = Flag True})) inputs of
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
           Right (ProjectSettings opts desc (Just lib) Nothing (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -308,6 +310,79 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
+            exe  @?= Nothing
+            test @?! Nothing
+          Left e -> assertFailure $ show e
+    
+    , testCase "Check the interactive library workflow" $ do
+        let inputs = fromList
+              -- package type
+              [  "4"
+              -- package dir
+              , "test-package"
+              -- package description
+              -- cabal version
+              , "4"
+              -- package name
+              , "test-package"
+              , "test-package"
+              -- version
+              , "3.1.2.3"
+              -- license
+              , "3"
+              -- author
+              , "Foobar"
+              -- email
+              , "foobar@qux.com"
+              -- homepage
+              , "qux.com"
+              -- synopsis
+              , "Qux's package"
+              -- category
+              , "3"
+              -- test target
+              -- main file
+              , "1"
+              -- test dir
+              , "test"
+              -- language
+              , "1"
+              -- comments
+              , "y"
+              ]
+
+        case (_runPrompt $ createProject silent pkgIx srcDb emptyFlags) inputs of
+          Right (ProjectSettings opts desc Nothing Nothing (Just test), _) -> do
+            _optOverwrite  opts @?= False
+            _optMinimal    opts @?= False
+            _optNoComments opts @?= False
+            _optVerbosity  opts @?= silent
+            _optPkgDir     opts @?= "/home/test/test-package"
+            _optPkgType    opts @?= TestSuite
+            _optPkgName    opts @?= mkPackageName "test-package"
+
+            _pkgCabalVersion  desc @?= CabalSpecV2_4
+            _pkgName          desc @?= mkPackageName "test-package"
+            _pkgVersion       desc @?= mkVersion [3,1,2,3]
+            _pkgLicense       desc @?! SPDX.NONE
+            _pkgAuthor        desc @?= "Foobar"
+            _pkgEmail         desc @?= "foobar@qux.com"
+            _pkgHomePage      desc @?= "qux.com"
+            _pkgSynopsis      desc @?= "Qux's package"
+            _pkgCategory      desc @?= "Control"
+            _pkgExtraSrcFiles desc @?= mempty
+            _pkgExtraDocFiles desc @?= pure (Set.singleton "CHANGELOG.md")
+
+            _testMainIs       test @?= HsFilePath "Main.hs" Standard
+            _testDirs         test @?= ["test"]
+            _testLanguage     test @?= Haskell2010
+            _testOtherModules test @?= []
+            _testOtherExts    test @?= []
+            _testDependencies test @?! []
+            _testBuildTools   test @?= []
+
+          Right (ProjectSettings _ _ lib exe test, _) -> do
+            lib  @?= Nothing
             exe  @?= Nothing
             test @?! Nothing
           Left e -> assertFailure $ show e
@@ -668,13 +743,13 @@ fileCreatorTests pkgIx srcDb _pkgName = testGroup "generators"
   , testGroup "genTestTarget"
     [ testCase "Check test package flags workflow" $ do
         let inputs = fromList
-              [ "1"               -- pick the first main file option in the list
+              [ "y"               -- say yes to tests
+              , "1"               -- pick the first main file option in the list
               , "test"            -- package test dir
               , "1"               -- pick the first language in the list
               ]
 
-        runGenTest inputs $ genTestTarget
-          (emptyFlags {initializeTestSuite = Flag True}) pkgIx
+        runGenTest inputs $ genTestTarget emptyFlags pkgIx
     ]
   ]
   where

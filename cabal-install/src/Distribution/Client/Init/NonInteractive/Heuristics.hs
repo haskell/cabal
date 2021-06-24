@@ -122,20 +122,28 @@ guessExtraDocFiles flags = do
 --   looking for unique characteristics from each type, defaults to Executable.
 guessPackageType :: Interactive m => InitFlags -> m PackageType
 guessPackageType flags = do
-  let lastDir dirs   = L.last . splitDirectories $ dirs
-      srcCandidates  = [defaultSourceDir, "src", "source"]
-      testCandidates = [defaultTestDir, "test", "tests"]
+  if fromFlagOrDefault False (initializeTestSuite flags)
+    then
+      return TestSuite 
+    else do
+      let lastDir dirs   = L.last . splitDirectories $ dirs
+          srcCandidates  = [defaultSourceDir, "src", "source"]
+          testCandidates = [defaultTestDir, "test", "tests"]
 
-  pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
-  files  <- listFilesInside (\x -> return $ lastDir x `notElem` testCandidates) pkgDir
+      pkgDir <- fromFlagOrDefault getCurrentDirectory $ return <$> packageDir flags
+      files  <- listFilesInside (\x -> return $ lastDir x `notElem` testCandidates) pkgDir
+      files' <- filter (not . null . map (`elem` testCandidates) . splitDirectories) <$>
+        listFilesRecursive pkgDir
 
-  let hasExe = not $ null [f | f <- files, isMain $ takeFileName f]
-      hasLib = not $ null [f | f <- files, lastDir f `elem` srcCandidates]
+      let hasExe   = not $ null [f | f <- files,  isMain $ takeFileName f]
+          hasLib   = not $ null [f | f <- files,  lastDir f `elem` srcCandidates]
+          hasTest  = not $ null [f | f <- files', isMain $ takeFileName f]
 
-  return $ case (hasLib, hasExe) of
-    (True, True)  -> LibraryAndExecutable
-    (True, False) -> Library
-    _             -> Executable
+      return $ case (hasLib, hasExe, hasTest) of
+        (True , True , _   ) -> LibraryAndExecutable
+        (True , False, _   ) -> Library
+        (False, False, True) -> TestSuite
+        _                    -> Executable
 
 -- | Try to guess the application directories from the package directory,
 --   using a default value as fallback.
