@@ -20,7 +20,7 @@ import Data.Foldable                               (traverse_)
 import Data.List                                   (isPrefixOf, isSuffixOf)
 import Data.Maybe                                  (mapMaybe)
 import Data.Monoid                                 (Sum (..))
-import Distribution.Client.Config                  (getConfigFilePath)
+import Distribution.Client.Config                  (getConfigFilePath, defaultCacheDir)
 import Distribution.PackageDescription.Check       (PackageCheck (..), checkPackage)
 import Distribution.PackageDescription.PrettyPrint (showGenericPackageDescription)
 import Distribution.PackageDescription.Quirks      (patchQuirks)
@@ -64,7 +64,7 @@ import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    configPath <- getConfigFilePath
+    configPath <- getConfigFilePath mempty
     cfg        <- B.readFile configPath
     cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
     repoCache  <- case lookupInConfig "remote-repo-cache" cfgFields of

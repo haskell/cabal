@@ -130,7 +130,7 @@ import Text.PrettyPrint
 import Text.PrettyPrint.HughesPJ
          ( text, Doc )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), renameFile )
+         ( createDirectoryIfMissing, getAppUserDataDirectory, getHomeDirectory, getXdgDirectory, XdgDirectory(XdgCache, XdgConfig), renameFile )
 import Network.URI
          ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
@@ -617,7 +617,7 @@ defaultWorldFile =
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
   dir <- getHomeDirectory
-  return (dir </> ".local" </> "bin")
+  return [dir </> ".local" </> "bin"]
 
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
