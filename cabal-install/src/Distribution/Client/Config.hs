@@ -616,13 +616,13 @@ defaultWorldFile =
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
-  dir <- getCabalDir
-  return [dir </> "bin"]
+  dir <- getHomeDirectory
+  return (dir </> ".local" </> "bin")
 
 defaultInstallPath :: IO FilePath
 defaultInstallPath = do
-  dir <- getCabalDir
-  return (dir </> "bin")
+  dir <- getHomeDirectory
+  return (dir </> ".local" </> "bin")
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
