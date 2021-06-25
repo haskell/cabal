@@ -169,8 +169,8 @@ resolveWithFlags ::
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
   -> ComponentRequestedSpec
-  -> OS      -- ^ OS as returned by Distribution.System.buildOS
-  -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
+  -> OS      -- ^ OS where the installed artifacts will run (host OS)
+  -> Arch    -- ^ Arch where the installed artifacts will run (host Arch)
   -> CompilerInfo  -- ^ Compiler information
   -> [PackageVersionConstraint]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] PDTagged]

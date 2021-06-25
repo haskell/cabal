@@ -135,7 +135,11 @@ getExtraDocFiles = pure
 
 -- | Ask whether the project builds a library or executable.
 getPackageType :: Interactive m => InitFlags -> m PackageType -> m PackageType
-getPackageType flags = fromFlagOrPrompt (packageType flags)
+getPackageType InitFlags
+  { initializeTestSuite = Flag True
+  , packageType         = NoFlag
+  } _ = return TestSuite
+getPackageType flags act = fromFlagOrPrompt (packageType flags) act
 
 getMainFile :: Interactive m => InitFlags -> m HsFilePath -> m HsFilePath
 getMainFile flags act = case mainIs flags of
@@ -238,12 +242,14 @@ packageTypePrompt flags = getPackageType flags $ do
       [ "Library"
       , "Executable"
       , "Library and Executable"
+      , "Test suite"
       ]
 
     parsePackageType = \case
       "Library" -> Just Library
       "Executable" -> Just Executable
       "Library and Executable" -> Just LibraryAndExecutable
+      "Test suite" -> Just TestSuite 
       _ -> Nothing
 
 testMainPrompt :: Interactive m => m HsFilePath

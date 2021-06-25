@@ -28,7 +28,6 @@ import Distribution.Client.Setup
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , genBoundsCommand
-         , OutdatedFlags(..), outdatedCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
@@ -87,6 +86,7 @@ import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
 import qualified Distribution.Client.CmdSdist     as CmdSdist
 import qualified Distribution.Client.CmdListBin   as CmdListBin
+import qualified Distribution.Client.CmdOutdated  as CmdOutdated
 import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
@@ -94,7 +94,6 @@ import Distribution.Client.Configure          (configure, writeConfigFlags)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
-import Distribution.Client.Outdated           (outdated)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
@@ -240,7 +239,7 @@ mainWorker args = do
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd genBoundsCommand genBoundsAction
-      , regularCmd outdatedCommand outdatedAction
+      , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
@@ -777,17 +776,6 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
                 repoContext
                 comp platform progdb
                 globalFlags' freezeFlags
-
-outdatedAction :: OutdatedFlags -> [String] -> GlobalFlags -> IO ()
-outdatedAction outdatedFlags _extraArgs globalFlags = do
-  let verbosity = fromFlag (outdatedVerbosity outdatedFlags)
-  config <- loadConfigOrSandboxConfig verbosity globalFlags
-  let configFlags  = savedConfigureFlags config
-      globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, platform, _progdb) <- configCompilerAux' configFlags
-  withRepoContext verbosity globalFlags' $ \repoContext ->
-    outdated verbosity outdatedFlags repoContext
-             comp platform
 
 uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do

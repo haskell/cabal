@@ -11,7 +11,7 @@ import Test.Tasty.HUnit
 
 import qualified Data.ByteString.Lazy.Char8 as BS8
 import Data.List.NonEmpty (fromList)
-import Data.List.NonEmpty as NEL (NonEmpty)
+import Data.List.NonEmpty as NEL (NonEmpty, drop)
 #if __GLASGOW_HASKELL__ < 804
 import Data.Semigroup ((<>))
 #endif
@@ -214,6 +214,16 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
       (goldenTest "test-build-tools-with-comments.golden") $
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs (emptyFlags {buildTools = Flag ["happy"]})
+    
+    , goldenVsString "Standalone tests, empty flags, not simple, no options"
+      (goldenTest "standalone-test.golden") $
+        let opts = WriteOpts False False True v pkgDir TestSuite pkgName defaultCabalVersion
+        in runGoldenTest opts testArgs emptyFlags
+
+    , goldenVsString "Standalone tests, empty flags, not simple, with comments + no minimal"
+      (goldenTest "standalone-test-with-comments.golden") $
+        let opts = WriteOpts False False False v pkgDir TestSuite pkgName defaultCabalVersion
+        in runGoldenTest opts testArgs emptyFlags
     ]
   where
     runGoldenTest opts args flags =
@@ -245,6 +255,14 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
     , goldenVsString "Library, empty flags, not simple, no comments + no minimal"
       (goldenCabal "cabal-lib-no-comments.golden") $
         runGoldenTest (libProjArgs "N") emptyFlags
+    
+    , goldenVsString "Test suite, empty flags, not simple, with comments + no minimal"
+      (goldenCabal "cabal-test-suite-with-comments.golden") $
+        runGoldenTest (testProjArgs "Y") emptyFlags
+
+    , goldenVsString "Test suite, empty flags, not simple, no comments + no minimal"
+      (goldenCabal "cabal-test-suite-no-comments.golden") $
+        runGoldenTest (testProjArgs "N") emptyFlags
     ]
   where
     runGoldenTest args flags =
@@ -265,6 +283,12 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
           mkStanza $ pkgFields ++ [libStanza, testStanza]
+        
+        (Right (ProjectSettings opts pkgDesc Nothing Nothing (Just testTarget), _)) -> do
+          let pkgFields = mkPkgDescription opts pkgDesc
+              testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
+          
+          mkStanza $ pkgFields ++ [testStanza]
 
         (Right (ProjectSettings _ _ l e t, _)) -> assertFailure $
           show l ++ "\n" ++ show e ++ "\n" ++ show t
@@ -318,6 +342,12 @@ pkgArgs = fromList
     , "synopsis"
     , "4"
     ]
+
+testProjArgs :: String -> NonEmpty String
+testProjArgs comments = fromList ["4", "foo-package"]
+  <> pkgArgs
+  <> fromList (NEL.drop 1 testArgs)
+  <> fromList [comments]
 
 libProjArgs :: String -> NonEmpty String
 libProjArgs comments = fromList ["1", "foo-package"]

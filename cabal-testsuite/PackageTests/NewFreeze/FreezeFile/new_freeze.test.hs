@@ -16,6 +16,11 @@ main = withShorterPathForNewBuildStore $ \storeDir ->
       -- v2-build should choose the latest version for the dependency.
       cabalG' ["--store-dir=" ++ storeDir] "v2-build" ["--dry-run"] >>= assertUsesLatestDependency
 
+      -- should not create freeze file with --dry-run or --only-download flags
+      cabalG' ["--store-dir=" ++ storeDir] "v2-freeze" ["--dry-run"]
+      cabalG' ["--store-dir=" ++ storeDir] "v2-freeze" ["--only-download"]
+      shouldNotExist freezeFile
+
       -- Freeze a dependency on the older version.
       cabalG ["--store-dir=" ++ storeDir] "v2-freeze" ["--constraint=my-library-dep==1.0"]
 

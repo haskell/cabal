@@ -4,13 +4,16 @@ module Distribution.Client.ProjectFlags (
     ProjectFlags(..),
     defaultProjectFlags,
     projectFlagsOptions,
+    removeIgnoreProjectOption,
 ) where
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.ReadE          (succeedReadE)
-import Distribution.Simple.Command (MkOptDescr, OptionField, ShowOrParseArgs (..), boolOpt', option, reqArg)
+import Distribution.Simple.Command
+    ( MkOptDescr, OptionField(optionName), ShowOrParseArgs (..), boolOpt', option
+    , reqArg )
 import Distribution.Simple.Setup   (Flag (..), flagToList, flagToMaybe, toFlag, trueArg)
 
 data ProjectFlags = ProjectFlags
@@ -47,6 +50,12 @@ projectFlagsOptions showOrParseArgs =
         flagIgnoreProject (\v flags -> flags { flagIgnoreProject = v })
         (yesNoOpt showOrParseArgs)
     ]
+
+-- | As almost all commands use 'ProjectFlags' but not all can honour
+-- "ignore-project" flag, provide this utility to remove the flag
+-- parsing from the help message.
+removeIgnoreProjectOption :: [OptionField a] -> [OptionField a]
+removeIgnoreProjectOption = filter (\o -> optionName o /= "ignore-project")
 
 instance Monoid ProjectFlags where
     mempty = gmempty

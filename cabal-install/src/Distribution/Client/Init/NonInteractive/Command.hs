@@ -136,6 +136,13 @@ createProject comp v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
+    
+    TestSuite -> do
+      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
+
+      return $ ProjectSettings
+        (mkOpts comments cabalSpec) pkgDesc
+        Nothing Nothing testTarget
 
 genPkgDescription
   :: Interactive m

@@ -62,6 +62,12 @@ createProject v _pkgIx _srcDb initFlags = do
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           (Just libTarget) (Just exeTarget) testTarget
+      
+      TestSuite -> do
+        testTarget <- genSimpleTestTarget initFlags
+        return $ ProjectSettings
+          (mkOpts False cabalSpec) pkgDesc
+          Nothing Nothing testTarget
   where
     -- Add package name as dependency of test suite
     --

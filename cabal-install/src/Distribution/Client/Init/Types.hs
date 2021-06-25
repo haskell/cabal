@@ -210,9 +210,9 @@ data ProjectSettings = ProjectSettings
 -- Other types
 
 -- | Enum to denote whether the user wants to build a library target,
--- executable target, or library and executable targets.
+-- executable target, library and executable targets, or a standalone test suite.
 --
-data PackageType = Library | Executable | LibraryAndExecutable
+data PackageType = Library | Executable | LibraryAndExecutable | TestSuite
     deriving (Eq, Show, Generic)
 
 data HsFileType

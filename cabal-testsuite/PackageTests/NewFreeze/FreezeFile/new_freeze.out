@@ -7,6 +7,10 @@ In order, the following would be built:
  - my-library-dep-2.0 (lib) (requires build)
  - my-local-package-1.0 (exe:my-exe) (first run)
 # cabal v2-freeze
+Freeze file not written due to flag(s)
+# cabal v2-freeze
+Freeze file not written due to flag(s)
+# cabal v2-freeze
 Resolving dependencies...
 Wrote freeze file: <ROOT>/new_freeze.dist/source/cabal.project.freeze
 # cabal v2-build

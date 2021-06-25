@@ -137,6 +137,20 @@ createProject v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
+    
+    TestSuite -> do
+      -- the line below is necessary because if both package type and test flags
+      -- are *not* passed, the user will be prompted for a package type (which
+      -- includes TestSuite in the list). It prevents that the user end up with a
+      -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
+      let initFlags' = initFlags { initializeTestSuite = Flag True }
+      testTarget <- genTestTarget initFlags' pkgIx
+      
+      comments <- noCommentsPrompt initFlags'
+
+      return $ ProjectSettings
+        (mkOpts comments cabalSpec) pkgDesc
+        Nothing Nothing testTarget
   where
     -- Add package name as dependency of test suite
     --

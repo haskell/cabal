@@ -34,7 +34,6 @@ module Distribution.Client.Setup
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
     , genBoundsCommand
-    , outdatedCommand, OutdatedFlags(..), IgnoreMajorVersionBumps(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
@@ -106,8 +105,6 @@ import Distribution.Simple.InstallDirs
          , toPathTemplate, fromPathTemplate, combinePathTemplate )
 import Distribution.Version
          ( Version, mkVersion )
-import Distribution.Package
-         ( PackageName )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
@@ -599,6 +596,8 @@ configCompilerAux' configFlags =
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion  :: Flag Version,
+    configAppend        :: Flag Bool,
+    configBackup        :: Flag Bool,
     configExConstraints :: [(UserConstraint, ConstraintSource)],
     configPreferences   :: [PackageVersionConstraint],
     configSolver        :: Flag PreSolver,
@@ -637,6 +636,14 @@ configureExOptions _showOrParseArgs src =
       (reqArg "VERSION" (parsecToReadE ("Cannot parse cabal lib version: "++)
                                     (fmap toFlag parsec))
                         (map prettyShow. flagToList))
+  , option "" ["append"]
+      "appending the new config to the old config file"
+      configAppend (\v flags -> flags { configAppend = v })
+      (boolOpt [] [])
+  , option "" ["backup"]
+      "the backup of the config file before any alterations"
+      configBackup (\v flags -> flags { configBackup = v })
+      (boolOpt [] [])
   , option [] ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
@@ -1123,123 +1130,6 @@ genBoundsCommand = CommandUI {
      optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
      ]
   }
-
--- ------------------------------------------------------------
--- * 'outdated' command
--- ------------------------------------------------------------
-
-data IgnoreMajorVersionBumps = IgnoreMajorVersionBumpsNone
-                             | IgnoreMajorVersionBumpsAll
-                             | IgnoreMajorVersionBumpsSome [PackageName]
-
-instance Monoid IgnoreMajorVersionBumps where
-  mempty  = IgnoreMajorVersionBumpsNone
-  mappend = (<>)
-
-instance Semigroup IgnoreMajorVersionBumps where
-  IgnoreMajorVersionBumpsNone       <> r                               = r
-  l@IgnoreMajorVersionBumpsAll      <> _                               = l
-  l@(IgnoreMajorVersionBumpsSome _) <> IgnoreMajorVersionBumpsNone     = l
-  (IgnoreMajorVersionBumpsSome   _) <> r@IgnoreMajorVersionBumpsAll    = r
-  (IgnoreMajorVersionBumpsSome   a) <> (IgnoreMajorVersionBumpsSome b) =
-    IgnoreMajorVersionBumpsSome (a ++ b)
-
-data OutdatedFlags = OutdatedFlags {
-  outdatedVerbosity     :: Flag Verbosity,
-  outdatedFreezeFile    :: Flag Bool,
-  outdatedNewFreezeFile :: Flag Bool,
-  outdatedProjectFile   :: Flag FilePath,
-  outdatedSimpleOutput  :: Flag Bool,
-  outdatedExitCode      :: Flag Bool,
-  outdatedQuiet         :: Flag Bool,
-  outdatedIgnore        :: [PackageName],
-  outdatedMinor         :: Maybe IgnoreMajorVersionBumps
-  }
-
-defaultOutdatedFlags :: OutdatedFlags
-defaultOutdatedFlags = OutdatedFlags {
-  outdatedVerbosity     = toFlag normal,
-  outdatedFreezeFile    = mempty,
-  outdatedNewFreezeFile = mempty,
-  outdatedProjectFile   = mempty,
-  outdatedSimpleOutput  = mempty,
-  outdatedExitCode      = mempty,
-  outdatedQuiet         = mempty,
-  outdatedIgnore        = mempty,
-  outdatedMinor         = mempty
-  }
-
-outdatedCommand :: CommandUI OutdatedFlags
-outdatedCommand = CommandUI {
-  commandName = "outdated",
-  commandSynopsis = "Check for outdated dependencies",
-  commandDescription  = Just $ \_ -> wrapText $
-    "Checks for outdated dependencies in the package description file "
-    ++ "or freeze file",
-  commandNotes = Nothing,
-  commandUsage = usageFlags "outdated",
-  commandDefaultFlags = defaultOutdatedFlags,
-  commandOptions      = \ _ -> [
-    optionVerbosity outdatedVerbosity
-      (\v flags -> flags { outdatedVerbosity = v })
-
-    ,option [] ["freeze-file", "v1-freeze-file"]
-     "Act on the freeze file"
-     outdatedFreezeFile (\v flags -> flags { outdatedFreezeFile = v })
-     trueArg
-
-    ,option [] ["v2-freeze-file", "new-freeze-file"]
-     "Act on the new-style freeze file (default: cabal.project.freeze)"
-     outdatedNewFreezeFile (\v flags -> flags { outdatedNewFreezeFile = v })
-     trueArg
-
-    ,option [] ["project-file"]
-     "Act on the new-style freeze file named PROJECTFILE.freeze rather than the default cabal.project.freeze"
-     outdatedProjectFile (\v flags -> flags { outdatedProjectFile = v })
-     (reqArgFlag "PROJECTFILE")
-
-    ,option [] ["simple-output"]
-     "Only print names of outdated dependencies, one per line"
-     outdatedSimpleOutput (\v flags -> flags { outdatedSimpleOutput = v })
-     trueArg
-
-    ,option [] ["exit-code"]
-     "Exit with non-zero when there are outdated dependencies"
-     outdatedExitCode (\v flags -> flags { outdatedExitCode = v })
-     trueArg
-
-    ,option ['q'] ["quiet"]
-     "Don't print any output. Implies '--exit-code' and '-v0'"
-     outdatedQuiet (\v flags -> flags { outdatedQuiet = v })
-     trueArg
-
-   ,option [] ["ignore"]
-    "Packages to ignore"
-    outdatedIgnore (\v flags -> flags { outdatedIgnore = v })
-    (reqArg "PKGS" pkgNameListParser (map prettyShow))
-
-   ,option [] ["minor"]
-    "Ignore major version bumps for these packages"
-    outdatedMinor (\v flags -> flags { outdatedMinor = v })
-    (optArg "PKGS" ignoreMajorVersionBumpsParser
-      (Just IgnoreMajorVersionBumpsAll) ignoreMajorVersionBumpsPrinter)
-   ]
-  }
-  where
-    ignoreMajorVersionBumpsPrinter :: (Maybe IgnoreMajorVersionBumps)
-                                   -> [Maybe String]
-    ignoreMajorVersionBumpsPrinter Nothing = []
-    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsNone)= []
-    ignoreMajorVersionBumpsPrinter (Just IgnoreMajorVersionBumpsAll) = [Nothing]
-    ignoreMajorVersionBumpsPrinter (Just (IgnoreMajorVersionBumpsSome pkgs)) =
-      map (Just . prettyShow) $ pkgs
-
-    ignoreMajorVersionBumpsParser  =
-      (Just . IgnoreMajorVersionBumpsSome) `fmap` pkgNameListParser
-
-    pkgNameListParser = parsecToReadE
-      ("Couldn't parse the list of package names: " ++)
-      (fmap toList (P.sepByNonEmpty parsec (P.char ',')))
 
 -- ------------------------------------------------------------
 -- * Update command
@@ -2245,7 +2135,7 @@ initOptions _ =
     (noArg (Flag IT.LibraryAndExecutable))
 
       , option [] ["tests"]
-        "Generate a test suite for the library."
+        "Generate a test suite, standalone or for a library."
         IT.initializeTestSuite
         (\v flags -> flags { IT.initializeTestSuite = v })
         trueArg

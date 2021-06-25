@@ -46,7 +46,7 @@ import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, warn, die', info
+         ( wrapText, warn, die', info, notice
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
@@ -283,15 +283,21 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                                   exeName
                </> exeName
     let args = drop 1 targetStrings
-    runProgramInvocation
-      verbosity
-      emptyProgramInvocation {
-        progInvokePath  = exePath,
-        progInvokeArgs  = args,
-        progInvokeEnv   = dataDirsEnvironmentForPlan
-                            (distDirLayout baseCtx)
-                            elaboratedPlan
-      }
+        dryRun = buildSettingDryRun (buildSettings baseCtx)
+              || buildSettingOnlyDownload (buildSettings baseCtx)
+
+    if dryRun
+       then notice verbosity "Running of executable suppressed by flag(s)"
+       else
+         runProgramInvocation
+           verbosity
+           emptyProgramInvocation {
+             progInvokePath  = exePath,
+             progInvokeArgs  = args,
+             progInvokeEnv   = dataDirsEnvironmentForPlan
+                                 (distDirLayout baseCtx)
+                                 elaboratedPlan
+           }
 
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where

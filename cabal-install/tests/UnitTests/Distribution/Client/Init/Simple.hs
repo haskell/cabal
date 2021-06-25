@@ -110,6 +110,18 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib+exe (with tests) project: " ++ show e
         Right (settings', _) -> settings @=? settings'
+    
+    , testCase "Simple standalone tests" $ do
+      let inputs = fromList ["2", "simple-test", "y", "1"]
+          flags = emptyFlags { packageType = Flag TestSuite }
+          settings = ProjectSettings
+            (WriteOpts False False False v "/home/test/2" TestSuite pkgName defaultCabalVersion)
+            (simplePkgDesc pkgName) Nothing Nothing
+            (Just $ simpleTestTarget Nothing)
+
+      case _runPrompt (createProject v pkgIx srcDb flags) inputs of
+        Left e -> assertFailure $ "Failed to create simple standalone test project: " ++ show e
+        Right (settings', _) -> settings @=? settings'
     ]
 
 -- -------------------------------------------------------------------- --

@@ -2146,11 +2146,17 @@ fileExtensionSupportedLanguage path =
     isHaskell = extension `elem` [".hs", ".lhs"]
     isC       = isJust (filenameCDialect extension)
 
--- | Whether a path is a good relative path.
+-- | Whether a path is a good relative path.  We aren't worried about perfect
+-- cross-platform compatibility here; this function just checks the paths in
+-- the (local) @.cabal@ file, while only Hackage needs the portability.
 --
 -- >>> let test fp = putStrLn $ show (isGoodRelativeDirectoryPath fp) ++ "; " ++ show (isGoodRelativeFilePath fp)
 --
--- >>> test "foo/bar/quu"
+-- Note that "foo./bar.hs" would be invalid on Windows.
+--
+-- >>> traverse_ test ["foo/bar/quu", "a/b.hs", "foo./bar.hs"]
+-- Nothing; Nothing
+-- Nothing; Nothing
 -- Nothing; Nothing
 --
 -- Trailing slash is not allowed for files, for directories it is ok.
@@ -2172,7 +2178,7 @@ fileExtensionSupportedLanguage path =
 -- Just "posix absolute path"; Just "posix absolute path"
 -- Just "empty path segment"; Just "empty path segment"
 -- Just "trailing same directory segment: ."; Just "trailing same directory segment: ."
--- Just "same directory segment: ."; Just "same directory segment: .."
+-- Just "same directory segment: ."; Just "same directory segment: ."
 -- Just "parent directory segment: .."; Just "parent directory segment: .."
 -- Just "reserved character '*'"; Just "reserved character '*'"
 --
@@ -2194,16 +2200,16 @@ isGoodRelativeFilePath = state0
     state0 (c:cs) | c == '.'     = state1 cs
                   | c == '/'     = Just "posix absolute path"
                   | isReserved c = Just ("reserved character " ++ show c)
-                  | otherwise    = state3 cs
+                  | otherwise    = state5 cs
 
-    -- after .
+    -- after initial .
     state1 []                    = Just "trailing dot segment"
     state1 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = state2 cs
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
-    -- after ./
+    -- after ./ or after / between segments
     state2 []                    = Just "trailing slash"
     state2 (c:cs) | c == '.'     = state3 cs
                   | c == '/'     = Just "empty path segment"
@@ -2213,11 +2219,11 @@ isGoodRelativeFilePath = state0
     -- after non-first segment's .
     state3 []                    = Just "trailing same directory segment: ."
     state3 (c:cs) | c == '.'     = state4 cs
-                  | c == '/'     = Just "same directory segment: .."
+                  | c == '/'     = Just "same directory segment: ."
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
-    -- after non-first segment's ..
+    -- after ..
     state4 []                    = Just "trailing parent directory segment: .."
     state4 (c:cs) | c == '.'     = state5 cs
                   | c == '/'     = Just "parent directory segment: .."
@@ -2226,7 +2232,7 @@ isGoodRelativeFilePath = state0
 
     -- in a segment which is ok.
     state5 []                    = Nothing
-    state5 (c:cs) | c == '.'     = state3 cs
+    state5 (c:cs) | c == '.'     = state5 cs
                   | c == '/'     = state2 cs
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
@@ -2255,8 +2261,8 @@ isGoodRelativeDirectoryPath = state0
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
-    -- after ./
-    state1 []                    = Nothing -- "./"
+    -- after initial ./ or after / between segments
+    state1 []                    = Nothing
     state1 (c:cs) | c == '.'     = state2 cs
                   | c == '/'     = Just "empty path segment"
                   | isReserved c = Just ("reserved character " ++ show c)
@@ -2269,8 +2275,8 @@ isGoodRelativeDirectoryPath = state0
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
-    -- after non-first segment's ..
-    state3 []                    = Just "trailing parent directory segment: ."
+    -- after ..
+    state3 []                    = Just "trailing parent directory segment: .."
     state3 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = Just "parent directory segment: .."
                   | isReserved c = Just ("reserved character " ++ show c)
@@ -2283,7 +2289,7 @@ isGoodRelativeDirectoryPath = state0
                   | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
-    -- after .
+    -- after initial .
     state5 []                    = Nothing -- "."
     state5 (c:cs) | c == '.'     = state3 cs
                   | c == '/'     = state1 cs

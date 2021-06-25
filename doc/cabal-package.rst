@@ -140,11 +140,12 @@ Example: A package containing executable programs
 
     executable program1
       build-depends:  HUnit >= 1.1.1 && < 1.2
-      main-is:        Main.hs
+      main-is:        main.hs
       hs-source-dirs: prog1
 
     executable program2
-      main-is:        Main.hs
+      -- A different main.hs because of hs-source-dirs.
+      main-is:        main.hs
       build-depends:  HUnit >= 1.1.1 && < 1.2
       hs-source-dirs: prog2
       other-modules:  Utils
@@ -166,17 +167,21 @@ Example: A package containing a library and executable programs
 
     library
       build-depends:   HUnit >= 1.1.1 && < 1.2
+      hs-source-dirs:  lib
       exposed-modules: A, B, C
 
     executable program1
-      main-is:         Main.hs
+      main-is:         main.hs
       hs-source-dirs:  prog1
-      other-modules:   A, B
+      other-modules:   D, E
 
     executable program2
-      main-is:         Main.hs
+      -- A different main.hs because of hs-source-dirs.
+      main-is:         main.hs
+      -- No bound on internal libraries.
+      build-depends:   TestPackage
       hs-source-dirs:  prog2
-      other-modules:   A, C, Utils
+      other-modules:   Utils
 
 with ``Setup.hs`` the same as above. Note that any library modules
 required (directly or indirectly) by an executable must be listed again.

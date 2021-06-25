@@ -419,6 +419,8 @@ instance Semigroup SavedConfig where
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,
+        configAppend        = combine configAppend,
+        configBackup        = combine configBackup,
         -- TODO: NubListify
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
