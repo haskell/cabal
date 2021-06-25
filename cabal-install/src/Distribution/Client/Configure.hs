@@ -59,7 +59,7 @@ import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
-import Distribution.Simple.PackageIndex
+import Distribution.Simple.PackageIndex as PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
          ( Package(..), packageName, PackageId )
@@ -279,7 +279,7 @@ checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
                          configExConstraints flags
     unknownPreferences = filter (unknown . \(PackageVersionConstraint name _) -> name) $
                          configPreferences flags
-    unknown pkg = null (lookupPackageName installedPkgIndex pkg)
+    unknown pkg = null (PackageIndex.lookupPackageName installedPkgIndex pkg)
                && not (elemByPackageName sourcePkgIndex pkg)
     showConstraint (uc, src) =
         prettyShow uc ++ " (" ++ showConstraintSource src ++ ")"

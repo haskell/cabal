@@ -240,10 +240,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                              | otherwise = [guessGhcVersioned dir suf,
                                             guessVersioned dir suf,
                                             guessNormal dir]
-           guesses = mkGuesses given_dir given_suf ++
-                            if real_path == given_path
-                                then []
-                                else mkGuesses real_dir real_suf
+           -- order matters here, see https://github.com/haskell/cabal/issues/7390
+           guesses = (if real_path == given_path
+                        then []
+                        else mkGuesses real_dir real_suf)
+                     ++ mkGuesses given_dir given_suf
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ given_dir
        debug verbosity $ "candidate locations: " ++ show guesses
