@@ -70,25 +70,22 @@ As mentioned above, ``cabal init`` with no arguments generates a package with a
 single executable that prints ``"Hello, Haskell!"`` to the terminal. To run the
 executable enter the following command:
 
-``cabal run :myfirstapp``
+``cabal run myfirstapp``
 
 You should see the following output in the terminal:
 
 .. code-block:: console
 
-     $ cabal run :myfirstapp
+     $ cabal run myfirstapp
      ...
      Hello, Haskell!
-
-.. note:: The ``:`` prefix in ``:myfirstapp`` signifies that the
-	  ``myfirstapp`` target is part of the current package.
 
 Notice that we didn't need to run a `build` command before ``cabal run``, this
 is because ``cabal run`` first determines if the code needs to be re-built
 before running the executable. If you just want to build a target you can do so
 with ``cabal build``:
 
-``cabal build :myfirstapp``
+``cabal build myfirstapp``
 
 
 Adding dependencies
