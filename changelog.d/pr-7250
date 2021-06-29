@@ -1,0 +1,9 @@
+synopsis: Fix test --enable-coverage for multi-package projects
+packages: Cabal
+prs: #7250 #7467
+issues: #5433 #5213 #7200
+description: {
+
+- Fix `cabal test --enable-coverage` for multi-package projects by invoking `hpc markup --include=` and listing only modules of libraries of the single tested package.
+
+}
