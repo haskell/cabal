@@ -45,6 +45,8 @@ module Distribution.Client.Init.Types
 , ProjectSettings(..)
   -- * Formatters
 , FieldAnnotation(..)
+  -- * Other conveniences
+, DefaultPrompt(..)
 ) where
 
 
@@ -421,6 +423,14 @@ type IsLiterate = Bool
 -- | Convenience alias for generating simple projects
 --
 type IsSimple = Bool
+
+-- | Defines whether or not a prompt will have a default value,
+--   is optional, or is mandatory.
+data DefaultPrompt t
+  = DefaultPrompt t
+  | OptionalPrompt
+  | MandatoryPrompt
+  deriving (Eq, Functor)
 
 -- -------------------------------------------------------------------- --
 -- Field annotation for pretty formatters
