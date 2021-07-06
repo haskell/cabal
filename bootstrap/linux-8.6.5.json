@@ -14,13 +14,13 @@
         {
             "source": "hackage",
             "package": "network",
-            "version": "3.1.2.1",
+            "version": "3.1.2.2",
             "flags": [
                 "-devel"
             ],
-            "cabal_sha256": "188d6daea8cd91bc3553efd5a90a1e7c6d0425fa66a53baa74db5b6d9fd75c8b",
-            "src_sha256": "fcaa954445cb575ff04d088e719452e356324b6acb98c5aefd2541a069439d4a",
-            "revision": 1
+            "cabal_sha256": "218e2968e03d99c40f32a2ef7cc41a848969096ba1c780ff2e57997a00246b06",
+            "src_sha256": "55012c0b22f9c7548b1f7b3bacc2c6ec7058c7f92238a69561528f1a0fa60eb6",
+            "revision": 0
         },
         {
             "source": "hackage",
@@ -58,12 +58,13 @@
         {
             "source": "hackage",
             "package": "hashable",
-            "version": "1.3.1.0",
+            "version": "1.3.2.0",
             "flags": [
-                "+integer-gmp"
+                "+integer-gmp",
+                "-random-initial-seed"
             ],
-            "cabal_sha256": "d965e098e06cc585b201da6137dcb31c40f35eb7a937b833903969447985c076",
-            "src_sha256": "8061823a4ac521b53912edcba36b956f3159cb885b07ec119af295a6568ca7c4",
+            "cabal_sha256": "02bc544e3546713b1d76a3c5bfc836a5fd19a5b4348ef4a52bb973d0c35a4b89",
+            "src_sha256": "59bd964b6fe52b04825cf5402c87981068c051f351b2cb940b75f1c60719d637",
             "revision": 0
         },
         {
@@ -96,42 +97,6 @@
             "revision": 0
         },
         {
-            "source": "local",
-            "package": "cabal-install-solver",
-            "version": "3.5.0.0",
-            "flags": [
-                "-debug-conflict-sets",
-                "-debug-expensive-assertions",
-                "-debug-tracetree"
-            ],
-            "cabal_sha256": null,
-            "src_sha256": null,
-            "revision": null
-        },
-        {
-            "source": "hackage",
-            "package": "cryptohash-sha256",
-            "version": "0.11.102.0",
-            "flags": [
-                "-exe",
-                "+use-cbits"
-            ],
-            "cabal_sha256": "daa34001f8221bf550a3afb278ee9ac3a7257dba187cd7ec4bd5436264b26424",
-            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
-            "revision": 0
-        },
-        {
-            "source": "hackage",
-            "package": "echo",
-            "version": "0.1.4",
-            "flags": [
-                "-example"
-            ],
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "revision": 0
-        },
-        {
             "source": "hackage",
             "package": "splitmix",
             "version": "0.1.0.3",
@@ -159,6 +124,42 @@
             "cabal_sha256": "4d33a49cd383d50af090f1b888642d10116e43809f9da6023d9fc6f67d2656ee",
             "src_sha256": "3e8885ee2f56ad4da940f043ae8f981ee2fe336b5e8e4ba3f7436cff4f526c4a",
             "revision": 1
+        },
+        {
+            "source": "local",
+            "package": "cabal-install-solver",
+            "version": "3.5.0.0",
+            "flags": [
+                "-debug-conflict-sets",
+                "-debug-expensive-assertions",
+                "-debug-tracetree"
+            ],
+            "cabal_sha256": null,
+            "src_sha256": null,
+            "revision": null
+        },
+        {
+            "source": "hackage",
+            "package": "cryptohash-sha256",
+            "version": "0.11.102.0",
+            "flags": [
+                "-exe",
+                "+use-cbits"
+            ],
+            "cabal_sha256": "797a0af7b8a0e654cbddd3df6b9de02d2cbfcb2292cf001399ab53910fbbb76c",
+            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
+            "revision": 1
+        },
+        {
+            "source": "hackage",
+            "package": "echo",
+            "version": "0.1.4",
+            "flags": [
+                "-example"
+            ],
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "revision": 0
         },
         {
             "source": "hackage",
