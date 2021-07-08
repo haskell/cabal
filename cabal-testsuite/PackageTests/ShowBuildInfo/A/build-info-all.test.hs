@@ -2,8 +2,11 @@ import           Test.Cabal.Prelude
 import           Test.Cabal.DecodeShowBuildInfo
 
 main = cabalTest $ do
-    buildInfo <- runShowBuildInfo ["-v0"] -- hide verbose output so we can parse
-    let comps = components buildInfo
-    assertEqual "Components, exactly three" 3  (length comps)
-    assertEqual "Test components, exactly one" 1 $
-        length $ filter (\c -> "test" == componentType c) comps
+    buildInfo <- runShowBuildInfo ["all", "--enable-tests"]
+    assertCommonBuildInfo buildInfo
+    assertEqual "Number of Components" 4 (length $ components buildInfo)
+    let [libAComp, exeComp, testComp, libBComp] = components buildInfo
+    assertExeComponent exeComp "exe:A" ["Main.hs"] ["src"]
+    assertLibComponent libAComp "lib" ["A"] ["src"]
+    assertLibComponent libBComp "lib" ["B"] ["lib"]
+    assertTestComponent testComp "test:A-tests" ["Test.hs"] ["src"]

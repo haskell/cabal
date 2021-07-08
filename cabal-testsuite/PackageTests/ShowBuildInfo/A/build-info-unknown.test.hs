@@ -1,14 +1,15 @@
 import           Test.Cabal.Prelude
 
 main = cabalTest $ do
-    r <- fails $ cabal' "show-build-info" ["exe:B"]
+    r <- fails $ cabal' "show-build-info" ["exe:B", "-v1"]
     assertOutputContains "Internal error in target matching." r
 
-    r <- fails $ cabal' "show-build-info" ["--unit-ids-json=B-inplace-0.1.0.0"]
-    assertOutputContains "No unit B-inplace-0.1.0.0" r
+    r <- fails $ cabal' "show-build-info" ["C", "-v1"]
+    assertOutputContains "Cannot show-build-info the package C, it is not in this project (either directly or indirectly)." r
 
-    r <- fails $ cabal' "show-build-info" ["--unit-ids-json=A-0.1.0.0-inplace B-inplace-0.1.0.0"]
-    assertOutputContains "No unit B-inplace-0.1.0.0" r
-
-    r <- fails $ cabal' "show-build-info" ["--unit-ids-json=A-0.1.0.0-inplace", "exe:B"]
+    r <- fails $ cabal' "show-build-info" ["lib:C", "-v1"]
     assertOutputContains "Internal error in target matching." r
+
+    r <- fails $ cabal' "show-build-info" ["benchmarks", "-v1"]
+    assertOutputContains "Cannot show-build-info the benchmarks in the package A-0.1.0.0 because it does not contain any benchmarks." r
+

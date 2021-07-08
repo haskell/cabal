@@ -18,6 +18,6 @@ executable A
 test-suite A-tests
   type:                exitcode-stdio-1.0
   main-is:             Test.hs
-  build-depends:       base >=4
+  build-depends:       base >=4, A
   hs-source-dirs:      src
   default-language:    Haskell2010
