@@ -39,6 +39,7 @@ library
   hs-source-dirs: src
   exposed-modules:
     Test.Cabal.CheckArMetadata
+    Test.Cabal.DecodeShowBuildInfo
     Test.Cabal.Monad
     Test.Cabal.OutputNormalizer
     Test.Cabal.Plan
