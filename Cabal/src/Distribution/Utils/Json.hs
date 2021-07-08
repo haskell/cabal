@@ -43,7 +43,11 @@ surround begin end middle = mconcat [ begin , middle , end]
 escape :: String -> String
 escape ('\"':xs) = "\\\"" <> escape xs
 escape ('\\':xs) = "\\\\" <> escape xs
-escape ('\'':xs) = "\\\'" <> escape xs
+escape ('\b':xs) = "\\b"  <> escape xs
+escape ('\f':xs) = "\\f"  <> escape xs
+escape ('\n':xs) = "\\n"  <> escape xs
+escape ('\r':xs) = "\\r"  <> escape xs
+escape ('\t':xs) = "\\t"  <> escape xs
 escape (x:xs)    = x : escape xs
 escape []        = mempty
 
