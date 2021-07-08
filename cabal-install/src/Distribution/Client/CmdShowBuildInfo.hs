@@ -8,7 +8,7 @@ module Distribution.Client.CmdShowBuildInfo (
   ) where
 
 import Distribution.Client.Compat.Prelude
-         ( catMaybes )
+         ( for )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.CmdErrorMessages
 
@@ -17,7 +17,7 @@ import Distribution.Client.Setup
 import Distribution.Client.TargetProblem
          ( TargetProblem', TargetProblem (TargetProblemNoneEnabled, TargetProblemNoTargets) )
 import Distribution.Simple.Setup
-         (Flag(..), haddockVerbosity, configVerbosity, fromFlagOrDefault )
+         ( configVerbosity, fromFlagOrDefault )
 import Distribution.Simple.Command
          ( CommandUI(..), option, reqArg', usageAlternatives )
 import Distribution.Verbosity
@@ -26,20 +26,19 @@ import Distribution.Simple.Utils
          ( wrapText )
 
 import qualified Data.Map as Map
-import qualified Distribution.Simple.Setup as Cabal
-import Distribution.Client.ProjectBuilding.Types
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.DistDirLayout
-        ( distProjectRootDirectory )
+        ( distProjectRootDirectory, DistDirLayout (distProjectCacheDirectory) )
 
 import Distribution.Simple.ShowBuildInfo
 import Distribution.Utils.Json
 
-import Data.Either
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import System.FilePath
+import Distribution.Types.UnitId (unUnitId)
 
 showBuildInfoCommand :: CommandUI (NixStyleFlags ShowBuildInfoFlags)
 showBuildInfoCommand = CommandUI {
@@ -108,13 +107,13 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
   buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
   runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
-  -- We can ignore the errors here, since runProjectPostBuildPhase should
-  -- have already died and reported them if they exist
-  let (_errs, buildResults) = partitionEithers $ Map.elems buildOutcomes
-
-  let componentBuildInfos =
-        concatMap T.lines $ -- Component infos are returned each on a newline
-        catMaybes (buildResultBuildInfo <$> buildResults)
+  let tm = targetsMap buildCtx
+  let units = Map.keys tm
+  let layout = distDirLayout baseCtx
+  let dir = distProjectCacheDirectory layout </> "buildinfo"
+  componentBuildInfos <- for units $ \unit -> do
+    let fp = dir </> (unUnitId unit) <.> "json"
+    T.strip <$> T.readFile fp
 
   let compilerInfo = mkCompilerInfo
         (pkgConfigCompilerProgs (elaboratedShared buildCtx))
@@ -135,12 +134,12 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
     -- Default to silent verbosity otherwise it will pollute our json output
     verbosity = fromFlagOrDefault silent (configVerbosity configFlags)
     -- Also shut up haddock since it dumps warnings to stdout
-    flags' = flags { haddockFlags = haddockFlags { haddockVerbosity = Flag silent }
-                   , configFlags = configFlags { Cabal.configTests = Flag True
-                                               , Cabal.configBenchmarks = Flag True
-                                               }
-                   }
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags'
+    -- flags' = flags { haddockFlags = haddockFlags { haddockVerbosity = Flag silent }
+    --                , configFlags = configFlags { Cabal.configTests = Flag True
+    --                                            , Cabal.configBenchmarks = Flag True
+    --                                            }
+    --                }
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @show-build-info@ command.

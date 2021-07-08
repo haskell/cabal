@@ -97,7 +97,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Text.IO as T
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -1194,6 +1193,7 @@ buildInplaceUnpackedPackage :: Verbosity
 buildInplaceUnpackedPackage verbosity
                             distDirLayout@DistDirLayout {
                               distTempDirectory,
+                              distProjectCacheDirectory,
                               distPackageCacheDirectory,
                               distDirectory
                             }
@@ -1318,22 +1318,23 @@ buildInplaceUnpackedPackage verbosity
               notice verbosity $ "Documentation tarball created: " ++ dest
 
         -- Build info phase
-        buildInfo <- whenBuildInfo $
+        {- buildInfo <- -}
+        whenBuildInfo $ do
           -- Write the json to a temporary file to read it, since stdout can get
           -- cluttered
-          withTempDirectory verbosity distTempDirectory "build-info" $ \dir -> do
-            let fp = dir </> "out"
-            setupInteractive
-              buildInfoCommand
-              (\v -> (buildInfoFlags v) { Cabal.buildInfoOutputFile = Just fp })
-              buildInfoArgs
-            Just <$> T.readFile fp
+          let dir = distProjectCacheDirectory </> "buildinfo"
+          let fp = dir </> (unUnitId $ elabUnitId pkg) <.> "json"
+          createDirectoryIfMissing True dir
+          setupInteractive
+            buildInfoCommand
+            (\v -> (buildInfoFlags v) { Cabal.buildInfoOutputFile = Just fp })
+            buildInfoArgs
 
         return BuildResult {
           buildResultDocs    = docsResult,
           buildResultTests   = testsResult,
           buildResultLogFile = Nothing,
-          buildResultBuildInfo = buildInfo
+          buildResultBuildInfo = Nothing
         }
 
   where
@@ -1372,7 +1373,7 @@ buildInplaceUnpackedPackage verbosity
       | otherwise                  = return ()
 
     whenBuildInfo action
-      | null (elabBuildInfoTargets pkg) = return Nothing
+      | null (elabBuildInfoTargets pkg) = return ()
       | otherwise                       = action
 
     whenReRegister  action
