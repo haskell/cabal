@@ -29,8 +29,12 @@ tested-with:
    || ==8.8.1
 
 extra-source-files:
+  -- this is fine
+  files/**/*.md
+  -- collection of invalid paths
   files/**/*.txt/
   files/../foo.txt
+  files/<>/*.txt
 
 source-repository head
   type:     git
@@ -69,3 +73,6 @@ library
 
   -- this is the only case catched by Cabal-3.0.2.0
   hs-source-dirs:   ../../assoc/src
+
+  -- globs not allowed in field
+  c-sources: c/**/*.c
