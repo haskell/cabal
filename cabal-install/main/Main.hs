@@ -151,7 +151,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
+         ( normal )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
 

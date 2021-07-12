@@ -79,7 +79,6 @@ import Distribution.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
-import Distribution.Utils.Path
 
 -- | Construct a JSON document describing the build information for a
 -- package.
@@ -133,7 +132,7 @@ mkComponentInfo wdir pkg_descr lbi clbi = JsonObject $
   , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
   , "modules"       .= JsonArray (map (JsonString . T.pack . display) modules)
   , "src-files"     .= JsonArray (map (JsonString . T.pack) sourceFiles)
-  , "hs-src-dirs"   .= JsonArray (map (JsonString . T.pack) $ hsSourceDirs bi)
+  , "hs-src-dirs"   .= JsonArray (map (JsonString . T.pack . prettyShow) $ hsSourceDirs bi)
   , "src-dir"       .= JsonString (T.pack wdir)
   ] <> cabalFile
   where
