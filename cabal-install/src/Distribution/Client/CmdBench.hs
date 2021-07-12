@@ -85,7 +85,8 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) (Just BenchKind) targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx)
+                        (Just BenchKind) flags targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -118,7 +119,7 @@ benchAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags 
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.

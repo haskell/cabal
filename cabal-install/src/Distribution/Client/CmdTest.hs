@@ -97,7 +97,8 @@ testAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) (Just TestKind) targetStrings
+                  =<< readTargetSelectors (localPackages baseCtx)
+                        (Just TestKind) flags targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

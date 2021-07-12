@@ -107,7 +107,8 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
 
     targetSelectors <-
       either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+      =<< readTargetSelectors (localPackages baseCtx)
+            Nothing flags targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

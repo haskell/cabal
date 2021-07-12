@@ -158,21 +158,22 @@ testExceptionFindProjectRoot = do
 testTargetSelectors :: (String -> IO ()) -> Assertion
 testTargetSelectors reportSubCase = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
+    let readTargetSelectors'' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
                                                        Nothing
+                                                       False
 
     reportSubCase "cwd"
-    do Right ts <- readTargetSelectors' []
+    do Right ts <- readTargetSelectors'' []
        ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing]
 
     reportSubCase "all"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      ["all", ":all"]
        ts @?= replicate 2 (TargetAllPackages Nothing)
 
     reportSubCase "filter"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "libs",  ":cwd:libs"
                      , "flibs", ":cwd:flibs"
                      , "exes",  ":cwd:exes"
@@ -184,7 +185,7 @@ testTargetSelectors reportSubCase = do
          ]
 
     reportSubCase "all:filter"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "all:libs",  ":all:libs"
                      , "all:flibs", ":all:flibs"
                      , "all:exes",  ":all:exes"
@@ -196,14 +197,14 @@ testTargetSelectors reportSubCase = do
          ]
 
     reportSubCase "pkg"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [       ":pkg:p", ".",  "./",   "p.cabal"
                      , "q",  ":pkg:q", "q/", "./q/", "q/q.cabal"]
        ts @?= replicate 4 (mkTargetPackage "p-0.1")
            ++ replicate 5 (mkTargetPackage "q-0.1")
 
     reportSubCase "pkg:filter"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "p:libs",  ".:libs",  ":pkg:p:libs"
                      , "p:flibs", ".:flibs", ":pkg:p:flibs"
                      , "p:exes",  ".:exes",  ":pkg:p:exes"
@@ -223,14 +224,14 @@ testTargetSelectors reportSubCase = do
          ]
 
     reportSubCase "component"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "p", "lib:p", "p:lib:p", ":pkg:p:lib:p"
                      ,      "lib:q", "q:lib:q", ":pkg:q:lib:q" ]
        ts @?= replicate 4 (TargetComponent "p-0.1" (CLibName LMainLibName) WholeComponent)
            ++ replicate 3 (TargetComponent "q-0.1" (CLibName LMainLibName) WholeComponent)
 
     reportSubCase "module"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "P", "lib:p:P", "p:p:P", ":pkg:p:lib:p:module:P"
                      , "QQ", "lib:q:QQ", "q:q:QQ", ":pkg:q:lib:q:module:QQ"
                      , "pexe:PMain" -- p:P or q:QQ would be ambiguous here
@@ -243,7 +244,7 @@ testTargetSelectors reportSubCase = do
               ]
 
     reportSubCase "file"
-    do Right ts <- readTargetSelectors'
+    do Right ts <- readTargetSelectors''
                      [ "./P.hs", "p:P.lhs", "lib:p:P.hsc", "p:p:P.hsc",
                                  ":pkg:p:lib:p:file:P.y"
                      , "q/QQ.hs", "q:QQ.lhs", "lib:q:QQ.hsc", "q:q:QQ.hsc",
@@ -274,7 +275,7 @@ testTargetSelectorBadSyntax = do
                   , "foo:", "foo::bar"
                   , "foo: ", "foo: :bar"
                   , "a:b:c:d:e:f", "a:b:c:d:e:f:g:h" ]
-    Left errs <- readTargetSelectors localPackages Nothing targets
+    Left errs <- readTargetSelectors' localPackages Nothing targets
     zipWithM_ (@?=) errs (map TargetSelectorUnrecognised targets)
     cleanProject testdir
   where
@@ -379,6 +380,14 @@ testTargetSelectorAmbiguous reportSubCase = do
       [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"] `withHsSrcDirs` ["src"]
                     , mkexe "bar2" `withModules` ["Bar"] `withHsSrcDirs` ["src"] ]
       ]
+    reportSubCase "ambiguous: --pick-first-target resolves"
+    assertUnambiguousPickFirst "Bar.hs"
+      [ mkTargetFile "foo" (CExeName "bar")  "Bar"
+      , mkTargetFile "foo" (CExeName "bar2") "Bar"
+      ]
+      [ mkpkg "foo" [ mkexe "bar"  `withModules` ["Bar"]
+                    , mkexe "bar2" `withModules` ["Bar"] ]
+      ]
 
     -- non-exact case packages and components are ambiguous
     reportSubCase "ambiguous: non-exact-case pkg names"
@@ -414,6 +423,7 @@ testTargetSelectorAmbiguous reportSubCase = do
                fakeDirActions
                (map SpecificSourcePackage pkgs)
                Nothing
+               False
                [str]
       case res of
         Left [TargetSelectorAmbiguous _ tss'] ->
@@ -430,9 +440,26 @@ testTargetSelectorAmbiguous reportSubCase = do
                fakeDirActions
                (map SpecificSourcePackage pkgs)
                Nothing
+               False
                [str]
       case res of
         Right [ts'] -> ts' @?= ts
+        _ -> assertFailure $ "expected Right [Target...], "
+                          ++ "got " ++ show res
+
+    assertUnambiguousPickFirst :: String
+                               -> [TargetSelector]
+                               -> [SourcePackage (PackageLocation a)]
+                               -> Assertion
+    assertUnambiguousPickFirst str ts pkgs = do
+      res <- readTargetSelectorsWith
+              fakeDirActions
+              (map SpecificSourcePackage pkgs)
+              Nothing
+              True
+              [str]
+      case res of
+        Right [ts'] -> (ts' `elem` ts) @? "unexpected target selector"
         _ -> assertFailure $ "expected Right [Target...], "
                           ++ "got " ++ show res
 
@@ -512,15 +539,16 @@ instance IsString PackageIdentifier where
 testTargetSelectorNoCurrentPackage :: Assertion
 testTargetSelectorNoCurrentPackage = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
+    let readTargetSelectors'' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
                                                        Nothing
+                                                       False
         targets = [ "libs",  ":cwd:libs"
                   , "flibs", ":cwd:flibs"
                   , "exes",  ":cwd:exes"
                   , "tests", ":cwd:tests"
                   , "benchmarks", ":cwd:benchmarks"]
-    Left errs <- readTargetSelectors' targets
+    Left errs <- readTargetSelectors'' targets
     zipWithM_ (@?=) errs
       [ TargetSelectorNoCurrentPackage ts
       | target <- targets
@@ -535,7 +563,7 @@ testTargetSelectorNoCurrentPackage = do
 testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    Left errs <- readTargetSelectors localPackages Nothing []
+    Left errs <- readTargetSelectors' localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInCwd]
     cleanProject testdir
   where
@@ -546,7 +574,7 @@ testTargetSelectorNoTargets = do
 testTargetSelectorProjectEmpty :: Assertion
 testTargetSelectorProjectEmpty = do
     (_, _, _, localPackages, _) <- configureProject testdir config
-    Left errs <- readTargetSelectors localPackages Nothing []
+    Left errs <- readTargetSelectors' localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInProject]
     cleanProject testdir
   where

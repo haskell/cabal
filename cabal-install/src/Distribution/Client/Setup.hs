@@ -604,12 +604,15 @@ data ConfigExFlags = ConfigExFlags {
     configAllowNewer    :: Maybe AllowNewer,
     configAllowOlder    :: Maybe AllowOlder,
     configWriteGhcEnvironmentFilesPolicy
-      :: Flag WriteGhcEnvironmentFilesPolicy
+      :: Flag WriteGhcEnvironmentFilesPolicy,
+    configPickFirstTarget
+      :: Flag Bool
   }
   deriving (Eq, Show, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
+defaultConfigExFlags = mempty { configSolver          = Flag defaultSolver
+                              , configPickFirstTarget = Flag False }
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
@@ -685,6 +688,13 @@ configureExOptions _showOrParseArgs src =
     (reqArg "always|never|ghc8.4.4+"
      writeGhcEnvironmentFilesPolicyParser
      writeGhcEnvironmentFilesPolicyPrinter)
+
+  , option [] ["pick-first-target"]
+    ("If there's an amibguity in the target selector, then resolve it by"
+      ++ " choosing the first")
+    configPickFirstTarget
+    (\v flags -> flags { configPickFirstTarget = v})
+    trueArg
   ]
 
 

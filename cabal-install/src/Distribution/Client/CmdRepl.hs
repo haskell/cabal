@@ -199,7 +199,7 @@ replCommand = Client.installCommand {
 replAction :: NixStyleFlags (ReplFlags, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
-      with           = withProject    cliConfig             verbosity targetStrings
+      with           = withProject flags cliConfig          verbosity targetStrings
       without config = withoutProject (config <> cliConfig) verbosity targetStrings
 
     (baseCtx, targetSelectors, finalizer, replType) <-
@@ -333,13 +333,14 @@ data ReplType = ProjectRepl
                                     --   7.6, though. 🙁
               deriving (Show, Eq)
 
-withProject :: ProjectConfig -> Verbosity -> [String]
+withProject :: NixStyleFlags a -> ProjectConfig -> Verbosity -> [String]
             -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
-withProject cliConfig verbosity targetStrings = do
+withProject flags cliConfig verbosity targetStrings = do
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
 
   targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                 =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
+                 =<< readTargetSelectors (localPackages baseCtx) (Just LibKind)
+                      flags targetStrings
 
   return (baseCtx, targetSelectors, return (), ProjectRepl)
 
