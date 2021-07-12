@@ -14,6 +14,7 @@ import Distribution.System
 import Text.Regex.Base
 import Text.Regex.TDFA
 import Data.Array ((!))
+import Data.List (isPrefixOf, isInfixOf)
 
 import qualified Data.Foldable as F
 
@@ -62,10 +63,40 @@ normalizeOutput nenv =
         else id)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
+  -- Substitute the haddock binary with <HADDOCK>
+  -- Do this before the <GHCVER> substitution
+  . resub (posixRegexEscape (normalizerHaddock nenv)) "<HADDOCK>"
+  . removeErrors
   where
     packageIdRegex pid =
         resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
               (prettyShow (packageName pid) ++ "-<VERSION>")
+
+{- Given
+cabal: blah exited with an error:
+Example.hs:6:11: error:
+    * Couldn't match expected type `Int' with actual type `Bool'
+    * In the expression: False
+      In an equation for `example': example = False
+|
+6 | example = False
+| ^^^^^
+cabal: Failed to build documentation for example-1.0-inplace.
+
+this will remove the error in between the first line with "exited with an error"
+and the closing "cabal:". Pretty nasty, but its needed to ignore errors from
+external programs whose output might change.
+-}
+removeErrors :: String -> String
+removeErrors s = unlines (go (lines s) False)
+  where
+    go [] _ = []
+    go (x:xs) True
+      | "cabal:" `isPrefixOf` x = x:(go xs False)
+      | otherwise               = go xs True
+    go (x:xs) False
+      | "exited with an error" `isInfixOf` x = x:(go xs True)
+      | otherwise                            = x:(go xs False)
 
 data NormalizerEnv = NormalizerEnv
     { normalizerRoot          :: FilePath
@@ -74,6 +105,7 @@ data NormalizerEnv = NormalizerEnv
     , normalizerGhcVersion    :: Version
     , normalizerKnownPackages :: [PackageId]
     , normalizerPlatform      :: Platform
+    , normalizerHaddock       :: FilePath
     }
 
 posixSpecialChars :: [Char]

@@ -12,4 +12,5 @@ In order, the following will be built:
  - example-1.0 (lib) (first run)
 Preprocessing library for example-1.0..
 Running Haddock on library for example-1.0..
+cabal: '<HADDOCK>' exited with an error:
 cabal: Failed to build documentation for example-1.0-inplace.
