@@ -15,4 +15,4 @@ main = cabalTest $ do
     assertBool "Component compiler args are non-empty" (not . null $ componentCompilerArgs component)
     assertEqual "Component modules" ["A"] (componentModules component)
     assertEqual "Component source files" [] (componentSrcFiles component)
-    assertEqual "Component source directories" ["src"] (componentSrcDirs component)
+    assertEqual "Component source directories" ["src"] (componentHsSrcDirs component)

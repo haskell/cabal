@@ -54,8 +54,12 @@
 -- Note: At the moment this is only supported when using the GHC compiler.
 --
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Distribution.Simple.ShowBuildInfo
   ( mkBuildInfo, mkBuildInfo', mkCompilerInfo, mkComponentInfo ) where
+
+import qualified Data.Text as T
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -80,36 +84,37 @@ import Distribution.Utils.Path
 -- | Construct a JSON document describing the build information for a
 -- package.
 mkBuildInfo
-  :: PackageDescription  -- ^ Mostly information from the .cabal file
+  :: FilePath            -- ^ The source directory of the package
+  -> PackageDescription  -- ^ Mostly information from the .cabal file
   -> LocalBuildInfo      -- ^ Configuration information
   -> BuildFlags          -- ^ Flags that the user passed to build
   -> [TargetInfo]
   -> Json
-mkBuildInfo pkg_descr lbi _flags targetsToBuild =
-  mkBuildInfo' (mkCompilerInfo (withPrograms lbi) (compiler lbi))
-               (map (mkComponentInfo pkg_descr lbi . targetCLBI) targetsToBuild)
+mkBuildInfo wdir pkg_descr lbi _flags targetsToBuild =
+  JsonObject $
+    mkBuildInfo' (mkCompilerInfo (withPrograms lbi) (compiler lbi))
+                 (map (mkComponentInfo wdir pkg_descr lbi . targetCLBI) targetsToBuild)
 
 -- | A variant of 'mkBuildInfo' if you need to call 'mkCompilerInfo' and
 -- 'mkComponentInfo' yourself.
 mkBuildInfo'
   :: Json   -- ^ The 'Json' from 'mkCompilerInfo'
   -> [Json] -- ^ The 'Json' from 'mkComponentInfo'
-  -> Json
+  -> [(T.Text, Json)]
 mkBuildInfo' cmplrInfo componentInfos =
-  JsonObject
-    [ "cabal-version" .= JsonString (display cabalVersion)
+    [ "cabal-version" .= JsonString (T.pack (display cabalVersion))
     , "compiler"      .= cmplrInfo
     , "components"    .= JsonArray componentInfos
     ]
 
 mkCompilerInfo :: ProgramDb -> Compiler -> Json
 mkCompilerInfo programDb cmplr = JsonObject
-  [ "flavour"     .= JsonString (prettyShow $ compilerFlavor cmplr)
-  , "compiler-id" .= JsonString (showCompilerId cmplr)
+  [ "flavour"     .= JsonString (T.pack (prettyShow $ compilerFlavor cmplr))
+  , "compiler-id" .= JsonString (T.pack (showCompilerId cmplr))
   , "path"        .= path
   ]
   where
-    path = maybe JsonNull (JsonString . programPath)
+    path = maybe JsonNull (JsonString . T.pack . programPath)
             $ (flavorToProgram . compilerFlavor $ cmplr)
             >>= flip lookupProgram programDb
 
@@ -120,16 +125,17 @@ mkCompilerInfo programDb cmplr = JsonObject
     flavorToProgram JHC   = Just jhcProgram
     flavorToProgram _     = Nothing
 
-mkComponentInfo :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> Json
-mkComponentInfo pkg_descr lbi clbi = JsonObject
+mkComponentInfo :: FilePath -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> Json
+mkComponentInfo wdir pkg_descr lbi clbi = JsonObject $
   [ "type"          .= JsonString compType
-  , "name"          .= JsonString (prettyShow name)
-  , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
+  , "name"          .= JsonString (T.pack $ prettyShow name)
+  , "unit-id"       .= JsonString (T.pack $ prettyShow $ componentUnitId clbi)
   , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
-  , "modules"       .= JsonArray (map (JsonString . display) modules)
-  , "src-files"     .= JsonArray (map JsonString sourceFiles)
-  , "src-dirs"      .= JsonArray (map JsonString $ hsSourceDirs bi)
-  ]
+  , "modules"       .= JsonArray (map (JsonString . T.pack . display) modules)
+  , "src-files"     .= JsonArray (map (JsonString . T.pack) sourceFiles)
+  , "hs-src-dirs"   .= JsonArray (map (JsonString . T.pack) $ hsSourceDirs bi)
+  , "src-dir"       .= JsonString (T.pack wdir)
+  ] <> cabalFile
   where
     name = componentLocalName clbi
     bi = componentBuildInfo comp
@@ -148,6 +154,9 @@ mkComponentInfo pkg_descr lbi clbi = JsonObject
       CLib _   -> []
       CExe exe -> [modulePath exe]
       _        -> []
+    cabalFile
+      | Just fp <- pkgDescrFile lbi = [("cabal-file", JsonString (T.pack fp))]
+      | otherwise                   = []
 
 -- | Get the command-line arguments that would be passed
 -- to the compiler to build the given component.
@@ -155,7 +164,7 @@ getCompilerArgs
   :: BuildInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
-  -> [String]
+  -> [T.Text]
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
       GHC   -> ghc
@@ -164,6 +173,7 @@ getCompilerArgs bi lbi clbi =
                        "build arguments for compiler "++show c
   where
     -- This is absolutely awful
-    ghc = GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
+    ghc = T.pack <$>
+      GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts
       where
         baseOpts = GHC.componentGhcOptions normal lbi bi clbi (buildDir lbi)

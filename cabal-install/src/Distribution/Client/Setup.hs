@@ -23,7 +23,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..)
     , filterTestFlags
-    , replCommand, testCommand, showBuildInfoCommand, benchmarkCommand, testOptions, benchmarkOptions
+    , replCommand, testCommand, benchmarkCommand, testOptions, benchmarkOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , filterHaddockArgs, filterHaddockFlags, haddockOptions
@@ -96,7 +96,6 @@ import Distribution.Simple.Setup
          , HaddockFlags(..)
          , CleanFlags(..)
          , CopyFlags(..), RegisterFlags(..)
-         , ShowBuildInfoFlags(..)
          , readPackageDbList, showPackageDbList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
@@ -2453,7 +2452,7 @@ usageFlags name pname =
 
 -- ------------------------------------------------------------
 -- * Repo helpers
--- ------------------------------------------------------------bution/Client/Setup.hs
+-- ------------------------------------------------------------
 
 showRemoteRepo :: RemoteRepo -> String
 showRemoteRepo = prettyShow
@@ -2475,17 +2474,3 @@ relevantConfigValuesText :: [String] -> String
 relevantConfigValuesText vs =
      "Relevant global configuration keys:\n"
   ++ concat ["  " ++ v ++ "\n" |v <- vs]
-
-
--- ------------------------------------------------------------
--- * Commands to support show-build-info
--- ------------------------------------------------------------
-
-showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
-showBuildInfoCommand = parent {
-    commandDefaultFlags = commandDefaultFlags parent,
-    commandOptions      =
-      \showOrParseArgs -> commandOptions parent showOrParseArgs
-  }
-  where
-    parent = Cabal.showBuildInfoCommand defaultProgramDb

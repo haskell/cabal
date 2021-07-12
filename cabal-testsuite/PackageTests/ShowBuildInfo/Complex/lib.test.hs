@@ -28,6 +28,6 @@ main = cabalTest $ do
                 [ "-Wredundant-constraints"
                 ]
               )
-    assertEqual "Component modules" ["Lib", "Paths_complex"] (componentModules component)
+    assertEqual "Component modules" ["Lib", "Paths_Complex"] (componentModules component)
     assertEqual "Component source files" [] (componentSrcFiles component)
-    assertEqual "Component source directories" ["src"] (componentSrcDirs component)
+    assertEqual "Component source directories" ["src"] (componentHsSrcDirs component)

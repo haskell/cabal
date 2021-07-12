@@ -29,6 +29,6 @@ main = cabalTest $ do
                     [ "-Wall"
                     ]
                   )
-    assertEqual "Component modules" ["Paths_complex"] (componentModules component)
+    assertEqual "Component modules" ["Paths_Complex"] (componentModules component)
     assertEqual "Component source files" ["Main.lhs"] (componentSrcFiles component)
-    assertEqual "Component source directories" ["src"] (componentSrcDirs component)
+    assertEqual "Component source directories" ["src"] (componentHsSrcDirs component)

@@ -42,8 +42,9 @@ data ComponentInfo = ComponentInfo
     , componentUnitId :: String
     , componentCompilerArgs :: [String]
     , componentModules :: [String]
-    , componentSrcFiles :: [String]
-    , componentSrcDirs :: [String]
+    , componentSrcFiles :: [FilePath]
+    , componentHsSrcDirs :: [FilePath]
+    , componentSrcDir :: FilePath
     } deriving (Generic, Show)
 
 instance ToJSON BuildInfo where

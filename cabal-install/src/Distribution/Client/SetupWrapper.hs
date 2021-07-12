@@ -18,7 +18,7 @@
 -- runs it with the given arguments.
 
 module Distribution.Client.SetupWrapper (
-    getSetup, runSetup, runSetupCommand, setupWrapper, getSetupMethod,
+    getSetup, runSetup, runSetupCommand, setupWrapper,
     SetupScriptOptions(..),
     defaultSetupScriptOptions,
   ) where

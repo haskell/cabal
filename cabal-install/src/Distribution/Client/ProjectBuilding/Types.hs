@@ -32,6 +32,8 @@ import Distribution.Package               (UnitId, PackageId)
 import Distribution.InstalledPackageInfo  (InstalledPackageInfo)
 import Distribution.Simple.LocalBuildInfo (ComponentName)
 
+import Data.Text                          (Text)
+
 
 ------------------------------------------------------------------------------
 -- Pre-build status: result of the dry run
@@ -173,9 +175,10 @@ type BuildOutcome  = Either BuildFailure BuildResult
 -- | Information arising from successfully building a single package.
 --
 data BuildResult = BuildResult {
-       buildResultDocs    :: DocsResult,
-       buildResultTests   :: TestsResult,
-       buildResultLogFile :: Maybe FilePath
+       buildResultDocs      :: DocsResult,
+       buildResultTests     :: TestsResult,
+       buildResultLogFile   :: Maybe FilePath,
+       buildResultBuildInfo :: Maybe Text
      }
   deriving Show
 

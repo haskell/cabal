@@ -111,8 +111,8 @@ removeExistingFile path = do
 -- it will clean up the file afterwards, it's lenient if the file is
 -- moved\/deleted.
 --
-withTempFileName :: FilePath
-                 -> String
+withTempFileName :: FilePath -- ^ Directory to create file in
+                 -> String   -- ^ Template for the file name
                  -> (FilePath -> IO a) -> IO a
 withTempFileName tmpDir template action =
   Exception.bracket

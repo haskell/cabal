@@ -57,6 +57,8 @@ module Distribution.Client.ProjectPlanning (
     setupHsRegisterFlags,
     setupHsHaddockFlags,
     setupHsHaddockArgs,
+    setupHsShowBuildInfoFlags,
+    setupHsShowBuildInfoArgs,
 
     packageHashInputs,
 
@@ -1780,6 +1782,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabBenchTargets    = []
         elabReplTarget      = Nothing
         elabHaddockTargets  = []
+        elabBuildInfoTargets = []
 
         elabBuildHaddocks   =
           perPkgOptionFlag pkgid False packageConfigDocumentation
@@ -2592,7 +2595,7 @@ nubComponentTargets =
                             -> [(ComponentTarget, NonEmpty a)]
     wholeComponentOverrides ts =
       case [ ta | ta@(ComponentTarget _ WholeComponent, _) <- ts ] of
-        ((t, x):_) -> 
+        ((t, x):_) ->
                 let
                     -- Delete tuple (t, x) from original list to avoid duplicates.
                     -- Use 'deleteBy', to avoid additional Class constraint on 'nubComponentTargets'.
@@ -2621,6 +2624,7 @@ pkgHasEphemeralBuildTargets elab =
  || (not . null) (elabTestTargets elab)
  || (not . null) (elabBenchTargets elab)
  || (not . null) (elabHaddockTargets elab)
+ || (not . null) (elabBuildInfoTargets elab)
  || (not . null) [ () | ComponentTarget _ subtarget <- elabBuildTargets elab
                       , subtarget /= WholeComponent ]
 
@@ -2649,6 +2653,7 @@ data TargetAction = TargetActionConfigure
                   | TargetActionTest
                   | TargetActionBench
                   | TargetActionHaddock
+                  | TargetActionBuildInfo
 
 -- | Given a set of per-package\/per-component targets, take the subset of the
 -- install plan needed to build those targets. Also, update the package config
@@ -2726,6 +2731,7 @@ setRootTargets targetAction perPkgTargetsMap =
         (Just tgts,  TargetActionHaddock) ->
           foldr setElabHaddockTargets (elab { elabHaddockTargets = tgts
                                             , elabBuildHaddocks = True }) tgts
+        (Just tgts,  TargetActionBuildInfo) -> elab { elabBuildInfoTargets = tgts }
         (Just _,     TargetActionRepl)    ->
           error "pruneInstallPlanToTargets: multiple repl targets"
 
@@ -2769,14 +2775,15 @@ pruneInstallPlanPass1 pkgs =
                    , null (elabBenchTargets elab)
                    , isNothing (elabReplTarget elab)
                    , null (elabHaddockTargets elab)
+                   , null (elabBuildInfoTargets elab)
                    ]
           then Just (installedUnitId elab)
           else Nothing
 
-    find_root (InstallPlan.Configured pkg) = is_root pkg
     -- When using the extra-packages stanza we need to
     -- look at installed packages as well.
     find_root (InstallPlan.Installed pkg)  = is_root pkg
+    find_root (InstallPlan.Configured pkg) = is_root pkg
     find_root _ = Nothing
 
     -- Note [Sticky enabled testsuites]
@@ -3683,6 +3690,22 @@ setupHsHaddockArgs :: ElaboratedConfiguredPackage -> [String]
 -- TODO: Does the issue #3335 affects test as well
 setupHsHaddockArgs elab =
   map (showComponentTarget (packageId elab)) (elabHaddockTargets elab)
+
+setupHsShowBuildInfoFlags :: ElaboratedConfiguredPackage
+                          -> ElaboratedSharedConfig
+                          -> Verbosity
+                          -> FilePath
+                          -> Cabal.ShowBuildInfoFlags
+setupHsShowBuildInfoFlags pkg config verbosity builddir =
+  Cabal.ShowBuildInfoFlags {
+    buildInfoBuildFlags     = setupHsBuildFlags pkg config verbosity builddir,
+    buildInfoOutputFile     = Nothing,
+    buildInfoComponentsOnly = toFlag True
+  }
+
+setupHsShowBuildInfoArgs :: ElaboratedConfiguredPackage -> [String]
+setupHsShowBuildInfoArgs elab =
+  map (showComponentTarget (packageId elab)) (elabBuildInfoTargets elab)
 
 {-
 setupHsTestFlags :: ElaboratedConfiguredPackage
