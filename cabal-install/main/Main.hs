@@ -381,23 +381,6 @@ buildAction buildFlags extraArgs globalFlags = do
   nixShell verbosity distPref globalFlags config $ do
     build verbosity config' distPref buildFlags extraArgs
 
-buildAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
-buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
-      noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
-                    (buildOnly buildExFlags)
-  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
-  distPref <- findSavedDistPref config (buildDistPref buildFlags)
-  -- Calls 'configureAction' to do the real work, so nothing special has to be
-  -- done to support sandboxes.
-  config' <-
-    reconfigure configureAction
-    verbosity distPref useSandbox noAddSource (buildNumJobs buildFlags)
-    mempty [] globalFlags config
-  nixShell verbosity distPref globalFlags config $ do
-    maybeWithSandboxDirOnSearchPath useSandbox $
-      build verbosity config' distPref buildFlags extraArgs
-
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke

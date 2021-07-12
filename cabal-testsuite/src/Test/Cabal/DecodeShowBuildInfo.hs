@@ -9,14 +9,14 @@ import qualified Data.Text.Encoding as T
 import           Data.Aeson
 import           GHC.Generics
 
-runShowBuildInfo :: [String] -> TestM [BuildInfo]
+runShowBuildInfo :: [String] -> TestM BuildInfo
 runShowBuildInfo args = do
     r <- cabal' "show-build-info" args
     case eitherDecodeStrict (T.encodeUtf8 . T.pack $ resultOutput r) of
         Left err -> fail $ "Could not parse show-build-info command: " ++ err
         Right buildInfos -> return buildInfos
 
-decodeBuildInfoFile :: FilePath -> TestM [BuildInfo]
+decodeBuildInfoFile :: FilePath -> TestM BuildInfo
 decodeBuildInfoFile fp = do
     shouldExist fp
     res <- liftIO $ eitherDecodeFileStrict fp

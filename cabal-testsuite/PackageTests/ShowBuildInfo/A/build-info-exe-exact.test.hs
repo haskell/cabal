@@ -2,9 +2,7 @@ import           Test.Cabal.Prelude
 import           Test.Cabal.DecodeShowBuildInfo
 
 main = cabalTest $ do
-    buildInfos <- runShowBuildInfo ["exe:A", "-v0"]
-    assertEqual "Build Infos, exactly one" 1  (length buildInfos)
-    let [buildInfo] = buildInfos
+    buildInfo <- runShowBuildInfo ["exe:A", "-v0"]
     assertEqual "Cabal Version" cabalVersionLibrary (cabalVersion buildInfo)
     assertEqual "Compiler flavour" "ghc" (flavour $ compiler buildInfo)
     assertBool "Compiler id" (and $ zipWith (==) "ghc" (compilerId $ compiler buildInfo))

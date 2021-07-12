@@ -31,6 +31,7 @@ module Distribution.Simple.Build (
 import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.Generic
+import Distribution.Utils.Json
 
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
@@ -77,7 +78,6 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
-import Distribution.Simple.Utils.Json
 
 import Distribution.System
 import Distribution.Pretty

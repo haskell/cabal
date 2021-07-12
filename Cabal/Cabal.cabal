@@ -257,6 +257,7 @@ library
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
+    Distribution.Utils.Json
     Distribution.Verbosity
     Distribution.Verbosity.Internal
     Distribution.Version
@@ -337,7 +338,6 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
-    Distribution.Simple.Utils.Json
     Distribution.ZinzaPrelude
     Paths_Cabal
 

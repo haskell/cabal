@@ -1,7 +1,8 @@
--- | Utility json lib for Cabal
--- TODO: Remove it again.
-module Distribution.Simple.Utils.Json
+-- | Extremely simple JSON helper. Don't do anything too fancy with this!
+
+module Distribution.Utils.Json
     ( Json(..)
+    , (.=)
     , renderJson
     ) where
 
@@ -44,3 +45,6 @@ intercalate sep = go
     go []     = id
     go [x]    = x
     go (x:xs) = x . showString' sep . go xs
+
+(.=) :: String -> Json -> (String, Json)
+k .= v = (k, v)

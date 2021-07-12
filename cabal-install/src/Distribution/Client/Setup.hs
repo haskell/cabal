@@ -48,8 +48,7 @@ module Distribution.Client.Setup
     , cleanCommand
     , copyCommand
     , registerCommand
-    --, showBuildInfoCommand
-    , parsePackageArgs
+
     , liftOptions
     , yesNoOpt
     ) where
@@ -97,6 +96,7 @@ import Distribution.Simple.Setup
          , HaddockFlags(..)
          , CleanFlags(..)
          , CopyFlags(..), RegisterFlags(..)
+         , ShowBuildInfoFlags(..)
          , readPackageDbList, showPackageDbList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
@@ -2453,7 +2453,7 @@ usageFlags name pname =
 
 -- ------------------------------------------------------------
 -- * Repo helpers
--- ------------------------------------------------------------
+-- ------------------------------------------------------------bution/Client/Setup.hs
 
 showRemoteRepo :: RemoteRepo -> String
 showRemoteRepo = prettyShow
@@ -2481,17 +2481,11 @@ relevantConfigValuesText vs =
 -- * Commands to support show-build-info
 -- ------------------------------------------------------------
 
-showBuildInfoCommand :: CommandUI (Cabal.ShowBuildInfoFlags, BuildExFlags)
+showBuildInfoCommand :: CommandUI ShowBuildInfoFlags
 showBuildInfoCommand = parent {
-    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandDefaultFlags = commandDefaultFlags parent,
     commandOptions      =
-      \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
-                          ++
-                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+      \showOrParseArgs -> commandOptions parent showOrParseArgs
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
     parent = Cabal.showBuildInfoCommand defaultProgramDb
