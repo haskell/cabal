@@ -222,6 +222,12 @@ getComponentInfo verbosity baseCtx buildCtx lock pkgs targetUnitId =
       let pkgDesc = elabPkgDescription pkg
       targets <- readTargetInfos verbosity pkgDesc lbi (buildArgs flags)
       let targetsToBuild = neededTargetsInBuildOrder' pkgDesc lbi (map nodeKey targets)
+
+      -- generate autogen files which will be needed by tooling
+      flip mapM_ targetsToBuild $ \target ->
+        componentInitialBuildSteps (Cabal.fromFlag (buildDistPref flags))
+          pkgDesc lbi (targetCLBI target) verbosity
+
       return $ map (mkComponentInfo pkgDesc lbi . targetCLBI) targetsToBuild
 
     where
