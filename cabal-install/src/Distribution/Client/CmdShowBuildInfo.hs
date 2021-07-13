@@ -23,7 +23,7 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( Verbosity, silent )
 import Distribution.Simple.Utils
-         ( wrapText )
+         ( wrapText, withOutputMarker )
 
 import qualified Data.Map as Map
 import Distribution.Client.ProjectPlanning.Types
@@ -122,12 +122,12 @@ showBuildInfoAction flags@NixStyleFlags { extraFlags = (ShowBuildInfoFlags fileO
       components = map JsonRaw componentBuildInfos
       fields = mkBuildInfo' compilerInfo components
       json = JsonObject $ fields <>
-        [ ("project-root", JsonString (T.pack (distProjectRootDirectory (distDirLayout baseCtx))))
+        [ ("project-root", JsonString (T.pack (addTrailingPathSeparator $ distProjectRootDirectory (distDirLayout baseCtx))))
         ]
       res = renderJson json ""
 
   case fileOutput of
-    Nothing -> T.putStrLn res
+    Nothing -> T.putStrLn $ T.pack $ withOutputMarker verbosity (T.unpack res)
     Just fp -> T.writeFile fp res
 
   where

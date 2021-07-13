@@ -80,6 +80,8 @@ import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
 
+import System.FilePath (addTrailingPathSeparator)
+
 -- | Construct a JSON document describing the build information for a
 -- package.
 mkBuildInfo
@@ -133,7 +135,7 @@ mkComponentInfo wdir pkg_descr lbi clbi = JsonObject $
   , "modules"       .= JsonArray (map (JsonString . T.pack . display) modules)
   , "src-files"     .= JsonArray (map (JsonString . T.pack) sourceFiles)
   , "hs-src-dirs"   .= JsonArray (map (JsonString . T.pack . prettyShow) $ hsSourceDirs bi)
-  , "src-dir"       .= JsonString (T.pack wdir)
+  , "src-dir"       .= JsonString (T.pack $ addTrailingPathSeparator wdir)
   ] <> cabalFile
   where
     name = componentLocalName clbi
