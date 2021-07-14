@@ -1406,7 +1406,7 @@ checkPackageVersions pkg =
     -- For example this bans "build-depends: base >= 3".
     -- It should probably be "build-depends: base >= 3 && < 4"
     -- which is the same as  "build-depends: base == 3.*"
-    check (not (boundedAbove baseDependency)) $
+    check (not (hasUpperBound baseDependency)) $
       PackageDistInexcusable $
            "The dependency 'build-depends: base' does not specify an upper "
         ++ "bound on the version number. Each major release of the 'base' "
@@ -1431,7 +1431,7 @@ checkPackageVersions pkg =
 
       -- Just in case finalizePD fails for any reason,
       -- or if the package doesn't depend on the base package at all,
-      -- then we will just skip the check, since boundedAbove noVersion = True
+      -- then we will just skip the check, since hasUpperBound noVersion = True
       _          -> noVersion
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
@@ -2109,7 +2109,7 @@ checkSetupVersions :: GenericPackageDescription -> [PackageCheck]
 checkSetupVersions pkg =
     [ emitError nameStr
     | (name, vr) <- Map.toList deps
-    , not (boundedAbove vr)
+    , not (hasUpperBound vr)
     , let nameStr = unPackageName name
     , nameStr `elem` criticalPkgs
     ]
@@ -2401,14 +2401,6 @@ isGoodRelativeDirectoryPath = state0
 --     | otherwise           -> 4
 -- 6 -> \_ -> 6 -- black hole
 -- @
-
--- TODO: move to Distribution.Version
-boundedAbove :: VersionRange -> Bool
-boundedAbove vr = case asVersionIntervals vr of
-  []     -> True -- this is the inconsistent version range.
-  (x:xs) -> case last (x:|xs) of
-    VersionInterval _ UpperBound {} -> True
-    VersionInterval _ NoUpperBound  -> False
 
 --
 -- TODO: What we really want to do is test if there exists any
