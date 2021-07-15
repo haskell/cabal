@@ -39,7 +39,7 @@ Flag lukko
   manual:       True
 
 common warnings
-    ghc-options: -Wall -Wcompat -Wnoncanonical-monad-instances
+    ghc-options: -Wall -Wcompat -Wnoncanonical-monad-instances -Wincomplete-uni-patterns -Wincomplete-record-updates
     if impl(ghc < 8.8)
       ghc-options: -Wnoncanonical-monadfail-instances
     if impl(ghc >=8.10)
