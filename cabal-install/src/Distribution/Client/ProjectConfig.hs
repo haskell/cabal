@@ -70,6 +70,8 @@ import Distribution.Client.VCS
          ( validateSourceRepos, SourceRepoProblem(..)
          , VCS(..), knownVCSs, configureVCS, syncSourceRepos )
 
+import Distribution.Client.Targets
+         ( UserConstraint(..), UserConstraintScope(..), UserQualifier(..) )
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
          ( DistDirLayout(..), CabalDirLayout(..), ProjectRoot(..) )
@@ -232,7 +234,8 @@ resolveSolverSettings ProjectConfig{
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalNoIndexRepos = fromNubList projectConfigLocalNoIndexRepos
     solverSettingConstraints       = projectConfigConstraints
-    solverSettingPreferences       = projectConfigPreferences
+    solverSettingPreferences       = projectConfigPreferences ++
+                                     mapMaybe constraintToVersionPref projectConfigConstraints
     solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
     solverSettingFlagAssignments   = fmap packageConfigFlagAssignment
                                           (getMapMappend projectConfigSpecificPackage)
@@ -281,6 +284,11 @@ resolveSolverSettings ProjectConfig{
      --projectConfigUpgradeDeps       = Flag False
     }
 
+    -- When constructing solver settings from a project config, we add version preferences
+    -- for any constraints to a fixed package, just to "hint" the solver a little
+    constraintToVersionPref :: Show a => (UserConstraint, a) -> Maybe PackageVersionConstraint
+    constraintToVersionPref (UserConstraint (UserQualified UserQualToplevel pn) (PackagePropertyVersion vrange),_) = Just (PackageVersionConstraint pn vrange)
+    constraintToVersionPref x = Nothing -- trace ("nomatch constraint: " ++ show x) Nothing
 
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'BuildTimeSettings' with no optional fields (by applying defaults).
