@@ -127,11 +127,13 @@ preferPackagePreferences pcs =
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
+-- Note that this works on packages lower in the path as well as at the top level,
+-- as lower choices need to remain compatible with top level choices.
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (Q pp pn) s) rdm gr _tr ts)
-      | primaryPP pp && enableStanzaPref pn s =
+    go (SChoiceF qsn@(SN (Q _pp pn) s) rdm gr _tr ts)
+      | enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
           let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
               weight k = if k then 0 else 1
