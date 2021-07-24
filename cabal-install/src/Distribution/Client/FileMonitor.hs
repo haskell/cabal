@@ -281,12 +281,13 @@ instance Structured MonitorStateGlobRel
 --
 reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-    map getSinglePath singlePaths
- ++ map getGlobPath globPaths
+  map getSinglePath singlePaths ++ map getGlobPath globPaths
   where
+    getSinglePath :: MonitorStateFile -> MonitorFilePath
     getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
       MonitorFile kindfile kinddir filepath
 
+    getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $ FilePathGlob root $
         case gstate of
@@ -999,16 +1000,19 @@ readCacheFileHashes monitor =
                     collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
+    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
     collectAllFileHashes singlePaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateFile _ _ fpath
                        (MonitorStateFileHashed mtime hash) <- singlePaths ]
 
+    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
     collectAllGlobHashes globPaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateGlob _ _ _ gstate <- globPaths
                    , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate ]
 
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Hash))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res
       | (subdir, fstate) <- entries
