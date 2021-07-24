@@ -68,7 +68,15 @@ mixDir :: FilePath  -- ^ \"dist/\" prefix
        -> Way
        -> FilePath  -- ^ Component name
        -> FilePath  -- ^ Directory containing test suite's .mix files
-mixDir distPref way name = hpcDir distPref way </> "mix" </> name
+mixDir distPref way name = hpcDir distPrefBuild way </> "mix" </> name
+ where
+  -- This is a hack for HPC over test suites, needed to match the directory
+  -- where HPC stores .mix files when the main library of the same package
+  -- is being processed, perhaps in a previous cabal run (#5213).
+  distPrefElements = splitDirectories distPref
+  distPrefBuild = case drop (length distPrefElements - 2) distPrefElements of
+    "t" : _ -> joinPath $ take (length distPrefElements - 2) distPrefElements
+    _ -> distPref
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
        -> Way
