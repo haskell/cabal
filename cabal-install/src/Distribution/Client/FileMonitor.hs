@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | An abstraction to help with re-running actions when files or other
 -- input values they depend on have changed.
@@ -416,7 +417,7 @@ data MonitorChangedReason a =
 -- See 'FileMonitor' for a full explanation.
 --
 checkFileMonitorChanged
-  :: (Binary a, Structured a, Binary b, Structured b)
+  :: forall a b. (Binary a, Structured a, Binary b, Structured b)
   => FileMonitor a b            -- ^ cache file path
   -> FilePath                   -- ^ root directory
   -> a                          -- ^ guard or key value
@@ -430,13 +431,14 @@ checkFileMonitorChanged
     -- or we cannot decode it. Sadly ErrorCall can still happen, despite
     -- using decodeFileOrFail, e.g. Data.Char.chr errors
 
-    handleDoesNotExist (MonitorChanged MonitorFirstRun) $
+    handleDoesNotExist (MonitorChanged MonitorFirstRun) .
     handleErrorCall    (MonitorChanged MonitorCorruptCache) $
           readCacheFile monitor
       >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))
                  checkStatusCache
 
   where
+    checkStatusCache :: (MonitorStateFileSet, a, b) -> IO (MonitorChanged a b)
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
@@ -448,6 +450,7 @@ checkFileMonitorChanged
         -- if we return MonitoredValueChanged that only the value changed.
         -- We do that by checkin for file changes first. Otherwise it makes
         -- more sense to do the cheaper test first.
+        checkForChanges :: IO (Maybe (MonitorChangedReason a))
         checkForChanges
           | fileMonitorCheckIfOnlyValueChanged
           = checkFileChange cachedFileStatus cachedKey cachedResult
@@ -459,7 +462,7 @@ checkFileMonitorChanged
               `mplusMaybeT`
             checkFileChange cachedFileStatus cachedKey cachedResult
 
-    mplusMaybeT :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+    mplusMaybeT :: Monad m => m (Maybe a1) -> m (Maybe a1) -> m (Maybe a1)
     mplusMaybeT ma mb = do
       mx <- ma
       case mx of
@@ -467,6 +470,7 @@ checkFileMonitorChanged
         Just x  -> return (Just x)
 
     -- Check if the guard value has changed
+    checkValueChange :: a -> IO (Maybe (MonitorChangedReason a))
     checkValueChange cachedKey
       | not (fileMonitorKeyValid currentKey cachedKey)
       = return (Just (MonitoredValueChanged cachedKey))
@@ -474,6 +478,7 @@ checkFileMonitorChanged
       = return Nothing
 
     -- Check if any file has changed
+    checkFileChange :: MonitorStateFileSet -> a -> b -> IO (Maybe (MonitorChangedReason a))
     checkFileChange cachedFileStatus cachedKey cachedResult = do
       res <- probeFileSystem root cachedFileStatus
       case res of
