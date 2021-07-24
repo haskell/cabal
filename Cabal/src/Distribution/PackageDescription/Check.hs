@@ -539,13 +539,15 @@ checkFields pkg =
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
         ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
 
-  , check (not (null depInternalLibraryWithExtraVersion)) $
-      PackageBuildWarning $
-           "The package has an extraneous version range for a dependency on an "
-        ++ "internal library: "
-        ++ commaSep (map prettyShow depInternalLibraryWithExtraVersion)
-        ++ ". This version range includes the current package but isn't needed "
-        ++ "as the current package's library will always be used."
+  -- for more details on why the following was commented out,
+  -- check https://github.com/haskell/cabal/pull/7470#issuecomment-875878507
+  -- , check (not (null depInternalLibraryWithExtraVersion)) $
+  --     PackageBuildWarning $
+  --          "The package has an extraneous version range for a dependency on an "
+  --       ++ "internal library: "
+  --       ++ commaSep (map prettyShow depInternalLibraryWithExtraVersion)
+  --       ++ ". This version range includes the current package but isn't needed "
+  --       ++ "as the current package's library will always be used."
 
   , check (not (null depInternalLibraryWithImpossibleVersion)) $
       PackageBuildImpossible $
@@ -555,13 +557,13 @@ checkFields pkg =
         ++ ". This version range does not include the current package, and must "
         ++ "be removed as the current package's library will always be used."
 
-  , check (not (null depInternalExecutableWithExtraVersion)) $
-      PackageBuildWarning $
-           "The package has an extraneous version range for a dependency on an "
-        ++ "internal executable: "
-        ++ commaSep (map prettyShow depInternalExecutableWithExtraVersion)
-        ++ ". This version range includes the current package but isn't needed "
-        ++ "as the current package's executable will always be used."
+  -- , check (not (null depInternalExecutableWithExtraVersion)) $
+  --     PackageBuildWarning $
+  --          "The package has an extraneous version range for a dependency on an "
+  --       ++ "internal executable: "
+  --       ++ commaSep (map prettyShow depInternalExecutableWithExtraVersion)
+  --       ++ ". This version range includes the current package but isn't needed "
+  --       ++ "as the current package's executable will always be used."
 
   , check (not (null depInternalExecutableWithImpossibleVersion)) $
       PackageBuildImpossible $
@@ -617,12 +619,12 @@ checkFields pkg =
       , isInternal pkg dep
       ]
 
-    depInternalLibraryWithExtraVersion =
-      [ dep
-      | dep@(Dependency _ versionRange _) <- internalLibDeps
-      , not $ isAnyVersion versionRange
-      , packageVersion pkg `withinRange` versionRange
-      ]
+    -- depInternalLibraryWithExtraVersion =
+    --   [ dep
+    --   | dep@(Dependency _ versionRange _) <- internalLibDeps
+    --   , not $ isAnyVersion versionRange
+    --   , packageVersion pkg `withinRange` versionRange
+    --   ]
 
     depInternalLibraryWithImpossibleVersion =
       [ dep
@@ -630,12 +632,12 @@ checkFields pkg =
       , not $ packageVersion pkg `withinRange` versionRange
       ]
 
-    depInternalExecutableWithExtraVersion =
-      [ dep
-      | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
-      , not $ isAnyVersion versionRange
-      , packageVersion pkg `withinRange` versionRange
-      ]
+    -- depInternalExecutableWithExtraVersion =
+    --   [ dep
+    --   | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
+    --   , not $ isAnyVersion versionRange
+    --   , packageVersion pkg `withinRange` versionRange
+    --   ]
 
     depInternalExecutableWithImpossibleVersion =
       [ dep
