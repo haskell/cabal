@@ -288,7 +288,7 @@ resolveSolverSettings ProjectConfig{
     -- for any constraints to a fixed package, just to "hint" the solver a little
     constraintToVersionPref :: Show a => (UserConstraint, a) -> Maybe PackageVersionConstraint
     constraintToVersionPref (UserConstraint (UserQualified UserQualToplevel pn) (PackagePropertyVersion vrange),_) = Just (PackageVersionConstraint pn vrange)
-    constraintToVersionPref x = Nothing -- trace ("nomatch constraint: " ++ show x) Nothing
+    constraintToVersionPref _ = Nothing 
 
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'BuildTimeSettings' with no optional fields (by applying defaults).
