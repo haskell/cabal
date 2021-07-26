@@ -31,7 +31,7 @@ before_build:
   - cabal --version
   - ghc --version
   - cabal %CABOPTS% v2-update
-  - cabal %CABOPTS% v1-install happy alex
+  - cabal %CABOPTS% v1-install happy-1.20.0 alex-3.2.6
 
 environment:
   global:
