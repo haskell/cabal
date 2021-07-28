@@ -77,10 +77,19 @@ mixDir distPref way name = hpcDir distPrefBuild way </> "mix" </> name
   -- @./dist-newstyle/build/x86_64-linux/ghc-9.0.1/cabal-gh5213-0.1/t/tests@
   -- but the path where library mix files reside has two less components
   -- at the end (@t/tests@) and this reduced path needs to be passed to
-  -- both @hpc@ and @ghc@.
+  -- both @hpc@ and @ghc@. For non-default optimization levels, the path
+  -- suffix is one element longer and the extra path element needs
+  -- to be preserved.
   distPrefElements = splitDirectories distPref
-  distPrefBuild = case drop (length distPrefElements - 2) distPrefElements of
-    "t" : _ -> joinPath $ take (length distPrefElements - 2) distPrefElements
+  distPrefBuild = case drop (length distPrefElements - 3) distPrefElements of
+    ["t", _, "noopt"] ->
+      joinPath $ take (length distPrefElements - 3) distPrefElements
+                 ++ ["noopt"]
+    ["t", _, "opt"] ->
+      joinPath $ take (length distPrefElements - 3) distPrefElements
+                 ++ ["opt"]
+    [_, "t", _] ->
+      joinPath $ take (length distPrefElements - 2) distPrefElements
     _ -> distPref
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
