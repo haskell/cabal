@@ -68,7 +68,29 @@ mixDir :: FilePath  -- ^ \"dist/\" prefix
        -> Way
        -> FilePath  -- ^ Component name
        -> FilePath  -- ^ Directory containing test suite's .mix files
-mixDir distPref way name = hpcDir distPref way </> "mix" </> name
+mixDir distPref way name = hpcDir distPrefBuild way </> "mix" </> name
+ where
+  -- This is a hack for HPC over test suites, needed to match the directory
+  -- where HPC saves and reads .mix files when the main library of the same
+  -- package is being processed, perhaps in a previous cabal run (#5213).
+  -- E.g., @distPref@ may be
+  -- @./dist-newstyle/build/x86_64-linux/ghc-9.0.1/cabal-gh5213-0.1/t/tests@
+  -- but the path where library mix files reside has two less components
+  -- at the end (@t/tests@) and this reduced path needs to be passed to
+  -- both @hpc@ and @ghc@. For non-default optimization levels, the path
+  -- suffix is one element longer and the extra path element needs
+  -- to be preserved.
+  distPrefElements = splitDirectories distPref
+  distPrefBuild = case drop (length distPrefElements - 3) distPrefElements of
+    ["t", _, "noopt"] ->
+      joinPath $ take (length distPrefElements - 3) distPrefElements
+                 ++ ["noopt"]
+    ["t", _, "opt"] ->
+      joinPath $ take (length distPrefElements - 3) distPrefElements
+                 ++ ["opt"]
+    [_, "t", _] ->
+      joinPath $ take (length distPrefElements - 2) distPrefElements
+    _ -> distPref
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
        -> Way
