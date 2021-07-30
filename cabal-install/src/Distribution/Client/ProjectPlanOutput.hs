@@ -45,11 +45,13 @@ import           Distribution.Simple.GHC
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
 import           Distribution.Simple.BuildPaths
-                   ( dllExtension, exeExtension )
+                   ( dllExtension, exeExtension, buildInfoPref )
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
 import           Distribution.Simple.Utils
+import           Distribution.Types.Version
+                   ( mkVersion )
 import           Distribution.Verbosity
 
 import Prelude ()
@@ -150,7 +152,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
             BuildInplaceOnly ->
-                ["dist-dir"   J..= J.String dist_dir]
+                ["dist-dir"   J..= J.String dist_dir] ++ [buildInfoFileLocation]
             BuildAndInstall ->
                 -- TODO: install dirs?
                 []
@@ -175,6 +177,20 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             ] ++
             bin_file (compSolverName comp)
      where
+      -- | Only add build-info file location if the Setup.hs CLI
+      -- is recent enough to be able to generate build info files.
+      -- Otherwise, do not add the expected file location.
+      --
+      -- Consumers of `plan.json` can use the absence of this file location
+      -- to indicate that the given component uses `build-type: Custom`
+      -- with an old lib:Cabal version.
+      buildInfoFileLocation :: J.Pair
+      buildInfoFileLocation
+        | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0]
+        = ("build-info" J..= J.Null)
+        | otherwise
+        = ("build-info" J..= J.String (buildInfoPref dist_dir))
+
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =
         case pkgloc of
@@ -261,7 +277,6 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
     jdisplay :: Pretty a => a -> J.Value
     jdisplay = J.String . prettyShow
-
 
 -----------------------------------------------------------------------------
 -- Project status
