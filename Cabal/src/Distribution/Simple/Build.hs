@@ -88,6 +88,7 @@ import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
 import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Set as Set
 import System.FilePath ( (</>), (<.>), takeDirectory )
 import System.Directory ( getCurrentDirectory )
@@ -135,16 +136,24 @@ build pkg_descr lbi flags suffixes = do
 
 
 showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
-  -> LocalBuildInfo      -- ^ Configuration information
-  -> BuildFlags          -- ^ Flags that the user passed to build
+  -> LocalBuildInfo                  -- ^ Configuration information
+  -> ShowBuildInfoFlags              -- ^ Flags that the user passed to build
   -> IO ByteString
 showBuildInfo pkg_descr lbi flags = do
-  let verbosity = fromFlag (buildVerbosity flags)
-  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
+  let buildFlags = buildInfoBuildFlags flags
+      verbosity = fromFlag (buildVerbosity buildFlags)
+  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs buildFlags)
   pwd <- getCurrentDirectory
   let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-      doc = mkBuildInfo pwd pkg_descr lbi flags targetsToBuild
-  return $ renderJson doc
+      result
+        | fromFlag (buildInfoComponentsOnly flags) =
+            let components = map (mkComponentInfo pwd pkg_descr lbi . targetCLBI)
+                                 targetsToBuild
+              in LBS.unlines $ map renderJson components
+        | otherwise =
+            let json = mkBuildInfo pwd pkg_descr lbi buildFlags targetsToBuild
+              in renderJson json
+  return result
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file

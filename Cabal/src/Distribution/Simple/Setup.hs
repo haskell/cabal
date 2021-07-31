@@ -2189,15 +2189,18 @@ optionNumJobs get set =
 -- ------------------------------------------------------------
 
 data ShowBuildInfoFlags = ShowBuildInfoFlags
-  { buildInfoBuildFlags :: BuildFlags
-  , buildInfoOutputFile :: Maybe FilePath
+  { buildInfoBuildFlags     :: BuildFlags
+  , buildInfoOutputFile     :: Maybe FilePath
+  , buildInfoComponentsOnly :: Flag Bool
+  -- ^ If 'True' then only print components, each separated by a newline
   } deriving (Show, Typeable)
 
 defaultShowBuildFlags  :: ShowBuildInfoFlags
 defaultShowBuildFlags =
     ShowBuildInfoFlags
-      { buildInfoBuildFlags = defaultBuildFlags
-      , buildInfoOutputFile = Nothing
+      { buildInfoBuildFlags     = defaultBuildFlags
+      , buildInfoOutputFile     = Nothing
+      , buildInfoComponentsOnly = Flag False
       }
 
 showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
@@ -2234,8 +2237,12 @@ showBuildInfoCommand progDb = CommandUI
       ++
       [ option [] ["buildinfo-json-output"]
                 "Write the result to the given file instead of stdout"
-                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
+                buildInfoOutputFile (\v flags -> flags { buildInfoOutputFile = v })
                 (reqArg' "FILE" Just (maybe [] pure))
+      , option [] ["buildinfo-components-only"]
+                  "Print out only the component info, each separated by a newline"
+                  buildInfoComponentsOnly (\v flags -> flags { buildInfoComponentsOnly = v})
+                  trueArg
       ]
 
   }
