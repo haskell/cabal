@@ -141,8 +141,9 @@ showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal fil
 showBuildInfo pkg_descr lbi flags = do
   let verbosity = fromFlag (buildVerbosity flags)
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
+  pwd <- getCurrentDirectory
   let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-      doc = mkBuildInfo pkg_descr lbi flags targetsToBuild
+      doc = mkBuildInfo pwd pkg_descr lbi flags targetsToBuild
   return $ renderJson doc
 
 
