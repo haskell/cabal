@@ -94,6 +94,7 @@ library
         Distribution.Client.CmdRepl
         Distribution.Client.CmdRun
         Distribution.Client.CmdSdist
+        Distribution.Client.CmdStatus
         Distribution.Client.CmdTest
         Distribution.Client.CmdUpdate
         Distribution.Client.Compat.Directory

@@ -25,6 +25,11 @@ module Distribution.Client.TargetSelector (
     SubComponentTarget(..),
     QualLevel(..),
     componentKind,
+    -- * Known Targets
+    KnownTargets(..),
+    KnownComponent(..),
+    KnownPackage(..),
+    getKnownTargets,
 
     -- * Reading target selectors
     readTargetSelectors,

@@ -283,6 +283,7 @@ globalCommand commands = CommandUI {
         , startGroup "deprecated"
         , addCmd "unpack"
         , addCmd "hscolour"
+        , addCmd "status"
         , par
         , startGroup "new-style projects (forwards-compatible aliases)"
         , addCmd "v2-build"

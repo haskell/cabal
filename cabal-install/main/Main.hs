@@ -83,6 +83,7 @@ import qualified Distribution.Client.CmdHaddock   as CmdHaddock
 import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import qualified Distribution.Client.CmdInstall   as CmdInstall
 import qualified Distribution.Client.CmdRun       as CmdRun
+import qualified Distribution.Client.CmdStatus    as CmdStatus
 import qualified Distribution.Client.CmdTest      as CmdTest
 import qualified Distribution.Client.CmdBench     as CmdBench
 import qualified Distribution.Client.CmdExec      as CmdExec
@@ -274,6 +275,7 @@ mainWorker args = do
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       , regularCmd CmdListBin.listbinCommand     CmdListBin.listbinAction
+      , regularCmd CmdStatus.statusCommand       CmdStatus.statusAction
 
       ] ++ concat
       [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
