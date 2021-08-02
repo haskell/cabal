@@ -51,7 +51,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
       - uses: actions/checkout@v2
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s print-config
@@ -104,7 +104,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
       - uses: actions/checkout@v2
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-config

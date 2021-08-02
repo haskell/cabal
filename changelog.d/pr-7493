@@ -1,0 +1,10 @@
+synopsis: Fix `cabal test --enable-library-coverage` for other-modules
+packages: Cabal
+prs: #7493
+issues: #5213
+description: {
+
+- Fix `cabal test --enable-library-coverage` for libraries with nonempty other-modules field.
+- Due to a hack, this breaks coverage whenever the used Haskell compiler is called 't' (for a non-hacky fix we should rework HPC directories, possibly enabling multilib in the process, see #6440 and #6397).
+
+}
