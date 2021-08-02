@@ -432,7 +432,7 @@ checkFileMonitorChanged
     -- or we cannot decode it. Sadly ErrorCall can still happen, despite
     -- using decodeFileOrFail, e.g. Data.Char.chr errors
 
-    handleDoesNotExist (MonitorChanged MonitorFirstRun) .
+    handleDoesNotExist (MonitorChanged MonitorFirstRun) $
     handleErrorCall    (MonitorChanged MonitorCorruptCache) $
           readCacheFile monitor
       >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))

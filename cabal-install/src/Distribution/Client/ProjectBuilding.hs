@@ -101,7 +101,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
-import System.IO         (IOMode (AppendMode), withFile)
+import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
 
@@ -689,6 +689,7 @@ rebuildTarget verbosity
           --TODO: [nice to have] git/darcs repos etc
 
 
+    unpackTarballPhase :: FilePath -> IO BuildResult
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
@@ -706,6 +707,7 @@ rebuildTarget verbosity
     -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
     -- would only start from download or unpack phases.
     --
+    rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
     rebuildPhase buildStatus srcdir =
         assert (elabBuildStyle pkg == BuildInplaceOnly) $
 
@@ -714,6 +716,7 @@ rebuildTarget verbosity
         builddir = distBuildDirectory
                    (elabDistDirParams sharedPackageConfig pkg)
 
+    buildAndInstall :: FilePath -> FilePath -> IO BuildResult
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity distDirLayout storeDirLayout
@@ -725,6 +728,7 @@ rebuildTarget verbosity
         builddir' = makeRelative srcdir builddir
         --TODO: [nice to have] ^^ do this relative stuff better
 
+    buildInplace :: BuildStatusRebuild -> FilePath -> FilePath -> IO BuildResult
     buildInplace buildStatus srcdir builddir =
         --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -760,6 +764,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
                             asyncFetchPackages verbosity repoctx
                                                pkgsToDownload body
   where
+    pkgsToDownload :: [PackageLocation (Maybe FilePath)]
     pkgsToDownload =
       ordNub $
       [ elabPkgSourceLocation elab
@@ -1143,6 +1148,7 @@ buildAndInstallUnpackedPackage verbosity
         Nothing        -> Nothing
         Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
 
+    initLogFile :: IO ()
     initLogFile =
       case mlogFile of
         Nothing      -> return ()
@@ -1151,6 +1157,7 @@ buildAndInstallUnpackedPackage verbosity
           exists <- doesFileExist logFile
           when exists $ removeFile logFile
 
+    withLogging :: (Maybe Handle -> IO r) -> IO r
     withLogging action =
       case mlogFile of
         Nothing      -> action Nothing
@@ -1162,6 +1169,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   | not elabBuildHaddocks = False
   | otherwise             = any componentHasHaddocks components
   where
+    components :: [ComponentTarget]
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 

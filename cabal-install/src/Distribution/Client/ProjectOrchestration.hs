@@ -136,6 +136,8 @@ import           Distribution.Compiler
                    ( CompilerFlavor(GHC) )
 import           Distribution.Types.ComponentName
                    ( componentNameString )
+import           Distribution.Types.InstalledPackageInfo
+                   ( InstalledPackageInfo )
 import           Distribution.Types.UnqualComponentName
                    ( UnqualComponentName, packageNameToUnqualComponentName )
 
@@ -1102,6 +1104,9 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
       | InstallPlan.Configured pkg <- InstallPlan.toList plan
       , hasNoDependents pkg ]
 
+    ultimateDeps
+      :: UnitId
+      -> [InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage]
     ultimateDeps pkgid =
         filter (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
                (InstallPlan.reverseDependencyClosure plan [pkgid])
@@ -1261,6 +1266,7 @@ establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages
         mstoreDir = flagToMaybe projectConfigStoreDir
         cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
+        buildSettings :: BuildTimeSettings
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig
