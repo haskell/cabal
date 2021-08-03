@@ -1026,7 +1026,12 @@ planPackages verbosity comp platform solver SolverSettings{..}
       . addPreferences
           -- enable stanza preference unilaterally, even when the user asked to enable as well, to help hint the solver.
           [ PackageStanzasPreference pkgname [minBound..maxBound]
-          | pkgname <- map pkgSpecifierTarget localPackages
+          | pkg <- localPackages
+          , let pkgname = pkgSpecifierTarget pkg
+                stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
+                stanzas = [ stanza | stanza <- [minBound..maxBound]
+                          , Map.lookup stanza stanzaM /= Just False ]
+          , not (null stanzas)
           ]
 
       . addConstraints
