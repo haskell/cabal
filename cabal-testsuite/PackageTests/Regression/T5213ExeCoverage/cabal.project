@@ -1,0 +1,5 @@
+packages: .
+
+package cabal-gh5213
+  coverage: True
+  optimization: False
