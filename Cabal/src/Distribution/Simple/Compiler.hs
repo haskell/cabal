@@ -80,6 +80,7 @@ import Distribution.Compiler
 import Distribution.Version
 import Language.Haskell.Extension
 import Distribution.Simple.Utils
+import Distribution.Simple.Program.Types (ProgramLocation)
 
 import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
@@ -97,8 +98,10 @@ data Compiler = Compiler {
         -- ^ Supported language standards.
         compilerExtensions      :: [(Extension, Maybe CompilerFlag)],
         -- ^ Supported extensions.
-        compilerProperties      :: Map String String
+        compilerProperties      :: Map String String,
         -- ^ A key-value map for properties not covered by the above fields.
+        compilerLocation        :: ProgramLocation
+        -- ^ Compiler location
     }
     deriving (Eq, Generic, Typeable, Show, Read)
 

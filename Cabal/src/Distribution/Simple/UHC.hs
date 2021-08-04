@@ -54,7 +54,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath _hcPkgPath progdb = do
 
-  (_uhcProg, uhcVersion, progdb') <-
+  (uhcProg, uhcVersion, progdb') <-
     requireProgramVersion verbosity uhcProgram
     (orLaterVersion (mkVersion [1,0,2]))
     (userMaybeSpecifyPath "uhc" hcPath progdb)
@@ -65,7 +65,8 @@ configure verbosity hcPath _hcPkgPath progdb = do
                compilerCompat     =  [],
                compilerLanguages  =  uhcLanguages,
                compilerExtensions =  uhcLanguageExtensions,
-               compilerProperties =  Map.empty
+               compilerProperties =  Map.empty,
+               compilerLocation   =  programLocation uhcProg
              }
       compPlatform = Nothing
   return (comp, compPlatform, progdb')

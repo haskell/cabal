@@ -80,7 +80,8 @@ configure verbosity mbHcPath hcPkgPath progdb0 = do
           compilerCompat         = [],
           compilerLanguages      = languages,
           compilerExtensions     = extensions,
-          compilerProperties     = mempty
+          compilerProperties     = mempty,
+          compilerLocation       = programLocation confdCompiler
         }
 
       return (comp, confdCompiler, progdb2)

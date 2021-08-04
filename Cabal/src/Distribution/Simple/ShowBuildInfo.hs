@@ -101,19 +101,8 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
     mkCompilerInfo = JsonObject
       [ "flavour"     .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
       , "compiler-id" .= JsonString (showCompilerId $ compiler lbi)
-      , "path"        .= path
+      , "path"        .= JsonString (locationPath $ compilerLocation $ compiler lbi)
       ]
-      where
-        path = maybe JsonNull (JsonString . programPath)
-               $ (flavorToProgram . compilerFlavor $ compiler lbi)
-               >>= flip lookupProgram (withPrograms lbi)
-
-        flavorToProgram :: CompilerFlavor -> Maybe Program
-        flavorToProgram GHC   = Just ghcProgram
-        flavorToProgram GHCJS = Just ghcjsProgram
-        flavorToProgram UHC   = Just uhcProgram
-        flavorToProgram JHC   = Just jhcProgram
-        flavorToProgram _     = Nothing
 
     mkComponentInfo (name, clbi) = JsonObject
       [ "type"          .= JsonString compType

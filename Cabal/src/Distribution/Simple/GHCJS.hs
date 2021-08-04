@@ -165,7 +165,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerCompat     = [CompilerId GHC ghcjsGhcVersion],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
-        compilerProperties = ghcInfoMap
+        compilerProperties = ghcInfoMap,
+        compilerLocation   = programLocation ghcjsProg
       }
       compPlatform = Internal.targetPlatform ghcjsInfo
   return (comp, compPlatform, progdb3)

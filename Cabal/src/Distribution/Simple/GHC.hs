@@ -204,7 +204,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerCompat     = [],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
-        compilerProperties = ghcInfoMap
+        compilerProperties = ghcInfoMap,
+        compilerLocation   = programLocation ghcProg
       }
       compPlatform = Internal.targetPlatform ghcInfo
       -- configure gcc and ld
