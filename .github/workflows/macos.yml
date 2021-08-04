@@ -57,8 +57,6 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s print-config
       - name: Validate print-tool-versions
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s print-tool-versions
-      - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s make-cabal-install-dev
       - name: Validate build
         run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s build
       - name: Validate lib-tests
@@ -112,8 +110,6 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-config
       - name: Validate print-tool-versions
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-tool-versions
-      - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s make-cabal-install-dev
       - name: Validate build
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s build
       - name: Validate lib-tests

@@ -27,7 +27,6 @@ $(capture "decls" [d|
         , zVersionDigits              :: String
         , zSupportsCpp                :: Bool
         , zSupportsNoRebindableSyntax :: Bool
-        , zSupportsNoMissingSafeHaskellMode :: Bool
         , zAbsolute                   :: Bool
         , zRelocatable                :: Bool
         , zIsWindows                  :: Bool

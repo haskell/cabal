@@ -1,0 +1,4 @@
+synopsis: Allow relative paths starting with single-charater directories
+packages: Cabal
+prs: #7429
+issues: #7426

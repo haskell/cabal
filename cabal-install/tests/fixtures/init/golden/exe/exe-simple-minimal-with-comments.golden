@@ -1,0 +1,5 @@
+executable y
+    main-is:          Main.hs
+    build-depends:    base
+    hs-source-dirs:   exe
+    default-language: Haskell2010

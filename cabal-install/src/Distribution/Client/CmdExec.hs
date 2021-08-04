@@ -27,6 +27,9 @@ import Distribution.Client.Setup
   ( ConfigFlags(configVerbosity)
   , GlobalFlags
   )
+import Distribution.Client.ProjectFlags
+  ( removeIgnoreProjectOption
+  )
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
   , runProjectPreBuildPhase
@@ -49,8 +52,7 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig(..)
   )
 import Distribution.Simple.Command
-  ( CommandUI(..), optionName
-  )
+  ( CommandUI(..) )
 import Distribution.Simple.Program.Db
   ( modifyProgramSearchPath
   , requireProgram
@@ -115,7 +117,7 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+  , commandOptions      = removeIgnoreProjectOption
                         . nixStyleOptions (const [])
   , commandDefaultFlags = defaultNixStyleFlags ()
   }
