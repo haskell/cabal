@@ -1,5 +1,5 @@
 name:               cabal-doctest
-version:            1.0.8
+version:            1.0.9
 x-revision:         2
 synopsis:           A Setup.hs helper for doctests running
 description:
@@ -34,7 +34,7 @@ library
   other-extensions:
   build-depends:
       base       >=4.3  && <4.16
-    , Cabal      >=1.10 && <3.6
+    , Cabal      >=1.10 && <3.8
     , directory
     , filepath
 
