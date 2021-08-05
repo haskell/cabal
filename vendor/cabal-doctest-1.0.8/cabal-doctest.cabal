@@ -1,5 +1,5 @@
 name:               cabal-doctest
-version:            1.0.9
+version:            1.0.8
 x-revision:         2
 synopsis:           A Setup.hs helper for doctests running
 description:
