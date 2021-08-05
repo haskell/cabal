@@ -238,9 +238,9 @@ bootstrap-plans-linux: phony
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.3.plan.json
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.1.plan.json
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.4.plan.json
 
 bootstrap-jsons-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
