@@ -200,6 +200,7 @@ data ConfigFlags = ConfigFlags {
     -- ProgramDb directly and not via ConfigFlags
     configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
                                                       -- @cabal@ may run
+
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
     configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH

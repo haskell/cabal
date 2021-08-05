@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Prompt
@@ -14,156 +12,134 @@
 --
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Init.Prompt
-( prompt
-, promptYesNo
-, promptStr
-, promptList
-) where
+module Distribution.Client.Init.Prompt (
 
-import Prelude hiding (break, putStrLn, getLine, putStr)
+    -- * Commands
+    prompt
+  , promptYesNo
+  , promptStr
+  , promptList
+  , promptListOptional
+  , maybePrompt
+  ) where
 
-import Distribution.Client.Compat.Prelude hiding (break, empty, getLine, putStr, putStrLn)
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (empty)
+
 import Distribution.Client.Init.Types
+  ( InitFlags(..) )
+import Distribution.Simple.Setup
+  ( Flag(..) )
 
+
+-- | Run a prompt or not based on the interactive flag of the
+--   InitFlags structure.
+maybePrompt :: InitFlags -> IO t -> IO (Maybe t)
+maybePrompt flags p =
+  case interactive flags of
+    Flag True -> Just `fmap` p
+    _         -> return Nothing
 
 -- | Create a prompt with optional default value that returns a
--- String.
-promptStr :: Interactive m => String -> DefaultPrompt String -> m String
-promptStr = promptDefault Right id
+--   String.
+promptStr :: String -> Maybe String -> IO String
+promptStr = promptDefault' Just id
 
 -- | Create a yes/no prompt with optional default value.
-promptYesNo
-    :: Interactive m
-    => String
-      -- ^ prompt message
-    -> DefaultPrompt Bool
-      -- ^ optional default value
-    -> m Bool
+promptYesNo :: String      -- ^ prompt message
+            -> Maybe Bool  -- ^ optional default value
+            -> IO Bool
 promptYesNo =
-    promptDefault recogniseYesNo showYesNo
+    promptDefault' recogniseYesNo showYesNo
   where
-    recogniseYesNo s
-      | (toLower <$> s) == "y" = Right True
-      | (toLower <$> s) == "n" || s == "N" = Right False
-      | otherwise = Left $ "Cannot parse input: " ++ s
-
+    recogniseYesNo s | s == "y" || s == "Y" = Just True
+                     | s == "n" || s == "N" = Just False
+                     | otherwise            = Nothing
     showYesNo True  = "y"
     showYesNo False = "n"
 
 -- | Create a prompt with optional default value that returns a value
 --   of some Text instance.
-prompt :: (Interactive m, Parsec t, Pretty t) => String -> DefaultPrompt t -> m t
-prompt = promptDefault eitherParsec prettyShow
+prompt :: (Parsec t, Pretty t) => String -> Maybe t -> IO t
+prompt = promptDefault' simpleParsec prettyShow
+
+-- | Create a prompt with an optional default value.
+promptDefault' :: (String -> Maybe t)       -- ^ parser
+               -> (t -> String)             -- ^ pretty-printer
+               -> String                    -- ^ prompt message
+               -> Maybe t                   -- ^ optional default value
+               -> IO t
+promptDefault' parser ppr pr def = do
+  putStr $ mkDefPrompt pr (ppr `fmap` def)
+  inp <- getLine
+  case (inp, def) of
+    ("", Just d)  -> return d
+    _  -> case parser inp of
+            Just t  -> return t
+            Nothing -> do putStrLn $ "Couldn't parse " ++ inp ++ ", please try again!"
+                          promptDefault' parser ppr pr def
 
 -- | Create a prompt from a prompt string and a String representation
 --   of an optional default value.
-mkDefPrompt :: String -> DefaultPrompt String -> String
-mkDefPrompt msg def = msg ++ "?" ++ format def
+mkDefPrompt :: String -> Maybe String -> String
+mkDefPrompt pr def = pr ++ "?" ++ defStr def
+  where defStr Nothing  = " "
+        defStr (Just s) = " [default: " ++ s ++ "] "
+
+-- | Create a prompt from a list of items, where no selected items is
+--   valid and will be represented as a return value of 'Nothing'.
+promptListOptional :: (Pretty t, Eq t)
+                   => String            -- ^ prompt
+                   -> [t]               -- ^ choices
+                   -> IO (Maybe (Either String t))
+promptListOptional pr choices = promptListOptional' pr choices prettyShow
+
+promptListOptional' :: Eq t
+                   => String            -- ^ prompt
+                   -> [t]               -- ^ choices
+                   -> (t -> String)     -- ^ show an item
+                   -> IO (Maybe (Either String t))
+promptListOptional' pr choices displayItem =
+    fmap rearrange
+  $ promptList pr (Nothing : map Just choices) (Just Nothing)
+               (maybe "(none)" displayItem) True
   where
-    format MandatoryPrompt = " "
-    format OptionalPrompt = " [optional] "
-    format (DefaultPrompt s) = " [default: " ++ s ++ "] "
+    rearrange = either (Just . Left) (fmap Right)
 
--- | Create a prompt from a list of strings
-promptList
-    :: Interactive m
-    => String
-      -- ^ prompt
-    -> [String]
-      -- ^ choices
-    -> DefaultPrompt String
-      -- ^ optional default value
-    -> Maybe (String -> String)
-      -- ^ modify the default value to present in-prompt
-      -- e.g. empty string maps to "(none)", but only in the
-      -- prompt.
-    -> Bool
-      -- ^ whether to allow an 'other' option
-    -> m String
-promptList msg choices def modDef hasOther = do
-  putStrLn $ msg ++ ":"
+-- | Create a prompt from a list of items.
+promptList :: Eq t
+           => String            -- ^ prompt
+           -> [t]               -- ^ choices
+           -> Maybe t           -- ^ optional default value
+           -> (t -> String)     -- ^ show an item
+           -> Bool              -- ^ whether to allow an 'other' option
+           -> IO (Either String t)
+promptList pr choices def displayItem other = do
+  putStrLn $ pr ++ ":"
+  let options1 = map (\c -> (Just c == def, displayItem c)) choices
+      options2 = zip ([1..]::[Int])
+                     (options1 ++ [(False, "Other (specify)") | other])
+  traverse_ (putStrLn . \(n,(i,s)) -> showOption n i ++ s) options2
+  promptList' displayItem (length options2) choices def other
+ where showOption n i | n < 10 = " " ++ star i ++ " " ++ rest
+                      | otherwise = " " ++ star i ++ rest
+                  where rest = show n ++ ") "
+                        star True = "*"
+                        star False = " "
 
-  -- Output nicely formatted list of options
-  for_ prettyChoices $ \(i,c) -> do
-    let star = if DefaultPrompt c == def
-          then "*"
-          else " "
-
-    let output = concat $ if i < 10
-          then [" ", star, " ", show i, ") ", c]
-          else [" ", star, show i, ") ", c]
-
-    putStrLn output
-
-  go
- where
-   prettyChoices =
-     let cs = if hasOther
-           then choices ++ ["Other (specify)"]
-           else choices
-     in zip [1::Int .. length choices + 1] cs
-
-   numChoices = length choices
-
-   invalidChoice input = do
-      let msg' = if null input
-            then "Empty input is not a valid choice."
-            else concat
-              [ input
-              , " is not a valid choice. Please choose a number from 1 to "
-              , show (length prettyChoices)
-              , "."
-              ]
-
-      putStrLn msg'
-      breakOrContinue ("promptList: " ++ input) go
-
-   go = do
-     putStr
-       $ mkDefPrompt "Your choice"
-       $ maybe def (<$> def) modDef
-
-     input <- getLine
-     case def of
-       DefaultPrompt d | null input -> return d
-       _ -> case readMaybe input of
-         Nothing -> invalidChoice input
-         Just n
-           | n > 0, n <= numChoices -> return $ choices !! (n-1)
-           | n == numChoices + 1, hasOther ->
-             promptStr "Please specify" OptionalPrompt
-           | otherwise -> invalidChoice (show n)
-
--- | Create a prompt with an optional default value.
-promptDefault
-    :: Interactive m
-    => (String -> Either String t)
-      -- ^ parser
-    -> (t -> String)
-      -- ^ pretty-printer
-    -> String
-      -- ^ prompt message
-    -> (DefaultPrompt t)
-      -- ^ optional default value
-    -> m t
-promptDefault parse pprint msg def = do
-  putStr $ mkDefPrompt msg (pprint <$> def)
-  input <- getLine
-  case def of
-    DefaultPrompt d | null input  -> return d
-    _  -> case parse input of
-      Right t  -> return t
-      Left err -> do
-        putStrLn $ "Couldn't parse " ++ input ++ ", please try again!"
-        breakOrContinue
-          ("promptDefault: " ++ err ++ " on input: " ++ input)
-          (promptDefault parse pprint msg def)
-
--- | Prompt utility for breaking out of an interactive loop
--- in the pure case
---
-breakOrContinue :: Interactive m => String -> m a -> m a
-breakOrContinue msg act = break >>= \case
-    True -> throwPrompt $ BreakException msg
-    False -> act
+promptList' :: (t -> String) -> Int -> [t] -> Maybe t -> Bool -> IO (Either String t)
+promptList' displayItem numChoices choices def other = do
+  putStr $ mkDefPrompt "Your choice" (displayItem `fmap` def)
+  inp <- getLine
+  case (inp, def) of
+    ("", Just d) -> return $ Right d
+    _  -> case readMaybe inp of
+            Nothing -> invalidChoice inp
+            Just n  -> getChoice n
+ where invalidChoice inp = do putStrLn $ inp ++ " is not a valid choice."
+                              promptList' displayItem numChoices choices def other
+       getChoice n | n < 1 || n > numChoices = invalidChoice (show n)
+                   | n < numChoices ||
+                     (n == numChoices && not other)
+                                  = return . Right $ choices !! (n-1)
+                   | otherwise    = Left `fmap` promptStr "Please specify" Nothing

@@ -28,6 +28,7 @@ import Distribution.Client.Setup
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , genBoundsCommand
+         , OutdatedFlags(..), outdatedCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
@@ -86,7 +87,6 @@ import qualified Distribution.Client.CmdExec      as CmdExec
 import qualified Distribution.Client.CmdClean     as CmdClean
 import qualified Distribution.Client.CmdSdist     as CmdSdist
 import qualified Distribution.Client.CmdListBin   as CmdListBin
-import qualified Distribution.Client.CmdOutdated  as CmdOutdated
 import           Distribution.Client.CmdLegacy
 
 import Distribution.Client.Install            (install)
@@ -94,6 +94,7 @@ import Distribution.Client.Configure          (configure, writeConfigFlags)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
+import Distribution.Client.Outdated           (outdated)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
@@ -108,12 +109,11 @@ import Distribution.Client.Sandbox            (loadConfigOrSandboxConfig
                                               ,updateInstallDirs)
 import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types.Credentials  (Password (..))
-import Distribution.Client.Init               (initCmd)
+import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
 import Distribution.Client.Utils              (determineNumJobs
                                               ,relaxEncodingErrors
-                                              ,cabalInstallVersion
                                               )
 
 import Distribution.Package (packageId)
@@ -153,6 +153,7 @@ import Distribution.Verbosity as Verbosity
          ( normal )
 import Distribution.Version
          ( Version, mkVersion, orLaterVersion )
+import qualified Paths_cabal_install (version)
 
 import Distribution.Compat.ResponseFile
 import System.Environment       (getArgs, getProgName)
@@ -163,7 +164,7 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (try)
-
+import Data.Version             (showVersion)
 
 -- | Entry point
 --
@@ -219,9 +220,9 @@ mainWorker args = do
                   ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = dieNoVerbosity $ intercalate "\n" errs
-    printNumericVersion = putStrLn $ display cabalInstallVersion
+    printNumericVersion = putStrLn $ showVersion Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
-                                  ++ display cabalInstallVersion
+                                  ++ showVersion Paths_cabal_install.version
                                   ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
@@ -239,7 +240,7 @@ mainWorker args = do
       , regularCmd initCommand initAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd genBoundsCommand genBoundsAction
-      , regularCmd CmdOutdated.outdatedCommand CmdOutdated.outdatedAction
+      , regularCmd outdatedCommand outdatedAction
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
       , hiddenCmd  formatCommand formatAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
@@ -693,7 +694,7 @@ listAction listFlags extraArgs globalFlags = do
         , configHcPath     = listHcPath listFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  compProgdb <- if listNeedsCompiler listFlags
+  compProgdb <- if listNeedsCompiler listFlags 
       then do
           (comp, _, progdb) <- configCompilerAux' configFlags
           return (Just (comp, progdb))
@@ -776,6 +777,17 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
                 repoContext
                 comp platform progdb
                 globalFlags' freezeFlags
+
+outdatedAction :: OutdatedFlags -> [String] -> GlobalFlags -> IO ()
+outdatedAction outdatedFlags _extraArgs globalFlags = do
+  let verbosity = fromFlag (outdatedVerbosity outdatedFlags)
+  config <- loadConfigOrSandboxConfig verbosity globalFlags
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  (comp, platform, _progdb) <- configCompilerAux' configFlags
+  withRepoContext verbosity globalFlags' $ \repoContext ->
+    outdated verbosity outdatedFlags repoContext
+             comp platform
 
 uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do
@@ -907,24 +919,24 @@ unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> Action
-initAction initFlags extraArgs globalFlags
-    | not (null extraArgs) =
-      die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
-    | otherwise = do
-      confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
-      -- override with `--with-compiler` from CLI if available
-      let confFlags' = savedConfigureFlags confFlags `mappend` compFlags
-          initFlags' = savedInitFlags confFlags `mappend` initFlags
-          globalFlags' = savedGlobalFlags confFlags `mappend` globalFlags
-
-      (comp, _, progdb) <- configCompilerAux' confFlags'
-
-      withRepoContext verbosity globalFlags' $ \repoContext ->
-        initCmd verbosity (configPackageDB' confFlags')
-          repoContext comp progdb initFlags'
-  where
-    verbosity = fromFlag (initVerbosity initFlags)
-    compFlags = mempty { configHcPath = initHcPath initFlags }
+initAction initFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (initVerbosity initFlags)
+  when (extraArgs /= []) $
+    die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
+  config <- loadConfigOrSandboxConfig verbosity globalFlags
+  let configFlags  = savedConfigureFlags config `mappend`
+                     -- override with `--with-compiler` from CLI if available
+                     mempty { configHcPath = initHcPath initFlags }
+  let initFlags'   = savedInitFlags      config `mappend` initFlags
+  let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
+  (comp, _, progdb) <- configCompilerAux' configFlags
+  withRepoContext verbosity globalFlags' $ \repoContext ->
+    initCabal verbosity
+            (configPackageDB' configFlags)
+            repoContext
+            comp
+            progdb
+            initFlags'
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do

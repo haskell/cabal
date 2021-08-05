@@ -335,14 +335,11 @@ runPlanExe' :: String {- package name -} -> String {- component name -}
             -> [String] -> TestM Result
 runPlanExe' pkg_name cname args = do
     Just plan <- testPlan `fmap` getTestEnv
-    let distDirOrBinFile = planDistDir plan (mkPackageName pkg_name)
-                               (CExeName (mkUnqualComponentName cname))
-        exePath = case distDirOrBinFile of
-          DistDir dist_dir -> dist_dir </> "build" </> cname </> cname
-          BinFile bin_file -> bin_file
+    let dist_dir = planDistDir plan (mkPackageName pkg_name)
+                        (CExeName (mkUnqualComponentName cname))
     defaultRecordMode RecordAll $ do
     recordHeader [pkg_name, cname]
-    runM exePath args Nothing
+    runM (dist_dir </> "build" </> cname </> cname) args Nothing
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
@@ -510,23 +507,11 @@ withRepo repo_dir m = do
     -- 2. Create tarballs
     pkgs <- liftIO $ getDirectoryContents (testCurrentDir env </> repo_dir)
     forM_ pkgs $ \pkg -> do
-        let srcPath = testCurrentDir env </> repo_dir </> pkg
-        let destPath = package_dir </> pkg
-        isPreferredVersionsFile <- liftIO $
-            -- validate this is the "magic" 'preferred-versions' file
-            -- and perform a sanity-check whether this is actually a file
-            -- and not a package that happens to have the same name.
-            if pkg == "preferred-versions"
-                then doesFileExist srcPath
-                else return False
         case pkg of
             '.':_ -> return ()
-            _
-                | isPreferredVersionsFile ->
-                    liftIO $ copyFile srcPath destPath
-                | otherwise -> archiveTo
-                    srcPath
-                    (destPath <.> "tar.gz")
+            _     -> archiveTo
+                (testCurrentDir env </> repo_dir </> pkg)
+                (package_dir </> pkg <.> "tar.gz")
 
     -- 3. Wire it up in .cabal/config
     -- TODO: libify this

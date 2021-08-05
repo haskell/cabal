@@ -1,5 +1,4 @@
 packages: Cabal/
-packages: cabal-install-solver/
 packages: cabal-install/
 tests: False
 benchmarks: False

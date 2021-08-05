@@ -624,8 +624,9 @@ feature was added.
     build trees for different versions of GHC without clobbering each
     other.
 
-    It's not possible to set :cfg-field:`with-compiler` on a
-    per-package basis.
+    At the moment, it's not possible to set :cfg-field:`with-compiler` on a
+    per-package basis, but eventually we plan on relaxing this
+    restriction. If this is something you need, give us a shout.
 
     The command line variant of this flag is
     ``--with-compiler=ghc-7.8``; there is also a short version
@@ -701,9 +702,6 @@ feature was added.
     build logic.
 
     The command line variant of this flag is ``--compiler=ghc``.
-
-    It's not possible to set :cfg-field:`compiler` on a
-    per-package basis.
 
 .. cfg-field:: tests: boolean
                --enable-tests

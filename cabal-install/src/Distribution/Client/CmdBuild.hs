@@ -14,8 +14,6 @@ module Distribution.Client.CmdBuild (
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Client.ProjectFlags
-         ( removeIgnoreProjectOption )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.TargetProblem
          ( TargetProblem (..), TargetProblem' )
@@ -27,7 +25,7 @@ import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), yesNoOpt )
 import Distribution.Simple.Flag ( Flag(..), toFlag, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, option )
+         ( CommandUI(..), usageAlternatives, option, optionName )
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
@@ -69,7 +67,7 @@ buildCommand = CommandUI {
      ++ "(including dependencies as needed)\n"
 
   , commandDefaultFlags = defaultNixStyleFlags defaultBuildFlags
-  , commandOptions      = removeIgnoreProjectOption
+  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
                         . nixStyleOptions (\showOrParseArgs ->
     [ option [] ["only-configure"]
         "Instead of performing a full build just run the configure step"

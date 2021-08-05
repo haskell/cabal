@@ -599,8 +599,6 @@ convertToLegacySharedConfig
 
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
-      configAppend        = mempty,
-      configBackup        = mempty,
       configExConstraints = projectConfigConstraints,
       configPreferences   = projectConfigPreferences,
       configSolver        = projectConfigSolver,

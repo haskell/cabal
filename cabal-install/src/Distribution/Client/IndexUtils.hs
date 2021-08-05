@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -41,10 +40,7 @@ module Distribution.Client.IndexUtils (
   writeIndexTimestamp,
   currentIndexTimestamp,
 
-  BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType,
-  -- * preferred-versions utilities
-  preferredVersions, isPreferredVersions, parsePreferredVersionsWarnings,
-  PreferredVersionsParseError(..)
+  BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
 
 import Prelude ()
@@ -79,7 +75,7 @@ import Distribution.Types.PackageName (PackageName)
 import Distribution.Version
          ( Version, VersionRange, mkVersion, intersectVersionRanges )
 import Distribution.Simple.Utils
-         ( die', warn, info, createDirectoryIfMissingVerbose, fromUTF8LBS )
+         ( die', warn, info, createDirectoryIfMissingVerbose )
 import Distribution.Client.Setup
          ( RepoContext(..) )
 
@@ -91,13 +87,12 @@ import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
-import Data.Either
-         ( rights )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Exception
 import Data.List (stripPrefix)
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
@@ -561,67 +556,18 @@ extractPkg verbosity entry blockNo = case Tar.entryContent entry of
 extractPrefs :: Tar.Entry -> Maybe [Dependency]
 extractPrefs entry = case Tar.entryContent entry of
   Tar.NormalFile content _
-     | isPreferredVersions entrypath
+     | FilePath.Posix.takeFileName entrypath == "preferred-versions"
     -> Just prefs
     where
       entrypath = Tar.entryPath entry
       prefs     = parsePreferredVersions content
   _ -> Nothing
 
-------------------------------------------------------------------------
--- Filename and parsers for 'preferred-versions' file.
---
-
--- | Expected name of the 'preferred-versions' file.
---
--- Contains special constraints, such as a preferred version of a package
--- or deprecations of certain package versions.
---
--- Expected format:
---
--- @
--- binary > 0.9.0.0 || < 0.9.0.0
--- text == 1.2.1.0
--- @
-preferredVersions :: FilePath
-preferredVersions = "preferred-versions"
-
--- | Does the given filename match with the expected name of 'preferred-versions'?
-isPreferredVersions :: FilePath -> Bool
-isPreferredVersions = (== preferredVersions) . takeFileName
-
--- | Parse `preferred-versions` file, ignoring any parse failures.
---
--- To obtain parse errors, use 'parsePreferredVersionsWarnings'.
 parsePreferredVersions :: ByteString -> [Dependency]
-parsePreferredVersions = rights . parsePreferredVersionsWarnings
-
--- | Parser error of the `preferred-versions` file.
-data PreferredVersionsParseError = PreferredVersionsParseError
-    { preferredVersionsParsecError :: String
-    -- ^ Parser error to show to a user.
-    , preferredVersionsOriginalDependency :: String
-    -- ^ Original input that produced the parser error.
-    }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable)
-
--- | Parse `preferred-versions` file, collecting parse errors that can be shown
--- in error messages.
-parsePreferredVersionsWarnings :: ByteString
-                               -> [Either PreferredVersionsParseError Dependency]
-parsePreferredVersionsWarnings =
-  map parsePreference
-  . filter (not . isPrefixOf "--")
-  . lines
-  . fromUTF8LBS
-    where
-      parsePreference :: String -> Either PreferredVersionsParseError Dependency
-      parsePreference s = case eitherParsec s of
-          Left err -> Left $ PreferredVersionsParseError
-              { preferredVersionsParsecError = err
-              , preferredVersionsOriginalDependency = s
-              }
-          Right dep -> Right dep
+parsePreferredVersions = mapMaybe simpleParsec
+                       . filter (not . isPrefixOf "--")
+                       . lines
+                       . BS.Char8.unpack -- TODO: Are we sure no unicode?
 
 ------------------------------------------------------------------------
 -- Reading and updating the index cache
@@ -759,23 +705,10 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
 
     entries <- handle handler $ fmap catMaybes $ for dirContents $ \file -> do
         case isTarGz file of
-            Nothing
-              | isPreferredVersions file -> do
-                  contents <- BS.readFile (localDir </> file)
-                  let versionPreferencesParsed = parsePreferredVersionsWarnings contents
-                  let (warnings, versionPreferences) = partitionEithers versionPreferencesParsed
-                  unless (null warnings) $ do
-                      warn verbosity $
-                          "withIndexEntries: failed to parse some entries of \"preferred-versions\" found at: "
-                              ++ (localDir </> file)
-                      for_ warnings $ \err -> do
-                          warn verbosity $ "* \"" ++ preferredVersionsOriginalDependency err
-                          warn verbosity $ "Parser Error: " ++ preferredVersionsParsecError err
-                  return $ Just $ NoIndexCachePreference versionPreferences
-              | otherwise -> do
-                  unless (takeFileName file == "noindex.cache" || ".cabal" `isSuffixOf` file) $
-                      info verbosity $ "Skipping " ++ file
-                  return Nothing
+            Nothing -> do
+                unless (takeFileName file == "noindex.cache" || ".cabal" `isSuffixOf` file) $
+                    info verbosity $ "Skipping " ++ file
+                return Nothing
             Just pkgid | cabalPath `Set.member` contentSet -> do
                 contents <- BSS.readFile (localDir </> cabalPath)
                 for (parseGenericPackageDescriptionMaybe contents) $ \gpd ->
@@ -792,20 +725,9 @@ withIndexEntries verbosity (RepoIndex _repoCtxt (RepoLocalNoIndex (LocalRepo nam
                     Just ce -> return (Just ce)
                     Nothing -> die' verbosity $ "Cannot read .cabal file inside " ++ file
 
-    let (prefs, gpds) = partitionEithers $ map
-            (\case
-                NoIndexCachePreference deps -> Left deps
-                CacheGPD gpd _ -> Right gpd
-            )
-            entries
-
     info verbosity $ "Entries in file+noindex repository " ++ unRepoName name
-    for_ gpds $ \gpd ->
+    for_ entries $ \(CacheGPD gpd _) ->
         info verbosity $ "- " ++ prettyShow (package $ Distribution.PackageDescription.packageDescription gpd)
-    unless (null prefs) $ do
-        info verbosity $ "Preferred versions in file+noindex repository " ++ unRepoName name
-        for_ (concat prefs) $ \pref ->
-            info verbosity ("* " ++ prettyShow pref)
 
     callback entries
   where
@@ -850,8 +772,8 @@ readPackageIndexCacheFile :: Package pkg
 readPackageIndexCacheFile verbosity mkPkg index idxState
     | localNoIndex index = do
         cache0 <- readNoIndexCache verbosity index
-        (pkgs, prefs) <- packageNoIndexFromCache verbosity mkPkg cache0
-        pure (pkgs, prefs, emptyStateInfo)
+        pkgs   <- packageNoIndexFromCache verbosity mkPkg cache0
+        pure (pkgs, [], emptyStateInfo)
 
     | otherwise = do
         cache0   <- readIndexCache verbosity index
@@ -876,22 +798,15 @@ packageNoIndexFromCache
     => Verbosity
     -> (PackageEntry -> pkg)
     -> NoIndexCache
-    -> IO (PackageIndex pkg, [Dependency])
-packageNoIndexFromCache _verbosity mkPkg cache = do
-    let (pkgs, prefs) = packageListFromNoIndexCache
-    pkgIndex <- evaluate $ PackageIndex.fromList pkgs
-    pure (pkgIndex, prefs)
+    -> IO (PackageIndex pkg)
+packageNoIndexFromCache _verbosity mkPkg cache =
+     evaluate $ PackageIndex.fromList pkgs
   where
-    packageListFromNoIndexCache :: ([pkg], [Dependency])
-    packageListFromNoIndexCache = foldr go mempty (noIndexCacheEntries cache)
-
-    go :: NoIndexCacheEntry -> ([pkg], [Dependency]) -> ([pkg], [Dependency])
-    go (CacheGPD gpd bs) (pkgs, prefs) =
-        let pkgId = package $ Distribution.PackageDescription.packageDescription gpd
-        in (mkPkg (NormalPackage pkgId gpd (BS.fromStrict bs) 0) : pkgs, prefs)
-    go (NoIndexCachePreference deps) (pkgs, prefs) =
-        (pkgs, deps ++ prefs)
-
+    pkgs =
+        [ mkPkg $ NormalPackage pkgId gpd (BS.fromStrict bs) 0
+        | CacheGPD gpd bs <- noIndexCacheEntries cache
+        , let pkgId = package $ Distribution.PackageDescription.packageDescription gpd
+        ]
 
 -- | Read package list
 --
@@ -1137,7 +1052,6 @@ data IndexCacheEntry
 
 data NoIndexCacheEntry
     = CacheGPD GenericPackageDescription !BSS.ByteString
-    | NoIndexCachePreference [Dependency]
   deriving (Eq,Show,Generic)
 
 instance NFData IndexCacheEntry where
@@ -1147,7 +1061,6 @@ instance NFData IndexCacheEntry where
 
 instance NFData NoIndexCacheEntry where
     rnf (CacheGPD gpd bs) = rnf gpd `seq` rnf bs
-    rnf (NoIndexCachePreference dep) = rnf dep
 
 cacheEntryTimestamp :: IndexCacheEntry -> Timestamp
 cacheEntryTimestamp (CacheBuildTreeRef _ _)  = nullTimestamp
@@ -1167,25 +1080,13 @@ instance Structured NoIndexCache
 
 -- | We need to save only .cabal file contents
 instance Binary NoIndexCacheEntry where
-    put (CacheGPD _ bs) = do
-        put (0 :: Word8)
-        put bs
-    put (NoIndexCachePreference dep) = do
-        put (1 :: Word8)
-        put dep
+    put (CacheGPD _ bs) = put bs
 
     get = do
-        t :: Word8 <- get
-        case t of
-          0 -> do
-            bs <- get
-            case parseGenericPackageDescriptionMaybe bs of
-                Just gpd -> return (CacheGPD gpd bs)
-                Nothing  -> fail "Failed to parse GPD"
-          1 -> do
-            dep <- get
-            pure $ NoIndexCachePreference dep
-          _ -> fail "Failed to parse NoIndexCacheEntry"
+        bs <- get
+        case parseGenericPackageDescriptionMaybe bs of
+            Just gpd -> return (CacheGPD gpd bs)
+            Nothing  -> fail "Failed to parse GPD"
 
 instance Structured NoIndexCacheEntry where
     structure = nominalStructure

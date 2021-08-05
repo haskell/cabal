@@ -46,7 +46,7 @@ import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, warn, die', info, notice
+         ( wrapText, warn, die', ordNub, info, notice
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
@@ -101,6 +101,7 @@ import Language.Haskell.Extension
          ( Language(..) )
 
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.Parsec as P
 import System.Directory
@@ -610,7 +611,7 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
     "The run command is for running a single executable at once. The targets "
  ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- uniqueTargetSelectors selectorMap ]
+                       | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
  ++ " refer to different executables."
 
 renderRunProblem (TargetProblemComponentNotExe pkgid cname) =

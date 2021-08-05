@@ -130,7 +130,6 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Ord
          ( Down(..) )
 import qualified Data.Map as Map
-import qualified Data.List.NonEmpty as NE
 import Distribution.Utils.NubList
          ( fromNubList )
 import Network.URI (URI)
@@ -484,7 +483,7 @@ partitionToKnownTargetsAndHackagePackages
   -> SourcePackageDb
   -> ElaboratedInstallPlan
   -> [TargetSelector]
-  -> IO (TargetsMap, [PackageName])
+  -> IO (Map UnitId [(ComponentTarget,[TargetSelector])], [PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets = resolveTargets
         selectPackageTargets
@@ -694,7 +693,7 @@ warnIfNoExes verbosity buildCtx =
   where
     targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
-    selectors  = concatMap (NE.toList . snd) targets
+    selectors  = concatMap snd targets
     noExes     = null $ catMaybes $ exeMaybe <$> components
 
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
@@ -758,7 +757,7 @@ installUnitExes
   -> FilePath
   -> InstallMethod
   -> ( UnitId
-     , [(ComponentTarget, NonEmpty TargetSelector)] )
+     , [(ComponentTarget, [TargetSelector])] )
   -> IO ()
 installUnitExes verbosity overwritePolicy
                 mkSourceBinDir mkExeName mkFinalExeName
@@ -832,12 +831,12 @@ installBuiltExe verbosity overwritePolicy
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
-    hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
+    hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
     hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _                                   = False
 
     go :: UnitId
-       -> [(ComponentTarget, NonEmpty TargetSelector)]
+       -> [(ComponentTarget, [TargetSelector])]
        -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

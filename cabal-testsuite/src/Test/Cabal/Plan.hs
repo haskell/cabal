@@ -3,7 +3,6 @@
 -- | Utilities for understanding @plan.json@.
 module Test.Cabal.Plan (
     Plan,
-    DistDirOrBinFile(..),
     planDistDir,
 ) where
 
@@ -21,7 +20,7 @@ data Plan = Plan { planInstallPlan :: [InstallItem] }
 
 data InstallItem
     = APreExisting
-    | AConfiguredGlobal ConfiguredGlobal
+    | AConfiguredGlobal
     | AConfiguredInplace ConfiguredInplace
 
 -- local or inplace package
@@ -29,11 +28,6 @@ data ConfiguredInplace = ConfiguredInplace
     { configuredInplaceDistDir       :: FilePath
     , configuredInplacePackageName   :: PackageName
     , configuredInplaceComponentName :: Maybe ComponentName }
-
-data ConfiguredGlobal = ConfiguredGlobal
-    { configuredGlobalBinFile       :: Maybe FilePath
-    , configuredGlobalPackageName   :: PackageName
-    , configuredGlobalComponentName :: Maybe ComponentName }
 
 instance FromJSON Plan where
     parseJSON (Object v) = fmap Plan (v .: "install-plan")
@@ -47,7 +41,7 @@ instance FromJSON InstallItem where
             "configured"   -> do
                 s <- v .: "style"
                 case s :: String of
-                  "global"  -> AConfiguredGlobal `fmap` parseJSON obj
+                  "global"  -> return AConfiguredGlobal
                   "inplace" -> AConfiguredInplace `fmap` parseJSON obj
                   "local"   -> AConfiguredInplace `fmap` parseJSON obj
                   _         -> fail $ "unrecognized value of 'style' field: " ++ s
@@ -62,14 +56,6 @@ instance FromJSON ConfiguredInplace where
         return (ConfiguredInplace dist_dir pkg_name component_name)
     parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
-instance FromJSON ConfiguredGlobal where
-    parseJSON (Object v) = do
-        bin_file <- v .:? "bin-file"
-        pkg_name <- v .: "pkg-name"
-        component_name <- v .:? "component-name"
-        return (ConfiguredGlobal bin_file pkg_name component_name)
-    parseJSON invalid = typeMismatch "ConfiguredGlobal" invalid
-
 instance FromJSON PackageName where
     parseJSON (String t) = return (mkPackageName (Text.unpack t))
     parseJSON invalid = typeMismatch "PackageName" invalid
@@ -82,30 +68,21 @@ instance FromJSON ComponentName where
       where s = Text.unpack t
     parseJSON invalid = typeMismatch "ComponentName" invalid
 
-data DistDirOrBinFile = DistDir FilePath | BinFile FilePath
-
-planDistDir :: Plan -> PackageName -> ComponentName -> DistDirOrBinFile
+planDistDir :: Plan -> PackageName -> ComponentName -> FilePath
 planDistDir plan pkg_name cname =
     case concatMap p (planInstallPlan plan) of
         [x] -> x
         []  -> error $ "planDistDir: component " ++ prettyShow cname
                     ++ " of package " ++ prettyShow pkg_name ++ " either does not"
-                    ++ " exist in the install plan or does not have a dist-dir nor bin-file"
+                    ++ " exist in the install plan or does not have a dist-dir"
         _   -> error $ "planDistDir: found multiple copies of component " ++ prettyShow cname
                     ++ " of package " ++ prettyShow pkg_name ++ " in install plan"
   where
     p APreExisting      = []
-    p (AConfiguredGlobal conf) = do
-        guard (configuredGlobalPackageName conf == pkg_name)
-        guard $ case configuredGlobalComponentName conf of
-                    Nothing     -> True
-                    Just cname' -> cname == cname'
-        case configuredGlobalBinFile conf of
-            Nothing -> []
-            Just bin_file -> return $ BinFile bin_file
+    p AConfiguredGlobal = []
     p (AConfiguredInplace conf) = do
         guard (configuredInplacePackageName conf == pkg_name)
         guard $ case configuredInplaceComponentName conf of
                     Nothing     -> True
                     Just cname' -> cname == cname'
-        return $ DistDir $ configuredInplaceDistDir conf
+        return (configuredInplaceDistDir conf)

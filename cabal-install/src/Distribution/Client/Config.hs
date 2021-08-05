@@ -264,7 +264,6 @@ instance Semigroup SavedConfig where
         IT.email               = combine IT.email,
         IT.exposedModules      = combineMonoid savedInitFlags IT.exposedModules,
         IT.extraSrc            = combineMonoid savedInitFlags IT.extraSrc,
-        IT.extraDoc            = combineMonoid savedInitFlags IT.extraDoc,
         IT.homepage            = combine IT.homepage,
         IT.initHcPath          = combine IT.initHcPath,
         IT.initVerbosity       = combine IT.initVerbosity,
@@ -419,8 +418,6 @@ instance Semigroup SavedConfig where
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,
-        configAppend        = combine configAppend,
-        configBackup        = combine configBackup,
         -- TODO: NubListify
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
@@ -844,8 +841,8 @@ commentSavedConfig = do
             IT.cabalVersion    = toFlag IT.defaultCabalVersion,
             IT.language        = toFlag Haskell2010,
             IT.license         = NoFlag,
-            IT.sourceDirs      = Flag [IT.defaultSourceDir],
-            IT.applicationDirs = Flag [IT.defaultApplicationDir]
+            IT.sourceDirs      = Just [IT.defaultSourceDir],
+            IT.applicationDirs = Just [IT.defaultApplicationDir]
             },
         savedInstallFlags      = defaultInstallFlags,
         savedClientInstallFlags= defaultClientInstallFlags,
