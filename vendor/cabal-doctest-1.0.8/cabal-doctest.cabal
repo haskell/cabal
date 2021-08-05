@@ -22,7 +22,7 @@ extra-source-files:
   ChangeLog.md
   README.md
 
-tested-with:        GHC ==8.10.1 || >=7.4 && <8.10 || ==7.2.2 || ==7.0.4
+tested-with:        GHC ==8.10.4 || >=7.4 && <8.10 || ==7.2.2 || ==7.0.4
 
 source-repository head
   type:     git
@@ -34,7 +34,7 @@ library
   other-extensions:
   build-depends:
       base       >=4.3  && <4.16
-    , Cabal      >=1.10 && <3.7
+    , Cabal      >=1.10 && <3.8
     , directory
     , filepath
 

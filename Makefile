@@ -170,11 +170,11 @@ validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
-validate-via-docker-all : validate-via-docker-8.8.3
-validate-via-docker-all : validate-via-docker-8.10.1
+validate-via-docker-all : validate-via-docker-8.8.4
+validate-via-docker-all : validate-via-docker-8.10.4
 
-validate-dockerfiles : .docker/validate-8.10.1.dockerfile
-validate-dockerfiles : .docker/validate-8.8.3.dockerfile
+validate-dockerfiles : .docker/validate-8.10.4.dockerfile
+validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
@@ -211,11 +211,11 @@ validate-via-docker-8.4.4:
 validate-via-docker-8.6.5:
 	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
-validate-via-docker-8.8.3:
-	docker build $(DOCKERARGS) -t cabal-validate:8.8.3 -f .docker/validate-8.8.3.dockerfile .
+validate-via-docker-8.8.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.8.4 -f .docker/validate-8.8.4.dockerfile .
 
-validate-via-docker-8.10.1:
-	docker build $(DOCKERARGS) -t cabal-validate:8.10.1 -f .docker/validate-8.10.1.dockerfile .
+validate-via-docker-8.10.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.10.4 -f .docker/validate-8.10.4.dockerfile .
 
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
@@ -237,17 +237,17 @@ bootstrap-plans-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.3  --dry-run cabal-install:exe:cabal
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.3.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.1 --dry-run cabal-install:exe:cabal
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.1.plan.json
 
 bootstrap-jsons-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
 	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python -m json.tool | tee bootstrap/linux-8.6.5.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.3.plan.json  | python -m json.tool | tee bootstrap/linux-8.8.3.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.1.plan.json | python -m json.tool | tee bootstrap/linux-8.10.1.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.3.plan.json  | python -m json.tool | tee bootstrap/linux-8.8.4.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.1.plan.json | python -m json.tool | tee bootstrap/linux-8.10.4.json
 
 # documentation
 ##############################################################################
