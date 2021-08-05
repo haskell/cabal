@@ -715,6 +715,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
+                ("PATH_SEPARATOR", Just ";") :
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
