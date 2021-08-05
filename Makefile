@@ -151,11 +151,11 @@ validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
-validate-via-docker-all : validate-via-docker-8.8.3
-validate-via-docker-all : validate-via-docker-8.10.1
+validate-via-docker-all : validate-via-docker-8.8.4
+validate-via-docker-all : validate-via-docker-8.10.4
 
-validate-dockerfiles : .docker/validate-8.10.1.dockerfile
-validate-dockerfiles : .docker/validate-8.8.3.dockerfile
+validate-dockerfiles : .docker/validate-8.10.4.dockerfile
+validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
@@ -192,11 +192,11 @@ validate-via-docker-8.4.4:
 validate-via-docker-8.6.5:
 	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
-validate-via-docker-8.8.3:
-	docker build $(DOCKERARGS) -t cabal-validate:8.8.3 -f .docker/validate-8.8.3.dockerfile .
+validate-via-docker-8.8.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.8.4 -f .docker/validate-8.8.4.dockerfile .
 
-validate-via-docker-8.10.1:
-	docker build $(DOCKERARGS) -t cabal-validate:8.10.1 -f .docker/validate-8.10.1.dockerfile .
+validate-via-docker-8.10.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.10.4 -f .docker/validate-8.10.4.dockerfile .
 
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
