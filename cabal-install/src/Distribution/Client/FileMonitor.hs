@@ -61,7 +61,7 @@ import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
-import           Distribution.Utils.Structured (structuredDecodeOrFailIO, structuredEncode)
+import           Distribution.Utils.Structured (structuredEncode, structuredDecodeTriple)
 import           System.FilePath
 import           System.Directory
 import           System.IO
@@ -432,16 +432,18 @@ checkFileMonitorChanged
 
     handleDoesNotExist (MonitorChanged MonitorFirstRun) $
     handleErrorCall    (MonitorChanged MonitorCorruptCache) $
-          readCacheFile monitor
-      >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))
-                 checkStatusCache
+    withCacheFile monitor $
+        either (\_ -> return (MonitorChanged MonitorCorruptCache))
+               checkStatusCache
 
   where
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
           Just reason -> return (MonitorChanged reason)
-          Nothing     -> return (MonitorUnchanged cachedResult monitorFiles)
+          Nothing     -> case cachedResult of
+                            Left _ -> pure (MonitorChanged MonitorCorruptCache)
+                            Right cr -> return (MonitorUnchanged cr monitorFiles)
             where monitorFiles = reconstructMonitorFilePaths cachedFileStatus
       where
         -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
@@ -486,21 +488,25 @@ checkFileMonitorChanged
 
           -- But we might still want to update the cache
           whenCacheChanged cacheStatus $
-            rewriteCacheFile monitor cachedFileStatus' cachedKey cachedResult
+            case cachedResult of
+              Left _ -> pure ()
+              Right cr -> rewriteCacheFile monitor cachedFileStatus' cachedKey cr
 
           return Nothing
+
 
 -- | Helper for reading the cache file.
 --
 -- This determines the type and format of the binary cache file.
 --
-readCacheFile :: (Binary a, Structured a, Binary b, Structured b)
-              => FileMonitor a b
-              -> IO (Either String (MonitorStateFileSet, a, b))
-readCacheFile FileMonitor {fileMonitorCacheFile} =
+withCacheFile :: (Binary a, Structured a, Binary b, Structured b)
+               => FileMonitor a b
+               -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
+               -> IO r
+withCacheFile (FileMonitor {fileMonitorCacheFile}) k =
     withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
-        contents <- BS.hGetContents hnd
-        structuredDecodeOrFailIO contents
+        contents <- structuredDecodeTriple <$> BS.hGetContents hnd
+        k contents
 
 -- | Helper for writing the cache file.
 --
@@ -983,8 +989,8 @@ readCacheFileHashes :: (Binary a, Structured a, Binary b, Structured b)
                     => FileMonitor a b -> IO FileHashCache
 readCacheFileHashes monitor =
     handleDoesNotExist Map.empty $
-    handleErrorCall    Map.empty $ do
-      res <- readCacheFile monitor
+    handleErrorCall    Map.empty $
+    withCacheFile monitor $ \res ->
       case res of
         Left _             -> return Map.empty
         Right (msfs, _, _) -> return (mkFileHashCache msfs)
@@ -1127,4 +1133,3 @@ handleIOException e =
 ------------------------------------------------------------------------------
 -- Instances
 --
-

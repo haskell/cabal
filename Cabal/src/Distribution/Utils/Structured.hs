@@ -53,6 +53,7 @@ module Distribution.Utils.Structured (
     structuredDecode,
     structuredDecodeOrFailIO,
     structuredDecodeFileOrFail,
+    structuredDecodeTriple,
     -- * Structured class
     Structured (structure),
     MD5,
@@ -101,6 +102,7 @@ import qualified Data.Text                    as T
 import qualified Data.Text.Lazy               as LT
 import qualified Data.Time                    as Time
 import qualified Distribution.Compat.Binary   as Binary
+import Data.Binary.Get (runGetOrFail)
 
 #ifdef MIN_VERSION_aeson
 import qualified Data.Aeson as Aeson
@@ -207,7 +209,7 @@ structureBuilder s0 = State.evalState (go s0) Map.empty where
             Nothing -> return $ mconcat [ Builder.word8 0, Builder.stringUtf8 (show t) ]
             Just acc' -> do
                 State.put acc'
-                k 
+                k
 
     goSop :: SopStructure -> State.State (Map.Map String (NonEmpty TypeRep)) Builder.Builder
     goSop sop = do
@@ -291,6 +293,24 @@ structuredDecodeOrFailIO bs =
 #else
     handler (ErrorCall str) = return $ Left str
 #endif
+
+structuredDecodeTriple
+  :: forall a b c. (Structured (a,b,c), Binary.Binary a, Binary.Binary b, Binary.Binary c)
+  => LBS.ByteString -> Either String (a, b, Either String c)
+structuredDecodeTriple lbs =
+  let partialDecode =
+           (`runGetOrFail` lbs) $ do
+              (_ :: Tag (a,b,c)) <- Binary.get
+              (a :: a) <- Binary.get
+              (b :: b) <- Binary.get
+              pure (a, b)
+      cleanEither (Left (_, pos, msg)) = Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+      cleanEither (Right (_,_,v))     = Right v
+
+  in case partialDecode of
+       Left (_, pos, msg) ->  Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+       Right (lbs', _, (x,y)) -> Right (x, y, cleanEither $ runGetOrFail (Binary.get :: Binary.Get c) lbs')
+
 
 -- | Lazily reconstruct a value previously written to a file.
 structuredDecodeFileOrFail :: (Binary.Binary a, Structured a) => FilePath -> IO (Either String a)
