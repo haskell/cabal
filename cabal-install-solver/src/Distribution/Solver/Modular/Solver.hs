@@ -110,8 +110,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   traceTree "semivalidated.json" id .
   validationCata    .
   traceTree "pruned.json" id .
-  trav prunePhase   $
-  traceTree "build.json" id .
+  trav prunePhase   .
+  traceTree "build.json" id $
   buildPhase
   where
     explorePhase     = backjumpAndExplore (maxBackjumps sc)
