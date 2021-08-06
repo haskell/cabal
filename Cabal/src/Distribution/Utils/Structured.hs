@@ -294,6 +294,10 @@ structuredDecodeOrFailIO bs =
     handler (ErrorCall str) = return $ Left str
 #endif
 
+-- | Lazily decode a triple, parsing the first two fields strictly and returning a lazy value containing either the last one or an error.
+-- This is helpful for cabal cache files where the first two components contain header data that lets one test if the cache is still valid,
+-- and the last (potentially large) component is the cached value itself. This way we can test for cache validity without needing to pay the cost
+-- of the decode of stale cache data.
 structuredDecodeTriple
   :: forall a b c. (Structured (a,b,c), Binary.Binary a, Binary.Binary b, Binary.Binary c)
   => LBS.ByteString -> Either String (a, b, Either String c)
