@@ -225,9 +225,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           , "subdir"   J..= fmap J.String srpSubdir
           ]
 
+      dist_dir :: FilePath
       dist_dir = distBuildDirectory distDirLayout
                     (elabDistDirParams elaboratedSharedConfig elab)
 
+      bin_file :: ComponentDeps.Component -> [J.Pair]
       bin_file c = case c of
         ComponentDeps.ComponentExe s   -> bin_file' s
         ComponentDeps.ComponentTest s  -> bin_file' s
@@ -241,6 +243,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
+      flib_file' :: (Pretty a, Show a) => a -> [J.Pair]
       flib_file' s =
         ["bin-file" J..= J.String bin]
        where
@@ -580,6 +583,8 @@ postBuildProjectStatus plan previousPackagesUpToDate
                 InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                 InstallPlan.Installed  srcpkg -> elabLibDeps srcpkg
         ]
+
+    elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
     elabLibDeps = map (newSimpleUnitId . confInstId) . elabLibDependencies
 
     -- Was a build was attempted for this package?
@@ -599,11 +604,13 @@ postBuildProjectStatus plan previousPackagesUpToDate
     buildAttempted _ (Left BuildFailure {}) = True
     buildAttempted _ (Right _)              = True
 
+    lookupBuildStatusRequiresBuild :: Bool -> UnitId -> Bool
     lookupBuildStatusRequiresBuild def ipkgid =
       case Map.lookup ipkgid pkgBuildStatus of
         Nothing          -> def -- Not in the plan subset we did the dry-run on
         Just buildStatus -> buildStatusRequiresBuild buildStatus
 
+    packagesBuildLocal :: Set UnitId
     packagesBuildLocal =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -611,6 +618,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _     -> False
           InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
+    packagesBuildInplace :: Set UnitId
     packagesBuildInplace =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -618,7 +626,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _     -> False
           InstallPlan.Configured srcpkg -> elabBuildStyle srcpkg
                                         == BuildInplaceOnly
-
+    packagesAlreadyInStore :: Set UnitId
     packagesAlreadyInStore =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -626,6 +634,10 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _ -> True
           InstallPlan.Configured  _ -> False
 
+    selectPlanPackageIdSet
+      :: (InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
+          -> Bool)
+      -> Set UnitId
     selectPlanPackageIdSet p = Map.keysSet
                              . Map.filter p
                              $ InstallPlan.toMap plan
@@ -902,6 +914,7 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
       ([], pkgs) -> checkSamePackageDBs pkgs
       (pkgs, _)  -> checkSamePackageDBs pkgs
   where
+    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStack
     checkSamePackageDBs pkgs =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
@@ -914,10 +927,13 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
         -- this feature, e.g. write out multiple env files, one for each
         -- compiler / project profile.
 
+    inplacePackages :: [ElaboratedConfiguredPackage]
     inplacePackages =
       [ srcpkg
       | srcpkg <- sourcePackages
       , elabBuildStyle srcpkg == BuildInplaceOnly ]
+
+    sourcePackages :: [ElaboratedConfiguredPackage]
     sourcePackages =
       [ srcpkg
       | pkg <- InstallPlan.toList elaboratedInstallPlan
