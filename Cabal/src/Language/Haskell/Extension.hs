@@ -22,6 +22,7 @@ module Language.Haskell.Extension (
         KnownExtension(..),
         deprecatedExtensions,
         classifyExtension,
+        knownExtensions
   ) where
 
 import qualified Prelude (head)
@@ -931,3 +932,6 @@ knownExtensionTable =
     [ (Prelude.head str, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
     | extension <- [toEnum 0 ..]
     , let str = show extension ]
+
+knownExtensions :: [KnownExtension]
+knownExtensions = [minBound .. maxBound]
