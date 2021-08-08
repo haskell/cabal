@@ -441,7 +441,7 @@ checkFileMonitorChanged
                checkStatusCache
 
   where
-    checkStatusCache :: (MonitorStateFileSet, a, b) -> IO (MonitorChanged a b)
+    checkStatusCache :: (MonitorStateFileSet, a, Either String b) -> IO (MonitorChanged a b)
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
@@ -483,7 +483,7 @@ checkFileMonitorChanged
       = return Nothing
 
     -- Check if any file has changed
-    checkFileChange :: MonitorStateFileSet -> a -> b -> IO (Maybe (MonitorChangedReason a))
+    checkFileChange :: MonitorStateFileSet -> a -> Either String b -> IO (Maybe (MonitorChangedReason a))
     checkFileChange cachedFileStatus cachedKey cachedResult = do
       res <- probeFileSystem root cachedFileStatus
       case res of
