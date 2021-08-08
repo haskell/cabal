@@ -371,7 +371,7 @@ progressMessage verbosity phase subject = do
 -- TODO: write a test around this. Don't abuse Paths_cabal_install.
 --
 cabalInstallVersion :: Version
-cabalInstallVersion = mkVersion [3,5]
+cabalInstallVersion = mkVersion [3,6]
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

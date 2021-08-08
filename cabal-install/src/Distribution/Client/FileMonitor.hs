@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | An abstraction to help with re-running actions when files or other
 -- input values they depend on have changed.
@@ -282,12 +283,13 @@ instance Structured MonitorStateGlobRel
 --
 reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-    map getSinglePath singlePaths
- ++ map getGlobPath globPaths
+  map getSinglePath singlePaths ++ map getGlobPath globPaths
   where
+    getSinglePath :: MonitorStateFile -> MonitorFilePath
     getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
       MonitorFile kindfile kinddir filepath
 
+    getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $ FilePathGlob root $
         case gstate of
@@ -418,7 +420,7 @@ data MonitorChangedReason a =
 -- See 'FileMonitor' for a full explanation.
 --
 checkFileMonitorChanged
-  :: (Binary a, Structured a, Binary b, Structured b)
+  :: forall a b. (Binary a, Structured a, Binary b, Structured b)
   => FileMonitor a b            -- ^ cache file path
   -> FilePath                   -- ^ root directory
   -> a                          -- ^ guard or key value
@@ -439,6 +441,7 @@ checkFileMonitorChanged
                checkStatusCache
 
   where
+    checkStatusCache :: (MonitorStateFileSet, a, b) -> IO (MonitorChanged a b)
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
@@ -452,6 +455,7 @@ checkFileMonitorChanged
         -- if we return MonitoredValueChanged that only the value changed.
         -- We do that by checkin for file changes first. Otherwise it makes
         -- more sense to do the cheaper test first.
+        checkForChanges :: IO (Maybe (MonitorChangedReason a))
         checkForChanges
           | fileMonitorCheckIfOnlyValueChanged
           = checkFileChange cachedFileStatus cachedKey cachedResult
@@ -463,7 +467,7 @@ checkFileMonitorChanged
               `mplusMaybeT`
             checkFileChange cachedFileStatus cachedKey cachedResult
 
-    mplusMaybeT :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+    mplusMaybeT :: Monad m => m (Maybe a1) -> m (Maybe a1) -> m (Maybe a1)
     mplusMaybeT ma mb = do
       mx <- ma
       case mx of
@@ -471,6 +475,7 @@ checkFileMonitorChanged
         Just x  -> return (Just x)
 
     -- Check if the guard value has changed
+    checkValueChange :: a -> IO (Maybe (MonitorChangedReason a))
     checkValueChange cachedKey
       | not (fileMonitorKeyValid currentKey cachedKey)
       = return (Just (MonitoredValueChanged cachedKey))
@@ -478,6 +483,7 @@ checkFileMonitorChanged
       = return Nothing
 
     -- Check if any file has changed
+    checkFileChange :: MonitorStateFileSet -> a -> b -> IO (Maybe (MonitorChangedReason a))
     checkFileChange cachedFileStatus cachedKey cachedResult = do
       res <- probeFileSystem root cachedFileStatus
       case res of
@@ -1024,16 +1030,19 @@ readCacheFileHashes monitor =
                     collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
+    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
     collectAllFileHashes singlePaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateFile _ _ fpath
                        (MonitorStateFileHashed mtime hash) <- singlePaths ]
 
+    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
     collectAllGlobHashes globPaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateGlob _ _ _ gstate <- globPaths
                    , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate ]
 
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Hash))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res
       | (subdir, fstate) <- entries
