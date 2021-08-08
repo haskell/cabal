@@ -104,6 +104,10 @@ mkBuildInfo wdir pkg_descr lbi _flags targetsToBuild = (warnings, JsonObject bui
 
 -- | A variant of 'mkBuildInfo' if you need to call 'mkCompilerInfo' and
 -- 'mkComponentInfo' yourself.
+--
+-- If you change the format or any name in the output json, don't forget to update
+-- the schema at @\/doc\/json-schemas\/build-info.schema.json@ and the docs of
+-- @--enable-build-info@\/@--disable-build-info@.
 mkBuildInfo'
   :: Json   -- ^ The 'Json' from 'mkCompilerInfo'
   -> [Json] -- ^ The 'Json' from 'mkComponentInfo'

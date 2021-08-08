@@ -1432,6 +1432,32 @@ Advanced global configuration options
     the ``-package-env -`` option that allows ignoring the package
     environment files).
 
+.. cfg-field:: build-info: True, False
+               --enable-build-info
+               --disable-build-info
+    :synopsis: Whether build information for each individual component should be
+               written in a machine readable format.
+
+    :default: ``False``
+
+    Enable generation of build information for Cabal components. Contains very
+    detailed information on how to build an individual component, such as
+    compiler version, modules of a component and how to compile the component.
+
+    The output format is in json, and the exact location can be discovered from
+    ``plan.json``, where it is identified by ``build-info`` within the items in
+    the ``install-plan``.
+    Note, that this field in ``plan.json`` can be ``null``, if and only if
+    ``build-type: Custom`` is set, and the ``Cabal`` version is too
+    old (i.e. ``< 3.7``).
+    If the field is missing entirely, the component is not a local one, thus,
+    no ``build-info`` exists for that particular component within the
+    ``install-plan``.
+
+    .. note::
+        The format and fields of the generated build information is currently experimental,
+        in the future we might add or remove fields, depending on the needs of other tooling.
+
 
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
