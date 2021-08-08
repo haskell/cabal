@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
-             NamedFieldPuns, BangPatterns #-}
+             NamedFieldPuns, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | An abstraction to help with re-running actions when files or other
@@ -44,8 +44,10 @@ module Distribution.Client.FileMonitor (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import qualified Distribution.Compat.Binary as Binary
 
 import qualified Data.Map.Strict as Map
+import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Hashable as Hashable
 
@@ -61,7 +63,7 @@ import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
-import           Distribution.Utils.Structured (structuredEncode, structuredDecodeTriple)
+import           Distribution.Utils.Structured (structuredEncode, Tag (..))
 import           System.FilePath
 import           System.Directory
 import           System.IO
@@ -494,6 +496,28 @@ checkFileMonitorChanged
 
           return Nothing
 
+
+
+-- | Lazily decode a triple, parsing the first two fields strictly and returning a lazy value containing either the last one or an error.
+-- This is helpful for cabal cache files where the first two components contain header data that lets one test if the cache is still valid,
+-- and the last (potentially large) component is the cached value itself. This way we can test for cache validity without needing to pay the cost
+-- of the decode of stale cache data. This lives here rather than Distribution.Utils.Structured because it depends on a newer version of binary than supported in the Cabal library proper.
+structuredDecodeTriple
+  :: forall a b c. (Structured a, Structured b, Structured c, Binary.Binary a, Binary.Binary b, Binary.Binary c)
+  => BS.ByteString -> Either String (a, b, Either String c)
+structuredDecodeTriple lbs =
+  let partialDecode =
+           (`runGetOrFail` lbs) $ do
+              (_ :: Tag (a,b,c)) <- Binary.get
+              (a :: a) <- Binary.get
+              (b :: b) <- Binary.get
+              pure (a, b)
+      cleanEither (Left (_, pos, msg)) = Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+      cleanEither (Right (_,_,v))     = Right v
+
+  in case partialDecode of
+       Left (_, pos, msg) ->  Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+       Right (lbs', _, (x,y)) -> Right (x, y, cleanEither $ runGetOrFail (Binary.get :: Binary.Get c) lbs')
 
 -- | Helper for reading the cache file.
 --
