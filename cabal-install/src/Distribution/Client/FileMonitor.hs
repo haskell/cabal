@@ -502,22 +502,25 @@ checkFileMonitorChanged
 
           return Nothing
 
-
-
--- | Lazily decode a triple, parsing the first two fields strictly and returning a lazy value containing either the last one or an error.
--- This is helpful for cabal cache files where the first two components contain header data that lets one test if the cache is still valid,
--- and the last (potentially large) component is the cached value itself. This way we can test for cache validity without needing to pay the cost
--- of the decode of stale cache data. This lives here rather than Distribution.Utils.Structured because it depends on a newer version of binary than supported in the Cabal library proper.
+-- | Lazily decode a triple, parsing the first two fields strictly and
+-- returning a lazy value containing either the last one or an error.
+-- This is helpful for cabal cache files where the first two components
+-- contain header data that lets one test if the cache is still valid,
+-- and the last (potentially large) component is the cached value itself.
+-- This way we can test for cache validity without needing to pay the
+-- cost of the decode of stale cache data. This lives here rather than
+-- Distribution.Utils.Structured because it depends on a newer version of
+-- binary than supported in the Cabal library proper.
 structuredDecodeTriple
   :: forall a b c. (Structured a, Structured b, Structured c, Binary.Binary a, Binary.Binary b, Binary.Binary c)
   => BS.ByteString -> Either String (a, b, Either String c)
 structuredDecodeTriple lbs =
   let partialDecode =
-           (`runGetOrFail` lbs) $ do
-              (_ :: Tag (a,b,c)) <- Binary.get
-              (a :: a) <- Binary.get
-              (b :: b) <- Binary.get
-              pure (a, b)
+         (`runGetOrFail` lbs) $ do
+            (_ :: Tag (a,b,c)) <- Binary.get
+            (a :: a) <- Binary.get
+            (b :: b) <- Binary.get
+            pure (a, b)
       cleanEither (Left (_, pos, msg)) = Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
       cleanEither (Right (_,_,v))     = Right v
 
@@ -530,9 +533,9 @@ structuredDecodeTriple lbs =
 -- This determines the type and format of the binary cache file.
 --
 withCacheFile :: (Binary a, Structured a, Binary b, Structured b)
-               => FileMonitor a b
-               -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
-               -> IO r
+              => FileMonitor a b
+              -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
+              -> IO r
 withCacheFile (FileMonitor {fileMonitorCacheFile}) k =
     withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
         contents <- structuredDecodeTriple <$> BS.hGetContents hnd
