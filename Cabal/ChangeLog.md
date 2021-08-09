@@ -1,3 +1,9 @@
+# 3.6.0.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) August 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.0.0.md
+
+# 3.4.0.0 [Oleg Grenrus](mailgo:oleg.grnerus@iki.fi) February 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.4.0.0.md
+
 # 3.2.0.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
   * Change free text `String` fields to use `ShortText` in package description
     and installed package info.

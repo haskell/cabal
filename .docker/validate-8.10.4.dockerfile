@@ -1,4 +1,4 @@
-FROM    phadej/ghc:8.10.1-bionic
+FROM    phadej/ghc:8.10.4-bionic
 
 # Install cabal-plan
 RUN     mkdir -p /root/.cabal/bin && \
@@ -24,7 +24,7 @@ RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
-RUN     cabal v2-install -w ghc-8.10.1 --lib \
+RUN     cabal v2-install -w ghc-8.10.4 --lib \
           Cabal \
           aeson \
           async \
@@ -73,4 +73,4 @@ RUN     cabal v2-install -w ghc-8.10.1 --lib \
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh  -w ghc-8.10.1 -v
+RUN     sh ./validate.sh  -w ghc-8.10.4 -v
