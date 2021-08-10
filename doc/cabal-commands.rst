@@ -308,6 +308,8 @@ by using ``--install-method`` flag:
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
 
+.. _adding-libraries:
+
 Adding libraries to GHC package environments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
