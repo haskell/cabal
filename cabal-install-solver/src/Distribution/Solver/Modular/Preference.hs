@@ -2,7 +2,7 @@
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
-    , deferSetupChoices
+    , deferSetupExeChoices
     , deferWeakFlagChoices
     , enforceManualFlags
     , enforcePackageConstraints
@@ -407,17 +407,18 @@ preferBaseGoalChoice = trav go
     isBase (Goal (P (Q _pp pn)) _) = unPN pn == "base"
     isBase _                       = False
 
--- | Deal with setup dependencies after regular dependencies, so that we can
--- will link setup dependencies against package dependencies when possible
-deferSetupChoices :: Tree d c -> Tree d c
-deferSetupChoices = trav go
+-- | Deal with setup and build-tool-depends dependencies after regular dependencies,
+-- so we will link setup/exe dependencies against package dependenc ies when possible
+deferSetupExeChoices :: Tree d c -> Tree d c
+deferSetupExeChoices = trav go
   where
-    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetup xs)
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetupOrExe xs)
     go x                    = x
 
-    noSetup :: Goal QPN -> Bool
-    noSetup (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetup _                                                  = True
+    noSetupOrExe :: Goal QPN -> Bool
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
