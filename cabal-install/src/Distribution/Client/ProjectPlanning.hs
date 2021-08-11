@@ -1024,7 +1024,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
             | (pc, src) <- solverSettingConstraints ]
 
       . addPreferences
-          -- enable stanza preference unilaterally, even when the user asked to enable as well, to help hint the solver.
+          -- enable stanza preference unilaterally, regardless if the user asked
+          -- accordingly or expressed no preference, to help hint the solver
           [ PackageStanzasPreference pkgname stanzas
           | pkg <- localPackages
           , let pkgname = pkgSpecifierTarget pkg
