@@ -408,7 +408,7 @@ preferBaseGoalChoice = trav go
     isBase _                       = False
 
 -- | Deal with setup and build-tool-depends dependencies after regular dependencies,
--- so we will link setup/exe dependencies against package dependenc ies when possible
+-- so we will link setup/exe dependencies against package dependencies when possible
 deferSetupExeChoices :: Tree d c -> Tree d c
 deferSetupExeChoices = trav go
   where
