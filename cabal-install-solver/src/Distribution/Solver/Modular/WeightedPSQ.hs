@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 module Distribution.Solver.Modular.WeightedPSQ (
     WeightedPSQ
   , fromList
@@ -11,6 +12,7 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , lookup
   , mapWithKey
   , mapWeightsWithKey
+  , traverseWithKey
   , union
   , takeUntil
   ) where
@@ -71,6 +73,15 @@ mapWeightsWithKey f (WeightedPSQ xs) = fromList $
 mapWithKey :: (k -> v1 -> v2) -> WeightedPSQ w k v1 -> WeightedPSQ w k v2
 mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
                                 L.map (\ (w, k, v) -> (w, k, f k v)) xs
+
+-- | /O(N)/. Traverse and update values in some applicative functor.
+traverseWithKey
+  :: Applicative f
+  => (k -> v -> f v')
+  -> WeightedPSQ w k v
+  -> f (WeightedPSQ w k v')
+traverseWithKey f (WeightedPSQ q) = WeightedPSQ <$>
+  traverse (\(w,k,v) -> (w,k,) <$> f k v) q
 
 -- | /O((N + M) log (N + M))/. Combine two @WeightedPSQ@s, preserving all
 -- elements. Elements from the first @WeightedPSQ@ come before elements in the
