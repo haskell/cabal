@@ -216,23 +216,23 @@ information see the :ref:`common-stanzas` section.
 Building the package
 --------------------
 
-For simple packages that's it! We can now try configuring and building
-the package:
+For simple packages that's it! We can now try building the package,
+which also downloads and builds all required dependencies:
 
 .. code-block:: console
 
-    $ cabal configure
     $ cabal build
 
-Assuming those two steps worked then you can also install the package:
+If the package contains an executable, it can be installed:
 
 .. code-block:: console
 
     $ cabal install
 
-For libraries this makes them available for use in GHCi or to be used by
-other packages. For executables it installs the program so that you can
-run it (though you may first need to adjust your system's ``$PATH``).
+The executable program lands in a special directory for binaries
+that may or may not already be on your system's ``$PATH``.
+If it is, the executable can be run by typing its filename on commandline.
+For installing libraries see the :ref:`adding-libraries` section.
 
 Next steps
 ----------
