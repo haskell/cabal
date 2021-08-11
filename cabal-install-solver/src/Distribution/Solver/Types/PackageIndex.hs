@@ -50,11 +50,11 @@ module Distribution.Solver.Types.PackageIndex (
 import Prelude ()
 import Distribution.Solver.Compat.Prelude hiding (lookup)
 
-import Control.Exception (assert)
 import qualified Data.Map as Map
 import Data.List (isInfixOf)
 import qualified Data.List.NonEmpty as NE
 
+import Distribution.Client.Utils.Assertion ( expensiveAssert )
 import Distribution.Package
          ( PackageName, unPackageName, PackageIdentifier(..)
          , Package(..), packageName, packageVersion )
@@ -110,7 +110,7 @@ invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)
 --
 
 mkPackageIndex :: Package pkg => Map PackageName [pkg] -> PackageIndex pkg
-mkPackageIndex index = assert (invariant (PackageIndex index))
+mkPackageIndex index = expensiveAssert (invariant (PackageIndex index))
                                          (PackageIndex index)
 
 internalError :: String -> a
@@ -157,7 +157,7 @@ fromList pkgs = mkPackageIndex
 --
 merge :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
 merge i1@(PackageIndex m1) i2@(PackageIndex m2) =
-  assert (invariant i1 && invariant i2) $
+  expensiveAssert (invariant i1 && invariant i2) $
     mkPackageIndex (Map.unionWith mergeBuckets m1 m2)
 
 
@@ -178,7 +178,7 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
 --
 override :: Package pkg => PackageIndex pkg -> PackageIndex pkg -> PackageIndex pkg
 override i1@(PackageIndex m1) i2@(PackageIndex m2) =
-  assert (invariant i1 && invariant i2) $
+  expensiveAssert (invariant i1 && invariant i2) $
     mkPackageIndex (Map.unionWith (\_l r -> r) m1 m2)
 
 -- | Inserts a single package into the index.

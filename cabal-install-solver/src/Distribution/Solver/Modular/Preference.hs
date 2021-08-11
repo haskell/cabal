@@ -2,7 +2,7 @@
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
-    , deferSetupChoices
+    , deferSetupExeChoices
     , deferWeakFlagChoices
     , enforceManualFlags
     , enforcePackageConstraints
@@ -127,11 +127,18 @@ preferPackagePreferences pcs =
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
+-- Note that this works on packages lower in the path as well as at the top level.
+-- This is because stanza preferences apply to local packages only
+-- and for local packages, a single version is fixed, which means
+-- (for now) that all stanza preferences must be uniform at all levels.
+-- Further, even when we can have multiple versions of the same package,
+-- the build plan will be more efficient if we can attempt to keep
+-- stanza preferences aligned at all levels.
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (Q pp pn) s) rdm gr _tr ts)
-      | primaryPP pp && enableStanzaPref pn s =
+    go (SChoiceF qsn@(SN (Q _pp pn) s) rdm gr _tr ts)
+      | enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
           let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
               weight k = if k then 0 else 1
@@ -400,17 +407,18 @@ preferBaseGoalChoice = trav go
     isBase (Goal (P (Q _pp pn)) _) = unPN pn == "base"
     isBase _                       = False
 
--- | Deal with setup dependencies after regular dependencies, so that we can
--- will link setup dependencies against package dependencies when possible
-deferSetupChoices :: Tree d c -> Tree d c
-deferSetupChoices = trav go
+-- | Deal with setup and build-tool-depends dependencies after regular dependencies,
+-- so we will link setup/exe dependencies against package dependencies when possible
+deferSetupExeChoices :: Tree d c -> Tree d c
+deferSetupExeChoices = trav go
   where
-    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetup xs)
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetupOrExe xs)
     go x                    = x
 
-    noSetup :: Goal QPN -> Bool
-    noSetup (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetup _                                                  = True
+    noSetupOrExe :: Goal QPN -> Bool
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such

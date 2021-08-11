@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.5.0.0",
+            "version": "3.6.0.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -112,9 +112,9 @@
             "package": "random",
             "version": "1.2.0",
             "flags": [],
-            "cabal_sha256": "30d72df4cc1d2fe2d445c88f0ee9d21965af7ce86660c43a6c32a6a1d90d51c9",
+            "cabal_sha256": "195506fedaa7c31c1fa2a747e9b49b4a5d1f0b09dd8f1291f23a771656faeec3",
             "src_sha256": "e4519cf7c058bfd5bdbe4acc782284acc9e25e74487208619ca83cbcd63fb9de",
-            "revision": 5
+            "revision": 6
         },
         {
             "source": "hackage",
@@ -128,7 +128,7 @@
         {
             "source": "local",
             "package": "cabal-install-solver",
-            "version": "3.5.0.0",
+            "version": "3.6.0.0",
             "flags": [
                 "-debug-conflict-sets",
                 "-debug-expensive-assertions",
@@ -222,9 +222,9 @@
                 "-old-directory",
                 "+use-network-uri"
             ],
-            "cabal_sha256": "e7243dc32731692f2f384e184e5509422488975abb1eafc1b552de711f73226f",
+            "cabal_sha256": "ae6cdda307237c0b7efeebfb0bf23ff8a26c30f5ba295dce5e4f81ef6e63fff6",
             "src_sha256": "9162b473af5a21c1ff32a50b972b9acf51f4c901604a22cf08a2dccac2f82f17",
-            "revision": 5
+            "revision": 8
         },
         {
             "source": "hackage",
@@ -238,27 +238,27 @@
         {
             "source": "hackage",
             "package": "regex-posix",
-            "version": "0.96.0.0",
+            "version": "0.96.0.1",
             "flags": [
                 "-_regex-posix-clib"
             ],
-            "cabal_sha256": "bd870f983a21bb474bd96449736f011c599981ce70da808a21ec1a28292e5481",
-            "src_sha256": "251300f1a6bb2e91abb8bf513a21981f8fab79c98a65acea2bb6d6a524414521",
-            "revision": 2
+            "cabal_sha256": "b6421e5356766b0c0a78b6094ae2e3a6259b42c147b717283c03c1cb09163dca",
+            "src_sha256": "c7827c391919227711e1cff0a762b1678fd8739f9c902fc183041ff34f59259c",
+            "revision": 0
         },
         {
             "source": "hackage",
             "package": "resolv",
             "version": "0.1.2.0",
             "flags": [],
-            "cabal_sha256": "10a469977777937bb747a541c237669ba10dd2d25c917d67535927aaa96ac55a",
+            "cabal_sha256": "25c6e802dc342307e78e5e60433f5e20d03aa783b08b009a399100eb9b6ec529",
             "src_sha256": "81a2bafad484db123cf8d17a02d98bb388a127fd0f822fa022589468a0e64671",
-            "revision": 2
+            "revision": 3
         },
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.5.0.0",
+            "version": "3.6.0.0",
             "flags": [
                 "+lukko",
                 "+native-dns"
@@ -270,7 +270,7 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.5.0.0",
+            "version": "3.6.0.0",
             "flags": [
                 "+lukko",
                 "+native-dns"
