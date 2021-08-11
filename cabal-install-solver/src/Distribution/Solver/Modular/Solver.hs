@@ -124,7 +124,8 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
       let
           sortGoals = case goalOrder sc of
                         Nothing -> goalChoiceHeuristics .
-                                   P.deferSetupChoices .
+                                   heuristicsTree .
+                                   P.deferSetupExeChoices .
                                    P.deferWeakFlagChoices .
                                    P.preferBaseGoalChoice
                         Just order -> P.firstGoal .
