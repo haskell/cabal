@@ -29,15 +29,6 @@ main = do
                     , GhcJob "8.4.4"  False ""                          False ["8.8.4"] defSteps
                     , GhcJob "8.2.2"  False ""                          False ["8.8.4"] defSteps
                     , GhcJob "8.0.2"  False "--lib-only"                False ["8.8.4"] libSteps
-                    , GhcJob "7.10.3" False "--lib-only"                False ["8.8.4"] libSteps
-                    , GhcJob "7.8.4"  False "--lib-only"                False ["8.8.4"] libSteps
-                    , GhcJob "7.6.3"  True  "--lib-only"                False ["8.8.4"] libSteps
-                    , GhcJob "8.8.4"  True  "--lib-only"                True  ["8.8.4"] $
-                        libSteps ++
-                        [ "lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4"
-                        , "lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2"
-                        , "lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2"
-                        ]
                     ]
                 , zMacosJobs =
                     [ mkMacGhcJob "8.8.4" "https://downloads.haskell.org/~ghc/8.8.4/ghc-8.8.4-x86_64-apple-darwin.tar.xz"
