@@ -39,8 +39,20 @@ getEnvironment = fmap upcaseVars System.getEnvironment
 getEnvironment = System.getEnvironment
 #endif
 
-#ifdef mingw32_HOST_OS
+-- | @setEnv name value@ sets the specified environment variable to @value@.
+--
+-- Throws `Control.Exception.IOException` if either @name@ or @value@ is the
+-- empty string or contains an equals sign.
+setEnv :: String -> String -> IO ()
+setEnv key value_ = setEnv_ key value
+  where
+    -- NOTE: Anything that follows NUL is ignored on both POSIX and Windows. We
+    -- still strip it manually so that the null check above succeeds if a value
+    -- starts with NUL.
+    value = takeWhile (/= '\NUL') value_
 
+setEnv_ :: String -> String -> IO ()
+#ifdef mingw32_HOST_OS
 setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
   success <- c_SetEnvironmentVariable k v
   unless success (throwGetLastError "setEnv")
