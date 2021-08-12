@@ -64,6 +64,7 @@ module Distribution.Utils.Structured (
     containerStructure,
     -- * Structure type
     Structure (..),
+    Tag (..),
     TypeName,
     ConstructorName,
     TypeVersion,
@@ -207,7 +208,7 @@ structureBuilder s0 = State.evalState (go s0) Map.empty where
             Nothing -> return $ mconcat [ Builder.word8 0, Builder.stringUtf8 (show t) ]
             Just acc' -> do
                 State.put acc'
-                k 
+                k
 
     goSop :: SopStructure -> State.State (Map.Map String (NonEmpty TypeRep)) Builder.Builder
     goSop sop = do
