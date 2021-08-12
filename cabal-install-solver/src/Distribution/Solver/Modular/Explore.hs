@@ -183,19 +183,18 @@ updateCM cs cm =
 
 -- | Record complete assignments on 'Done' nodes.
 assign :: Tree d c -> Tree Assignment c
-assign tree = cata go tree $ A M.empty M.empty M.empty
+assign tree = go tree (A M.empty M.empty M.empty)
   where
-    go :: TreeF d c (Assignment -> Tree Assignment c)
-                 -> (Assignment -> Tree Assignment c)
-    go (FailF c fr)            _                  = Fail c fr
-    go (DoneF rdm _)           a                  = Done rdm a
-    go (PChoiceF qpn rdm y       ts) (A pa fa sa) = PChoice qpn rdm y       $ W.mapWithKey f ts
+    go :: Tree d c -> Assignment -> Tree Assignment c
+    go (Fail c fr)            _                  = Fail c fr
+    go (Done rdm _)           a                  = Done rdm a
+    go (PChoice qpn rdm y       ts) (A pa fa sa) = PChoice qpn rdm y       $ W.mapWithKey f (fmap go ts)
         where f (POption k _) r = r (A (M.insert qpn k pa) fa sa)
-    go (FChoiceF qfn rdm y t m d ts) (A pa fa sa) = FChoice qfn rdm y t m d $ W.mapWithKey f ts
+    go (FChoice qfn rdm y t m d ts) (A pa fa sa) = FChoice qfn rdm y t m d $ W.mapWithKey f (fmap go ts)
         where f k             r = r (A pa (M.insert qfn k fa) sa)
-    go (SChoiceF qsn rdm y t     ts) (A pa fa sa) = SChoice qsn rdm y t     $ W.mapWithKey f ts
+    go (SChoice qsn rdm y t     ts) (A pa fa sa) = SChoice qsn rdm y t     $ W.mapWithKey f (fmap go ts)
         where f k             r = r (A pa fa (M.insert qsn k sa))
-    go (GoalChoiceF  rdm         ts) a            = GoalChoice  rdm         $ fmap ($ a) ts
+    go (GoalChoice  rdm         ts) a            = GoalChoice  rdm         $ fmap ($ a) (fmap go ts)
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
