@@ -194,8 +194,9 @@ We like [this style guide][guide].
 Changelog
 ---------
 
-When opening a pull request, you should write a changelog entry.
-This is done by adding a file in the `changelog.d` directory.
+When opening a pull request, you should write a changelog entry
+(or more in case of multiple independent changes).
+This is done by adding files in the `changelog.d` directory.
 
 The files follow a simple key-value format similar to the one for .cabal files.
 
