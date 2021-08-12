@@ -12,12 +12,9 @@ module Distribution.Solver.Modular.Validate (validateTree) where
 -- assignment returned by exploration of the tree should be a complete valid
 -- assignment, i.e., actually constitute a solution.
 
-import Control.Applicative
-import Control.Monad.Reader hiding (sequence)
+import Control.Monad.Reader
 import Data.Either (lefts)
 import Data.Function (on)
-import Data.Traversable
-import Prelude hiding (sequence)
 
 import qualified Data.List as L
 import qualified Data.Set as S
@@ -168,7 +165,7 @@ validate = go
   where
     go :: Tree d c -> Validate (Tree d c)
 
-    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) (fmap go ts))
+    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> W.traverseWithKey (\k -> goP qpn k . go) ts
     go (FChoice qfn rdm gr b m d ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
@@ -181,7 +178,7 @@ validate = go
                        Just t  -> goF qfn rb (go t)
                        Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn rdm gr b m d <$> sequence (W.mapWithKey (goF qfn) (fmap go ts))
+                     FChoice qfn rdm gr b m d <$> W.traverseWithKey (\k -> goF qfn k . go) ts
     go (SChoice qsn rdm gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
@@ -192,7 +189,7 @@ validate = go
                        Just t  -> goS qsn rb (go t)
                        Nothing -> return $ Fail (varToConflictSet (S qsn)) (MalformedStanzaChoice qsn)
           Nothing -> -- stanza choice is new, follow both branches
-                     SChoice qsn rdm gr b <$> sequence (W.mapWithKey (goS qsn) (fmap go ts))
+                     SChoice qsn rdm gr b <$> W.traverseWithKey (\k -> goS qsn k . go) ts
 
     -- We don't need to do anything for goal choices or failure nodes.
     go (GoalChoice rdm           ts) = GoalChoice rdm <$> traverse go ts
