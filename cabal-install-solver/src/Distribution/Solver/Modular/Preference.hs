@@ -408,8 +408,8 @@ preferBaseGoalChoice = go
 
 -- | Deal with setup and build-tool-depends dependencies after regular dependencies,
 -- so we will link setup/exe dependencies against package dependencies when possible
-deferSetupChoices :: EndoTreeTrav d c
-deferSetupChoices = go
+deferSetupExeChoices :: EndoTreeTrav d c
+deferSetupExeChoices = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetupOrExe xs)
     go x                    = x
