@@ -194,16 +194,6 @@ import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
 
-#if __GLASGOW_HASKELL__ < 711
-#ifdef VERSION_base
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#else
-#ifdef CURRENT_PACKAGE_KEY
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#endif
-
 #ifdef BOOTSTRAPPED_CABAL
 import qualified Paths_Cabal (version)
 #endif
@@ -421,12 +411,7 @@ topHandlerWith cont prog = do
 
 -- | BC wrapper around 'Exception.displayException'.
 displaySomeException :: Exception.Exception e => e -> String
-displaySomeException se =
-#if __GLASGOW_HASKELL__ < 710
-    show se
-#else
-    Exception.displayException se
-#endif
+displaySomeException se = Exception.displayException se
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
@@ -749,14 +734,8 @@ rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
     printRawCommandAndArgsAndEnv verbosity path args Nothing (Just env)
     hFlush stdout
     (_,_,_,ph) <- createProcess $
-                  (Process.proc path args) { Process.env = (Just env)
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
+                  (Process.proc path args) { Process.env = Just env
                                            , Process.delegate_ctlc = True
-#endif
-#endif
                                            }
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
@@ -829,13 +808,7 @@ createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallS
                                   , Process.std_in        = inp
                                   , Process.std_out       = out
                                   , Process.std_err       = err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
                                   , Process.delegate_ctlc = True
-#endif
-#endif
                                   }
     return (inp', out', err', ph)
 
