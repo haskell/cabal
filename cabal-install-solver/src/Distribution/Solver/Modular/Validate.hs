@@ -164,12 +164,12 @@ type VROrigin = (VR, ExposedComponent, DependencyReason QPN)
 type Conflict = (ConflictSet, FailReason)
 
 validate :: Tree d c -> Validate (Tree d c)
-validate = cata go
+validate = go
   where
-    go :: TreeF d c (Validate (Tree d c)) -> Validate (Tree d c)
+    go :: Tree d c -> Validate (Tree d c)
 
-    go (PChoiceF qpn rdm gr       ts) = PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) ts)
-    go (FChoiceF qfn rdm gr b m d ts) =
+    go (PChoice qpn rdm gr       ts) = PChoice qpn rdm gr <$> sequence (W.mapWithKey (goP qpn) (fmap go ts))
+    go (FChoice qfn rdm gr b m d ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
         -- in various places). However, subsequent choices must be consistent. We thereby
@@ -178,26 +178,26 @@ validate = cata go
         case M.lookup qfn pfa of
           Just rb -> -- flag has already been assigned; collapse choice to the correct branch
                      case W.lookup rb ts of
-                       Just t  -> goF qfn rb t
+                       Just t  -> goF qfn rb (go t)
                        Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn rdm gr b m d <$> sequence (W.mapWithKey (goF qfn) ts)
-    go (SChoiceF qsn rdm gr b   ts) =
+                     FChoice qfn rdm gr b m d <$> sequence (W.mapWithKey (goF qfn) (fmap go ts))
+    go (SChoice qsn rdm gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
         PA _ _ psa <- asks pa -- obtain current stanza-preassignment
         case M.lookup qsn psa of
           Just rb -> -- stanza choice has already been made; collapse choice to the correct branch
                      case W.lookup rb ts of
-                       Just t  -> goS qsn rb t
+                       Just t  -> goS qsn rb (go t)
                        Nothing -> return $ Fail (varToConflictSet (S qsn)) (MalformedStanzaChoice qsn)
           Nothing -> -- stanza choice is new, follow both branches
-                     SChoice qsn rdm gr b <$> sequence (W.mapWithKey (goS qsn) ts)
+                     SChoice qsn rdm gr b <$> sequence (W.mapWithKey (goS qsn) (fmap go ts))
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF rdm           ts) = GoalChoice rdm <$> sequence ts
-    go (DoneF       rdm s           ) = pure (Done rdm s)
-    go (FailF    c fr               ) = pure (Fail c fr)
+    go (GoalChoice rdm           ts) = GoalChoice rdm <$> traverse go ts
+    go (Done       rdm s           ) = pure (Done rdm s)
+    go (Fail    c fr               ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
     goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
