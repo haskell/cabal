@@ -328,7 +328,11 @@ licensePrompt flags = getLicense flags $ do
 
     case simpleParsec l of
       Nothing -> do
-        putStrLn "The license must be a valid SPDX expression."
+        putStrLn ( "The license must be a valid SPDX expression:"
+                ++ "\n - On the SPDX License List: https://spdx.org/licenses/"
+                ++ "\n - NONE, if you do not want to grant any license"
+                ++ "\n - LicenseRef-( alphanumeric | - | . )+"
+                 )
         licensePrompt flags
       Just l' -> return l'
   where
