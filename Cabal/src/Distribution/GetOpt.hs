@@ -46,8 +46,8 @@ data OptKind a                -- kind of cmd line arg (internal use only):
    | EndOfOpts                  --    end-of-options marker (i.e. "--")
    | OptErr    String           --    something went wrong...
 
-data OptHelp a = OptHelp {
-      optNames :: a,
+data OptHelp = OptHelp {
+      optNames :: String,
       optHelp :: String
     }
 
