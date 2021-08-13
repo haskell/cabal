@@ -442,7 +442,7 @@ verbosityHandle verbosity
 --
 warn :: Verbosity -> String -> IO ()
 warn verbosity msg = withFrozenCallStack $ do
-  when (verbosity >= normal) $ do
+  when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
     ts <- getPOSIXTime
     hFlush stdout
     hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity

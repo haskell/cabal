@@ -14,6 +14,8 @@ module Distribution.Solver.Modular.Tree
     , trav
     , zeroOrOneChoices
     , active
+    , TreeTrav
+    , EndoTreeTrav
     ) where
 
 import Control.Monad hiding (mapM, sequence)
@@ -187,7 +189,10 @@ zeroOrOneChoices (Fail       _ _           ) = True
 cata :: (TreeF d c a -> a) -> Tree d c -> a
 cata phi x = (phi . fmap (cata phi) . out) x
 
-trav :: (TreeF d c (Tree d a) -> TreeF d a (Tree d a)) -> Tree d c -> Tree d a
+type TreeTrav d c a = TreeF d c (Tree d a) -> TreeF d a (Tree d a)
+type EndoTreeTrav d c = TreeTrav d c c
+
+trav :: TreeTrav d c a -> Tree d c -> Tree d a
 trav psi x = cata (inn . psi) x
 
 -- | Paramorphism on trees.
