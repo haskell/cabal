@@ -397,6 +397,7 @@ dontUpgradeNonUpgradeablePackages params =
       -- If you change this enumeration, make sure to update the list in
       -- "Distribution.Solver.Modular.Solver" as well
       , pkgname <- [ mkPackageName "base"
+                   , mkPackageName "ghc-bignum"
                    , mkPackageName "ghc-prim"
                    , mkPackageName "integer-gmp"
                    , mkPackageName "integer-simple"
@@ -512,18 +513,10 @@ relaxPackageDeps relKind (RelaxDepsSome depsToRelax0) gpd =
 
 -- | Internal helper for 'relaxPackageDeps'
 removeBound :: RelaxKind -> RelaxDepMod -> VersionRange -> VersionRange
-removeBound RelaxLower RelaxDepModNone = removeLowerBound
-removeBound RelaxUpper RelaxDepModNone = removeUpperBound
-removeBound relKind RelaxDepModCaret = hyloVersionRange embed projectVersionRange
-  where
-    embed (MajorBoundVersionF v) = caretTransformation v (majorUpperBound v)
-    embed vr                     = embedVersionRange vr
-
-    -- This function is the interesting part as it defines the meaning
-    -- of 'RelaxDepModCaret', i.e. to transform only @^>=@ constraints;
-    caretTransformation l u = case relKind of
-      RelaxUpper -> orLaterVersion l -- rewrite @^>= x.y.z@ into @>= x.y.z@
-      RelaxLower -> earlierVersion u -- rewrite @^>= x.y.z@ into @< x.(y+1)@
+removeBound RelaxLower RelaxDepModNone  = removeLowerBound
+removeBound RelaxUpper RelaxDepModNone  = removeUpperBound
+removeBound RelaxLower RelaxDepModCaret = transformCaretLower
+removeBound RelaxUpper RelaxDepModCaret = transformCaretUpper
 
 -- | Supply defaults for packages without explicit Setup dependencies
 --

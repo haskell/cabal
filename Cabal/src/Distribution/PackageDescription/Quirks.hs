@@ -268,6 +268,27 @@ patches = Map.fromList
          (Fingerprint 17812331267506881875 3005293725141563863)
          (Fingerprint 3445957263137759540 12472369104312474458)
          (bsReplace "cabal-version:  2" "cabal-version: 2.0")
+
+    -- Empty filepath in not license-file or data-dir
+    -- These have hs-source-dirs: ""
+    , mk "\nname:                wai-middleware-hmac-client\nversion:             0.1.0.1\nlicense:             BSD3\nlicense-file:        LICENSE\nauthor:              Christopher Reichert\nmaintainer:          creichert07@gmail.com\ncopyright:           (c) 2015, Christo"
+         (Fingerprint 3112606538775065787 11984607507024462091)
+         (Fingerprint 6916432989977230500 6621389616675138128)
+         (bsReplace "\"\"" ".")
+    , mk "\nname:                wai-middleware-hmac-client\nversion:             0.1.0.2\nlicense:             BSD3\nlicense-file:        LICENSE\nauthor:              Christopher Reichert\nmaintainer:          creichert07@gmail.com\ncopyright:           (c) 2015, Christo"
+         (Fingerprint 12566783342663020458 17562089389615949789)
+         (Fingerprint 15745683452603944938 10556498036622072844)
+         (bsReplace "\"\"" ".")
+
+    -- absolute license-file
+    , mk "name: reheat\nversion: 0.1.4\ncabal-version: >=1.8\nbuild-type: Simple\nlicense: GPL\nlicense-file: /home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt\ncopyright: GPL\nmaintainer: Ingolf Wagner <palipalo9@gmail.com>\nstability: experimental\nhomepage: h"
+         (Fingerprint 9155400339287317061 14812953666990892802)
+         (Fingerprint 7687053346032173923 15384472501136606592)
+         (bsReplace "/home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt" "")
+    , mk "name: reheat\nversion: 0.1.5\ncabal-version: >=1.8\nbuild-type: Simple\nlicense: GPL\nlicense-file: /home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt\ncopyright: GPL\nmaintainer: Ingolf Wagner <palipalo9@gmail.com>\nstability: experimental\nhomepage: h"
+         (Fingerprint 2984391146441073709 11728234882049907993)
+         (Fingerprint 12058479081855347701 14017937756688869826)
+         (bsReplace "/home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt" "")
     ]
   where
     mk a b c d = ((a, b), (c, d))

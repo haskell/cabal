@@ -10,18 +10,6 @@ author:        Cabal Development Team <cabal-devel@haskell.org>
 category:      Distribution
 build-type:    Simple
 
-executable gen-extra-source-files
-  default-language: Haskell2010
-  main-is:          GenExtraSourceFiles.hs
-  hs-source-dirs:   src
-  build-depends:
-    , base        >=4.10 && <4.15
-    , bytestring
-    , Cabal       >=2.2  && <3.3
-    , directory
-    , filepath
-    , process
-
 executable gen-spdx
   default-language: Haskell2010
   main-is:          GenSPDX.hs
@@ -30,12 +18,12 @@ executable gen-spdx
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0
-    , base                  >=4.10     && <4.15
+    , base                  >=4.10     && <4.16
     , bytestring
     , containers
     , Diff                  ^>=0.4
     , lens                  ^>=4.18.1 || ^>=4.19.1
-    , optparse-applicative  ^>=0.15.1.0
+    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
 
@@ -47,12 +35,12 @@ executable gen-spdx-exc
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0
-    , base                  >=4.10     && <4.15
+    , base                  >=4.10     && <4.16
     , bytestring
     , containers
     , Diff                  ^>=0.4
     , lens                  ^>=4.18.1 || ^>=4.19.1
-    , optparse-applicative  ^>=0.15.1.0
+    , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
 

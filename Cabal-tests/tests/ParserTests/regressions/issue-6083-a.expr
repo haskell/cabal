@@ -1,0 +1,337 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [_×_
+                        (UnqualComponentName "demo-a")
+                        CondNode
+                          {condTreeComponents = [],
+                           condTreeConstraints = [Dependency
+                                                    (PackageName "issue")
+                                                    (OrLaterVersion (mkVersion [0]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "sublib")
+                                                    (OrLaterVersion (mkVersion [0]))
+                                                    mainLibSet],
+                           condTreeData = Executable
+                                            {buildInfo = BuildInfo
+                                                           {asmOptions = [],
+                                                            asmSources = [],
+                                                            autogenIncludes = [],
+                                                            autogenModules = [],
+                                                            buildToolDepends = [],
+                                                            buildTools = [],
+                                                            buildable = True,
+                                                            cSources = [],
+                                                            ccOptions = [],
+                                                            cmmOptions = [],
+                                                            cmmSources = [],
+                                                            cppOptions = [],
+                                                            customFieldsBI = [],
+                                                            cxxOptions = [],
+                                                            cxxSources = [],
+                                                            defaultExtensions = [],
+                                                            defaultLanguage = Nothing,
+                                                            extraBundledLibs = [],
+                                                            extraDynLibFlavours = [],
+                                                            extraFrameworkDirs = [],
+                                                            extraGHCiLibs = [],
+                                                            extraLibDirs = [],
+                                                            extraLibFlavours = [],
+                                                            extraLibs = [],
+                                                            frameworks = [],
+                                                            hsSourceDirs = [],
+                                                            hsc2hsOptions = [],
+                                                            includeDirs = [],
+                                                            includes = [],
+                                                            installIncludes = [],
+                                                            jsSources = [],
+                                                            ldOptions = [],
+                                                            mixins = [],
+                                                            oldExtensions = [],
+                                                            options = PerCompilerFlavor [] [],
+                                                            otherExtensions = [],
+                                                            otherLanguages = [],
+                                                            otherModules = [],
+                                                            pkgconfigDepends = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
+                                                            targetBuildDepends = [Dependency
+                                                                                    (PackageName
+                                                                                       "issue")
+                                                                                    (OrLaterVersion
+                                                                                       (mkVersion
+                                                                                          [0]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "sublib")
+                                                                                    (OrLaterVersion
+                                                                                       (mkVersion
+                                                                                          [0]))
+                                                                                    mainLibSet],
+                                                            virtualModules = []},
+                                             exeName = UnqualComponentName "demo-a",
+                                             exeScope = ExecutablePublic,
+                                             modulePath = "Main.hs"}},
+                      _×_
+                        (UnqualComponentName "demo-b")
+                        CondNode
+                          {condTreeComponents = [],
+                           condTreeConstraints = [Dependency
+                                                    (PackageName "issue")
+                                                    (OrLaterVersion (mkVersion [0]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "issue")
+                                                    (OrLaterVersion (mkVersion [0]))
+                                                    (NonEmptySet.fromNonEmpty
+                                                       (NE.fromList
+                                                          [LSubLibName
+                                                             (UnqualComponentName "sublib")]))],
+                           condTreeData = Executable
+                                            {buildInfo = BuildInfo
+                                                           {asmOptions = [],
+                                                            asmSources = [],
+                                                            autogenIncludes = [],
+                                                            autogenModules = [],
+                                                            buildToolDepends = [],
+                                                            buildTools = [],
+                                                            buildable = True,
+                                                            cSources = [],
+                                                            ccOptions = [],
+                                                            cmmOptions = [],
+                                                            cmmSources = [],
+                                                            cppOptions = [],
+                                                            customFieldsBI = [],
+                                                            cxxOptions = [],
+                                                            cxxSources = [],
+                                                            defaultExtensions = [],
+                                                            defaultLanguage = Nothing,
+                                                            extraBundledLibs = [],
+                                                            extraDynLibFlavours = [],
+                                                            extraFrameworkDirs = [],
+                                                            extraGHCiLibs = [],
+                                                            extraLibDirs = [],
+                                                            extraLibFlavours = [],
+                                                            extraLibs = [],
+                                                            frameworks = [],
+                                                            hsSourceDirs = [],
+                                                            hsc2hsOptions = [],
+                                                            includeDirs = [],
+                                                            includes = [],
+                                                            installIncludes = [],
+                                                            jsSources = [],
+                                                            ldOptions = [],
+                                                            mixins = [],
+                                                            oldExtensions = [],
+                                                            options = PerCompilerFlavor [] [],
+                                                            otherExtensions = [],
+                                                            otherLanguages = [],
+                                                            otherModules = [],
+                                                            pkgconfigDepends = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
+                                                            targetBuildDepends = [Dependency
+                                                                                    (PackageName
+                                                                                       "issue")
+                                                                                    (OrLaterVersion
+                                                                                       (mkVersion
+                                                                                          [0]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "issue")
+                                                                                    (OrLaterVersion
+                                                                                       (mkVersion
+                                                                                          [0]))
+                                                                                    (NonEmptySet.fromNonEmpty
+                                                                                       (NE.fromList
+                                                                                          [LSubLibName
+                                                                                             (UnqualComponentName
+                                                                                                "sublib")]))],
+                                                            virtualModules = []},
+                                             exeName = UnqualComponentName "demo-b",
+                                             exeScope = ExecutablePublic,
+                                             modulePath = "Main.hs"}}],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               (PackageName "base")
+                                               (OrLaterVersion (mkVersion [0]))
+                                               mainLibSet,
+                                             Dependency
+                                               (PackageName "issue")
+                                               (OrLaterVersion (mkVersion [0]))
+                                               (NonEmptySet.fromNonEmpty
+                                                  (NE.fromList
+                                                     [LSubLibName
+                                                        (UnqualComponentName "sublib")]))],
+                      condTreeData = Library
+                                       {exposedModules = [],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenIncludes = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [],
+                                                          hsc2hsOptions = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = PerCompilerFlavor [] [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  (PackageName
+                                                                                     "base")
+                                                                                  (OrLaterVersion
+                                                                                     (mkVersion
+                                                                                        [0]))
+                                                                                  mainLibSet,
+                                                                                Dependency
+                                                                                  (PackageName
+                                                                                     "issue")
+                                                                                  (OrLaterVersion
+                                                                                     (mkVersion
+                                                                                        [0]))
+                                                                                  (NonEmptySet.fromNonEmpty
+                                                                                     (NE.fromList
+                                                                                        [LSubLibName
+                                                                                           (UnqualComponentName
+                                                                                              "sublib")]))],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = LMainLibName,
+                                        libVisibility = LibraryVisibilityPublic,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [_×_
+                         (UnqualComponentName "sublib")
+                         CondNode
+                           {condTreeComponents = [],
+                            condTreeConstraints = [],
+                            condTreeData = Library
+                                             {exposedModules = [],
+                                              libBuildInfo = BuildInfo
+                                                               {asmOptions = [],
+                                                                asmSources = [],
+                                                                autogenIncludes = [],
+                                                                autogenModules = [],
+                                                                buildToolDepends = [],
+                                                                buildTools = [],
+                                                                buildable = True,
+                                                                cSources = [],
+                                                                ccOptions = [],
+                                                                cmmOptions = [],
+                                                                cmmSources = [],
+                                                                cppOptions = [],
+                                                                customFieldsBI = [],
+                                                                cxxOptions = [],
+                                                                cxxSources = [],
+                                                                defaultExtensions = [],
+                                                                defaultLanguage = Just Haskell2010,
+                                                                extraBundledLibs = [],
+                                                                extraDynLibFlavours = [],
+                                                                extraFrameworkDirs = [],
+                                                                extraGHCiLibs = [],
+                                                                extraLibDirs = [],
+                                                                extraLibFlavours = [],
+                                                                extraLibs = [],
+                                                                frameworks = [],
+                                                                hsSourceDirs = [],
+                                                                hsc2hsOptions = [],
+                                                                includeDirs = [],
+                                                                includes = [],
+                                                                installIncludes = [],
+                                                                jsSources = [],
+                                                                ldOptions = [],
+                                                                mixins = [],
+                                                                oldExtensions = [],
+                                                                options = PerCompilerFlavor [] [],
+                                                                otherExtensions = [],
+                                                                otherLanguages = [],
+                                                                otherModules = [],
+                                                                pkgconfigDepends = [],
+                                                                profOptions = PerCompilerFlavor
+                                                                                [] [],
+                                                                sharedOptions = PerCompilerFlavor
+                                                                                  [] [],
+                                                                staticOptions = PerCompilerFlavor
+                                                                                  [] [],
+                                                                targetBuildDepends = [],
+                                                                virtualModules = []},
+                                              libExposed = True,
+                                              libName = LSubLibName (UnqualComponentName "sublib"),
+                                              libVisibility = LibraryVisibilityPrivate,
+                                              reexportedModules = [],
+                                              signatures = []}}],
+   condTestSuites = [],
+   genPackageFlags = [],
+   gpdScannedVersion = Nothing,
+   packageDescription = PackageDescription
+                          {author = "",
+                           benchmarks = [],
+                           bugReports = "",
+                           buildTypeRaw = Nothing,
+                           category = "",
+                           copyright = "",
+                           customFieldsPD = [],
+                           dataDir = ".",
+                           dataFiles = [],
+                           description = "",
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "",
+                           library = Nothing,
+                           licenseFiles = [],
+                           licenseRaw = Left NONE,
+                           maintainer = "",
+                           package = PackageIdentifier
+                                       {pkgName = PackageName "issue",
+                                        pkgVersion = mkVersion [6083]},
+                           pkgUrl = "",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [],
+                           specVersion = CabalSpecV3_4,
+                           stability = "",
+                           subLibraries = [],
+                           synopsis = "",
+                           testSuites = [],
+                           testedWith = []}}

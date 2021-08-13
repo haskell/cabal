@@ -211,7 +211,7 @@ data ElaboratedConfiguredPackage
        -- | Which optional stanzas (ie testsuites, benchmarks) can be built.
        -- This means the solver produced a plan that has them available.
        -- This doesn't necessary mean we build them by default.
-       elabStanzasAvailable :: Set OptionalStanza,
+       elabStanzasAvailable :: OptionalStanzaSet,
 
        -- | Which optional stanzas the user explicitly asked to enable or
        -- to disable. This tells us which ones we build by default, and
@@ -231,11 +231,15 @@ data ElaboratedConfiguredPackage
        -- that a user enabled tests globally, and some local packages
        -- just happen not to have any tests.  (But perhaps we should
        -- warn if ALL local packages don't have any tests.)
-       elabStanzasRequested :: Map OptionalStanza Bool,
+       elabStanzasRequested :: OptionalStanzaMap (Maybe Bool),
 
        elabSetupPackageDBStack    :: PackageDBStack,
        elabBuildPackageDBStack    :: PackageDBStack,
        elabRegisterPackageDBStack :: PackageDBStack,
+
+       elabInplaceSetupPackageDBStack    :: PackageDBStack,
+       elabInplaceBuildPackageDBStack    :: PackageDBStack,
+       elabInplaceRegisterPackageDBStack :: PackageDBStack,
 
        elabPkgDescriptionOverride  :: Maybe CabalFileText,
 
@@ -706,7 +710,7 @@ data ElaboratedPackage
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
-       pkgStanzasEnabled :: Set OptionalStanza
+       pkgStanzasEnabled :: OptionalStanzaSet
      }
   deriving (Eq, Show, Generic)
 
@@ -744,6 +748,13 @@ data BuildStyle =
 
 instance Binary BuildStyle
 instance Structured BuildStyle
+instance Semigroup BuildStyle where
+    BuildInplaceOnly <> _ = BuildInplaceOnly
+    _ <> BuildInplaceOnly = BuildInplaceOnly
+    _ <> _ = BuildAndInstall
+instance Monoid BuildStyle where
+    mempty = BuildAndInstall
+    mappend = (<>)
 
 type CabalFileText = LBS.ByteString
 

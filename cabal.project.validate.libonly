@@ -1,5 +1,11 @@
 packages: Cabal/
 packages: cabal-testsuite/
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff
+packages: Cabal-described
+packages: Cabal-tests
+
+packages: vendor/cabal-doctest-1.0.8
 
 tests: True
 
@@ -13,3 +19,6 @@ package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite
   ghc-options: -Werror -fno-ignore-asserts
+
+-- https://github.com/haskell-hvr/cryptohash-sha256/issues/12
+allow-newer: cryptohash-sha256:base

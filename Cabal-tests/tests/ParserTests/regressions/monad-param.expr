@@ -1,0 +1,143 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               (PackageName "base")
+                                               (OrLaterVersion (mkVersion [0]))
+                                               mainLibSet,
+                                             Dependency
+                                               (PackageName "mtl")
+                                               (OrLaterVersion (mkVersion [0]))
+                                               mainLibSet,
+                                             Dependency
+                                               (PackageName "stm")
+                                               (OrLaterVersion (mkVersion [0]))
+                                               mainLibSet],
+                      condTreeData = Library
+                                       {exposedModules = [ModuleName "Control.Monad.Parameterized"],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenIncludes = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Nothing,
+                                                          extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [SymbolicPath "src"],
+                                                          hsc2hsOptions = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [EnableExtension
+                                                                             MultiParamTypeClasses,
+                                                                           EnableExtension
+                                                                             FunctionalDependencies,
+                                                                           EnableExtension
+                                                                             OverlappingInstances,
+                                                                           EnableExtension
+                                                                             UndecidableInstances,
+                                                                           EnableExtension
+                                                                             EmptyDataDecls,
+                                                                           DisableExtension
+                                                                             ImplicitPrelude],
+                                                          options = PerCompilerFlavor
+                                                                      ["-funbox-strict-fields",
+                                                                       "-threaded",
+                                                                       "-fasm"]
+                                                                      [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  (PackageName
+                                                                                     "base")
+                                                                                  (OrLaterVersion
+                                                                                     (mkVersion
+                                                                                        [0]))
+                                                                                  mainLibSet,
+                                                                                Dependency
+                                                                                  (PackageName
+                                                                                     "mtl")
+                                                                                  (OrLaterVersion
+                                                                                     (mkVersion
+                                                                                        [0]))
+                                                                                  mainLibSet,
+                                                                                Dependency
+                                                                                  (PackageName
+                                                                                     "stm")
+                                                                                  (OrLaterVersion
+                                                                                     (mkVersion
+                                                                                        [0]))
+                                                                                  mainLibSet],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = LMainLibName,
+                                        libVisibility = LibraryVisibilityPublic,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [],
+   genPackageFlags = [],
+   gpdScannedVersion = Nothing,
+   packageDescription = PackageDescription
+                          {author = "Edward Kmett <ekmett@gmail.com>",
+                           benchmarks = [],
+                           bugReports = "",
+                           buildTypeRaw = Nothing,
+                           category = "Control",
+                           copyright = "Copyright (C) 2006-2007, Edward Kmett",
+                           customFieldsPD = [],
+                           dataDir = ".",
+                           dataFiles = [],
+                           description = "Implements parameterized monads by overloading the monad sugar with more liberal types.",
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "http://comonad.com/haskell/monad-param/dist/doc/html/Control-Monad-Parameterized.html",
+                           library = Nothing,
+                           licenseFiles = [SymbolicPath "LICENSE"],
+                           licenseRaw = Right BSD3,
+                           maintainer = "Edward Kmett <ekmett@gmail.com>",
+                           package = PackageIdentifier
+                                       {pkgName = PackageName "monad-param",
+                                        pkgVersion = mkVersion [0, 0, 1]},
+                           pkgUrl = "http://comonad.com/haskell/monad-param",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [],
+                           specVersion = CabalSpecV1_0,
+                           stability = "alpha",
+                           subLibraries = [],
+                           synopsis = "Parameterized monads",
+                           testSuites = [],
+                           testedWith = []}}

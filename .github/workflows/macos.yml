@@ -10,15 +10,13 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
 
 jobs:
-  validate-macos-8_8_3:
-    name: validate.sh macos ghc-8.8.3
+  validate-macos-8_8_4:
+    name: validate.sh macos ghc-8.8.4
     runs-on: macos-latest
     steps:
       - name: System info
@@ -30,51 +28,49 @@ jobs:
       - name: Install GHC
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~ghc/8.8.3/ghc-8.8.3-x86_64-apple-darwin.tar.xz
+          curl -sLO https://downloads.haskell.org/~ghc/8.8.4/ghc-8.8.4-x86_64-apple-darwin.tar.xz
           tar -xJf ghc-*.tar.xz
           cd ghc-*
-          ./configure --prefix=/opt/ghc/8.8.3
+          ./configure --prefix=/opt/ghc/8.8.4
           sudo make install
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/8.8.3/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "/opt/ghc/8.8.4/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
       - uses: actions/checkout@v2
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s print-config
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s print-config
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s print-tool-versions
-      - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s make-cabal-install-dev
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s print-tool-versions
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s build
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s build
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s lib-tests
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s lib-suite
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s cli-tests
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s cli-tests
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.3 -v  -s cli-suite
+        run: sh validate.sh -j 2 -w ghc-8.8.4 -v  -s cli-suite
   validate-macos-8_6_5:
     name: validate.sh macos ghc-8.6.5
     runs-on: macos-latest
-    needs: validate-macos-8_8_3
+    needs: validate-macos-8_8_4
     steps:
       - name: System info
         run: |
@@ -93,29 +89,27 @@ jobs:
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/8.6.5/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "/opt/ghc/8.6.5/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
       - uses: actions/checkout@v2
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-config
       - name: Validate print-tool-versions
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s print-tool-versions
-      - name: Validate make-cabal-install-dev
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s make-cabal-install-dev
       - name: Validate build
         run: sh validate.sh -j 2 -w ghc-8.6.5 -v  -s build
       - name: Validate lib-tests

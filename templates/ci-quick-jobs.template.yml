@@ -10,8 +10,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
@@ -23,10 +21,11 @@ jobs:
     # This job is not run in a container, any recent GHC should be fine
     steps:
       - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
-          echo "::add-path::/opt/cabal/3.2/bin"
-          echo "::add-path::/opt/ghc/8.6.5/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
+          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - uses: actions/cache@v1
         with:
           path: ~/.cabal/store
@@ -34,16 +33,14 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install alex
-        run: cabal v2-install alex
+        run: cabal v2-install alex --constraint='alex ==3.2.6'
       - uses: actions/checkout@v2
       - name: Regenerate files
         run: |
-          make lexer
-          make gen-extra-source-files
-          make spdx
-          make templates
-          make github-actions
-          make cabal-install-cabal
+          make -B lexer
+          make -B spdx
+          make -B templates
+          make -B github-actions
       - name: Check that diff is clean
         run: |
           git status > /dev/null
@@ -54,9 +51,9 @@ jobs:
     steps:
       - name: Set PATH
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
-          echo "::add-path::/opt/cabal/3.2/bin"
-          echo "::add-path::/opt/ghc/8.6.5/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
+          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - name: Install cabal-env
         run: |
           mkdir -p $HOME/.cabal/bin

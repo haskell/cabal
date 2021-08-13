@@ -24,6 +24,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.ExeDependency
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.PkgconfigDependency
+import Distribution.Utils.Path
 
 import Distribution.ModuleName
 import Distribution.Compiler
@@ -56,6 +57,7 @@ data BuildInfo = BuildInfo {
         ccOptions         :: [String],  -- ^ options for C compiler
         cxxOptions        :: [String],  -- ^ options for C++ compiler
         ldOptions         :: [String],  -- ^ options for linker
+        hsc2hsOptions     :: [String],  -- ^ options for hsc2hs
         pkgconfigDepends  :: [PkgconfigDependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
@@ -64,7 +66,7 @@ data BuildInfo = BuildInfo {
         cSources          :: [FilePath],
         cxxSources        :: [FilePath],
         jsSources         :: [FilePath],
-        hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
+        hsSourceDirs      :: [SymbolicPath PackageDir SourceDir], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
         virtualModules    :: [ModuleName], -- ^ exposed modules that do not have a source file (e.g. @GHC.Prim@ from @ghc-prim@ package)
         autogenModules    :: [ModuleName], -- ^ not present on sdist, Paths_* or user-generated with a custom Setup.hs
@@ -123,6 +125,7 @@ instance Monoid BuildInfo where
     ccOptions           = [],
     cxxOptions          = [],
     ldOptions           = [],
+    hsc2hsOptions       = [],
     pkgconfigDepends    = [],
     frameworks          = [],
     extraFrameworkDirs  = [],
@@ -171,6 +174,7 @@ instance Semigroup BuildInfo where
     ccOptions           = combine    ccOptions,
     cxxOptions          = combine    cxxOptions,
     ldOptions           = combine    ldOptions,
+    hsc2hsOptions       = combine    hsc2hsOptions,
     pkgconfigDepends    = combine    pkgconfigDepends,
     frameworks          = combineNub frameworks,
     extraFrameworkDirs  = combineNub extraFrameworkDirs,

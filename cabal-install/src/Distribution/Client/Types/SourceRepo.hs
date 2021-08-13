@@ -32,6 +32,7 @@ data SourceRepositoryPackage f = SourceRepositoryPackage
     , srpTag      :: !(Maybe String)
     , srpBranch   :: !(Maybe String)
     , srpSubdir   :: !(f FilePath)
+    , srpCommand  :: ![String]
     }
   deriving (Generic)
 
@@ -88,6 +89,10 @@ srpSubdirLens :: Lens (SourceRepositoryPackage f) (SourceRepositoryPackage g) (f
 srpSubdirLens f s = fmap (\x -> s { srpSubdir = x }) (f (srpSubdir s))
 {-# INLINE srpSubdirLens #-}
 
+srpCommandLensNE :: Lens' (SourceRepositoryPackage f) (Maybe (NonEmpty String))
+srpCommandLensNE f s = fmap (\x -> s { srpCommand = maybe [] toList x }) (f (nonEmpty (srpCommand s)))
+{-# INLINE srpCommandLensNE #-}
+
 -------------------------------------------------------------------------------
 -- Parser & PPrinter
 -------------------------------------------------------------------------------
@@ -96,6 +101,7 @@ sourceRepositoryPackageGrammar
     :: ( FieldGrammar c g, Applicative (g SourceRepoList)
        , c (Identity RepoType)
        , c (List NoCommaFSep FilePathNT String)
+       , c (NonEmpty' NoCommaFSep Token String)
        )
     => g SourceRepoList SourceRepoList
 sourceRepositoryPackageGrammar = SourceRepositoryPackage
@@ -104,5 +110,8 @@ sourceRepositoryPackageGrammar = SourceRepositoryPackage
     <*> optionalFieldAla "tag"      Token                             srpTagLens
     <*> optionalFieldAla "branch"   Token                             srpBranchLens
     <*> monoidalFieldAla "subdir"   (alaList' NoCommaFSep FilePathNT) srpSubdirLens  -- note: NoCommaFSep is somewhat important for roundtrip, as "." is there...
+    <*> fmap (maybe [] toList) pcc
+  where
+    pcc = optionalFieldAla "post-checkout-command" (alaNonEmpty' NoCommaFSep Token) srpCommandLensNE
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: ParsecFieldGrammar' SourceRepoList #-}
 {-# SPECIALIZE sourceRepositoryPackageGrammar :: PrettyFieldGrammar' SourceRepoList #-}

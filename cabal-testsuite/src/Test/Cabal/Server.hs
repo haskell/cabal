@@ -15,6 +15,7 @@ module Test.Cabal.Server (
 ) where
 
 import Test.Cabal.Script
+import Test.Cabal.TestCode
 
 import Prelude hiding (log)
 import Control.Concurrent.MVar
@@ -23,7 +24,7 @@ import Control.Concurrent.Async
 import System.Process
 import System.IO
 import System.Exit
-import Data.List
+import Data.List (intercalate, isPrefixOf)
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Control.Exception
@@ -31,6 +32,10 @@ import qualified Control.Exception as E
 import Control.Monad
 import Data.IORef
 import Data.Maybe
+import Text.Read (readMaybe)
+import Foreign.C.Error (Errno (..), ePIPE)
+
+import qualified GHC.IO.Exception as GHC
 
 import Distribution.Verbosity
 
@@ -77,11 +82,11 @@ data ServerLogMsgType = ServerOut  ProcessId
                       | ServerMeta ProcessId
                       | AllServers
 
-data ServerResult = ServerResult { -- Result
-        serverResultExitCode :: ExitCode,
-        serverResultCommand  :: String,
-        serverResultStdout   :: String,
-        serverResultStderr   :: String
+data ServerResult = ServerResult
+    { serverResultTestCode :: TestCode
+    , serverResultCommand  :: String
+    , serverResultStdout   :: String
+    , serverResultStderr   :: String
     }
 
 -- | With 'ScriptEnv', create a new GHCi 'Server' session.
@@ -107,9 +112,9 @@ bracketWithInit :: IO a -> (a -> IO a) -> (a -> IO b) -> (a -> IO c) -> IO c
 bracketWithInit before initialize after thing =
   mask $ \restore -> do
     a0 <- before
-    a <- restore (initialize a0) `onException` after a0
-    r <- restore (thing a) `onException` after a
-    _ <- after a
+    a <- restore (initialize a0) `onException` uninterruptibleMask_  (after a0)
+    r <- restore (thing a) `onException` uninterruptibleMask_  (after a)
+    _ <- uninterruptibleMask_ (after a)
     return r
 
 -- | Run an hs script on the GHCi server, returning the 'ServerResult' of
@@ -154,7 +159,7 @@ runOnServer s mb_cwd env_overrides script_path args = do
     write s $ ":load " ++ script_path
     -- Create a ref which will record the exit status of the command
     -- NB: do this after :load so it doesn't get dropped
-    write s $ "ref <- Data.IORef.newIORef (System.Exit.ExitFailure 1)"
+    write s $ "ref <- Data.IORef.newIORef Test.Cabal.TestCode.TestCodeFail"
     -- TODO: What if an async exception gets raised here?  At the
     -- moment, there is no way to recover until we get to the top-level
     -- bracket; then stopServer which correctly handles this case.
@@ -177,7 +182,7 @@ runOnServer s mb_cwd env_overrides script_path args = do
     -- command by hand.
     (real_path, real_args) <- runnerCommand (serverScriptEnv s) mb_cwd env_overrides script_path args
     return ServerResult {
-            serverResultExitCode = code,
+            serverResultTestCode = code,
             serverResultCommand = showCommandForUser real_path real_args,
             serverResultStdout = out,
             serverResultStderr = err
@@ -185,22 +190,22 @@ runOnServer s mb_cwd env_overrides script_path args = do
 
 -- | Helper function which we use in the GHCi session to communicate
 -- the exit code of the process.
-runMain :: IORef ExitCode -> IO () -> IO ()
+runMain :: IORef TestCode -> IO () -> IO ()
 runMain ref m = do
-    E.catch (m >> writeIORef ref ExitSuccess) serverHandler
+    E.catch (m >> writeIORef ref TestCodeOk) serverHandler
   where
     serverHandler :: SomeException -> IO ()
     serverHandler e = do
         -- TODO: Probably a few more cases you could handle;
-        -- e.g., StackOverflow should return 2; also signals.
-        writeIORef ref $
-          case fromException e of
-            Just exit_code -> exit_code
-            -- Only rethrow for non ExitFailure exceptions
-            _              -> ExitFailure 1
-        case fromException e :: Maybe ExitCode of
+        -- e.g., StackOverflow should return ExitCode 2; also signals.
+        writeIORef ref $ case fromException e of
+            Just test_code -> test_code
+            _              -> TestCodeFail
+
+        -- Only rethrow for non ExitFailure exceptions
+        case fromException e :: Maybe TestCode of
           Just _ -> return ()
-          _ -> throwIO e
+          _      -> throwIO e
 
 -- ----------------------------------------------------------------- --
 -- Initialize/tear down
@@ -308,7 +313,7 @@ stopServer s = do
             log ServerMeta s $ "Waiting..."
             -- Close input BEFORE waiting, close output AFTER waiting.
             -- If you get either order wrong, deadlock!
-            hClose (serverStdin s)
+            ignoreSigPipe $ hClose (serverStdin s)
             -- waitForProcess has race condition
             -- https://github.com/haskell/process/issues/46
             waitForProcess $ serverProcessHandle s
@@ -318,6 +323,7 @@ stopServer s = do
             _ <- evaluate (length r)
             hClose (f s)
             return r
+
     withAsync (drain serverStdout) $ \a_out -> do
     withAsync (drain serverStderr) $ \a_err -> do
 
@@ -353,6 +359,12 @@ stopServer s = do
     return ()
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
+
+    ignoreSigPipe :: IO () -> IO ()
+    ignoreSigPipe = E.handle $ \e -> case e of
+        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
+            | Errno ioe == ePIPE -> return ()
+        _ -> throwIO e
 
 -- Using the procedure from
 -- https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions
@@ -419,7 +431,7 @@ readUntilSigil s sigil outerr = do
 -- | Consume output from the GHCi server until we hit the
 -- end sigil.  Return the consumed output as well as the
 -- exit code (which is at the end of the sigil).
-readUntilEnd :: Server -> OutOrErr -> IO (ExitCode, String)
+readUntilEnd :: Server -> OutOrErr -> IO (TestCode, String)
 readUntilEnd s outerr = go []
   where
     go rs = do
@@ -432,7 +444,9 @@ readUntilEnd s outerr = go []
                     return (exit, intercalate "\n" (reverse rs))
             else do accumulate (serverAccum s outerr) l
                     go (l:rs)
-    parseExit l = read (drop (length end_sigil) l)
+    parseExit l = case readMaybe (drop (length end_sigil) l) of
+        Nothing -> error $ "Cannot parse TestCode at the end of: " ++ l
+        Just tc -> tc
 
 -- | The start and end sigils.  This should be chosen to be
 -- reasonably unique, so that test scripts don't accidentally

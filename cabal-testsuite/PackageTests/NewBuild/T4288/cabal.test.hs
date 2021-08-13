@@ -7,7 +7,7 @@ import Test.Cabal.Prelude
 -- to the setup script are compatible with the version of Cabal that it depends
 -- on, even though Cabal is only a transitive dependency.
 main = cabalTest $ do
-  skipUnless =<< hasNewBuildCompatBootCabal
+  skipUnless "no v2-build compatible boot-Cabal" =<< hasNewBuildCompatBootCabal
   r <- recordMode DoNotRecord $ cabal' "v2-build" ["T4288"]
   assertOutputContains "This is setup-helper-1.0." r
   assertOutputContains

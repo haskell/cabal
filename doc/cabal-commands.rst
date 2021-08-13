@@ -42,6 +42,15 @@ to happen if a flag actually applied to every transitive dependency). To
 apply options to an external package, use a ``package`` stanza in a
 ``cabal.project`` file.
 
+There are two ways of modifying the ``cabal.project.local`` file through
+``cabal v2-configure``, either by appending new configurations to it, or
+by simply overwriting it all. Overwriting is the default behaviour, as
+such, there's a flag ``--enable-append`` to append the new configurations
+instead. Since overwriting is rather destructive in nature, a backup system
+is in place, which moves the old configuration to a ``cabal.project.local~``
+file, this feature can also be disabled by using the ``--enable-overwrite``
+flag.
+
 cabal v2-update
 ----------------
 
@@ -56,14 +65,10 @@ Some examples:
     $ cabal v2-update                  # update all remote repos
     $ cabal v2-update head.hackage     # update only head.hackage
 
-cabal v2-build
----------------
+Target Forms
+------------
 
-``cabal v2-build`` takes a set of targets and builds them. It
-automatically handles building and installing any dependencies of these
-targets.
-
-A target can take any of the following forms:
+A cabal command target can take any of the following forms:
 
 -  A package target: ``package``, which specifies that all enabled
    components of a package to be built. By default, test suites and
@@ -91,6 +96,13 @@ A target can take any of the following forms:
 
 -  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
    component of which the given filepath is a part of will be built.
+
+cabal v2-build
+---------------
+
+``cabal v2-build`` takes a set of targets and builds them. It
+automatically handles building and installing any dependencies of these
+targets.
 
 In component targets, ``package:`` and ``ctype:`` (valid component types
 are ``lib``, ``flib``, ``exe``, ``test`` and ``bench``) can be used to
@@ -278,8 +290,13 @@ invocations and bringing the project's executables into scope.
 cabal v2-install
 -----------------
 
-``cabal v2-install [FLAGS] PACKAGES`` builds the specified packages and
+``cabal v2-install [FLAGS] [TARGETS]`` builds the specified target packages and
 symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
+
+.. warning::
+
+  If not every package has an executable to install, use ``all:exes`` rather
+  than ``all`` as the target.
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:
@@ -308,6 +325,11 @@ by using ``--install-method`` flag:
 Note that copied executables are not self-contained, since they might use
 data-files from the store.
 
+.. _adding-libraries:
+
+Adding libraries to GHC package environments
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 It is also possible to "install" libraries using the ``--lib`` flag. For
 example, this command will build the latest Cabal library and install it:
 
@@ -315,10 +337,10 @@ example, this command will build the latest Cabal library and install it:
 
     $ cabal v2-install --lib Cabal
 
-This works by managing GHC environments. By default, it is writing to the
-global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
-``v2-install`` provides the ``--package-env`` flag to control which of
-these environments is modified.
+This works by managing GHC package environment files. By default, it is writing
+to the global environment in ``~/.ghc/$ARCH-$OS-$GHCVER/environments/default``.
+``v2-install`` provides the ``--package-env`` flag to control which of these
+environments is modified.
 
 This command will modify the environment file in the current directory:
 
@@ -392,11 +414,3 @@ not due to implementation but due to fundamental core invariants
 that must be satisfied for it to function correctly in the larger v2-build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
-
-.. warning::
-
-  Packages that use Backpack will stop working if uploaded to
-  Hackage, due to `issue #6005 <https://github.com/haskell/cabal/issues/6005>`_.
-  While this is happening, we recommend not uploading these packages
-  to Hackage (and instead referencing the package directly
-  as a ``source-repository-package``).

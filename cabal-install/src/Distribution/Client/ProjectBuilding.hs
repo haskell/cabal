@@ -101,7 +101,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
-import System.IO         (IOMode (AppendMode), withFile)
+import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
 
@@ -652,8 +652,22 @@ rebuildTarget verbosity
               registerLock cacheLock
               sharedPackageConfig
               plan rpkg@(ReadyPackage pkg)
-              pkgBuildStatus =
-
+              pkgBuildStatus
+    -- Technically, doing the --only-download filtering only in this function is
+    -- not perfect. We could also prune the plan at an earlier stage, like it's
+    -- done with --only-dependencies. But...
+    --   * the benefit would be minimal (practically just avoiding to print the
+    --     "requires build" parts of the plan)
+    --   * we currently don't have easy access to the BuildStatus of packages
+    --     in the pruning phase
+    --   * we still have to check it here to avoid performing successive phases
+    | buildSettingOnlyDownload buildSettings = do
+        case pkgBuildStatus of
+          BuildStatusDownload ->
+            void $ waitAsyncPackageDownload verbosity downloadMap pkg
+          _ -> return ()
+        return $ BuildResult DocsNotTried TestsNotTried Nothing
+    | otherwise =
     -- We rely on the 'BuildStatus' to decide which phase to start from:
     case pkgBuildStatus of
       BuildStatusDownload              -> downloadPhase
@@ -675,6 +689,7 @@ rebuildTarget verbosity
           --TODO: [nice to have] git/darcs repos etc
 
 
+    unpackTarballPhase :: FilePath -> IO BuildResult
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
@@ -692,6 +707,7 @@ rebuildTarget verbosity
     -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
     -- would only start from download or unpack phases.
     --
+    rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
     rebuildPhase buildStatus srcdir =
         assert (elabBuildStyle pkg == BuildInplaceOnly) $
 
@@ -700,6 +716,7 @@ rebuildTarget verbosity
         builddir = distBuildDirectory
                    (elabDistDirParams sharedPackageConfig pkg)
 
+    buildAndInstall :: FilePath -> FilePath -> IO BuildResult
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity distDirLayout storeDirLayout
@@ -711,6 +728,7 @@ rebuildTarget verbosity
         builddir' = makeRelative srcdir builddir
         --TODO: [nice to have] ^^ do this relative stuff better
 
+    buildInplace :: BuildStatusRebuild -> FilePath -> FilePath -> IO BuildResult
     buildInplace buildStatus srcdir builddir =
         --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -746,6 +764,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
                             asyncFetchPackages verbosity repoctx
                                                pkgsToDownload body
   where
+    pkgsToDownload :: [PackageLocation (Maybe FilePath)]
     pkgsToDownload =
       ordNub $
       [ elabPkgSourceLocation elab
@@ -1129,6 +1148,7 @@ buildAndInstallUnpackedPackage verbosity
         Nothing        -> Nothing
         Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
 
+    initLogFile :: IO ()
     initLogFile =
       case mlogFile of
         Nothing      -> return ()
@@ -1137,6 +1157,7 @@ buildAndInstallUnpackedPackage verbosity
           exists <- doesFileExist logFile
           when exists $ removeFile logFile
 
+    withLogging :: (Maybe Handle -> IO r) -> IO r
     withLogging action =
       case mlogFile of
         Nothing      -> action Nothing
@@ -1148,6 +1169,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   | not elabBuildHaddocks = False
   | otherwise             = any componentHasHaddocks components
   where
+    components :: [ComponentTarget]
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 

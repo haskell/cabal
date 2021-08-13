@@ -28,7 +28,7 @@ import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectFlags
          ( ProjectFlags (..) )
 import Distribution.Client.Types
-         ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), isRepoRemote )
+         ( Repo(..), RepoName (..), unRepoName, RemoteRepo(..), repoName )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
@@ -49,7 +49,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
-         , currentIndexTimestamp, indexBaseName )
+         , currentIndexTimestamp, indexBaseName, updatePackageIndexCacheFile )
 
 import qualified Data.Maybe as Unsafe (fromJust)
 import qualified Distribution.Compat.CharParsing as P
@@ -71,6 +71,7 @@ updateCommand = CommandUI
   , commandUsage        = usageAlternatives "v2-update" [ "[FLAGS] [REPOS]" ]
   , commandDescription  = Just $ \_ -> wrapText $
           "For all known remote repositories, download the package list."
+
   , commandNotes        = Just $ \pname ->
         "REPO has the format <repo-id>[,<index-state>] where index-state follows\n"
      ++ "the same format and syntax that is supported by the --index-state flag.\n\n"
@@ -85,18 +86,8 @@ updateCommand = CommandUI
      ++ "  " ++ pname ++ " new update hackage.haskell.org head.hackage\n"
      ++ "    Download hackage.haskell.org and head.hackage\n"
      ++ "    head.hackage must be a known repo-id. E.g. from\n"
-     ++ "    your cabal.project(.local) file.\n\n"
-     ++ "Note: this command is part of the new project-based system (aka "
-     ++ "nix-style\nlocal builds). These features are currently in beta. "
-     ++ "Please see\n"
-     ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
-     ++ "for\ndetails and advice on what you can expect to work. If you "
-     ++ "encounter problems\nplease file issues at "
-     ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
-     ++ "to get involved and help with testing, fixing bugs etc then\nthat "
-     ++ "is very much appreciated.\n"
-  -- TODO: Add ProjectFlags to NixStyleFlags,
-  -- so project-file won't be ambiguous
+     ++ "    your cabal.project(.local) file.\n"
+
   , commandOptions      = nixStyleOptions $ const []
   , commandDefaultFlags = defaultNixStyleFlags ()
   }
@@ -126,13 +117,16 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
   projectConfigWithSolverRepoContext verbosity
     (projectConfigShared projectConfig) (projectConfigBuildOnly projectConfig)
     $ \repoCtxt -> do
-    let repos       = filter isRepoRemote $ repoContextRepos repoCtxt
-        repoName    = remoteRepoName . repoRemote
+
+    let repos :: [Repo]
+        repos = repoContextRepos repoCtxt
+
         parseArg :: String -> IO UpdateRequest
         parseArg s = case simpleParsec s of
           Just r -> return r
           Nothing -> die' verbosity $
                      "'v2-update' unable to parse repo: \"" ++ s ++ "\""
+
     updateRepoRequests <- traverse parseArg extraArgs
 
     unless (null updateRepoRequests) $ do
@@ -156,7 +150,8 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                                | (UpdateRequest name state) <- updateRequests ]
 
     case reposToUpdate of
-      [] -> return ()
+      [] ->
+        notice verbosity "No remote repositories configured"
       [(remoteRepo, _)] ->
         notice verbosity $ "Downloading the latest package list from "
                         ++ unRepoName (repoName remoteRepo)
@@ -164,10 +159,11 @@ updateAction flags@NixStyleFlags {..} extraArgs globalFlags = do
               $ "Downloading the latest package lists from: "
               : map (("- " ++) . unRepoName . repoName . fst) reposToUpdate
 
-    jobCtrl <- newParallelJobControl (length reposToUpdate)
-    traverse_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
-      reposToUpdate
-    traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
+    unless (null reposToUpdate) $ do
+      jobCtrl <- newParallelJobControl (length reposToUpdate)
+      traverse_ (spawnJob jobCtrl . updateRepo verbosity defaultUpdateFlags repoCtxt)
+        reposToUpdate
+      traverse_ (\_ -> collectJob jobCtrl) reposToUpdate
 
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -179,7 +175,10 @@ updateRepo :: Verbosity -> UpdateFlags -> RepoContext -> (Repo, RepoIndexState)
 updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
   transport <- repoContextGetTransport repoCtxt
   case repo of
-    RepoLocalNoIndex{} -> return ()
+    RepoLocalNoIndex{} -> do
+      let index = RepoIndex repoCtxt repo
+      updatePackageIndexCacheFile verbosity index
+
     RepoRemote{..} -> do
       downloadResult <- downloadIndex transport verbosity
                         repoRemote repoLocalDir

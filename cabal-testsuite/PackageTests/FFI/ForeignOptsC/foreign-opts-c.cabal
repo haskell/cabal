@@ -1,0 +1,14 @@
+cabal-version:       2.2
+name:                foreign-opts-c
+version:             0.1
+build-type:          Simple
+
+executable foreign-opts-c-exe
+  main-is:             Main.hs
+  build-depends:       base
+  default-language:    Haskell2010
+  include-dirs:        cbits
+  c-sources:           cbits/clib.c
+  -- The following options are shared in all ForeignOpts cases:
+  cc-options:          -D__TESTOPT_C__=11
+  cxx-options:         -D__TESTOPT_CXX__=22

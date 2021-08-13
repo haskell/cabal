@@ -56,7 +56,6 @@ import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
-import Distribution.Types.Mixin                      (Mixin (..), mkMixin)
 import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
 import Distribution.Verbosity                        (Verbosity)
 import Distribution.Version                          (Version, mkVersion, versionNumbers)
@@ -207,6 +206,13 @@ parseGenericPackageDescription' scannedVer lexWarnings utf8WarnPos fs = do
 
     let gpd2 = postProcessInternalDeps specVer gpd1
     checkForUndefinedFlags gpd2
+    checkForUndefinedCustomSetup gpd2
+    -- See nothunks test, without this deepseq we get (at least):
+    -- Thunk in ThunkInfo {thunkContext = ["PackageIdentifier","PackageDescription","GenericPackageDescription"]}
+    --
+    -- TODO: re-benchmark, whether `deepseq` is important (both cabal-benchmarks and solver-benchmarks)
+    -- TODO: remove the need for deepseq if `deepseq` in fact matters
+    -- NOTE: IIRC it does affect (maximal) memory usage, which causes less GC pressure
     gpd2 `deepseq` return gpd2
   where
     safeLast :: [a] -> Maybe a
@@ -674,9 +680,14 @@ onAllBranches p = go mempty
     goBranch acc (CondBranch _ t (Just e))  = go acc t && go acc e
 
 -------------------------------------------------------------------------------
--- Flag check
+-- Post parsing checks
 -------------------------------------------------------------------------------
 
+-- | Check that we 
+--
+-- * don't use undefined flags (very bad)
+-- * define flags which are unused (just bad)
+--
 checkForUndefinedFlags :: GenericPackageDescription -> ParseResult ()
 checkForUndefinedFlags gpd = do
     let definedFlags, usedFlags :: Set.Set FlagName
@@ -690,6 +701,18 @@ checkForUndefinedFlags gpd = do
   where
     f :: CondTree ConfVar c a -> Const (Set.Set FlagName) (CondTree ConfVar c a)
     f ct = Const (Set.fromList (freeVars ct))
+
+-- | Since @cabal-version: 1.24@ one can specify @custom-setup@.
+-- Let us require it.
+--
+checkForUndefinedCustomSetup :: GenericPackageDescription -> ParseResult ()
+checkForUndefinedCustomSetup gpd = do
+    let pd  = packageDescription gpd
+    let csv = specVersion pd
+
+    when (buildType pd == Custom && isNothing (setupBuildInfo pd)) $
+        when (csv >= CabalSpecV1_24) $ parseFailure zeroPos $
+            "Since cabal-version: 1.24 specifying custom-setup section is mandatory"
 
 -------------------------------------------------------------------------------
 -- Post processing of internal dependencies

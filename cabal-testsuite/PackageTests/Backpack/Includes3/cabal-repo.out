@@ -1,12 +1,12 @@
-# cabal v1-update
+# cabal v2-update
 Downloading the latest package list from test-local-repo
 # cabal v2-build
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - sigs-0.1.0.0 (lib) (requires download & build)
- - indef-0.1.0.0 (lib) (requires download & build)
- - indef-0.1.0.0 (lib with Data.Map=containers-<VERSION>:Data.Map) (requires download & build)
+ - sigs-0.1.0.0 (lib) (requires build)
+ - indef-0.1.0.0 (lib) (requires build)
+ - indef-0.1.0.0 (lib with Data.Map=containers-<VERSION>:Data.Map) (requires build)
  - exe-0.1.0.0 (exe:exe) (first run)
 Configuring library for sigs-0.1.0.0..
 Preprocessing library for sigs-0.1.0.0..

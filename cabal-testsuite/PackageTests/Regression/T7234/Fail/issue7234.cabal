@@ -1,0 +1,14 @@
+cabal-version: >=1.8
+name:          issue7234
+version:       0
+synopsis:      Old cabal-version package
+description:   But we have other-extensions to guide solver
+author:        Oleg Grenrus
+category:      Tests
+maintainer:    oleg.grenrus@iki.fi
+build-type:    Simple
+
+library
+  build-depends:    base <5
+  other-extensions: HopefullyThisExtensionWontOccur
+  exposed-modules:  M

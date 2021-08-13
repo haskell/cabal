@@ -1,5 +1,7 @@
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 -- | 'GenericPackageDescription' Field descriptions
 module Distribution.PackageDescription.FieldGrammar (
     -- * Package description
@@ -55,21 +57,22 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compiler                  (CompilerFlavor (..), PerCompilerFlavor (..))
+import Distribution.Compat.Newtype     (Newtype, pack', unpack')
+import Distribution.Compiler           (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
-import Distribution.ModuleName                (ModuleName)
+import Distribution.ModuleName         (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Parsec
-import Distribution.Pretty                    (prettyShow)
-import Distribution.Types.ModuleReexport
-import Distribution.Types.Mixin               (Mixin)
-import Distribution.Version                   (Version, VersionRange)
+import Distribution.Pretty             (Pretty (..), prettyShow, showToken)
+import Distribution.Utils.Path
+import Distribution.Version            (Version, VersionRange)
 
-import qualified Distribution.SPDX as SPDX
-
-import qualified Distribution.Types.Lens as L
+import qualified Data.ByteString.Char8           as BS8
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.SPDX               as SPDX
+import qualified Distribution.Types.Lens         as L
 
 -------------------------------------------------------------------------------
 -- PackageDescription
@@ -81,9 +84,13 @@ packageDescriptionFieldGrammar
        , c (Identity PackageName)
        , c (Identity Version)
        , c (List FSep FilePathNT String)
+       , c (List FSep CompatFilePath String)
+       , c (List FSep (Identity (SymbolicPath PackageDir LicenseFile)) (SymbolicPath PackageDir LicenseFile))
        , c (List FSep TestedWith (CompilerFlavor, VersionRange))
        , c (List VCat FilePathNT String)
        , c FilePathNT
+       , c CompatLicenseFile
+       , c CompatFilePath
        , c SpecLicense
        , c SpecVersion
        )
@@ -117,7 +124,8 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> pure []       -- benchmarks
     --  * Files
     <*> monoidalFieldAla    "data-files"         (alaList' VCat FilePathNT) L.dataFiles
-    <*> optionalFieldDefAla "data-dir"           FilePathNT                 L.dataDir ""
+    <*> optionalFieldDefAla "data-dir"           CompatFilePath             L.dataDir "."
+        ^^^ fmap (\x -> if null x then "." else x) -- map empty directories to "."
     <*> monoidalFieldAla    "extra-source-files" formatExtraSourceFiles     L.extraSrcFiles
     <*> monoidalFieldAla    "extra-tmp-files"    (alaList' VCat FilePathNT) L.extraTmpFiles
     <*> monoidalFieldAla    "extra-doc-files"    (alaList' VCat FilePathNT) L.extraDocFiles
@@ -130,8 +138,8 @@ packageDescriptionFieldGrammar = PackageDescription
         -- TODO: neither field is deprecated
         -- should we pretty print license-file if there's single license file
         -- and license-files when more
-        <$> monoidalFieldAla    "license-file"  (alaList' FSep FilePathNT)  L.licenseFiles
-        <*> monoidalFieldAla    "license-files"  (alaList' FSep FilePathNT) L.licenseFiles
+        <$> monoidalFieldAla    "license-file"   CompatLicenseFile L.licenseFiles
+        <*> monoidalFieldAla    "license-files"  (alaList FSep)    L.licenseFiles
             ^^^ hiddenField
 
 -------------------------------------------------------------------------------
@@ -154,9 +162,10 @@ libraryFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
-       ) 
+       )
     => LibraryName
     -> g Library Library
 libraryFieldGrammar n = Library n
@@ -198,6 +207,7 @@ foreignLibFieldGrammar
        , c (List FSep (MQuoted Language) Language)
        , c (List FSep FilePathNT String)
        , c (List FSep Token String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String), c (List VCat Token String)
@@ -220,21 +230,22 @@ foreignLibFieldGrammar n = ForeignLib n
 
 executableFieldGrammar
     :: ( FieldGrammar c g, Applicative (g Executable), Applicative (g BuildInfo)
-       , c (Identity ExecutableScope),
-                       c (List CommaFSep (Identity ExeDependency) ExeDependency),
-                       c (List
-                            CommaFSep (Identity LegacyExeDependency) LegacyExeDependency),
-                       c (List
-                            CommaFSep (Identity PkgconfigDependency) PkgconfigDependency),
-                       c (List CommaVCat (Identity Dependency) Dependency),
-                       c (List CommaVCat (Identity Mixin) Mixin),
-                       c (List FSep (MQuoted Extension) Extension),
-                       c (List FSep (MQuoted Language) Language),
-                       c (List FSep FilePathNT String), c (List FSep Token String),
-                       c (List NoCommaFSep Token' String),
-                       c (List VCat (MQuoted ModuleName) ModuleName),
-                       c (List VCat FilePathNT String), c (List VCat Token String),
-                       c (MQuoted Language)
+       , c (Identity ExecutableScope)
+       , c (List CommaFSep (Identity ExeDependency) ExeDependency)
+       , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
+       , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+       , c (List CommaVCat (Identity Dependency) Dependency)
+       , c (List CommaVCat (Identity Mixin) Mixin)
+       , c (List FSep (MQuoted Extension) Extension)
+       , c (List FSep (MQuoted Language) Language)
+       , c (List FSep FilePathNT String)
+       , c (List FSep Token String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+       , c (List NoCommaFSep Token' String)
+       , c (List VCat (MQuoted ModuleName) ModuleName)
+       , c (List VCat FilePathNT String)
+       , c (List VCat Token String)
+       , c (MQuoted Language)
        )
     => UnqualComponentName -> g Executable Executable
 executableFieldGrammar n = Executable n
@@ -294,6 +305,7 @@ testSuiteFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -413,6 +425,7 @@ benchmarkFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -488,6 +501,7 @@ buildInfoFieldGrammar
        , c (List NoCommaFSep Token' String)
        , c (List VCat (MQuoted ModuleName) ModuleName)
        , c (List VCat FilePathNT String)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
        , c (List VCat Token String)
        , c (MQuoted Language)
        )
@@ -514,6 +528,8 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "cxx-options"          (alaList' NoCommaFSep Token') L.cxxOptions
         ^^^ availableSince CabalSpecV2_2 []
     <*> monoidalFieldAla "ld-options"           (alaList' NoCommaFSep Token') L.ldOptions
+    <*> monoidalFieldAla "hsc2hs-options"       (alaList' NoCommaFSep Token') L.hsc2hsOptions
+        ^^^ availableSince CabalSpecV3_6 []
     <*> monoidalFieldAla "pkgconfig-depends"    (alaList  CommaFSep)          L.pkgconfigDepends
     <*> monoidalFieldAla "frameworks"           (alaList' FSep Token)         L.frameworks
     <*> monoidalFieldAla "extra-framework-dirs" (alaList' FSep FilePathNT)    L.extraFrameworkDirs
@@ -538,7 +554,7 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "default-extensions"   (alaList' FSep MQuoted)       L.defaultExtensions
         ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "other-extensions"     formatOtherExtensions         L.otherExtensions
-        ^^^ availableSince CabalSpecV1_10 []
+        ^^^ availableSinceWarn CabalSpecV1_10
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."
@@ -568,17 +584,19 @@ buildInfoFieldGrammar = BuildInfo
 {-# SPECIALIZE buildInfoFieldGrammar :: PrettyFieldGrammar' BuildInfo #-}
 
 hsSourceDirsGrammar
-    :: (FieldGrammar c g, Applicative (g BuildInfo), c (List FSep FilePathNT FilePath))
-    => g BuildInfo [FilePath]
+    :: ( FieldGrammar c g, Applicative (g BuildInfo)
+       , c (List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir))
+       )
+    => g BuildInfo [SymbolicPath PackageDir SourceDir]
 hsSourceDirsGrammar = (++)
     <$> monoidalFieldAla "hs-source-dirs" formatHsSourceDirs L.hsSourceDirs
-    <*> monoidalFieldAla "hs-source-dir"  (alaList' FSep FilePathNT) wrongLens
+    <*> monoidalFieldAla "hs-source-dir"  (alaList FSep) wrongLens
         --- https://github.com/haskell/cabal/commit/49e3cdae3bdf21b017ccd42e66670ca402e22b44
         ^^^ deprecatedSince CabalSpecV1_2 "Please use 'hs-source-dirs'"
         ^^^ removedIn CabalSpecV3_0 "Please use 'hs-source-dirs' field."
   where
     -- TODO: make pretty printer aware of CabalSpecVersion
-    wrongLens :: Functor f => LensLike' f BuildInfo [FilePath]
+    wrongLens :: Functor f => LensLike' f BuildInfo [SymbolicPath PackageDir SourceDir]
     wrongLens f bi = (\fps -> set L.hsSourceDirs fps bi) <$> f []
 
 optionsFieldGrammar
@@ -682,11 +700,103 @@ formatExtraSourceFiles = alaList' VCat FilePathNT
 formatExposedModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatExposedModules = alaList' VCat MQuoted
 
-formatHsSourceDirs :: [FilePath] -> List FSep FilePathNT FilePath
-formatHsSourceDirs = alaList' FSep FilePathNT
+formatHsSourceDirs :: [SymbolicPath PackageDir SourceDir] -> List FSep (Identity (SymbolicPath PackageDir SourceDir)) (SymbolicPath PackageDir SourceDir)
+formatHsSourceDirs = alaList FSep
 
 formatOtherExtensions :: [Extension] -> List FSep (MQuoted Extension) Extension
 formatOtherExtensions = alaList' FSep MQuoted
 
 formatOtherModules :: [ModuleName] -> List VCat (MQuoted ModuleName) ModuleName
 formatOtherModules = alaList' VCat MQuoted
+
+-------------------------------------------------------------------------------
+-- newtypes
+-------------------------------------------------------------------------------
+
+-- | Compat FilePath accepts empty file path,
+-- but issues a warning.
+--
+-- There are simply too many (~1200) package definition files
+--
+-- @
+-- license-file: ""
+-- @
+--
+-- and
+--
+-- @
+-- data-dir: ""
+-- @
+--
+-- across Hackage to outrule them completely.
+-- I suspect some of them are generated (e.g. formatted) by machine.
+--
+newtype CompatFilePath = CompatFilePath { getCompatFilePath :: FilePath } -- TODO: Change to use SymPath
+
+instance Newtype String CompatFilePath
+
+instance Parsec CompatFilePath where
+    parsec = do
+        token <- parsecToken
+        if null token
+        then do
+            parsecWarning PWTEmptyFilePath "empty FilePath"
+            return (CompatFilePath "")
+        else return (CompatFilePath token)
+
+instance Pretty CompatFilePath where
+    pretty = showToken . getCompatFilePath
+
+newtype CompatLicenseFile = CompatLicenseFile { getCompatLicenseFile :: [SymbolicPath PackageDir LicenseFile] }
+
+instance Newtype [SymbolicPath PackageDir LicenseFile] CompatLicenseFile
+
+-- TODO
+instance Parsec CompatLicenseFile where
+    parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
+      where
+        emptyToken = P.try $ do
+            token <- parsecToken
+            if null token
+            then return (CompatLicenseFile [])
+            else P.unexpected "non-empty-token"
+
+instance Pretty CompatLicenseFile where
+    pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
+
+-------------------------------------------------------------------------------
+-- vim syntax definitions
+-------------------------------------------------------------------------------
+
+-- | '_syntaxFieldNames' and '_syntaxExtensions'
+-- are for generating VIM syntax file definitions.
+--
+_syntaxFieldNames :: IO ()
+_syntaxFieldNames = sequence_
+    [ BS8.putStrLn $ " \\ " <> n
+    | n <- nub $ sort $ mconcat
+        [ fieldGrammarKnownFieldList packageDescriptionFieldGrammar
+        , fieldGrammarKnownFieldList $ libraryFieldGrammar LMainLibName
+        , fieldGrammarKnownFieldList $ executableFieldGrammar "exe"
+        , fieldGrammarKnownFieldList $ foreignLibFieldGrammar "flib"
+        , fieldGrammarKnownFieldList testSuiteFieldGrammar
+        , fieldGrammarKnownFieldList benchmarkFieldGrammar
+        , fieldGrammarKnownFieldList $ flagFieldGrammar (error "flagname")
+        , fieldGrammarKnownFieldList $ sourceRepoFieldGrammar (error "repokind")
+        , fieldGrammarKnownFieldList $ setupBInfoFieldGrammar True
+        ]
+    ]
+
+_syntaxExtensions :: IO ()
+_syntaxExtensions = sequence_
+    [ putStrLn $ "  \\ " <> e
+    | e <- ["Safe","Trustworthy","Unsafe"]
+        ++ es
+        ++ map ("No"++) es
+    ]
+  where
+    es = nub $ sort
+          [ prettyShow e
+          | e <- [ minBound .. maxBound ]
+          , e `notElem` [Safe,Unsafe,Trustworthy]
+          ]

@@ -57,10 +57,8 @@ import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Pretty
-import Distribution.Types.IncludeRenaming
 import Distribution.Types.ComponentInclude
 import Distribution.Types.AnnotatedId
-import Distribution.Types.ModuleRenaming
 import Distribution.Verbosity
 
 import Data.STRef

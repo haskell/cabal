@@ -9,6 +9,7 @@ module Distribution.Client.Types.Repo (
     localRepoCacheKey,
     -- * Repository
     Repo (..),
+    repoName,
     isRepoRemote,
     maybeRepoRemote,
 ) where
@@ -182,3 +183,8 @@ maybeRepoRemote :: Repo -> Maybe RemoteRepo
 maybeRepoRemote (RepoLocalNoIndex _ _localDir) = Nothing
 maybeRepoRemote (RepoRemote       r _localDir) = Just r
 maybeRepoRemote (RepoSecure       r _localDir) = Just r
+
+repoName :: Repo -> RepoName
+repoName (RepoLocalNoIndex r _) = localRepoName r
+repoName (RepoRemote r _)       = remoteRepoName r
+repoName (RepoSecure r _)       = remoteRepoName r

@@ -3,10 +3,14 @@ packages: cabal-testsuite/
 packages: cabal-install/
 packages: solver-benchmarks/
 
-packages: cabal-install/cabal-install-solver/
-packages: Cabal/Cabal-QuickCheck/
-packages: Cabal/Cabal-tree-diff
-packages: Cabal/Cabal-described
+packages: cabal-install-solver/
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff
+packages: Cabal-described
+packages: Cabal-tests
+packages: cabal-benchmarks
+
+packages: vendor/cabal-doctest-1.0.8
 
 tests: True
 

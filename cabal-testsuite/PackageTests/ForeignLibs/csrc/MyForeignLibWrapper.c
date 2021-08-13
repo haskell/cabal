@@ -1,7 +1,8 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include "HsFFI.h"
 
-HsBool myForeignLibInit(void){
+bool myForeignLibInit(void){
   int argc = 2;
   char *argv[] = { "+RTS", "-A32m", NULL };
   char **pargv = argv;
@@ -11,7 +12,7 @@ HsBool myForeignLibInit(void){
 
   // do any other initialization here and
   // return false if there was a problem
-  return HS_BOOL_TRUE;
+  return true;
 }
 
 void myForeignLibExit(void){

@@ -26,54 +26,23 @@ cabal v2-build Cabal:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
 ~~~~
 
-**Dogfooding HEAD.**
-Many of the core developers of Cabal dogfood `cabal-install` HEAD
-when doing development on Cabal.  This helps us identify bugs
-which were missed by the test suite and easily experiment with new
-features.
-
-The recommended workflow in this case is slightly different: you will
-maintain two Cabal source trees: your production tree (built with a
-released version of Cabal) which always tracks `master` and which you
-update only when you want to move to a new version of Cabal to dogfood,
-and your development tree (built with your production Cabal) that you
-actually do development on.
-
-In more detail, suppose you have checkouts of Cabal at `~/cabal-prod`
-and `~/cabal-dev`, and you have a release copy of cabal installed at
-`/opt/cabal/2.4/bin/cabal`.  First, build your production tree:
-
-~~~~
-cd ~/cabal-prod
-/opt/cabal/2.4/bin/cabal v2-build cabal
-~~~~
-
-This will produce a cabal binary (see also: [Where are my build products?](http://cabal.readthedocs.io/en/latest/nix-local-build.html#where-are-my-build-products)
-).  Add this binary to your PATH,
-and then use it to build your development copy:
-
-~~~~
-cd ~/cabal-dev
-cabal v2-build cabal
-~~~~
-
 Running tests
 -------------
 
-**Using Travis and AppVeyor.**
+**Using Github Actions and AppVeyor.**
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
-continuous integration service on Travis and AppVeyor will build and
+continuous integration service on Github Actions and AppVeyor will build and
 test your code.  Title your PR with WIP so we know that it does not need
 code review.
 
-Some tips for using Travis effectively:
+Some tips for using Github Actions effectively:
 
-* Travis builds take a long time.  Use them when you are pretty
+* Github Actions builds take a long time.  Use them when you are pretty
   sure everything is OK; otherwise, try to run relevant tests locally
   first.
 
-* Watch over your jobs on the [Travis website](http://travis-ci.org).
+* Watch over your jobs on the [Github Actions website](http://github.org/haskell/cabal/actions).
   If you know a build of yours is going to fail (because one job has
   already failed), be nice to others and cancel the rest of the jobs,
   so that other commits on the build queue can be processed.
@@ -97,10 +66,9 @@ failures:
    a specific operating system?  If so, try reproducing the
    problem on the specific configuration.
 
-4. Is the test failing on a Travis per-GHC build
-   ([for example](https://travis-ci.org/haskell-pushbot/cabal-binaries/builds/208128401))?
+4. Is the test failing on a Github Actions per-GHC build.
    In this case, if you click on "Branch", you can get access to
-   the precise binaries that were built by Travis that are being
+   the precise binaries that were built by Github Actions that are being
    tested.  If you have an Ubuntu system, you can download
    the binaries and run them directly.
 
@@ -137,15 +105,17 @@ There are also other test suites:
   on some utility functions in cabal-install you should run this test
   suite.
 
-* `cabal-install:solver-quickcheck` are QuickCheck tests on
-  cabal-install's dependency solver.  If you are working
-  on the solver you should run this test suite.
+* `cabal-install:long-tests` are QuickCheck tests on
+  cabal-install's dependency solver, VCS, and file monitoring code.
+  If you are working on the solver you should run this test suite.
 
 * `cabal-install:integration-tests2` are integration tests on some
   top-level API functions inside the `cabal-install` source code.
 
 For these test executables, `-p` which applies a regex filter to the test
-names.
+names. When running `cabal-install` test suites, one need only use `cabal test` or
+`cabal run <test-target>` in order to test locally.
+
 
 Conventions
 -----------
@@ -220,6 +190,49 @@ Conventions
 We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
+
+Changelog
+---------
+
+When opening a pull request, you should write a changelog entry
+(or more in case of multiple independent changes).
+This is done by adding files in the `changelog.d` directory.
+
+The files follow a simple key-value format similar to the one for .cabal files.
+
+Here's an exhaustive example:
+
+```cabal
+synopsis: Add feature xyz
+packages: cabal-install
+prs: #0000
+issues: #0000 #0000
+significance: significant
+
+description: {
+
+- Detail number 1
+- Detail number 2
+
+}
+```
+
+Only the `synopsis` field is actually required, but you should also set the others where applicable.
+
+| Field          | Description                                                                                                        |
+| -----          | -----------                                                                                                        |
+| `synopsis`     | Brief description of the change. Often just the pr title.                                                          |
+| `description`  | Longer description, with a list of sub-changes. Not needed for small/atomic changes.                               |
+| `packages`     | Packages affected by the change (`cabal-install`, `Cabal`...). Omit if it's an overarching or non-package change.  |
+| `prs`          | Space-separated hash-prefixed pull request numbers containing the change (usually just one).                       |
+| `issues`       | Space-separated hash-prefixed issue numbers that the change fixes/closes/affects.                                  |
+| `significance` | Set to `significant` if the change is significant, that is if it warrants being put near the top of the changelog. |
+
+You can find a large number of real-world examples of changelog files
+[here](https://github.com/haskell/cabal/tree/bc83de27569fda22dbe1e10be1a921bebf4d3430/changelog.d).
+
+At release time, the entries will be merged with
+[this tool](https://github.com/phadej/changelog-d).
 
 Communicating
 -------------

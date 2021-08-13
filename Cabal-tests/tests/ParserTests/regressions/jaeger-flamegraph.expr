@@ -1,0 +1,474 @@
+GenericPackageDescription
+  {condBenchmarks = [],
+   condExecutables = [_×_
+                        (UnqualComponentName "jaeger-flamegraph")
+                        CondNode
+                          {condTreeComponents = [],
+                           condTreeConstraints = [Dependency
+                                                    (PackageName "base")
+                                                    (UnionVersionRanges
+                                                       (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                       (MajorBoundVersion
+                                                          (mkVersion [4, 12, 0, 0])))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "jaeger-flamegraph")
+                                                    (OrLaterVersion (mkVersion [0]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "bytestring")
+                                                    (MajorBoundVersion (mkVersion [0, 10, 8, 2]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "containers")
+                                                    (MajorBoundVersion (mkVersion [0, 6, 0, 1]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "extra")
+                                                    (MajorBoundVersion (mkVersion [1, 6, 13]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "aeson")
+                                                    (MajorBoundVersion (mkVersion [1, 4, 1, 0]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "optparse-applicative")
+                                                    (MajorBoundVersion (mkVersion [0, 14, 3, 0]))
+                                                    mainLibSet,
+                                                  Dependency
+                                                    (PackageName "text")
+                                                    (MajorBoundVersion (mkVersion [1, 2, 3, 1]))
+                                                    mainLibSet],
+                           condTreeData = Executable
+                                            {buildInfo = BuildInfo
+                                                           {asmOptions = [],
+                                                            asmSources = [],
+                                                            autogenIncludes = [],
+                                                            autogenModules = [],
+                                                            buildToolDepends = [],
+                                                            buildTools = [],
+                                                            buildable = True,
+                                                            cSources = [],
+                                                            ccOptions = [],
+                                                            cmmOptions = [],
+                                                            cmmSources = [],
+                                                            cppOptions = [],
+                                                            customFieldsBI = [],
+                                                            cxxOptions = [],
+                                                            cxxSources = [],
+                                                            defaultExtensions = [],
+                                                            defaultLanguage = Just Haskell2010,
+                                                            extraBundledLibs = [],
+                                                            extraDynLibFlavours = [],
+                                                            extraFrameworkDirs = [],
+                                                            extraGHCiLibs = [],
+                                                            extraLibDirs = [],
+                                                            extraLibFlavours = [],
+                                                            extraLibs = [],
+                                                            frameworks = [],
+                                                            hsSourceDirs = [SymbolicPath "exe"],
+                                                            hsc2hsOptions = [],
+                                                            includeDirs = [],
+                                                            includes = [],
+                                                            installIncludes = [],
+                                                            jsSources = [],
+                                                            ldOptions = [],
+                                                            mixins = [],
+                                                            oldExtensions = [],
+                                                            options = PerCompilerFlavor
+                                                                        ["-Wall",
+                                                                         "-Werror=missing-home-modules",
+                                                                         "-threaded"]
+                                                                        [],
+                                                            otherExtensions = [],
+                                                            otherLanguages = [],
+                                                            otherModules = [],
+                                                            pkgconfigDepends = [],
+                                                            profOptions = PerCompilerFlavor [] [],
+                                                            sharedOptions = PerCompilerFlavor [] [],
+                                                            staticOptions = PerCompilerFlavor [] [],
+                                                            targetBuildDepends = [Dependency
+                                                                                    (PackageName
+                                                                                       "base")
+                                                                                    (UnionVersionRanges
+                                                                                       (MajorBoundVersion
+                                                                                          (mkVersion
+                                                                                             [4,
+                                                                                              11,
+                                                                                              1,
+                                                                                              0]))
+                                                                                       (MajorBoundVersion
+                                                                                          (mkVersion
+                                                                                             [4,
+                                                                                              12,
+                                                                                              0,
+                                                                                              0])))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "jaeger-flamegraph")
+                                                                                    (OrLaterVersion
+                                                                                       (mkVersion
+                                                                                          [0]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "bytestring")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           10,
+                                                                                           8,
+                                                                                           2]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "containers")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           6,
+                                                                                           0,
+                                                                                           1]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "extra")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           6,
+                                                                                           13]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "aeson")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           4,
+                                                                                           1,
+                                                                                           0]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "optparse-applicative")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [0,
+                                                                                           14,
+                                                                                           3,
+                                                                                           0]))
+                                                                                    mainLibSet,
+                                                                                  Dependency
+                                                                                    (PackageName
+                                                                                       "text")
+                                                                                    (MajorBoundVersion
+                                                                                       (mkVersion
+                                                                                          [1,
+                                                                                           2,
+                                                                                           3,
+                                                                                           1]))
+                                                                                    mainLibSet],
+                                                            virtualModules = []},
+                                             exeName = UnqualComponentName "jaeger-flamegraph",
+                                             exeScope = ExecutablePublic,
+                                             modulePath = "Main.hs"}}],
+   condForeignLibs = [],
+   condLibrary = Just
+                   CondNode
+                     {condTreeComponents = [],
+                      condTreeConstraints = [Dependency
+                                               (PackageName "base")
+                                               (UnionVersionRanges
+                                                  (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                  (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
+                                               mainLibSet,
+                                             Dependency
+                                               (PackageName "QuickCheck")
+                                               (MajorBoundVersion (mkVersion [2, 12, 6, 1]))
+                                               mainLibSet],
+                      condTreeData = Library
+                                       {exposedModules = [ModuleName "Interval"],
+                                        libBuildInfo = BuildInfo
+                                                         {asmOptions = [],
+                                                          asmSources = [],
+                                                          autogenIncludes = [],
+                                                          autogenModules = [],
+                                                          buildToolDepends = [],
+                                                          buildTools = [],
+                                                          buildable = True,
+                                                          cSources = [],
+                                                          ccOptions = [],
+                                                          cmmOptions = [],
+                                                          cmmSources = [],
+                                                          cppOptions = [],
+                                                          customFieldsBI = [],
+                                                          cxxOptions = [],
+                                                          cxxSources = [],
+                                                          defaultExtensions = [],
+                                                          defaultLanguage = Just Haskell2010,
+                                                          extraBundledLibs = [],
+                                                          extraDynLibFlavours = [],
+                                                          extraFrameworkDirs = [],
+                                                          extraGHCiLibs = [],
+                                                          extraLibDirs = [],
+                                                          extraLibFlavours = [],
+                                                          extraLibs = [],
+                                                          frameworks = [],
+                                                          hsSourceDirs = [SymbolicPath "library"],
+                                                          hsc2hsOptions = [],
+                                                          includeDirs = [],
+                                                          includes = [],
+                                                          installIncludes = [],
+                                                          jsSources = [],
+                                                          ldOptions = [],
+                                                          mixins = [],
+                                                          oldExtensions = [],
+                                                          options = PerCompilerFlavor
+                                                                      ["-Wall",
+                                                                       "-Werror=missing-home-modules"]
+                                                                      [],
+                                                          otherExtensions = [],
+                                                          otherLanguages = [],
+                                                          otherModules = [],
+                                                          pkgconfigDepends = [],
+                                                          profOptions = PerCompilerFlavor [] [],
+                                                          sharedOptions = PerCompilerFlavor [] [],
+                                                          staticOptions = PerCompilerFlavor [] [],
+                                                          targetBuildDepends = [Dependency
+                                                                                  (PackageName
+                                                                                     "base")
+                                                                                  (UnionVersionRanges
+                                                                                     (MajorBoundVersion
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            11,
+                                                                                            1,
+                                                                                            0]))
+                                                                                     (MajorBoundVersion
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            12,
+                                                                                            0,
+                                                                                            0])))
+                                                                                  mainLibSet,
+                                                                                Dependency
+                                                                                  (PackageName
+                                                                                     "QuickCheck")
+                                                                                  (MajorBoundVersion
+                                                                                     (mkVersion
+                                                                                        [2,
+                                                                                         12,
+                                                                                         6,
+                                                                                         1]))
+                                                                                  mainLibSet],
+                                                          virtualModules = []},
+                                        libExposed = True,
+                                        libName = LMainLibName,
+                                        libVisibility = LibraryVisibilityPublic,
+                                        reexportedModules = [],
+                                        signatures = []}},
+   condSubLibraries = [],
+   condTestSuites = [_×_
+                       (UnqualComponentName "tests")
+                       CondNode
+                         {condTreeComponents = [],
+                          condTreeConstraints = [Dependency
+                                                   (PackageName "base")
+                                                   (UnionVersionRanges
+                                                      (MajorBoundVersion (mkVersion [4, 11, 1, 0]))
+                                                      (MajorBoundVersion (mkVersion [4, 12, 0, 0])))
+                                                   mainLibSet,
+                                                 Dependency
+                                                   (PackageName "jaeger-flamegraph")
+                                                   (OrLaterVersion (mkVersion [0]))
+                                                   mainLibSet,
+                                                 Dependency
+                                                   (PackageName "tasty")
+                                                   (MajorBoundVersion (mkVersion [1, 1, 0, 4]))
+                                                   mainLibSet,
+                                                 Dependency
+                                                   (PackageName "tasty-hspec")
+                                                   (MajorBoundVersion (mkVersion [1, 1, 5]))
+                                                   mainLibSet,
+                                                 Dependency
+                                                   (PackageName "tasty-quickcheck")
+                                                   (MajorBoundVersion (mkVersion [0, 10]))
+                                                   mainLibSet],
+                          condTreeData = TestSuite
+                                           {testBuildInfo = BuildInfo
+                                                              {asmOptions = [],
+                                                               asmSources = [],
+                                                               autogenIncludes = [],
+                                                               autogenModules = [],
+                                                               buildToolDepends = [ExeDependency
+                                                                                     (PackageName
+                                                                                        "tasty-discover")
+                                                                                     (UnqualComponentName
+                                                                                        "tasty-discover")
+                                                                                     (MajorBoundVersion
+                                                                                        (mkVersion
+                                                                                           [4,
+                                                                                            2,
+                                                                                            1]))],
+                                                               buildTools = [],
+                                                               buildable = True,
+                                                               cSources = [],
+                                                               ccOptions = [],
+                                                               cmmOptions = [],
+                                                               cmmSources = [],
+                                                               cppOptions = [],
+                                                               customFieldsBI = [],
+                                                               cxxOptions = [],
+                                                               cxxSources = [],
+                                                               defaultExtensions = [],
+                                                               defaultLanguage = Just Haskell2010,
+                                                               extraBundledLibs = [],
+                                                               extraDynLibFlavours = [],
+                                                               extraFrameworkDirs = [],
+                                                               extraGHCiLibs = [],
+                                                               extraLibDirs = [],
+                                                               extraLibFlavours = [],
+                                                               extraLibs = [],
+                                                               frameworks = [],
+                                                               hsSourceDirs = [SymbolicPath "test"],
+                                                               hsc2hsOptions = [],
+                                                               includeDirs = [],
+                                                               includes = [],
+                                                               installIncludes = [],
+                                                               jsSources = [],
+                                                               ldOptions = [],
+                                                               mixins = [],
+                                                               oldExtensions = [],
+                                                               options = PerCompilerFlavor
+                                                                           ["-Wall",
+                                                                            "-Werror=missing-home-modules",
+                                                                            "-threaded"]
+                                                                           [],
+                                                               otherExtensions = [],
+                                                               otherLanguages = [],
+                                                               otherModules = [ModuleName
+                                                                                 "IntervalTest"],
+                                                               pkgconfigDepends = [],
+                                                               profOptions = PerCompilerFlavor
+                                                                               [] [],
+                                                               sharedOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               staticOptions = PerCompilerFlavor
+                                                                                 [] [],
+                                                               targetBuildDepends = [Dependency
+                                                                                       (PackageName
+                                                                                          "base")
+                                                                                       (UnionVersionRanges
+                                                                                          (MajorBoundVersion
+                                                                                             (mkVersion
+                                                                                                [4,
+                                                                                                 11,
+                                                                                                 1,
+                                                                                                 0]))
+                                                                                          (MajorBoundVersion
+                                                                                             (mkVersion
+                                                                                                [4,
+                                                                                                 12,
+                                                                                                 0,
+                                                                                                 0])))
+                                                                                       mainLibSet,
+                                                                                     Dependency
+                                                                                       (PackageName
+                                                                                          "jaeger-flamegraph")
+                                                                                       (OrLaterVersion
+                                                                                          (mkVersion
+                                                                                             [0]))
+                                                                                       mainLibSet,
+                                                                                     Dependency
+                                                                                       (PackageName
+                                                                                          "tasty")
+                                                                                       (MajorBoundVersion
+                                                                                          (mkVersion
+                                                                                             [1,
+                                                                                              1,
+                                                                                              0,
+                                                                                              4]))
+                                                                                       mainLibSet,
+                                                                                     Dependency
+                                                                                       (PackageName
+                                                                                          "tasty-hspec")
+                                                                                       (MajorBoundVersion
+                                                                                          (mkVersion
+                                                                                             [1,
+                                                                                              1,
+                                                                                              5]))
+                                                                                       mainLibSet,
+                                                                                     Dependency
+                                                                                       (PackageName
+                                                                                          "tasty-quickcheck")
+                                                                                       (MajorBoundVersion
+                                                                                          (mkVersion
+                                                                                             [0,
+                                                                                              10]))
+                                                                                       mainLibSet],
+                                                               virtualModules = []},
+                                            testInterface = TestSuiteExeV10
+                                                              (mkVersion [1, 0]) "Driver.hs",
+                                            testName = UnqualComponentName ""}}],
+   genPackageFlags = [],
+   gpdScannedVersion = Nothing,
+   packageDescription = PackageDescription
+                          {author = "Sam Halliday",
+                           benchmarks = [],
+                           bugReports = "https://github.com/symbiont-io/jaeger-flamegraph/pulls",
+                           buildTypeRaw = Nothing,
+                           category = "Testing",
+                           copyright = "(c) 2018 Symbiont.io",
+                           customFieldsPD = [],
+                           dataDir = ".",
+                           dataFiles = [],
+                           description = concat
+                                           ["This is a small tool to convert JSON dumps obtained from a Jaeger\n",
+                                            "server (<https://www.jaegertracing.io/>) into a format consumable\n",
+                                            "by [FlameGraph](https://github.com/brendangregg/FlameGraph).\n",
+                                            "\n",
+                                            "First download the traces for your SERVICE limiting to LIMIT traces\n",
+                                            "\n",
+                                            "> $ curl http://your-jaeger-installation/api/traces?service=SERVICE&limit=LIMIT > input.json\n",
+                                            "\n",
+                                            "using the [undocumented Jaeger API](https://github.com/jaegertracing/jaeger/issues/456#issuecomment-412560321)\n",
+                                            "then use @jaeger-flamegraph@ to convert the data and send to @flamegraph.pl@\n",
+                                            "\n",
+                                            "> $ jaeger-flamegraph -f input.json | flamegraph.pl > output.svg\n"],
+                           executables = [],
+                           extraDocFiles = [],
+                           extraSrcFiles = [],
+                           extraTmpFiles = [],
+                           foreignLibs = [],
+                           homepage = "",
+                           library = Nothing,
+                           licenseFiles = [SymbolicPath "LICENSE"],
+                           licenseRaw = Left
+                                          (License (ELicense (ELicenseId BSD_3_Clause) Nothing)),
+                           maintainer = "Sam Halliday",
+                           package = PackageIdentifier
+                                       {pkgName = PackageName "jaeger-flamegraph",
+                                        pkgVersion = mkVersion [1, 0, 0]},
+                           pkgUrl = "",
+                           setupBuildInfo = Nothing,
+                           sourceRepos = [SourceRepo
+                                            {repoBranch = Nothing,
+                                             repoKind = RepoHead,
+                                             repoLocation = Just
+                                                              "https://github.com/symbiont-io/jaeger-flamegraph",
+                                             repoModule = Nothing,
+                                             repoSubdir = Nothing,
+                                             repoTag = Nothing,
+                                             repoType = Just (KnownRepoType Git)}],
+                           specVersion = CabalSpecV2_2,
+                           stability = "",
+                           subLibraries = [],
+                           synopsis = "Generate flamegraphs from Jaeger .json dumps.",
+                           testSuites = [],
+                           testedWith = [_×_
+                                           GHC
+                                           (UnionVersionRanges
+                                              (MajorBoundVersion (mkVersion [8, 4, 4]))
+                                              (MajorBoundVersion (mkVersion [8, 6, 2])))]}}

@@ -83,7 +83,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
-         , parseHaskellString, showToken 
+         , parseHaskellString, showToken
          , simpleFieldParsec
          )
 import Distribution.Client.ParseUtils
@@ -95,6 +95,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Parsec (ParsecParser)
 
 import qualified Data.Map as Map
+import qualified Data.ByteString as BS
 
 import Network.URI (URI (..))
 
@@ -121,7 +122,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacyAllConfig         :: LegacyPackageConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
        legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacyProjectConfig where
   mempty  = gmempty
@@ -136,7 +137,7 @@ data LegacyPackageConfig = LegacyPackageConfig {
        legacyHaddockFlags      :: HaddockFlags,
        legacyTestFlags         :: TestFlags,
        legacyBenchmarkFlags    :: BenchmarkFlags
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacyPackageConfig where
   mempty  = gmempty
@@ -152,7 +153,7 @@ data LegacySharedConfig = LegacySharedConfig {
        legacyInstallFlags      :: InstallFlags,
        legacyClientInstallFlags:: ClientInstallFlags,
        legacyProjectFlags      :: ProjectFlags
-     } deriving Generic
+     } deriving (Show, Generic)
 
 instance Monoid LegacySharedConfig where
   mempty  = gmempty
@@ -508,6 +509,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
 
     InstallFlags {
       installDryRun             = projectConfigDryRun,
+      installOnlyDownload       = projectConfigOnlyDownload,
       installOnly               = _,
       installOnlyDeps           = projectConfigOnlyDeps,
       installRootCmd            = _,
@@ -597,6 +599,8 @@ convertToLegacySharedConfig
 
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
+      configAppend        = mempty,
+      configBackup        = mempty,
       configExConstraints = projectConfigConstraints,
       configPreferences   = projectConfigPreferences,
       configSolver        = projectConfigSolver,
@@ -611,6 +615,7 @@ convertToLegacySharedConfig
       installHaddockIndex      = projectConfigHaddockIndex,
       installDest              = Flag NoCopyDest,
       installDryRun            = projectConfigDryRun,
+      installOnlyDownload      = projectConfigOnlyDownload,
       installReinstall         = mempty, --projectConfigReinstall,
       installAvoidReinstalls   = mempty, --projectConfigAvoidReinstalls,
       installOverrideReinstall = mempty, --projectConfigOverrideReinstall,
@@ -843,26 +848,33 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig =
-    parseConfig legacyProjectConfigFieldDescrs
+parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig source =
+    parseConfig (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 mempty
+  where
+    constraintSrc = ConstraintSourceProjectConfig source
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
     Disp.render $
-    showConfig  legacyProjectConfigFieldDescrs
+    showConfig  (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 config
   $+$
     Disp.text ""
+  where
+    -- Note: ConstraintSource is unused when pretty-printing. We fake
+    -- it here to avoid having to pass it on call-sites. It's not great
+    -- but requires re-work of how we annotate provenance.
+    constraintSrc = ConstraintSourceProjectConfig "unused"
 
 
-legacyProjectConfigFieldDescrs :: [FieldDescr LegacyProjectConfig]
-legacyProjectConfigFieldDescrs =
+legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
+legacyProjectConfigFieldDescrs constraintSrc =
 
     [ newLineListField "packages"
         (Disp.text . renderPackageLocationToken) parsePackageLocationTokenQ
@@ -881,7 +893,7 @@ legacyProjectConfigFieldDescrs =
  ++ map (liftField
            legacySharedConfig
            (\flags conf -> conf { legacySharedConfig = flags }))
-        legacySharedConfigFieldDescrs
+        (legacySharedConfigFieldDescrs constraintSrc)
 
  ++ map (liftField
            legacyLocalConfig
@@ -940,8 +952,8 @@ renderPackageLocationToken s | needsQuoting = show s
     ok n (_  :cs) = ok n cs
 
 
-legacySharedConfigFieldDescrs :: [FieldDescr LegacySharedConfig]
-legacySharedConfigFieldDescrs = concat
+legacySharedConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacySharedConfig]
+legacySharedConfigFieldDescrs constraintSrc = concat
   [ liftFields
       legacyGlobalFlags
       (\flags conf -> conf { legacyGlobalFlags = flags })
@@ -1032,8 +1044,6 @@ legacySharedConfigFieldDescrs = concat
   $ projectFlagsOptions ParseArgs
 
   ]
-  where
-    constraintSrc = ConstraintSourceProjectConfig "TODO" -- TODO: is a filepath
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
@@ -1224,7 +1234,9 @@ legacyPackageConfigFieldDescrs =
 
 legacyPackageConfigFGSectionDescrs
     :: ( FieldGrammar c g, Applicative (g SourceRepoList)
-       , c (Identity RepoType), c (List NoCommaFSep FilePathNT String)
+       , c (Identity RepoType)
+       , c (List NoCommaFSep FilePathNT String)
+       , c (NonEmpty' NoCommaFSep Token String)
        )
     => [FGSectionDescr g LegacyProjectConfig]
 legacyPackageConfigFGSectionDescrs =
@@ -1253,7 +1265,9 @@ legacyPackageConfigSectionDescrs =
 
 packageRepoSectionDescr
     :: ( FieldGrammar c g, Applicative (g SourceRepoList)
-       , c (Identity RepoType), c (List NoCommaFSep FilePathNT String)
+       , c (Identity RepoType)
+       , c (List NoCommaFSep FilePathNT String)
+       , c (NonEmpty' NoCommaFSep Token String)
        )
     => FGSectionDescr g LegacyProjectConfig
 packageRepoSectionDescr = FGSectionDescr

@@ -50,7 +50,7 @@ import Distribution.Simple.Setup
     , optionVerbosity, optionDistPref, trueArg, configVerbosity, configDistPref
     )
 import Distribution.Simple.SrcDist
-    ( listPackageSources )
+    ( listPackageSourcesWithDie )
 import Distribution.Client.SrcDist
     ( packageDirToSdist )
 import Distribution.Simple.Utils
@@ -61,6 +61,7 @@ import Distribution.Types.PackageName
     ( PackageName, unPackageName )
 import Distribution.Verbosity
     ( normal )
+import Distribution.Types.GenericPackageDescription (GenericPackageDescription)
 
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import System.Directory
@@ -221,7 +222,7 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
     let death = die' verbosity ("The impossible happened: a local package isn't local" <> (show pkg))
     dir0 <- case srcpkgSource pkg of
              LocalUnpackedPackage path             -> pure (Right path)
-             RemoteSourceRepoPackage _ (Just path) -> pure (Right path)
+             RemoteSourceRepoPackage _ (Just tgz)  -> pure (Left tgz)
              RemoteSourceRepoPackage {}            -> death
              LocalTarballPackage tgz               -> pure (Left tgz)
              RemoteTarballPackage _ (Just tgz)     -> pure (Left tgz)
@@ -250,7 +251,13 @@ packageToSdist verbosity projectRootDir format outputFile pkg = do
 
       Right dir -> case format of
         SourceList nulSep -> do
-          files' <- listPackageSources verbosity dir (flattenPackageDescription $ srcpkgDescription pkg) knownSuffixHandlers
+          let gpd :: GenericPackageDescription
+              gpd = srcpkgDescription pkg
+
+          let thisDie :: Verbosity -> String -> IO a
+              thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
+
+          files' <- listPackageSourcesWithDie verbosity thisDie dir (flattenPackageDescription gpd) knownSuffixHandlers
           let files = nub $ sort $ map normalise files'
           let prefix = makeRelative projectRootDir dir
           write $ concat [prefix </> i ++ [nulSep] | i <- files]

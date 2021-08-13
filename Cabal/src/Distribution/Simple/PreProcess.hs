@@ -53,6 +53,7 @@ import Distribution.System
 import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
+import Distribution.Utils.Path
 
 import System.Directory (doesFileExist)
 import System.Info (os, arch)
@@ -142,6 +143,8 @@ type PPSuffixHandler
 
 -- | Apply preprocessors to the sources from 'hsSourceDirs' for a given
 -- component (lib, exe, or test suite).
+--
+-- XXX: This is terrible
 preprocessComponent :: PackageDescription
                     -> Component
                     -> LocalBuildInfo
@@ -157,25 +160,25 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
     (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
  case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
-                                  ,autogenPackageModulesDir lbi]
+    let dirs = map getSymbolicPath (hsSourceDirs bi) ++
+             [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
     for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+        dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
     for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
       pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+        dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
     for_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
-    pre (hsSourceDirs bi) exeDir (localHandlers bi) $
+    pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
   CTest test@TestSuite{ testName = nm } -> do
     let nm' = unUnqualComponentName nm
@@ -204,20 +207,30 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
-      preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
+      preprocessFile (map unsafeMakeSymbolicPath dirs) dir isSrcDist fp verbosity builtinSuffixes lhndlrs
     preProcessTest test = preProcessComponent (testBuildInfo test)
                           (testModules test)
     preProcessBench bm = preProcessComponent (benchmarkBuildInfo bm)
                          (benchmarkModules bm)
+
+    preProcessComponent
+        :: BuildInfo
+        -> [ModuleName]
+        -> FilePath
+        -> FilePath
+        -> IO ()
     preProcessComponent bi modules exePath dir = do
         let biHandlers = localHandlers bi
-            sourceDirs = hsSourceDirs bi ++ [ autogenComponentModulesDir lbi clbi
+            sourceDirs = map getSymbolicPath (hsSourceDirs bi) ++ [ autogenComponentModulesDir lbi clbi
                                             , autogenPackageModulesDir lbi ]
-        sequence_ [ preprocessFile sourceDirs dir isSrcDist
+        sequence_ [ preprocessFile (map unsafeMakeSymbolicPath sourceDirs) dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
                 | modu <- modules ]
-        preprocessFile (dir : (hsSourceDirs bi)) dir isSrcDist
+
+        -- XXX: what we do here (re SymbolicPath dir)
+        -- XXX: 2020-10-15 do we rely here on CWD being the PackageDir?
+        preprocessFile (unsafeMakeSymbolicPath dir : hsSourceDirs bi) dir isSrcDist
             (dropExtensions $ exePath) verbosity
             builtinSuffixes biHandlers
 
@@ -228,7 +241,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessFile
-    :: [FilePath]               -- ^source directories
+    :: [SymbolicPath PackageDir SourceDir] -- ^ source directories
+
     -> FilePath                 -- ^build directory
     -> Bool                     -- ^preprocess for sdist
     -> FilePath                 -- ^module file name
@@ -239,7 +253,7 @@ preprocessFile
 preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
-    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc baseFile
+    psrcFiles <- findFileWithExtension' (map fst handlers) (map getSymbolicPath searchLoc) baseFile
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
         -- just to make sure one actually exists at all for this module.
@@ -249,11 +263,11 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
         -- files generate source modules directly into the build dir without
         -- the rest of the build system being aware of it (somewhat dodgy)
       Nothing -> do
-                 bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : searchLoc) baseFile
+                 bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : map getSymbolicPath searchLoc) baseFile
                  case bsrcFiles of
                   Nothing ->
                     die' verbosity $ "can't find source for " ++ baseFile
-                                  ++ " in " ++ intercalate ", " searchLoc
+                                  ++ " in " ++ intercalate ", " (map getSymbolicPath searchLoc)
                   _       -> return ()
         -- found a pre-processable file in one of the source dirs
       Just (psrcLoc, psrcRelFile) -> do
@@ -395,7 +409,7 @@ ppHsc2hs bi lbi clbi =
       let isCross = hostPlatform lbi /= buildPlatform
           prependCrossFlags = if isCross then ("-x":) else id
       let hsc2hsSupportsResponseFiles = hsc2hsVersion >= mkVersion [0,68,4]
-          pureArgs = genPureArgs gccProg inFile outFile
+          pureArgs = genPureArgs hsc2hsVersion gccProg inFile outFile
       if hsc2hsSupportsResponseFiles
       then withResponseFile
              verbosity
@@ -411,13 +425,10 @@ ppHsc2hs bi lbi clbi =
   where
     -- Returns a list of command line arguments that can either be passed
     -- directly, or via a response file.
-    genPureArgs :: ConfiguredProgram -> String -> String -> [String]
-    genPureArgs gccProg inFile outFile =
-          [ "--cc=" ++ programPath gccProg
-          , "--ld=" ++ programPath gccProg ]
-
+    genPureArgs :: Version -> ConfiguredProgram -> String -> String -> [String]
+    genPureArgs hsc2hsVersion gccProg inFile outFile =
           -- Additional gcc options
-       ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
+          [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
        ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
                                     ++ programOverrideArgs gccProg ]
@@ -475,7 +486,24 @@ ppHsc2hs bi lbi clbi =
                                  , opt <- Installed.libraryDirs    pkg ]
                 ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+       ++ preccldFlags
+       ++ hsc2hsOptions bi
+       ++ postccldFlags
+
        ++ ["-o", outFile, inFile]
+      where
+        -- hsc2hs flag parsing was wrong
+        -- (see -- https://github.com/haskell/hsc2hs/issues/35)
+        -- so we need to put -- --cc/--ld *after* hsc2hsOptions,
+        -- for older hsc2hs (pre 0.68.8) so that they can be overridden.
+        ccldFlags =
+          [ "--cc=" ++ programPath gccProg
+          , "--ld=" ++ programPath gccProg
+          ]
+
+        (preccldFlags, postccldFlags)
+          | hsc2hsVersion >= mkVersion [0,68,8] = (ccldFlags, [])
+          | otherwise                           = ([], ccldFlags)
 
     hacked_index = packageHacks (installedPkgs lbi)
     -- Look only at the dependencies of the current component

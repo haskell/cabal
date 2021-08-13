@@ -63,7 +63,6 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.UnitId
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
-import Distribution.Types.ModuleRenaming
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System
@@ -73,6 +72,7 @@ import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Distribution.Compat.Stack
 import Distribution.Version (Version)
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
@@ -218,6 +218,11 @@ getLanguages :: Verbosity -> GhcImplInfo -> ConfiguredProgram
              -> IO [(Language, String)]
 getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
+  | supportsGHC2021 implInfo = return
+    [ (GHC2021, "-XGHC2021")
+    , (Haskell2010, "-XHaskell2010")
+    , (Haskell98, "-XHaskell98")
+    ]
   | supportsHaskell2010 implInfo = return [(Haskell98,   "-XHaskell98")
                                           ,(Haskell2010, "-XHaskell2010")]
   | otherwise                    = return [(Haskell98,   "")]
@@ -404,7 +409,7 @@ componentGhcOptions verbosity implInfo lbi bi clbi odir =
       ghcOptSplitSections   = toFlag (splitSections lbi),
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
-      ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)
+      ghcOptSourcePath      = toNubListR $ [odir] ++ (map getSymbolicPath (hsSourceDirs bi))
                                            ++ [autogenComponentModulesDir lbi clbi]
                                            ++ [autogenPackageModulesDir lbi],
       ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi

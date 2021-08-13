@@ -1,0 +1,12 @@
+synopsis: Add 'preferred-versions' support for LocalIndexRepo
+packages: cabal-install
+prs: #7296
+issues: #7249, #5603
+
+description: {
+
+- `cabal outdated` honours the 'preferred-versions' file which might deprecate or prefer certain
+  versions of packages. In particular, if the only newer version of a package has been deprecated,
+  `cabal outdated` should not report that there are newer versions available.
+}
+

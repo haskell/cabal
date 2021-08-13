@@ -22,7 +22,10 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.6``
 ----------------------
 
-* TBW
+* License fields use identifiers from SPDX License List version
+  ``3.10 2020-08-03``
+
+* Add :pkg-field:`hsc2hs-options`
 
 ``cabal-version: 3.4``
 ----------------------
@@ -156,7 +159,7 @@ relative to the respective preceding *published* version.
 ----------------------
 
 * New :pkg-field:`library:signatures` and :pkg-field:`mixins` fields
-  added for supporting Backpack_.
+  added for supporting :ref:`Backpack`.
 
 * New :pkg-field:`build-tool-depends` field added for adding
   build-time dependencies of executable components.

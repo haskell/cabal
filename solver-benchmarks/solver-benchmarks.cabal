@@ -27,8 +27,10 @@ library
   exposed-modules:
     HackageBenchmark
   build-depends:
+    async >=2.2.2 && <2.3,
     base,
     bytestring,
+    containers,
     Cabal >= 2.3,
     directory,
     filepath,

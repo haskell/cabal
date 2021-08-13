@@ -11,9 +11,11 @@ import Distribution.Pretty
 import Distribution.Package
 import Distribution.System
 
-import qualified Data.Foldable as F
+import Text.Regex.Base
+import Text.Regex.TDFA
+import Data.Array ((!))
 
-import Text.Regex
+import qualified Data.Foldable as F
 
 normalizeOutput :: NormalizerEnv -> String -> String
 normalizeOutput nenv =
@@ -27,10 +29,13 @@ normalizeOutput nenv =
   . resub "Installing (.+) in .+" "Installing \\1 in <PATH>"
     -- Things that look like libraries
   . resub "libHS[A-Za-z0-9.-]+\\.(so|dll|a|dynlib)" "<LIBRARY>"
+    -- look for PackageHash directories
+  . resub "/(([A-Za-z0-9_]+)(-[A-Za-z0-9\\._]+)*)-[0-9a-f]{4,64}/"
+          "/<PACKAGE>-<HASH>/"
     -- This is dumb but I don't feel like pulling in another dep for
     -- string search-replace.  Make sure we do this before backslash
     -- normalization!
-  . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
+  . resub (posixRegexEscape (normalizerGblTmpDir nenv) ++ "[a-z0-9\\.-]+") "<GBLTMPDIR>" -- note, after TMPDIR
   . resub (posixRegexEscape (normalizerRoot nenv)) "<ROOT>/"
   . resub (posixRegexEscape (normalizerTmpDir nenv)) "<TMPDIR>/"
   . appEndo (F.fold (map (Endo . packageIdRegex) (normalizerKnownPackages nenv)))
@@ -39,6 +44,9 @@ normalizeOutput nenv =
     -- Apply this before packageIdRegex, otherwise this regex doesn't match.
   . resub "[0-9]+(\\.[0-9]+)*/installed-[A-Za-z0-9.+]+"
           "<VERSION>/installed-<HASH>"
+    -- incoming directories in the store
+  . resub "/incoming/new-[0-9]+"
+          "/incoming/new-<RAND>"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
     -- Some GHC versions are chattier than others
@@ -74,6 +82,41 @@ posixSpecialChars = ".^$*+?()[{\\|"
 posixRegexEscape :: String -> String
 posixRegexEscape = concatMap (\c -> if c `elem` posixSpecialChars then ['\\', c] else [c])
 
+-- From regex-compat-tdfa by Christopher Kuklewicz and shelarcy, BSD-3-Clause
+-------------------------
+
 resub :: String {- search -} -> String {- replace -} -> String {- input -} -> String
-resub search replace s =
-    subRegex (mkRegex search) s replace
+resub _ _ "" = ""
+resub regexp repl inp =
+  let compile _i str [] = \ _m ->  (str ++)
+      compile i str (("\\", (off, len)) : rest) =
+        let i' = off + len
+            pre = take (off - i) str
+            str' = drop (i' - i) str
+        in if null str' then \ _m -> (pre ++) . ('\\' :)
+             else \ m -> (pre ++) . ('\\' :) . compile i' str' rest m
+      compile i str ((xstr, (off, len)) : rest) =
+        let i' = off + len
+            pre = take (off - i) str
+            str' = drop (i' - i) str
+            x = read xstr
+        in if null str' then \ m -> (pre++) . (fst (m ! x) ++)
+             else \ m -> (pre ++) . (fst (m ! x) ++) . compile i' str' rest m
+      compiled :: MatchText String -> String -> String
+      compiled = compile 0 repl findrefs where
+        -- bre matches a backslash then capture either a backslash or some digits
+        bre = mkRegex "\\\\(\\\\|[0-9]+)"
+        findrefs = map (\m -> (fst (m ! 1), snd (m ! 0))) (matchAllText bre repl)
+      go _i str [] = str
+      go i str (m : ms) =
+        let (_, (off, len)) = m ! 0
+            i' = off + len
+            pre = take (off - i) str
+            str' = drop (i' - i) str
+        in if null str' then pre ++ compiled m ""
+             else pre ++ compiled m (go i' str' ms)
+  in go 0 inp (matchAllText (mkRegex regexp) inp)
+
+mkRegex :: String -> Regex
+mkRegex s = makeRegexOpts opt defaultExecOpt s
+  where opt = defaultCompOpt { newSyntax = True, multiline = True }

@@ -84,7 +84,7 @@ import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import           Distribution.Client.Init (incVersion)
+import           Distribution.Client.Utils (incVersion)
 import           Distribution.Client.Targets (userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
@@ -157,13 +157,14 @@ import           Distribution.Version
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
+import           Data.Foldable (fold)
 import           Text.PrettyPrint (text, hang, quotes, colon, vcat, ($$), fsep, punctuate, comma)
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Control.Monad.State as State
 import           Control.Exception (assert)
-import           Data.List (groupBy)
+import           Data.List (groupBy, deleteBy)
 import qualified Data.List.NonEmpty as NE
 import           System.FilePath
 
@@ -239,14 +240,14 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
                             (packageHashInputs sharedConfig elab))
 
     -- the stanzas explicitly disabled should not be available
-  . assert (Set.null (Map.keysSet (Map.filter not elabStanzasRequested)
-                `Set.intersection` elabStanzasAvailable))
+  . assert (optStanzaSetNull $
+        optStanzaKeysFilteredByValue (maybe False not) elabStanzasRequested `optStanzaSetIntersection` elabStanzasAvailable)
 
     -- either a package is built inplace, or we are not attempting to
     -- build any test suites or benchmarks (we never build these
     -- for remote packages!)
   . assert (elabBuildStyle == BuildInplaceOnly ||
-     Set.null elabStanzasAvailable)
+     optStanzaSetNull elabStanzasAvailable)
 
 sanityCheckElaboratedComponent
     :: ElaboratedConfiguredPackage
@@ -279,12 +280,12 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
                              ElaboratedPackage{..} =
     -- we should only have enabled stanzas that actually can be built
     -- (according to the solver)
-    assert (pkgStanzasEnabled `Set.isSubsetOf` elabStanzasAvailable)
+    assert (pkgStanzasEnabled `optStanzaSetIsSubset` elabStanzasAvailable)
 
     -- the stanzas that the user explicitly requested should be
     -- enabled (by the previous test, they are also available)
-  . assert (Map.keysSet (Map.filter id elabStanzasRequested)
-                `Set.isSubsetOf` pkgStanzasEnabled)
+  . assert (optStanzaKeysFilteredByValue (fromMaybe False) elabStanzasRequested
+                `optStanzaSetIsSubset` pkgStanzasEnabled)
 
 ------------------------------------------------------------------------------
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
@@ -1023,13 +1024,14 @@ planPackages verbosity comp platform solver SolverSettings{..}
             | (pc, src) <- solverSettingConstraints ]
 
       . addPreferences
-          -- enable stanza preference where the user did not specify
+          -- enable stanza preference unilaterally, regardless if the user asked
+          -- accordingly or expressed no preference, to help hint the solver
           [ PackageStanzasPreference pkgname stanzas
           | pkg <- localPackages
           , let pkgname = pkgSpecifierTarget pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
-                          , Map.lookup stanza stanzaM == Nothing ]
+                          , Map.lookup stanza stanzaM /= Just False ]
           , not (null stanzas)
           ]
 
@@ -1100,6 +1102,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- respective major Cabal version bundled with the respective GHC
     -- release).
     --
+    -- GHC 9.0   needs  Cabal >= 3.4
+    -- GHC 8.10  needs  Cabal >= 3.2
     -- GHC 8.8   needs  Cabal >= 3.0
     -- GHC 8.6   needs  Cabal >= 2.4
     -- GHC 8.4   needs  Cabal >= 2.2
@@ -1113,7 +1117,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- TODO: long-term, this compatibility matrix should be
     --       stored as a field inside 'Distribution.Compiler.Compiler'
     setupMinCabalVersionConstraint
-      | isGHC, compVer >= mkVersion [8,12] = mkVersion [3,4]
+      | isGHC, compVer >= mkVersion [9,0]  = mkVersion [3,4]
       | isGHC, compVer >= mkVersion [8,10] = mkVersion [3,2]
       | isGHC, compVer >= mkVersion [8,8]  = mkVersion [3,0]
       | isGHC, compVer >= mkVersion [8,6]  = mkVersion [2,4]
@@ -1712,7 +1716,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -- However, we start off by enabling everything that was
         -- requested, so that we can maintain an invariant that
         -- pkgStanzasEnabled is a superset of elabStanzasRequested
-        pkgStanzasEnabled  = Map.keysSet (Map.filter (id :: Bool -> Bool) elabStanzasRequested)
+        pkgStanzasEnabled  = optStanzaKeysFilteredByValue (fromMaybe False) elabStanzasRequested
 
     elaborateSolverToCommon :: SolverPackage UnresolvedPkgLoc
                             -> ElaboratedConfiguredPackage
@@ -1746,18 +1750,18 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                               | flag <- PD.genPackageFlags gdesc ]
 
         elabEnabledSpec      = enableStanzas stanzas
-        elabStanzasAvailable = Set.fromList stanzas
-        elabStanzasRequested =
+        elabStanzasAvailable = stanzas
+
+        elabStanzasRequested :: OptionalStanzaMap (Maybe Bool)
+        elabStanzasRequested = optStanzaTabulate $ \o -> case o of
             -- NB: even if a package stanza is requested, if the package
             -- doesn't actually have any of that stanza we omit it from
             -- the request, to ensure that we don't decide that this
             -- package needs to be rebuilt.  (It needs to be done here,
             -- because the ElaboratedConfiguredPackage is where we test
             -- whether or not there have been changes.)
-            Map.fromList $ [ (TestStanzas,  v) | v <- maybeToList tests
-                                               , _ <- PD.testSuites elabPkgDescription ]
-                        ++ [ (BenchStanzas, v) | v <- maybeToList benchmarks
-                                               , _ <- PD.benchmarks elabPkgDescription ]
+            TestStanzas  -> listToMaybe [ v | v <- maybeToList tests, _ <- PD.testSuites elabPkgDescription ]
+            BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
             tests      = perPkgOptionMaybe pkgid packageConfigTests
@@ -1794,6 +1798,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
           packageSetupScriptSpecVersion
           elabSetupScriptStyle elabPkgDescription libDepGraph deps0
         elabSetupPackageDBStack    = buildAndRegisterDbs
+
+        elabInplaceBuildPackageDBStack = inplacePackageDbs
+        elabInplaceRegisterPackageDBStack = inplacePackageDbs
+        elabInplaceSetupPackageDBStack = inplacePackageDbs
 
         buildAndRegisterDbs
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
@@ -2136,6 +2144,55 @@ getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
 getComponentId (InstallPlan.Configured elab) = elabComponentId elab
 getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
+extractElabBuildStyle :: InstallPlan.GenericPlanPackage ipkg ElaboratedConfiguredPackage
+                      -> BuildStyle
+extractElabBuildStyle (InstallPlan.Configured elab) = elabBuildStyle elab
+extractElabBuildStyle _ = BuildAndInstall
+
+-- instantiateInstallPlan is responsible for filling out an InstallPlan
+-- with all of the extra Configured packages that would be generated by
+-- recursively instantiating the dependencies of packages.
+--
+-- Suppose we are compiling the following packages:
+--
+--  unit f where
+--    signature H
+--
+--  unit g where
+--    dependency f[H=containers:Data.Map]
+--
+-- At entry, we have an InstallPlan with a single plan package per
+-- actual source package, e.g., only (indefinite!) f and g.  The job of
+-- instantiation is to turn this into three plan packages: each of the
+-- packages as before, but also a new, definite package f[H=containers:Data.Map]
+--
+-- How do we do this?  The general strategy is to iterate over every
+-- package in the existing plan and recursively create new entries for
+-- each of its dependencies which is an instantiated package (e.g.,
+-- f[H=p:G]).  This process must be recursive, as f itself may depend on
+-- OTHER packages which it instantiated using its hole H.
+--
+-- Some subtleties:
+--
+--  * We have to keep track of whether or not we are instantiating with
+--    inplace packages, because instantiating a non-inplace package with
+--    an inplace packages makes it inplace (since it depends on
+--    something in the inplace store)!  The rule is that if any of the
+--    modules in an instantiation are inplace, then the instantiated
+--    unit itself must be inplace.  There is then a bunch of faffing
+--    about to keep track of BuildStyle.
+--
+--  * ElaboratedConfiguredPackage was never really designed for post
+--    facto instantiation, so some of the steps for generating new
+--    instantiations are a little fraught.  For example, the act of
+--    flipping a package to be inplace involves faffing about with four
+--    fields, because these fields are precomputed.  A good refactor
+--    would be to reduce the amount of precomputation to simplify the
+--    algorithm here.
+--
+--  * We use the state monad to cache already instantiated modules, so
+--    we don't instantiate the same thing multiple times.
+--
 instantiateInstallPlan :: StoreDirLayout -> InstallDirs.InstallDirTemplates -> ElaboratedSharedConfig -> ElaboratedInstallPlan -> ElaboratedInstallPlan
 instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
     InstallPlan.new (IndependentGoals False)
@@ -2145,41 +2202,46 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
 
     cmap = Map.fromList [ (getComponentId pkg, pkg) | pkg <- pkgs ]
 
-    instantiateUnitId :: ComponentId -> Map ModuleName Module
-                      -> InstM DefUnitId
+    instantiateUnitId :: ComponentId -> Map ModuleName (Module, BuildStyle)
+                      -> InstM (DefUnitId, BuildStyle)
     instantiateUnitId cid insts = state $ \s ->
         case Map.lookup uid s of
             Nothing ->
                 -- Knot tied
+                -- TODO: I don't think the knot tying actually does
+                -- anything useful
                 let (r, s') = runState (instantiateComponent uid cid insts)
                                        (Map.insert uid r s)
-                in (def_uid, Map.insert uid r s')
-            Just _ -> (def_uid, s)
+                in ((def_uid, extractElabBuildStyle r), Map.insert uid r s')
+            Just r -> ((def_uid, extractElabBuildStyle r), s)
       where
-        def_uid = mkDefUnitId cid insts
+        def_uid = mkDefUnitId cid (fmap fst insts)
         uid = unDefUnitId def_uid
 
+    -- No need to InplaceT; the inplace-ness is properly computed for
+    -- the ElaboratedPlanPackage, so that will implicitly pass it on
     instantiateComponent
-        :: UnitId -> ComponentId -> Map ModuleName Module
+        :: UnitId -> ComponentId -> Map ModuleName (Module, BuildStyle)
         -> InstM ElaboratedPlanPackage
     instantiateComponent uid cid insts
       | Just planpkg <- Map.lookup cid cmap
       = case planpkg of
           InstallPlan.Configured (elab0@ElaboratedConfiguredPackage
                                     { elabPkgOrComp = ElabComponent comp }) -> do
-            deps <- traverse (substUnitId insts)
-                         (compLinkedLibDependencies comp)
+            deps <-
+              traverse (fmap fst . substUnitId insts) (compLinkedLibDependencies comp)
+            let build_style = fold (fmap snd insts)
             let getDep (Module dep_uid _) = [dep_uid]
-                elab1 = elab0 {
+                elab1 = fixupBuildStyle build_style $ elab0 {
                     elabUnitId = uid,
                     elabComponentId = cid,
-                    elabInstantiatedWith = insts,
-                    elabIsCanonical = Map.null insts,
+                    elabInstantiatedWith = fmap fst insts,
+                    elabIsCanonical = Map.null (fmap fst insts),
                     elabPkgOrComp = ElabComponent comp {
                         compOrderLibDependencies =
                             (if Map.null insts then [] else [newSimpleUnitId cid]) ++
                             ordNub (map unDefUnitId
-                                (deps ++ concatMap getDep (Map.elems insts)))
+                                (deps ++ concatMap (getDep . fst) (Map.elems insts)))
                     }
                   }
                 elab = elab1 {
@@ -2192,26 +2254,29 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
           _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ prettyShow cid)
 
-    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM DefUnitId
+    substUnitId :: Map ModuleName (Module, BuildStyle) -> OpenUnitId -> InstM (DefUnitId, BuildStyle)
     substUnitId _ (DefiniteUnitId uid) =
-        return uid
+        -- This COULD actually, secretly, be an inplace package, but in
+        -- that case it doesn't matter as it's already been recorded
+        -- in the package that depends on this
+        return (uid, BuildAndInstall)
     substUnitId subst (IndefFullUnitId cid insts) = do
         insts' <- substSubst subst insts
         instantiateUnitId cid insts'
 
     -- NB: NOT composition
-    substSubst :: Map ModuleName Module
+    substSubst :: Map ModuleName (Module, BuildStyle)
                -> Map ModuleName OpenModule
-               -> InstM (Map ModuleName Module)
+               -> InstM (Map ModuleName (Module, BuildStyle))
     substSubst subst insts = traverse (substModule subst) insts
 
-    substModule :: Map ModuleName Module -> OpenModule -> InstM Module
+    substModule :: Map ModuleName (Module, BuildStyle) -> OpenModule -> InstM (Module, BuildStyle)
     substModule subst (OpenModuleVar mod_name)
         | Just m <- Map.lookup mod_name subst = return m
         | otherwise = error "substModule: non-closing substitution"
     substModule subst (OpenModule uid mod_name) = do
-        uid' <- substUnitId subst uid
-        return (Module uid' mod_name)
+        (uid', build_style) <- substUnitId subst uid
+        return (Module uid' mod_name, build_style)
 
     indefiniteUnitId :: ComponentId -> InstM UnitId
     indefiniteUnitId cid = do
@@ -2238,13 +2303,17 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
            -- is no IndefFullUnitId in compLinkedLibDependencies that actually
            -- has no holes.  We couldn't specify this invariant when
            -- we initially created the ElaboratedPlanPackage because
-           -- we have no way of actually refiying the UnitId into a
+           -- we have no way of actually reifying the UnitId into a
            -- DefiniteUnitId (that's what substUnitId does!)
            new_deps <- for (compLinkedLibDependencies elab_comp) $ \uid ->
              if Set.null (openUnitIdFreeHoles uid)
-                then fmap DefiniteUnitId (substUnitId Map.empty uid)
+                then fmap (DefiniteUnitId . fst) (substUnitId Map.empty uid)
                 else return uid
-           return $ InstallPlan.Configured epkg {
+           -- NB: no fixupBuildStyle needed here, as if the indefinite
+           -- component depends on any inplace packages, it itself must
+           -- be indefinite!  There is no substitution here, we can't
+           -- post facto add inplace deps
+           return . InstallPlan.Configured $ epkg {
             elabPkgOrComp = ElabComponent elab_comp {
                 compLinkedLibDependencies = new_deps,
                 -- I think this is right: any new definite unit ids we
@@ -2259,6 +2328,15 @@ instantiateInstallPlan storeDirLayout defaultInstallDirs elaboratedShared plan =
       | Just planpkg <- Map.lookup cid cmap
       = return planpkg
       | otherwise = error ("indefiniteComponent: " ++ prettyShow cid)
+
+    fixupBuildStyle BuildAndInstall elab = elab
+    fixupBuildStyle _ (elab@ElaboratedConfiguredPackage { elabBuildStyle = BuildInplaceOnly }) = elab
+    fixupBuildStyle BuildInplaceOnly elab = elab {
+      elabBuildStyle = BuildInplaceOnly,
+      elabBuildPackageDBStack = elabInplaceBuildPackageDBStack elab,
+      elabRegisterPackageDBStack = elabInplaceRegisterPackageDBStack elab,
+      elabSetupPackageDBStack = elabInplaceSetupPackageDBStack elab
+    }
 
     ready_map = execState work Map.empty
 
@@ -2467,8 +2545,8 @@ availableSourceTargets elab =
 
           -- it is not an optional stanza, so a testsuite or benchmark
           Just stanza ->
-            case (Map.lookup stanza (elabStanzasRequested elab),
-                  Set.member stanza (elabStanzasAvailable elab)) of
+            case (optStanzaLookup stanza (elabStanzasRequested elab), -- TODO
+                  optStanzaSetMember stanza (elabStanzasAvailable elab)) of
               _ | not withinPlan -> TargetNotLocal
               (Just False,   _)  -> TargetDisabledByUser
               (Nothing,  False)  -> TargetDisabledBySolver
@@ -2478,7 +2556,7 @@ availableSourceTargets elab =
               (Nothing,   True)  -> TargetBuildable (elabUnitId elab, cname)
                                                     TargetNotRequestedByDefault
               (Just True, False) ->
-                error "componentAvailableTargetStatus: impossible"
+                error $ "componentAvailableTargetStatus: impossible; cname=" ++ prettyShow cname
       where
         cname      = componentName component
         buildable  = PD.buildable (componentBuildInfo component)
@@ -2501,7 +2579,7 @@ availableSourceTargets elab =
 -- We also allow for information associated with each component target, and
 -- whenever we targets subsume each other we aggregate their associated info.
 --
-nubComponentTargets :: [(ComponentTarget, a)] -> [(ComponentTarget, [a])]
+nubComponentTargets :: [(ComponentTarget, a)] -> [(ComponentTarget, NonEmpty a)]
 nubComponentTargets =
     concatMap (wholeComponentOverrides . map snd)
   . groupBy ((==)    `on` fst)
@@ -2512,11 +2590,17 @@ nubComponentTargets =
     -- If we're building the whole component then that the only target all we
     -- need, otherwise we can have several targets within the component.
     wholeComponentOverrides :: [(ComponentTarget,  a )]
-                            -> [(ComponentTarget, [a])]
+                            -> [(ComponentTarget, NonEmpty a)]
     wholeComponentOverrides ts =
-      case [ t | (t@(ComponentTarget _ WholeComponent), _) <- ts ] of
-        (t:_) -> [ (t, map snd ts) ]
-        []    -> [ (t,[x]) | (t,x) <- ts ]
+      case [ ta | ta@(ComponentTarget _ WholeComponent, _) <- ts ] of
+        ((t, x):_) ->
+                let
+                    -- Delete tuple (t, x) from original list to avoid duplicates.
+                    -- Use 'deleteBy', to avoid additional Class constraint on 'nubComponentTargets'.
+                    ts' = deleteBy (\(t1, _) (t2, _) -> t1 == t2) (t, x) ts
+                in
+                    [ (t, x :| map snd ts') ]
+        []    -> [ (t, x :| []) | (t,x) <- ts ]
 
     -- Not all Cabal Setup.hs versions support sub-component targets, so switch
     -- them over to the whole component
@@ -2678,16 +2762,22 @@ pruneInstallPlanPass1 pkgs =
                 setDocumentation
               $ addOptionalStanzas elab
 
-    find_root (InstallPlan.Configured (PrunedPackage elab _)) =
-        if not $ and [ null (elabConfigureTargets elab)
-                     , null (elabBuildTargets elab)
-                     , null (elabTestTargets elab)
-                     , null (elabBenchTargets elab)
-                     , isNothing (elabReplTarget elab)
-                     , null (elabHaddockTargets elab)
-                     ]
-            then Just (installedUnitId elab)
-            else Nothing
+    is_root :: PrunedPackage -> Maybe UnitId
+    is_root (PrunedPackage elab _) =
+      if not $ and [ null (elabConfigureTargets elab)
+                   , null (elabBuildTargets elab)
+                   , null (elabTestTargets elab)
+                   , null (elabBenchTargets elab)
+                   , isNothing (elabReplTarget elab)
+                   , null (elabHaddockTargets elab)
+                   ]
+          then Just (installedUnitId elab)
+          else Nothing
+
+    find_root (InstallPlan.Configured pkg) = is_root pkg
+    -- When using the extra-packages stanza we need to
+    -- look at installed packages as well.
+    find_root (InstallPlan.Installed pkg)  = is_root pkg
     find_root _ = Nothing
 
     -- Note [Sticky enabled testsuites]
@@ -2714,7 +2804,7 @@ pruneInstallPlanPass1 pkgs =
             elabPkgOrComp = ElabPackage (pkg { pkgStanzasEnabled = stanzas })
         }
       where
-        stanzas :: Set OptionalStanza
+        stanzas :: OptionalStanzaSet
                -- By default, we enabled all stanzas requested by the user,
                -- as per elabStanzasRequested, done in
                -- 'elaborateSolverToPackage'
@@ -2763,15 +2853,15 @@ pruneInstallPlanPass1 pkgs =
     pruneOptionalDependencies ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg }
         = (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
       where
-        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
-        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `optStanzaSetMember` stanzas
+        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
         keepNeeded _                     _ = True
         stanzas = pkgStanzasEnabled pkg
 
     optionalStanzasRequiredByTargets :: ElaboratedConfiguredPackage
-                                     -> Set OptionalStanza
+                                     -> OptionalStanzaSet
     optionalStanzasRequiredByTargets pkg =
-      Set.fromList
+      optStanzaSetFromList
         [ stanza
         | ComponentTarget cname _ <- elabBuildTargets pkg
                                   ++ elabTestTargets pkg
@@ -2797,11 +2887,11 @@ pruneInstallPlanPass1 pkgs =
 optionalStanzasWithDepsAvailable :: Set UnitId
                                  -> ElaboratedConfiguredPackage
                                  -> ElaboratedPackage
-                                 -> Set OptionalStanza
+                                 -> OptionalStanzaSet
 optionalStanzasWithDepsAvailable availablePkgs elab pkg =
-    Set.fromList
+    optStanzaSetFromList
       [ stanza
-      | stanza <- Set.toList (elabStanzasAvailable elab)
+      | stanza <- optStanzaSetToList (elabStanzasAvailable elab)
       , let deps :: [UnitId]
             deps = CD.select (optionalStanzaDeps stanza)
                              -- TODO: probably need to select other
@@ -2858,8 +2948,8 @@ pruneInstallPlanPass2 pkgs =
               ElabPackage pkg ->
                 let stanzas = pkgStanzasEnabled pkg
                            <> optionalStanzasWithDepsAvailable availablePkgs elab pkg
-                    keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
-                    keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+                    keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `optStanzaSetMember` stanzas
+                    keepNeeded (CD.ComponentBench _) _ = BenchStanzas `optStanzaSetMember` stanzas
                     keepNeeded _                     _ = True
                 in ElabPackage $ pkg {
                   pkgStanzasEnabled = stanzas,
@@ -3410,10 +3500,10 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configPackageDBs          = Nothing : map Just elabBuildPackageDBStack
 
     configTests               = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (TestStanzas  `Set.member` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (TestStanzas  `optStanzaSetMember` pkgStanzasEnabled pkg)
                                     ElabComponent _ -> mempty
     configBenchmarks          = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (BenchStanzas `Set.member` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (BenchStanzas `optStanzaSetMember` pkgStanzasEnabled pkg)
                                     ElabComponent _ -> mempty
 
     configExactConfiguration  = toFlag True

@@ -4,6 +4,7 @@
 module Distribution.Client.CmdConfigure (
     configureCommand,
     configureAction,
+    configureAction',
   ) where
 
 import Distribution.Client.Compat.Prelude
@@ -11,28 +12,30 @@ import Prelude ()
 
 import System.Directory
 import System.FilePath
-import qualified Data.Map as Map
 
+import Distribution.Simple.Flag
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
-         ( writeProjectLocalExtraConfig )
+         ( writeProjectLocalExtraConfig, readProjectLocalExtraConfig )
+import Distribution.Client.ProjectFlags
+         ( removeIgnoreProjectOption )
 
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..) )
-import Distribution.Simple.Flag
-         ( fromFlagOrDefault )
+         ( GlobalFlags, ConfigFlags(..), ConfigExFlags(..) )
 import Distribution.Verbosity
          ( normal )
 
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives, optionName )
+         ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
          ( wrapText, notice )
 
 import Distribution.Client.DistDirLayout
          ( DistDirLayout(..) )
+import Distribution.Client.RebuildMonad (runRebuild)
+import Distribution.Client.ProjectConfig.Types
 
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
@@ -70,11 +73,10 @@ configureCommand = CommandUI {
      ++ "    program and check the resulting configuration works.\n"
      ++ "  " ++ pname ++ " v2-configure\n"
      ++ "    Reset the local configuration to empty and check the overall\n"
-     ++ "    project configuration works.\n\n"
+     ++ "    project configuration works.\n"
 
-     ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags ()
-  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+  , commandOptions      = removeIgnoreProjectOption
                         . nixStyleOptions (const [])
   }
 
@@ -89,61 +91,54 @@ configureCommand = CommandUI {
 -- "Distribution.Client.ProjectOrchestration"
 --
 configureAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-configureAction flags@NixStyleFlags {..} _extraArgs globalFlags = do
+configureAction flags@NixStyleFlags {..} extraArgs globalFlags = do
+    (baseCtx, projConfig) <- configureAction' flags extraArgs globalFlags
+
+    if shouldNotWriteFile baseCtx
+      then notice v "Config file not written due to flag(s)."
+      else writeProjectLocalExtraConfig (distDirLayout baseCtx) projConfig
+  where
+    v = fromFlagOrDefault normal (configVerbosity configFlags)
+
+configureAction' :: NixStyleFlags () -> [String] -> GlobalFlags -> IO (ProjectBaseContext, ProjectConfig)
+configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
     --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+    baseCtx <- establishProjectBaseContext v cliConfig OtherCommand
 
-    -- Write out the @cabal.project.local@ so it gets picked up by the
-    -- planning phase. If old config exists, then print the contents
-    -- before overwriting
+    let localFile  = distProjectFile (distDirLayout baseCtx) "local"
+    -- If cabal.project.local already exists, and the flags allow, back up to cabal.project.local~
+    let backups = fromFlagOrDefault True  $ configBackup configExFlags
+        appends = fromFlagOrDefault False $ configAppend configExFlags
+        backupFile = localFile <> "~"
 
-    let localFile = distProjectFile (distDirLayout baseCtx) "local"
-        -- | Chooses cabal.project.local~, or if it already exists
-        -- cabal.project.local~0, cabal.project.local~1 etc.
-        firstFreeBackup = firstFreeBackup' (0 :: Int)
-        firstFreeBackup' i = do
-          let backup = localFile <> "~" <> (if i <= 0 then "" else show (i - 1))
-          exists <- doesFileExist backup
-          if exists
-            then firstFreeBackup' (i + 1)
-            else return backup
+    if shouldNotWriteFile baseCtx
+      then
+        return (baseCtx, cliConfig)
+      else do
+        exists <- doesFileExist localFile
+        when (exists && backups) $ do
+          notice v $
+            quote (takeFileName localFile) <> " already exists, backing it up to "
+            <> quote (takeFileName backupFile) <> "."
+          copyFile localFile backupFile
 
-    -- If cabal.project.local already exists, back up to cabal.project.local~[n]
-    exists <- doesFileExist localFile
-    when exists $ do
-        backup <- firstFreeBackup
-        notice verbosity $
-          quote (takeFileName localFile) <> " already exists, backing it up to "
-          <> quote (takeFileName backup) <> "."
-        copyFile localFile backup
-    writeProjectLocalExtraConfig (distDirLayout baseCtx)
-                                 cliConfig
-
-    buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan ->
-
-            -- TODO: Select the same subset of targets as 'CmdBuild' would
-            -- pick (ignoring, for example, executables in libraries
-            -- we depend on). But we don't want it to fail, so actually we
-            -- have to do it slightly differently from build.
-            return (elaboratedPlan, Map.empty)
-
-    let baseCtx' = baseCtx {
-                      buildSettings = (buildSettings baseCtx) {
-                        buildSettingDryRun = True
-                      }
-                    }
-
-    -- TODO: Hmm, but we don't have any targets. Currently this prints
-    -- what we would build if we were to build everything. Could pick
-    -- implicit target like "."
-    --
-    -- TODO: should we say what's in the project (+deps) as a whole?
-    printPlan verbosity baseCtx' buildCtx
+         -- If the flag @configAppend@ is set to true, append and do not overwrite
+        if exists && appends
+          then do
+            conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
+              readProjectLocalExtraConfig v (distDirLayout baseCtx)
+            return (baseCtx, conf <> cliConfig)
+          else
+            return (baseCtx, cliConfig)
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    v = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags
                   mempty -- ClientInstallFlags, not needed here
     quote s = "'" <> s <> "'"
 
+-- Config file should not be written when certain flags are present
+shouldNotWriteFile :: ProjectBaseContext -> Bool
+shouldNotWriteFile baseCtx =
+     buildSettingDryRun (buildSettings baseCtx)
+  || buildSettingOnlyDownload (buildSettings baseCtx)

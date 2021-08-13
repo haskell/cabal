@@ -10,8 +10,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
@@ -29,18 +27,10 @@ jobs:
     needs: test-windows-{{ mangleVersion needs }}
 {% endfor %}
     steps:
-      - name: Install Cabal
-        run: choco install -fy cabal --version 3.2.0.0
-      - name: Install GHC
-        run: |
-          choco uninstall -y ghc --all-versions
-          choco install -y ghc --version {{ job.version }}
-      - name: Set PATH
-        run: |
-          [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\cabal\tools\cabal-3.2.0.0"
-          Write-Host "::add-path::C:\ProgramData\Chocolatey\lib\ghc\tools\ghc-{{ job.version }}\bin"
-          [Environment]::GetEnvironmentVariable("Path")
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '{{ job.chocoVersion }}'
+          cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")
@@ -54,21 +44,22 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      - name: make cabal-install-dev
-        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # We cannot ask for all dependencies, but we can for Cabal.
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies
       - name: cabal v2-build
         run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
           cabal v2-run cabal-install:memory-usage-tests
-      - name: cabal-install solver-quickcheck
+      - name: cabal-install long-tests
         run: |
           cd cabal-install
-          cabal v2-run cabal-install:solver-quickcheck
+          cabal v2-run cabal-install:long-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-install integration-tests2
         run: |
           cd cabal-install
@@ -79,5 +70,5 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-{{ job.version }}\cabal-install-3.5.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-{{ job.version }}\cabal-install-3.6.0.0\x\cabal\build\cabal\cabal.exe
 {% endfor %}

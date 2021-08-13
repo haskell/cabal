@@ -46,6 +46,10 @@ module Distribution.PackageDescription (
     module Distribution.Types.PackageId,
     module Distribution.Types.PackageName,
     module Distribution.Types.UnqualComponentName,
+    -- * Pkgconfig
+    module Distribution.Types.PkgconfigName,
+    module Distribution.Types.PkgconfigVersion,
+    module Distribution.Types.PkgconfigVersionRange,
     -- * Dependencies
     module Distribution.Types.Dependency,
     module Distribution.Types.ExeDependency,
@@ -55,6 +59,11 @@ module Distribution.PackageDescription (
     module Distribution.Types.CondTree,
     module Distribution.Types.Condition,
     module Distribution.Types.ConfVar,
+    -- * Mixin
+   module Distribution.Types.IncludeRenaming,
+   module Distribution.Types.Mixin,
+   module Distribution.Types.ModuleReexport,
+   module Distribution.Types.ModuleRenaming,
     -- * Source repository
     module Distribution.Types.SourceRepo,
   ) where
@@ -81,14 +90,21 @@ import Distribution.Types.ForeignLibOption
 import Distribution.Types.ForeignLibType
 import Distribution.Types.GenericPackageDescription
 import Distribution.Types.HookedBuildInfo
+import Distribution.Types.IncludeRenaming
 import Distribution.Types.LegacyExeDependency
 import Distribution.Types.Library
 import Distribution.Types.LibraryName
 import Distribution.Types.LibraryVisibility
+import Distribution.Types.Mixin
+import Distribution.Types.ModuleReexport
+import Distribution.Types.ModuleRenaming
 import Distribution.Types.PackageDescription
 import Distribution.Types.PackageId
 import Distribution.Types.PackageName
 import Distribution.Types.PkgconfigDependency
+import Distribution.Types.PkgconfigName
+import Distribution.Types.PkgconfigVersion
+import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.SourceRepo
 import Distribution.Types.TestSuite

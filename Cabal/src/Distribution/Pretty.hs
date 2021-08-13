@@ -6,6 +6,7 @@ module Distribution.Pretty (
     -- * Utilities
     showFilePath,
     showToken,
+    showTokenStr,
     showFreeText,
     showFreeTextV3,
     -- * Deprecated
@@ -70,13 +71,16 @@ showFilePath :: FilePath -> PP.Doc
 showFilePath = showToken
 
 showToken :: String -> PP.Doc
-showToken str
+showToken = PP.text . showTokenStr
+
+showTokenStr :: String -> String
+showTokenStr str
     -- if token looks like a comment (starts with --), print it in quotes
-    | "--" `isPrefixOf` str                 = PP.text (show str)
+    | "--" `isPrefixOf` str                 = show str
     -- also if token ends with a colon (e.g. executable name), print it in quotes
-    | ":" `isSuffixOf` str                  = PP.text (show str)
-    | not (any dodgy str) && not (null str) = PP.text str
-    | otherwise                             = PP.text (show str)
+    | ":" `isSuffixOf` str                  = show str
+    | not (any dodgy str) && not (null str) = str
+    | otherwise                             = show str
   where
     dodgy c = isSpace c || c == ','
 

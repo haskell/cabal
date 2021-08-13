@@ -17,9 +17,8 @@ module Distribution.Client.GenBounds (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
-import Distribution.Utils.Generic (safeLast)
 
-import Distribution.Client.Init
+import Distribution.Client.Utils
          ( incVersion )
 import Distribution.Client.Freeze
          ( getFreezePkgs )
@@ -45,18 +44,11 @@ import Distribution.Simple.Utils
 import Distribution.System
          ( Platform )
 import Distribution.Version
-         ( Version, alterVersion
+         ( Version, alterVersion, VersionInterval (..)
          , LowerBound(..), UpperBound(..), VersionRange, asVersionIntervals
-         , orLaterVersion, earlierVersion, intersectVersionRanges )
+         , orLaterVersion, earlierVersion, intersectVersionRanges, hasUpperBound)
 import System.Directory
          ( getCurrentDirectory )
-
--- | Does this version range have an upper bound?
-hasUpperBound :: VersionRange -> Bool
-hasUpperBound vr =
-    case safeLast (asVersionIntervals vr) of
-      Nothing -> False
-      Just l  -> if snd l == NoUpperBound then False else True
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --
@@ -78,15 +70,16 @@ pvpize v = orLaterVersion (vn 3)
 showBounds :: Package pkg => Int -> pkg -> String
 showBounds padTo p = unwords $
     (padAfter padTo $ unPackageName $ packageName p) :
+    -- TODO: use normaliseVersionRange
     map showInterval (asVersionIntervals $ pvpize $ packageVersion p)
   where
     padAfter :: Int -> String -> String
     padAfter n str = str ++ replicate (n - length str) ' '
 
-    showInterval :: (LowerBound, UpperBound) -> String
-    showInterval (LowerBound _ _, NoUpperBound) =
+    showInterval :: VersionInterval -> String
+    showInterval (VersionInterval (LowerBound _ _) NoUpperBound) =
       error "Error: expected upper bound...this should never happen!"
-    showInterval (LowerBound l _, UpperBound u _) =
+    showInterval (VersionInterval (LowerBound l _) (UpperBound u _)) =
       unwords [">=", prettyShow l, "&& <", prettyShow u]
 
 -- | Entry point for the @gen-bounds@ command.
@@ -100,7 +93,7 @@ genBounds
     -> GlobalFlags
     -> FreezeFlags
     -> IO ()
-genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do 
+genBounds verbosity packageDBs repoCtxt comp platform progdb globalFlags freezeFlags = do
     let cinfo = compilerInfo comp
 
     cwd <- getCurrentDirectory

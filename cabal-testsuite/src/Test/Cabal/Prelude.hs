@@ -34,6 +34,8 @@ import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Version
 import Distribution.Package
+import Distribution.Parsec (eitherParsec)
+import Distribution.Pretty (prettyShow)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -333,11 +335,14 @@ runPlanExe' :: String {- package name -} -> String {- component name -}
             -> [String] -> TestM Result
 runPlanExe' pkg_name cname args = do
     Just plan <- testPlan `fmap` getTestEnv
-    let dist_dir = planDistDir plan (mkPackageName pkg_name)
-                        (CExeName (mkUnqualComponentName cname))
+    let distDirOrBinFile = planDistDir plan (mkPackageName pkg_name)
+                               (CExeName (mkUnqualComponentName cname))
+        exePath = case distDirOrBinFile of
+          DistDir dist_dir -> dist_dir </> "build" </> cname </> cname
+          BinFile bin_file -> bin_file
     defaultRecordMode RecordAll $ do
     recordHeader [pkg_name, cname]
-    runM (dist_dir </> "build" </> cname </> cname) args Nothing
+    runM exePath args Nothing
 
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
@@ -492,59 +497,56 @@ infixr 4 `archiveTo`
 -- external repository corresponding to all of these packages
 withRepo :: FilePath -> TestM a -> TestM a
 withRepo repo_dir m = do
+    -- https://github.com/haskell/cabal/issues/7065
+    -- you don't simply put a windows path into URL...
+    skipIfWindows
+
     env <- getTestEnv
 
-    -- Check if hackage-repo-tool is available, and skip if not
-    skipUnless =<< isAvailableProgram hackageRepoToolProgram
-
-    -- 1. Generate keys
-    hackageRepoTool "create-keys" ["--keys", testKeysDir env]
-    -- 2. Initialize repo directory
-    let package_dir = testRepoDir env </> "package"
-    liftIO $ createDirectoryIfMissing True (testRepoDir env </> "index")
+    -- 1. Initialize repo directory
+    let package_dir = testRepoDir env
     liftIO $ createDirectoryIfMissing True package_dir
-    -- 3. Create tarballs
+
+    -- 2. Create tarballs
     pkgs <- liftIO $ getDirectoryContents (testCurrentDir env </> repo_dir)
     forM_ pkgs $ \pkg -> do
+        let srcPath = testCurrentDir env </> repo_dir </> pkg
+        let destPath = package_dir </> pkg
+        isPreferredVersionsFile <- liftIO $
+            -- validate this is the "magic" 'preferred-versions' file
+            -- and perform a sanity-check whether this is actually a file
+            -- and not a package that happens to have the same name.
+            if pkg == "preferred-versions"
+                then doesFileExist srcPath
+                else return False
         case pkg of
             '.':_ -> return ()
-            _     -> testCurrentDir env </> repo_dir </> pkg
-                        `archiveTo`
-                            package_dir </> pkg <.> "tar.gz"
-    -- 4. Initialize repository
-    hackageRepoTool "bootstrap" ["--keys", testKeysDir env, "--repo", testRepoDir env]
-    -- 5. Wire it up in .cabal/config
+            _
+                | isPreferredVersionsFile ->
+                    liftIO $ copyFile srcPath destPath
+                | otherwise -> archiveTo
+                    srcPath
+                    (destPath <.> "tar.gz")
+
+    -- 3. Wire it up in .cabal/config
     -- TODO: libify this
     let package_cache = testCabalDir env </> "packages"
     liftIO $ appendFile (testUserCabalConfigFile env)
            $ unlines [ "repository test-local-repo"
                      , "  url: " ++ repoUri env
-                     , "  secure: True"
-                     -- TODO: Hypothetically, we could stick in the
-                     -- correct key here
-                     , "  root-keys: "
-                     , "  key-threshold: 0"
                      , "remote-repo-cache: " ++ package_cache ]
-    -- 6. Create local directories (TODO: this is a bug #4136, once you
-    -- fix that this can be removed)
-    liftIO $ createDirectoryIfMissing True (package_cache </> "test-local-repo")
-    -- 7. Update our local index
-    cabal "v1-update" []
-    -- 8. Profit
+    liftIO $ print $ testUserCabalConfigFile env
+    liftIO $ print =<< readFile (testUserCabalConfigFile env)
+
+    -- 4. Update our local index
+    -- Note: this doesn't do anything for file+noindex repositories.
+    cabal "v2-update" ["-z"]
+
+    -- 5. Profit
     withReaderT (\env' -> env' { testHaveRepo = True }) m
     -- TODO: Arguably should undo everything when we're done...
   where
-    -- Work around issue #5218 (incorrect conversions between Windows paths and
-    -- file URIs) by using a relative path on Windows.
-    repoUri env =
-      if buildOS == Windows
-      then let relPath = definitelyMakeRelative (testCurrentDir env)
-                                                (testRepoDir env)
-               convertSeparators = intercalate "/"
-                                 . map dropTrailingPathSeparator
-                                 . splitPath
-           in "file:" ++ convertSeparators relPath
-      else "file:" ++ testRepoDir env
+    repoUri env ="file+noindex://" ++ testRepoDir env
 
 ------------------------------------------------------------------------
 -- * Subprocess run results
@@ -769,6 +771,15 @@ isOSX = return (buildOS == OSX)
 
 isLinux :: TestM Bool
 isLinux = return (buildOS == Linux)
+
+skipIfWindows :: TestM ()
+skipIfWindows = skipIf "Windows" =<< isWindows
+
+skipUnlessGhcVersion :: String -> TestM ()
+skipUnlessGhcVersion str =
+    case eitherParsec str of
+        Right vr -> skipUnless ("needs ghc" ++ prettyShow vr) =<< ghcVersionIs (`withinRange` vr)
+        Left err -> fail err
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS

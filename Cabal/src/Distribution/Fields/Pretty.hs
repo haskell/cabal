@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE LambdaCase #-}
 -- | Cabal-like file AST types: 'Field', 'Section' etc,
 --
 -- This (intermediate) data type is used for pretty-printing.
@@ -35,6 +36,7 @@ import qualified Text.PrettyPrint as PP
 data PrettyField ann
     = PrettyField ann FieldName PP.Doc
     | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
+    | PrettyEmpty
   deriving (Functor, Foldable, Traversable)
 
 -- | Prettyprint a list of fields.
@@ -74,8 +76,8 @@ showFields' rann post n = unlines . renderFields (Opts rann indent post)
     indent2 xs = ' ' : ' ' : xs
 
 data Opts ann = Opts
-  { _optAnnotation ::(ann -> [String])
-  , _optIndent ::(String -> String)
+  { _optAnnotation :: ann -> [String]
+  , _optIndent :: String -> String
   , _optPostprocess :: ann -> [String] -> [String]
   }
 
@@ -87,6 +89,7 @@ renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
     maxNameLength !acc []                            = acc
     maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
     maxNameLength !acc (PrettySection {}   : rest)   = maxNameLength acc rest
+    maxNameLength !acc (PrettyEmpty : rest) = maxNameLength acc rest
 
 -- | Block of lines,
 -- Boolean parameter tells whether block should be surrounded by empty lines
@@ -134,7 +137,9 @@ renderField opts@(Opts rann indent post) _ (PrettySection ann name args fields) 
     ++
     post ann [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
     ++
-    (map indent $ renderFields opts fields)
+    map indent (renderFields opts fields)
+
+renderField _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 
 -------------------------------------------------------------------------------
 -- Transform from Parsec.Field
@@ -161,7 +166,7 @@ prettyFieldLines _ fls = PP.vcat
 
 -- | Used in 'fromParsecFields'.
 prettySectionArgs :: FieldName -> [P.SectionArg ann] -> [PP.Doc]
-prettySectionArgs _ = map $ \sa -> case sa of
+prettySectionArgs _ = map $ \case
     P.SecArgName _ bs  -> showToken $ fromUTF8BS bs
     P.SecArgStr _ bs   -> showToken $ fromUTF8BS bs
     P.SecArgOther _ bs -> PP.text $ fromUTF8BS bs

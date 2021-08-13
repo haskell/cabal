@@ -31,8 +31,6 @@ module Distribution.Version (
   laterVersion, earlierVersion,
   orLaterVersion, orEarlierVersion,
   unionVersionRanges, intersectVersionRanges,
-  differenceVersionRanges,
-  invertVersionRange,
   withinVersion,
   majorBoundVersion,
 
@@ -63,10 +61,13 @@ module Distribution.Version (
   -- ** Modification
   removeUpperBound,
   removeLowerBound,
+  transformCaret,
+  transformCaretUpper,
+  transformCaretLower,
 
   -- * Version intervals view
   asVersionIntervals,
-  VersionInterval,
+  VersionInterval(..),
   LowerBound(..),
   UpperBound(..),
   Bound(..),
@@ -80,12 +81,7 @@ module Distribution.Version (
   VersionIntervals,
   toVersionIntervals,
   fromVersionIntervals,
-  withinIntervals,
-  versionIntervals,
-  mkVersionIntervals,
-  unionVersionIntervals,
-  intersectVersionIntervals,
-  invertVersionIntervals
+  unVersionIntervals,
 
  ) where
 
@@ -116,10 +112,13 @@ isNoVersion vr = case asVersionIntervals vr of
 --
 isSpecificVersion :: VersionRange -> Maybe Version
 isSpecificVersion vr = case asVersionIntervals vr of
-  [(LowerBound v  InclusiveBound
-   ,UpperBound v' InclusiveBound)]
+  [VersionInterval (LowerBound v  InclusiveBound) (UpperBound v' InclusiveBound)]
     | v == v' -> Just v
   _           -> Nothing
+
+-------------------------------------------------------------------------------
+-- Transformations
+-------------------------------------------------------------------------------
 
 -- | Simplify a 'VersionRange' expression. For non-empty version ranges
 -- this produces a canonical form. Empty or inconsistent version ranges
@@ -142,29 +141,10 @@ simplifyVersionRange vr
     -- If the version range is inconsistent then we just return the
     -- original since that has more information than ">1 && < 1", which
     -- is the canonical inconsistent version range.
-    | null (versionIntervals vi) = vr
-    | otherwise                  = fromVersionIntervals vi
+    | null (unVersionIntervals vi) = vr
+    | otherwise                    = fromVersionIntervals vi
   where
     vi = toVersionIntervals vr
-
--- | The difference of two version ranges
---
--- >   withinRange v' (differenceVersionRanges vr1 vr2)
--- > = withinRange v' vr1 && not (withinRange v' vr2)
---
--- @since 1.24.1.0
-differenceVersionRanges :: VersionRange -> VersionRange -> VersionRange
-differenceVersionRanges vr1 vr2 =
-    intersectVersionRanges vr1 (invertVersionRange vr2)
-
--- | The inverse of a version range
---
--- >   withinRange v' (invertVersionRange vr)
--- > = not (withinRange v' vr)
---
-invertVersionRange :: VersionRange -> VersionRange
-invertVersionRange =
-    fromVersionIntervals . invertVersionIntervals . toVersionIntervals
 
 -- | Given a version range, remove the highest upper bound. Example: @(>= 1 && <
 -- 3) || (>= 4 && < 5)@ is converted to @(>= 1 && < 3) || (>= 4)@.
@@ -176,3 +156,30 @@ removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
 -- @(>= 0 && < 3) || (>= 4 && < 5)@.
 removeLowerBound :: VersionRange -> VersionRange
 removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
+
+-- | Rewrite @^>= x.y.z@ into @>= x.y.z && < x.(y+1)@
+--
+-- @since 3.6.0.0
+--
+transformCaret :: VersionRange -> VersionRange
+transformCaret = hyloVersionRange embed projectVersionRange where
+    embed (MajorBoundVersionF v) = orLaterVersion v `intersectVersionRanges` earlierVersion (majorUpperBound v)
+    embed vr                     = embedVersionRange vr
+
+-- | Rewrite @^>= x.y.z@ into @>= x.y.z@
+--
+-- @since 3.6.0.0
+--
+transformCaretUpper :: VersionRange -> VersionRange
+transformCaretUpper = hyloVersionRange embed projectVersionRange where
+    embed (MajorBoundVersionF v) = orLaterVersion v
+    embed vr                     = embedVersionRange vr
+
+-- | Rewrite @^>= x.y.z@ into @<x.(y+1)@
+--
+-- @since 3.6.0.0
+--
+transformCaretLower :: VersionRange -> VersionRange
+transformCaretLower = hyloVersionRange embed projectVersionRange where
+    embed (MajorBoundVersionF v) = earlierVersion (majorUpperBound v)
+    embed vr                     = embedVersionRange vr

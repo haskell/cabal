@@ -58,6 +58,8 @@ module Distribution.Client.ProjectOrchestration (
     reportTargetSelectorProblems,
     resolveTargets,
     TargetsMap,
+    allTargetSelectors,
+    uniqueTargetSelectors,
     TargetSelector(..),
     TargetImplicitCwd(..),
     PackageId,
@@ -92,9 +94,6 @@ module Distribution.Client.ProjectOrchestration (
     -- * Post build actions
     runProjectPostBuildPhase,
     dieOnBuildFailures,
-
-    -- * Shared CLI utils
-    cmdCommonHelpTextNewBuildBeta,
 
     -- * Dummy projects
     establishDummyProjectBaseContext,
@@ -137,6 +136,8 @@ import           Distribution.Compiler
                    ( CompilerFlavor(GHC) )
 import           Distribution.Types.ComponentName
                    ( componentNameString )
+import           Distribution.Types.InstalledPackageInfo
+                   ( InstalledPackageInfo )
 import           Distribution.Types.UnqualComponentName
                    ( UnqualComponentName, packageNameToUnqualComponentName )
 
@@ -154,7 +155,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 import           Distribution.Simple.Configure (computeEffectiveProfiling)
 
 import           Distribution.Simple.Utils
-                   ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose )
+                   ( die', warn, notice, noticeNoWrap, debugNoWrap, createDirectoryIfMissingVerbose, ordNub )
 import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
@@ -425,6 +426,7 @@ runProjectPostBuildPhase verbosity
           projectConfigWriteGhcEnvironmentFilesPolicy . projectConfigShared
           $ projectConfig
 
+        shouldWriteGhcEnvironment :: Bool
         shouldWriteGhcEnvironment =
           case fromFlagOrDefault NeverWriteGhcEnvironmentFiles
                writeGhcEnvFilesPolicy
@@ -476,7 +478,15 @@ runProjectPostBuildPhase verbosity
 -- possible to for different selectors to match the same target. This extra
 -- information is primarily to help make helpful error messages.
 --
-type TargetsMap = Map UnitId [(ComponentTarget, [TargetSelector])]
+type TargetsMap = Map UnitId [(ComponentTarget, NonEmpty TargetSelector)]
+
+-- | Get all target selectors.
+allTargetSelectors :: TargetsMap -> [TargetSelector]
+allTargetSelectors = concatMap (NE.toList . snd) . concat . Map.elems
+
+-- | Get all unique target selectors.
+uniqueTargetSelectors :: TargetsMap -> [TargetSelector]
+uniqueTargetSelectors = ordNub . allTargetSelectors
 
 -- | Given a set of 'TargetSelector's, resolve which 'UnitId's and
 -- 'ComponentTarget's they ought to refer to.
@@ -532,7 +542,7 @@ resolveTargets selectPackageTargets selectComponentTarget
                  -> TargetsMap
     mkTargetsMap targets =
         Map.map nubComponentTargets
-      $ Map.fromListWith (++)
+      $ Map.fromListWith (<>)
           [ (uid, [(ct, ts)])
           | (ts, cts) <- targets
           , (uid, ct) <- cts ]
@@ -551,8 +561,9 @@ resolveTargets selectPackageTargets selectComponentTarget
       | otherwise
       = Left (TargetProblemNoSuchPackage pkgid)
 
-    checkTarget (TargetPackage _ _ _)
-      = error "TODO: add support for multiple packages in a directory"
+    checkTarget (TargetPackage _ pkgids _)
+      = error ("TODO: add support for multiple packages in a directory.  Got\n"
+              ++ unlines (map prettyShow pkgids))
       -- For the moment this error cannot happen here, because it gets
       -- detected when the package config is being constructed. This case
       -- will need handling properly when we do add support.
@@ -661,37 +672,50 @@ type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
 availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes
 availableTargetIndexes installPlan = AvailableTargetIndexes{..}
   where
+    availableTargetsByPackageIdAndComponentName ::
+      Map (PackageId, ComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageIdAndComponentName =
       availableTargets installPlan
 
+    availableTargetsByPackageId ::
+      Map PackageId [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageId =
                   Map.mapKeysWith
                     (++) (\(pkgid, _cname) -> pkgid)
                     availableTargetsByPackageIdAndComponentName
       `Map.union` availableTargetsEmptyPackages
 
+    availableTargetsByPackageName ::
+      Map PackageName [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageName =
       Map.mapKeysWith
         (++) packageName
         availableTargetsByPackageId
 
+    availableTargetsByPackageNameAndComponentName ::
+      Map (PackageName, ComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageNameAndComponentName =
       Map.mapKeysWith
         (++) (\(pkgid, cname) -> (packageName pkgid, cname))
         availableTargetsByPackageIdAndComponentName
 
+    availableTargetsByPackageNameAndUnqualComponentName ::
+      Map (PackageName, UnqualComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageNameAndUnqualComponentName =
       Map.mapKeysWith
         (++) (\(pkgid, cname) -> let pname  = packageName pkgid
                                      cname' = unqualComponentName pname cname
                                   in (pname, cname'))
         availableTargetsByPackageIdAndComponentName
-     where
-       unqualComponentName ::
-         PackageName -> ComponentName -> UnqualComponentName
-       unqualComponentName pkgname =
-           fromMaybe (packageNameToUnqualComponentName pkgname)
-         . componentNameString
+      where
+        unqualComponentName ::
+          PackageName -> ComponentName -> UnqualComponentName
+        unqualComponentName pkgname =
+            fromMaybe (packageNameToUnqualComponentName pkgname)
+          . componentNameString
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains
@@ -858,7 +882,7 @@ printPlan verbosity
         then prettyShow (installedUnitId elab)
         else prettyShow (packageId elab)
       , case elabPkgOrComp elab of
-          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
+          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas (pkgStanzasEnabled pkg))
           ElabComponent comp ->
             "(" ++ showComp elab comp ++ ")"
       , showFlagAssignment (nonDefaultFlags elab)
@@ -867,6 +891,7 @@ printPlan verbosity
         in "(" ++ showBuildStatus buildStatus ++ ")"
       ]
 
+    showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
     showComp elab comp =
         maybe "custom" prettyShow (compComponentName comp) ++
         if Map.null (elabInstantiatedWith elab)
@@ -881,12 +906,7 @@ printPlan verbosity
     nonDefaultFlags elab =
       elabFlagAssignment elab `diffFlagAssignment` elabFlagDefaults elab
 
-    showStanzas pkg = concat
-                    $ [ " *test"
-                      | TestStanzas  `Set.member` pkgStanzasEnabled pkg ]
-                   ++ [ " *bench"
-                      | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
-
+    showTargets :: ElaboratedConfiguredPackage -> String
     showTargets elab
       | null (elabBuildTargets elab) = ""
       | otherwise
@@ -895,6 +915,7 @@ printPlan verbosity
                             | t <- elabBuildTargets elab ]
         ++ ")"
 
+    showConfigureFlags :: ElaboratedConfiguredPackage -> String
     showConfigureFlags elab =
         let fullConfigureFlags
               = setupHsConfigureFlags
@@ -928,6 +949,7 @@ printPlan verbosity
             (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
             partialConfigureFlags
 
+    showBuildStatus :: BuildStatus -> String
     showBuildStatus status = case status of
       BuildStatusPreExisting -> "existing package"
       BuildStatusInstalled   -> "already installed"
@@ -945,6 +967,7 @@ printPlan verbosity
           BuildReasonEphemeralTargets -> "ephemeral targets"
       BuildStatusUpToDate {} -> "up to date" -- doesn't happen
 
+    showMonitorChangedReason :: MonitorChangedReason a -> String
     showMonitorChangedReason (MonitoredFileChanged file) =
       "file " ++ file ++ " changed"
     showMonitorChangedReason (MonitoredValueChanged _)   = "value changed"
@@ -952,6 +975,7 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache        =
       "cannot read state cache"
 
+    showBuildProfile :: String
     showBuildProfile = "Build profile: " ++ unwords [
       "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
       "-O" ++  (case packageConfigOptimization of
@@ -999,9 +1023,11 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
          | let mentionDepOf = verbosity <= normal
          , (pkg, failureClassification) <- failuresClassification ]
   where
+    failures :: [(UnitId, BuildFailure)]
     failures =  [ (pkgid, failure)
                 | (pkgid, Left failure) <- Map.toList buildOutcomes ]
 
+    failuresClassification :: [(ElaboratedConfiguredPackage, BuildFailurePresentation)]
     failuresClassification =
       [ (pkg, classifyBuildFailure failure)
       | (pkgid, failure) <- failures
@@ -1012,6 +1038,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
 
+    dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
     dieIfNotHaddockFailure
       | currentCommand == HaddockCommand            = die'
       | all isHaddockFailure failuresClassification = warn
@@ -1048,6 +1075,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     --    detail itself (e.g. ghc reporting errors on stdout)
     --  - then we do not report additional error detail or context.
     --
+    isSimpleCase :: Bool
     isSimpleCase
       | [(pkgid, failure)] <- failures
       , [pkg]              <- rootpkgs
@@ -1061,6 +1089,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     -- NB: if the Setup script segfaulted or was interrupted,
     -- we should give more detailed information.  So only
     -- assume that exit code 1 is "pedestrian failure."
+    isFailureSelfExplanatory :: BuildFailureReason -> Bool
     isFailureSelfExplanatory (BuildFailed e)
       | Just (ExitFailure 1) <- fromException e = True
 
@@ -1069,11 +1098,15 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
 
     isFailureSelfExplanatory _                  = False
 
+    rootpkgs :: [ElaboratedConfiguredPackage]
     rootpkgs =
       [ pkg
       | InstallPlan.Configured pkg <- InstallPlan.toList plan
       , hasNoDependents pkg ]
 
+    ultimateDeps
+      :: UnitId
+      -> [InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage]
     ultimateDeps pkgid =
         filter (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
                (InstallPlan.reverseDependencyClosure plan [pkgid])
@@ -1081,11 +1114,13 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     hasNoDependents :: HasUnitId pkg => pkg -> Bool
     hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
 
+    renderFailureDetail :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureDetail mentionDepOf pkg reason =
         renderFailureSummary mentionDepOf pkg reason ++ "."
      ++ renderFailureExtraDetail reason
      ++ maybe "" showException (buildFailureException reason)
 
+    renderFailureSummary :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureSummary mentionDepOf pkg reason =
         case reason of
           DownloadFailed  _ -> "Failed to download " ++ pkgstr
@@ -1107,6 +1142,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
                    then renderDependencyOf (installedUnitId pkg)
                    else ""
 
+    renderFailureExtraDetail :: BuildFailureReason -> String
     renderFailureExtraDetail (ConfigureFailed _) =
       " The failure occurred during the configure step."
     renderFailureExtraDetail (InstallFailed   _) =
@@ -1114,6 +1150,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderFailureExtraDetail _                   =
       ""
 
+    renderDependencyOf :: UnitId -> String
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         []         -> ""
@@ -1175,6 +1212,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
              ++ show e
 #endif
 
+    buildFailureException :: BuildFailureReason -> Maybe SomeException
     buildFailureException reason =
       case reason of
         DownloadFailed  e -> Just e
@@ -1191,19 +1229,6 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
 data BuildFailurePresentation =
        ShowBuildSummaryOnly   BuildFailureReason
      | ShowBuildSummaryAndLog BuildFailureReason FilePath
-
-
-cmdCommonHelpTextNewBuildBeta :: String
-cmdCommonHelpTextNewBuildBeta =
-    "Note: this command is part of the new project-based system (aka "
- ++ "nix-style\nlocal builds). These features are currently in beta. "
- ++ "Please see\n"
- ++ "http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html "
- ++ "for\ndetails and advice on what you can expect to work. If you "
- ++ "encounter problems\nplease file issues at "
- ++ "https://github.com/haskell/cabal/issues and if you\nhave any time "
- ++ "to get involved and help with testing, fixing bugs etc then\nthat "
- ++ "is very much appreciated.\n"
 
 -------------------------------------------------------------------------------
 -- Dummy projects
@@ -1241,6 +1266,7 @@ establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages
         mstoreDir = flagToMaybe projectConfigStoreDir
         cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
+        buildSettings :: BuildTimeSettings
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig

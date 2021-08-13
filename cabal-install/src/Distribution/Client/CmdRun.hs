@@ -46,7 +46,7 @@ import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, warn, die', ordNub, info
+         ( wrapText, warn, die', info, notice
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
@@ -101,7 +101,6 @@ import Language.Haskell.Extension
          ( Language(..) )
 
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Text.Parsec as P
 import System.Directory
@@ -143,9 +142,8 @@ runCommand = CommandUI
       ++ "  " ++ pname ++ " v2-run pkgfoo:foo-tool\n"
       ++ "    Run the executable-like 'foo-tool' in the package 'pkgfoo'\n"
       ++ "  " ++ pname ++ " v2-run foo -O2 -- dothing --fooflag\n"
-      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n\n"
+      ++ "    Build with '-O2' and run the program, passing it extra arguments.\n"
 
-      ++ cmdCommonHelpTextNewBuildBeta
   , commandDefaultFlags = defaultNixStyleFlags ()
   , commandOptions      = nixStyleOptions (const [])
   }
@@ -285,15 +283,21 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                                   exeName
                </> exeName
     let args = drop 1 targetStrings
-    runProgramInvocation
-      verbosity
-      emptyProgramInvocation {
-        progInvokePath  = exePath,
-        progInvokeArgs  = args,
-        progInvokeEnv   = dataDirsEnvironmentForPlan
-                            (distDirLayout baseCtx)
-                            elaboratedPlan
-      }
+        dryRun = buildSettingDryRun (buildSettings baseCtx)
+              || buildSettingOnlyDownload (buildSettings baseCtx)
+
+    if dryRun
+       then notice verbosity "Running of executable suppressed by flag(s)"
+       else
+         runProgramInvocation
+           verbosity
+           emptyProgramInvocation {
+             progInvokePath  = exePath,
+             progInvokeArgs  = args,
+             progInvokeEnv   = dataDirsEnvironmentForPlan
+                                 (distDirLayout baseCtx)
+                                 elaboratedPlan
+           }
 
     handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
@@ -606,7 +610,7 @@ renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
     "The run command is for running a single executable at once. The targets "
  ++ renderListCommaAnd [ "'" ++ showTargetSelector ts ++ "'"
-                       | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
+                       | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different executables."
 
 renderRunProblem (TargetProblemComponentNotExe pkgid cname) =

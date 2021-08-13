@@ -64,6 +64,7 @@ module Distribution.Utils.Structured (
     containerStructure,
     -- * Structure type
     Structure (..),
+    Tag (..),
     TypeName,
     ConstructorName,
     TypeVersion,
@@ -87,7 +88,11 @@ import GHC.Generics
 
 import qualified Data.ByteString              as BS
 import qualified Data.ByteString.Lazy         as LBS
+#if MIN_VERSION_bytestring(0,10,4)
+import qualified Data.ByteString.Builder      as Builder
+#else
 import qualified Data.ByteString.Lazy.Builder as Builder
+#endif
 import qualified Data.IntMap                  as IM
 import qualified Data.IntSet                  as IS
 import qualified Data.Map                     as Map
@@ -203,7 +208,7 @@ structureBuilder s0 = State.evalState (go s0) Map.empty where
             Nothing -> return $ mconcat [ Builder.word8 0, Builder.stringUtf8 (show t) ]
             Just acc' -> do
                 State.put acc'
-                k 
+                k
 
     goSop :: SopStructure -> State.State (Map.Map String (NonEmpty TypeRep)) Builder.Builder
     goSop sop = do

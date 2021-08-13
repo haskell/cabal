@@ -119,7 +119,7 @@ test args pkg_descr lbi flags = do
     writeFile packageLogFile $ show packageLog
 
     when (LBI.testCoverage lbi) $
-        markupPackage verbosity lbi distPref (prettyShow $ PD.package pkg_descr) $
+        markupPackage verbosity lbi distPref pkg_descr $
             map (fst . fst) testsToRun
 
     unless allOk exitFailure

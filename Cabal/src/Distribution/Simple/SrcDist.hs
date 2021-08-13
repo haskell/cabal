@@ -54,7 +54,7 @@ import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
 import Distribution.Simple.Configure (findDistPrefOrDefault)
-import Distribution.Simple.Glob
+import Distribution.Simple.Glob (matchDirFileGlobWithDie)
 import Distribution.Simple.Utils
 import Distribution.Simple.Setup
 import Distribution.Simple.PreProcess
@@ -62,6 +62,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program
 import Distribution.Pretty
 import Distribution.Verbosity
+import Distribution.Utils.Path
 
 import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
@@ -218,25 +219,23 @@ listPackageSources' verbosity rip cwd pkg_descr pps =
 
     -- Data files.
   , fmap concat
-    . for (dataFiles pkg_descr) $ \filename ->
-        let srcDataDirRaw = dataDir pkg_descr
-            srcDataDir = if null srcDataDirRaw
-              then "."
-              else srcDataDirRaw
-        in fmap (fmap (\p -> srcDataDir </> p)) $
-             matchDirFileGlob verbosity (specVersion pkg_descr) srcDataDir filename
+    . for (dataFiles pkg_descr) $ \filename -> do
+        let srcDataDirRaw                   = dataDir pkg_descr
+            srcDataDir | null srcDataDirRaw = "."
+                       | otherwise          = srcDataDirRaw
+        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd (srcDataDir </> filename)
 
     -- Extra source files.
   , fmap concat . for (extraSrcFiles pkg_descr) $ \fpath ->
-    matchDirFileGlob verbosity (specVersion pkg_descr) cwd fpath
+    matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd fpath
 
     -- Extra doc files.
   , fmap concat
     . for (extraDocFiles pkg_descr) $ \ filename ->
-        matchDirFileGlob verbosity (specVersion pkg_descr) cwd filename
+        matchDirFileGlobWithDie verbosity rip (specVersion pkg_descr) cwd filename
 
     -- License file(s).
-  , return (licenseFiles pkg_descr)
+  , return (map getSymbolicPath $ licenseFiles pkg_descr)
 
     -- Install-include files, without autogen-include files
   , fmap concat
@@ -310,10 +309,10 @@ findMainExeFile
   -> FilePath -- ^ main-is
   -> IO FilePath
 findMainExeFile verbosity cwd exeBi pps mainPath = do
-  ppFile <- findFileCwdWithExtension cwd (ppSuffixes pps) (hsSourceDirs exeBi)
+  ppFile <- findFileCwdWithExtension cwd (ppSuffixes pps) (map getSymbolicPath (hsSourceDirs exeBi))
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFileCwd verbosity cwd (hsSourceDirs exeBi) mainPath
+    Nothing -> findFileCwd verbosity cwd (map getSymbolicPath (hsSourceDirs exeBi)) mainPath
     Just pp -> return pp
 
 -- | Find a module definition file
@@ -322,7 +321,7 @@ findMainExeFile verbosity cwd exeBi pps mainPath = do
 findModDefFile
   :: Verbosity -> FilePath -> BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
 findModDefFile verbosity cwd flibBi _pps modDefPath =
-    findFileCwd verbosity cwd (".":hsSourceDirs flibBi) modDefPath
+    findFileCwd verbosity cwd ("." : map getSymbolicPath (hsSourceDirs flibBi)) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
@@ -439,33 +438,35 @@ createArchive verbosity pkg_descr tmpDir targetPref = do
 allSourcesBuildInfo
     :: Verbosity
     -> (Verbosity -> String -> IO [FilePath])
-    -> FilePath          -- ^ cwd
+    -> FilePath          -- ^ cwd -- change me to 'BuildPath Absolute PackageDir'
     -> BuildInfo
     -> [PPSuffixHandler] -- ^ Extra preprocessors
     -> [ModuleName]      -- ^ Exposed modules
     -> IO [FilePath]
 allSourcesBuildInfo verbosity rip cwd bi pps modules = do
-  let searchDirs = hsSourceDirs bi
+  let searchDirs = map getSymbolicPath (hsSourceDirs bi)
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
       -- NB: *Not* findFileWithExtension, because the same source
       -- file may show up in multiple paths due to a conditional;
       -- we need to package all of them.  See #367.
       in findAllFilesCwdWithExtension cwd suffixes searchDirs file
-         >>= nonEmpty (notFound module_) return
+         >>= nonEmpty' (notFound module_) return
     | module_ <- modules ++ otherModules bi ]
   bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
           fileExts = ["hs-boot", "lhs-boot"]
-      in findFileCwdWithExtension cwd fileExts (hsSourceDirs bi) file
+      in findFileCwdWithExtension cwd fileExts (map getSymbolicPath (hsSourceDirs bi)) file
     | module_ <- modules ++ otherModules bi ]
 
   return $ sources ++ catMaybes bootFiles ++ cSources bi ++ cxxSources bi ++
            cmmSources bi ++ asmSources bi ++ jsSources bi
 
   where
-    nonEmpty x _ [] = x
-    nonEmpty _ f xs = f xs
+    nonEmpty' :: b -> ([a] -> b) -> [a] -> b
+    nonEmpty' x _ [] = x
+    nonEmpty' _ f xs = f xs
+
     suffixes = ppSuffixes pps ++ ["hs", "lhs", "hsig", "lhsig"]
 
     notFound :: ModuleName -> IO [FilePath]

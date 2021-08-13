@@ -1,0 +1,14 @@
+cabal-version: 3.6
+name:          Hsc2HsOptions
+version:       0.1
+license:       BSD-3-Clause
+stability:     stable
+category:      PackageTests
+build-type:    Simple
+description:   Check that preprocessors are run.
+
+executable my-executable
+  main-is:        Main.hs
+  build-depends:  base
+  other-modules:  Foo
+  hsc2hs-options: "--cc=g++"

@@ -41,6 +41,7 @@ import Distribution.Verbosity
 import Distribution.Version
 import Distribution.System
 import Language.Haskell.Extension
+import Distribution.Utils.Path
 
 import qualified Data.Map as Map ( empty )
 import System.Directory
@@ -229,7 +230,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
   ++ ["--package=" ++ prettyShow (mungedName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
      -- search paths
   ++ ["-i" ++ odir]
-  ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
+  ++ ["-i" ++ getSymbolicPath l | l <- nub (hsSourceDirs bi)]
   ++ ["-i" ++ autogenComponentModulesDir lbi clbi]
   ++ ["-i" ++ autogenPackageModulesDir lbi]
      -- cpp options

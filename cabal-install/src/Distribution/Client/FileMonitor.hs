@@ -1,7 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
-             NamedFieldPuns, BangPatterns #-}
+             NamedFieldPuns, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- | An abstraction to help with re-running actions when files or other
 -- input values they depend on have changed.
@@ -44,8 +45,10 @@ module Distribution.Client.FileMonitor (
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import qualified Distribution.Compat.Binary as Binary
 
 import qualified Data.Map.Strict as Map
+import Data.Binary.Get (runGetOrFail)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Hashable as Hashable
 
@@ -61,7 +64,7 @@ import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
-import           Distribution.Utils.Structured (structuredDecodeOrFailIO, structuredEncode)
+import           Distribution.Utils.Structured (structuredEncode, Tag (..))
 import           System.FilePath
 import           System.Directory
 import           System.IO
@@ -280,12 +283,13 @@ instance Structured MonitorStateGlobRel
 --
 reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-    map getSinglePath singlePaths
- ++ map getGlobPath globPaths
+  map getSinglePath singlePaths ++ map getGlobPath globPaths
   where
+    getSinglePath :: MonitorStateFile -> MonitorFilePath
     getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
       MonitorFile kindfile kinddir filepath
 
+    getGlobPath :: MonitorStateGlob -> MonitorFilePath
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
       MonitorFileGlob kindfile kinddir $ FilePathGlob root $
         case gstate of
@@ -416,7 +420,7 @@ data MonitorChangedReason a =
 -- See 'FileMonitor' for a full explanation.
 --
 checkFileMonitorChanged
-  :: (Binary a, Structured a, Binary b, Structured b)
+  :: forall a b. (Binary a, Structured a, Binary b, Structured b)
   => FileMonitor a b            -- ^ cache file path
   -> FilePath                   -- ^ root directory
   -> a                          -- ^ guard or key value
@@ -432,22 +436,26 @@ checkFileMonitorChanged
 
     handleDoesNotExist (MonitorChanged MonitorFirstRun) $
     handleErrorCall    (MonitorChanged MonitorCorruptCache) $
-          readCacheFile monitor
-      >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))
-                 checkStatusCache
+    withCacheFile monitor $
+        either (\_ -> return (MonitorChanged MonitorCorruptCache))
+               checkStatusCache
 
   where
+    checkStatusCache :: (MonitorStateFileSet, a, Either String b) -> IO (MonitorChanged a b)
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
         change <- checkForChanges
         case change of
           Just reason -> return (MonitorChanged reason)
-          Nothing     -> return (MonitorUnchanged cachedResult monitorFiles)
+          Nothing     -> case cachedResult of
+                            Left _ -> pure (MonitorChanged MonitorCorruptCache)
+                            Right cr -> return (MonitorUnchanged cr monitorFiles)
             where monitorFiles = reconstructMonitorFilePaths cachedFileStatus
       where
         -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
         -- if we return MonitoredValueChanged that only the value changed.
         -- We do that by checkin for file changes first. Otherwise it makes
         -- more sense to do the cheaper test first.
+        checkForChanges :: IO (Maybe (MonitorChangedReason a))
         checkForChanges
           | fileMonitorCheckIfOnlyValueChanged
           = checkFileChange cachedFileStatus cachedKey cachedResult
@@ -459,7 +467,7 @@ checkFileMonitorChanged
               `mplusMaybeT`
             checkFileChange cachedFileStatus cachedKey cachedResult
 
-    mplusMaybeT :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+    mplusMaybeT :: Monad m => m (Maybe a1) -> m (Maybe a1) -> m (Maybe a1)
     mplusMaybeT ma mb = do
       mx <- ma
       case mx of
@@ -467,6 +475,7 @@ checkFileMonitorChanged
         Just x  -> return (Just x)
 
     -- Check if the guard value has changed
+    checkValueChange :: a -> IO (Maybe (MonitorChangedReason a))
     checkValueChange cachedKey
       | not (fileMonitorKeyValid currentKey cachedKey)
       = return (Just (MonitoredValueChanged cachedKey))
@@ -474,6 +483,7 @@ checkFileMonitorChanged
       = return Nothing
 
     -- Check if any file has changed
+    checkFileChange :: MonitorStateFileSet -> a -> Either String b -> IO (Maybe (MonitorChangedReason a))
     checkFileChange cachedFileStatus cachedKey cachedResult = do
       res <- probeFileSystem root cachedFileStatus
       case res of
@@ -486,21 +496,50 @@ checkFileMonitorChanged
 
           -- But we might still want to update the cache
           whenCacheChanged cacheStatus $
-            rewriteCacheFile monitor cachedFileStatus' cachedKey cachedResult
+            case cachedResult of
+              Left _ -> pure ()
+              Right cr -> rewriteCacheFile monitor cachedFileStatus' cachedKey cr
 
           return Nothing
+
+-- | Lazily decode a triple, parsing the first two fields strictly and
+-- returning a lazy value containing either the last one or an error.
+-- This is helpful for cabal cache files where the first two components
+-- contain header data that lets one test if the cache is still valid,
+-- and the last (potentially large) component is the cached value itself.
+-- This way we can test for cache validity without needing to pay the
+-- cost of the decode of stale cache data. This lives here rather than
+-- Distribution.Utils.Structured because it depends on a newer version of
+-- binary than supported in the Cabal library proper.
+structuredDecodeTriple
+  :: forall a b c. (Structured a, Structured b, Structured c, Binary.Binary a, Binary.Binary b, Binary.Binary c)
+  => BS.ByteString -> Either String (a, b, Either String c)
+structuredDecodeTriple lbs =
+  let partialDecode =
+         (`runGetOrFail` lbs) $ do
+            (_ :: Tag (a,b,c)) <- Binary.get
+            (a :: a) <- Binary.get
+            (b :: b) <- Binary.get
+            pure (a, b)
+      cleanEither (Left (_, pos, msg)) = Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+      cleanEither (Right (_,_,v))     = Right v
+
+  in case partialDecode of
+       Left (_, pos, msg) ->  Left ("Data.Binary.Get.runGet at position " ++ show pos ++ ": " ++ msg)
+       Right (lbs', _, (x,y)) -> Right (x, y, cleanEither $ runGetOrFail (Binary.get :: Binary.Get c) lbs')
 
 -- | Helper for reading the cache file.
 --
 -- This determines the type and format of the binary cache file.
 --
-readCacheFile :: (Binary a, Structured a, Binary b, Structured b)
+withCacheFile :: (Binary a, Structured a, Binary b, Structured b)
               => FileMonitor a b
-              -> IO (Either String (MonitorStateFileSet, a, b))
-readCacheFile FileMonitor {fileMonitorCacheFile} =
+              -> (Either String (MonitorStateFileSet, a, Either String b) -> IO r)
+              -> IO r
+withCacheFile (FileMonitor {fileMonitorCacheFile}) k =
     withBinaryFile fileMonitorCacheFile ReadMode $ \hnd -> do
-        contents <- BS.hGetContents hnd
-        structuredDecodeOrFailIO contents
+        contents <- structuredDecodeTriple <$> BS.hGetContents hnd
+        k contents
 
 -- | Helper for writing the cache file.
 --
@@ -983,8 +1022,8 @@ readCacheFileHashes :: (Binary a, Structured a, Binary b, Structured b)
                     => FileMonitor a b -> IO FileHashCache
 readCacheFileHashes monitor =
     handleDoesNotExist Map.empty $
-    handleErrorCall    Map.empty $ do
-      res <- readCacheFile monitor
+    handleErrorCall    Map.empty $
+    withCacheFile monitor $ \res ->
       case res of
         Left _             -> return Map.empty
         Right (msfs, _, _) -> return (mkFileHashCache msfs)
@@ -994,16 +1033,19 @@ readCacheFileHashes monitor =
                     collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
+    collectAllFileHashes :: [MonitorStateFile] -> Map FilePath (ModTime, Hash)
     collectAllFileHashes singlePaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateFile _ _ fpath
                        (MonitorStateFileHashed mtime hash) <- singlePaths ]
 
+    collectAllGlobHashes :: [MonitorStateGlob] -> Map FilePath (ModTime, Hash)
     collectAllGlobHashes globPaths =
       Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateGlob _ _ _ gstate <- globPaths
                    , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate ]
 
+    collectGlobHashes :: FilePath -> MonitorStateGlobRel -> [(FilePath, (ModTime, Hash))]
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res
       | (subdir, fstate) <- entries
@@ -1127,4 +1169,3 @@ handleIOException e =
 ------------------------------------------------------------------------------
 -- Instances
 --
-

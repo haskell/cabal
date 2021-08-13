@@ -47,7 +47,7 @@ import Prelude ()
 
 import Distribution.Deprecated.ParseUtils
          ( FieldDescr(..), ParseResult(..), warning, LineNo, lineNo
-         , Field(..), liftField, readFieldsFlat )
+         , Field(..), liftField, readFields )
 import Distribution.Deprecated.ViewAsFieldDescr
          ( viewAsFieldDescr )
 
@@ -55,6 +55,7 @@ import Distribution.Simple.Command
          ( OptionField  )
 
 import Text.PrettyPrint ( ($+$) )
+import qualified Data.ByteString as BS
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
          ( (<>), Doc, text, colon, vcat, empty, isEmpty, nest )
@@ -243,7 +244,7 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
           b <- parseFieldsAndSections fieldDescrs' sectionDescrs' [] sectionEmpty fields
           set line param b a
         Just (Right (FGSectionDescr _ grammar _getter setter)) -> do
-          let fields1 = mapMaybe convertField fields
+          let fields1 = map convertField fields
               (fields2, sections) = partitionFields fields1
           -- TODO: recurse into sections
           for_ (concat sections) $ \(FG.MkSection (F.Name (Position line' _) name') _ _) ->
@@ -262,23 +263,16 @@ parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs =
                  ++ "' on line " ++ show line
           return a
 
-    setField accum (block@IfBlock {}) = do
-      warning $ "Unrecognized stanza on line " ++ show (lineNo block)
-      return accum
-
-convertField :: Field -> Maybe (F.Field Position)
-convertField (F line name str) = Just $
+convertField :: Field -> F.Field Position
+convertField (F line name str) =
     F.Field (F.Name pos (toUTF8BS name)) [ F.FieldLine pos $ toUTF8BS str ]
   where
     pos = Position line 0
 -- arguments omitted
-convertField (Section line name _arg fields) = Just $
-    F.Section (F.Name pos (toUTF8BS name)) [] (mapMaybe convertField fields)
+convertField (Section line name _arg fields) =
+    F.Section (F.Name pos (toUTF8BS name)) [] (map convertField fields)
   where
     pos = Position line 0
--- silently omitted.
-convertField IfBlock {} = Nothing
-
 
 -- | Much like 'ppFields' but also pretty prints any subsections. Subsection
 -- are only shown if they are non-empty.
@@ -361,10 +355,10 @@ ppFgSection secName arg grammar x
 -- It accumulates the result on top of a given initial (typically empty) value.
 --
 parseConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.ParsecFieldGrammar a] -> a
-            -> String -> ParseResult a
+            -> BS.ByteString -> ParseResult a
 parseConfig fieldDescrs sectionDescrs fgSectionDescrs empty str =
       parseFieldsAndSections fieldDescrs sectionDescrs fgSectionDescrs empty
-  =<< readFieldsFlat str
+  =<< readFields str
 
 -- | Render a value in the config file syntax, based on a description of the
 -- configuration file in terms of its fields and sections.

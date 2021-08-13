@@ -36,7 +36,6 @@ import Distribution.Simple.Program.Run
 import Distribution.System
 import Distribution.Pretty
 import Distribution.Types.ComponentId
-import Distribution.Types.ModuleRenaming
 import Distribution.Verbosity
 import Distribution.Version
 import Distribution.Utils.NubList
@@ -55,7 +54,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [8,13]))
+        (earlierVersion (mkVersion [9,1]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
@@ -237,7 +236,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
       , from [8,4] $ to [8,6] [ "-fno-max-valid-substitutions" ]
       , from [8,6] [ "-dhex-word-literals" ]
       , from [8,8] [ "-fshow-docs-of-hole-fits", "-fno-show-docs-of-hole-fits" ]
-      , from [8,12] [ "-dlinear-core-lint" ]
+      , from [9,0] [ "-dlinear-core-lint" ]
       ]
 
     isOptIntFlag :: String -> Any
@@ -686,7 +685,11 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
   , [ "-optc" ++ opt | opt <- ghcOptCcOptions opts]
-  , [ "-optc" ++ opt | opt <- ghcOptCxxOptions opts]
+  , -- C++ compiler options: GHC >= 8.10 requires -optcxx, older requires -optc
+    let cxxflag = case compilerCompatVersion GHC comp of
+                Just v | v >= mkVersion [8, 10] -> "-optcxx"
+                _ -> "-optc"
+    in [ cxxflag ++ opt | opt <- ghcOptCxxOptions opts]
   , [ "-opta" ++ opt | opt <- ghcOptAsmOptions opts]
 
   -----------------

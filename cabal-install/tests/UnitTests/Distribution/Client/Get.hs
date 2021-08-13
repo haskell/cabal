@@ -106,6 +106,7 @@ testUnsupportedRepoType = do
                , srpTag      = Nothing
                , srpBranch   = Nothing
                , srpSubdir   = Proxy
+               , srpCommand  = []
                }
     repotype = OtherRepoType "baz"
 
@@ -184,6 +185,7 @@ testGitFetchFailed =
                      , srpTag      = Nothing
                      , srpBranch   = Nothing
                      , srpSubdir   = Proxy
+                     , srpCommand  = []
                      }
           pkgrepos = [(pkgidfoo, [repo])]
       e1 <- assertException $

@@ -4,9 +4,9 @@ module Distribution.Types.BuildInfo.Lens (
     HasBuildInfos (..),
     ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
 import Distribution.Compat.Lens
+import Distribution.Compat.Prelude
+import Prelude ()
 
 import Distribution.Compiler                  (PerCompilerFlavor)
 import Distribution.ModuleName                (ModuleName)
@@ -16,6 +16,7 @@ import Distribution.Types.ExeDependency       (ExeDependency)
 import Distribution.Types.LegacyExeDependency (LegacyExeDependency)
 import Distribution.Types.Mixin               (Mixin)
 import Distribution.Types.PkgconfigDependency (PkgconfigDependency)
+import Distribution.Utils.Path
 import Language.Haskell.Extension             (Extension, Language)
 
 import qualified Distribution.Types.BuildInfo as T
@@ -60,6 +61,10 @@ class HasBuildInfo a where
    ldOptions = buildInfo . ldOptions
    {-# INLINE ldOptions #-}
 
+   hsc2hsOptions :: Lens' a [String]
+   hsc2hsOptions = buildInfo . hsc2hsOptions
+   {-# INLINE hsc2hsOptions #-}
+
    pkgconfigDepends :: Lens' a [PkgconfigDependency]
    pkgconfigDepends = buildInfo . pkgconfigDepends
    {-# INLINE pkgconfigDepends #-}
@@ -92,7 +97,7 @@ class HasBuildInfo a where
    jsSources = buildInfo . jsSources
    {-# INLINE jsSources #-}
 
-   hsSourceDirs :: Lens' a [FilePath]
+   hsSourceDirs :: Lens' a [SymbolicPath PackageDir SourceDir]
    hsSourceDirs = buildInfo . hsSourceDirs
    {-# INLINE hsSourceDirs #-}
 
@@ -227,6 +232,9 @@ instance HasBuildInfo BuildInfo where
 
     ldOptions f s = fmap (\x -> s { T.ldOptions = x }) (f (T.ldOptions s))
     {-# INLINE ldOptions #-}
+
+    hsc2hsOptions f s = fmap (\x -> s { T.hsc2hsOptions = x }) (f (T.hsc2hsOptions s))
+    {-# INLINE hsc2hsOptions #-}
 
     pkgconfigDepends f s = fmap (\x -> s { T.pkgconfigDepends = x }) (f (T.pkgconfigDepends s))
     {-# INLINE pkgconfigDepends #-}

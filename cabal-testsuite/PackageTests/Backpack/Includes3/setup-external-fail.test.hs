@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
-    skipUnless =<< ghcVersionIs (>= mkVersion [8,1])
+    skipUnlessGhcVersion ">= 8.1"
     withPackageDb $ do
       withDirectory "repo/sigs-0.1.0.0" $ setup_install []
       withDirectory "repo/indef-0.1.0.0" $ setup_install []

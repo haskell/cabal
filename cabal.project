@@ -1,13 +1,17 @@
 packages: Cabal/ cabal-testsuite/
-packages: cabal-install/cabal-install-solver/
 packages: cabal-install/
+packages: cabal-install-solver/
 packages: solver-benchmarks/
+
 tests: True
 
-packages: Cabal/Cabal-QuickCheck/
-packages: Cabal/Cabal-tree-diff/
-packages: Cabal/Cabal-described
+packages: Cabal-QuickCheck/
+packages: Cabal-tree-diff/
+packages: Cabal-described
+packages: Cabal-tests/
 packages: cabal-benchmarks/
+
+packages: vendor/cabal-doctest-1.0.8
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
@@ -19,18 +23,39 @@ allow-newer:
 allow-newer:
   hackage-security:Cabal
 
-program-options
-  -- So us hackers get all the assertion failures early:
-  --
-  -- NOTE: currently commented out, see
-  -- https://github.com/haskell/cabal/issues/3911
-  --
-  -- ghc-options: -fno-ignore-asserts
-  --
-  -- as a workaround we specify it for each package individually:
+-- https://github.com/haskell-hvr/windns/pull/2
+allow-newer: windns-0.1.0.1:base
+
+-- avoiding extra dependencies
+constraints: rere -rere-cfg
+constraints: these -assoc
+
+-- So us hackers get all the assertion failures early:
+--
+-- NOTE: currently commented out, see
+-- https://github.com/haskell/cabal/issues/3911
+-- as a workaround we specify it for each package individually:
+--
+-- program-options
+--   ghc-options: -fno-ignore-asserts
+--
 package Cabal
   ghc-options: -fno-ignore-asserts
+
 package cabal-testsuite
   ghc-options: -fno-ignore-asserts
+
+package Cabal-QuickCheck
+  ghc-options: -fno-ignore-asserts
+
+package Cabal-tree-diff
+  ghc-options: -fno-ignore-asserts
+
+package Cabal-described
+  ghc-options: -fno-ignore-asserts
+
+package cabal-install-solver
+  ghc-options: -fno-ignore-asserts
+
 package cabal-install
   ghc-options: -fno-ignore-asserts

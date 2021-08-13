@@ -21,7 +21,6 @@ import Distribution.Simple.PreProcess
 
 import Distribution.Types.PackageDescription
 import Distribution.Types.Component
-import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.Library
 import Distribution.Types.Executable
 import Distribution.Types.Benchmark
@@ -30,6 +29,7 @@ import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLib
+import Distribution.Utils.Path
 
 import Distribution.ModuleName
 
@@ -37,7 +37,6 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import System.FilePath
-import qualified Data.Set as Set
 
 needElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Rebuild ()
 needElaboratedConfiguredPackage elab =
@@ -51,12 +50,7 @@ needElaboratedPackage elab epkg =
   where
     pkg_descr = elabPkgDescription elab
     enabled_stanzas = pkgStanzasEnabled epkg
-    -- TODO: turn this into a helper function somewhere
-    enabled =
-        ComponentRequestedSpec {
-            testsRequested      = TestStanzas  `Set.member` enabled_stanzas,
-            benchmarksRequested = BenchStanzas `Set.member` enabled_stanzas
-        }
+    enabled = enableStanzas enabled_stanzas
 
 needElaboratedComponent :: ElaboratedConfiguredPackage -> ElaboratedComponent -> Rebuild ()
 needElaboratedComponent elab ecomp =
@@ -118,13 +112,13 @@ needMainFile bi mainPath = do
     -- whereas we need to get the file *prior* to preprocessing.
     ppFile <- findFileWithExtensionMonitored
                 (ppSuffixes knownSuffixHandlers)
-                (hsSourceDirs bi)
+                (map getSymbolicPath (hsSourceDirs bi))
                 (dropExtension mainPath)
     case ppFile of
         -- But check the original path in the end, because
         -- maybe it's a non-preprocessed file with a non-traditional
         -- extension.
-        Nothing -> findFileMonitored (hsSourceDirs bi) mainPath
+        Nothing -> findFileMonitored (map getSymbolicPath (hsSourceDirs bi)) mainPath
                     >>= maybe (return ()) need
         Just pp -> need pp
 
@@ -162,6 +156,6 @@ needBuildInfo pkg_descr bi modules = do
     findNeededModule exts m =
         findFileWithExtensionMonitored
             (ppSuffixes knownSuffixHandlers ++ exts)
-            (hsSourceDirs bi)
+            (map getSymbolicPath (hsSourceDirs bi))
             (toFilePath m)
           >>= maybe (return ()) need

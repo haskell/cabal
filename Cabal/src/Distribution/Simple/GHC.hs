@@ -106,6 +106,7 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Pretty
 import Distribution.Utils.NubList
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 
 import Control.Monad (msum, forM_)
@@ -136,11 +137,12 @@ configure verbosity hcPath hcPkgPath conf0 = do
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
-  -- Cabal currently supports ghc >= 7.0.1 && < 8.12
-  unless (ghcVersion < mkVersion [8,14]) $
+  -- Cabal currently supports ghc >= 7.0.1 && < 9.4
+  -- ... and the following odd development version
+  unless (ghcVersion < mkVersion [9,4]) $
     warn verbosity $
          "Unknown/unsupported 'ghc' version detected "
-      ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 8.12): "
+      ++ "(Cabal " ++ prettyShow cabalVersion ++ " supports 'ghc' version < 9.4): "
       ++ programPath ghcProg ++ " is version " ++ prettyShow ghcVersion
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
@@ -238,10 +240,11 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                              | otherwise = [guessGhcVersioned dir suf,
                                             guessVersioned dir suf,
                                             guessNormal dir]
-           guesses = mkGuesses given_dir given_suf ++
-                            if real_path == given_path
-                                then []
-                                else mkGuesses real_dir real_suf
+           -- order matters here, see https://github.com/haskell/cabal/issues/7390
+           guesses = (if real_path == given_path
+                        then []
+                        else mkGuesses real_dir real_suf)
+                     ++ mkGuesses given_dir given_suf
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ given_dir
        debug verbosity $ "candidate locations: " ++ show guesses
@@ -549,13 +552,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let cLikeFiles  = fromNubListR $ mconcat
+  let cLikeSources  = fromNubListR $ mconcat
                       [ toNubListR (cSources   libBi)
                       , toNubListR (cxxSources libBi)
                       , toNubListR (cmmSources libBi)
                       , toNubListR (asmSources libBi)
                       ]
-      cObjs       = map (`replaceExtension` objExtension) cLikeFiles
+      cLikeObjs   = map (`replaceExtension` objExtension) cLikeSources
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
@@ -596,7 +599,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
-                                             [libTargetDir </> x | x <- cObjs]
+                                             [libTargetDir </> x | x <- cLikeObjs]
                    }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = Internal.filterGhciFlags
@@ -777,10 +780,10 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
   -- link:
   when has_code . unless forRepl $ do
     info verbosity "Linking..."
-    let cProfObjs            = map (`replaceExtension` ("p_" ++ objExtension))
-                               (cSources libBi ++ cxxSources libBi)
-        cSharedObjs          = map (`replaceExtension` ("dyn_" ++ objExtension))
-                               (cSources libBi ++ cxxSources libBi)
+    let cLikeProfObjs        = map (`replaceExtension` ("p_" ++ objExtension))
+                               cLikeSources
+        cLikeSharedObjs      = map (`replaceExtension` ("dyn_" ++ objExtension))
+                               cLikeSources
         compiler_id          = compilerId (compiler lbi)
         vanillaLibFilePath   = libTargetDir </> mkLibName uid
         profileLibFilePath   = libTargetDir </> mkProfLibName uid
@@ -825,20 +828,20 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
 
-    unless (null hObjs && null cObjs && null stubObjs) $ do
+    unless (null hObjs && null cLikeObjs && null stubObjs) $ do
       rpaths <- getRPaths lbi clbi
 
       let staticObjectFiles =
                  hObjs
-              ++ map (libTargetDir </>) cObjs
+              ++ map (libTargetDir </>) cLikeObjs
               ++ stubObjs
           profObjectFiles =
                  hProfObjs
-              ++ map (libTargetDir </>) cProfObjs
+              ++ map (libTargetDir </>) cLikeProfObjs
               ++ stubProfObjs
           dynamicObjectFiles =
                  hSharedObjs
-              ++ map (libTargetDir </>) cSharedObjs
+              ++ map (libTargetDir </>) cLikeSharedObjs
               ++ stubSharedObjs
           -- After the relocation lib is created we invoke ghc -shared
           -- with the dependencies spelled out as -package arguments
@@ -1191,7 +1194,7 @@ gbuildSources verbosity specVer tmpDir bm =
   where
     exeSources :: Executable -> IO BuildSources
     exeSources exe@Executable{buildInfo = bnfo, modulePath = modPath} = do
-      main <- findFileEx verbosity (tmpDir : hsSourceDirs bnfo) modPath
+      main <- findFileEx verbosity (tmpDir : map getSymbolicPath (hsSourceDirs bnfo)) modPath
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 
@@ -1305,7 +1308,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       inputModules        = inputSourceModules buildSources
       isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
-      cObjs               = map (`replaceExtension` objExtension) cSrcs
+      cLikeObjs           = map (`replaceExtension` objExtension) cSrcs
       cxxObjs             = map (`replaceExtension` objExtension) cxxSrcs
       needDynamic         = gbuildNeedDynamic lbi bm
       needProfiling       = withProfExe lbi
@@ -1360,10 +1363,12 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs bnfo,
                       ghcOptInputFiles     = toNubListR
-                                             [tmpDir </> x | x <- cObjs ++ cxxObjs]
+                                             [tmpDir </> x | x <- cLikeObjs ++ cxxObjs]
                     }
       dynLinkerOpts = mempty {
-                      ghcOptRPaths         = rpaths
+                      ghcOptRPaths         = rpaths,
+                      ghcOptInputFiles     = toNubListR
+                                             [tmpDir </> x | x <- cLikeObjs ++ cxxObjs]
                    }
       replOpts   = baseOpts {
                     ghcOptExtra            = Internal.filterGhciFlags

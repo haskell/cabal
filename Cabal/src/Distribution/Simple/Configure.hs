@@ -77,12 +77,9 @@ import Distribution.Simple.Setup as Setup
 import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.PackageVersionConstraint
-import Distribution.Types.PkgconfigVersion
-import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.GivenComponent
-import Distribution.Types.Mixin
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
@@ -103,7 +100,6 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Exception
     ( try )
-import Data.List.NonEmpty            ( nonEmpty )
 import Distribution.Utils.Structured ( structuredDecodeOrFailIO, structuredEncode )
 import Distribution.Compat.Directory ( listDirectory )
 import Data.ByteString.Lazy          ( ByteString )

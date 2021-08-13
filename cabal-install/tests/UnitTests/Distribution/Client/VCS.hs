@@ -215,6 +215,7 @@ prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
             , srpTag      = Just tagname
             , srpBranch   = Nothing
             , srpSubdir   = []
+            , srpCommand  = []
             }
     verbosity = silent
 
@@ -315,6 +316,7 @@ pickSyncTargetSets repoType repoState srcRepoPath dstReposPath =
                               , srpTag      = Just tag
                               , srpBranch   = Nothing
                               , srpSubdir   = Proxy
+                              , srpCommand  = []
                               }
         (tag, workingState) = Map.elemAt tagIdx (allTags repoState)
         (tagIdx, prng')     = randomR (0, Map.size (allTags repoState) - 1) prng

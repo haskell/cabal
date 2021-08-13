@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.JobControl
@@ -38,6 +39,7 @@ import Control.Concurrent.STM (STM, atomically)
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM.TChan
 import Control.Exception (bracket_, try)
+import Distribution.Compat.Stack
 import Distribution.Client.Compat.Semaphore
 
 
@@ -99,7 +101,7 @@ newSerialJobControl = do
 -- that have already been executed or are currently executing cannot be
 -- cancelled.
 --
-newParallelJobControl :: Int -> IO (JobControl IO a)
+newParallelJobControl :: WithCallStack (Int -> IO (JobControl IO a))
 newParallelJobControl n | n < 1 || n > 1000 =
   error $ "newParallelJobControl: not a sensible number of jobs: " ++ show n
 newParallelJobControl maxJobLimit = do

@@ -4,8 +4,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
@@ -20,17 +18,17 @@ jobs:
     steps:
       - name: Set PATH
         run: |
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Install newer Python3
         run: |
           add-apt-repository ppa:deadsnakes/ppa
           apt-get update
           apt-get install -y python3.8
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       - name: Package project
-        run: python3.8 release.py
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
+          python3.8 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarsolver=sdist/sdist/cabal-install-solver-3.*.tar.gz --tarexe=sdist/sdist/cabal-install-3.*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-linux
@@ -51,21 +49,21 @@ jobs:
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/8.6.5/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
-          echo "::add-path::$HOME/.cabal/bin"
-      - name: Update Hackage index
-        run: cabal v2-update
+          echo "/opt/ghc/8.6.5/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - uses: actions/checkout@v2
       - name: Package project
-        run: python3 release.py
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
+          python3 release.py --tarlib=sdist/sdist/Cabal-*.tar.gz --tarsolver=sdist/sdist/cabal-install-solver-3.*.tar.gz --tarexe=sdist/sdist/cabal-install-3.*.tar.gz
       - uses: actions/upload-artifact@v2
         with:
           name: cabal-macos
@@ -84,19 +82,21 @@ jobs:
       - name: Set PATH
         run: |
           [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0"
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
+          Write-Output "C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0" | Out-File $Env:GITHUB_PATH
+          Write-Output "C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin" | Out-File $Env:GITHUB_PATH
       - name: Print versions
         run: |
           ghc --version
           cabal --version
           cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       - name: Package project
-        run: python release.py
+        # We hardcode version 3 here to make first glob not overlap with cabal-install
+        run: |
+          cabal v2-sdist --builddir=sdist Cabal cabal-install-solver cabal-install
+          New-Item -Path "_build" -ItemType "directory"
+          python release.py --tarlib=$(Resolve-Path -Path sdist/sdist/Cabal-3.*.tar.gz) --tarsolver=$(Resolve-Path -Path sdist/sdist/cabal-install-solver-3.*.tar.gz) --tarexe=$(Resolve-Path -Path sdist/sdist/cabal-install-3.*.tar.gz)
       - uses: actions/upload-artifact@v2
         with:
-          name: cabal-macos
+          name: cabal-windows
           path: _build/artifacts/*

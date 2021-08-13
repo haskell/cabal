@@ -52,10 +52,10 @@ import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
-import Distribution.Types.ModuleReexport
 import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.Utils.Path
 import Language.Haskell.Extension
 import System.FilePath
        (splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
@@ -75,6 +75,9 @@ import qualified Distribution.Utils.ShortText as ShortText
 import qualified Distribution.Types.BuildInfo.Lens                 as L
 import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
+
+-- $setup
+-- >>> import Control.Arrow ((&&&))
 
 -- | Results of some kind of failed package check.
 --
@@ -536,13 +539,15 @@ checkFields pkg =
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
         ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
 
-  , check (not (null depInternalLibraryWithExtraVersion)) $
-      PackageBuildWarning $
-           "The package has an extraneous version range for a dependency on an "
-        ++ "internal library: "
-        ++ commaSep (map prettyShow depInternalLibraryWithExtraVersion)
-        ++ ". This version range includes the current package but isn't needed "
-        ++ "as the current package's library will always be used."
+  -- for more details on why the following was commented out,
+  -- check https://github.com/haskell/cabal/pull/7470#issuecomment-875878507
+  -- , check (not (null depInternalLibraryWithExtraVersion)) $
+  --     PackageBuildWarning $
+  --          "The package has an extraneous version range for a dependency on an "
+  --       ++ "internal library: "
+  --       ++ commaSep (map prettyShow depInternalLibraryWithExtraVersion)
+  --       ++ ". This version range includes the current package but isn't needed "
+  --       ++ "as the current package's library will always be used."
 
   , check (not (null depInternalLibraryWithImpossibleVersion)) $
       PackageBuildImpossible $
@@ -552,13 +557,13 @@ checkFields pkg =
         ++ ". This version range does not include the current package, and must "
         ++ "be removed as the current package's library will always be used."
 
-  , check (not (null depInternalExecutableWithExtraVersion)) $
-      PackageBuildWarning $
-           "The package has an extraneous version range for a dependency on an "
-        ++ "internal executable: "
-        ++ commaSep (map prettyShow depInternalExecutableWithExtraVersion)
-        ++ ". This version range includes the current package but isn't needed "
-        ++ "as the current package's executable will always be used."
+  -- , check (not (null depInternalExecutableWithExtraVersion)) $
+  --     PackageBuildWarning $
+  --          "The package has an extraneous version range for a dependency on an "
+  --       ++ "internal executable: "
+  --       ++ commaSep (map prettyShow depInternalExecutableWithExtraVersion)
+  --       ++ ". This version range includes the current package but isn't needed "
+  --       ++ "as the current package's executable will always be used."
 
   , check (not (null depInternalExecutableWithImpossibleVersion)) $
       PackageBuildImpossible $
@@ -614,12 +619,12 @@ checkFields pkg =
       , isInternal pkg dep
       ]
 
-    depInternalLibraryWithExtraVersion =
-      [ dep
-      | dep@(Dependency _ versionRange _) <- internalLibDeps
-      , not $ isAnyVersion versionRange
-      , packageVersion pkg `withinRange` versionRange
-      ]
+    -- depInternalLibraryWithExtraVersion =
+    --   [ dep
+    --   | dep@(Dependency _ versionRange _) <- internalLibDeps
+    --   , not $ isAnyVersion versionRange
+    --   , packageVersion pkg `withinRange` versionRange
+    --   ]
 
     depInternalLibraryWithImpossibleVersion =
       [ dep
@@ -627,12 +632,12 @@ checkFields pkg =
       , not $ packageVersion pkg `withinRange` versionRange
       ]
 
-    depInternalExecutableWithExtraVersion =
-      [ dep
-      | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
-      , not $ isAnyVersion versionRange
-      , packageVersion pkg `withinRange` versionRange
-      ]
+    -- depInternalExecutableWithExtraVersion =
+    --   [ dep
+    --   | dep@(ExeDependency _ _ versionRange) <- internalExeDeps
+    --   , not $ isAnyVersion versionRange
+    --   , packageVersion pkg `withinRange` versionRange
+    --   ]
 
     depInternalExecutableWithImpossibleVersion =
       [ dep
@@ -762,6 +767,16 @@ checkSourceRepos pkg =
   , check (maybe False isAbsoluteOnAnyPlatform (repoSubdir repo)) $
       PackageDistInexcusable
         "The 'subdir' field of a source-repository must be a relative path."
+
+  , check (maybe False isAbsoluteOnAnyPlatform (repoSubdir repo)) $
+      PackageDistInexcusable
+        "The 'subdir' field of a source-repository must be a relative path."
+
+  , do
+      subdir <- repoSubdir repo
+      err    <- isGoodRelativeDirectoryPath subdir
+      return $ PackageDistInexcusable $
+        "The 'subdir' field of a source-repository is not a good relative path: " ++ show err
   ]
   | repo <- sourceRepos pkg ]
 
@@ -1038,27 +1053,42 @@ checkAlternatives badField goodField flags =
 
   where (badFlags, goodFlags) = unzip flags
 
+data PathKind
+    = PathKindFile
+    | PathKindDirectory
+    | PathKindGlob
+
 checkPaths :: PackageDescription -> [PackageCheck]
 checkPaths pkg =
   [ PackageBuildWarning $
-         quote (kind ++ ": " ++ path)
+         quote (field ++ ": " ++ path)
       ++ " is a relative path outside of the source tree. "
       ++ "This will not work when generating a tarball with 'sdist'."
-  | (path, kind) <- relPaths ++ absPaths
+  | (path, field, _) <- relPaths ++ absPaths
   , isOutsideTree path ]
   ++
   [ PackageDistInexcusable $
-      quote (kind ++ ": " ++ path) ++ " is an absolute path."
-  | (path, kind) <- relPaths
+      quote (field ++ ": " ++ path) ++ " is an absolute path."
+  | (path, field, _) <- relPaths
   , isAbsoluteOnAnyPlatform path ]
   ++
   [ PackageDistInexcusable $
-         quote (kind ++ ": " ++ path) ++ " points inside the 'dist' "
+      quote (field ++ ": " ++ path) ++ " is not good relative path: " ++ err
+  | (path, field, kind) <- relPaths
+  -- these are not paths, but globs...
+  , err <- maybeToList $ case kind of
+      PathKindFile      -> isGoodRelativeFilePath path
+      PathKindGlob      -> isGoodRelativeGlob path
+      PathKindDirectory -> isGoodRelativeDirectoryPath path
+  ]
+  ++
+  [ PackageDistInexcusable $
+         quote (field ++ ": " ++ path) ++ " points inside the 'dist' "
       ++ "directory. This is not reliable because the location of this "
       ++ "directory is configurable by the user (or package manager). In "
       ++ "addition the layout of the 'dist' directory is subject to change "
       ++ "in future versions of Cabal."
-  | (path, kind) <- relPaths ++ absPaths
+  | (path, field, _) <- relPaths ++ absPaths
   , isInsideDist path ]
   ++
   [ PackageDistInexcusable $
@@ -1098,29 +1128,35 @@ checkPaths pkg =
       "dist"    :_ -> True
       ".":"dist":_ -> True
       _            -> False
+
     -- paths that must be relative
+    relPaths :: [(FilePath, String, PathKind)]
     relPaths =
-         [ (path, "extra-source-files") | path <- extraSrcFiles pkg ]
-      ++ [ (path, "extra-tmp-files")    | path <- extraTmpFiles pkg ]
-      ++ [ (path, "extra-doc-files")    | path <- extraDocFiles pkg ]
-      ++ [ (path, "data-files")         | path <- dataFiles     pkg ]
-      ++ [ (path, "data-dir")           | path <- [dataDir      pkg]]
-      ++ [ (path, "license-file")       | path <- licenseFiles  pkg ]
-      ++ concat
-         [    [ (path, "asm-sources")      | path <- asmSources      bi ]
-           ++ [ (path, "cmm-sources")      | path <- cmmSources      bi ]
-           ++ [ (path, "c-sources")        | path <- cSources        bi ]
-           ++ [ (path, "cxx-sources")      | path <- cxxSources      bi ]
-           ++ [ (path, "js-sources")       | path <- jsSources       bi ]
-           ++ [ (path, "install-includes") | path <- installIncludes bi ]
-           ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]
-         | bi <- allBuildInfo pkg ]
+      [ (path, "extra-source-files", PathKindGlob)      | path <- extraSrcFiles pkg ] ++
+      [ (path, "extra-tmp-files",    PathKindFile)      | path <- extraTmpFiles pkg ] ++
+      [ (path, "extra-doc-files",    PathKindGlob)      | path <- extraDocFiles pkg ] ++
+      [ (path, "data-files",         PathKindGlob)      | path <- dataFiles     pkg ] ++
+      [ (path, "data-dir",           PathKindDirectory) | path <- [dataDir      pkg]] ++
+      [ (path, "license-file",       PathKindFile)      | path <- map getSymbolicPath $ licenseFiles  pkg ] ++
+      concat
+        [ [ (path, "asm-sources",      PathKindFile)      | path <- asmSources      bi ] ++
+          [ (path, "cmm-sources",      PathKindFile)      | path <- cmmSources      bi ] ++
+          [ (path, "c-sources",        PathKindFile)      | path <- cSources        bi ] ++
+          [ (path, "cxx-sources",      PathKindFile)      | path <- cxxSources      bi ] ++
+          [ (path, "js-sources",       PathKindFile)      | path <- jsSources       bi ] ++
+          [ (path, "install-includes", PathKindFile)      | path <- installIncludes bi ] ++
+          [ (path, "hs-source-dirs",   PathKindDirectory) | path <- map getSymbolicPath $ hsSourceDirs bi ]
+        | bi <- allBuildInfo pkg
+        ]
+
     -- paths that are allowed to be absolute
+    absPaths :: [(FilePath, String, PathKind)]
     absPaths = concat
-      [    [ (path, "includes")         | path <- includes        bi ]
-        ++ [ (path, "include-dirs")     | path <- includeDirs     bi ]
-        ++ [ (path, "extra-lib-dirs")   | path <- extraLibDirs    bi ]
-      | bi <- allBuildInfo pkg ]
+      [ [ (path, "includes",       PathKindFile)      | path <- includes     bi ] ++
+        [ (path, "include-dirs",   PathKindDirectory) | path <- includeDirs  bi ] ++
+        [ (path, "extra-lib-dirs", PathKindDirectory) | path <- extraLibDirs bi ]
+      | bi <- allBuildInfo pkg
+      ]
 
 --TODO: check sets of paths that would be interpreted differently between Unix
 -- and windows, ie case-sensitive or insensitive. Things that might clash, or
@@ -1413,12 +1449,13 @@ checkPackageVersions pkg =
       -- then we will just skip the check, since boundedAbove noVersion = True
       _          -> noVersion
 
+    -- TODO: move to Distribution.Version
     boundedAbove :: VersionRange -> Bool
     boundedAbove vr = case asVersionIntervals vr of
       []     -> True -- this is the inconsistent version range.
       (x:xs) -> case last (x:|xs) of
-        (_,   UpperBound _ _) -> True
-        (_, NoUpperBound    ) -> False
+        VersionInterval _ UpperBound {} -> True
+        VersionInterval _ NoUpperBound  -> False
 
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
@@ -1840,11 +1877,11 @@ checkLicensesExist :: (Monad m, Applicative m)
                    -> PackageDescription
                    -> m [PackageCheck]
 checkLicensesExist ops pkg = do
-    exists <- traverse (doesFileExist ops) (licenseFiles pkg)
+    exists <- traverse (doesFileExist ops . getSymbolicPath) (licenseFiles pkg)
     return
       [ PackageBuildWarning $
            "The '" ++ fieldname ++ "' field refers to the file "
-        ++ quote file ++ " which does not exist."
+        ++ quote (getSymbolicPath file) ++ " which does not exist."
       | (file, False) <- zip (licenseFiles pkg) exists ]
   where
     fieldname | length (licenseFiles pkg) == 1 = "license-file"
@@ -1884,7 +1921,7 @@ checkLocalPathsExist ops pkg = do
                ++ [ (dir, "extra-framework-dirs")
                   | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
-               ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
+               ++ [ (getSymbolicPath dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelativeOnAnyPlatform dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {
@@ -2110,3 +2147,252 @@ fileExtensionSupportedLanguage path =
     extension = takeExtension path
     isHaskell = extension `elem` [".hs", ".lhs"]
     isC       = isJust (filenameCDialect extension)
+
+-- | Whether a path is a good relative path.  We aren't worried about perfect
+-- cross-platform compatibility here; this function just checks the paths in
+-- the (local) @.cabal@ file, while only Hackage needs the portability.
+--
+-- >>> let test fp = putStrLn $ show (isGoodRelativeDirectoryPath fp) ++ "; " ++ show (isGoodRelativeFilePath fp)
+--
+-- Note that "foo./bar.hs" would be invalid on Windows.
+--
+-- >>> traverse_ test ["foo/bar/quu", "a/b.hs", "foo./bar.hs"]
+-- Nothing; Nothing
+-- Nothing; Nothing
+-- Nothing; Nothing
+--
+-- Trailing slash is not allowed for files, for directories it is ok.
+--
+-- >>> test "foo/"
+-- Nothing; Just "trailing slash"
+--
+-- Leading @./@ is fine, but @.@ and @./@ are not valid files.
+--
+-- >>> traverse_ test [".", "./", "./foo/bar"]
+-- Nothing; Just "trailing dot segment"
+-- Nothing; Just "trailing slash"
+-- Nothing; Nothing
+--
+-- Lastly, not good file nor directory cases:
+--
+-- >>> traverse_ test ["", "/tmp/src", "foo//bar", "foo/.", "foo/./bar", "foo/../bar", "foo*bar"]
+-- Just "empty path"; Just "empty path"
+-- Just "posix absolute path"; Just "posix absolute path"
+-- Just "empty path segment"; Just "empty path segment"
+-- Just "trailing same directory segment: ."; Just "trailing same directory segment: ."
+-- Just "same directory segment: ."; Just "same directory segment: ."
+-- Just "parent directory segment: .."; Just "parent directory segment: .."
+-- Just "reserved character '*'"; Just "reserved character '*'"
+--
+-- For the last case, 'isGoodRelativeGlob' doesn't warn:
+--
+-- >>> traverse_ (print . isGoodRelativeGlob) ["foo/../bar", "foo*bar"]
+-- Just "parent directory segment: .."
+-- Nothing
+--
+isGoodRelativeFilePath :: FilePath -> Maybe String
+isGoodRelativeFilePath = state0
+  where
+    -- Reserved characters
+    -- https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+    isReserved c = c `elem` "<>:\"\\/|?*"
+
+    -- initial state
+    state0 []                    = Just "empty path"
+    state0 (c:cs) | c == '.'     = state1 cs
+                  | c == '/'     = Just "posix absolute path"
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+    -- after initial .
+    state1 []                    = Just "trailing dot segment"
+    state1 (c:cs) | c == '.'     = state4 cs
+                  | c == '/'     = state2 cs
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+    -- after ./ or after / between segments
+    state2 []                    = Just "trailing slash"
+    state2 (c:cs) | c == '.'     = state3 cs
+                  | c == '/'     = Just "empty path segment"
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+    -- after non-first segment's .
+    state3 []                    = Just "trailing same directory segment: ."
+    state3 (c:cs) | c == '.'     = state4 cs
+                  | c == '/'     = Just "same directory segment: ."
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+    -- after ..
+    state4 []                    = Just "trailing parent directory segment: .."
+    state4 (c:cs) | c == '.'     = state5 cs
+                  | c == '/'     = Just "parent directory segment: .."
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+    -- in a segment which is ok.
+    state5 []                    = Nothing
+    state5 (c:cs) | c == '.'     = state5 cs
+                  | c == '/'     = state2 cs
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state5 cs
+
+-- | See 'isGoodRelativeFilePath'.
+--
+-- This is barebones function. We check whether the glob is a valid file
+-- by replacing stars @*@ with @x@ses.
+isGoodRelativeGlob :: FilePath -> Maybe String
+isGoodRelativeGlob = isGoodRelativeFilePath . map f where
+    f '*' = 'x'
+    f c   = c
+
+-- | See 'isGoodRelativeFilePath'.
+isGoodRelativeDirectoryPath :: FilePath -> Maybe String
+isGoodRelativeDirectoryPath = state0
+  where
+    -- Reserved characters
+    -- https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+    isReserved c = c `elem` "<>:\"\\/|?*"
+
+    -- initial state
+    state0 []                    = Just "empty path"
+    state0 (c:cs) | c == '.'     = state5 cs
+                  | c == '/'     = Just "posix absolute path"
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+    -- after initial ./ or after / between segments
+    state1 []                    = Nothing
+    state1 (c:cs) | c == '.'     = state2 cs
+                  | c == '/'     = Just "empty path segment"
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+    -- after non-first setgment's .
+    state2 []                    = Just "trailing same directory segment: ."
+    state2 (c:cs) | c == '.'     = state3 cs
+                  | c == '/'     = Just "same directory segment: ."
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+    -- after ..
+    state3 []                    = Just "trailing parent directory segment: .."
+    state3 (c:cs) | c == '.'     = state4 cs
+                  | c == '/'     = Just "parent directory segment: .."
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+    -- in a segment which is ok.
+    state4 []                    = Nothing
+    state4 (c:cs) | c == '.'     = state4 cs
+                  | c == '/'     = state1 cs
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+    -- after initial .
+    state5 []                    = Nothing -- "."
+    state5 (c:cs) | c == '.'     = state3 cs
+                  | c == '/'     = state1 cs
+                  | isReserved c = Just ("reserved character " ++ show c)
+                  | otherwise    = state4 cs
+
+-- [Note: Good relative paths]
+--
+-- Using @kleene@ we can define an extended regex:
+--
+-- @
+-- import Algebra.Lattice
+-- import Kleene
+-- import Kleene.ERE (ERE (..), intersections)
+--
+-- data C = CDot | CSlash | COtherReserved | CChar
+--   deriving (Eq, Ord, Enum, Bounded, Show)
+--
+-- reservedR :: ERE C
+-- reservedR = notChar CSlash /\ notChar COtherReserved
+--
+-- pathPieceR :: ERE C
+-- pathPieceR = intersections
+--     [ plus reservedR
+--     , ERENot (string [CDot])
+--     , ERENot (string [CDot,CDot])
+--     ]
+--
+-- filePathR :: ERE C
+-- filePathR = optional (string [CDot, CSlash]) <> pathPieceR <> star (char CSlash <> pathPieceR)
+--
+-- dirPathR :: ERE C
+-- dirPathR = (char CDot \/ filePathR) <> optional (char CSlash)
+--
+-- plus :: ERE C -> ERE C
+-- plus r = r <> star r
+--
+-- optional :: ERE C -> ERE C
+-- optional r = mempty \/ r
+-- @
+--
+-- Results in following state machine for @filePathR@
+--
+-- @
+-- 0 -> \x -> if
+--     | x <= CDot           -> 1
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 1 -> \x -> if
+--     | x <= CDot           -> 4
+--     | x <= CSlash         -> 2
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 2 -> \x -> if
+--     | x <= CDot           -> 3
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 3 -> \x -> if
+--     | x <= CDot           -> 4
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 4 -> \x -> if
+--     | x <= CDot           -> 5
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 5+ -> \x -> if
+--     | x <= CDot           -> 5
+--     | x <= CSlash         -> 2
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 5
+-- 6 -> \_ -> 6 -- black hole
+-- @
+--
+-- and @dirPathR@:
+--
+-- @
+-- 0 -> \x -> if
+--     | x <= CDot           -> 5
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 1+ -> \x -> if
+--     | x <= CDot           -> 2
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 2 -> \x -> if
+--     | x <= CDot           -> 3
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 3 -> \x -> if
+--     | x <= CDot           -> 4
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 4+ -> \x -> if
+--     | x <= CDot           -> 4
+--     | x <= CSlash         -> 1
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 5+ -> \x -> if
+--     | x <= CDot           -> 3
+--     | x <= CSlash         -> 1
+--     | x <= COtherReserved -> 6
+--     | otherwise           -> 4
+-- 6 -> \_ -> 6 -- black hole
+-- @

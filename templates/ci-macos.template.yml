@@ -10,8 +10,6 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
@@ -42,23 +40,23 @@ jobs:
       - name: Install Cabal
         run: |
           cd $(mktemp -d)
-          curl -sLO https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-apple-darwin17.7.0.tar.xz
+          curl -sLO http://oleg.fi/cabal-install-3.4.0.0-rc1/cabal-install-3.4.0.0-x86_64-darwin-sierra.tar.xz
           tar -xJf cabal-install-*.tar.xz
-          sudo mkdir -p /opt/cabal/3.0/bin
-          sudo cp cabal /opt/cabal/3.0/bin/cabal
-          sudo chmod 755 /opt/cabal/3.0/bin/cabal
+          sudo mkdir -p /opt/cabal/3.4/bin
+          sudo cp cabal /opt/cabal/3.4/bin/cabal
+          sudo chmod 755 /opt/cabal/3.4/bin/cabal
       - name: Set PATH
         run: |
-          echo "::add-path::/opt/ghc/{{job.version}}/bin"
-          echo "::add-path::/opt/cabal/3.0/bin"
-          echo "::add-path::$HOME/.cabal/bin"
+          echo "/opt/ghc/{{job.version}}/bin" >> $GITHUB_PATH
+          echo "/opt/cabal/3.4/bin" >> $GITHUB_PATH
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
 {# aeson +fast, so we don't wait for -O2 #}
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast'
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
       - uses: actions/checkout@v2
 {% for step in job.steps %}
       - name: Validate {{step}}

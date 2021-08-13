@@ -80,24 +80,28 @@ licenseExceptionName {{l.constructor}} = {{l.name}}
 
 licenseExceptionIdList :: LicenseListVersion -> [LicenseExceptionId]
 licenseExceptionIdList LicenseListVersion_3_0 =
-{{licenseList_3_0}}
+{{licenseList_perv.v_3_0}}
     ++ bulkOfLicenses
 licenseExceptionIdList LicenseListVersion_3_2 =
-{{licenseList_3_2}}
+{{licenseList_perv.v_3_2}}
     ++ bulkOfLicenses
 licenseExceptionIdList LicenseListVersion_3_6 =
-{{licenseList_3_6}}
+{{licenseList_perv.v_3_6}}
     ++ bulkOfLicenses
 licenseExceptionIdList LicenseListVersion_3_9 =
-{{licenseList_3_9}}
+{{licenseList_perv.v_3_9}}
+    ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_10 =
+{{licenseList_perv.v_3_10}}
     ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
-mkLicenseExceptionId LicenseListVersion_3_0 s = Map.lookup s stringLookup_3_0
-mkLicenseExceptionId LicenseListVersion_3_2 s = Map.lookup s stringLookup_3_2
-mkLicenseExceptionId LicenseListVersion_3_6 s = Map.lookup s stringLookup_3_6
-mkLicenseExceptionId LicenseListVersion_3_9 s = Map.lookup s stringLookup_3_9
+mkLicenseExceptionId LicenseListVersion_3_0  s = Map.lookup s stringLookup_3_0
+mkLicenseExceptionId LicenseListVersion_3_2  s = Map.lookup s stringLookup_3_2
+mkLicenseExceptionId LicenseListVersion_3_6  s = Map.lookup s stringLookup_3_6
+mkLicenseExceptionId LicenseListVersion_3_9  s = Map.lookup s stringLookup_3_9
+mkLicenseExceptionId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -114,6 +118,10 @@ stringLookup_3_6 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 stringLookup_3_9 :: Map String LicenseExceptionId
 stringLookup_3_9 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_9
+
+stringLookup_3_10 :: Map String LicenseExceptionId
+stringLookup_3_10 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_10
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]

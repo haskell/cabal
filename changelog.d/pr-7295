@@ -1,0 +1,13 @@
+synopsis: Add 'preferred-versions' support for LocalIndexRepo
+packages: cabal-install
+prs: #7295
+issues: #7294
+
+description: {
+
+- Previously, the only repo-index-type that reads the preferred-versions file is `RepoRemote`.
+  `LocalIndexRepo` now also supports parsing `preferred-versions` file, main purpose is to write tests.
+  As a nice side-effect, users can provide their own overlay over package sets to restrict or prefer certain package versions.
+
+}
+

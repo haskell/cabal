@@ -128,8 +128,8 @@ withinRange v = foldVersionRange
 --
 isAnyVersion :: VersionRange -> Bool
 isAnyVersion vr = case asVersionIntervals vr of
-    [(LowerBound v InclusiveBound, NoUpperBound)] -> v == version0
-    _                                             -> False
+    [VersionInterval (LowerBound v InclusiveBound) NoUpperBound] -> v == version0
+    _                                                            -> False
 
 -- A fast and non-precise version of 'isAnyVersion',
 -- returns 'True' only for @>= 0@ 'VersionRange's.

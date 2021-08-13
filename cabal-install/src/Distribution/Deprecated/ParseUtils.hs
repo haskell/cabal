@@ -25,8 +25,8 @@ module Distribution.Deprecated.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), parseFail, showPWarning,
         Field(..), lineNo,
-        FieldDescr(..), readFields, readFieldsFlat,
-        parseHaskellString, parseFilePathQ, parseTokenQ,
+        FieldDescr(..), readFields,
+        parseHaskellString, parseTokenQ,
         parseOptCommaList,
         showFilePath, showToken, showFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
@@ -51,13 +51,20 @@ import Distribution.Pretty
 import Distribution.ReadE
 import Distribution.Utils.Generic
 
-import Data.Tree as Tree (Tree (..), flatten)
 import System.FilePath  (normalise)
 import Text.PrettyPrint (Doc, punctuate, comma, fsep, sep)
 import qualified Text.Read as Read
 
 import qualified Control.Monad.Fail as Fail
 import Distribution.Parsec (ParsecParser, parsecLeadingCommaList, parsecLeadingOptCommaList)
+
+import qualified Data.ByteString as BS
+import qualified Distribution.Fields as Fields
+import qualified Distribution.Fields.Field as Fields
+import qualified Distribution.Parsec as Parsec
+import qualified Distribution.Fields.LexerMonad as Fields
+import qualified Text.Parsec.Error as PE
+import qualified Text.Parsec.Pos as PP
 
 -- -----------------------------------------------------------------------------
 
@@ -151,8 +158,6 @@ locatedErrorMsg (FromString s n)     = (n, s)
 syntaxError :: LineNo -> String -> ParseResult a
 syntaxError n s = ParseFailed $ FromString s (Just n)
 
-tabsError :: LineNo -> ParseResult a
-tabsError ln = ParseFailed $ TabsError ln
 
 warning :: String -> ParseResult ()
 warning s = ParseOk [PWarning s] ()
@@ -283,251 +288,39 @@ data Field
       --     <field>*
       --   }
       -- @
-    | IfBlock LineNo String [Field] [Field]
-      -- ^ A conditional block with an optional else branch:
-      --
-      -- @
-      --  if <condition> {
-      --    <field>*
-      --  } else {
-      --    <field>*
-      --  }
-      -- @
       deriving (Show
                ,Eq)   -- for testing
 
 lineNo :: Field -> LineNo
 lineNo (F n _ _) = n
 lineNo (Section n _ _ _) = n
-lineNo (IfBlock n _ _ _) = n
 
-readFields :: String -> ParseResult [Field]
-readFields input = ifelse
-               =<< traverse (mkField 0)
-               =<< mkTree tokens
+readFields :: BS.ByteString -> ParseResult [Field]
+readFields input = case Fields.readFields' input of
+    Right (fs, ws) -> ParseOk
+        [ PWarning msg | Fields.PWarning _ _ msg <- Fields.toPWarnings ws ]
+        (legacyFields fs)
+    Left perr      -> ParseFailed $ NoParse
+        (PE.showErrorMessages
+            "or" "unknown parse error" "expecting" "unexpected" "end of file"
+            (PE.errorMessages perr))
+        (PP.sourceLine pos)
+      where
+        pos = PE.errorPos perr
 
-  where ls = (lines . normaliseLineEndings) input
-        tokens = (concatMap tokeniseLine . trimLines) ls
+legacyFields :: [Fields.Field Parsec.Position] -> [Field]
+legacyFields = map legacyField
 
-readFieldsFlat :: String -> ParseResult [Field]
-readFieldsFlat input = traverse (mkField 0)
-                   =<< mkTree tokens
-  where ls = (lines . normaliseLineEndings) input
-        tokens = (concatMap tokeniseLineFlat . trimLines) ls
+legacyField :: Fields.Field Parsec.Position -> Field
+legacyField (Fields.Field (Fields.Name pos name) fls) =
+    F (posToLineNo pos) (fromUTF8BS name) (Fields.fieldLinesToString fls)
+legacyField (Fields.Section (Fields.Name pos name) args fs) =
+    Section (posToLineNo pos) (fromUTF8BS name) (Fields.sectionArgsToString args) (legacyFields fs)
 
--- attach line number and determine indentation
-trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
-trimLines ls = [ (lineno, indent, hastabs, trimTrailing l')
-               | (lineno, l) <- zip [1..] ls
-               , let (sps, l') = span isSpace l
-                     indent    = length sps
-                     hastabs   = '\t' `elem` sps
-               , validLine l' ]
-  where validLine ('-':'-':_) = False      -- Comment
-        validLine []          = False      -- blank line
-        validLine _           = True
-
--- | We parse generically based on indent level and braces '{' '}'. To do that
--- we split into lines and then '{' '}' tokens and other spans within a line.
-data Token =
-       -- | The 'Line' token is for bits that /start/ a line, eg:
-       --
-       -- > "\n  blah blah { blah"
-       --
-       -- tokenises to:
-       --
-       -- > [Line n 2 False "blah blah", OpenBracket, Span n "blah"]
-       --
-       -- so lines are the only ones that can have nested layout, since they
-       -- have a known indentation level.
-       --
-       -- eg: we can't have this:
-       --
-       -- > if ... {
-       -- > } else
-       -- >     other
-       --
-       -- because other cannot nest under else, since else doesn't start a line
-       -- so cannot have nested layout. It'd have to be:
-       --
-       -- > if ... {
-       -- > }
-       -- >   else
-       -- >     other
-       --
-       -- but that's not so common, people would normally use layout or
-       -- brackets not both in a single @if else@ construct.
-       --
-       -- > if ... { foo : bar }
-       -- > else
-       -- >    other
-       --
-       -- this is OK
-       Line LineNo Indent HasTabs String
-     | Span LineNo                String  -- ^ span in a line, following brackets
-     | OpenBracket LineNo | CloseBracket LineNo
-
-type Indent = Int
-type HasTabs = Bool
-
--- | Tokenise a single line, splitting on '{' '}' and the spans in between.
--- Also trims leading & trailing space on those spans within the line.
-tokeniseLine :: (LineNo, Indent, HasTabs, String) -> [Token]
-tokeniseLine (n0, i, t, l) = case split n0 l of
-                            (Span _ l':ss) -> Line n0 i t l' :ss
-                            cs              -> cs
-  where split _ "" = []
-        split n s  = case span (\c -> c /='}' && c /= '{') s of
-          ("", '{' : s') ->             OpenBracket  n : split n s'
-          (w , '{' : s') -> mkspan n w (OpenBracket  n : split n s')
-          ("", '}' : s') ->             CloseBracket n : split n s'
-          (w , '}' : s') -> mkspan n w (CloseBracket n : split n s')
-          (w ,        _) -> mkspan n w []
-
-        mkspan n s ss | null s'   =             ss
-                      | otherwise = Span n s' : ss
-          where s' = trimTrailing (trimLeading s)
-
-tokeniseLineFlat :: (LineNo, Indent, HasTabs, String) -> [Token]
-tokeniseLineFlat (n0, i, t, l)
-  | null l'   = []
-  | otherwise = [Line n0 i t l']
-  where
-    l' = trimTrailing (trimLeading l)
-
-trimLeading, trimTrailing :: String -> String
-trimLeading  = dropWhile isSpace
-trimTrailing = dropWhileEndLE isSpace
-
-
-type SyntaxTree = Tree (LineNo, HasTabs, String)
-
--- | Parse the stream of tokens into a tree of them, based on indent \/ layout
-mkTree :: [Token] -> ParseResult [SyntaxTree]
-mkTree toks =
-  layout 0 [] toks >>= \(trees, trailing) -> case trailing of
-    []               -> return trees
-    OpenBracket  n:_ -> syntaxError n "mismatched brackets, unexpected {"
-    CloseBracket n:_ -> syntaxError n "mismatched brackets, unexpected }"
-    -- the following two should never happen:
-    Span n     l  :_ -> syntaxError n $ "unexpected span: " ++ show l
-    Line n _ _ l  :_ -> syntaxError n $ "unexpected line: " ++ show l
-
-
--- | Parse the stream of tokens into a tree of them, based on indent
--- This parse state expect to be in a layout context, though possibly
--- nested within a braces context so we may still encounter closing braces.
-layout :: Indent       -- ^ indent level of the parent\/previous line
-       -> [SyntaxTree] -- ^ accumulating param, trees in this level
-       -> [Token]      -- ^ remaining tokens
-       -> ParseResult ([SyntaxTree], [Token])
-                       -- ^ collected trees on this level and trailing tokens
-layout _ a []                               = return (reverse a, [])
-layout i a (s@(Line _ i' _ _):ss) | i' < i  = return (reverse a, s:ss)
-layout i a (Line n _ t l:OpenBracket n':ss) = do
-    (sub, ss') <- braces n' [] ss
-    layout i (Node (n,t,l) sub:a) ss'
-
-layout i a (Span n     l:OpenBracket n':ss) = do
-    (sub, ss') <- braces n' [] ss
-    layout i (Node (n,False,l) sub:a) ss'
-
--- look ahead to see if following lines are more indented, giving a sub-tree
-layout i a (Line n i' t l:ss) = do
-    lookahead <- layout (i'+1) [] ss
-    case lookahead of
-        ([], _)   -> layout i (Node (n,t,l) [] :a) ss
-        (ts, ss') -> layout i (Node (n,t,l) ts :a) ss'
-
-layout _ _ (   OpenBracket  n :_)  = syntaxError n "unexpected '{'"
-layout _ a (s@(CloseBracket _):ss) = return (reverse a, s:ss)
-layout _ _ (   Span n l       : _) = syntaxError n $ "unexpected span: "
-                                                  ++ show l
-
--- | Parse the stream of tokens into a tree of them, based on explicit braces
--- This parse state expects to find a closing bracket.
-braces :: LineNo       -- ^ line of the '{', used for error messages
-       -> [SyntaxTree] -- ^ accumulating param, trees in this level
-       -> [Token]      -- ^ remaining tokens
-       -> ParseResult ([SyntaxTree],[Token])
-                       -- ^ collected trees on this level and trailing tokens
-braces m a (Line n _ t l:OpenBracket n':ss) = do
-    (sub, ss') <- braces n' [] ss
-    braces m (Node (n,t,l) sub:a) ss'
-
-braces m a (Span n     l:OpenBracket n':ss) = do
-    (sub, ss') <- braces n' [] ss
-    braces m (Node (n,False,l) sub:a) ss'
-
-braces m a (Line n i t l:ss) = do
-    lookahead <- layout (i+1) [] ss
-    case lookahead of
-        ([], _)   -> braces m (Node (n,t,l) [] :a) ss
-        (ts, ss') -> braces m (Node (n,t,l) ts :a) ss'
-
-braces m a (Span n       l:ss) = braces m (Node (n,False,l) []:a) ss
-braces _ a (CloseBracket _:ss) = return (reverse a, ss)
-braces n _ []                  = syntaxError n $ "opening brace '{'"
-                              ++ "has no matching closing brace '}'"
-braces _ _ (OpenBracket  n:_)  = syntaxError n "unexpected '{'"
-
--- | Convert the parse tree into the Field AST
--- Also check for dodgy uses of tabs in indentation.
-mkField :: Int -> SyntaxTree -> ParseResult Field
-mkField d (Node (n,t,_) _) | d >= 1 && t = tabsError n
-mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
-  ([], _)       -> syntaxError n $ "unrecognised field or section: " ++ show l
-  (name, rest)  -> case trimLeading rest of
-    (':':rest') -> do let followingLines = concatMap Tree.flatten ts
-                          tabs = not (null [()| (_,True,_) <- followingLines ])
-                      if tabs && d >= 1
-                        then tabsError n
-                        else return $ F n (map toLower name)
-                                          (fieldValue rest' followingLines)
-    rest'       -> do ts' <- traverse (mkField (d+1)) ts
-                      return (Section n (map toLower name) rest' ts')
- where    fieldValue firstLine followingLines =
-            let firstLine' = trimLeading firstLine
-                followingLines' = map (\(_,_,s) -> stripDot s) followingLines
-                allLines | null firstLine' =              followingLines'
-                         | otherwise       = firstLine' : followingLines'
-             in intercalate "\n" allLines
-          stripDot "." = ""
-          stripDot s   = s
-
--- | Convert if/then/else 'Section's to 'IfBlock's
-ifelse :: [Field] -> ParseResult [Field]
-ifelse [] = return []
-ifelse (Section n "if"   cond thenpart
-       :Section _ "else" as   elsepart:fs)
-       | null cond     = syntaxError n "'if' with missing condition"
-       | null thenpart = syntaxError n "'then' branch of 'if' is empty"
-       | not (null as) = syntaxError n "'else' takes no arguments"
-       | null elsepart = syntaxError n "'else' branch of 'if' is empty"
-       | otherwise     = do tp  <- ifelse thenpart
-                            ep  <- ifelse elsepart
-                            fs' <- ifelse fs
-                            return (IfBlock n cond tp ep:fs')
-ifelse (Section n "if"   cond thenpart:fs)
-       | null cond     = syntaxError n "'if' with missing condition"
-       | null thenpart = syntaxError n "'then' branch of 'if' is empty"
-       | otherwise     = do tp  <- ifelse thenpart
-                            fs' <- ifelse fs
-                            return (IfBlock n cond tp []:fs')
-ifelse (Section n "else" _ _:_) = syntaxError n
-                                  "stray 'else' with no preceding 'if'"
-ifelse (Section n s a fs':fs) = do fs''  <- ifelse fs'
-                                   fs''' <- ifelse fs
-                                   return (Section n s a fs'' : fs''')
-ifelse (f:fs) = do fs' <- ifelse fs
-                   return (f : fs')
+posToLineNo :: Parsec.Position -> LineNo
+posToLineNo (Parsec.Position row _) = row
 
 ------------------------------------------------------------------------------
-
-parseFilePathQ :: ReadP r FilePath
-parseFilePathQ = parseTokenQ
-  -- removed until normalise is no longer broken, was:
-  --   liftM normalise parseTokenQ
 
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In

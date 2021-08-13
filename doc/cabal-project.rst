@@ -4,7 +4,8 @@ cabal.project Reference
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
 similar to that of a Cabal file: there are a number of fields, some of
-which live inside stanzas:
+which live inside stanzas (groups of fields that apply to only part of a
+project or can be referenced as a unit):
 
 ::
 
@@ -20,7 +21,8 @@ line flags that ``cabal install`` and other commands take. For example,
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
-following sources (later entries override earlier ones):
+following sources (later entries override earlier ones, except for appendable
+options):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
@@ -49,7 +51,7 @@ project are:
     1. They can specify a Cabal file, or a directory containing a Cabal
        file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``.
 
-    2. They can specify a glob-style wildcards, which must match one or
+    2. They can specify glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
        files (extension ``.cabal``), or (c) tarballs which contain Cabal
        packages (extension ``.tar.gz``).
@@ -63,6 +65,9 @@ project are:
        and built.
 
     There is no command line variant of this field; see :issue:`3585`.
+    Note that the default value is only included if there is no
+    ``cabal.project`` file. The field is appendable which means there would be
+    no way to drop the default value if it was included.
 
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
     :synopsis: Optional project packages.
@@ -147,14 +152,7 @@ Specifying Packages from Remote Version Control Locations
 
 Starting with Cabal 2.4, there is now a stanza
 ``source-repository-package`` for specifying packages from an external
-version control which supports the following fields:
-
-- :pkg-field:`source-repository:type`
-- :pkg-field:`source-repository:location`
-- :pkg-field:`source-repository:tag`
-- :pkg-field:`source-repository:subdir`
-
-A simple example is shown below:
+version control.
 
 .. code-block:: cabal
 
@@ -170,6 +168,29 @@ A simple example is shown below:
         location: https://github.com/well-typed/cborg
         tag: 3d274c14ca3077c3a081ba7ad57c5182da65c8c1
         subdir: cborg
+
+    source-repository-package
+        type: git
+        location: https://github.com/haskell/network.git
+        tag: e76fdc753e660dfa615af6c8b6a2ad9ddf6afe70
+        post-checkout-command: autoreconf -i
+
+cabal-install 3.4 sdists the ``source-repository-package`` repositories and uses resulting tarballs as project packages.
+This allows sharing of packages across different projects.
+
+.. cfg-field:: type: VCS kind
+
+.. cfg-field:: location: VCS location (usually URL)
+
+.. cfg-field:: type: VCS tag
+
+.. cfg-field:: subdir: subdirectory list
+
+    Use one or more subdirectories of the repository.
+
+.. cfg-field:: post-checkout-command: command
+
+    Run command in the checked out repository, prior sdisting.
 
 Global configuration options
 ----------------------------
@@ -247,6 +268,31 @@ package, and thus apply globally:
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
+
+Phase control
+-------------
+
+The following settings apply to commands that result in build actions
+(``build``, ``run``, ``repl``, ``test``...), and control which phases of the
+build are executed.
+
+.. option:: --dry-run
+
+    Do not download, build, or install anything, only print what would happen.
+
+.. option:: --only-configure
+
+    Instead of performing a full build just run the configure step.
+    Only accepted by the ``build`` command.
+
+.. option:: --only-download
+
+    Do not build anything, only fetch the packages.
+
+.. option:: --only-dependencies
+
+    Install only the dependencies necessary to build the given packages.
+    Not accepted by the ``repl`` command.
 
 Solver configuration options
 ----------------------------
@@ -536,12 +582,7 @@ feature was added.
 
         flags: +foo -bar
 
-    If there is no leading punctuation, it is assumed that the flag
-    should be enabled; e.g., this is equivalent:
-
-    ::
-
-        flags: foo -bar
+    Exactly one of + or - is required before each flag.
 
     Flags are *per-package*, so it doesn't make much sense to specify
     flags at the top-level, unless you happen to know that *all* of your
@@ -583,9 +624,8 @@ feature was added.
     build trees for different versions of GHC without clobbering each
     other.
 
-    At the moment, it's not possible to set :cfg-field:`with-compiler` on a
-    per-package basis, but eventually we plan on relaxing this
-    restriction. If this is something you need, give us a shout.
+    It's not possible to set :cfg-field:`with-compiler` on a
+    per-package basis.
 
     The command line variant of this flag is
     ``--with-compiler=ghc-7.8``; there is also a short version
@@ -661,6 +701,9 @@ feature was added.
     build logic.
 
     The command line variant of this flag is ``--compiler=ghc``.
+
+    It's not possible to set :cfg-field:`compiler` on a
+    per-package basis.
 
 .. cfg-field:: tests: boolean
                --enable-tests

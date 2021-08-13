@@ -35,10 +35,12 @@ Args = NamedTuple('Args', [
     ('compiler', Path),
     ('cabal', Path),
     ('indexstate', str),
-    ('rootdir', Path),
     ('builddir', Path),
     ('static', bool),
     ('ofdlocking', bool),
+    ('tarlib', Path),
+    ('tarsolver', Path),
+    ('tarexe', Path),
 ])
 
 # utils
@@ -76,8 +78,9 @@ def macname(macver):
 
 def archive_name(cabalversion):
     # Ask platform information
-    machine = platform.machine()
+    machine = platform.machine().lower()
     if machine == '': machine = "unknown"
+    if machine == 'amd64': machine = "x86_64"
 
     system = platform.system().lower()
     if system == '': system = "unknown"
@@ -109,12 +112,19 @@ def step_makedirs(args: Args):
     (args.builddir / 'bin').mkdir(parents=True, exist_ok=True)
     (args.builddir / 'cabal').mkdir(parents=True, exist_ok=True)
 
-# 57936384
 def step_config(args: Args):
     splitsections = ''
     if platform.system() == 'Linux':
         splitsections = 'split-sections: True'
 
+    # https://github.com/Mistuke/CabalChoco/blob/d0e1d2fd8ce13ab4271c4b906ca0bde3b710a310/3.2.0.0/cabal/tools/chocolateyInstall.ps1#L289
+    extraprogpath = str(args.builddir / 'bin')
+    if platform.system() == 'Windows':
+        msysbin = Path('C:\\tools\\msys64\\usr\\bin')
+        if msysbin.is_dir():
+            extraprogpath = extraprogpath + "," + str(msysbin)
+
+    # cabal.config
     config = dedent(f"""
         repository hackage.haskell.org
           url: http://hackage.haskell.org/
@@ -130,12 +140,12 @@ def step_config(args: Args):
         {splitsections}
 
         build-summary:     {args.builddir}/cabal/logs/build.log
-        extra-prog-path:   {args.builddir}/bin
         installdir:        {args.builddir}/bin
         logs-dir:          {args.builddir}/cabal/logs
         store-dir:         {args.builddir}/cabal/store
         symlink-bindir:    {args.builddir}/bin
         world-file:        {args.builddir}/cabal/world
+        extra-prog-path:   {extraprogpath}
 
         jobs: 1
 
@@ -146,29 +156,39 @@ def step_config(args: Args):
     with open(args.builddir / 'cabal' / 'config', 'w') as f:
         f.write(config)
 
-    cabal_project_local =''
+    # cabal.project
+    cabal_project = dedent(f"""
+        packages: {args.tarlib}
+        packages: {args.tarexe}
+        packages: {args.tarsolver}
+        tests: False
+        benchmarks: False
+        optimization: True
+
+        package Cabal
+          ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
+
+        package parsec
+          ghc-options: -fexpose-all-unfoldings
+    """)
+
     if args.static:
         # --enable-executable-static doesn't affect "non local" executables, as in v2-install project
-        cabal_project_local += dedent("""
+        cabal_project += dedent("""
             package cabal-install
                 executable-static: True
         """)
-    cabal_project_local += dedent(f"""
+    cabal_project += dedent(f"""
         package lukko
             flags: {'+' if args.ofdlocking else '-'}ofd_locking
     """)
 
-    with open(args.rootdir / 'cabal.project.release.local', 'w') as f:
-        f.write(cabal_project_local)
+    with open(args.builddir / 'cabal.project', 'w') as f:
+        f.write(cabal_project)
 
 def make_env(args: Args):
-    path = os.environ['PATH']
-    if platform.system() == 'Windows':
-        msysbin = Path('C:\\tools\\msys64\\usr\\bin')
-        if msysbin.is_dir():
-            path = path + ";" + str(msysbin)
     env = {
-        'PATH': path,
+        'PATH': os.environ['PATH'],
         'CABAL_DIR': str(args.builddir),
         'CABAL_CONFIG': str(args.builddir / 'cabal' / 'config'),
     }
@@ -184,7 +204,7 @@ def make_env(args: Args):
     for key in envvars:
         if key in os.environ:
             env[key] = os.environ[key]
-    print(env)
+
     return env
 
 def step_cabal_update(args: Args):
@@ -194,7 +214,7 @@ def step_cabal_update(args: Args):
         'v2-update',
         '-v',
         f'--index-state={args.indexstate}',
-    ], check=True, env=env)
+    ], cwd=args.builddir, check=True, env=env)
 
 def step_cabal_install(args: Args):
     env = make_env(args)
@@ -203,9 +223,9 @@ def step_cabal_install(args: Args):
         'v2-install',
         '-v',
         'cabal-install:exe:cabal',
-        '--project-file=cabal.project.release',
+        '--project-file=cabal.project',
         f'--with-compiler={args.compiler}',
-    ], check=True, env=env)
+    ], cwd=args.builddir, check=True, env=env)
 
 def step_make_archive(args: Args):
     import tempfile
@@ -224,6 +244,9 @@ def step_make_archive(args: Args):
     name = archive_name(cabalversion)
     if args.static:
         name = name + "-static"
+    if not args.ofdlocking:
+        name = name + "-noofd"
+
     basename = args.builddir / 'artifacts' / name
 
     # In temporary directory, create a directory which we will archive
@@ -261,18 +284,23 @@ def main():
     parser.add_argument('-i', '--index-state', type=str, default=DEFAULT_INDEXSTATE, help='index state of Hackage to use')
     parser.add_argument('--enable-static-executable', '--disable-static-executable', dest='static', nargs=0, default=False, action=EnableDisable, help='Statically link cabal executable')
     parser.add_argument('--enable-ofd-locking', '--disable-ofd-locking', dest='ofd_locking', nargs=0, default=True, action=EnableDisable, help='OFD locking (lukko)')
+    parser.add_argument('--tarlib', dest='tarlib', required=True, metavar='LIBTAR', help='path to Cabal-version.tar.gz')
+    parser.add_argument('--tarsolver', dest='tarsolver', required=True, metavar='SOLVERTAR', help='path to cabal-install-solver-version.tar.gz')
+    parser.add_argument('--tarexe', dest='tarexe', required=True, metavar='EXETAR', help='path to cabal-install-version.tar.gz')
+    parser.add_argument('--builddir', dest='builddir', type=str, default='_build', help='build directory')
 
     args = parser.parse_args()
 
-    rootdir = Path('.').resolve()
     args = Args(
         compiler   = Path(shutil.which(args.with_compiler)),
         cabal      = Path(shutil.which(args.with_cabal)),
         indexstate = args.index_state,
-        rootdir    = rootdir,
-        builddir   = rootdir.resolve() / '_build',
+        builddir   = Path(args.builddir).resolve(),
         static     = args.static,
-        ofdlocking = args.ofd_locking
+        ofdlocking = args.ofd_locking,
+        tarlib     = Path(args.tarlib).resolve(),
+        tarexe     = Path(args.tarexe).resolve(),
+        tarsolver  = Path(args.tarsolver).resolve()
     )
 
     print(dedent(f"""
@@ -282,6 +310,9 @@ def main():
         builddir:    {args.builddir}
         static:      {args.static}
         ofd-locking: {args.ofdlocking}
+        lib-tarball: {args.tarlib}
+        solver-tarball: {args.tarsolver}
+        exe-tarball: {args.tarexe}
     """))
 
     # Check tools

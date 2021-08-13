@@ -87,6 +87,7 @@ import Distribution.Compiler
 import Distribution.License
 import Distribution.Package
 import Distribution.Version
+import Distribution.Utils.Path
 import Distribution.Utils.ShortText
 
 import qualified Distribution.SPDX as SPDX
@@ -108,7 +109,7 @@ data PackageDescription
         specVersion    :: CabalSpecVersion,
         package        :: PackageIdentifier,
         licenseRaw     :: Either SPDX.License License,
-        licenseFiles   :: [FilePath],
+        licenseFiles   :: [SymbolicPath PackageDir LicenseFile],
         copyright      :: !ShortText,
         maintainer     :: !ShortText,
         author         :: !ShortText,
@@ -222,7 +223,7 @@ emptyPackageDescription
                       testSuites   = [],
                       benchmarks   = [],
                       dataFiles    = [],
-                      dataDir      = "",
+                      dataDir      = ".",
                       extraSrcFiles = [],
                       extraTmpFiles = [],
                       extraDocFiles = []

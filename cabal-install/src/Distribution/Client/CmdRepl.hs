@@ -39,6 +39,8 @@ import Distribution.Client.ProjectBuilding
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), withProjectOrGlobalConfig
          , projectConfigConfigFile )
+import Distribution.Client.ProjectFlags
+         ( flagIgnoreProject )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
@@ -51,7 +53,7 @@ import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, replOptions
-         , Flag(..), toFlag, trueArg, falseArg )
+         , Flag(..), toFlag, falseArg )
 import Distribution.Simple.Command
          ( CommandUI(..), liftOptionL, usageAlternatives, option
          , ShowOrParseArgs, OptionField, reqArg )
@@ -94,7 +96,7 @@ import Distribution.Utils.Generic
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', debugNoWrap, ordNub, createTempDirectory, handleDoesNotExist )
+         ( wrapText, die', debugNoWrap, createTempDirectory, handleDoesNotExist )
 import Language.Haskell.Extension
          ( Language(..) )
 import Distribution.CabalSpecVersion
@@ -114,14 +116,12 @@ type ReplFlags = [String]
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
-  , envIgnoreProject :: Flag Bool
   }
 
 defaultEnvFlags :: EnvFlags
 defaultEnvFlags = EnvFlags
   { envPackages = []
   , envIncludeTransitive = toFlag True
-  , envIgnoreProject = toFlag False
   }
 
 envOptions :: ShowOrParseArgs -> [OptionField EnvFlags]
@@ -134,10 +134,6 @@ envOptions _ =
     "Don't automatically include transitive dependencies of requested packages."
     envIncludeTransitive (\p flags -> flags { envIncludeTransitive = p })
     falseArg
-  , option ['z'] ["ignore-project"]
-    "Only include explicitly specified packages (and 'base')."
-    envIgnoreProject (\p flags -> flags { envIgnoreProject = p })
-    trueArg
   ]
   where
     dependenciesReadE :: ReadE [Dependency]
@@ -181,9 +177,8 @@ replCommand = Client.installCommand {
         ++ "(or no componentif there is no project present)\n"
      ++ "  " ++ pname ++ " v2-repl --build-depends \"lens >= 4.15 && < 4.18\"\n"
      ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
-        ++ "to the default component (or no component if there is no project present)\n"
+        ++ "to the default component (or no component if there is no project present)\n",
 
-     ++ cmdCommonHelpTextNewBuildBeta,
   commandDefaultFlags = defaultNixStyleFlags ([], defaultEnvFlags),
   commandOptions = nixStyleOptions $ \showOrParseArgs ->
     map (liftOptionL _1) (replOptions showOrParseArgs) ++
@@ -300,7 +295,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = envIgnoreProject envFlags
+    ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
@@ -576,7 +571,7 @@ renderReplProblem (TargetProblemMultipleTargets selectorMap) =
     "Cannot open a repl for multiple components at once. The targets "
  ++ renderListCommaAnd
       [ "'" ++ showTargetSelector ts ++ "'"
-      | ts <- ordNub (concatMap snd (concat (Map.elems selectorMap))) ]
+      | ts <- uniqueTargetSelectors selectorMap ]
  ++ " refer to different components."
  ++ ".\n\n" ++ explanationSingleComponentLimitation
 

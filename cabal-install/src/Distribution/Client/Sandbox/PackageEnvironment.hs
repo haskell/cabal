@@ -52,6 +52,7 @@ import System.FilePath                 ( (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
 
+import qualified Data.ByteString as BS
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Deprecated.ParseUtils   as ParseUtils ( Field(..) )
 
@@ -180,7 +181,7 @@ readPackageEnvironmentFile :: ConstraintSource -> PackageEnvironment -> FilePath
                               -> IO (Maybe (ParseResult PackageEnvironment))
 readPackageEnvironmentFile src initial file =
   handleNotExists $
-  fmap (Just . parsePackageEnvironment src initial) (readFile file)
+  fmap (Just . parsePackageEnvironment src initial) (BS.readFile file)
   where
     handleNotExists action = catchIO action $ \ioe ->
       if isDoesNotExistError ioe
@@ -188,7 +189,7 @@ readPackageEnvironmentFile src initial file =
         else ioError ioe
 
 -- | Parse the package environment file.
-parsePackageEnvironment :: ConstraintSource -> PackageEnvironment -> String
+parsePackageEnvironment :: ConstraintSource -> PackageEnvironment -> BS.ByteString
                            -> ParseResult PackageEnvironment
 parsePackageEnvironment src initial str = do
   fields <- readFields str

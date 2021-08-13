@@ -25,7 +25,7 @@ import Test.Cabal.Prelude
 -- be installed depending on if we're on Linux or not.
 main = setupAndCabalTest . recordMode DoNotRecord $ do
     -- Foreign libraries don't work with GHC 7.6 and earlier
-    skipUnless =<< ghcVersionIs (>= mkVersion [7,8])
+    skipUnlessGhcVersion ">= 7.8"
     withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
@@ -35,7 +35,8 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
 
         -- Link a C program against the library
         _ <- runProgramM gccProgram
-            [ "-o", "uselib"
+            [ "-std=c11", "-Wall"
+            , "-o", "uselib"
             , "UseLib.c"
             , "-l", "myforeignlib"
             , "-L", flibdir installDirs ]

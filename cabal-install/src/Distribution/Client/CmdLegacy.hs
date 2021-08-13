@@ -86,17 +86,11 @@ instance HasVerbosity Client.FreezeFlags where
 instance HasVerbosity Setup.HaddockFlags where
     verbosity = verbosity . Setup.haddockVerbosity
 
-instance HasVerbosity Client.ExecFlags where
-    verbosity = verbosity . Client.execVerbosity
-
 instance HasVerbosity Client.UpdateFlags where
     verbosity = verbosity . Client.updateVerbosity
 
 instance HasVerbosity Setup.CleanFlags where
     verbosity = verbosity . Setup.cleanVerbosity
-
-instance HasVerbosity Setup.DoctestFlags where
-    verbosity = verbosity . Setup.doctestVerbosity
 
 --
 
@@ -138,7 +132,7 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             { commandName = newMsg commandName
             , commandUsage = newMsg . commandUsage
             , commandDescription = (newMsg .) <$> commandDescription
-            , commandNotes = (newMsg .) <$> commandDescription
+            , commandNotes = (newMsg .) <$> commandNotes
             }
 
         defaultMsg = T.unpack . T.replace "v2-" "" . T.pack
@@ -146,5 +140,5 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             { commandName = defaultMsg commandName
             , commandUsage = defaultMsg . commandUsage
             , commandDescription = (defaultMsg .) <$> commandDescription
-            , commandNotes = (defaultMsg .) <$> commandDescription
+            , commandNotes = (defaultMsg .) <$> commandNotes
             }

@@ -47,20 +47,22 @@ The ``cabal init --interactive`` command is interactive. If we answer
        1) Executable
        2) Library
        3) Library and Executable
+       4) Test suite
     Your choice?
     ...
 
 One of the important questions is whether the package contains a library
 and/or an executable. Libraries are collections of Haskell modules that
 can be re-used by other Haskell libraries and programs, while executables
-are standalone programs.
+are standalone programs. Test suites can both depend on a library or be
+standalonely generated.
 
 For the moment these are the only choices. For more complex packages
-(e.g. a library and multiple executables or test suites) the ``.cabal``
+(e.g. a library and multiple executables) the ``.cabal``
 file can be edited afterwards.
 
-After you make your selection (executable; library; or: library
-and executable) cabal asks us a number of questions starting with
+After you make your selection (executable; library; library
+and executable; or: test suite) cabal asks us a number of questions starting with
 which version of the cabal specification to use, our package's name
 (for example, "proglet"), and our package's version.
 
@@ -214,23 +216,23 @@ information see the :ref:`common-stanzas` section.
 Building the package
 --------------------
 
-For simple packages that's it! We can now try configuring and building
-the package:
+For simple packages that's it! We can now try building the package,
+which also downloads and builds all required dependencies:
 
 .. code-block:: console
 
-    $ cabal configure
     $ cabal build
 
-Assuming those two steps worked then you can also install the package:
+If the package contains an executable, it can be installed:
 
 .. code-block:: console
 
     $ cabal install
 
-For libraries this makes them available for use in GHCi or to be used by
-other packages. For executables it installs the program so that you can
-run it (though you may first need to adjust your system's ``$PATH``).
+The executable program lands in a special directory for binaries
+that may or may not already be on your system's ``$PATH``.
+If it is, the executable can be run by typing its filename on commandline.
+For installing libraries see the :ref:`adding-libraries` section.
 
 Next steps
 ----------

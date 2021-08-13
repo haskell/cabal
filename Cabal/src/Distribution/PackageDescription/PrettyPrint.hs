@@ -37,7 +37,6 @@ import Distribution.Compat.Lens
 import Distribution.PackageDescription
 import Distribution.Pretty
 import Distribution.Simple.Utils (writeFileAtomic, writeUTF8File)
-import Distribution.Types.Mixin                      (Mixin (..), mkMixin)
 import Distribution.FieldGrammar                     (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar

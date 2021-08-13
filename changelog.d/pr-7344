@@ -1,0 +1,24 @@
+synopsis: Cabal init rewrite
+pr: #7344
+issues: #7273 #7256 #7255 #7251 #6758 #6864 #1074
+significance: significant
+description: {
+
+- Restructures the `cabal init` command to fix historical
+  issues. All flags are preserved.
+  - Codebases for interactive and non-interactive flags
+    are disentangled.
+  - Data structures now exploit relevant stanza structure
+    and formatters only care about stanza data
+  - Heuristics and prompts have a pure and impure implementation.
+
+- Sets default behavior to be `--interactive` as opposed to
+  `--non-interactive`.
+
+- Rewrites tests to achieve 98% coverage
+  - Golden files now test every stanza individually
+  - Every flag is covered by a unit test
+  - Interactive, simple, and non-interactive workflows are
+    covered.
+
+}

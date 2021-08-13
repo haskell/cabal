@@ -53,6 +53,7 @@ import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
 import Distribution.Text
+import Distribution.Utils.Path
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -481,7 +482,7 @@ testTargetSelectorAmbiguous reportSubCase = do
 
     withHsSrcDirs :: Executable -> [FilePath] -> Executable
     withHsSrcDirs exe srcDirs =
-      exe { buildInfo = (buildInfo exe) { hsSourceDirs = srcDirs }}
+      exe { buildInfo = (buildInfo exe) { hsSourceDirs = map unsafeMakeSymbolicPath srcDirs }}
 
 
 mkTargetPackage :: PackageId -> TargetSelector

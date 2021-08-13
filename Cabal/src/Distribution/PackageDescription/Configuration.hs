@@ -54,6 +54,7 @@ import           Distribution.Pretty
 import           Distribution.Simple.Utils
 import           Distribution.System
 import           Distribution.Types.Component
+import Distribution.Utils.Path
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.DependencyMap
 import           Distribution.Types.PackageVersionConstraint
@@ -168,8 +169,8 @@ resolveWithFlags ::
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
   -> ComponentRequestedSpec
-  -> OS      -- ^ OS as returned by Distribution.System.buildOS
-  -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
+  -> OS      -- ^ OS where the installed artifacts will run (host OS)
+  -> Arch    -- ^ Arch where the installed artifacts will run (host Arch)
   -> CompilerInfo  -- ^ Compiler information
   -> [PackageVersionConstraint]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] PDTagged]
@@ -563,7 +564,7 @@ benchFillInDefaults bm@(Benchmark { benchmarkBuildInfo = bi }) =
 biFillInDefaults :: BuildInfo -> BuildInfo
 biFillInDefaults bi =
     if null (hsSourceDirs bi)
-    then bi { hsSourceDirs = [currentDir] }
+    then bi { hsSourceDirs = [sameDirectory] }
     else bi
 
 -- Walk a 'GenericPackageDescription' and apply @onBuildInfo@/@onSetupBuildInfo@

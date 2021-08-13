@@ -2,7 +2,6 @@
 {-# LANGUAGE NamedFieldPuns      #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns        #-}
 
 -- | cabal-install CLI command: build
 --
@@ -46,7 +45,8 @@ import Distribution.Types.PackageId
 import Distribution.Client.ProjectConfig
          ( ProjectPackageLocation(..)
          , fetchAndReadSourcePackages
-         )
+         , projectConfigWithBuilderRepoContext
+         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
@@ -78,9 +78,6 @@ import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(..) )
 import Distribution.Client.IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.ProjectConfig
-         ( projectConfigWithBuilderRepoContext
-         , resolveBuildTimeSettings, withProjectOrGlobalConfig )
 import Distribution.Client.ProjectPlanning
          ( storePackageInstallDirs' )
 import Distribution.Client.ProjectPlanning.Types
@@ -133,6 +130,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Ord
          ( Down(..) )
 import qualified Data.Map as Map
+import qualified Data.List.NonEmpty as NE
 import Distribution.Utils.NubList
          ( fromNubList )
 import Network.URI (URI)
@@ -156,7 +154,8 @@ installCommand = CommandUI
     ++ "If you want the installed executables to be available globally, "
     ++ "make sure that the PATH environment variable contains that directory. "
     ++ "\n\n"
-    ++ "If TARGET is a library, it will be added to the global environment. "
+    ++ "If TARGET is a library and --lib (provisional) is used, "
+    ++ "it will be added to the global environment. "
     ++ "When doing this, cabal will try to build a plan that includes all "
     ++ "the previously installed libraries. This is currently not implemented."
   , commandNotes        = Just $ \pname ->
@@ -169,7 +168,6 @@ installCommand = CommandUI
       ++ "  " ++ pname ++ " v2-install ./pkgfoo\n"
       ++ "    Install the package in the ./pkgfoo directory\n"
 
-      ++ cmdCommonHelpTextNewBuildBeta
   , commandOptions      = nixStyleOptions clientInstallOptions
   , commandDefaultFlags = defaultNixStyleFlags defaultClientInstallFlags
   }
@@ -382,10 +380,11 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
     -- Now that we built everything we can do the installation part.
     -- First, figure out if / what parts we want to install:
     let
-      dryRun = buildSettingDryRun $ buildSettings baseCtx
+      dryRun = buildSettingDryRun (buildSettings baseCtx)
+            || buildSettingOnlyDownload (buildSettings baseCtx)
 
     -- Then, install!
-    when (not dryRun) $
+    unless dryRun $
       if installLibs
       then installLibraries verbosity
            buildCtx compiler packageDbs progDb envFile nonGlobalEnvEntries
@@ -485,7 +484,7 @@ partitionToKnownTargetsAndHackagePackages
   -> SourcePackageDb
   -> ElaboratedInstallPlan
   -> [TargetSelector]
-  -> IO (Map UnitId [(ComponentTarget,[TargetSelector])], [PackageName])
+  -> IO (TargetsMap, [PackageName])
 partitionToKnownTargetsAndHackagePackages verbosity pkgDb elaboratedPlan targetSelectors = do
   let mTargets = resolveTargets
         selectPackageTargets
@@ -682,14 +681,20 @@ warnIfNoExes verbosity buildCtx =
     "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
     "@ WARNING: Installation might not be completed as desired! @\n" <>
     "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n" <>
-    "Without flags, the command \"cabal install\" doesn't expose" <>
-    " libraries in a usable manner.  You might have wanted to run" <>
-    " \"cabal install --lib " <>
-    unwords (showTargetSelector <$> selectors) <> "\". "
+    "The command \"cabal install [TARGETS]\" doesn't expose libraries.\n" <>
+    "* You might have wanted to add them as dependencies to your package." <>
+    " In this case add \"" <>
+    intercalate ", " (showTargetSelector <$> selectors) <>
+    "\" to the build-depends field(s) of your package's .cabal file.\n" <>
+    "* You might have wanted to add them to a GHC environment. In this case" <>
+    " use \"cabal install --lib " <>
+    unwords (showTargetSelector <$> selectors) <> "\". " <>
+    " The \"--lib\" flag is provisional: see" <>
+    " https://github.com/haskell/cabal/issues/6481 for more information."
   where
     targets    = concat $ Map.elems $ targetsMap buildCtx
     components = fst <$> targets
-    selectors  = concatMap snd targets
+    selectors  = concatMap (NE.toList . snd) targets
     noExes     = null $ catMaybes $ exeMaybe <$> components
 
     exeMaybe (ComponentTarget (CExeName exe) _) = Just exe
@@ -753,7 +758,7 @@ installUnitExes
   -> FilePath
   -> InstallMethod
   -> ( UnitId
-     , [(ComponentTarget, [TargetSelector])] )
+     , [(ComponentTarget, NonEmpty TargetSelector)] )
   -> IO ()
 installUnitExes verbosity overwritePolicy
                 mkSourceBinDir mkExeName mkFinalExeName
@@ -827,12 +832,12 @@ installBuiltExe verbosity overwritePolicy
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
 entriesForLibraryComponents = Map.foldrWithKey' (\k v -> mappend (go k v)) []
   where
-    hasLib :: (ComponentTarget, [TargetSelector]) -> Bool
+    hasLib :: (ComponentTarget, NonEmpty TargetSelector) -> Bool
     hasLib (ComponentTarget (CLibName _) _, _) = True
     hasLib _                                   = False
 
     go :: UnitId
-       -> [(ComponentTarget, [TargetSelector])]
+       -> [(ComponentTarget, NonEmpty TargetSelector)]
        -> [GhcEnvironmentFileEntry]
     go unitId targets
       | any hasLib targets = [GhcEnvFilePackageId unitId]

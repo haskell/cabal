@@ -27,6 +27,9 @@ import Distribution.Client.Setup
   ( ConfigFlags(configVerbosity)
   , GlobalFlags
   )
+import Distribution.Client.ProjectFlags
+  ( removeIgnoreProjectOption
+  )
 import Distribution.Client.ProjectOrchestration
   ( ProjectBuildContext(..)
   , runProjectPreBuildPhase
@@ -35,6 +38,7 @@ import Distribution.Client.ProjectOrchestration
   , distDirLayout
   , commandLineFlagsToProjectConfig
   , ProjectBaseContext(..)
+  , BuildTimeSettings(..)
   )
 import Distribution.Client.ProjectPlanOutput
   ( updatePostBuildProjectStatus
@@ -48,8 +52,7 @@ import Distribution.Client.ProjectPlanning
   , ElaboratedSharedConfig(..)
   )
 import Distribution.Simple.Command
-  ( CommandUI(..), optionName
-  )
+  ( CommandUI(..) )
 import Distribution.Simple.Program.Db
   ( modifyProgramSearchPath
   , requireProgram
@@ -81,6 +84,7 @@ import Distribution.Simple.Utils
   , createDirectoryIfMissingVerbose
   , withTempDirectory
   , wrapText
+  , notice
   )
 import Distribution.Verbosity
   ( normal
@@ -113,7 +117,7 @@ execCommand = CommandUI
     ++ " to choose an appropriate version of ghc and to include any"
     ++ " ghc-specific flags requested."
   , commandNotes = Nothing
-  , commandOptions      = filter (\o -> optionName o /= "ignore-project")
+  , commandOptions      = removeIgnoreProjectOption
                         . nixStyleOptions (const [])
   , commandDefaultFlags = defaultNixStyleFlags ()
   }
@@ -185,7 +189,12 @@ execAction flags@NixStyleFlags {..} extraArgs globalFlags = do
                            argOverrides'
                            program
             invocation = programInvocation program' args
-        runProgramInvocation verbosity invocation
+            dryRun = buildSettingDryRun (buildSettings baseCtx)
+                  || buildSettingOnlyDownload (buildSettings baseCtx)
+
+        if dryRun
+           then notice verbosity "Running of executable suppressed by flag(s)"
+           else runProgramInvocation verbosity invocation
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags

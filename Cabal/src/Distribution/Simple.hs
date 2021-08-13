@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
@@ -84,7 +85,6 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Test
 import Distribution.Simple.Install
 import Distribution.Simple.Haddock
-import Distribution.Simple.Doctest
 import Distribution.Simple.Utils
 import Distribution.Utils.NubList
 import Distribution.Verbosity
@@ -182,7 +182,6 @@ defaultMainHelper hooks args = topHandler $ do
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
-      ,doctestCommand         `commandAddAction` doctestAction      hooks
       ,haddockCommand         `commandAddAction` haddockAction      hooks
       ,cleanCommand           `commandAddAction` cleanAction        hooks
       ,sdistCommand           `commandAddAction` sdistAction        hooks
@@ -326,22 +325,6 @@ hscolourAction hooks flags args = do
     hookedAction verbosity preHscolour hscolourHook postHscolour
                  (getBuildConfig hooks verbosity distPref)
                  hooks flags' args
-
-doctestAction :: UserHooks -> DoctestFlags -> Args -> IO ()
-doctestAction hooks flags args = do
-  distPref <- findDistPrefOrDefault (doctestDistPref flags)
-  let verbosity = fromFlag $ doctestVerbosity flags
-      flags' = flags { doctestDistPref = toFlag distPref }
-
-  lbi <- getBuildConfig hooks verbosity distPref
-  progs <- reconfigurePrograms verbosity
-             (doctestProgramPaths flags')
-             (doctestProgramArgs  flags')
-             (withPrograms lbi)
-
-  hookedAction verbosity preDoctest doctestHook postDoctest
-               (return lbi { withPrograms = progs })
-               hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args = do
@@ -614,7 +597,6 @@ simpleUserHooks =
        cleanHook = \p _ _ f -> clean p f,
        hscolourHook = \p l h f -> hscolour p l (allSuffixHandlers h) f,
        haddockHook  = \p l h f -> haddock  p l (allSuffixHandlers h) f,
-       doctestHook  = \p l h f -> doctest  p l (allSuffixHandlers h) f,
        regHook   = defaultRegHook,
        unregHook = \p l _ f -> unregister p l f
       }
@@ -734,6 +716,11 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
+-- TODO: Move to either Cabal/src/Distribution/Compat/Environment.hs
+-- or Cabal/src/Distribution/Compat/FilePath.hs:
+#ifdef mingw32_HOST_OS
+                ("PATH_SEPARATOR", Just ";") :
+#endif
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]

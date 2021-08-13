@@ -27,7 +27,9 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     readProjectConfig,
     readGlobalConfig,
+    readProjectLocalExtraConfig,
     readProjectLocalFreezeConfig,
+    showProjectConfig,
     withProjectOrGlobalConfig,
     writeProjectLocalExtraConfig,
     writeProjectLocalFreezeConfig,
@@ -116,7 +118,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Utils
-         ( die', warn, notice, info, createDirectoryIfMissingVerbose )
+         ( die', warn, notice, info, createDirectoryIfMissingVerbose, rawSystemIOWithEnv )
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
@@ -303,6 +305,7 @@ resolveBuildTimeSettings verbosity
   where
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
+    buildSettingOnlyDownload  = fromFlag    projectConfigOnlyDownload
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
     --buildSettingLogFile       -- defined below, more complicated
     --buildSettingLogVerbosity  -- defined below, more complicated
@@ -328,6 +331,7 @@ resolveBuildTimeSettings verbosity
     defaults = mempty {
       projectConfigDryRun                = toFlag False,
       projectConfigOnlyDeps              = toFlag False,
+      projectConfigOnlyDownload          = toFlag False,
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigKeepGoing             = toFlag False,
@@ -418,8 +422,10 @@ findProjectRoot mstartdir mprojectFile = do
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
     -- then use the current dir
+    probe :: FilePath -> String -> IO (Either BadProjectRoot ProjectRoot)
     probe startdir homedir = go startdir
       where
+        go :: FilePath -> IO (Either BadProjectRoot ProjectRoot)
         go dir | isDrive dir || dir == homedir =
           case mprojectFile of
             Nothing   -> return (Right (ProjectRootImplicit startdir))
@@ -572,8 +578,8 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-        . parseProjectConfig
-      =<< readFile extensionFile
+        . (parseProjectConfig extensionFile)
+      =<< BS.readFile extensionFile
 
     addProjectFileProvenance config =
       config {
@@ -587,10 +593,10 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 -- For the moment this is implemented in terms of parsers for legacy
 -- configuration types, plus a conversion.
 --
-parseProjectConfig :: String -> OldParser.ParseResult ProjectConfig
-parseProjectConfig content =
+parseProjectConfig :: FilePath -> BS.ByteString -> OldParser.ParseResult ProjectConfig
+parseProjectConfig source content =
     convertLegacyProjectConfig <$>
-      parseLegacyProjectConfig content
+      (parseLegacyProjectConfig source content)
 
 
 -- | Render the 'ProjectConfig' format.
@@ -1172,7 +1178,12 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         syncSourceRepos verbosity vcs
           [ (repo, repoPath)
           | (repo, _, repoPath) <- repoGroupWithPaths ]
-        -- TODO phadej 2020-06-18 add post-sync script
+
+        -- Run post-checkout-command if it is specified
+        for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
+            for_ (nonEmpty (srpCommand repo)) $ \(cmd :| args) -> liftIO $ do
+                exitCode <- rawSystemIOWithEnv verbosity cmd args (Just repoPath) Nothing Nothing Nothing Nothing
+                unless (exitCode /= ExitSuccess) $ exitWith exitCode
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.
