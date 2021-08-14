@@ -86,10 +86,10 @@ Field syntax is described as they are in the latest cabal file format version.
 
 
   .. math::
-      
+
       \mathbf{fix}\; \mathit{expr}\; \mathbf{in}\; \mathit{digit}
       \mid \mathit{expr} \circ \mathord{``}\mathtt{+}\mathord{"} \circ \mathit{expr}
-      \mid \mathord{``}\mathtt{(} \mathord{"} \circ \mathit{expr} \circ \mathord{``}\mathtt{)}\mathord{"} 
+      \mid \mathord{``}\mathtt{(} \mathord{"} \circ \mathit{expr} \circ \mathord{``}\mathtt{)}\mathord{"}
 
 Lists
 -----
@@ -336,6 +336,13 @@ extra-lib-dirs
     .. math::
         \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
 
+extra-lib-dirs-static
+    * Monoidal field
+    * Documentation of :pkg-field:`extra-lib-dirs-static`
+
+    .. math::
+        \mathrm{optcommalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+
 extra-libraries
     * Monoidal field
     * Documentation of :pkg-field:`extra-libraries`
@@ -346,6 +353,13 @@ extra-libraries
 extra-library-flavours
     * Monoidal field
     * Documentation of :pkg-field:`extra-library-flavours`
+
+    .. math::
+        \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
+
+extra-libraries
+    * Monoidal field
+    * Documentation of :pkg-field:`extra-libraries-static`
 
     .. math::
         \mathrm{commalist}\left\{ \mathop{\mathit{hs\text{-}string}}\mid{{[\mathop{\mathord{``}\mathtt{\ }\mathord{"}}\mathop{\mathord{``}\mathtt{\text{,}}\mathord{"}}]^c}}^+_{} \right\}
@@ -650,5 +664,3 @@ type
 
     .. math::
         \left\{ \mathop{\mathord{``}\mathtt{exitcode\text{-}stdio\text{-}1\text{.}0}\mathord{"}}\mid\mathop{\mathord{``}\mathtt{detailed\text{-}0\text{.}9}\mathord{"}} \right\}
-
-

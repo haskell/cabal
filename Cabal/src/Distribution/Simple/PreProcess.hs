@@ -468,9 +468,19 @@ ppHsc2hs bi lbi clbi =
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
                  "-I" ++ autogenPackageModulesDir lbi,
                  "-include", autogenComponentModulesDir lbi clbi </> cppHeaderName ] ]
-       ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
-       ++ [ "--lflag=-Wl,-R," ++ opt | isELF
-                                , opt <- PD.extraLibDirs bi ]
+       ++ [ "--lflag=-L" ++ opt
+          | opt <-
+              if withFullyStaticExe lbi
+                then PD.extraLibDirsStatic bi
+                else PD.extraLibDirs bi
+          ]
+       ++ [ "--lflag=-Wl,-R," ++ opt
+          | isELF
+          , opt <-
+              if withFullyStaticExe lbi
+                then PD.extraLibDirsStatic bi
+                else PD.extraLibDirs bi
+          ]
        ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
        ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
 
@@ -484,7 +494,12 @@ ppHsc2hs bi lbi clbi =
           , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
                 ++ [ "-Wl,-R," ++ opt | isELF
                                  , opt <- Installed.libraryDirs    pkg ]
-                ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
+                ++ [ "-l" ++ opt
+                   | opt <-
+                       if withFullyStaticExe lbi
+                         then Installed.extraLibrariesStatic pkg
+                         else Installed.extraLibraries pkg
+                   ]
                 ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
        ++ preccldFlags
        ++ hsc2hsOptions bi

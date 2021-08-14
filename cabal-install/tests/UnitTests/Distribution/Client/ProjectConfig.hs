@@ -553,6 +553,7 @@ instance Arbitrary PackageConfig where
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
+        <*> shortListOf 5 arbitraryShortToken
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -604,6 +605,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigProgPrefix = x14
                          , packageConfigProgSuffix = x15
                          , packageConfigExtraLibDirs = x16
+                         , packageConfigExtraLibDirsStatic = x53
                          , packageConfigExtraFrameworkDirs = x17
                          , packageConfigExtraIncludeDirs = x18
                          , packageConfigGHCiLib = x19
@@ -659,6 +661,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigProgPrefix = x14'
                       , packageConfigProgSuffix = x15'
                       , packageConfigExtraLibDirs = map getNonEmpty x16'
+                      , packageConfigExtraLibDirsStatic = map getNonEmpty x53'
                       , packageConfigExtraFrameworkDirs = map getNonEmpty x17'
                       , packageConfigExtraIncludeDirs = map getNonEmpty x18'
                       , packageConfigGHCiLib = x19'
@@ -698,7 +701,7 @@ instance Arbitrary PackageConfig where
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x50', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
-          (x15', x16', x17', x18', x19')),
+          (x15', x16', x53', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
@@ -709,7 +712,7 @@ instance Arbitrary PackageConfig where
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
                 (x10, x11, map NonEmpty x12, x13, x14),
-                (x15, map NonEmpty x16,
+                (x15, map NonEmpty x16, map NonEmpty x53,
                   map NonEmpty x17,
                   map NonEmpty x18,
                   x19)),

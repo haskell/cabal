@@ -258,6 +258,7 @@ data PackageConfig
        packageConfigProgPrefix          :: Flag PathTemplate,
        packageConfigProgSuffix          :: Flag PathTemplate,
        packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraLibDirsStatic  :: [FilePath],
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
