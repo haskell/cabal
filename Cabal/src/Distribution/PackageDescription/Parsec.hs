@@ -129,7 +129,11 @@ parseGenericPackageDescriptionMaybe =
     either (const Nothing) Just . snd . runParseResult . parseGenericPackageDescription
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
-fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+fieldlinesToBS = 
+    BS.intercalate "\n" .
+    map (\fl -> case fl of
+        FieldLine _ bs -> bs
+        CommentLineInField _ _ -> "")
 
 -- Monad in which sections are parsed
 type SectionParser = StateT SectionS ParseResult
@@ -243,6 +247,7 @@ goSections specVer = traverse_ process
     process (Field (Name pos name) _) =
         lift $ parseWarning pos PWTTrailingFields $
             "Ignoring trailing fields after sections: " ++ show name
+    process (Comment _ _) = return ()
     process (Section name args secFields) =
         parseSection name args secFields
 

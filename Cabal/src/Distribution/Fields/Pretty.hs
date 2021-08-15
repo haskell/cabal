@@ -19,9 +19,15 @@ module Distribution.Fields.Pretty (
     genericFromParsecFields,
     prettyFieldLines,
     prettySectionArgs,
+    exactShow
     ) where
 
+import Control.Monad (mapM_)
+import Control.Monad.State.Strict (State)
+import qualified Control.Monad.State.Strict as State
+
 import Distribution.Compat.Prelude
+import Distribution.Parsec.Position (Position (..))
 import Distribution.Pretty         (showToken)
 import Prelude ()
 
@@ -155,6 +161,7 @@ genericFromParsecFields f g = goMany where
     goMany = traverse go
 
     go (P.Field (P.Name ann name) fls)          = PrettyField ann name <$> f name fls
+    go (P.Comment _ (P.CommentLine _ _))        = pure PrettyEmpty
     go (P.Section (P.Name ann name) secargs fs) = PrettySection ann name <$> g name secargs <*> goMany fs
 
 -- | Used in 'fromParsecFields'.
@@ -179,3 +186,101 @@ fromParsecFields = runIdentity . genericFromParsecFields
   where
     (.:) :: (a -> b) -> (c -> d -> a) -> (c -> d -> b)
     (f .: g) x y = f (g x y)
+
+------------------------------------------------------------------------------
+-- Exact print ---------------------------------------------------------------
+------------------------------------------------------------------------------
+
+data ExactPrint = ExactPrint
+  { currentPosition :: Position,
+    doc :: String
+  }
+  deriving (Eq, Show)
+
+type ExactPrinter a = State ExactPrint a
+
+initialExactPrint :: ExactPrint
+initialExactPrint = ExactPrint (Position 1 1) ""
+
+exactShow :: [P.Field Position] -> String
+exactShow fields =
+  let r = State.execState (mapM_ exactShowField fields) initialExactPrint
+   in doc r
+
+reachPos :: Position -> ExactPrinter ()
+reachPos (Position row col) = do
+  reachRow row
+  reachCol col
+
+reachCol :: Int -> ExactPrinter ()
+reachCol n = do
+  ExactPrint {currentPosition = Position row col, doc = _doc} <- State.get
+  if col == n
+    then return ()
+    else
+      State.put $
+        ExactPrint
+          { currentPosition = Position row n,
+            doc = _doc ++ replicate (n - col) ' '
+          }
+
+reachRow :: Int -> ExactPrinter ()
+reachRow n = do
+  ExactPrint {currentPosition = Position row _, doc = _doc} <- State.get
+  if row == n
+    then return ()
+    else
+      State.put $
+        ExactPrint
+          { currentPosition = Position n 1,
+            doc = _doc ++ replicate (n - row) '\n'
+          }
+
+write :: String -> ExactPrinter ()
+write s = do
+  ExactPrint {currentPosition = Position row col, doc = _doc} <- State.get
+  State.put $
+    ExactPrint
+      { currentPosition =
+          Position row (col + length s),
+        doc = _doc ++ s
+      }
+
+exactShowField :: P.Field Position -> ExactPrinter ()
+exactShowField (P.Field (P.Name p bs) fields) = do
+  reachPos p
+  write (fromUTF8BS bs)
+  write ":"
+  mapM_ exactShowFieldLine fields
+exactShowField (P.Comment p comment) = do
+  reachPos p
+  exactShowComment comment
+exactShowField (P.Section (P.Name p bs) sections fields) = do
+  reachPos p
+  write (fromUTF8BS bs)
+  mapM_ exactShowSection sections
+  mapM_ exactShowField fields
+
+exactShowFieldLine :: P.FieldLine Position -> ExactPrinter ()
+exactShowFieldLine (P.FieldLine p bs) = do
+  reachPos p
+  write (fromUTF8BS bs)
+exactShowFieldLine (P.CommentLineInField p comment) = do
+  reachPos p
+  exactShowComment comment
+
+exactShowComment :: P.CommentLine Position -> ExactPrinter ()
+exactShowComment (P.CommentLine p bs) = do
+  reachPos p
+  write (fromUTF8BS bs)
+
+exactShowSection :: P.SectionArg Position -> ExactPrinter ()
+exactShowSection (P.SecArgName p bs) = do
+  reachPos p
+  write (fromUTF8BS bs)
+exactShowSection (P.SecArgStr p bs) = do
+  reachPos p
+  write (fromUTF8BS bs)
+exactShowSection (P.SecArgOther p bs) = do
+  reachPos p
+  write (fromUTF8BS bs)

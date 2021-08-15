@@ -75,6 +75,7 @@ partitionFields = finalize . foldl' f (PS mempty mempty mempty)
       where
         ss' | null s    = ss
             | otherwise = reverse s : ss
+    f a (Comment _ _) = a
     f (PS fs s ss) (Section name sargs sfields) =
         PS fs (MkSection name sargs sfields : s) ss
 

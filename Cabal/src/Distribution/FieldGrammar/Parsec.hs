@@ -374,10 +374,15 @@ runFieldParser' inputPoss p v str = case P.runParser p' [] "<field>" str of
 runFieldParser :: Position -> ParsecParser a -> CabalSpecVersion -> [FieldLine Position] -> ParseResult a
 runFieldParser pp p v ls = runFieldParser' poss p v (fieldLinesToStream ls)
   where
-    poss = map (\(FieldLine pos _) -> pos) ls ++ [pp] -- add "default" position
+    poss = map (\fl -> case fl of
+        FieldLine pos _ -> pos
+        CommentLineInField pos _ -> pos) ls ++ [pp] -- add "default" position
 
 fieldlinesToBS :: [FieldLine ann] -> BS.ByteString
-fieldlinesToBS = BS.intercalate "\n" . map (\(FieldLine _ bs) -> bs)
+fieldlinesToBS = BS.intercalate "\n" .
+    map (\fl -> case fl of
+        FieldLine _ bs -> bs
+        CommentLineInField _ _ -> "")
 
 -- Example package with dot lines
 -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
