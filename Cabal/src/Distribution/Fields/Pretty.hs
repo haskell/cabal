@@ -193,19 +193,19 @@ fromParsecFields = runIdentity . genericFromParsecFields
 
 data ExactPrint = ExactPrint
   { currentPosition :: Position,
-    doc :: String
+    doc :: [String]
   }
   deriving (Eq, Show)
 
 type ExactPrinter a = State ExactPrint a
 
 initialExactPrint :: ExactPrint
-initialExactPrint = ExactPrint (Position 1 1) ""
+initialExactPrint = ExactPrint (Position 1 1) []
 
 exactShow :: [P.Field Position] -> String
 exactShow fields =
   let r = State.execState (mapM_ exactShowField fields) initialExactPrint
-   in doc r
+   in foldr (++) "" (reverse $ doc r)
 
 reachPos :: Position -> ExactPrinter ()
 reachPos (Position row col) = do
@@ -221,7 +221,7 @@ reachCol n = do
       State.put $
         ExactPrint
           { currentPosition = Position row n,
-            doc = _doc ++ replicate (n - col) ' '
+            doc = replicate (n - col) ' ' : _doc
           }
 
 reachRow :: Int -> ExactPrinter ()
@@ -233,7 +233,7 @@ reachRow n = do
       State.put $
         ExactPrint
           { currentPosition = Position n 1,
-            doc = _doc ++ replicate (n - row) '\n'
+            doc = replicate (n - row) '\n' : _doc
           }
 
 write :: String -> ExactPrinter ()
@@ -243,7 +243,7 @@ write s = do
     ExactPrint
       { currentPosition =
           Position row (col + length s),
-        doc = _doc ++ s
+        doc = s : _doc
       }
 
 exactShowField :: P.Field Position -> ExactPrinter ()
