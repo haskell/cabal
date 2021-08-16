@@ -7,7 +7,7 @@ Quickstart
 Starting from scratch, we're going to walk you through creating a simple
 Haskell application.
 
-**TL;DR;** ``mkdir proglet && cd proglet && cabal init && cabal run proglet``
+**TL;DR;** ``mkdir proglet && cd proglet && cabal init --simple --exe && cabal run proglet``
 
 
 Introduction
@@ -28,7 +28,7 @@ Using ``cabal init``
 --------------------
 
 The ``cabal init`` command creates the necessary files for a Cabal package,
-it has both an ``--interactive`` and ``--non-interactive`` (default)
+it has both an ``--interactive`` (default) and ``--non-interactive``
 mode. The interactive mode will walk you through many of the package
 options and metadata, the non-interactive mode will simply pick reasonable
 defaults which is sufficient if you're just trying something out.
@@ -47,7 +47,7 @@ If you want, you can also try out the interactive mode, for now chose
 
 ::
 
-    $ cabal init --interactive
+    $ cabal init
     ...
     What does the package build:
        1) Executable
