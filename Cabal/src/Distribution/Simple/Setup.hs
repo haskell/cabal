@@ -45,7 +45,7 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
+  DumpBuildInfo(..),
   ReplFlags(..),                         defaultReplFlags,     replCommand,
   ReplOptions(..),
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
@@ -99,6 +99,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
+import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
@@ -274,6 +275,11 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configDumpBuildInfo :: Flag DumpBuildInfo,
+      -- ^ Should we dump available build information on build?
+      -- Dump build information to disk before attempting to build,
+      -- tooling can parse these files and use them to compile the
+      -- source files themselves.
     configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
       -- as haddock, or ld.
@@ -343,6 +349,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
+    && equal configDumpBuildInfo
     && equal configUseResponseFiles
     where
       equal f = on (==) f a b
@@ -393,6 +400,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
+    configDumpBuildInfo = NoFlag,
     configUseResponseFiles = NoFlag
   }
 
@@ -559,6 +567,17 @@ configureOptions showOrParseArgs =
           noArg (Flag NoDebugInfo) []
                 ["disable-debug-info"]
                 "Don't emit debug info"
+         ]
+
+      , multiOption "build-info"
+         configDumpBuildInfo
+         (\v flags -> flags { configDumpBuildInfo = v })
+         [noArg (Flag DumpBuildInfo) []
+                ["enable-build-info"]
+                "Enable build information generation during project building",
+          noArg (Flag NoDumpBuildInfo) []
+                ["disable-build-info"]
+                "Disable build information generation during project building"
          ]
 
       ,option "" ["library-for-ghci"]
@@ -2182,88 +2201,6 @@ optionNumJobs get set =
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
-
-
--- ------------------------------------------------------------
--- * show-build-info command flags
--- ------------------------------------------------------------
-
-data ShowBuildInfoFlags = ShowBuildInfoFlags
-  { buildInfoBuildFlags     :: BuildFlags
-  , buildInfoOutputFile     :: Maybe FilePath
-  , buildInfoComponentsOnly :: Flag Bool
-  -- ^ If 'True' then only print components, each separated by a newline
-  } deriving (Show, Typeable)
-
-defaultShowBuildFlags  :: ShowBuildInfoFlags
-defaultShowBuildFlags =
-    ShowBuildInfoFlags
-      { buildInfoBuildFlags     = defaultBuildFlags
-      , buildInfoOutputFile     = Nothing
-      , buildInfoComponentsOnly = Flag False
-      }
-
-showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
-showBuildInfoCommand progDb = CommandUI
-  { commandName         = "show-build-info"
-  , commandSynopsis     = "Emit details about how a package would be built."
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " show-build-info      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " show-build-info foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progDb
---TODO: re-enable once we have support for module/file targets
---        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
---        ++ "    A module\n"
---        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
---        ++ "    A file\n\n"
---        ++ "If a target is ambiguous it can be qualified with the component "
---        ++ "name, e.g.\n"
---        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
---        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = usageAlternatives "show-build-info" $
-      [ "[FLAGS]"
-      , "COMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultShowBuildFlags
-  , commandOptions      = \showOrParseArgs ->
-      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
-      ++
-      [ option [] ["buildinfo-json-output"]
-                "Write the result to the given file instead of stdout"
-                buildInfoOutputFile (\v flags -> flags { buildInfoOutputFile = v })
-                (reqArg' "FILE" Just (maybe [] pure))
-      , option [] ["buildinfo-components-only"]
-                  "Print out only the component info, each separated by a newline"
-                  buildInfoComponentsOnly (\v flags -> flags { buildInfoComponentsOnly = v})
-                  trueArg
-      ]
-
-  }
-
-parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
-parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
-  map
-      (liftOption
-        buildInfoBuildFlags
-          (\bf flags -> flags { buildInfoBuildFlags = bf } )
-      )
-      buildFlags
-  where
-    buildFlags = buildOptions progDb showOrParseArgs
-      ++
-      [ optionVerbosity
-        buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-      , optionDistPref
-        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-      ]
 
 -- ------------------------------------------------------------
 -- * Other Utils

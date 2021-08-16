@@ -95,7 +95,8 @@ import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), LibraryName(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
-import           Distribution.Simple.Setup (HaddockTarget, TestShowDetails, ReplOptions)
+import           Distribution.Simple.Setup
+                   ( HaddockTarget, TestShowDetails, DumpBuildInfo (..), ReplOptions )
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -261,6 +262,7 @@ data ElaboratedConfiguredPackage
        elabStripLibs            :: Bool,
        elabStripExes            :: Bool,
        elabDebugInfo            :: DebugInfoLevel,
+       elabDumpBuildInfo        :: DumpBuildInfo,
 
        elabProgramPaths          :: Map String FilePath,
        elabProgramArgs           :: Map String [String],

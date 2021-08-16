@@ -54,7 +54,7 @@ import Distribution.Simple.Setup
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
-         , programDbPaths', splitArgs
+         , programDbPaths', splitArgs, DumpBuildInfo (NoDumpBuildInfo, DumpBuildInfo)
          )
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
@@ -437,6 +437,7 @@ convertLegacyPerPackageFlags configFlags installFlags
       configCoverage            = coverage,
       configLibCoverage         = libcoverage, --deprecated
       configDebugInfo           = packageConfigDebugInfo,
+      configDumpBuildInfo       = packageConfigDumpBuildInfo,
       configRelocatable         = packageConfigRelocatable
     } = configFlags
     packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
@@ -724,6 +725,7 @@ convertToLegacyAllPackageConfig
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
       configUseResponseFiles    = mempty,
+      configDumpBuildInfo       = mempty,
       configAllowDependingOnPrivateLibs = mempty
     }
 
@@ -797,6 +799,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
       configUseResponseFiles    = mempty,
+      configDumpBuildInfo       = packageConfigDumpBuildInfo,
       configAllowDependingOnPrivateLibs = mempty
     }
 
@@ -1083,6 +1086,7 @@ legacyPackageConfigFieldDescrs =
           dispFlagAssignment parsecFlagAssignment
           configConfigurationsFlags
           (\v conf -> conf { configConfigurationsFlags = v })
+      , overrideDumpBuildInfo
       ]
   . filterFields
       [ "with-compiler", "with-hc-pkg"
@@ -1180,6 +1184,23 @@ legacyPackageConfigFieldDescrs =
         (toFlag <$> parsec <|> pure mempty)
         configHcFlavor (\v flags -> flags { configHcFlavor = v })
 
+    overrideDumpBuildInfo =
+      liftField configDumpBuildInfo
+                (\v flags -> flags { configDumpBuildInfo = v }) $
+      let name = "build-info" in
+      FieldDescr name
+        (\f -> case f of
+                 Flag NoDumpBuildInfo -> Disp.text "False"
+                 Flag DumpBuildInfo   -> Disp.text "True"
+                 _                    -> Disp.empty)
+        (\line str _ -> case () of
+         _ |  str == "False" -> ParseOk [] (Flag NoDumpBuildInfo)
+           |  str == "True"  -> ParseOk [] (Flag DumpBuildInfo)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDumpBuildInfo)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag DumpBuildInfo)
+           | otherwise       -> ParseFailed (NoParse name line)
+           where
+             lstr = lowercase str)
 
     -- TODO: [code cleanup] The following is a hack. The "optimization" and
     -- "debug-info" fields are OptArg, and viewAsFieldDescr fails on that.
@@ -1202,13 +1223,11 @@ legacyPackageConfigFieldDescrs =
            |  str == "0"     -> ParseOk [] (Flag NoOptimisation)
            |  str == "1"     -> ParseOk [] (Flag NormalOptimisation)
            |  str == "2"     -> ParseOk [] (Flag MaximumOptimisation)
-           | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
-           | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalOptimisation)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoOptimisation)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag NormalOptimisation)
            | otherwise       -> ParseFailed (NoParse name line)
            where
-             lstr = lowercase str
-             caseWarning = PWarning $
-               "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+             lstr = lowercase str)
 
     overrideFieldDebugInfo =
       liftField configDebugInfo (\v flags -> flags { configDebugInfo = v }) $
@@ -1227,13 +1246,14 @@ legacyPackageConfigFieldDescrs =
            |  str == "1"     -> ParseOk [] (Flag MinimalDebugInfo)
            |  str == "2"     -> ParseOk [] (Flag NormalDebugInfo)
            |  str == "3"     -> ParseOk [] (Flag MaximalDebugInfo)
-           | lstr == "false" -> ParseOk [caseWarning] (Flag NoDebugInfo)
-           | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalDebugInfo)
+           | lstr == "false" -> ParseOk [caseWarning name] (Flag NoDebugInfo)
+           | lstr == "true"  -> ParseOk [caseWarning name] (Flag NormalDebugInfo)
            | otherwise       -> ParseFailed (NoParse name line)
            where
-             lstr = lowercase str
-             caseWarning = PWarning $
-               "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+             lstr = lowercase str)
+
+    caseWarning name = PWarning $
+      "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
     prefixTest name | "test-" `isPrefixOf` name = name
                     | otherwise = "test-" ++ name

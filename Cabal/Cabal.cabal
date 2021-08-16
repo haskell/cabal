@@ -201,6 +201,7 @@ library
     Distribution.Types.ComponentInclude
     Distribution.Types.ConfVar
     Distribution.Types.Dependency
+    Distribution.Types.DumpBuildInfo
     Distribution.Types.ExeDependency
     Distribution.Types.LegacyExeDependency
     Distribution.Types.PkgconfigDependency

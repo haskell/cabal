@@ -25,7 +25,7 @@ import Distribution.ModuleName
 import Distribution.Simple.Compiler                (DebugInfoLevel (..), OptimisationLevel (..), PackageDB (..), ProfDetailLevel (..), knownProfDetailLevels)
 import Distribution.Simple.Flag                    (Flag (..))
 import Distribution.Simple.InstallDirs
-import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..))
+import Distribution.Simple.Setup                   (HaddockTarget (..), TestShowDetails (..), DumpBuildInfo)
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
@@ -486,6 +486,12 @@ instance Arbitrary PackageDB where
                       , SpecificPackageDB <$> arbitraryShortToken
                       ]
 
+-------------------------------------------------------------------------------
+-- DumpBuildInfo
+-------------------------------------------------------------------------------
+
+instance Arbitrary DumpBuildInfo where
+    arbitrary = arbitraryBoundedEnum
 
 -------------------------------------------------------------------------------
 -- Helpers

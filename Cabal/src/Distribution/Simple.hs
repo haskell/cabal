@@ -104,7 +104,6 @@ import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
-import qualified Data.ByteString.Lazy as B
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
@@ -179,7 +178,6 @@ defaultMainHelper hooks args = topHandler $ do
       [configureCommand progs `commandAddAction`
         \fs as -> configureAction hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
-      ,showBuildInfoCommand progs `commandAddAction` showBuildInfoAction    hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -263,36 +261,6 @@ buildAction hooks flags args = do
   hookedAction verbosity preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags' { buildArgs = args } args
-
-showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks flags args = do
-  let buildFlags = buildInfoBuildFlags flags
-  distPref <- findDistPrefOrDefault (buildDistPref buildFlags)
-  let verbosity = fromFlag $ buildVerbosity buildFlags
-  lbi <- getBuildConfig hooks verbosity distPref
-  let buildFlags' =
-        buildFlags { buildDistPref = toFlag distPref
-                   , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
-                   }
-
-  progs <- reconfigurePrograms verbosity
-             (buildProgramPaths buildFlags')
-             (buildProgramArgs buildFlags')
-             (withPrograms lbi)
-
-  pbi <- preBuild hooks args buildFlags'
-  let lbi' = lbi { withPrograms = progs }
-      pkg_descr0 = localPkgDescr lbi'
-      pkg_descr = updatePackageDescription pbi pkg_descr0
-      -- TODO: Somehow don't ignore build hook?
-
-  buildInfoByteString <- showBuildInfo pkg_descr lbi' flags
-
-  case buildInfoOutputFile flags of
-    Nothing -> B.putStr buildInfoByteString
-    Just fp -> B.writeFile fp buildInfoByteString
-
-  postBuild hooks args buildFlags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do

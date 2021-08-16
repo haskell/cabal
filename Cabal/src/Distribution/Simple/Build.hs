@@ -19,7 +19,7 @@
 --
 
 module Distribution.Simple.Build (
-    build, showBuildInfo, repl,
+    build, repl,
     startInterpreter,
 
     initialBuildSteps,
@@ -87,11 +87,10 @@ import Distribution.Version (thisVersion)
 import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
-import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Set as Set
+import qualified Data.ByteString.Lazy as LBS
 import System.FilePath ( (</>), (<.>), takeDirectory )
-import System.Directory ( getCurrentDirectory )
+import System.Directory ( getCurrentDirectory, removeFile, doesFileExist )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -129,32 +128,33 @@ build pkg_descr lbi flags suffixes = do
     mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
                    lbi' suffixes comp clbi distPref
     return (maybe index (Index.insert `flip` index) mb_ipi)
+
+  when shouldDumpBuildInfo $ do
+    -- Changing this line might break consumers of the dumped build info.
+    -- Announce changes on mailing lists!
+    let activeTargets = allTargetsInBuildOrder' pkg_descr lbi
+    info verbosity $ "Dump build information for: "
+                  ++ intercalate ", "
+                      (map (showComponentName . componentLocalName . targetCLBI)
+                          activeTargets)
+    pwd <- getCurrentDirectory
+    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags activeTargets
+        buildInfoText = renderJson json
+    unless (null warns) $
+      warn verbosity $ "Encountered warnings while dumping build-info:\n"
+                    ++ unlines warns
+    LBS.writeFile (buildInfoPref distPref) buildInfoText
+
+  when (not shouldDumpBuildInfo) $ do
+    -- Remove existing build-info.json as it might be outdated now.
+    exists <- doesFileExist (buildInfoPref distPref)
+    when exists $ removeFile (buildInfoPref distPref)
+
   return ()
  where
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
-
-
-showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
-  -> LocalBuildInfo                  -- ^ Configuration information
-  -> ShowBuildInfoFlags              -- ^ Flags that the user passed to build
-  -> IO ByteString
-showBuildInfo pkg_descr lbi flags = do
-  let buildFlags = buildInfoBuildFlags flags
-      verbosity = fromFlag (buildVerbosity buildFlags)
-  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs buildFlags)
-  pwd <- getCurrentDirectory
-  let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-      result
-        | fromFlag (buildInfoComponentsOnly flags) =
-            let components = map (mkComponentInfo pwd pkg_descr lbi . targetCLBI)
-                                 targetsToBuild
-              in LBS.unlines $ map renderJson components
-        | otherwise =
-            let json = mkBuildInfo pwd pkg_descr lbi buildFlags targetsToBuild
-              in renderJson json
-  return result
-
+  shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo (configDumpBuildInfo (configFlags lbi)) == DumpBuildInfo
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> LocalBuildInfo      -- ^ Configuration information
