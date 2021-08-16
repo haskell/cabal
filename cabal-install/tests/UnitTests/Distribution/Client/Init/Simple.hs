@@ -23,7 +23,7 @@ import UnitTests.Distribution.Client.Init.Utils
 import Distribution.Simple.Setup
 import qualified Data.List.NonEmpty as NEL
 import Distribution.Types.Dependency
-import Distribution.Client.Init.Utils (mkPackageNameDep)
+import Distribution.Client.Init.Utils (mkPackageNameDep, getBaseDep)
 import qualified Data.Set as Set
 
 tests
@@ -56,7 +56,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           flags = emptyFlags { packageType = Flag Library }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
-            (simplePkgDesc pkgName) (Just simpleLibTarget)
+            (simplePkgDesc pkgName) (Just $ simpleLibTarget baseDep)
             Nothing Nothing
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
@@ -68,8 +68,8 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           flags = emptyFlags { packageType = Flag Library }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/1" Library pkgName defaultCabalVersion)
-            (simplePkgDesc pkgName) (Just simpleLibTarget)
-            Nothing (Just $ simpleTestTarget (Just pkgName))
+            (simplePkgDesc pkgName) (Just $ simpleLibTarget baseDep)
+            Nothing (Just $ simpleTestTarget (Just pkgName) baseDep)
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib (with tests)project: " ++ show e
@@ -81,7 +81,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" Executable pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) Nothing
-            (Just $ simpleExeTarget Nothing) Nothing
+            (Just $ simpleExeTarget Nothing baseDep) Nothing
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple exe project: " ++ show e
@@ -92,8 +92,8 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
-            (simplePkgDesc pkgName) (Just simpleLibTarget)
-            (Just $ simpleExeTarget (Just pkgName)) Nothing
+            (simplePkgDesc pkgName) (Just $ simpleLibTarget baseDep)
+            (Just $ simpleExeTarget (Just pkgName) baseDep) Nothing
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib+exe project: " ++ show e
@@ -103,26 +103,30 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
           flags = emptyFlags { packageType = Flag LibraryAndExecutable }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" LibraryAndExecutable pkgName defaultCabalVersion)
-            (simplePkgDesc pkgName) (Just simpleLibTarget)
-            (Just $ simpleExeTarget (Just pkgName))
-            (Just $ simpleTestTarget (Just pkgName))
+            (simplePkgDesc pkgName) (Just $ simpleLibTarget baseDep)
+            (Just $ simpleExeTarget (Just pkgName) baseDep)
+            (Just $ simpleTestTarget (Just pkgName) baseDep)
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple lib+exe (with tests) project: " ++ show e
         Right (settings', _) -> settings @=? settings'
-    
+
     , testCase "Simple standalone tests" $ do
       let inputs = fromList ["2", "simple-test", "y", "1"]
           flags = emptyFlags { packageType = Flag TestSuite }
           settings = ProjectSettings
             (WriteOpts False False False v "/home/test/2" TestSuite pkgName defaultCabalVersion)
             (simplePkgDesc pkgName) Nothing Nothing
-            (Just $ simpleTestTarget Nothing)
+            (Just $ simpleTestTarget Nothing baseDep)
 
       case _runPrompt (createProject v pkgIx srcDb flags) inputs of
         Left e -> assertFailure $ "Failed to create simple standalone test project: " ++ show e
         Right (settings', _) -> settings @=? settings'
     ]
+  where
+    baseDep = case _runPrompt (getBaseDep pkgIx emptyFlags) $ fromList [] of
+      Left e -> error $ show e
+      Right a -> fst a
 
 -- -------------------------------------------------------------------- --
 -- Utils
@@ -141,23 +145,23 @@ simplePkgDesc pkgName = PkgDescription
     mempty
     (Just $ Set.singleton defaultChangelog)
 
-simpleLibTarget :: LibTarget
-simpleLibTarget = LibTarget
+simpleLibTarget :: [Dependency] -> LibTarget
+simpleLibTarget baseDep = LibTarget
     [defaultSourceDir]
     defaultLanguage
     (myLibModule NEL.:| [])
-    [] [] [] []
+    [] [] baseDep []
 
-simpleExeTarget :: Maybe PackageName -> ExeTarget
-simpleExeTarget pn = ExeTarget
+simpleExeTarget :: Maybe PackageName -> [Dependency] -> ExeTarget
+simpleExeTarget pn baseDep = ExeTarget
     defaultMainIs
     [defaultApplicationDir]
     defaultLanguage
-    [] [] (mkPkgDep pn) []
+    [] [] (baseDep ++ mkPkgDep pn) []
 
-simpleTestTarget :: Maybe PackageName -> TestTarget
-simpleTestTarget pn = TestTarget
+simpleTestTarget :: Maybe PackageName -> [Dependency] -> TestTarget
+simpleTestTarget pn baseDep = TestTarget
     defaultMainIs
     [defaultTestDir]
     defaultLanguage
-    [] [] (mkPkgDep pn) []
+    [] [] (baseDep ++ mkPkgDep pn) []
