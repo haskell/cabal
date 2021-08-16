@@ -450,7 +450,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [2,5,0]  = flags_latest
+  | cabalLibVersion >= mkVersion [3,7,0]  = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -483,7 +483,10 @@ filterConfigureFlags flags cabalLibVersion
 
     flags_3_7_0 = flags_latest {
         -- Cabal < 3.7 does not know about --extra-lib-dirs-static
-        configExtraLibDirsStatic = []
+        configExtraLibDirsStatic = [],
+
+        -- Cabal < 3.7 does not understand '--enable-build-info' or '--disable-build-info'
+        configDumpBuildInfo = NoFlag
       }
 
     flags_2_5_0 = flags_3_7_0 {

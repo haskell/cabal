@@ -115,6 +115,8 @@ import           Distribution.ModuleName
 import           Distribution.Package
 import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
+import           Distribution.Types.DumpBuildInfo
+                   ( DumpBuildInfo (..) )
 import           Distribution.Types.LibraryName
 import           Distribution.Types.GivenComponent
   (GivenComponent(..))
@@ -1838,6 +1840,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabStripLibs     = perPkgOptionFlag pkgid False packageConfigStripLibs
         elabStripExes     = perPkgOptionFlag pkgid False packageConfigStripExes
         elabDebugInfo     = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
+        elabDumpBuildInfo = perPkgOptionFlag pkgid NoDumpBuildInfo packageConfigDumpBuildInfo
 
         -- Combine the configured compiler prog settings with the user-supplied
         -- config. For the compiler progs any user-supplied config was taken
@@ -3468,6 +3471,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configStripExes           = toFlag elabStripExes
     configStripLibs           = toFlag elabStripLibs
     configDebugInfo           = toFlag elabDebugInfo
+    configDumpBuildInfo       = toFlag elabDumpBuildInfo
 
     configConfigurationsFlags = elabFlagAssignment
     configConfigureArgs       = elabConfigureScriptArgs
