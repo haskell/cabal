@@ -34,6 +34,7 @@ module Distribution.Client.Init.FlagExtractors
 , initializeTestSuitePrompt
 , packageTypePrompt
 , testMainPrompt
+, dependenciesPrompt
 ) where
 
 
@@ -56,6 +57,9 @@ import Distribution.Simple.Flag (flagElim)
 import Language.Haskell.Extension (Language(..), Extension(..))
 import Distribution.Client.Init.Prompt
 import qualified Data.Set as Set
+import Distribution.Simple.PackageIndex
+import Distribution.Client.Init.Utils
+import Distribution.Verbosity (silent)
 
 
 
@@ -249,7 +253,7 @@ packageTypePrompt flags = getPackageType flags $ do
       "Library" -> Just Library
       "Executable" -> Just Executable
       "Library and Executable" -> Just LibraryAndExecutable
-      "Test suite" -> Just TestSuite 
+      "Test suite" -> Just TestSuite
       _ -> Nothing
 
 testMainPrompt :: Interactive m => m HsFilePath
@@ -273,6 +277,15 @@ testMainPrompt = do
       _ -> return hs
   where
     defaultMainIs' = show defaultMainIs
+
+dependenciesPrompt
+    :: Interactive m
+    => InstalledPackageIndex
+    -> InitFlags
+    -> m [Dependency]
+dependenciesPrompt pkgIx flags
+  = getDependencies flags
+  $ retrieveDependencies silent flags [(fromString "Prelude", fromString "Prelude")] pkgIx
 
 -- -------------------------------------------------------------------- --
 -- utilities
