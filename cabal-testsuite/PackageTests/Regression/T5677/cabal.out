@@ -24,6 +24,5 @@ Preprocessing library for prog-0..
 Building library instantiated with Sig = impl-0-inplace:Sig
 for prog-0..
 Configuring executable 'prog' for prog-0..
-Warning: The package has an extraneous version range for a dependency on an internal library: prog >=0 && ==0. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing executable 'prog' for prog-0..
 Building executable 'prog' for prog-0..

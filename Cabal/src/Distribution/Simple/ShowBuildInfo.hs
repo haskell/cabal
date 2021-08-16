@@ -70,7 +70,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Simple.Utils.Json
+import Distribution.Utils.Json
 import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
@@ -89,8 +89,6 @@ mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
     targetToNameAndLBI target =
       (componentLocalName $ targetCLBI target, targetCLBI target)
     componentsToBuild = map targetToNameAndLBI targetsToBuild
-    (.=) :: String -> Json -> (String, Json)
-    k .= v = (k, v)
 
     info = JsonObject
       [ "cabal-version" .= JsonString (display cabalVersion)

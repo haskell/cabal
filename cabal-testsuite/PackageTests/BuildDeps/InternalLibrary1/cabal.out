@@ -8,6 +8,5 @@ Configuring library for InternalLibrary1-0.1..
 Preprocessing library for InternalLibrary1-0.1..
 Building library for InternalLibrary1-0.1..
 Configuring executable 'lemon' for InternalLibrary1-0.1..
-Warning: The package has an extraneous version range for a dependency on an internal library: InternalLibrary1 >=0 && ==0.1. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing executable 'lemon' for InternalLibrary1-0.1..
 Building executable 'lemon' for InternalLibrary1-0.1..

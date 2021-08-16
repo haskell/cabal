@@ -243,6 +243,7 @@ library
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
     Distribution.Utils.Generic
+    Distribution.Utils.Json
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
     Distribution.Utils.Progress
@@ -327,7 +328,6 @@ library
     Distribution.Simple.GHC.EnvironmentParser
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
-    Distribution.Simple.Utils.Json
     Distribution.ZinzaPrelude
     Paths_Cabal
 
