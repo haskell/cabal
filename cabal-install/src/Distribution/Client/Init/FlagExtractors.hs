@@ -59,7 +59,6 @@ import Distribution.Client.Init.Prompt
 import qualified Data.Set as Set
 import Distribution.Simple.PackageIndex
 import Distribution.Client.Init.Utils
-import Distribution.Verbosity (silent)
 
 
 
@@ -283,9 +282,7 @@ dependenciesPrompt
     => InstalledPackageIndex
     -> InitFlags
     -> m [Dependency]
-dependenciesPrompt pkgIx flags
-  = getDependencies flags
-  $ retrieveDependencies silent flags [(fromString "Prelude", fromString "Prelude")] pkgIx
+dependenciesPrompt pkgIx flags = getDependencies flags (getBaseDep pkgIx flags)
 
 -- -------------------------------------------------------------------- --
 -- utilities

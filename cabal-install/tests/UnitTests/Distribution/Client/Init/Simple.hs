@@ -23,9 +23,8 @@ import UnitTests.Distribution.Client.Init.Utils
 import Distribution.Simple.Setup
 import qualified Data.List.NonEmpty as NEL
 import Distribution.Types.Dependency
-import Distribution.Client.Init.Utils (mkPackageNameDep)
+import Distribution.Client.Init.Utils (mkPackageNameDep, getBaseDep)
 import qualified Data.Set as Set
-import Distribution.Client.Init.Interactive.Command (dependenciesPrompt)
 
 tests
     :: Verbosity
@@ -125,7 +124,7 @@ simpleCreateProjectTests v pkgIx srcDb pkgName =
         Right (settings', _) -> settings @=? settings'
     ]
   where
-    baseDep = case _runPrompt (dependenciesPrompt pkgIx emptyFlags) $ fromList [] of
+    baseDep = case _runPrompt (getBaseDep pkgIx emptyFlags) $ fromList [] of
       Left e -> error $ show e
       Right a -> fst a
 
