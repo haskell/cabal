@@ -18,6 +18,7 @@ module Distribution.Client.Utils
   , moreRecentFile, existsAndIsMoreRecentThan
   , tryFindAddSourcePackageDesc
   , tryFindPackageDesc
+  , findOpenProgramLocation
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
@@ -38,6 +39,7 @@ import Distribution.Compat.Time        ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Version
 import Distribution.Simple.Utils       ( die', findPackageDesc, noticeNoWrap )
+import Distribution.System             ( Platform (..), OS(..))
 import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
@@ -50,7 +52,7 @@ import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
          ( finally, bracket )
 import System.Directory
-         ( canonicalizePath, doesFileExist, getCurrentDirectory
+         ( canonicalizePath, doesFileExist, findExecutable, getCurrentDirectory
          , removeFile, setCurrentDirectory, getDirectoryContents, doesDirectoryExist )
 import System.IO
          ( Handle, hClose, openTempFile
@@ -343,6 +345,26 @@ tryFindPackageDesc verbosity depPath err = do
     case errOrCabalFile of
         Right file -> return file
         Left _ -> die' verbosity err
+
+findOpenProgramLocation :: Platform -> IO (Either String FilePath)
+findOpenProgramLocation (Platform _ os) =
+  let
+    locate name = do
+      exe <- findExecutable name
+      case exe of
+        Just s -> pure (Right s)
+        Nothing -> pure (Left ("Couldn't find file-opener program `" <> name <> "`"))
+    xdg = locate "xdg-open"
+  in case os of
+    Windows -> pure (Right "start")
+    OSX -> locate "open"
+    Linux -> xdg
+    FreeBSD -> xdg
+    OpenBSD -> xdg
+    NetBSD -> xdg
+    DragonFly -> xdg
+    _ -> pure (Left ("Couldn't determine file-opener program for " <> show os))
+
 
 -- | Phase of building a dependency. Represents current status of package
 -- dependency processing. See #4040 for details.
