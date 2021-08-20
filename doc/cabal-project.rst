@@ -497,7 +497,7 @@ The following settings control the behavior of the dependency solver:
     active repositories are merged.
 
     When searching for a certain version of a certain package name, the list of
-    active repositories is searched last-to-first. 
+    active repositories is searched last-to-first.
 
     For example, suppose hackage.haskell.org has versions 1.0 and 2.0 of
     package X, and my-repository has version 2.0 of a similarly named package.
@@ -1405,6 +1405,13 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 
     The command line variant of this flag is ``--keep-temp-files`` (for
     the ``haddock`` subcommand).
+
+.. cfg-field:: open: boolean
+    :synopsis: Open generated documentation in-browser.
+
+    When generating HTML documentation, attempt to open it in a browser
+    when complete. This will use ``xdg-open`` on Linux and BSD systems,
+    ``open`` on macOS, and ``start`` on Windows.
 
 Advanced global configuration options
 -------------------------------------
