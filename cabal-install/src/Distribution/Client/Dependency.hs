@@ -13,6 +13,7 @@
 -- Top level interface to dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency (
+    DepResolverParams,
     -- * The main package dependency resolver
     chooseSolver,
     resolveDependencies,
@@ -464,6 +465,7 @@ removeBounds  relKind relDeps            params =
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
   where
+    sourcePkgIndex' :: PackageIndex.PackageIndex UnresolvedSourcePackage
     sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
 
     relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
@@ -735,6 +737,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
         then params
         else dontUpgradeNonUpgradeablePackages params
 
+    preferences :: PackageName -> PackagePreferences
     preferences = interpretPackagesPreference targets defpref prefs
 
 
@@ -750,12 +753,14 @@ interpretPackagesPreference selected defaultPref prefs =
                                  (installPref pkgname)
                                  (stanzasPref pkgname)
   where
+    versionPref :: PackageName -> [VersionRange]
     versionPref pkgname =
       fromMaybe [anyVersion] (Map.lookup pkgname versionPrefs)
     versionPrefs = Map.fromListWith (++)
                    [(pkgname, [pref])
                    | PackageVersionPreference pkgname pref <- prefs]
 
+    installPref :: PackageName -> InstalledPreference
     installPref pkgname =
       fromMaybe (installPrefDefault pkgname) (Map.lookup pkgname installPrefs)
     installPrefs = Map.fromList
@@ -770,6 +775,7 @@ interpretPackagesPreference selected defaultPref prefs =
         if pkgname `Set.member` selected then PreferLatest
                                          else PreferInstalled
 
+    stanzasPref :: PackageName -> [OptionalStanza]
     stanzasPref pkgname =
       fromMaybe [] (Map.lookup pkgname stanzasPrefs)
     stanzasPrefs = Map.fromListWith (\a b -> nub (a ++ b))
@@ -797,9 +803,12 @@ validateSolverResult platform comp indepGoals pkgs =
       problems               -> error (formatPkgProblems problems)
 
   where
+    graph :: Graph.Graph (ResolverPackage UnresolvedPkgLoc)
     graph = Graph.fromDistinctList pkgs
 
+    formatPkgProblems :: [PlanPackageProblem] -> String
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
+    formatPlanProblems :: [SolverInstallPlan.SolverPlanProblem] -> String
     formatPlanProblems = formatProblemMessage . map SolverInstallPlan.showPlanProblem
 
     formatProblemMessage problems =
@@ -894,6 +903,7 @@ configuredPackageProblems platform cinfo
                             , not (packageSatisfiesDependency pkgid dep) ]
   -- TODO: sanity tests on executable deps
   where
+    thisPkgName :: PackageName
     thisPkgName = packageName (srcpkgDescription pkg)
 
     specifiedDeps1 :: ComponentDeps [PackageId]
@@ -902,10 +912,12 @@ configuredPackageProblems platform cinfo
     specifiedDeps :: [PackageId]
     specifiedDeps = CD.flatDeps specifiedDeps1
 
+    mergedFlags :: [MergeResult PD.FlagName PD.FlagName]
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (srcpkgDescription pkg)))
       (sort $ map fst (PD.unFlagAssignment specifiedFlags)) -- TODO
 
+    packageSatisfiesDependency :: PackageIdentifier -> Dependency -> Bool
     packageSatisfiesDependency
       (PackageIdentifier name  version)
       (Dependency        name' versionRange _) = assert (name == name') $
@@ -991,7 +1003,9 @@ resolveWithoutDependencies (DepResolverParams targets constraints
 
       where
         -- Constraints
+        requiredVersions :: VersionRange
         requiredVersions = packageConstraints pkgname
+        choices          :: [UnresolvedSourcePackage]
         choices          = PackageIndex.lookupDependency sourcePkgIndex
                                                          pkgname
                                                          requiredVersions
@@ -1000,20 +1014,24 @@ resolveWithoutDependencies (DepResolverParams targets constraints
         PackagePreferences preferredVersions preferInstalled _
           = packagePreferences pkgname
 
+        bestByPrefs   :: UnresolvedSourcePackage -> UnresolvedSourcePackage -> Ordering
         bestByPrefs   = comparing $ \pkg ->
                           (installPref pkg, versionPref pkg, packageVersion pkg)
+        installPref   :: UnresolvedSourcePackage -> Bool
         installPref   = case preferInstalled of
           PreferLatest    -> const False
           PreferInstalled -> not . null
                            . InstalledPackageIndex.lookupSourcePackageId
                                                      installedPkgIndex
                            . packageId
+        versionPref     :: Package a => a -> Int
         versionPref pkg = length . filter (packageVersion pkg `withinRange`) $
                           preferredVersions
 
     packageConstraints :: PackageName -> VersionRange
     packageConstraints pkgname =
       Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
+    packageVersionConstraintMap :: Map PackageName VersionRange
     packageVersionConstraintMap =
       let pcs = map unlabelPackageConstraint constraints
       in Map.fromList [ (scopeToPackageName scope, range)

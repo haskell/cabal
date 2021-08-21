@@ -121,6 +121,7 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb
                verbosity comp platform freezeFlags
                installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
   where
+    sanityCheck :: [PackageSpecifier UnresolvedSourcePackage] -> IO ()
     sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
         die' verbosity $ "internal error: 'resolveUserTargets' returned "
@@ -154,6 +155,7 @@ planPackages verbosity comp platform freezeFlags
   return $ pruneInstallPlan installPlan pkgSpecifiers
 
   where
+    resolverParams :: DepResolverParams
     resolverParams =
 
         setMaxBackjumps (if maxBackjumps < 0 then Nothing
