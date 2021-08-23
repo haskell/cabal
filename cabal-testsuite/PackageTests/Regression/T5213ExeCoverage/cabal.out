@@ -8,7 +8,6 @@ Configuring library for cabal-gh5213-0.1..
 Preprocessing library for cabal-gh5213-0.1..
 Building library for cabal-gh5213-0.1..
 Configuring test suite 'tests' for cabal-gh5213-0.1..
-Warning: The package has an extraneous version range for a dependency on an internal library: cabal-gh5213 >=0 && ==0.1. This version range includes the current package but isn't needed as the current package's library will always be used.
 Preprocessing test suite 'tests' for cabal-gh5213-0.1..
 Building test suite 'tests' for cabal-gh5213-0.1..
 Running 1 test suites...
