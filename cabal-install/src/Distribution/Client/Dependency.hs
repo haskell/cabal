@@ -13,8 +13,8 @@
 -- Top level interface to dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency (
-    DepResolverParams,
     -- * The main package dependency resolver
+    DepResolverParams,
     chooseSolver,
     resolveDependencies,
     Progress(..),
