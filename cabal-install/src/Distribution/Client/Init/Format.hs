@@ -20,6 +20,7 @@ module Distribution.Client.Init.Format
 , annNoComments
 , postProcessFieldLines
   -- * stanza generation
+, mkCommonStanza
 , mkLibStanza
 , mkExeStanza
 , mkTestStanza
@@ -111,10 +112,28 @@ postProcessFieldLines ann
 -- -------------------------------------------------------------------- --
 -- Stanzas
 
+-- The common stanzas are hardcoded for simplicity purposes,
+-- see https://github.com/haskell/cabal/pull/7558#discussion_r693173846
+mkCommonStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ -> PrettySection 
+    annNoComments
+    "common"
+    [text "warnings"]
+    [field "ghc-options" text "-Wall" [] False opts]
+
 mkLibStanza :: WriteOpts -> LibTarget -> PrettyField FieldAnnotation
 mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
   PrettySection annNoComments (toUTF8BS "library") []
-    [ field "exposed-modules" formatExposedModules (toList expMods)
+    [ case specHasCommonStanzas $ _optCabalSpec opts of
+        NoCommonStanzas -> PrettyEmpty
+        _ -> field "import" (hsep . map text) ["warnings"]
+          ["Import common warning flags."]
+          False 
+          opts
+
+    , field "exposed-modules" formatExposedModules (toList expMods)
       ["Modules exported by the library."]
       True
       opts
@@ -153,7 +172,14 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
 mkExeStanza :: WriteOpts -> ExeTarget -> PrettyField FieldAnnotation
 mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "executable") [exeName]
-      [ field "main-is" unsafeFromHs exeMain
+      [ case specHasCommonStanzas $ _optCabalSpec opts of
+          NoCommonStanzas -> PrettyEmpty
+          _ -> field "import" (hsep . map text) ["warnings"]
+            ["Import common warning flags."]
+            False 
+            opts
+      
+      , field "main-is" unsafeFromHs exeMain
          [".hs or .lhs file containing the Main module."]
          True
         opts
@@ -194,7 +220,14 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
 mkTestStanza :: WriteOpts -> TestTarget -> PrettyField FieldAnnotation
 mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "test-suite") [suiteName]
-       [ field "default-language" id lang
+       [ case specHasCommonStanzas $ _optCabalSpec opts of
+           NoCommonStanzas -> PrettyEmpty
+           _ -> field "import" (hsep . map text) ["warnings"]
+             ["Import common warning flags."]
+             False 
+             opts
+      
+       , field "default-language" id lang
          ["Base language which the package is written in."]
          True
          opts
