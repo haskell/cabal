@@ -1283,7 +1283,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         pkgConfigPlatform      = platform,
         pkgConfigCompiler      = compiler,
         pkgConfigCompilerProgs = compilerprogdb,
-        pkgConfigReplOptions   = []
+        pkgConfigReplOptions   = mempty
       }
 
     preexistingInstantiatedPkgs =

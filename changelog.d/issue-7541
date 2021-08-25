@@ -1,0 +1,2 @@
+synopsis: '--repl-no-load' option skips startup modules load in REPL
+issues: #7541
