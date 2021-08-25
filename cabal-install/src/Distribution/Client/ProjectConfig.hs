@@ -324,6 +324,7 @@ resolveBuildTimeSettings verbosity
     buildSettingReportPlanningFailure
                               = fromFlag projectConfigReportPlanningFailure
     buildSettingProgPathExtra = fromNubList projectConfigProgPathExtra
+    buildSettingHaddockOpen   = False
 
     ProjectConfigBuildOnly{..} = defaults
                               <> projectConfigBuildOnly

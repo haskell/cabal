@@ -376,6 +376,7 @@ instance Semigroup SavedConfig where
         configScratchDir          = combine configScratchDir,
         -- TODO: NubListify
         configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
+        configExtraLibDirsStatic  = lastNonEmpty configExtraLibDirsStatic,
         -- TODO: NubListify
         configExtraFrameworkDirs  = lastNonEmpty configExtraFrameworkDirs,
         -- TODO: NubListify
@@ -1177,6 +1178,8 @@ parseConfig src initial = \str -> do
                        (fromNubList $ configProgramPathExtra scf)
                    , configExtraLibDirs       = splitMultiPath
                                                 (configExtraLibDirs scf)
+                   , configExtraLibDirsStatic = splitMultiPath
+                                                (configExtraLibDirsStatic scf)
                    , configExtraFrameworkDirs = splitMultiPath
                                                 (configExtraFrameworkDirs scf)
                    , configExtraIncludeDirs   = splitMultiPath

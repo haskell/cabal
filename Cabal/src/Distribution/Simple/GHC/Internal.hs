@@ -536,6 +536,7 @@ substTopDir topDir ipo
  = ipo {
        IPI.importDirs        = map f (IPI.importDirs ipo),
        IPI.libraryDirs       = map f (IPI.libraryDirs ipo),
+       IPI.libraryDirsStatic = map f (IPI.libraryDirsStatic ipo),
        IPI.includeDirs       = map f (IPI.includeDirs ipo),
        IPI.frameworkDirs     = map f (IPI.frameworkDirs ipo),
        IPI.haddockInterfaces = map f (IPI.haddockInterfaces ipo),

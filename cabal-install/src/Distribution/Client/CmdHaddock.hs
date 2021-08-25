@@ -24,15 +24,18 @@ import Distribution.Client.NixStyleOptions
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), fromFlagOrDefault )
+         ( HaddockFlags(..), fromFlagOrDefault, trueArg )
 import Distribution.Simple.Command
-         ( CommandUI(..), usageAlternatives )
+         ( CommandUI(..), usageAlternatives, ShowOrParseArgs, OptionField, option )
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
+import Distribution.Simple.Flag (Flag(..))
 
-haddockCommand :: CommandUI (NixStyleFlags ())
+newtype ClientHaddockFlags = ClientHaddockFlags { openInBrowser :: Flag Bool }
+
+haddockCommand :: CommandUI (NixStyleFlags ClientHaddockFlags)
 haddockCommand = CommandUI {
   commandName         = "v2-haddock",
   commandSynopsis     = "Build Haddock documentation",
@@ -58,20 +61,32 @@ haddockCommand = CommandUI {
         "Examples:\n"
      ++ "  " ++ pname ++ " v2-haddock pkgname"
      ++ "    Build documentation for the package named pkgname\n"
-  , commandOptions      = nixStyleOptions (const [])
-  , commandDefaultFlags = defaultNixStyleFlags ()
+  , commandOptions      = nixStyleOptions haddockOptions
+  , commandDefaultFlags = defaultNixStyleFlags (ClientHaddockFlags (Flag False))
   }
    --TODO: [nice to have] support haddock on specific components, not just
    -- whole packages and the silly --executables etc modifiers.
+
+haddockOptions :: ShowOrParseArgs -> [OptionField ClientHaddockFlags]
+haddockOptions _ =
+  [ option [] ["open"] "Open generated documentation in the browser"
+    openInBrowser (\v f -> f { openInBrowser = v}) trueArg
+  ]
 
 -- | The @haddock@ command is TODO.
 --
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-haddockAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
+haddockAction :: NixStyleFlags ClientHaddockFlags -> [String] -> GlobalFlags -> IO ()
 haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
-    baseCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
+    projCtx <- establishProjectBaseContext verbosity cliConfig HaddockCommand
+
+    let baseCtx
+          | fromFlagOrDefault False (openInBrowser extraFlags)
+            = projCtx { buildSettings = (buildSettings projCtx) { buildSettingHaddockOpen = True } }
+          | otherwise
+            = projCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
                    =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings

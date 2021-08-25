@@ -267,6 +267,7 @@ data ElaboratedConfiguredPackage
        elabProgramPathExtra      :: [FilePath],
        elabConfigureScriptArgs   :: [String],
        elabExtraLibDirs          :: [FilePath],
+       elabExtraLibDirsStatic    :: [FilePath],
        elabExtraFrameworkDirs    :: [FilePath],
        elabExtraIncludeDirs      :: [FilePath],
        elabProgPrefix            :: Maybe PathTemplate,

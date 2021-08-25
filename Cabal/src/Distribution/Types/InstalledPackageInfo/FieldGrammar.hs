@@ -102,10 +102,12 @@ ipiFieldGrammar = mkInstalledPackageInfo
     <@> booleanFieldDef     "trusted"                                            L.trusted False
     <@> monoidalFieldAla    "import-dirs"          (alaList' FSep FilePathNT)    L.importDirs
     <@> monoidalFieldAla    "library-dirs"         (alaList' FSep FilePathNT)    L.libraryDirs
+    <@> monoidalFieldAla    "library-dirs-static"  (alaList' FSep FilePathNT)    L.libraryDirsStatic
     <@> monoidalFieldAla    "dynamic-library-dirs" (alaList' FSep FilePathNT)    L.libraryDynDirs
     <@> optionalFieldDefAla "data-dir"             FilePathNT                    L.dataDir ""
     <@> monoidalFieldAla    "hs-libraries"         (alaList' FSep Token)         L.hsLibraries
     <@> monoidalFieldAla    "extra-libraries"      (alaList' FSep Token)         L.extraLibraries
+    <@> monoidalFieldAla    "extra-libraries-static" (alaList' FSep Token)       L.extraLibrariesStatic
     <@> monoidalFieldAla    "extra-ghci-libraries" (alaList' FSep Token)         L.extraGHCiLibraries
     <@> monoidalFieldAla    "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <@> monoidalFieldAla    "includes"             (alaList' FSep FilePathNT)    L.includes

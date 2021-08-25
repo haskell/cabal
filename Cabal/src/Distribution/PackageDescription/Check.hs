@@ -440,10 +440,9 @@ checkFields pkg =
 
     check (not . FilePath.Windows.isValid . prettyShow . packageName $ pkg) $
       PackageDistInexcusable $
-           "Unfortunately, the package name '" ++ prettyShow (packageName pkg)
-        ++ "' is one of the reserved system file names on Windows. Many tools "
-        ++ "need to convert package names to file names so using this name "
-        ++ "would cause problems."
+           "The package name '" ++ prettyShow (packageName pkg) ++ "' is "
+        ++ "invalid on Windows. Many tools need to convert package names to "
+        ++ "file names so using this name would cause problems."
 
   , check ((isPrefixOf "z-") . prettyShow . packageName $ pkg) $
       PackageDistInexcusable $
@@ -768,10 +767,6 @@ checkSourceRepos pkg =
       PackageDistInexcusable
         "The 'subdir' field of a source-repository must be a relative path."
 
-  , check (maybe False isAbsoluteOnAnyPlatform (repoSubdir repo)) $
-      PackageDistInexcusable
-        "The 'subdir' field of a source-repository must be a relative path."
-
   , do
       subdir <- repoSubdir repo
       err    <- isGoodRelativeDirectoryPath subdir
@@ -915,7 +910,13 @@ checkGhcOptions fieldName getOptions pkg =
   , checkAlternatives fieldName "extra-libraries"
       [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
 
+  , checkAlternatives fieldName "extra-libraries-static"
+      [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
+
   , checkAlternatives fieldName "extra-lib-dirs"
+      [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
+
+  , checkAlternatives fieldName "extra-lib-dirs-static"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
 
   , checkAlternatives fieldName "frameworks"
@@ -1035,7 +1036,7 @@ checkCPPOptions pkg = catMaybes
       [ (flag, dir) | flag@('-':'I':dir) <- all_cppOptions ]
     ]
     ++
-    [ PackageBuildWarning $ "'cpp-options': " ++ opt ++ " is not portable C-preprocessor flag"
+    [ PackageBuildWarning $ "'cpp-options: " ++ opt ++ "' is not a portable C-preprocessor flag."
     | opt <- all_cppOptions
     -- "-I" is handled above, we allow only -DNEWSTUFF and -UOLDSTUFF
     , not $ any (`isPrefixOf` opt) ["-D", "-U", "-I" ]
@@ -1057,9 +1058,15 @@ data PathKind
     = PathKindFile
     | PathKindDirectory
     | PathKindGlob
+  deriving (Eq)
 
 checkPaths :: PackageDescription -> [PackageCheck]
 checkPaths pkg =
+  checkPackageFileNamesWithGlob
+  [ (kind == PathKindGlob, path)
+  | (path, _, kind) <- relPaths ++ absPaths
+  ]
+  ++
   [ PackageBuildWarning $
          quote (field ++ ": " ++ path)
       ++ " is a relative path outside of the source tree. "
@@ -1068,12 +1075,13 @@ checkPaths pkg =
   , isOutsideTree path ]
   ++
   [ PackageDistInexcusable $
-      quote (field ++ ": " ++ path) ++ " is an absolute path."
+         quote (field ++ ": " ++ path) ++ " specifies an absolute path, but the "
+      ++ quote field ++ " field must use relative paths."
   | (path, field, _) <- relPaths
   , isAbsoluteOnAnyPlatform path ]
   ++
   [ PackageDistInexcusable $
-      quote (field ++ ": " ++ path) ++ " is not good relative path: " ++ err
+      quote (field ++ ": " ++ path) ++ " is not a good relative path: " ++ show err
   | (path, field, kind) <- relPaths
   -- these are not paths, but globs...
   , err <- maybeToList $ case kind of
@@ -1092,7 +1100,7 @@ checkPaths pkg =
   , isInsideDist path ]
   ++
   [ PackageDistInexcusable $
-         "The 'ghc-options' contains the path '" ++ path ++ "' which points "
+         "The 'ghc-options' contain the path '" ++ path ++ "' which points "
       ++ "inside the 'dist' directory. This is not reliable because the "
       ++ "location of this directory is configurable by the user (or package "
       ++ "manager). In addition the layout of the 'dist' directory is subject "
@@ -1154,7 +1162,8 @@ checkPaths pkg =
     absPaths = concat
       [ [ (path, "includes",       PathKindFile)      | path <- includes     bi ] ++
         [ (path, "include-dirs",   PathKindDirectory) | path <- includeDirs  bi ] ++
-        [ (path, "extra-lib-dirs", PathKindDirectory) | path <- extraLibDirs bi ]
+        [ (path, "extra-lib-dirs", PathKindDirectory) | path <- extraLibDirs bi ] ++
+        [ (path, "extra-lib-dirs-static", PathKindDirectory) | path <- extraLibDirsStatic bi ]
       | bi <- allBuildInfo pkg
       ]
 
@@ -1278,12 +1287,12 @@ checkCabalVersion pkg =
         ++ "so you need to specify 'cabal-version: >= 1.6'."
 
     -- check for new language extensions
-  , checkVersion CabalSpecV1_4 (not (null mentionedExtensionsThatNeedCabal12)) $
+  , checkVersion CabalSpecV1_2 (not (null mentionedExtensionsThatNeedCabal12)) $
       PackageDistInexcusable $
            "Unfortunately the language extensions "
         ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal12)
         ++ " break the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+        ++ "specify 'cabal-version: >= 1.2'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
@@ -1565,11 +1574,11 @@ checkPathsModuleExtensions pd
     | specVersion pd >= CabalSpecV2_2 = []
     | any checkBI (allBuildInfo pd) || any checkLib (allLibraries pd)
         = return $ PackageBuildImpossible $ unwords
-            [ "The package uses RebindableSyntax with OverloadedStrings or OverloadedLists"
-            , "in default-extensions, and also Paths_ autogen module."
-            , "That configuration is known to cause compile failures with Cabal < 2.2."
-            , "To use these default-extensions with Paths_ autogen module"
-            , "specify at least 'cabal-version: 2.2'."
+            [ "Packages using RebindableSyntax with OverloadedStrings or"
+            , "OverloadedLists in default-extensions, in conjunction with the"
+            , "autogenerated module Paths_*, are known to cause compile failures"
+            , "with Cabal < 2.2. To use these default-extensions with a Paths_*"
+            , "autogen module, specify at least 'cabal-version: 2.2'."
             ]
     | otherwise = []
   where
@@ -1616,7 +1625,7 @@ checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
       PackageDistInexcusable $
            "'" ++ fieldName ++ ": -Werror' makes the package easy to "
         ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. "
+        ++ "add new warnings."
         ++ extraExplanation
 
   , check (has_J) $
@@ -1628,7 +1637,7 @@ checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   , checkFlags ["-fdefer-type-errors"] $
       PackageDistInexcusable $
            "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development but "
-        ++ "is not appropriate for a distributed package. "
+        ++ "is not appropriate for a distributed package."
         ++ extraExplanation
 
     -- -dynamic is not a debug flag
@@ -1636,7 +1645,7 @@ checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
            ghcOptions) $
       PackageDistInexcusable $
            "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
-        ++ "for a distributed package. "
+        ++ "for a distributed package."
         ++ extraExplanation
 
   , checkFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
@@ -1649,7 +1658,7 @@ checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
         ++ "that use this one these flags clutter the profile output with "
         ++ "excessive detail. If you think other packages really want to see "
         ++ "cost centres from this package then use '-fprof-auto-exported' "
-        ++ "which puts cost centres only on exported functions. "
+        ++ "which puts cost centres only on exported functions."
         ++ extraExplanation
   ]
   where
@@ -1834,8 +1843,8 @@ checkCabalFileName ops pkg = do
     Right pdfile
       | takeFileName pdfile == expectedCabalname -> return Nothing
       | otherwise -> return $ Just $ PackageDistInexcusable $
-                 "The filename " ++ pdfile ++ " does not match package name " ++
-                 "(expected: " ++ expectedCabalname ++ ")"
+                 "The filename " ++ quote pdfile ++ " does not match package name " ++
+                 "(expected: " ++ quote expectedCabalname ++ ")"
   where
     pkgname = unPackageName . packageName $ pkg
     expectedCabalname = pkgname <.> "cabal"
@@ -1918,6 +1927,7 @@ checkLocalPathsExist ops pkg = do
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
                   [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+               ++ [ (dir, "extra-lib-dirs-static") | dir <- extraLibDirsStatic bi ]
                ++ [ (dir, "extra-framework-dirs")
                   | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
@@ -1926,7 +1936,7 @@ checkLocalPathsExist ops pkg = do
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {
              explanation = quote (kind ++ ": " ++ dir)
-                        ++ " directory does not exist."
+                        ++ " specifies a directory which does not exist."
            }
          | (dir, kind) <- missing ]
 
@@ -1968,25 +1978,39 @@ repoTypeDirname Pijul     = [".pijul"]
 -- should be done for example when creating or validating a package tarball.
 --
 checkPackageFileNames :: [FilePath] -> [PackageCheck]
-checkPackageFileNames files =
-     (take 1 . mapMaybe checkWindowsPath $ files)
-  ++ (take 1 . mapMaybe checkTarPath     $ files)
-      -- If we get any of these checks triggering then we're likely to get
-      -- many, and that's probably not helpful, so return at most one.
+checkPackageFileNames = checkPackageFileNamesWithGlob . zip (repeat True)
 
-checkWindowsPath :: FilePath -> Maybe PackageCheck
-checkWindowsPath path =
-  check (not $ FilePath.Windows.isValid path') $
-    PackageDistInexcusable $
-         "Unfortunately, the file " ++ quote path ++ " is not a valid file "
-      ++ "name on Windows which would cause portability problems for this "
-      ++ "package. Windows file names cannot contain any of the characters "
-      ++ "\":*?<>|\" and there are a few reserved names including \"aux\", "
-      ++ "\"nul\", \"con\", \"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+checkPackageFileNamesWithGlob :: [(Bool, FilePath)] -> [PackageCheck]
+checkPackageFileNamesWithGlob files =
+  catMaybes $
+    checkWindowsPaths files
+    :
+    [ checkTarPath file
+    | (_, file) <- files
+    ]
+
+checkWindowsPaths :: [(Bool, FilePath)] -> Maybe PackageCheck
+checkWindowsPaths paths =
+    case filter (not . FilePath.Windows.isValid . escape) paths of
+      [] -> Nothing
+      ps -> Just $
+        PackageDistInexcusable $
+             "The " ++ quotes (map snd ps) ++ " invalid on Windows, which "
+          ++ "would cause portability problems for this package. Windows file "
+          ++ "names cannot contain any of the characters \":*?<>|\" and there "
+          ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
+          ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
   where
-    path' = ".\\" ++ path
     -- force a relative name to catch invalid file names like "f:oo" which
     -- otherwise parse as file "oo" in the current directory on the 'f' drive.
+    escape (isGlob, path) = (".\\" ++)
+        -- glob paths will be expanded before being dereferenced, so asterisks
+        -- shouldn't count against them.
+      $ map (\c -> if c == '*' && isGlob then 'x' else c) path
+    quotes [failed] =
+        "path " ++ quote failed ++ " is"
+    quotes failed =
+        "paths " ++ intercalate ", " (map quote failed) ++ " are"
 
 -- | Check a file name is valid for the portable POSIX tar format.
 --
@@ -2175,68 +2199,56 @@ fileExtensionSupportedLanguage path =
 --
 -- Lastly, not good file nor directory cases:
 --
--- >>> traverse_ test ["", "/tmp/src", "foo//bar", "foo/.", "foo/./bar", "foo/../bar", "foo*bar"]
+-- >>> traverse_ test ["", "/tmp/src", "foo//bar", "foo/.", "foo/./bar", "foo/../bar"]
 -- Just "empty path"; Just "empty path"
 -- Just "posix absolute path"; Just "posix absolute path"
 -- Just "empty path segment"; Just "empty path segment"
 -- Just "trailing same directory segment: ."; Just "trailing same directory segment: ."
 -- Just "same directory segment: ."; Just "same directory segment: ."
 -- Just "parent directory segment: .."; Just "parent directory segment: .."
--- Just "reserved character '*'"; Just "reserved character '*'"
 --
 -- For the last case, 'isGoodRelativeGlob' doesn't warn:
 --
--- >>> traverse_ (print . isGoodRelativeGlob) ["foo/../bar", "foo*bar"]
+-- >>> traverse_ (print . isGoodRelativeGlob) ["foo/../bar"]
 -- Just "parent directory segment: .."
--- Nothing
 --
 isGoodRelativeFilePath :: FilePath -> Maybe String
 isGoodRelativeFilePath = state0
   where
-    -- Reserved characters
-    -- https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-    isReserved c = c `elem` "<>:\"\\/|?*"
-
     -- initial state
     state0 []                    = Just "empty path"
     state0 (c:cs) | c == '.'     = state1 cs
                   | c == '/'     = Just "posix absolute path"
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
     -- after initial .
     state1 []                    = Just "trailing dot segment"
     state1 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = state2 cs
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
     -- after ./ or after / between segments
     state2 []                    = Just "trailing slash"
     state2 (c:cs) | c == '.'     = state3 cs
                   | c == '/'     = Just "empty path segment"
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
     -- after non-first segment's .
     state3 []                    = Just "trailing same directory segment: ."
     state3 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = Just "same directory segment: ."
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
     -- after ..
     state4 []                    = Just "trailing parent directory segment: .."
     state4 (c:cs) | c == '.'     = state5 cs
                   | c == '/'     = Just "parent directory segment: .."
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
     -- in a segment which is ok.
     state5 []                    = Nothing
     state5 (c:cs) | c == '.'     = state5 cs
                   | c == '/'     = state2 cs
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state5 cs
 
 -- | See 'isGoodRelativeFilePath'.
@@ -2252,50 +2264,40 @@ isGoodRelativeGlob = isGoodRelativeFilePath . map f where
 isGoodRelativeDirectoryPath :: FilePath -> Maybe String
 isGoodRelativeDirectoryPath = state0
   where
-    -- Reserved characters
-    -- https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
-    isReserved c = c `elem` "<>:\"\\/|?*"
-
     -- initial state
     state0 []                    = Just "empty path"
     state0 (c:cs) | c == '.'     = state5 cs
                   | c == '/'     = Just "posix absolute path"
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
     -- after initial ./ or after / between segments
     state1 []                    = Nothing
     state1 (c:cs) | c == '.'     = state2 cs
                   | c == '/'     = Just "empty path segment"
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
     -- after non-first setgment's .
     state2 []                    = Just "trailing same directory segment: ."
     state2 (c:cs) | c == '.'     = state3 cs
                   | c == '/'     = Just "same directory segment: ."
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
     -- after ..
     state3 []                    = Just "trailing parent directory segment: .."
     state3 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = Just "parent directory segment: .."
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
     -- in a segment which is ok.
     state4 []                    = Nothing
     state4 (c:cs) | c == '.'     = state4 cs
                   | c == '/'     = state1 cs
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
     -- after initial .
     state5 []                    = Nothing -- "."
     state5 (c:cs) | c == '.'     = state3 cs
                   | c == '/'     = state1 cs
-                  | isReserved c = Just ("reserved character " ++ show c)
                   | otherwise    = state4 cs
 
 -- [Note: Good relative paths]
@@ -2307,11 +2309,11 @@ isGoodRelativeDirectoryPath = state0
 -- import Kleene
 -- import Kleene.ERE (ERE (..), intersections)
 --
--- data C = CDot | CSlash | COtherReserved | CChar
+-- data C = CDot | CSlash | CChar
 --   deriving (Eq, Ord, Enum, Bounded, Show)
 --
 -- reservedR :: ERE C
--- reservedR = notChar CSlash /\ notChar COtherReserved
+-- reservedR = notChar CSlash
 --
 -- pathPieceR :: ERE C
 -- pathPieceR = intersections
@@ -2338,31 +2340,24 @@ isGoodRelativeDirectoryPath = state0
 -- @
 -- 0 -> \x -> if
 --     | x <= CDot           -> 1
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
 -- 1 -> \x -> if
 --     | x <= CDot           -> 4
 --     | x <= CSlash         -> 2
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
 -- 2 -> \x -> if
 --     | x <= CDot           -> 3
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
 -- 3 -> \x -> if
 --     | x <= CDot           -> 4
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
 -- 4 -> \x -> if
 --     | x <= CDot           -> 5
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
 -- 5+ -> \x -> if
 --     | x <= CDot           -> 5
 --     | x <= CSlash         -> 2
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 5
--- 6 -> \_ -> 6 -- black hole
 -- @
 --
 -- and @dirPathR@:
@@ -2370,29 +2365,22 @@ isGoodRelativeDirectoryPath = state0
 -- @
 -- 0 -> \x -> if
 --     | x <= CDot           -> 5
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
 -- 1+ -> \x -> if
 --     | x <= CDot           -> 2
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
 -- 2 -> \x -> if
 --     | x <= CDot           -> 3
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
 -- 3 -> \x -> if
 --     | x <= CDot           -> 4
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
 -- 4+ -> \x -> if
 --     | x <= CDot           -> 4
 --     | x <= CSlash         -> 1
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
 -- 5+ -> \x -> if
 --     | x <= CDot           -> 3
 --     | x <= CSlash         -> 1
---     | x <= COtherReserved -> 6
 --     | otherwise           -> 4
--- 6 -> \_ -> 6 -- black hole
 -- @
