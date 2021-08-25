@@ -46,7 +46,6 @@ import Distribution.Client.Compat.Prelude hiding (putStr, putStrLn, getLine, las
 
 import Distribution.CabalSpecVersion (CabalSpecVersion(..), showCabalSpecVersion)
 import Distribution.Version (Version)
-import Distribution.Types.Dependency (Dependency(..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import qualified Distribution.SPDX as SPDX
 import Distribution.Client.Init.Defaults
@@ -58,7 +57,6 @@ import Distribution.Simple.Setup (Flag(..))
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
-import Distribution.Verbosity
 
 import Language.Haskell.Extension (Language(..))
 
@@ -137,7 +135,7 @@ createProject v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
-    
+
     TestSuite -> do
       -- the line below is necessary because if both package type and test flags
       -- are *not* passed, the user will be prompted for a package type (which
@@ -145,7 +143,7 @@ createProject v pkgIx srcDb initFlags = do
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
       let initFlags' = initFlags { initializeTestSuite = Flag True }
       testTarget <- genTestTarget initFlags' pkgIx
-      
+
       comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
@@ -308,9 +306,7 @@ packageNamePrompt srcDb flags = getPackageName flags $ do
       then do
         don'tUseName <- promptYesNo (promptOtherNameMsg n) (DefaultPrompt True)
         if don'tUseName
-        then do
-          putStrLn (inUseMsg n)
-          go defName
+        then go defName
         else return n
       else return n
 
@@ -463,11 +459,3 @@ srcDirsPrompt flags = getSrcDirs flags $ do
       True
 
     return [dir]
-
-dependenciesPrompt
-    :: Interactive m
-    => InstalledPackageIndex
-    -> InitFlags
-    -> m [Dependency]
-dependenciesPrompt pkgIx flags = getDependencies flags $
-    retrieveDependencies silent flags [(fromString "Prelude", fromString "Prelude")] pkgIx

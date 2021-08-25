@@ -314,6 +314,7 @@ mungePackagePaths pkgroot pkginfo =
       importDirs        = mungePaths (importDirs  pkginfo),
       includeDirs       = mungePaths (includeDirs pkginfo),
       libraryDirs       = mungePaths (libraryDirs pkginfo),
+      libraryDirsStatic = mungePaths (libraryDirsStatic pkginfo),
       libraryDynDirs    = mungePaths (libraryDynDirs pkginfo),
       frameworkDirs     = mungePaths (frameworkDirs pkginfo),
       haddockInterfaces = mungePaths (haddockInterfaces pkginfo),

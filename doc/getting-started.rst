@@ -5,9 +5,7 @@ Installing the Haskell toolchain
 --------------------------------
 
 To install the Haskell toolchain follow the `ghcup instructions
-<https://www.haskell.org/ghcup/>`__ if you're using Linux or Mac, or follow
-`this guide <https://hub.zhox.com/posts/introducing-haskell-dev/>`__ if you're
-using Windows.
+<https://www.haskell.org/ghcup/>`__.
 
 
 Creating a new application

@@ -98,12 +98,20 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> S.Set PN                             -- ^ global goals
       -> RetryLog Message SolverFailure (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
-  explorePhase     $
-  detectCycles     $
-  heuristicsPhase  $
-  preferencesPhase $
-  validationPhase  $
-  prunePhase       $
+  explorePhase      .
+  traceTree "cycles.json" id .
+  detectCycles      .
+  traceTree "heuristics.json" id .
+  trav (
+   heuristicsPhase  .
+   preferencesPhase .
+   validationPhase
+  ) .
+  traceTree "semivalidated.json" id .
+  validationCata    .
+  traceTree "pruned.json" id .
+  trav prunePhase   .
+  traceTree "build.json" id $
   buildPhase
   where
     explorePhase     = backjumpAndExplore (maxBackjumps sc)
@@ -111,27 +119,24 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                           (fineGrainedConflicts sc)
                                           (countConflicts sc)
                                           idx
-    detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
+    detectCycles     = detectCyclesPhase
     heuristicsPhase  =
-      let heuristicsTree = traceTree "heuristics.json" id
+      let
           sortGoals = case goalOrder sc of
                         Nothing -> goalChoiceHeuristics .
-                                   heuristicsTree .
-                                   P.deferSetupChoices .
+                                   P.deferSetupExeChoices .
                                    P.deferWeakFlagChoices .
                                    P.preferBaseGoalChoice
                         Just order -> P.firstGoal .
-                                   heuristicsTree .
-                                   P.sortGoals order
+                                      P.sortGoals order
           PruneAfterFirstSuccess prune = pruneAfterFirstSuccess sc
       in sortGoals .
          (if prune then P.pruneAfterFirstSuccess else id)
     preferencesPhase = P.preferLinked .
                        P.preferPackagePreferences userPrefs
-    validationPhase  = traceTree "validated.json" id .
-                       P.enforcePackageConstraints userConstraints .
-                       P.enforceManualFlags userConstraints .
-                       P.enforceSingleInstanceRestriction .
+    validationPhase  = P.enforcePackageConstraints userConstraints .
+                       P.enforceManualFlags userConstraints
+    validationCata   = P.enforceSingleInstanceRestriction .
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
@@ -143,8 +148,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                             P.onlyConstrained pkgIsExplicit
                           OnlyConstrainedNone ->
                             id)
-    buildPhase       = traceTree "build.json" id
-                     $ buildTree idx (independentGoals sc) (S.toList userGoals)
+    buildPhase       = buildTree idx (independentGoals sc) (S.toList userGoals)
 
     allExplicit = M.keysSet userConstraints `S.union` userGoals
 

@@ -470,6 +470,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | cabalLibVersion < mkVersion [2,1,0]  = flags_2_1_0
   | cabalLibVersion < mkVersion [2,5,0]  = flags_2_5_0
+  | cabalLibVersion < mkVersion [3,7,0]  = flags_3_7_0
   | otherwise = error "the impossible just happened" -- see first guard
   where
     flags_latest = flags        {
@@ -480,7 +481,12 @@ filterConfigureFlags flags cabalLibVersion
       configConstraints = []
       }
 
-    flags_2_5_0 = flags_latest {
+    flags_3_7_0 = flags_latest {
+        -- Cabal < 3.7 does not know about --extra-lib-dirs-static
+        configExtraLibDirsStatic = []
+      }
+
+    flags_2_5_0 = flags_3_7_0 {
       -- Cabal < 2.5 does not understand --dependency=pkg:component=cid
       -- (public sublibraries), so we convert it to the legacy
       -- --dependency=pkg_or_internal_compoent=cid

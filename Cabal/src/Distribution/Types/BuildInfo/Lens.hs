@@ -137,6 +137,10 @@ class HasBuildInfo a where
    extraLibs = buildInfo . extraLibs
    {-# INLINE extraLibs #-}
 
+   extraLibsStatic :: Lens' a [String]
+   extraLibsStatic = buildInfo . extraLibsStatic
+   {-# INLINE extraLibsStatic #-}
+
    extraGHCiLibs :: Lens' a [String]
    extraGHCiLibs = buildInfo . extraGHCiLibs
    {-# INLINE extraGHCiLibs #-}
@@ -156,6 +160,10 @@ class HasBuildInfo a where
    extraLibDirs :: Lens' a [String]
    extraLibDirs = buildInfo . extraLibDirs
    {-# INLINE extraLibDirs #-}
+
+   extraLibDirsStatic :: Lens' a [String]
+   extraLibDirsStatic = buildInfo . extraLibDirsStatic
+   {-# INLINE extraLibDirsStatic #-}
 
    includeDirs :: Lens' a [FilePath]
    includeDirs = buildInfo . includeDirs
@@ -290,6 +298,9 @@ instance HasBuildInfo BuildInfo where
     extraLibs f s = fmap (\x -> s { T.extraLibs = x }) (f (T.extraLibs s))
     {-# INLINE extraLibs #-}
 
+    extraLibsStatic f s = fmap (\x -> s { T.extraLibsStatic = x}) (f (T.extraLibsStatic s))
+    {-# INLINE extraLibsStatic #-}
+
     extraGHCiLibs f s = fmap (\x -> s { T.extraGHCiLibs = x }) (f (T.extraGHCiLibs s))
     {-# INLINE extraGHCiLibs #-}
 
@@ -304,6 +315,9 @@ instance HasBuildInfo BuildInfo where
 
     extraLibDirs f s = fmap (\x -> s { T.extraLibDirs = x }) (f (T.extraLibDirs s))
     {-# INLINE extraLibDirs #-}
+
+    extraLibDirsStatic f s = fmap (\x -> s { T.extraLibDirsStatic = x}) (f (T.extraLibDirsStatic s))
+    {-# INLINE extraLibDirsStatic #-}
 
     includeDirs f s = fmap (\x -> s { T.includeDirs = x }) (f (T.includeDirs s))
     {-# INLINE includeDirs #-}
