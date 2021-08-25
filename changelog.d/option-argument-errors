@@ -1,0 +1,9 @@
+synopsis: Handle option argument parse errors without 'error'
+packages: Cabal, cabal-install
+prs: #7579
+issues: #7573
+description: {
+- Errors parsing arguments such as `-v=3` no longer result in
+  stack traces.
+- `Distribution.ReadE.readEOrFail` was removed.
+}

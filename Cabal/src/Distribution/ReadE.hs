@@ -13,7 +13,6 @@ module Distribution.ReadE (
    -- * ReadE
    ReadE(..), succeedReadE, failReadE,
    -- * Projections
-   readEOrFail,
    parsecToReadE,
   ) where
 
@@ -37,9 +36,6 @@ succeedReadE f = ReadE (Right . f)
 
 failReadE :: ErrorMsg -> ReadE a
 failReadE = ReadE . const . Left
-
-readEOrFail :: ReadE a -> String -> a
-readEOrFail r = either error id . runReadE r
 
 parsecToReadE :: (String -> ErrorMsg) -> ParsecParser a -> ReadE a
 parsecToReadE err p = ReadE $ \txt ->
