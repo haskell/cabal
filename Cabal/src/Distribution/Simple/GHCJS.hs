@@ -1093,11 +1093,22 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       needProfiling       = withProfExe lbi
 
   -- build executables
+      buildRunner = case clbi of
+                      LibComponentLocalBuildInfo   {} -> False
+                      FLibComponentLocalBuildInfo  {} -> False
+                      ExeComponentLocalBuildInfo   {} -> True
+                      TestComponentLocalBuildInfo  {} -> True
+                      BenchComponentLocalBuildInfo {} -> True
       baseOpts   = (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
                     `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptInputFiles   = toNubListR inputFiles,
-                      ghcOptInputModules = toNubListR inputModules
+                      ghcOptInputModules = toNubListR inputModules,
+                      -- for all executable components (exe/test/bench),
+                      -- GHCJS must be passed the "-build-runner" option
+                      ghcOptExtra =
+                        if buildRunner then ["-build-runner"]
+                                       else mempty
                     }
       staticOpts = baseOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcStaticOnly,
