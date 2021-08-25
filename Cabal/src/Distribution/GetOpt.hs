@@ -19,8 +19,7 @@
 --
 -- * Parsing of option arguments is allowed to fail.
 --
--- If you want to take on the challenge of merging this with the GetOpt
--- from the base package then go for it!
+-- * 'ReturnInOrder' argument order is removed.
 --
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -43,7 +42,6 @@ import Distribution.Compat.Prelude
 data ArgOrder a
   = RequireOrder                -- ^ no option processing after first non-option
   | Permute                     -- ^ freely intersperse options and non-options
-  | ReturnInOrder (String -> a) -- ^ wrap non-options into options
 
 data OptDescr a =              -- description of a single options:
    Option [Char]                --    list of short option characters
@@ -184,10 +182,8 @@ getOpt' ordering optDescr (arg:args) = procNextOpt opt ordering
          procNextOpt (UnreqOpt u) _                 = (os,xs,u:us,es)
          procNextOpt (NonOpt x)   RequireOrder      = ([],x:rest,[],[])
          procNextOpt (NonOpt x)   Permute           = (os,x:xs,us,es)
-         procNextOpt (NonOpt x)   (ReturnInOrder f) = (f x :os, xs,us,es)
          procNextOpt EndOfOpts    RequireOrder      = ([],rest,[],[])
          procNextOpt EndOfOpts    Permute           = ([],rest,[],[])
-         procNextOpt EndOfOpts    (ReturnInOrder f) = (map f rest,[],[],[])
          procNextOpt (OptErr e)   _                 = (os,xs,us,e:es)
 
          (opt,rest) = getNext arg args optDescr
