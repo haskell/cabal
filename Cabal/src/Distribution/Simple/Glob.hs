@@ -18,6 +18,7 @@ module Distribution.Simple.Glob (
         GlobSyntaxError(..),
         GlobResult(..),
         matchDirFileGlob,
+        matchDirFileGlobWithDie,
         runDirFileGlob,
         fileGlobMatches,
         parseFileGlob,
@@ -220,24 +221,37 @@ parseFileGlob version filepath = case reverse (splitDirectories filepath) of
 -- prefix.
 --
 -- The second 'FilePath' is the glob itself.
+--
 matchDirFileGlob :: Verbosity -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob verbosity version dir filepath = case parseFileGlob version filepath of
-  Left err -> die' verbosity $ explainGlobSyntaxError filepath err
+matchDirFileGlob v = matchDirFileGlobWithDie v die'
+
+-- | Like 'matchDirFileGlob' but with customizable 'die'
+--
+-- @since 3.6.0.0
+--
+matchDirFileGlobWithDie :: Verbosity -> (Verbosity -> String -> IO [FilePath]) -> CabalSpecVersion -> FilePath -> FilePath -> IO [FilePath]
+matchDirFileGlobWithDie verbosity rip version dir filepath = case parseFileGlob version filepath of
+  Left err -> rip verbosity $ explainGlobSyntaxError filepath err
   Right glob -> do
     results <- runDirFileGlob verbosity dir glob
     let missingDirectories =
           [ missingDir | GlobMissingDirectory missingDir <- results ]
         matches = globMatches results
-    -- Check for missing directories first, since we'll obviously have
-    -- no matches in that case.
-    for_ missingDirectories $ \ missingDir ->
-      die' verbosity $
-           "filepath wildcard '" ++ filepath ++ "' refers to the directory"
-        ++ " '" ++ missingDir ++ "', which does not exist or is not a directory."
-    when (null matches) $ die' verbosity $
-         "filepath wildcard '" ++ filepath
-      ++ "' does not match any files."
-    return matches
+
+    let errors :: [String]
+        errors =
+            [ "filepath wildcard '" ++ filepath ++ "' refers to the directory"
+            ++ " '" ++ missingDir ++ "', which does not exist or is not a directory."
+            | missingDir <- missingDirectories
+            ]
+            ++
+            [ "filepath wildcard '" ++ filepath ++ "' does not match any files."
+            | null matches
+            ]
+
+    if null errors
+    then return matches
+    else rip verbosity $ unlines errors
 
 -- | Match files against a pre-parsed glob, starting in a directory.
 --

@@ -57,7 +57,7 @@ import Language.Haskell.Extension
 import Prelude ()
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.Newtype     (Newtype)
+import Distribution.Compat.Newtype     (Newtype, pack', unpack')
 import Distribution.Compiler           (CompilerFlavor (..), PerCompilerFlavor (..))
 import Distribution.FieldGrammar
 import Distribution.Fields
@@ -69,9 +69,10 @@ import Distribution.Pretty             (Pretty (..), prettyShow, showToken)
 import Distribution.Utils.Path
 import Distribution.Version            (Version, VersionRange)
 
-import qualified Data.ByteString.Char8   as BS8
-import qualified Distribution.SPDX       as SPDX
-import qualified Distribution.Types.Lens as L
+import qualified Data.ByteString.Char8           as BS8
+import qualified Distribution.Compat.CharParsing as P
+import qualified Distribution.SPDX               as SPDX
+import qualified Distribution.Types.Lens         as L
 
 -------------------------------------------------------------------------------
 -- PackageDescription
@@ -84,9 +85,11 @@ packageDescriptionFieldGrammar
        , c (Identity Version)
        , c (List FSep FilePathNT String)
        , c (List FSep CompatFilePath String)
+       , c (List FSep (Identity (SymbolicPath PackageDir LicenseFile)) (SymbolicPath PackageDir LicenseFile))
        , c (List FSep TestedWith (CompilerFlavor, VersionRange))
        , c (List VCat FilePathNT String)
        , c FilePathNT
+       , c CompatLicenseFile
        , c CompatFilePath
        , c SpecLicense
        , c SpecVersion
@@ -97,7 +100,6 @@ packageDescriptionFieldGrammar = PackageDescription
     <*> blurFieldGrammar L.package packageIdentifierGrammar
     <*> optionalFieldDefAla "license"       SpecLicense                L.licenseRaw (Left SPDX.NONE)
     <*> licenseFilesGrammar
-        ^^^ fmap (filter (not . null)) -- strip empty filepaths
     <*> freeTextFieldDefST  "copyright"                                L.copyright
     <*> freeTextFieldDefST  "maintainer"                               L.maintainer
     <*> freeTextFieldDefST  "author"                                   L.author
@@ -136,8 +138,8 @@ packageDescriptionFieldGrammar = PackageDescription
         -- TODO: neither field is deprecated
         -- should we pretty print license-file if there's single license file
         -- and license-files when more
-        <$> monoidalFieldAla    "license-file"  (alaList' FSep CompatFilePath)  L.licenseFiles
-        <*> monoidalFieldAla    "license-files"  (alaList' FSep CompatFilePath) L.licenseFiles
+        <$> monoidalFieldAla    "license-file"   CompatLicenseFile L.licenseFiles
+        <*> monoidalFieldAla    "license-files"  (alaList FSep)    L.licenseFiles
             ^^^ hiddenField
 
 -------------------------------------------------------------------------------
@@ -552,19 +554,23 @@ buildInfoFieldGrammar = BuildInfo
     <*> monoidalFieldAla "default-extensions"   (alaList' FSep MQuoted)       L.defaultExtensions
         ^^^ availableSince CabalSpecV1_10 []
     <*> monoidalFieldAla "other-extensions"     formatOtherExtensions         L.otherExtensions
-        ^^^ availableSince CabalSpecV1_10 []
+        ^^^ availableSinceWarn CabalSpecV1_10
     <*> monoidalFieldAla "extensions"           (alaList' FSep MQuoted)       L.oldExtensions
         ^^^ deprecatedSince CabalSpecV1_12
             "Please use 'default-extensions' or 'other-extensions' fields."
         ^^^ removedIn CabalSpecV3_0
             "Please use 'default-extensions' or 'other-extensions' fields."
     <*> monoidalFieldAla "extra-libraries"      (alaList' VCat Token)         L.extraLibs
+    <*> monoidalFieldAla "extra-libraries-static" (alaList' VCat Token)       L.extraLibsStatic
+        ^^^ availableSince CabalSpecV3_8 []
     <*> monoidalFieldAla "extra-ghci-libraries" (alaList' VCat Token)         L.extraGHCiLibs
     <*> monoidalFieldAla "extra-bundled-libraries" (alaList' VCat Token)      L.extraBundledLibs
     <*> monoidalFieldAla "extra-library-flavours" (alaList' VCat Token)       L.extraLibFlavours
     <*> monoidalFieldAla "extra-dynamic-library-flavours" (alaList' VCat Token) L.extraDynLibFlavours
         ^^^ availableSince CabalSpecV3_0 []
     <*> monoidalFieldAla "extra-lib-dirs"       (alaList' FSep FilePathNT)    L.extraLibDirs
+    <*> monoidalFieldAla "extra-lib-dirs-static" (alaList' FSep FilePathNT)   L.extraLibDirsStatic
+        ^^^ availableSince CabalSpecV3_8 []
     <*> monoidalFieldAla "include-dirs"         (alaList' FSep FilePathNT)    L.includeDirs
     <*> monoidalFieldAla "includes"             (alaList' FSep FilePathNT)    L.includes
     <*> monoidalFieldAla "autogen-includes"     (alaList' FSep FilePathNT)    L.autogenIncludes
@@ -744,6 +750,23 @@ instance Parsec CompatFilePath where
 
 instance Pretty CompatFilePath where
     pretty = showToken . getCompatFilePath
+
+newtype CompatLicenseFile = CompatLicenseFile { getCompatLicenseFile :: [SymbolicPath PackageDir LicenseFile] }
+
+instance Newtype [SymbolicPath PackageDir LicenseFile] CompatLicenseFile
+
+-- TODO
+instance Parsec CompatLicenseFile where
+    parsec = emptyToken <|> CompatLicenseFile . unpack' (alaList FSep) <$> parsec
+      where
+        emptyToken = P.try $ do
+            token <- parsecToken
+            if null token
+            then return (CompatLicenseFile [])
+            else P.unexpected "non-empty-token"
+
+instance Pretty CompatLicenseFile where
+    pretty = pretty . pack' (alaList FSep) . getCompatLicenseFile
 
 -------------------------------------------------------------------------------
 -- vim syntax definitions

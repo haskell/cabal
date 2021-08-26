@@ -41,7 +41,6 @@ module Distribution.Simple.Setup (
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
-  DoctestFlags(..),  emptyDoctestFlags,  defaultDoctestFlags,  doctestCommand,
   HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
@@ -201,7 +200,6 @@ data ConfigFlags = ConfigFlags {
     -- ProgramDb directly and not via ConfigFlags
     configPrograms_     :: Option' (Last' ProgramDb), -- ^All programs that
                                                       -- @cabal@ may run
-
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
     configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH
@@ -233,6 +231,9 @@ data ConfigFlags = ConfigFlags {
                                                             -- paths
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraLibDirsStatic :: [FilePath],   -- ^ path to search for extra
+                                              --   libraries when linking
+                                              --   fully static executables
     configExtraFrameworkDirs :: [FilePath],   -- ^ path to search for extra
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
@@ -317,6 +318,7 @@ instance Eq ConfigFlags where
     && equal configInstallDirs
     && equal configScratchDir
     && equal configExtraLibDirs
+    && equal configExtraLibDirsStatic
     && equal configExtraIncludeDirs
     && equal configIPID
     && equal configDeterministic
@@ -633,6 +635,11 @@ configureOptions showOrParseArgs =
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-lib-dirs-static"]
+         "A list of directories to search for external libraries when linking fully static executables"
+         configExtraLibDirsStatic (\v flags -> flags {configExtraLibDirsStatic = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
       ,option "" ["extra-framework-dirs"]
@@ -1292,68 +1299,6 @@ hscolourCommand = CommandUI
          (reqArgFlag "PATH")
       ]
   }
-
--- ------------------------------------------------------------
--- * Doctest flags
--- ------------------------------------------------------------
-
-data DoctestFlags = DoctestFlags {
-    doctestProgramPaths :: [(String, FilePath)],
-    doctestProgramArgs  :: [(String, [String])],
-    doctestDistPref     :: Flag FilePath,
-    doctestVerbosity    :: Flag Verbosity
-  }
-   deriving (Show, Generic, Typeable)
-
-defaultDoctestFlags :: DoctestFlags
-defaultDoctestFlags = DoctestFlags {
-    doctestProgramPaths = mempty,
-    doctestProgramArgs  = [],
-    doctestDistPref     = NoFlag,
-    doctestVerbosity    = Flag normal
-  }
-
-doctestCommand :: CommandUI DoctestFlags
-doctestCommand = CommandUI
-  { commandName         = "doctest"
-  , commandSynopsis     = "Run doctest tests."
-  , commandDescription  = Just $ \_ ->
-      "Requires the program doctest, version 0.12.\n"
-  , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " doctest [FLAGS]\n"
-  , commandDefaultFlags = defaultDoctestFlags
-  , commandOptions      = \showOrParseArgs ->
-         doctestOptions showOrParseArgs
-      ++ programDbPaths   progDb ParseArgs
-             doctestProgramPaths (\v flags -> flags { doctestProgramPaths = v })
-      ++ programDbOption  progDb showOrParseArgs
-             doctestProgramArgs (\v fs -> fs { doctestProgramArgs = v })
-      ++ programDbOptions progDb ParseArgs
-             doctestProgramArgs (\v flags -> flags { doctestProgramArgs = v })
-  }
-  where
-    progDb = addKnownProgram doctestProgram
-             emptyProgramDb
-
-doctestOptions :: ShowOrParseArgs -> [OptionField DoctestFlags]
-doctestOptions showOrParseArgs =
-  [optionVerbosity doctestVerbosity
-   (\v flags -> flags { doctestVerbosity = v })
-  ,optionDistPref
-   doctestDistPref (\d flags -> flags { doctestDistPref = d })
-   showOrParseArgs
-  ]
-
-emptyDoctestFlags :: DoctestFlags
-emptyDoctestFlags = mempty
-
-instance Monoid DoctestFlags where
-  mempty = gmempty
-  mappend = (<>)
-
-instance Semigroup DoctestFlags where
-  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Haddock flags

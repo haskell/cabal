@@ -22,6 +22,7 @@ module Language.Haskell.Extension (
         KnownExtension(..),
         deprecatedExtensions,
         classifyExtension,
+        knownExtensions
   ) where
 
 import qualified Prelude (head)
@@ -54,6 +55,10 @@ data Language =
   -- <http://www.haskell.org/onlinereport/haskell2010>
   | Haskell2010
 
+  -- | The GHC2021 collection of language extensions.
+  -- <https://github.com/ghc-proposals/ghc-proposals/blob/master/proposals/0380-ghc2021.rst>
+  | GHC2021
+
   -- | An unknown language, identified by its name.
   | UnknownLanguage String
   deriving (Generic, Show, Read, Eq, Typeable, Data)
@@ -63,8 +68,9 @@ instance Structured Language
 
 instance NFData Language where rnf = genericRnf
 
+-- | List of known (supported) languages for GHC
 knownLanguages :: [Language]
-knownLanguages = [Haskell98, Haskell2010]
+knownLanguages = [Haskell98, Haskell2010, GHC2021]
 
 instance Pretty Language where
   pretty (UnknownLanguage other) = Disp.text other
@@ -849,6 +855,15 @@ data KnownExtension =
   -- | Enable linear types.
   | LinearTypes
 
+  -- | Enable the generation of selector functions corresponding to record fields.
+  | FieldSelectors
+
+  -- | Enable the use of record dot-accessor and updater syntax
+  | OverloadedRecordDot
+
+  -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
+  | UnliftedDatatypes
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
@@ -917,3 +932,6 @@ knownExtensionTable =
     [ (Prelude.head str, (str, extension)) -- assume KnownExtension's Show returns a non-empty string
     | extension <- [toEnum 0 ..]
     , let str = show extension ]
+
+knownExtensions :: [KnownExtension]
+knownExtensions = [minBound .. maxBound]

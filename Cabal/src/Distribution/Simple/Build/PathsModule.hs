@@ -58,9 +58,9 @@ generatePathsModule pkg_descr lbi clbi = Z.render Z.Z
     , Z.zSysconfdir = zSysconfdir
     }
   where
-    supports_cpp               = supports_language_pragma
-    supports_rebindable_syntax = ghc_newer_than (mkVersion [7,0,1])
-    supports_language_pragma   = ghc_newer_than (mkVersion [6,6,1])
+    supports_cpp                 = supports_language_pragma
+    supports_rebindable_syntax   = ghc_newer_than (mkVersion [7,0,1])
+    supports_language_pragma     = ghc_newer_than (mkVersion [6,6,1])
 
     ghc_newer_than minVersion =
         case compilerCompatVersion GHC (compiler lbi) of

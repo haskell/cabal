@@ -86,17 +86,11 @@ instance HasVerbosity Client.FreezeFlags where
 instance HasVerbosity Setup.HaddockFlags where
     verbosity = verbosity . Setup.haddockVerbosity
 
-instance HasVerbosity Client.ExecFlags where
-    verbosity = verbosity . Client.execVerbosity
-
 instance HasVerbosity Client.UpdateFlags where
     verbosity = verbosity . Client.updateVerbosity
 
 instance HasVerbosity Setup.CleanFlags where
     verbosity = verbosity . Setup.cleanVerbosity
-
-instance HasVerbosity Setup.DoctestFlags where
-    verbosity = verbosity . Setup.doctestVerbosity
 
 --
 

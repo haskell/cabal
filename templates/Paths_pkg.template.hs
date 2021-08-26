@@ -8,6 +8,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {% endif %}
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
+{-# OPTIONS_GHC -w #-}
 module Paths_{{ manglePkgName packageName }} (
     version,
     getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,

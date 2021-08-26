@@ -20,6 +20,8 @@
 -- If you want to take on the challenge of merging this with the GetOpt
 -- from the base package then go for it!
 --
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Distribution.GetOpt (
    -- * GetOpt
    getOpt, getOpt',
@@ -44,32 +46,52 @@ data OptKind a                -- kind of cmd line arg (internal use only):
    | EndOfOpts                  --    end-of-options marker (i.e. "--")
    | OptErr    String           --    something went wrong...
 
+data OptHelp = OptHelp {
+      optNames :: String,
+      optHelp :: String
+    }
+
 -- | Return a string describing the usage of a command, derived from
 -- the header (first argument) and the options described by the
 -- second argument.
 usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
           -> String                    -- nicely formatted decription of options
-usageInfo header optDescr = unlines (header:table)
-   where (ss,ls,ds) = unzip3 [ (intercalate ", " (map (fmtShort ad) sos)
-                               ,concatMap (fmtLong  ad) (take 1 los)
-                               ,d)
-                             | Option sos los ad d <- optDescr ]
-         ssWidth    = (maximum . map length) ss
-         lsWidth    = (maximum . map length) ls
-         dsWidth    = 30 `max` (80 - (ssWidth + lsWidth + 3))
-         table      = [ " " ++ padTo ssWidth so' ++
-                        " " ++ padTo lsWidth lo' ++
-                        " " ++ d'
-                      | (so,lo,d) <- zip3 ss ls ds
-                      , (so',lo',d') <- fmtOpt dsWidth so lo d ]
-         padTo n x  = take n (x ++ repeat ' ')
+usageInfo header optDescr = unlines (header : table)
+  where
+    options = flip map optDescr $ \(Option sos los ad d) ->
+      OptHelp
+        { optNames =
+          intercalate ", " $
+            map (fmtShort ad) sos ++
+            map (fmtLong  ad) (take 1 los)
+        , optHelp = d
+        }
 
-fmtOpt :: Int -> String -> String -> String -> [(String, String, String)]
-fmtOpt descrWidth so lo descr =
-   case wrapText descrWidth descr of
-     []     -> [(so,lo,"")]
-     (d:ds) -> (so,lo,d) : [ ("","",d') | d' <- ds ]
+    maxOptNameWidth = 30
+    descolWidth = 80 - (maxOptNameWidth + 3)
+
+    table :: [String]
+    table = do
+      OptHelp{optNames, optHelp} <- options
+      let wrappedHelp = wrapText descolWidth optHelp
+      if length optNames >= maxOptNameWidth
+        then [" " ++ optNames] ++
+             renderColumns [] wrappedHelp
+        else renderColumns [optNames] wrappedHelp
+
+    renderColumns :: [String] -> [String] -> [String]
+    renderColumns xs ys = do
+      (x, y) <- zipDefault "" "" xs ys
+      return $ " " ++ padTo maxOptNameWidth x ++ " " ++ y
+
+    padTo n x  = take n (x ++ repeat ' ')
+
+zipDefault :: a -> b -> [a] -> [b] -> [(a,b)]
+zipDefault _  _  []     []     = []
+zipDefault _  bd (a:as) []     = (a,bd) : map (,bd) as
+zipDefault ad _  []     (b:bs) = (ad,b) : map (ad,) bs
+zipDefault ad bd (a:as) (b:bs) = (a,b)  : zipDefault ad bd as bs
 
 fmtShort :: ArgDescr a -> Char -> String
 fmtShort (NoArg  _   ) so = "-" ++ [so]

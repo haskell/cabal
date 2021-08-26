@@ -33,6 +33,9 @@ import Control.Monad
 import Data.IORef
 import Data.Maybe
 import Text.Read (readMaybe)
+import Foreign.C.Error (Errno (..), ePIPE)
+
+import qualified GHC.IO.Exception as GHC
 
 import Distribution.Verbosity
 
@@ -109,9 +112,9 @@ bracketWithInit :: IO a -> (a -> IO a) -> (a -> IO b) -> (a -> IO c) -> IO c
 bracketWithInit before initialize after thing =
   mask $ \restore -> do
     a0 <- before
-    a <- restore (initialize a0) `onException` after a0
-    r <- restore (thing a) `onException` after a
-    _ <- after a
+    a <- restore (initialize a0) `onException` uninterruptibleMask_  (after a0)
+    r <- restore (thing a) `onException` uninterruptibleMask_  (after a)
+    _ <- uninterruptibleMask_ (after a)
     return r
 
 -- | Run an hs script on the GHCi server, returning the 'ServerResult' of
@@ -310,7 +313,7 @@ stopServer s = do
             log ServerMeta s $ "Waiting..."
             -- Close input BEFORE waiting, close output AFTER waiting.
             -- If you get either order wrong, deadlock!
-            hClose (serverStdin s)
+            ignoreSigPipe $ hClose (serverStdin s)
             -- waitForProcess has race condition
             -- https://github.com/haskell/process/issues/46
             waitForProcess $ serverProcessHandle s
@@ -320,6 +323,7 @@ stopServer s = do
             _ <- evaluate (length r)
             hClose (f s)
             return r
+
     withAsync (drain serverStdout) $ \a_out -> do
     withAsync (drain serverStderr) $ \a_err -> do
 
@@ -355,6 +359,12 @@ stopServer s = do
     return ()
   where
     verbosity = runnerVerbosity (serverScriptEnv s)
+
+    ignoreSigPipe :: IO () -> IO ()
+    ignoreSigPipe = E.handle $ \e -> case e of
+        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
+            | Errno ioe == ePIPE -> return ()
+        _ -> throwIO e
 
 -- Using the procedure from
 -- https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions

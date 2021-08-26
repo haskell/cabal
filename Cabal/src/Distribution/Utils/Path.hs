@@ -10,6 +10,7 @@ module Distribution.Utils.Path (
     -- * Path ends
     PackageDir,
     SourceDir,
+    LicenseFile,
     IsDir,
 ) where
 
@@ -91,9 +92,12 @@ class IsDir dir
 data PackageDir deriving (Typeable)
 data SourceDir  deriving (Typeable)
 
+data LicenseFile deriving (Typeable)
+
 -- These instances needs to be derived standalone at least on GHC-7.6
 deriving instance Data PackageDir
 deriving instance Data SourceDir
+deriving instance Data LicenseFile
 
 instance IsDir PackageDir
 instance IsDir SourceDir

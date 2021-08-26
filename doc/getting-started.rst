@@ -5,9 +5,7 @@ Installing the Haskell toolchain
 --------------------------------
 
 To install the Haskell toolchain follow the `ghcup instructions
-<https://www.haskell.org/ghcup/>`__ if you're using Linux or Mac, or follow
-`this guide <https://hub.zhox.com/posts/introducing-haskell-dev/>`__ if you're
-using Windows.
+<https://www.haskell.org/ghcup/>`__.
 
 
 Creating a new application
@@ -34,6 +32,12 @@ Once you have an empty directory we can initialize our package:
 .. code-block:: console
 
     $ cabal init --cabal-version=2.4 --license=NONE -p myfirstapp
+
+.. note:: ``cabal-version`` refers to the
+          `version of the .cabal file format specification <file-format-changelog.html>`__,
+          that can be different from the versions of the cabal library and tool
+          in use. It is common to use a slightly older cabal-version, to strike
+          a compromise between feature availability and backward compatibility.
 
 This will generate the following files:
 
@@ -64,25 +68,22 @@ As mentioned above, ``cabal init`` with no arguments generates a package with a
 single executable that prints ``"Hello, Haskell!"`` to the terminal. To run the
 executable enter the following command:
 
-``cabal run :myfirstapp``
+``cabal run myfirstapp``
 
 You should see the following output in the terminal:
 
 .. code-block:: console
 
-     $ cabal run :myfirstapp
+     $ cabal run myfirstapp
      ...
      Hello, Haskell!
-
-.. note:: The ``:`` prefix in ``:myfirstapp`` signifies that the
-	  ``myfirstapp`` target is part of the current package.
 
 Notice that we didn't need to run a `build` command before ``cabal run``, this
 is because ``cabal run`` first determines if the code needs to be re-built
 before running the executable. If you just want to build a target you can do so
 with ``cabal build``:
 
-``cabal build :myfirstapp``
+``cabal build myfirstapp``
 
 
 Adding dependencies

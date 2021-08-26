@@ -71,6 +71,8 @@ module Distribution.Simple.Command (
 import Prelude ()
 import Distribution.Compat.Prelude hiding (get)
 
+import qualified Data.Array as Array
+import qualified Data.List as List
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.ReadE
 import Distribution.Simple.Utils
@@ -489,8 +491,22 @@ commandsRun globalCommand commands args =
     lookupCommand cname = [ cmd | cmd@(Command cname' _ _ _) <- commands'
                                 , cname' == cname ]
     noCommand        = CommandErrors ["no command given (try --help)\n"]
-    badCommand cname = CommandErrors ["unrecognised command: " ++ cname
-                                   ++ " (try --help)\n"]
+
+    -- Print suggested command if edit distance is < 5
+    badCommand :: String -> CommandParse a
+    badCommand cname =
+      case eDists of
+        [] -> CommandErrors [unErr]
+        (s:_) -> CommandErrors [ unErr
+                                , "Maybe you meant `" ++ s ++ "`?\n"]
+      where
+        eDists = map fst . List.sortBy (comparing snd) $
+                   [ (cname', dist)
+                   | (Command cname' _ _ _) <- commands'
+                   , let dist = editDistance cname' cname
+                   , dist < 5 ]
+        unErr = "unrecognised command: " ++ cname ++ " (try --help)"
+
     commands'      = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames   = [ name | (Command name _ _ NormalCommand) <- commands' ]
 
@@ -512,6 +528,29 @@ commandsRun globalCommand commands args =
             _                    -> badCommand name
 
      where globalHelp = commandHelp globalCommand
+
+-- Levenshtein distance, from https://wiki.haskell.org/Edit_distance
+-- (Author: JeanPhilippeBernardy, Simple Permissive Licence)
+editDistance :: Eq a => [a] -> [a] -> Int
+editDistance xs ys = table Array.! (m,n)
+  where
+    (m,n) = (length xs, length ys)
+    x     = Array.array (1,m) (zip [1..] xs)
+    y     = Array.array (1,n) (zip [1..] ys)
+
+    table :: Array.Array (Int,Int) Int
+    table = Array.array bnds [(ij, dist ij) | ij <- Array.range bnds]
+    bnds  = ((0,0),(m,n))
+
+    dist (0,j) = j
+    dist (i,0) = i
+    dist (i,j) = minimum
+      [ table Array.! (i-1,j) + 1
+      , table Array.! (i,j-1) + 1
+      , if x Array.! i == y Array.! j
+          then table Array.! (i-1,j-1)
+          else 1 + table Array.! (i-1,j-1)
+      ]
 
 -- | Utility function, many commands do not accept additional flags. This
 -- action fails with a helpful error message if the user supplies any extra.

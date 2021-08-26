@@ -4,7 +4,8 @@ cabal.project Reference
 ``cabal.project`` files support a variety of options which configure the
 details of your build. The general syntax of a ``cabal.project`` file is
 similar to that of a Cabal file: there are a number of fields, some of
-which live inside stanzas:
+which live inside stanzas (groups of fields that apply to only part of a
+project or can be referenced as a unit):
 
 ::
 
@@ -20,7 +21,8 @@ line flags that ``cabal install`` and other commands take. For example,
 file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
-following sources (later entries override earlier ones):
+following sources (later entries override earlier ones, except for appendable
+options):
 
 1. ``~/.cabal/config`` (the user-wide global configuration)
 
@@ -49,7 +51,7 @@ project are:
     1. They can specify a Cabal file, or a directory containing a Cabal
        file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``.
 
-    2. They can specify a glob-style wildcards, which must match one or
+    2. They can specify glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
        files (extension ``.cabal``), or (c) tarballs which contain Cabal
        packages (extension ``.tar.gz``).
@@ -63,6 +65,9 @@ project are:
        and built.
 
     There is no command line variant of this field; see :issue:`3585`.
+    Note that the default value is only included if there is no
+    ``cabal.project`` file. The field is appendable which means there would be
+    no way to drop the default value if it was included.
 
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
     :synopsis: Optional project packages.
@@ -264,6 +269,31 @@ package, and thus apply globally:
 
     Specifies the name of the directory of the global package store.
 
+Phase control
+-------------
+
+The following settings apply to commands that result in build actions
+(``build``, ``run``, ``repl``, ``test``...), and control which phases of the
+build are executed.
+
+.. option:: --dry-run
+
+    Do not download, build, or install anything, only print what would happen.
+
+.. option:: --only-configure
+
+    Instead of performing a full build just run the configure step.
+    Only accepted by the ``build`` command.
+
+.. option:: --only-download
+
+    Do not build anything, only fetch the packages.
+
+.. option:: --only-dependencies
+
+    Install only the dependencies necessary to build the given packages.
+    Not accepted by the ``repl`` command.
+
 Solver configuration options
 ----------------------------
 
@@ -462,22 +492,59 @@ The following settings control the behavior of the dependency solver:
 
     :default: ``:rest``
 
-    This allows to specify the active package repositories,
-    when multiple are specified. This is useful as you
-    can specify the order and the way active repositories are merged.
+    Specifies which of the package repositories defined in the configuration
+    should be active. It's also useful for specifying the order and the way
+    active repositories are merged.
+
+    When searching for a certain version of a certain package name, the list of
+    active repositories is searched last-to-first.
+
+    For example, suppose hackage.haskell.org has versions 1.0 and 2.0 of
+    package X, and my-repository has version 2.0 of a similarly named package.
+    Then, with the following configuration:
 
     ::
 
-      -- for packages in head.hackage
-      -- only versions in head.hackage are considered
+      -- Force my-repository to be the first repository considered
       active-repositories:
         , hackage.haskell.org
-        , head.hackage:override
+        , my-repository
 
-      -- Force head.hackage to be the primary repository considered
-      active-repositories: :rest, head.hackage
+    version 2.0 of X will come from my-repository, and version 1.0 will come
+    from hackage.haskell.org.
 
-      -- "Offline" mode
+    If we want to make a repository the sole provider of certain packages, we
+    can put it last in the active repositories list, and add the :override
+    modifier.
+
+    For example, if we modify the previous example like this:
+
+    ::
+
+      active-repositories:
+        , hackage.haskell.org
+        , my-repository:override
+
+    then version 1.0 of package X won't be found in any case, because X is
+    present in my-repository only in version 2.0, and the :override forbids
+    searching for other versions of X further up the list.
+
+    :override has no effect for package names that aren't present in the
+    overriding repository.
+
+    The special repository reference :rest stands for "all the other repositories"
+    and can be useful to avoid lenghty lists of repository names:
+
+    ::
+
+      -- Force my-repository to be the first repository considered
+      active-repositories: :rest, my-repository
+
+    The special repository reference "none" disables all repositories, effectively
+    putting cabal in "offline" mode:
+
+    ::
+
       active-repositories: none
 
 
@@ -552,12 +619,7 @@ feature was added.
 
         flags: +foo -bar
 
-    If there is no leading punctuation, it is assumed that the flag
-    should be enabled; e.g., this is equivalent:
-
-    ::
-
-        flags: foo -bar
+    Exactly one of + or - is required before each flag.
 
     Flags are *per-package*, so it doesn't make much sense to specify
     flags at the top-level, unless you happen to know that *all* of your
@@ -599,9 +661,8 @@ feature was added.
     build trees for different versions of GHC without clobbering each
     other.
 
-    At the moment, it's not possible to set :cfg-field:`with-compiler` on a
-    per-package basis, but eventually we plan on relaxing this
-    restriction. If this is something you need, give us a shout.
+    It's not possible to set :cfg-field:`with-compiler` on a
+    per-package basis.
 
     The command line variant of this flag is
     ``--with-compiler=ghc-7.8``; there is also a short version
@@ -677,6 +738,9 @@ feature was added.
     build logic.
 
     The command line variant of this flag is ``--compiler=ghc``.
+
+    It's not possible to set :cfg-field:`compiler` on a
+    per-package basis.
 
 .. cfg-field:: tests: boolean
                --enable-tests
@@ -1341,6 +1405,13 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 
     The command line variant of this flag is ``--keep-temp-files`` (for
     the ``haddock`` subcommand).
+
+.. cfg-field:: open: boolean
+    :synopsis: Open generated documentation in-browser.
+
+    When generating HTML documentation, attempt to open it in a browser
+    when complete. This will use ``xdg-open`` on Linux and BSD systems,
+    ``open`` on macOS, and ``start`` on Windows.
 
 Advanced global configuration options
 -------------------------------------

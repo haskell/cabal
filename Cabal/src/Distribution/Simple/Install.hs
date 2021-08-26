@@ -43,6 +43,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( CopyFlags(..), fromFlag, HaddockTarget(ForDevelopment) )
 import Distribution.Simple.BuildTarget
+import Distribution.Utils.Path (getSymbolicPath)
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -136,9 +137,10 @@ copyPackage verbosity pkg_descr lbi distPref copydest = do
   let lfiles = licenseFiles pkg_descr
   unless (null lfiles) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
-    sequence_
-      [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
-      | lfile <- lfiles ]
+    for_ lfiles $ \lfile' -> do
+      let lfile :: FilePath
+          lfile = getSymbolicPath lfile'
+      installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
 
 -- | Copy files associated with a component.
 copyComponent :: Verbosity -> PackageDescription

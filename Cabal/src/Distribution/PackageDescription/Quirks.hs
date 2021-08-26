@@ -279,6 +279,16 @@ patches = Map.fromList
          (Fingerprint 12566783342663020458 17562089389615949789)
          (Fingerprint 15745683452603944938 10556498036622072844)
          (bsReplace "\"\"" ".")
+
+    -- absolute license-file
+    , mk "name: reheat\nversion: 0.1.4\ncabal-version: >=1.8\nbuild-type: Simple\nlicense: GPL\nlicense-file: /home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt\ncopyright: GPL\nmaintainer: Ingolf Wagner <palipalo9@gmail.com>\nstability: experimental\nhomepage: h"
+         (Fingerprint 9155400339287317061 14812953666990892802)
+         (Fingerprint 7687053346032173923 15384472501136606592)
+         (bsReplace "/home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt" "")
+    , mk "name: reheat\nversion: 0.1.5\ncabal-version: >=1.8\nbuild-type: Simple\nlicense: GPL\nlicense-file: /home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt\ncopyright: GPL\nmaintainer: Ingolf Wagner <palipalo9@gmail.com>\nstability: experimental\nhomepage: h"
+         (Fingerprint 2984391146441073709 11728234882049907993)
+         (Fingerprint 12058479081855347701 14017937756688869826)
+         (bsReplace "/home/palo/dev/haskell-workspace/playground/reheat/gpl-3.0.txt" "")
     ]
   where
     mk a b c d = ((a, b), (c, d))

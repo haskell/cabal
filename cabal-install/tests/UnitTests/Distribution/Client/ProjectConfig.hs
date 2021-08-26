@@ -158,7 +158,7 @@ prop_roundtrip_legacytypes_specific config =
 
 roundtrip_printparse :: ProjectConfig -> Property
 roundtrip_printparse config =
-    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig (toUTF8BS str)) of
+    case fmap convertLegacyProjectConfig (parseLegacyProjectConfig "unused" (toUTF8BS str)) of
       ParseOk _ x     -> counterexample ("shown:\n" ++ str) $
           x `ediffEq` config { projectConfigProvenance = mempty }
       ParseFailed err -> counterexample ("shown:\n" ++ str ++ "\nERROR: " ++ show err) False
@@ -201,10 +201,11 @@ prop_roundtrip_printparse_buildonly config =
 hackProjectConfigBuildOnly :: ProjectConfigBuildOnly -> ProjectConfigBuildOnly
 hackProjectConfigBuildOnly config =
     config {
-      -- These two fields are only command line transitory things, not
+      -- These fields are only command line transitory things, not
       -- something to be recorded persistently in a config file
-      projectConfigOnlyDeps = mempty,
-      projectConfigDryRun   = mempty
+      projectConfigOnlyDeps     = mempty,
+      projectConfigOnlyDownload = mempty,
+      projectConfigDryRun       = mempty
     }
 
 prop_roundtrip_printparse_shared :: ProjectConfigShared -> Property
@@ -275,7 +276,7 @@ prop_roundtrip_printparse_RelaxDeps rdep =
 prop_roundtrip_printparse_RelaxDeps' :: RelaxDeps -> Property
 prop_roundtrip_printparse_RelaxDeps' rdep =
     counterexample rdep' $
-    Right rdep `ediffEq` eitherParsec rdep' 
+    Right rdep `ediffEq` eitherParsec rdep'
   where
     rdep' = go (prettyShow rdep)
 
@@ -377,6 +378,7 @@ instance Arbitrary ProjectConfigBuildOnly where
         <$> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
         <*> (toNubList <$> shortListOf 2 arbitrary)
         <*> arbitrary
         <*> arbitrary
@@ -398,6 +400,7 @@ instance Arbitrary ProjectConfigBuildOnly where
     shrink ProjectConfigBuildOnly { projectConfigVerbosity = x00
                                   , projectConfigDryRun = x01
                                   , projectConfigOnlyDeps = x02
+                                  , projectConfigOnlyDownload = x18
                                   , projectConfigSummaryFile = x03
                                   , projectConfigLogFile = x04
                                   , projectConfigBuildReports = x05
@@ -416,6 +419,7 @@ instance Arbitrary ProjectConfigBuildOnly where
       [ ProjectConfigBuildOnly { projectConfigVerbosity = x00'
                                , projectConfigDryRun = x01'
                                , projectConfigOnlyDeps = x02'
+                               , projectConfigOnlyDownload = x18'
                                , projectConfigSummaryFile = x03'
                                , projectConfigLogFile = x04'
                                , projectConfigBuildReports = x05'
@@ -434,12 +438,12 @@ instance Arbitrary ProjectConfigBuildOnly where
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12',       x14'),
-         (            x17'            ))
+         (            x17', x18'      ))
           <- shrink
                ((x00, x01, x02, x03, x04),
                 (x05, x06, x07, x08, preShrink_NumJobs x09),
                 (x10, x11, x12,      x14),
-                (          x17          ))
+                (          x17, x18     ))
       ]
       where
         preShrink_NumJobs  = fmap (fmap Positive)
@@ -522,7 +526,7 @@ instance Arbitrary ProjectConfigShared where
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource =
-    ConstraintSourceProjectConfig "TODO"
+    ConstraintSourceProjectConfig "unused"
 
 instance Arbitrary ProjectConfigProvenance where
     arbitrary = elements [Implicit, Explicit "cabal.project"]
@@ -546,6 +550,7 @@ instance Arbitrary PackageConfig where
         <*> shortListOf 5 arbitraryShortToken
         <*> arbitrary
         <*> arbitrary <*> arbitrary
+        <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
@@ -600,6 +605,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigProgPrefix = x14
                          , packageConfigProgSuffix = x15
                          , packageConfigExtraLibDirs = x16
+                         , packageConfigExtraLibDirsStatic = x53
                          , packageConfigExtraFrameworkDirs = x17
                          , packageConfigExtraIncludeDirs = x18
                          , packageConfigGHCiLib = x19
@@ -655,6 +661,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigProgPrefix = x14'
                       , packageConfigProgSuffix = x15'
                       , packageConfigExtraLibDirs = map getNonEmpty x16'
+                      , packageConfigExtraLibDirsStatic = map getNonEmpty x53'
                       , packageConfigExtraFrameworkDirs = map getNonEmpty x17'
                       , packageConfigExtraIncludeDirs = map getNonEmpty x18'
                       , packageConfigGHCiLib = x19'
@@ -694,7 +701,7 @@ instance Arbitrary PackageConfig where
       |  (((x00', x01', x02', x03', x04'),
           (x05', x42', x06', x50', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
-          (x15', x16', x17', x18', x19')),
+          (x15', x16', x53', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
@@ -705,7 +712,7 @@ instance Arbitrary PackageConfig where
              (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
                 (x05, x42, x06, x50, x07, x08, x09),
                 (x10, x11, map NonEmpty x12, x13, x14),
-                (x15, map NonEmpty x16,
+                (x15, map NonEmpty x16, map NonEmpty x53,
                   map NonEmpty x17,
                   map NonEmpty x18,
                   x19)),

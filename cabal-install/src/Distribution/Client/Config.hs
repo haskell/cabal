@@ -264,6 +264,7 @@ instance Semigroup SavedConfig where
         IT.email               = combine IT.email,
         IT.exposedModules      = combineMonoid savedInitFlags IT.exposedModules,
         IT.extraSrc            = combineMonoid savedInitFlags IT.extraSrc,
+        IT.extraDoc            = combineMonoid savedInitFlags IT.extraDoc,
         IT.homepage            = combine IT.homepage,
         IT.initHcPath          = combine IT.initHcPath,
         IT.initVerbosity       = combine IT.initVerbosity,
@@ -294,6 +295,7 @@ instance Semigroup SavedConfig where
         installDocumentation         = combine installDocumentation,
         installHaddockIndex          = combine installHaddockIndex,
         installDryRun                = combine installDryRun,
+        installOnlyDownload          = combine installOnlyDownload,
         installDest                  = combine installDest,
         installMaxBackjumps          = combine installMaxBackjumps,
         installReorderGoals          = combine installReorderGoals,
@@ -374,6 +376,7 @@ instance Semigroup SavedConfig where
         configScratchDir          = combine configScratchDir,
         -- TODO: NubListify
         configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
+        configExtraLibDirsStatic  = lastNonEmpty configExtraLibDirsStatic,
         -- TODO: NubListify
         configExtraFrameworkDirs  = lastNonEmpty configExtraFrameworkDirs,
         -- TODO: NubListify
@@ -417,6 +420,8 @@ instance Semigroup SavedConfig where
 
       combinedSavedConfigureExFlags = ConfigExFlags {
         configCabalVersion  = combine configCabalVersion,
+        configAppend        = combine configAppend,
+        configBackup        = combine configBackup,
         -- TODO: NubListify
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
@@ -840,8 +845,8 @@ commentSavedConfig = do
             IT.cabalVersion    = toFlag IT.defaultCabalVersion,
             IT.language        = toFlag Haskell2010,
             IT.license         = NoFlag,
-            IT.sourceDirs      = Just [IT.defaultSourceDir],
-            IT.applicationDirs = Just [IT.defaultApplicationDir]
+            IT.sourceDirs      = Flag [IT.defaultSourceDir],
+            IT.applicationDirs = Flag [IT.defaultApplicationDir]
             },
         savedInstallFlags      = defaultInstallFlags,
         savedClientInstallFlags= defaultClientInstallFlags,
@@ -1173,6 +1178,8 @@ parseConfig src initial = \str -> do
                        (fromNubList $ configProgramPathExtra scf)
                    , configExtraLibDirs       = splitMultiPath
                                                 (configExtraLibDirs scf)
+                   , configExtraLibDirsStatic = splitMultiPath
+                                                (configExtraLibDirsStatic scf)
                    , configExtraFrameworkDirs = splitMultiPath
                                                 (configExtraFrameworkDirs scf)
                    , configExtraIncludeDirs   = splitMultiPath

@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal-described
-version:       3.5.0.0
+version:       3.7.0.0
 synopsis:      Described functionality for types in Cabal
 category:      Testing, Parsec
 description:   Provides rere bindings
@@ -11,11 +11,11 @@ library
   ghc-options:      -Wall
   build-depends:
     , base
-    , Cabal             ^>=3.5.0.0
+    , Cabal             ^>=3.7.0.0
     , containers
     , pretty
     , QuickCheck
-    , rere              ^>=0.1
+    , rere              >=0.1 && <0.3
     , tasty
     , tasty-quickcheck
     , transformers

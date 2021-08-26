@@ -1,0 +1,13 @@
+synopsis: changes to cabal v2-configure
+packages: cabal-install
+prs: #7402
+issues: #5591 #7180 #7405
+
+description: {
+
+- Removes the --dry-run part of the v2-configure command
+- Adds an --append flag to v2-configure, which allows new configuration to be appended to the old config file
+- Adds an --overwrite flag to v2-configure, which disables the backup feature for the config file
+- Includes unit tests for everything
+
+}

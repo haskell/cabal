@@ -136,6 +136,7 @@ data ProjectConfigBuildOnly
        projectConfigVerbosity             :: Flag Verbosity,
        projectConfigDryRun                :: Flag Bool,
        projectConfigOnlyDeps              :: Flag Bool,
+       projectConfigOnlyDownload          :: Flag Bool,
        projectConfigSummaryFile           :: NubList PathTemplate,
        projectConfigLogFile               :: Flag PathTemplate,
        projectConfigBuildReports          :: Flag ReportLevel,
@@ -257,6 +258,7 @@ data PackageConfig
        packageConfigProgPrefix          :: Flag PathTemplate,
        packageConfigProgSuffix          :: Flag PathTemplate,
        packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraLibDirsStatic  :: [FilePath],
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
@@ -436,6 +438,7 @@ data BuildTimeSettings
    = BuildTimeSettings {
        buildSettingDryRun                :: Bool,
        buildSettingOnlyDeps              :: Bool,
+       buildSettingOnlyDownload          :: Bool,
        buildSettingSummaryFile           :: [PathTemplate],
        buildSettingLogFile               :: Maybe (Compiler  -> Platform
                                                 -> PackageId -> UnitId
@@ -454,5 +457,6 @@ data BuildTimeSettings
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
        buildSettingIgnoreExpiry          :: Bool,
-       buildSettingProgPathExtra         :: [FilePath]
+       buildSettingProgPathExtra         :: [FilePath],
+       buildSettingHaddockOpen           :: Bool
      }

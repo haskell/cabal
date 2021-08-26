@@ -54,7 +54,8 @@ defaultClientInstallFlags = ClientInstallFlags
 clientInstallOptions :: ShowOrParseArgs -> [OptionField ClientInstallFlags]
 clientInstallOptions _ =
   [ option [] ["lib"]
-    "Install libraries rather than executables from the target package."
+    ( "Install libraries rather than executables from the target package " <>
+      "(provisional, see https://github.com/haskell/cabal/issues/6481 for more information)." )
     cinstInstallLibs (\v flags -> flags { cinstInstallLibs = v })
     trueArg
   , option [] ["package-env", "env"]

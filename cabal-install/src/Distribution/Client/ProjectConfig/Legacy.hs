@@ -83,7 +83,7 @@ import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
-         , parseHaskellString, showToken 
+         , parseHaskellString, showToken
          , simpleFieldParsec
          )
 import Distribution.Client.ParseUtils
@@ -428,6 +428,7 @@ convertLegacyPerPackageFlags configFlags installFlags
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraLibDirsStatic  = packageConfigExtraLibDirsStatic,
       configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configConfigurationsFlags = packageConfigFlagAssignment,
@@ -509,6 +510,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
 
     InstallFlags {
       installDryRun             = projectConfigDryRun,
+      installOnlyDownload       = projectConfigOnlyDownload,
       installOnly               = _,
       installOnlyDeps           = projectConfigOnlyDeps,
       installRootCmd            = _,
@@ -598,6 +600,8 @@ convertToLegacySharedConfig
 
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
+      configAppend        = mempty,
+      configBackup        = mempty,
       configExConstraints = projectConfigConstraints,
       configPreferences   = projectConfigPreferences,
       configSolver        = projectConfigSolver,
@@ -612,6 +616,7 @@ convertToLegacySharedConfig
       installHaddockIndex      = projectConfigHaddockIndex,
       installDest              = Flag NoCopyDest,
       installDryRun            = projectConfigDryRun,
+      installOnlyDownload      = projectConfigOnlyDownload,
       installReinstall         = mempty, --projectConfigReinstall,
       installAvoidReinstalls   = mempty, --projectConfigAvoidReinstalls,
       installOverrideReinstall = mempty, --projectConfigOverrideReinstall,
@@ -701,6 +706,7 @@ convertToLegacyAllPackageConfig
       configStripExes           = mempty,
       configStripLibs           = mempty,
       configExtraLibDirs        = mempty,
+      configExtraLibDirsStatic  = mempty,
       configExtraFrameworkDirs  = mempty,
       configConstraints         = mempty,
       configDependencies        = mempty,
@@ -773,6 +779,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraLibDirsStatic  = packageConfigExtraLibDirsStatic,
       configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configConstraints         = mempty,
       configDependencies        = mempty,
@@ -844,26 +851,33 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfig :: BS.ByteString -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig =
-    parseConfig legacyProjectConfigFieldDescrs
+parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig source =
+    parseConfig (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 mempty
+  where
+    constraintSrc = ConstraintSourceProjectConfig source
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
     Disp.render $
-    showConfig  legacyProjectConfigFieldDescrs
+    showConfig  (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 config
   $+$
     Disp.text ""
+  where
+    -- Note: ConstraintSource is unused when pretty-printing. We fake
+    -- it here to avoid having to pass it on call-sites. It's not great
+    -- but requires re-work of how we annotate provenance.
+    constraintSrc = ConstraintSourceProjectConfig "unused"
 
 
-legacyProjectConfigFieldDescrs :: [FieldDescr LegacyProjectConfig]
-legacyProjectConfigFieldDescrs =
+legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
+legacyProjectConfigFieldDescrs constraintSrc =
 
     [ newLineListField "packages"
         (Disp.text . renderPackageLocationToken) parsePackageLocationTokenQ
@@ -882,7 +896,7 @@ legacyProjectConfigFieldDescrs =
  ++ map (liftField
            legacySharedConfig
            (\flags conf -> conf { legacySharedConfig = flags }))
-        legacySharedConfigFieldDescrs
+        (legacySharedConfigFieldDescrs constraintSrc)
 
  ++ map (liftField
            legacyLocalConfig
@@ -941,8 +955,8 @@ renderPackageLocationToken s | needsQuoting = show s
     ok n (_  :cs) = ok n cs
 
 
-legacySharedConfigFieldDescrs :: [FieldDescr LegacySharedConfig]
-legacySharedConfigFieldDescrs = concat
+legacySharedConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacySharedConfig]
+legacySharedConfigFieldDescrs constraintSrc = concat
   [ liftFields
       legacyGlobalFlags
       (\flags conf -> conf { legacyGlobalFlags = flags })
@@ -1033,8 +1047,6 @@ legacySharedConfigFieldDescrs = concat
   $ projectFlagsOptions ParseArgs
 
   ]
-  where
-    constraintSrc = ConstraintSourceProjectConfig "TODO" -- TODO: is a filepath
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
@@ -1051,6 +1063,10 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           configExtraLibDirs
           (\v conf -> conf { configExtraLibDirs = v })
+      , newLineListField "extra-lib-dirs-static"
+          showTokenQ parseTokenQ
+          configExtraLibDirsStatic
+          (\v conf -> conf { configExtraLibDirsStatic = v })
       , newLineListField "extra-framework-dirs"
           showTokenQ parseTokenQ
           configExtraFrameworkDirs

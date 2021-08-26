@@ -20,6 +20,7 @@ foreign-library myforeignlib
 
   other-modules:       MyForeignLib.Hello
                        MyForeignLib.SomeBindings
+                       MyForeignLib.AnotherVal
   build-depends:       base, my-foreign-lib
   hs-source-dirs:      src
   c-sources:           csrc/MyForeignLibWrapper.c
@@ -34,6 +35,7 @@ foreign-library versionedlib
 
   other-modules:       MyForeignLib.Hello
                        MyForeignLib.SomeBindings
+                       MyForeignLib.AnotherVal
   build-depends:       base, my-foreign-lib
   hs-source-dirs:      src
   c-sources:           csrc/MyForeignLibWrapper.c

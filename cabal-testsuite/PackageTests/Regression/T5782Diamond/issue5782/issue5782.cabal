@@ -1,0 +1,28 @@
+cabal-version: 2.2
+
+name: issue5782
+version: 0.1
+build-type: Simple
+
+library a
+  hs-source-dirs: src
+  exposed-modules: Module
+  build-depends: base
+  default-language: Haskell2010
+
+library
+  hs-source-dirs: src2
+  build-depends: a, base
+  default-language: Haskell2010
+  reexported-modules: Module
+
+library b
+  hs-source-dirs: src2
+  build-depends: a, base
+  default-language: Haskell2010
+  reexported-modules: Module
+
+executable E
+  main-is:            Main.hs
+  build-depends:      issue5782, b, base
+  default-language: Haskell2010

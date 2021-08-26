@@ -1,5 +1,4 @@
 .PHONY : all lexer sdpx lib exe doctest
-.PHONY : cabal-install-dev cabal-install-prod
 .PHONY : phony
 
 CABALBUILD := cabal v2-build
@@ -67,24 +66,6 @@ buildinfo-fields-reference : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
 	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
-# cabal-install.cabal file generation
-
-cabal-install-cabal : phony cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal.prod
-
-cabal-install/cabal-install.cabal.dev : cabal-install/cabal-install.cabal.zinza
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- True cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.dev
-
-cabal-install/cabal-install.cabal.prod : cabal-install/cabal-install.cabal.zinza
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-cabal-install-cabal -- False cabal-install/cabal-install.cabal.zinza cabal-install/cabal-install.cabal.prod
-
-cabal-install-prod : cabal-install/cabal-install.cabal.prod
-	cp cabal-install/cabal-install.cabal.prod cabal-install/cabal-install.cabal
-
-cabal-install-dev : cabal-install/cabal-install.cabal.dev
-	cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
-	@echo "tell git to ignore changes to cabal-install.cabal:"
-	@echo "git update-index --assume-unchanged cabal-install/cabal-install.cabal"
-
 # analyse-imports
 analyse-imports : phony
 	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
@@ -115,18 +96,18 @@ doctest :
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
-	doctest -D__DOCTEST__ --fast cabal-install/src
+	doctest -D__DOCTEST__ --fast cabal-install/src cabal-install-solver/src cabal-install-solver/src-assertion
 
 # tests
 
 check-tests :
-	$(CABALRUN) check-tests -- --cwd Cabal ${TEST}
+	$(CABALRUN) check-tests -- --cwd Cabal-tests ${TEST}
 
 parser-tests :
-	$(CABALRUN) parser-tests -- --cwd Cabal ${TEST}
+	$(CABALRUN) parser-tests -- --cwd Cabal-tests ${TEST}
 
 parser-tests-accept :
-	$(CABALRUN) parser-tests -- --cwd Cabal --accept ${TEST}
+	$(CABALRUN) parser-tests -- --cwd Cabal-tests --accept ${TEST}
 
 custom-setup-tests :
 	$(CABALRUN) custom-setup-tests --
@@ -142,6 +123,14 @@ cabal-install-test:
 	$(CABALBUILD) -j3 cabal-tests cabal
 	rm -rf .ghc.environment.*
 	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
+
+# hackage-benchmarks (solver)
+
+hackage-benchmarks-run:
+	$(CABALBUILD) -j3 hackage-benchmark cabal
+	rm -rf .ghc.environment.*
+	$$(cabal-plan list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal-plan list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
+
 
 # This doesn't run build, as you first need to test with cabal-install-test :)
 cabal-install-test-accept:
@@ -162,11 +151,11 @@ validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
-validate-via-docker-all : validate-via-docker-8.8.3
-validate-via-docker-all : validate-via-docker-8.10.1
+validate-via-docker-all : validate-via-docker-8.8.4
+validate-via-docker-all : validate-via-docker-8.10.4
 
-validate-dockerfiles : .docker/validate-8.10.1.dockerfile
-validate-dockerfiles : .docker/validate-8.8.3.dockerfile
+validate-dockerfiles : .docker/validate-8.10.4.dockerfile
+validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
@@ -203,11 +192,11 @@ validate-via-docker-8.4.4:
 validate-via-docker-8.6.5:
 	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
-validate-via-docker-8.8.3:
-	docker build $(DOCKERARGS) -t cabal-validate:8.8.3 -f .docker/validate-8.8.3.dockerfile .
+validate-via-docker-8.8.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.8.4 -f .docker/validate-8.8.4.dockerfile .
 
-validate-via-docker-8.10.1:
-	docker build $(DOCKERARGS) -t cabal-validate:8.10.1 -f .docker/validate-8.10.1.dockerfile .
+validate-via-docker-8.10.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.10.4 -f .docker/validate-8.10.4.dockerfile .
 
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
@@ -229,17 +218,17 @@ bootstrap-plans-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.3  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.3.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.1 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.1.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.4.plan.json
 
 bootstrap-jsons-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python -m json.tool | tee bootstrap/linux-8.6.5.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.3.plan.json  | python -m json.tool | tee bootstrap/linux-8.8.3.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.1.plan.json | python -m json.tool | tee bootstrap/linux-8.10.1.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.6.5.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.4.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.8.4.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.4.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.4.json
 
 # documentation
 ##############################################################################

@@ -16,7 +16,7 @@ import Distribution.Types.MungedPackageId (computeCompatPackageId)
 import Distribution.Simple.Utils (ordNub)
 
 import Distribution.Client.Types.ConfiguredId
-import Distribution.Solver.Types.OptionalStanza   (OptionalStanza)
+import Distribution.Solver.Types.OptionalStanza   (OptionalStanzaSet)
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage    (SourcePackage)
 
@@ -34,7 +34,7 @@ data ConfiguredPackage loc = ConfiguredPackage
     { confPkgId      :: InstalledPackageId
     , confPkgSource  :: SourcePackage loc  -- ^ package info, including repo
     , confPkgFlags   :: FlagAssignment     -- ^ complete flag assignment for the package
-    , confPkgStanzas :: [OptionalStanza]   -- ^ list of enabled optional stanzas for the package
+    , confPkgStanzas :: OptionalStanzaSet  -- ^ list of enabled optional stanzas for the package
     , confPkgDeps    :: CD.ComponentDeps [ConfiguredId]
       -- ^ set of exact dependencies (installed or source).
       --
