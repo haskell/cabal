@@ -490,7 +490,35 @@ vcsHg =
                  -> ConfiguredProgram
                  -> [(SourceRepositoryPackage f, FilePath)]
                  -> IO [MonitorFilePath]
-    vcsSyncRepos _v _p _rs = fail "sync repo not yet supported for hg"
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity hgProg
+                 ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
+      vcsSyncRepo verbosity hgProg primaryRepo primaryLocalDir
+      sequence_
+        [ vcsSyncRepo verbosity hgProg repo localDir
+        | (repo, localDir) <- secondaryRepos ]
+      return [ monitorDirectoryExistence dir
+            | dir <- (primaryLocalDir : map snd secondaryRepos) ]
+    vcsSyncRepo verbosity hgProg repo localDir = do
+        exists <- doesDirectoryExist localDir
+        if exists
+          then hg localDir ["pull"]
+          else hg (takeDirectory localDir) cloneArgs
+        hg localDir checkoutArgs
+      where
+        hg :: FilePath -> [String] -> IO ()
+        hg cwd args = runProgramInvocation verbosity $
+                          (programInvocation hgProg args) {
+                            progInvokeCwd = Just cwd
+                          }
+        cloneArgs      = ["clone", "--noupdate", (srpLocation repo), localDir]
+                        ++ verboseArg
+        verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
+        checkoutArgs = [ "checkout", "--clean" ]
+                      ++ tagArgs
+        tagArgs = case srpTag repo of
+            Just t  -> ["--rev", t]
+            Nothing -> []
 
 hgProgram :: Program
 hgProgram = (simpleProgram "hg") {
