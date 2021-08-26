@@ -457,5 +457,6 @@ data BuildTimeSettings
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
        buildSettingIgnoreExpiry          :: Bool,
-       buildSettingProgPathExtra         :: [FilePath]
+       buildSettingProgPathExtra         :: [FilePath],
+       buildSettingHaddockOpen           :: Bool
      }

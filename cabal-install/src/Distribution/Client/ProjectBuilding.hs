@@ -68,7 +68,7 @@ import           Distribution.Client.Setup
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils
-                   ( ProgressPhase(..), progressMessage, removeExistingFile )
+                   ( ProgressPhase(..), findOpenProgramLocation, progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
 import           Distribution.Package
@@ -1201,11 +1201,12 @@ buildInplaceUnpackedPackage verbosity
                               distPackageCacheDirectory,
                               distDirectory
                             }
-                            BuildTimeSettings{buildSettingNumJobs}
+                            BuildTimeSettings{buildSettingNumJobs, buildSettingHaddockOpen}
                             registerLock cacheLock
                             pkgshared@ElaboratedSharedConfig {
                               pkgConfigCompiler      = compiler,
-                              pkgConfigCompilerProgs = progdb
+                              pkgConfigCompilerProgs = progdb,
+                              pkgConfigPlatform      = platform
                             }
                             plan
                             rpkg@(ReadyPackage pkg)
@@ -1320,6 +1321,17 @@ buildInplaceUnpackedPackage verbosity
                            </> "doc" </> "html"
               Tar.createTarGzFile dest docDir name
               notice verbosity $ "Documentation tarball created: " ++ dest
+
+            when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
+              let dest = docDir </> name </> "index.html"
+                  name = haddockDirName haddockTarget (elabPkgDescription pkg)
+                  docDir = distBuildDirectory distDirLayout dparams
+                           </> "doc" </> "html"
+              exe <- findOpenProgramLocation platform
+              case exe of
+                Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
+                Left err -> die' verbosity err
+
 
         return BuildResult {
           buildResultDocs    = docsResult,
