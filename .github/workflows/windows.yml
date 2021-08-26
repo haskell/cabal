@@ -63,7 +63,7 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.6.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
   test-windows-8_10_4:
     name: test ghc-8.10.4
     runs-on: windows-latest
@@ -111,4 +111,4 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.4\cabal-install-3.6.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.4\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe

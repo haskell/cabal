@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.6.0.0",
+            "version": "3.7.0.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -90,10 +90,10 @@
         {
             "source": "hackage",
             "package": "base64-bytestring",
-            "version": "1.2.0.1",
+            "version": "1.2.1.0",
             "flags": [],
-            "cabal_sha256": "f4f998235fc0825ab636ca9241b827de5805b336625eb1c7822f1798a238b6ac",
-            "src_sha256": "af09b17d072eb1391d91e30b4186dd1797330647ef79268ecd7fcce8f5afc638",
+            "cabal_sha256": "50ec0e229255d4c45cbdd568da011311b8887f304b931564886016f4984334d8",
+            "src_sha256": "fbf8ed30edde271eb605352021431d8f1b055f95a56af31fe2eacf6bdfdc49c9",
             "revision": 0
         },
         {
@@ -128,7 +128,7 @@
         {
             "source": "local",
             "package": "cabal-install-solver",
-            "version": "3.6.0.0",
+            "version": "3.7.0.0",
             "flags": [
                 "-debug-conflict-sets",
                 "-debug-expensive-assertions",
@@ -242,9 +242,9 @@
             "package": "regex-base",
             "version": "0.94.0.1",
             "flags": [],
-            "cabal_sha256": "6e3546b73cd5489201d481aa645a531f2c61aa317984e31c5f379ac0bcbfbfad",
+            "cabal_sha256": "35ff2d13c0e3ac364469c19e4c7c8775f5148977d8fcef58a424df0a10a53fa7",
             "src_sha256": "71b1d96fff201f31fe8cd4532f056aca03a21cd486890256dc3007dd73adedd9",
-            "revision": 0
+            "revision": 1
         },
         {
             "source": "hackage",
@@ -269,7 +269,7 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.6.0.0",
+            "version": "3.7.0.0",
             "flags": [
                 "+lukko",
                 "+native-dns"
@@ -281,7 +281,7 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.6.0.0",
+            "version": "3.7.0.0",
             "flags": [
                 "+lukko",
                 "+native-dns"
