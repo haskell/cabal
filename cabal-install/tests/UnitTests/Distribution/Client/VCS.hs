@@ -66,6 +66,12 @@ tests mtimeChange =
     , testProperty "syncSourceRepos"             prop_syncRepos_pijul
     ]
 
+  , testGroup "mercurial" $ const []
+    [ testProperty "check VCS test framework"    prop_framework_hg
+    , testProperty "cloneSourceRepo"             prop_cloneRepo_hg
+    , testProperty "syncSourceRepos"             prop_syncRepos_hg
+    ]
+
   ]
 
 prop_framework_git :: BranchingRepoRecipe -> Property
@@ -86,6 +92,12 @@ prop_framework_pijul =
   . prop_framework vcsPijul vcsTestDriverPijul
   . WithBranchingSupport
 
+prop_framework_hg :: BranchingRepoRecipe -> Property
+prop_framework_hg =
+    ioProperty
+  . prop_framework vcsHg vcsTestDriverHg
+  . WithBranchingSupport
+
 prop_cloneRepo_git :: BranchingRepoRecipe -> Property
 prop_cloneRepo_git =
     ioProperty
@@ -103,6 +115,12 @@ prop_cloneRepo_pijul :: BranchingRepoRecipe -> Property
 prop_cloneRepo_pijul =
     ioProperty
   . prop_cloneRepo vcsPijul vcsTestDriverPijul
+  . WithBranchingSupport
+
+prop_cloneRepo_hg :: BranchingRepoRecipe -> Property
+prop_cloneRepo_hg =
+    ioProperty
+  . prop_cloneRepo vcsHg vcsTestDriverHg
   . WithBranchingSupport
 
 prop_syncRepos_git :: RepoDirSet -> SyncTargetIterations -> PrngSeed
@@ -127,6 +145,14 @@ prop_syncRepos_pijul :: RepoDirSet -> SyncTargetIterations -> PrngSeed
 prop_syncRepos_pijul destRepoDirs syncTargetSetIterations seed =
     ioProperty
   . prop_syncRepos vcsPijul vcsTestDriverPijul
+                   destRepoDirs syncTargetSetIterations seed
+  . WithBranchingSupport
+
+prop_syncRepos_hg :: RepoDirSet -> SyncTargetIterations -> PrngSeed
+                   -> BranchingRepoRecipe -> Property
+prop_syncRepos_hg destRepoDirs syncTargetSetIterations seed =
+    ioProperty
+  . prop_syncRepos vcsHg vcsTestDriverHg
                    destRepoDirs syncTargetSetIterations seed
   . WithBranchingSupport
 
@@ -755,3 +781,46 @@ vcsTestDriverPijul verbosity vcs repoRoot =
                          }
     pijul  = runProgramInvocation       verbosity . gitInvocation
     pijul' = getProgramInvocationOutput verbosity . gitInvocation
+
+vcsTestDriverHg :: Verbosity -> VCS ConfiguredProgram
+                 -> FilePath -> VCSTestDriver
+vcsTestDriverHg verbosity vcs repoRoot =
+    VCSTestDriver {
+      vcsVCS = vcs
+
+    , vcsRepoRoot = repoRoot
+
+    , vcsIgnoreFiles = Set.empty
+
+    , vcsInit =
+        hg $ ["init"]  ++ verboseArg
+
+    , vcsAddFile = \_ filename ->
+        hg ["add", filename]
+
+    , vcsCommitChanges = \_state -> do
+        hg $ [ "--user='A <a@example.com>'"
+              , "commit", "--message=a patch"
+              ] ++ verboseArg
+        commit <- hg' ["log", "--template='{node}\\n' -l1"]
+        let commit' = takeWhile (not . isSpace) commit
+        return (Just commit')
+
+    , vcsTagState = \_ tagname ->
+        hg ["tag", "--force", tagname]
+
+    , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
+        unless (branchname `Map.member` allBranches) $
+          hg ["branch", branchname]
+        hg $ ["checkout", branchname] ++ verboseArg
+
+    , vcsCheckoutTag = Left $ \tagname ->
+        hg $ ["checkout", "--rev", tagname] ++ verboseArg
+    }
+  where
+    hgInvocation args = (programInvocation (vcsProgram vcs) args) {
+                           progInvokeCwd = Just repoRoot
+                         }
+    hg  = runProgramInvocation       verbosity . hgInvocation
+    hg' = getProgramInvocationOutput verbosity . hgInvocation
+    verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]

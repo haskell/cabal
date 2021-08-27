@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NamedFieldPuns, RecordWildCards, RankNTypes #-}
 module Distribution.Client.VCS (
     -- * VCS driver type
@@ -45,20 +47,29 @@ import Distribution.Simple.Program
          ( Program(programFindVersion)
          , ConfiguredProgram(programVersion)
          , simpleProgram, findProgramVersion
-         , ProgramInvocation(..), programInvocation, runProgramInvocation
+         , ProgramInvocation(..), programInvocation, runProgramInvocation, getProgramInvocationOutput
          , emptyProgramDb, requireProgram )
 import Distribution.Version
          ( mkVersion )
 import qualified Distribution.PackageDescription as PD
 
+import Control.Applicative
+         ( liftA2 )
+import Control.Exception
+         ( throw, try )
 import Control.Monad.Trans
          ( liftIO )
 import qualified Data.Char as Char
+import qualified Data.List as List
 import qualified Data.Map  as Map
 import System.FilePath
          ( takeDirectory )
 import System.Directory
-         ( doesDirectoryExist )
+         ( doesDirectoryExist
+         , removeDirectoryRecursive
+         )
+import System.IO.Error
+         ( isDoesNotExistError )
 
 
 -- | A driver for a version control system, e.g. git, darcs etc.
@@ -306,7 +317,41 @@ vcsDarcs =
 
     vcsSyncRepos :: Verbosity -> ConfiguredProgram
                  -> [(SourceRepositoryPackage f, FilePath)] -> IO [MonitorFilePath]
-    vcsSyncRepos _v _p _rs = fail "sync repo not yet supported for darcs"
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity prog ((primaryRepo, primaryLocalDir) : secondaryRepos) =
+        monitors <$ do
+        vcsSyncRepo verbosity prog primaryRepo primaryLocalDir Nothing
+        for_ secondaryRepos $ \ (repo, localDir) ->
+          vcsSyncRepo verbosity prog repo localDir $ Just primaryLocalDir
+      where
+        dirs = primaryLocalDir : (snd <$> secondaryRepos)
+        monitors = monitorDirectoryExistence <$> dirs
+
+    vcsSyncRepo verbosity prog SourceRepositoryPackage{..} localDir _peer =
+      try (lines <$> darcsWithOutput localDir ["log", "--last", "1"]) >>= \ case
+        Right (_:_:_:x:_)
+          | Just tag <- (List.stripPrefix "tagged " . List.dropWhile Char.isSpace) x
+          , Just tag' <- srpTag
+          , tag == tag' -> pure ()
+        Left e | not (isDoesNotExistError e) -> throw e
+        _ -> do
+          removeDirectoryRecursive localDir `catch` liftA2 unless isDoesNotExistError throw
+          darcs (takeDirectory localDir) cloneArgs
+      where
+        darcs :: FilePath -> [String] -> IO ()
+        darcs = darcs' runProgramInvocation
+
+        darcsWithOutput :: FilePath -> [String] -> IO String
+        darcsWithOutput = darcs' getProgramInvocationOutput
+
+        darcs' f cwd args = f verbosity (programInvocation prog args)
+          { progInvokeCwd = Just cwd }
+
+        cloneArgs = ["clone"] ++ tagArgs ++ [srpLocation, localDir] ++ verboseArg
+        tagArgs    = case srpTag of
+          Nothing  -> []
+          Just tag -> ["-t" ++ tag]
+        verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
 darcsProgram :: Program
 darcsProgram = (simpleProgram "darcs") {
@@ -445,7 +490,35 @@ vcsHg =
                  -> ConfiguredProgram
                  -> [(SourceRepositoryPackage f, FilePath)]
                  -> IO [MonitorFilePath]
-    vcsSyncRepos _v _p _rs = fail "sync repo not yet supported for hg"
+    vcsSyncRepos _ _ [] = return []
+    vcsSyncRepos verbosity hgProg
+                 ((primaryRepo, primaryLocalDir) : secondaryRepos) = do
+      vcsSyncRepo verbosity hgProg primaryRepo primaryLocalDir
+      sequence_
+        [ vcsSyncRepo verbosity hgProg repo localDir
+        | (repo, localDir) <- secondaryRepos ]
+      return [ monitorDirectoryExistence dir
+            | dir <- (primaryLocalDir : map snd secondaryRepos) ]
+    vcsSyncRepo verbosity hgProg repo localDir = do
+        exists <- doesDirectoryExist localDir
+        if exists
+          then hg localDir ["pull"]
+          else hg (takeDirectory localDir) cloneArgs
+        hg localDir checkoutArgs
+      where
+        hg :: FilePath -> [String] -> IO ()
+        hg cwd args = runProgramInvocation verbosity $
+                          (programInvocation hgProg args) {
+                            progInvokeCwd = Just cwd
+                          }
+        cloneArgs      = ["clone", "--noupdate", (srpLocation repo), localDir]
+                        ++ verboseArg
+        verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
+        checkoutArgs = [ "checkout", "--clean" ]
+                      ++ tagArgs
+        tagArgs = case srpTag repo of
+            Just t  -> ["--rev", t]
+            Nothing -> []
 
 hgProgram :: Program
 hgProgram = (simpleProgram "hg") {
