@@ -48,7 +48,7 @@ by simply overwriting it all. Overwriting is the default behaviour, as
 such, there's a flag ``--enable-append`` to append the new configurations
 instead. Since overwriting is rather destructive in nature, a backup system
 is in place, which moves the old configuration to a ``cabal.project.local~``
-file, this feature can also be disabled by using the ``--enable-overwrite``
+file, this feature can also be disabled by using the ``--enable-backup``
 flag.
 
 cabal v2-update
