@@ -188,8 +188,9 @@ import Distribution.System
 import Distribution.Version
 import Distribution.Compat.Async
 import Distribution.Compat.CopyFile
-import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.FilePath as FilePath
+import Distribution.Compat.Internal.TempFile
+import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
@@ -328,13 +329,8 @@ verbatimUserError :: String -> IOError
 verbatimUserError = ioeSetVerbatim . userError
 
 dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
-dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
-    ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++
+dieWithLocation' verbosity filename mb_lineno msg =
+    die' verbosity $
               filename ++ (case mb_lineno of
                             Just lineno -> ":" ++ show lineno
                             Nothing -> "") ++
@@ -342,20 +338,27 @@ dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
 
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++ msg
+          =<< annotateErrorString verbosity
+          =<< pure . wrapTextVerbosity verbosity
+          =<< prefixWithProgName msg
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
+    ioError . verbatimUserError =<< annotateErrorString verbosity msg
+
+-- | Prefix an error string with program name from 'getProgName'
+prefixWithProgName :: String -> IO String
+prefixWithProgName msg = do
+    pname <- getProgName
+    return $ pname ++ ": " ++ msg
+
+-- | Annotate an error string with timestamp and 'withMetadata'.
+annotateErrorString :: Verbosity -> String -> IO String
+annotateErrorString verbosity msg = do
     ts <- getPOSIXTime
-    ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            $ msg
+    return $ withMetadata ts AlwaysMark VerboseTrace verbosity msg
 
 -- | Given a block of IO code that may raise an exception, annotate
 -- it with the metadata from the current scope.  Use this as close
@@ -365,11 +368,16 @@ dieNoWrap verbosity msg = withFrozenCallStack $ do
 annotateIO :: Verbosity -> IO a -> IO a
 annotateIO verbosity act = do
     ts <- getPOSIXTime
-    modifyIOError (f ts) act
-  where
-    f ts ioe = ioeSetErrorString ioe
-             . withMetadata ts NeverMark VerboseTrace verbosity
-             $ ioeGetErrorString ioe
+    flip modifyIOError act $
+      ioeModifyErrorString $ withMetadata ts NeverMark VerboseTrace verbosity
+
+-- | A semantic editor for the error message inside an 'IOError'.
+ioeModifyErrorString :: (String -> String) -> IOError -> IOError
+ioeModifyErrorString = over ioeErrorString
+
+-- | A lens for the error message inside an 'IOError'.
+ioeErrorString :: Lens' IOError String
+ioeErrorString f ioe = ioeSetErrorString ioe <$> f (ioeGetErrorString ioe)
 
 
 {-# NOINLINE topHandlerWith #-}
