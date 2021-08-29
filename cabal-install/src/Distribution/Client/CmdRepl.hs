@@ -52,7 +52,7 @@ import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
-         ( fromFlagOrDefault, replOptions
+         ( fromFlagOrDefault, ReplOptions(..), replOptions
          , Flag(..), toFlag, falseArg )
 import Distribution.Simple.Command
          ( CommandUI(..), liftOptionL, usageAlternatives, option
@@ -111,8 +111,6 @@ import System.Directory
 import System.FilePath
          ( (</>) )
 
-type ReplFlags = [String]
-
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
   , envIncludeTransitive :: Flag Bool
@@ -142,7 +140,7 @@ envOptions _ =
         ("couldn't parse dependencies: " ++)
         (parsecCommaList parsec)
 
-replCommand :: CommandUI (NixStyleFlags (ReplFlags, EnvFlags))
+replCommand :: CommandUI (NixStyleFlags (ReplOptions, EnvFlags))
 replCommand = Client.installCommand {
   commandName         = "v2-repl",
   commandSynopsis     = "Open an interactive session for the given component.",
@@ -179,7 +177,7 @@ replCommand = Client.installCommand {
      ++ "    add a version (constrained between 4.15 and 4.18) of the library 'lens' "
         ++ "to the default component (or no component if there is no project present)\n",
 
-  commandDefaultFlags = defaultNixStyleFlags ([], defaultEnvFlags),
+  commandDefaultFlags = defaultNixStyleFlags (mempty, defaultEnvFlags),
   commandOptions = nixStyleOptions $ \showOrParseArgs ->
     map (liftOptionL _1) (replOptions showOrParseArgs) ++
     map (liftOptionL _2) (envOptions showOrParseArgs)
@@ -196,7 +194,7 @@ replCommand = Client.installCommand {
 -- For more details on how this works, see the module
 -- "Distribution.Client.ProjectOrchestration"
 --
-replAction :: NixStyleFlags (ReplFlags, EnvFlags) -> [String] -> GlobalFlags -> IO ()
+replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
       with           = withProject    cliConfig             verbosity targetStrings
@@ -286,8 +284,9 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
     let buildCtx' = buildCtx
           { elaboratedShared = (elaboratedShared buildCtx)
-                { pkgConfigReplOptions = replFlags ++ replFlags'' }
-          }
+            { pkgConfigReplOptions = replFlags
+              { replOptionsFlags = (replOptionsFlags replFlags) ++ replFlags''
+          } } }
     printPlan verbosity baseCtx' buildCtx'
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx'
@@ -415,7 +414,7 @@ addDepsToProjectTarget deps pkgId ctx =
         }
     addDeps spec = spec
 
-generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> ReplFlags
+generateReplFlags :: Bool -> ElaboratedInstallPlan -> OriginalComponentInfo -> [String]
 generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = flags
   where
     exeDeps :: [UnitId]
@@ -425,7 +424,7 @@ generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = f
         (InstallPlan.dependencyClosure elaboratedPlan [ociUnitId])
 
     deps, deps', trans, trans' :: [UnitId]
-    flags :: ReplFlags
+    flags :: [String]
     deps   = installedUnitId <$> InstallPlan.directDeps elaboratedPlan ociUnitId
     deps'  = deps \\ ociOriginalDeps
     trans  = installedUnitId <$> InstallPlan.dependencyClosure elaboratedPlan deps'

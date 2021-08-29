@@ -6,6 +6,7 @@ module Test.Cabal.Monad (
     setupAndCabalTest,
     setupTest,
     cabalTest,
+    cabalTest',
     -- * The monad
     TestM,
     runTestM,
