@@ -47,6 +47,7 @@ module Distribution.Simple.Setup (
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
+  ReplOptions(..),
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
@@ -1665,13 +1666,30 @@ instance Semigroup BuildFlags where
 -- * REPL Flags
 -- ------------------------------------------------------------
 
+data ReplOptions = ReplOptions {
+    replOptionsFlags :: [String],
+    replOptionsNoLoad :: Flag Bool
+  }
+  deriving (Show, Generic, Typeable)
+
+instance Binary ReplOptions
+instance Structured ReplOptions
+
+
+instance Monoid ReplOptions where
+  mempty = ReplOptions mempty (Flag False)
+  mappend = (<>)
+
+instance Semigroup ReplOptions where
+  (<>) = gmappend
+
 data ReplFlags = ReplFlags {
     replProgramPaths :: [(String, FilePath)],
     replProgramArgs :: [(String, [String])],
     replDistPref    :: Flag FilePath,
     replVerbosity   :: Flag Verbosity,
     replReload      :: Flag Bool,
-    replReplOptions :: [String]
+    replReplOptions :: ReplOptions
   }
   deriving (Show, Generic, Typeable)
 
@@ -1682,7 +1700,7 @@ defaultReplFlags  = ReplFlags {
     replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
     replReload      = Flag False,
-    replReplOptions = []
+    replReplOptions = mempty
   }
 
 instance Monoid ReplFlags where
@@ -1763,9 +1781,17 @@ replCommand progDb = CommandUI
   where
     liftReplOption = liftOption replReplOptions (\v flags -> flags { replReplOptions = v })
 
-replOptions :: ShowOrParseArgs -> [OptionField [String]]
-replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
-              const (reqArg "FLAG" (succeedReadE (:[])) id) ]
+replOptions :: ShowOrParseArgs -> [OptionField ReplOptions]
+replOptions _ =
+  [ option [] ["repl-no-load"]
+    "Disable loading of project modules at REPL startup."
+    replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
+    trueArg
+  , option [] ["repl-options"]
+    "use this option for the repl"
+    replOptionsFlags (\p flags -> flags { replOptionsFlags = p ++ replOptionsFlags flags })
+    (reqArg "FLAG" (succeedReadE (:[])) id)
+  ]
 
 -- ------------------------------------------------------------
 -- * Test flags

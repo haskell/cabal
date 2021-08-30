@@ -2150,7 +2150,7 @@ system-dependent values for these fields.
     setup described in the section on `system-dependent parameters`_.
 
 .. pkg-field:: hsc2hs-options: token list
-    :since 3.6
+    :since: 3.6
 
     Command-line arguments to be passed to ``hsc2hs``.
 
@@ -3029,7 +3029,7 @@ Accessing data files from package code
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
 one can even move packages around after installation (see `prefix
-independence <installing-packages.html#prefix-independence>`__). To
+independence <setup-commands.html#prefix-independence>`__). To
 enable packages to find these files in a portable way, Cabal generates a
 module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
