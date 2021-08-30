@@ -3,7 +3,6 @@ import           Test.Cabal.Prelude
 import           Test.Cabal.DecodeShowBuildInfo
 import           Test.Cabal.Plan
 import           Control.Monad.Trans.Reader
-import           System.Directory
 
 main = cabalTest $ do
   runShowBuildInfo ["exe:A"]

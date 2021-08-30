@@ -111,7 +111,7 @@ defCompAssertion = ComponentAssertion
   , modules = []
   , sourceFiles = []
   , sourceDirs = []
-  , compType = mempty
+  , compType = ""
   }
 
 -- | Assert common build information, such as compiler location, compiler version
