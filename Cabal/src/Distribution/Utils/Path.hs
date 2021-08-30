@@ -35,7 +35,7 @@ import qualified Distribution.Compat.CharParsing as P
 -- until we interpret them.
 --
 newtype SymbolicPath from to = SymbolicPath FilePath
-  deriving (Generic, Show, Read, Eq, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary (SymbolicPath from to)
 instance (Typeable from, Typeable to) => Structured (SymbolicPath from to)
