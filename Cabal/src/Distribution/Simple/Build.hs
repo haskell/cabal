@@ -114,21 +114,9 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
-    let comp = targetComponent target
-        clbi = targetCLBI target
-    componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
-    let bi     = componentBuildInfo comp
-        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-        lbi'   = lbi {
-                   withPrograms  = progs',
-                   withPackageDB = withPackageDB lbi ++ [internalPackageDB],
-                   installedPkgs = index
-                 }
-    mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
-                   lbi' suffixes comp clbi distPref
-    return (maybe index (Index.insert `flip` index) mb_ipi)
-
+  -- Before the actual building, dump out build-information.
+  -- This way, if the actual compilation failed, the options have still been
+  -- dumped.
   when shouldDumpBuildInfo $ do
     -- Changing this line might break consumers of the dumped build info.
     -- Announce changes on mailing lists!
@@ -149,6 +137,22 @@ build pkg_descr lbi flags suffixes = do
     -- Remove existing build-info.json as it might be outdated now.
     exists <- doesFileExist (buildInfoPref distPref)
     when exists $ removeFile (buildInfoPref distPref)
+
+  -- Now do the actual building
+  (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
+    let comp = targetComponent target
+        clbi = targetCLBI target
+    componentInitialBuildSteps distPref pkg_descr lbi clbi verbosity
+    let bi     = componentBuildInfo comp
+        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+        lbi'   = lbi {
+                   withPrograms  = progs',
+                   withPackageDB = withPackageDB lbi ++ [internalPackageDB],
+                   installedPkgs = index
+                 }
+    mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
+                   lbi' suffixes comp clbi distPref
+    return (maybe index (Index.insert `flip` index) mb_ipi)
 
   return ()
  where
