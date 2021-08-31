@@ -642,7 +642,7 @@ feature was added.
     :synopsis: Path to compiler executable.
 
     Specify the path to a particular compiler to be used. If not an
-    absolute path, it will be resolved according to the :envvar:`PATH`
+    absolute path, it will be resolved according to the ``PATH``
     environment. The type of the compiler (GHC, GHCJS, etc) must be
     consistent with the setting of the :cfg-field:`compiler` field.
 
