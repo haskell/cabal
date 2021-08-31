@@ -1857,16 +1857,8 @@ testCommand = CommandUI
   { commandName         = "test"
   , commandSynopsis     =
       "Run all/specific tests in the test suite."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-tests` flag and builds"
-      ++ " the test suite.\n"
-      ++ "\n"
-      ++ "Remember that the tests' dependencies must be installed if there"
-      ++ " are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-tests`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running tests.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "test"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "test"
       [ "[FLAGS]"
@@ -1875,6 +1867,24 @@ testCommand = CommandUI
   , commandDefaultFlags = defaultTestFlags
   , commandOptions = testOptions'
   }
+
+-- | Help text for @test@ and @bench@ commands.
+testOrBenchmarkHelpText
+  :: String   -- ^ Either @"test"@ or @"benchmark"@.
+  -> String   -- ^ Help text.
+testOrBenchmarkHelpText s = unlines $ map unwords
+  [ [ "The package must have been build with configuration"
+    , concat [ "flag `--enable-", s, "s`." ]
+    ]
+  , []  -- blank line
+  , [ concat [ "Note that additional dependencies of the ", s, "s" ]
+    , "must have already been installed."
+    ]
+  , []
+  , [ "By defining UserHooks in a custom Setup.hs, the package can define"
+    , concat [ "actions to be executed before and after running ", s, "s." ]
+    ]
+  ]
 
 testOptions' ::  ShowOrParseArgs -> [OptionField TestFlags]
 testOptions' showOrParseArgs =
@@ -1971,17 +1981,8 @@ benchmarkCommand = CommandUI
   { commandName         = "bench"
   , commandSynopsis     =
       "Run all/specific benchmarks."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-benchmarks` flag and"
-      ++ " builds the benchmarks.\n"
-      ++ "\n"
-      ++ "Remember that the benchmarks' dependencies must be installed if"
-      ++ " there are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-benchmarks`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running"
-      ++ " benchmarks.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "benchmark"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "bench"
       [ "[FLAGS]"
