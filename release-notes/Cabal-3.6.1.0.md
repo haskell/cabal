@@ -56,3 +56,5 @@ Cabal 3.6.1.0 Changelog
 - defer build-tools-depends choices as well as setup choices [#7561](https://github.com/haskell/cabal/pull/7561) [#7472](https://github.com/haskell/cabal/issues/7472)
   - extends the existing solver pass that defers solving setup depends until top-level goals are solved to also defer build-tool-depends goals until top level goals are solved.
   - constraints at the top level (on versions, flags, stanzas, etc) are applied first and only then are attempts made to build the less-constrained qualified goals, significantly streamlining the production of valid build plans.
+
+- Set -Wno-prepositive-qualified-module in Paths_*.hs [#7352](https://github.com/haskell/cabal/pull/7352)
