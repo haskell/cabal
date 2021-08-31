@@ -182,7 +182,7 @@ This allows sharing of packages across different projects.
 
 .. cfg-field:: location: VCS location (usually URL)
 
-.. cfg-field:: type: VCS tag
+.. cfg-field:: tag: VCS tag
 
 .. cfg-field:: subdir: subdirectory list
 
