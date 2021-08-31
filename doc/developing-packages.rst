@@ -230,7 +230,7 @@ If the package contains an executable, it can be installed:
     $ cabal install
 
 The executable program lands in a special directory for binaries
-that may or may not already be on your system's ``$PATH``.
+that may or may not already be on your system's ``PATH``.
 If it is, the executable can be run by typing its filename on commandline.
 For installing libraries see the :ref:`adding-libraries` section.
 
