@@ -151,7 +151,6 @@ test-suite hackage-tests
   type:               exitcode-stdio-1.0
   main-is:            HackageTests.hs
 
-  -- TODO: need to get 01-index.tar on appveyor
   if os(windows)
     buildable: False
 
