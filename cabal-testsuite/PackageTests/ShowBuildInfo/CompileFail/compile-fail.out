@@ -18,5 +18,5 @@ In order, the following will be built:
 Configuring library 'failing' for CompileFail-0.1.0.0..
 Preprocessing library 'failing' for CompileFail-0.1.0.0..
 Building library 'failing' for CompileFail-0.1.0.0..
-cabal: Failed to build CompileFail-0.1.0.0 because it depends on CompileFail-0.1.0.0 which itself failed to build.
+Error: cabal: Failed to build CompileFail-0.1.0.0 because it depends on CompileFail-0.1.0.0 which itself failed to build.
 Failed to build CompileFail-0.1.0.0-inplace-failing.

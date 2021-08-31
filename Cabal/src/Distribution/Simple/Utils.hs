@@ -341,12 +341,30 @@ die' verbosity msg = withFrozenCallStack $ do
     ioError . verbatimUserError
           =<< annotateErrorString verbosity
           =<< pure . wrapTextVerbosity verbosity
+          =<< pure . addErrorPrefix
           =<< prefixWithProgName msg
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
-    ioError . verbatimUserError =<< annotateErrorString verbosity msg
+    ioError . verbatimUserError
+          =<< annotateErrorString verbosity
+              (addErrorPrefix msg)
+
+-- | Prefixing a message to indicate that it is a fatal error,
+-- if the 'errorPrefix' is not already present.
+addErrorPrefix :: String -> String
+addErrorPrefix msg
+  | errorPrefix `isPrefixOf` msg = msg
+      -- Backpack prefixes its errors already with "Error:", see
+      -- 'Distribution.Utils.LogProgress.dieProgress'.
+      -- Taking it away there destroys the layout, so we rather
+      -- check here whether the prefix is already present.
+  | otherwise                    = unwords [errorPrefix, msg]
+
+-- | A prefix indicating that a message is a fatal error.
+errorPrefix :: String
+errorPrefix = "Error:"
 
 -- | Prefix an error string with program name from 'getProgName'
 prefixWithProgName :: String -> IO String
@@ -423,7 +441,7 @@ topHandlerWith cont prog = do
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in wrapText (pname ++ ": " ++ file ++ detail)
+          in wrapText $ addErrorPrefix $ pname ++ ": " ++ file ++ detail
         _ ->
           displaySomeException se ++ "\n"
 
@@ -1137,7 +1155,7 @@ findModuleFileEx verbosity searchPath extensions mod_name =
                              (ModuleName.toFilePath mod_name)
   where
     notFound = die' verbosity $
-      "Error: Could not find module: " ++ prettyShow mod_name
+      "Could not find module: " ++ prettyShow mod_name
       ++ " with any suffix: "          ++ show extensions
       ++ " in the search path: "       ++ show searchPath
 

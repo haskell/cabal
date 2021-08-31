@@ -978,7 +978,7 @@ printBuildFailures verbosity buildOutcomes =
        | (pkgid, Left failure) <- Map.toList buildOutcomes ] of
     []     -> return ()
     failed -> die' verbosity . unlines
-            $ "Error: some packages failed to install:"
+            $ "Some packages failed to install:"
             : [ prettyShow pkgid ++ printFailureReason reason
               | (pkgid, reason) <- failed ]
   where

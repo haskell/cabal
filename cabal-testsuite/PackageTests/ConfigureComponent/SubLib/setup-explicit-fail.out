@@ -9,5 +9,5 @@ Installing internal library sublib in <PATH>
 Registering library 'sublib' for Lib-0.1.0.0..
 # Setup configure
 Configuring executable 'exe' for Lib-0.1.0.0..
-setup: Encountered missing or private dependencies:
+Error: setup: Encountered missing or private dependencies:
     Lib:sublib
