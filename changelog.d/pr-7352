@@ -1,0 +1,3 @@
+synopsis: Set -Wno-prepositive-qualified-module in Paths_*.hs
+packages: Cabal
+prs: #7352
