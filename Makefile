@@ -236,7 +236,9 @@ bootstrap-jsons-linux: phony
 # TODO: when we have sphinx-build2 ?
 SPHINXCMD:=sphinx-build
 # Flag -n ("nitpick") warns about broken references
-SPHINX_FLAGS:=-n
+# Flag -W turns warnings into errors
+# Flag --keep-going continues after errors
+SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
