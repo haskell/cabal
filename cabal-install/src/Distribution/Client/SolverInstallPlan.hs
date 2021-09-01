@@ -126,6 +126,7 @@ showPlanPackage (Configured  spkg) =
     comps | null deps = ""
           | otherwise = " " ++ unwords (map prettyShow $ Foldable.toList deps)
       where
+        deps :: Set CD.Component
         deps = CD.components (solverPkgLibDeps spkg)
              <> CD.components (solverPkgExeDeps spkg)
 
@@ -271,6 +272,7 @@ nonSetupClosure :: SolverPlanIndex
                 -> SolverPlanIndex
 nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
  where
+    closure :: Graph SolverPlanPackage -> [SolverId] -> SolverPlanIndex
     closure completed []             = completed
     closure completed (pkgid:pkgids) =
       case Graph.lookup pkgid index of
@@ -293,6 +295,7 @@ rootSets (IndependentGoals indepGoals) index =
        if indepGoals then map (:[]) libRoots else [libRoots]
     ++ setupRoots index
   where
+    libRoots :: [SolverId]
     libRoots = libraryRoots index
 
 -- | Compute the library roots of a plan

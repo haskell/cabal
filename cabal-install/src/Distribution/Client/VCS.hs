@@ -157,6 +157,9 @@ validateSourceRepos rs =
       (problems@(_:_), _) -> Left problems
       ([], vcss)          -> Right vcss
   where
+    validateSourceRepo'   :: SourceRepositoryPackage f
+                          -> Either (SourceRepositoryPackage f, SourceRepoProblem)
+                                    (SourceRepositoryPackage f, String, RepoType, VCS Program)
     validateSourceRepo' r = either (Left . (,) r) Right
                                    (validateSourceRepo r)
 

@@ -195,6 +195,7 @@ readUserTarget targetstr =
               Just target -> return target
               Nothing     -> return (Left (UserTargetUnrecognised targetstr))
   where
+    testFileTargets :: FilePath -> IO (Maybe (Either UserTargetProblem UserTarget))
     testFileTargets filename = do
       isDir  <- doesDirectoryExist filename
       isFile <- doesFileExist filename
@@ -221,6 +222,7 @@ readUserTarget targetstr =
             = Nothing
       return result
 
+    testUriTargets :: String -> Maybe (Either UserTargetProblem UserTarget)
     testUriTargets str =
       case parseAbsoluteURI str of
         Just uri@URI {
@@ -414,6 +416,7 @@ readPackageTarget :: Verbosity
                   -> IO (PackageTarget UnresolvedSourcePackage)
 readPackageTarget verbosity = traverse modifyLocation
   where
+    modifyLocation :: ResolvedPkgLoc -> IO UnresolvedSourcePackage
     modifyLocation location = case location of
 
       LocalUnpackedPackage dir -> do
@@ -444,6 +447,7 @@ readPackageTarget verbosity = traverse modifyLocation
         --
         -- When that is corrected, this will also need to be fixed.
 
+    readTarballPackageTarget :: ResolvedPkgLoc -> FilePath -> FilePath -> IO UnresolvedSourcePackage
     readTarballPackageTarget location tarballFile tarballOriginalLoc = do
       (filename, content) <- extractTarballPackageCabalFile
                                tarballFile tarballOriginalLoc
@@ -471,6 +475,8 @@ readPackageTarget verbosity = traverse modifyLocation
       where
         formatErr msg = "Error reading " ++ tarballOriginalLoc ++ ": " ++ msg
 
+        accumEntryMap :: Tar.Entries Tar.FormatError
+                      -> Either (Tar.FormatError, Map Tar.TarPath Tar.Entry) (Map Tar.TarPath Tar.Entry)
         accumEntryMap = Tar.foldlEntries
                           (\m e -> Map.insert (Tar.entryTarPath e) e m)
                           Map.empty
@@ -486,6 +492,7 @@ readPackageTarget verbosity = traverse modifyLocation
             noCabalFile        = "No cabal file found"
             multipleCabalFiles = "Multiple cabal files found"
 
+        isCabalFile :: Tar.Entry -> Bool
         isCabalFile e = case splitPath (Tar.entryPath e) of
           [     _dir, file] -> takeExtension file == ".cabal"
           [".", _dir, file] -> takeExtension file == ".cabal"
