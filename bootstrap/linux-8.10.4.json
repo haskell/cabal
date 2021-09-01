@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.6.0.0",
+            "version": "3.6.1.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -58,13 +58,13 @@
         {
             "source": "hackage",
             "package": "hashable",
-            "version": "1.3.2.0",
+            "version": "1.3.3.0",
             "flags": [
                 "+integer-gmp",
                 "-random-initial-seed"
             ],
-            "cabal_sha256": "02bc544e3546713b1d76a3c5bfc836a5fd19a5b4348ef4a52bb973d0c35a4b89",
-            "src_sha256": "59bd964b6fe52b04825cf5402c87981068c051f351b2cb940b75f1c60719d637",
+            "cabal_sha256": "7f3b67151162a1dfe8472dc30430af98ed5470801d3f4b6c9b8d7a7443c920d4",
+            "src_sha256": "99a578e58fb6a869593841e4b3184f5b52c921bcb0d661d2b3a06e6526cb85dc",
             "revision": 0
         },
         {
@@ -90,10 +90,10 @@
         {
             "source": "hackage",
             "package": "base64-bytestring",
-            "version": "1.2.0.1",
+            "version": "1.2.1.0",
             "flags": [],
-            "cabal_sha256": "f4f998235fc0825ab636ca9241b827de5805b336625eb1c7822f1798a238b6ac",
-            "src_sha256": "af09b17d072eb1391d91e30b4186dd1797330647ef79268ecd7fcce8f5afc638",
+            "cabal_sha256": "50ec0e229255d4c45cbdd568da011311b8887f304b931564886016f4984334d8",
+            "src_sha256": "fbf8ed30edde271eb605352021431d8f1b055f95a56af31fe2eacf6bdfdc49c9",
             "revision": 0
         },
         {
@@ -218,9 +218,9 @@
             "package": "regex-base",
             "version": "0.94.0.1",
             "flags": [],
-            "cabal_sha256": "6e3546b73cd5489201d481aa645a531f2c61aa317984e31c5f379ac0bcbfbfad",
+            "cabal_sha256": "35ff2d13c0e3ac364469c19e4c7c8775f5148977d8fcef58a424df0a10a53fa7",
             "src_sha256": "71b1d96fff201f31fe8cd4532f056aca03a21cd486890256dc3007dd73adedd9",
-            "revision": 0
+            "revision": 1
         },
         {
             "source": "hackage",
