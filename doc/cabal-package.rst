@@ -674,33 +674,33 @@ describe the package as a whole:
     `disappear <https://github.com/haskell/cabal/issues/4894#issuecomment-909008657>`__
     in the future.
 
-
     Starting with :pkg-field:`cabal-version` 3.0,
     there are further conveniences.
-    First, a preceding ``,`` is allowed, so a bullet-list style
-    is possible (recommended):
 
-    ::
+    1. A preceding ``,`` is allowed, so a bullet-list style
+       is possible (recommended):
 
-        tested-with:
-          , GHC == 9.0.1
-          , GHC == 8.10.4
-          , GHC == 8.8.4
-          , GHC == 8.6.5
-          , GHC == 8.4.4
-          , GHC == 8.2.2
-          , GHC == 8.0.2
-          , GHC == 7.10.3
-          , GHC == 7.8.4
-          , GHC == 7.6.3
-          , GHC == 7.4.2
+        ::
+
+            tested-with:
+              , GHC == 9.0.1
+              , GHC == 8.10.4
+              , GHC == 8.8.4
+              , GHC == 8.6.5
+              , GHC == 8.4.4
+              , GHC == 8.2.2
+              , GHC == 8.0.2
+              , GHC == 7.10.3
+              , GHC == 7.8.4
+              , GHC == 7.6.3
+              , GHC == 7.4.2
 
 
-    Second, a concise set notation syntax is available:
+    2. A concise set notation syntax is available:
 
-    ::
+       ::
 
-        tested-with: GHC == { 9.0.1, 8.10.4, 8.8.4, 8.6.5, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+           tested-with: GHC == { 9.0.1, 8.10.4, 8.8.4, 8.6.5, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
 .. pkg-field:: data-files: filename list
 
