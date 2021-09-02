@@ -379,6 +379,12 @@ packageFileMonitorKeyValues elab =
     -- do not affect the configure step need to be nulled out. Those parts are
     -- the specific targets that we're going to build.
     --
+
+    -- Additionally we null out the parts that don't affect the configure step because they're simply
+    -- about how tests or benchmarks are run
+
+    -- TODO there may be more things to null here too, in the future.
+
     elab_config :: ElaboratedConfiguredPackage
     elab_config =
         elab {
@@ -387,7 +393,14 @@ packageFileMonitorKeyValues elab =
             elabBenchTargets   = [],
             elabReplTarget     = Nothing,
             elabHaddockTargets = [],
-            elabBuildHaddocks  = False
+            elabBuildHaddocks  = False,
+
+            elabTestMachineLog   = Nothing,
+            elabTestHumanLog     = Nothing,
+            elabTestShowDetails  = Nothing,
+            elabTestKeepTix      = False,
+            elabTestTestOptions  = [],
+            elabBenchmarkOptions = []
         }
 
     -- The second part is the value used to guard the build step. So this is
