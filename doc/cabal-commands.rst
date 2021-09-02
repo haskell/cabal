@@ -48,7 +48,7 @@ by simply overwriting it all. Overwriting is the default behaviour, as
 such, there's a flag ``--enable-append`` to append the new configurations
 instead. Since overwriting is rather destructive in nature, a backup system
 is in place, which moves the old configuration to a ``cabal.project.local~``
-file, this feature can also be disabled by using the ``--enable-overwrite``
+file, this feature can also be disabled by using the ``--enable-backup``
 flag.
 
 cabal v2-update
@@ -142,7 +142,7 @@ cabal v2-repl
 
 ``cabal v2-repl TARGET`` loads all of the modules of the target into
 GHCi as interpreted bytecode. In addition to ``cabal v2-build``'s flags,
-it takes an additional ``--repl-options`` flag.
+it additionally takes the ``--repl-options`` and ``--repl-no-load`` flags.
 
 To avoid ``ghci`` specific flags from triggering unneeded global rebuilds these
 flags are now stripped from the internal configuration. As a result
@@ -150,6 +150,8 @@ flags are now stripped from the internal configuration. As a result
 other repls). Instead, you should use the new ``--repl-options`` flag to
 specify these options to the invoked repl. (This flag also works on ``cabal
 repl`` and ``Setup repl`` on sufficiently new versions of Cabal.)
+
+The ``repl-no-load`` flag disables the loading of target modules at startup.
 
 Currently, it is not supported to pass multiple targets to ``v2-repl``
 (``v2-repl`` will just successively open a separate GHCi session for

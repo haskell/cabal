@@ -47,6 +47,7 @@ module Distribution.Simple.Setup (
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
   ReplFlags(..),                         defaultReplFlags,     replCommand,
+  ReplOptions(..),
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
@@ -1665,13 +1666,30 @@ instance Semigroup BuildFlags where
 -- * REPL Flags
 -- ------------------------------------------------------------
 
+data ReplOptions = ReplOptions {
+    replOptionsFlags :: [String],
+    replOptionsNoLoad :: Flag Bool
+  }
+  deriving (Show, Generic, Typeable)
+
+instance Binary ReplOptions
+instance Structured ReplOptions
+
+
+instance Monoid ReplOptions where
+  mempty = ReplOptions mempty (Flag False)
+  mappend = (<>)
+
+instance Semigroup ReplOptions where
+  (<>) = gmappend
+
 data ReplFlags = ReplFlags {
     replProgramPaths :: [(String, FilePath)],
     replProgramArgs :: [(String, [String])],
     replDistPref    :: Flag FilePath,
     replVerbosity   :: Flag Verbosity,
     replReload      :: Flag Bool,
-    replReplOptions :: [String]
+    replReplOptions :: ReplOptions
   }
   deriving (Show, Generic, Typeable)
 
@@ -1682,7 +1700,7 @@ defaultReplFlags  = ReplFlags {
     replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
     replReload      = Flag False,
-    replReplOptions = []
+    replReplOptions = mempty
   }
 
 instance Monoid ReplFlags where
@@ -1763,9 +1781,17 @@ replCommand progDb = CommandUI
   where
     liftReplOption = liftOption replReplOptions (\v flags -> flags { replReplOptions = v })
 
-replOptions :: ShowOrParseArgs -> [OptionField [String]]
-replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
-              const (reqArg "FLAG" (succeedReadE (:[])) id) ]
+replOptions :: ShowOrParseArgs -> [OptionField ReplOptions]
+replOptions _ =
+  [ option [] ["repl-no-load"]
+    "Disable loading of project modules at REPL startup."
+    replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
+    trueArg
+  , option [] ["repl-options"]
+    "use this option for the repl"
+    replOptionsFlags (\p flags -> flags { replOptionsFlags = p ++ replOptionsFlags flags })
+    (reqArg "FLAG" (succeedReadE (:[])) id)
+  ]
 
 -- ------------------------------------------------------------
 -- * Test flags
@@ -1831,16 +1857,8 @@ testCommand = CommandUI
   { commandName         = "test"
   , commandSynopsis     =
       "Run all/specific tests in the test suite."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-tests` flag and builds"
-      ++ " the test suite.\n"
-      ++ "\n"
-      ++ "Remember that the tests' dependencies must be installed if there"
-      ++ " are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-tests`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running tests.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "test"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "test"
       [ "[FLAGS]"
@@ -1849,6 +1867,24 @@ testCommand = CommandUI
   , commandDefaultFlags = defaultTestFlags
   , commandOptions = testOptions'
   }
+
+-- | Help text for @test@ and @bench@ commands.
+testOrBenchmarkHelpText
+  :: String   -- ^ Either @"test"@ or @"benchmark"@.
+  -> String   -- ^ Help text.
+testOrBenchmarkHelpText s = unlines $ map unwords
+  [ [ "The package must have been build with configuration"
+    , concat [ "flag `--enable-", s, "s`." ]
+    ]
+  , []  -- blank line
+  , [ concat [ "Note that additional dependencies of the ", s, "s" ]
+    , "must have already been installed."
+    ]
+  , []
+  , [ "By defining UserHooks in a custom Setup.hs, the package can define"
+    , concat [ "actions to be executed before and after running ", s, "s." ]
+    ]
+  ]
 
 testOptions' ::  ShowOrParseArgs -> [OptionField TestFlags]
 testOptions' showOrParseArgs =
@@ -1945,17 +1981,8 @@ benchmarkCommand = CommandUI
   { commandName         = "bench"
   , commandSynopsis     =
       "Run all/specific benchmarks."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-benchmarks` flag and"
-      ++ " builds the benchmarks.\n"
-      ++ "\n"
-      ++ "Remember that the benchmarks' dependencies must be installed if"
-      ++ " there are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-benchmarks`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running"
-      ++ " benchmarks.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "benchmark"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "bench"
       [ "[FLAGS]"

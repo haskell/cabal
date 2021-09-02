@@ -147,6 +147,7 @@ planPackages verbosity comp platform fetchFlags
         resolveWithoutDependencies resolverParams
 
   where
+    resolverParams :: DepResolverParams
     resolverParams =
 
         setMaxBackjumps (if maxBackjumps < 0 then Nothing
