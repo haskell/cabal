@@ -21,6 +21,7 @@ import Distribution.Simple.PreProcess
 
 import Distribution.Types.PackageDescription
 import Distribution.Types.Component
+import Distribution.Types.ComponentRequestedSpec (ComponentRequestedSpec)
 import Distribution.Types.Library
 import Distribution.Types.Executable
 import Distribution.Types.Benchmark
@@ -48,8 +49,11 @@ needElaboratedPackage :: ElaboratedConfiguredPackage -> ElaboratedPackage -> Reb
 needElaboratedPackage elab epkg =
     traverse_ (needComponent pkg_descr) (enabledComponents pkg_descr enabled)
   where
+    pkg_descr :: PackageDescription
     pkg_descr = elabPkgDescription elab
+    enabled_stanzas :: OptionalStanzaSet
     enabled_stanzas = pkgStanzasEnabled epkg
+    enabled :: ComponentRequestedSpec
     enabled = enableStanzas enabled_stanzas
 
 needElaboratedComponent :: ElaboratedConfiguredPackage -> ElaboratedComponent -> Rebuild ()
@@ -58,7 +62,9 @@ needElaboratedComponent elab ecomp =
         Nothing   -> needSetup
         Just comp -> needComponent pkg_descr comp
   where
+    pkg_descr :: PackageDescription
     pkg_descr = elabPkgDescription elab
+    mb_comp   :: Maybe Component
     mb_comp   = fmap (getComponent pkg_descr) (compComponentName ecomp)
 
 needComponent :: PackageDescription -> Component -> Rebuild ()
@@ -101,6 +107,7 @@ needTestSuite pkg_descr t
         needBuildInfo pkg_descr bi [m]
       TestSuiteUnsupported _ -> return () -- soft fail
  where
+  bi :: BuildInfo
   bi = testBuildInfo t
 
 needMainFile :: BuildInfo -> FilePath -> Rebuild ()
@@ -130,6 +137,7 @@ needBenchmark pkg_descr bm
        needMainFile  bi mainPath
      BenchmarkUnsupported _ -> return () -- soft fail
  where
+  bi :: BuildInfo
   bi = benchmarkBuildInfo bm
 
 needBuildInfo :: PackageDescription -> BuildInfo -> [ModuleName] -> Rebuild ()

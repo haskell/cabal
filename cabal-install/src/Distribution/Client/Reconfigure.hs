@@ -119,14 +119,16 @@ reconfigure
 
     else do
 
-      let checks =
+      let checks :: Check (ConfigFlags, ConfigExFlags)
+          checks =
             checkVerb
             <> checkDist
             <> checkOutdated
             <> check
       (Any frc, flags@(configFlags, _)) <- runCheck checks mempty savedFlags
 
-      let config' = updateInstallDirs (configUserInstall configFlags) config
+      let config' :: SavedConfig
+          config' = updateInstallDirs (configUserInstall configFlags) config
 
       when frc $ configureAction flags extraArgs globalFlags
       return config'
@@ -135,11 +137,13 @@ reconfigure
 
     -- Changing the verbosity does not require reconfiguration, but the new
     -- verbosity should be used if reconfiguring.
+    checkVerb :: Check (ConfigFlags, b)
     checkVerb = Check $ \_ (configFlags, configExFlags) -> do
       let configFlags' = configFlags { configVerbosity = toFlag verbosity}
       return (mempty, (configFlags', configExFlags))
 
     -- Reconfiguration is required if @--build-dir@ changes.
+    checkDist :: Check (ConfigFlags, b)
     checkDist = Check $ \_ (configFlags, configExFlags) -> do
       -- Always set the chosen @--build-dir@ before saving the flags,
       -- or bad things could happen.
@@ -149,6 +153,7 @@ reconfigure
       let configFlags' = configFlags { configDistPref = toFlag dist }
       return (Any distChanged, (configFlags', configExFlags))
 
+    checkOutdated :: Check (ConfigFlags, b)
     checkOutdated = Check $ \_ flags@(configFlags, _) -> do
       let buildConfig = localBuildInfoFile dist
 
@@ -172,7 +177,8 @@ reconfigure
       outdated <- existsAndIsMoreRecentThan descrFile buildConfig
       when outdated $ info verbosity (descrFile ++ " was changed")
 
-      let failed =
+      let failed :: Any
+          failed =
             Any outdated
             <> Any userPackageEnvironmentFileModified
             <> Any (not configured)

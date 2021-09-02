@@ -35,7 +35,7 @@ import Distribution.Client.Compat.Prelude hiding (getContents)
 
 import Distribution.Types.Dependency
 import Distribution.Types.Flag
-         ( FlagAssignment, unFlagAssignment
+         ( FlagAssignment, FlagName, unFlagAssignment
          , unFlagName, parsecFlagAssignmentNonEmpty )
 import Distribution.Simple.Utils
          ( die', info, chattyTry, writeFileAtomic )
@@ -104,7 +104,8 @@ modifyWorld f verbosity world pkgs =
 getContents :: Verbosity -> FilePath -> IO [WorldPkgInfo]
 getContents verbosity world = do
   content <- safelyReadFile world
-  let result = map simpleParsec (lines $ B.unpack content)
+  let result :: [Maybe WorldPkgInfo]
+      result = map simpleParsec (lines $ B.unpack content)
   case sequence result of
     Nothing -> die' verbosity "Could not parse world file."
     Just xs -> return xs
@@ -122,6 +123,7 @@ instance Pretty WorldPkgInfo where
       dispFlags [] = Disp.empty
       dispFlags fs = Disp.text "--flags="
                   <<>> Disp.doubleQuotes (flagAssToDoc fs)
+      flagAssToDoc :: [(FlagName, Bool)] -> Disp.Doc
       flagAssToDoc = foldr (\(fname,val) flagAssDoc ->
                              (if not val then Disp.char '-'
                                          else Disp.char '+')

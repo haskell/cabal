@@ -338,10 +338,12 @@ rebuildProjectConfig verbosity
     ProjectConfigShared { projectConfigConfigFile } =
       projectConfigShared cliConfig
 
+    fileMonitorProjectConfig ::
+      FileMonitor
+        (FilePath, FilePath)
+        (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
     fileMonitorProjectConfig =
-      newFileMonitor (distProjectCacheFile "config") :: FileMonitor
-          (FilePath, FilePath)
-          (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
+      newFileMonitor (distProjectCacheFile "config")
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
@@ -964,6 +966,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     --TODO: [nice to have] disable multiple instances restriction in
     -- the solver, but then make sure we can cope with that in the
     -- output.
+    resolverParams :: DepResolverParams
     resolverParams =
 
         setMaxBackjumps solverSettingMaxBackjumps
@@ -1074,6 +1077,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       $ stdResolverParams
 
+    stdResolverParams :: DepResolverParams
     stdResolverParams =
       -- Note: we don't use the standardInstallPolicy here, since that uses
       -- its own addDefaultSetupDependencies that is not appropriate for us.
@@ -1286,6 +1290,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         pkgConfigReplOptions   = mempty
       }
 
+    preexistingInstantiatedPkgs :: Map UnitId FullUnitId
     preexistingInstantiatedPkgs =
         Map.fromList (mapMaybe f (SolverInstallPlan.toList solverPlan))
       where
@@ -1297,6 +1302,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                  (Map.fromList (IPI.instantiatedWith ipkg))))
         f _ = Nothing
 
+    elaboratedInstallPlan ::
+      LogProgress (InstallPlan.GenericInstallPlan IPI.InstalledPackageInfo ElaboratedConfiguredPackage)
     elaboratedInstallPlan =
       flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
         case planpkg of

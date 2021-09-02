@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, CPP #-}
+{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables, CPP #-}
 
 module Distribution.Client.Utils
   ( MergeResult(..)
@@ -76,9 +76,10 @@ import qualified System.IO.Error as IOError
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
-mergeBy :: (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
+mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
 mergeBy cmp = merge
   where
+    merge               :: [a] -> [b] -> [MergeResult a b]
     merge []     ys     = [ OnlyInRight y | y <- ys]
     merge xs     []     = [ OnlyInLeft  x | x <- xs]
     merge (x:xs) (y:ys) =
@@ -92,9 +93,10 @@ data MergeResult a b = OnlyInLeft a | InBoth a b | OnlyInRight b
 duplicates :: Ord a => [a] -> [[a]]
 duplicates = duplicatesBy compare
 
-duplicatesBy :: (a -> a -> Ordering) -> [a] -> [[a]]
+duplicatesBy :: forall a. (a -> a -> Ordering) -> [a] -> [[a]]
 duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
   where
+    eq :: a -> a -> Bool
     eq a b = case cmp a b of
                EQ -> True
                _  -> False
@@ -175,7 +177,9 @@ withEnvOverrides overrides m = do
 withExtraPathEnv :: [FilePath] -> IO a -> IO a
 withExtraPathEnv paths m = do
   oldPathSplit <- getSearchPath
-  let newPath = mungePath $ intercalate [searchPathSeparator] (paths ++ oldPathSplit)
+  let newPath :: String
+      newPath = mungePath $ intercalate [searchPathSeparator] (paths ++ oldPathSplit)
+      oldPath :: String
       oldPath = mungePath $ intercalate [searchPathSeparator] oldPathSplit
       -- TODO: This is a horrible hack to work around the fact that
       -- setEnv can't take empty values as an argument
