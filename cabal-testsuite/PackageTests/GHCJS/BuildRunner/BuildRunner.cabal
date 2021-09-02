@@ -1,0 +1,21 @@
+name: BuildRunner
+version: 1.0
+build-type: Simple
+cabal-version: >= 1.10
+
+test-suite ghcjs-test
+    type: exitcode-stdio-1.0
+    main-is: BuildRunner.hs
+    build-depends: base
+    default-language: Haskell2010
+
+executable ghcjs-exe
+    main-is: BuildRunner.hs
+    build-depends: base
+    default-language: Haskell2010
+
+benchmark ghcjs-bench
+    type: exitcode-stdio-1.0
+    main-is: BuildRunner.hs
+    build-depends: base
+    default-language: Haskell2010

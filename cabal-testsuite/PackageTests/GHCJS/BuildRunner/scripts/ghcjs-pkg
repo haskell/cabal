@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if [ "$1" == "--numeric-ghcjs-version" ]; then
+   ghc --numeric-version
+elif [ "$1" == "--numeric-ghc-version" ]; then
+   ghc --numeric-version
+else
+   ghc-pkg "$@"
+fi
