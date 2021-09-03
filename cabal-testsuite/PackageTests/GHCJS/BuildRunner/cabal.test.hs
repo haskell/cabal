@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 
 main = cabalTest . recordMode DoNotRecord $ do
     skipIfWindows -- disabled because (I presume) Windows doesn't have BASH
-    cwd <- testCurrentDir <$> getTestEnv
+    cwd <- fmap testCurrentDir getTestEnv
     testInvokedWithBuildRunner cwd "test" []
     testInvokedWithBuildRunner cwd "run" ["ghcjs-exe"]
     testInvokedWithBuildRunner cwd "bench" []
