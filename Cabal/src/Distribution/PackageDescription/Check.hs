@@ -2147,7 +2147,7 @@ checkDuplicateModules pkg =
                                          (Map.unionWith (+)) -- if a module may occur in nonexclusive branches count it twice
                                          (Map.unionWith max) -- a module occurs the max of times it might appear in exclusive branches
                                          t
-                   dupLibs = Map.elems $ Map.filter (>1) libMap
+                   dupLibs = Map.keys $ Map.filter (>1) libMap
                in if null dupLibs
                     then []
                     else [PackageBuildImpossible $ "Duplicate modules in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibs)]
