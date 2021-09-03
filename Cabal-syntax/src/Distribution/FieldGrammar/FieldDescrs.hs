@@ -21,7 +21,7 @@ import Distribution.Pretty         (Pretty (..), showFreeText)
 
 import qualified Data.Map                        as Map
 import qualified Distribution.Compat.CharParsing as C
-import qualified Distribution.Fields.Field       as P
+import qualified Distribution.Fields             as P
 import qualified Distribution.Parsec             as P
 import qualified Text.PrettyPrint                as Disp
 

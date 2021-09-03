@@ -67,6 +67,7 @@ import Distribution.Simple.UserHooks
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import Distribution.Simple.PackageDescription
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.PreProcess
@@ -110,7 +111,6 @@ import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Data.List       (unionBy, (\\))
 
-import Distribution.PackageDescription.Parsec
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the

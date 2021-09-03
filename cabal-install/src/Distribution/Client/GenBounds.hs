@@ -30,13 +30,13 @@ import Distribution.PackageDescription
          ( enabledBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
-import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription )
 import Distribution.Types.ComponentRequestedSpec
          ( defaultComponentRequestedSpec )
 import Distribution.Types.Dependency
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
+import Distribution.Simple.PackageDescription
+         ( readGenericPackageDescription )
 import Distribution.Simple.Program
          ( ProgramDb )
 import Distribution.Simple.Utils

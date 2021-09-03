@@ -14,7 +14,6 @@ module Distribution.Fields (
     -- ** ParseResult
     ParseResult,
     runParseResult,
-    parseString,
     parseWarning,
     parseWarnings,
     parseFailure,

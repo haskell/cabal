@@ -12,7 +12,7 @@ import           Distribution.Compat.Prelude
 import           Distribution.Fields.Field     (FieldName)
 import           Distribution.Fields.Pretty    (PrettyField (..))
 import           Distribution.Pretty           (Pretty (..), showFreeText, showFreeTextV3)
-import           Distribution.Simple.Utils     (toUTF8BS)
+import           Distribution.Utils.Generic    (toUTF8BS)
 import           Prelude ()
 import           Text.PrettyPrint              (Doc)
 import qualified Text.PrettyPrint              as PP

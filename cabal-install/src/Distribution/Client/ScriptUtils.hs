@@ -42,7 +42,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
-    ( ParseResult, parseFatalFailure, parseString, readFields )
+    ( ParseResult, parseFatalFailure, readFields )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
@@ -51,6 +51,8 @@ import Distribution.Parsec
     ( Position(..) )
 import Distribution.Simple.Flag
     ( fromFlagOrDefault )
+import Distribution.Simple.PackageDescription
+    ( parseString )
 import Distribution.Simple.Setup
     ( Flag(..) )
 import Distribution.Simple.Utils
