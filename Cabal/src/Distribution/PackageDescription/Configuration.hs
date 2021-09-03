@@ -18,6 +18,7 @@
 module Distribution.PackageDescription.Configuration (
     finalizePD,
     flattenPackageDescription,
+    flattenPackageDescriptionWithConditionals,
 
     -- Utils
     parseCondition,
@@ -598,3 +599,92 @@ transformAllBuildDependsN f =
   . over (L.packageDescription . L.setupBuildInfo . traverse . L.setupDepends) f
   -- cannot be point-free as normal because of higher rank
   . over (\f' -> L.allCondTrees $ traverseCondTreeC f') f
+
+-- | Flatten a generic package description but try to be a bit more clever with conditionals
+-- in particular, attempt not to introduce suprious module duplciation when merging two elements of a branch.
+-- This is used for trying to avoid spurious duplicate module warnings in sanity checking a package, and
+-- in the future can be extended to try to handle other quirks that may arise.
+flattenPackageDescriptionWithConditionals :: GenericPackageDescription -> PackageDescription
+flattenPackageDescriptionWithConditionals
+  (GenericPackageDescription pkg _ _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+    pkg { library      = mlib
+        , subLibraries = reverse sub_libs
+        , foreignLibs  = reverse flibs
+        , executables  = reverse exes
+        , testSuites   = reverse tests
+        , benchmarks   = reverse bms
+        }
+  where
+    mlib = f <$> mlib0
+      where f lib = (libFillInDefaults . unwrapWrappedLibrary . fst . ignoreConditions . fmap WrappedLibrary $ lib) { libName = LMainLibName }
+    sub_libs = flattenLib  <$> sub_libs0
+    flibs    = flattenFLib <$> flibs0
+    exes     = flattenExe  <$> exes0
+    tests    = flattenTst  <$> tests0
+    bms      = flattenBm   <$> bms0
+    flattenLib (n, t) = libFillInDefaults $ (unwrapWrappedLibrary . fst . ignoreConditions . fmap WrappedLibrary $ t)
+      { libName = LSubLibName n, libExposed = False }
+    flattenFLib (n, t) = flibFillInDefaults $ (fst $ ignoreConditions t)
+      { foreignLibName = n }
+    flattenExe (n, t) = exeFillInDefaults $ (unwrapWrappedExe . fst . ignoreConditions . fmap WrappedExe $ t)
+      { exeName = n }
+    flattenTst (n, t) = testFillInDefaults $ (unwrapWrappedTest . fst . ignoreConditions . fmap WrappedTest $ t)
+      { testName = n }
+    flattenBm (n, t) = benchFillInDefaults $ (unwrapWrappedBench . fst . ignoreConditions . fmap WrappedBench $ t)
+      { benchmarkName = n }
+
+-- special newtypes for combining with conditions in a way that tries not to introduce module duplication across branches
+newtype WrappedLibrary = WrappedLibrary {unwrapWrappedLibrary :: Library}
+
+instance Semigroup WrappedLibrary where
+   WrappedLibrary a <> WrappedLibrary b = WrappedLibrary $ ab
+                                          {exposedModules = exposed', libBuildInfo = lbi', reexportedModules = reexported', signatures = sigs' }
+    where
+      ab = a <> b
+
+      -- if something exists in both branches of a conditional, only add it once
+      o x y = x ++ filter (not . (`elem` x)) y
+
+      exposed' = exposedModules a `o` exposedModules b
+
+      -- otherModules get overridden in either when the other already has an exposed module of that type
+      lbi' = (libBuildInfo ab) {otherModules = (filter (not . (`elem` exposedModules b)) . otherModules . libBuildInfo $ a) `o`
+                                               (filter (not . (`elem` exposedModules a)) . otherModules . libBuildInfo $ b)}
+
+      -- reexportedModules get overwritten by exposed or othermodules
+      reexported' = filter (not . (`elem` (exposedModules b ++ (otherModules . libBuildInfo $ b))) . moduleReexportName) (reexportedModules a) `o`
+                    filter (not . (`elem` (exposedModules a ++ (otherModules . libBuildInfo $ a))) . moduleReexportName) (reexportedModules b)
+
+      -- signatures get overridden by all three
+      sigs' = filter (not . (`elem` (exposedModules b ++ (otherModules . libBuildInfo $ b) ++ signatures b))) (signatures a) `o`
+                   filter (not . (`elem` (exposedModules a ++ (otherModules . libBuildInfo $ a) ++ signatures a))) (signatures b)
+
+newtype WrappedExe = WrappedExe {unwrapWrappedExe :: Executable}
+
+instance Semigroup WrappedExe where
+  WrappedExe a <> WrappedExe b = WrappedExe $ ab {buildInfo = (buildInfo ab) {otherModules = other'}}
+    where
+      ab = a <> b
+      oa = otherModules . buildInfo $ a
+      ob = otherModules . buildInfo $ b
+      other' = oa ++ filter (not . (`elem` oa)) ob
+
+newtype WrappedTest = WrappedTest {unwrapWrappedTest :: TestSuite}
+
+instance Semigroup WrappedTest where
+  WrappedTest a <> WrappedTest b = WrappedTest $ ab {testBuildInfo = (testBuildInfo ab) {otherModules = other'}}
+    where
+      ab = a <> b
+      oa = otherModules . testBuildInfo $ a
+      ob = otherModules . testBuildInfo $ b
+      other' = oa ++ filter (not . (`elem` oa)) ob
+
+newtype WrappedBench = WrappedBench {unwrapWrappedBench :: Benchmark}
+
+instance Semigroup WrappedBench where
+  WrappedBench a <> WrappedBench b = WrappedBench $ ab {benchmarkBuildInfo = (benchmarkBuildInfo ab) {otherModules = other'}}
+    where
+      ab = a <> b
+      oa = otherModules . benchmarkBuildInfo $ a
+      ob = otherModules . benchmarkBuildInfo $ b
+      other' = oa ++ filter (not . (`elem` oa)) ob

@@ -155,15 +155,20 @@ checkPackage gpkg mpkg =
   ++ checkUnicodeXFields gpkg
   ++ checkPathsModuleExtensions pkg
   ++ checkSetupVersions gpkg
+  -- sanity checks should take place over a specially flattened
+  -- version of the generic package description that attempts to
+  -- prevent spurious module duplication when merging conditionals
+  ++ checkSanity fpkg
+
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
+    fpkg = flattenPackageDescriptionWithConditionals gpkg
 
 --TODO: make this variant go away
 --      we should always know the GenericPackageDescription
 checkConfiguredPackage :: PackageDescription -> [PackageCheck]
 checkConfiguredPackage pkg =
-    checkSanity pkg
- ++ checkFields pkg
+    checkFields pkg
  ++ checkLicense pkg
  ++ checkSourceRepos pkg
  ++ checkAllGhcOptions pkg
