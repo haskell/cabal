@@ -1821,12 +1821,12 @@ system-dependent values for these fields.
         build-tool-depends: mypackage:executable
 
     Cabal tries to make sure that all specified programs are atomically built and prepended
-    on the ``$PATH`` shell variable before building the component in question, but can only do
+    on the ``PATH`` shell variable before building the component in question, but can only do
     so for Nix-style builds. Specifically:
 
     a) For Nix-style local builds, both internal and external dependencies.
     b) For old-style builds, only for internal dependencies [#old-style-build-tool-depends]_.
-       It's up to the user to provide needed executables in this case under `$PATH.`
+       It's up to the user to provide needed executables in this case under ``PATH``.
 
 
     .. note::
@@ -2150,7 +2150,7 @@ system-dependent values for these fields.
     setup described in the section on `system-dependent parameters`_.
 
 .. pkg-field:: hsc2hs-options: token list
-    :since 3.6
+    :since: 3.6
 
     Command-line arguments to be passed to ``hsc2hs``.
 
@@ -3029,7 +3029,7 @@ Accessing data files from package code
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
 one can even move packages around after installation (see `prefix
-independence <installing-packages.html#prefix-independence>`__). To
+independence <setup-commands.html#prefix-independence>`__). To
 enable packages to find these files in a portable way, Cabal generates a
 module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
@@ -3489,5 +3489,5 @@ For more information about Backpack, check out the
   Some packages (ab)use :pkg-field:`build-depends` on old-style builds, but this has a few major drawbacks:
 
     - using Nix-style builds it's considered an error if you depend on a exe-only package via build-depends: the solver will refuse it.
-    - it may or may not place the executable on ``$PATH``.
+    - it may or may not place the executable on ``PATH``.
     - it does not ensure the correct version of the package is installed, so you might end up overwriting versions with each other.

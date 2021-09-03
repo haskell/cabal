@@ -1,0 +1,7 @@
+synopsis: defer build-tools-depends choices as well as setup choices
+prs: #7532 #7561
+description {
+
+- extends the existing solver pass that defers solving setup depends until top-level goals are solved to also defer build-tool-depends goals until top level goals are solved.
+- constraints at the top level (on versions, flags, stanzas, etc) are applied first and only then are attempts made to build the less-constrained qualified goals, significantly streamlining the production of valid build plans.
+}
