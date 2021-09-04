@@ -68,7 +68,7 @@ import           Distribution.Client.Setup
 import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils
-                   ( ProgressPhase(..), progressMessage, removeExistingFile )
+                   ( ProgressPhase(..), findOpenProgramLocation, progressMessage, removeExistingFile )
 
 import           Distribution.Compat.Lens
 import           Distribution.Package
@@ -101,7 +101,7 @@ import qualified Data.ByteString.Lazy as LBS
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
 import System.FilePath   (dropDrive, makeRelative, normalise, takeDirectory, (<.>), (</>))
-import System.IO         (IOMode (AppendMode), withFile)
+import System.IO         (IOMode (AppendMode), Handle, withFile)
 
 import Distribution.Compat.Directory (listDirectory)
 
@@ -230,6 +230,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
             then dryRunLocalPkg pkg depsBuildStatus srcdir
             else return (BuildStatusUnpack tarball)
       where
+        srcdir :: FilePath
         srcdir = distUnpackedSrcDirectory (packageId pkg)
 
     dryRunLocalPkg :: ElaboratedConfiguredPackage
@@ -250,6 +251,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
           Right buildResult ->
             return (BuildStatusUpToDate buildResult)
       where
+        packageFileMonitor :: PackageFileMonitor
         packageFileMonitor =
           newPackageFileMonitor shared distDirLayout
           (elabDistDirParams shared pkg)
@@ -295,6 +297,7 @@ improveInstallPlanWithUpToDatePackages :: BuildStatusMap
 improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
     InstallPlan.installed canPackageBeImproved
   where
+    canPackageBeImproved :: ElaboratedConfiguredPackage -> Bool
     canPackageBeImproved pkg =
       case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
         Just BuildStatusUpToDate {} -> True
@@ -376,6 +379,13 @@ packageFileMonitorKeyValues elab =
     -- do not affect the configure step need to be nulled out. Those parts are
     -- the specific targets that we're going to build.
     --
+
+    -- Additionally we null out the parts that don't affect the configure step because they're simply
+    -- about how tests or benchmarks are run
+
+    -- TODO there may be more things to null here too, in the future.
+
+    elab_config :: ElaboratedConfiguredPackage
     elab_config =
         elab {
             elabBuildTargets   = [],
@@ -383,13 +393,21 @@ packageFileMonitorKeyValues elab =
             elabBenchTargets   = [],
             elabReplTarget     = Nothing,
             elabHaddockTargets = [],
-            elabBuildHaddocks  = False
+            elabBuildHaddocks  = False,
+
+            elabTestMachineLog   = Nothing,
+            elabTestHumanLog     = Nothing,
+            elabTestShowDetails  = Nothing,
+            elabTestKeepTix      = False,
+            elabTestTestOptions  = [],
+            elabBenchmarkOptions = []
         }
 
     -- The second part is the value used to guard the build step. So this is
     -- more or less the opposite of the first part, as it's just the info about
     -- what targets we're going to build.
     --
+    buildComponents :: Set ComponentName
     buildComponents = elabBuildTargetWholeComponents elab
 
 -- | Do all the checks on whether a package has changed and thus needs either
@@ -464,6 +482,7 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                   (docsResult, testsResult) = buildResult
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+    changedToMaybe :: MonitorChanged a b -> Maybe b
     changedToMaybe (MonitorChanged     _) = Nothing
     changedToMaybe (MonitorUnchanged x _) = Just x
 
@@ -681,6 +700,7 @@ rebuildTarget verbosity
   where
     unexpectedState = error "rebuildTarget: unexpected package status"
 
+    downloadPhase :: IO BuildResult
     downloadPhase = do
         downsrcloc <- annotateFailureNoLog DownloadFailed $
                         waitAsyncPackageDownload verbosity downloadMap pkg
@@ -689,6 +709,7 @@ rebuildTarget verbosity
           --TODO: [nice to have] git/darcs repos etc
 
 
+    unpackTarballPhase :: FilePath -> IO BuildResult
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
@@ -706,6 +727,7 @@ rebuildTarget verbosity
     -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
     -- would only start from download or unpack phases.
     --
+    rebuildPhase :: BuildStatusRebuild -> FilePath -> IO BuildResult
     rebuildPhase buildStatus srcdir =
         assert (elabBuildStyle pkg == BuildInplaceOnly) $
 
@@ -714,6 +736,7 @@ rebuildTarget verbosity
         builddir = distBuildDirectory
                    (elabDistDirParams sharedPackageConfig pkg)
 
+    buildAndInstall :: FilePath -> FilePath -> IO BuildResult
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity distDirLayout storeDirLayout
@@ -725,6 +748,7 @@ rebuildTarget verbosity
         builddir' = makeRelative srcdir builddir
         --TODO: [nice to have] ^^ do this relative stuff better
 
+    buildInplace :: BuildStatusRebuild -> FilePath -> FilePath -> IO BuildResult
     buildInplace buildStatus srcdir builddir =
         --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
@@ -760,6 +784,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
                             asyncFetchPackages verbosity repoctx
                                                pkgsToDownload body
   where
+    pkgsToDownload :: [PackageLocation (Maybe FilePath)]
     pkgsToDownload =
       ordNub $
       [ elabPkgSourceLocation elab
@@ -883,6 +908,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
           writeFileAtomic cabalFile pkgtxt
 
   where
+    cabalFile :: FilePath
     cabalFile = parentdir </> pkgsubdir
                           </> prettyShow pkgname <.> "cabal"
     pkgsubdir = prettyShow pkgid
@@ -1076,12 +1102,14 @@ buildAndInstallUnpackedPackage verbosity
     uid    = installedUnitId rpkg
     compid = compilerId compiler
 
+    dispname :: String
     dispname = case elabPkgOrComp pkg of
         ElabPackage _ -> prettyShow pkgid
             ++ " (all, legacy fallback)"
         ElabComponent comp -> prettyShow pkgid
             ++ " (" ++ maybe "custom" prettyShow (compComponentName comp) ++ ")"
 
+    noticeProgress :: ProgressPhase -> IO ()
     noticeProgress phase = when isParallelBuild $
         progressMessage verbosity phase dispname
 
@@ -1143,6 +1171,7 @@ buildAndInstallUnpackedPackage verbosity
         Nothing        -> Nothing
         Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
 
+    initLogFile :: IO ()
     initLogFile =
       case mlogFile of
         Nothing      -> return ()
@@ -1151,6 +1180,7 @@ buildAndInstallUnpackedPackage verbosity
           exists <- doesFileExist logFile
           when exists $ removeFile logFile
 
+    withLogging :: (Maybe Handle -> IO r) -> IO r
     withLogging action =
       case mlogFile of
         Nothing      -> action Nothing
@@ -1162,6 +1192,7 @@ hasValidHaddockTargets ElaboratedConfiguredPackage{..}
   | not elabBuildHaddocks = False
   | otherwise             = any componentHasHaddocks components
   where
+    components :: [ComponentTarget]
     components = elabBuildTargets ++ elabTestTargets ++ elabBenchTargets
               ++ maybeToList elabReplTarget ++ elabHaddockTargets
 
@@ -1193,11 +1224,12 @@ buildInplaceUnpackedPackage verbosity
                               distPackageCacheDirectory,
                               distDirectory
                             }
-                            BuildTimeSettings{buildSettingNumJobs}
+                            BuildTimeSettings{buildSettingNumJobs, buildSettingHaddockOpen}
                             registerLock cacheLock
                             pkgshared@ElaboratedSharedConfig {
                               pkgConfigCompiler      = compiler,
-                              pkgConfigCompilerProgs = progdb
+                              pkgConfigCompilerProgs = progdb,
+                              pkgConfigPlatform      = platform
                             }
                             plan
                             rpkg@(ReadyPackage pkg)
@@ -1312,6 +1344,17 @@ buildInplaceUnpackedPackage verbosity
                            </> "doc" </> "html"
               Tar.createTarGzFile dest docDir name
               notice verbosity $ "Documentation tarball created: " ++ dest
+
+            when (buildSettingHaddockOpen && haddockTarget /= Cabal.ForHackage) $ do
+              let dest = docDir </> name </> "index.html"
+                  name = haddockDirName haddockTarget (elabPkgDescription pkg)
+                  docDir = distBuildDirectory distDirLayout dparams
+                           </> "doc" </> "html"
+              exe <- findOpenProgramLocation platform
+              case exe of
+                Right open -> runProgramInvocation verbosity (simpleProgramInvocation open [dest])
+                Left err -> die' verbosity err
+
 
         return BuildResult {
           buildResultDocs    = docsResult,
@@ -1447,6 +1490,7 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       "Couldn't parse the output of 'setup register --gen-pkg-config':"
       ++ show perror
 
+    readPkgConf :: FilePath -> FilePath -> IO InstalledPackageInfo
     readPkgConf pkgConfDir pkgConfFile = do
       pkgConfStr <- BS.readFile (pkgConfDir </> pkgConfFile)
       (warns, ipkg) <- case Installed.parseInstalledPackageInfo pkgConfStr of

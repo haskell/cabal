@@ -46,7 +46,6 @@ import Distribution.Client.Compat.Prelude hiding (putStr, putStrLn, getLine, las
 
 import Distribution.CabalSpecVersion (CabalSpecVersion(..), showCabalSpecVersion)
 import Distribution.Version (Version)
-import Distribution.Types.Dependency (Dependency(..))
 import Distribution.Types.PackageName (PackageName, unPackageName)
 import qualified Distribution.SPDX as SPDX
 import Distribution.Client.Init.Defaults
@@ -58,7 +57,6 @@ import Distribution.Simple.Setup (Flag(..))
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
-import Distribution.Verbosity
 
 import Language.Haskell.Extension (Language(..))
 
@@ -137,7 +135,7 @@ createProject v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
-    
+
     TestSuite -> do
       -- the line below is necessary because if both package type and test flags
       -- are *not* passed, the user will be prompted for a package type (which
@@ -145,7 +143,7 @@ createProject v pkgIx srcDb initFlags = do
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
       let initFlags' = initFlags { initializeTestSuite = Flag True }
       testTarget <- genTestTarget initFlags' pkgIx
-      
+
       comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
@@ -264,7 +262,7 @@ cabalVersionPrompt :: Interactive m => InitFlags -> m CabalSpecVersion
 cabalVersionPrompt flags = getCabalVersion flags $ do
     v <- promptList "Please choose version of the Cabal specification to use"
       ppVersions
-      (Just ppDefault)
+      (DefaultPrompt ppDefault)
       (Just takeVersion)
       False
     -- take just the version numbers for convenience
@@ -301,16 +299,14 @@ packageNamePrompt srcDb flags = getPackageName flags $ do
         Flag b -> return $ filePathToPkgName b
         NoFlag -> currentDirPkgName
 
-    go $ Just defName
+    go $ DefaultPrompt defName
   where
     go defName = prompt "Package name" defName >>= \n ->
       if isPkgRegistered n
       then do
-        don'tUseName <- promptYesNo (promptOtherNameMsg n) (Just True)
+        don'tUseName <- promptYesNo (promptOtherNameMsg n) (DefaultPrompt True)
         if don'tUseName
-        then do
-          putStrLn (inUseMsg n)
-          go defName
+        then go defName
         else return n
       else return n
 
@@ -326,7 +322,7 @@ versionPrompt :: Interactive m => InitFlags -> m Version
 versionPrompt flags = getVersion flags go
   where
     go = do
-      vv <- promptStr "Package version" (Just $ prettyShow defaultVersion)
+      vv <- promptStr "Package version" (DefaultPrompt $ prettyShow defaultVersion)
       case simpleParsec vv of
         Nothing -> do
           putStrLn
@@ -339,7 +335,7 @@ licensePrompt :: Interactive m => InitFlags -> m SPDX.License
 licensePrompt flags = getLicense flags $ do
     l <- promptList "Please choose a license"
       licenses
-      Nothing
+      MandatoryPrompt
       Nothing
       True
 
@@ -353,24 +349,24 @@ licensePrompt flags = getLicense flags $ do
 
 authorPrompt :: Interactive m => InitFlags -> m String
 authorPrompt flags = getAuthor flags $
-    promptStr "Author name" Nothing
+    promptStr "Author name" OptionalPrompt
 
 emailPrompt :: Interactive m => InitFlags -> m String
 emailPrompt flags = getEmail flags $
-    promptStr "Maintainer email" Nothing
+    promptStr "Maintainer email" OptionalPrompt
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags = getHomepage flags $
-    promptStr "Project homepage URL" Nothing
+    promptStr "Project homepage URL" OptionalPrompt
 
 synopsisPrompt :: Interactive m => InitFlags -> m String
 synopsisPrompt flags = getSynopsis flags $
-    promptStr "Project synopsis" Nothing
+    promptStr "Project synopsis" OptionalPrompt
 
 categoryPrompt :: Interactive m => InitFlags -> m String
 categoryPrompt flags = getCategory flags $ promptList
       "Project category" defaultCategories
-      (Just "") (Just matchNone) True
+      (DefaultPrompt "") (Just matchNone) True
   where
     matchNone s
       | null s = "(none)"
@@ -383,7 +379,7 @@ mainFilePrompt flags = getMainFile flags go
     go = do
       fp <- promptList "What is the main module of the executable"
         [defaultMainIs', "Main.lhs"]
-        (Just defaultMainIs')
+        (DefaultPrompt defaultMainIs')
         Nothing
         True
 
@@ -402,14 +398,14 @@ mainFilePrompt flags = getMainFile flags go
 
 testDirsPrompt :: Interactive m => InitFlags -> m [String]
 testDirsPrompt flags = getTestDirs flags $ do
-    dir <- promptStr "Test directory" (Just defaultTestDir)
+    dir <- promptStr "Test directory" (DefaultPrompt defaultTestDir)
     return [dir]
 
 languagePrompt :: Interactive m => InitFlags -> String -> m Language
 languagePrompt flags pkgType = getLanguage flags $ do
     lang <- promptList ("Choose a language for your " ++ pkgType)
       ["Haskell2010", "Haskell98"]
-      (Just "Haskell2010")
+      (DefaultPrompt "Haskell2010")
       Nothing
       True
 
@@ -428,7 +424,7 @@ noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do
     doComments <- promptYesNo
       "Add informative comments to each field in the cabal file. (y/n)"
-      (Just True)
+      (DefaultPrompt True)
 
     --
     -- if --no-comments is flagged, then we choose not to generate comments
@@ -443,7 +439,7 @@ appDirsPrompt :: Interactive m => InitFlags -> m [String]
 appDirsPrompt flags = getAppDirs flags $ do
     dir <- promptList promptMsg
       [defaultApplicationDir, "exe", "src-exe"]
-      (Just defaultApplicationDir)
+      (DefaultPrompt defaultApplicationDir)
       Nothing
       True
 
@@ -458,16 +454,8 @@ srcDirsPrompt :: Interactive m => InitFlags -> m [String]
 srcDirsPrompt flags = getSrcDirs flags $ do
     dir <- promptList "Library source directory"
       [defaultSourceDir, "lib", "src-lib"]
-      (Just defaultSourceDir)
+      (DefaultPrompt defaultSourceDir)
       Nothing
       True
 
     return [dir]
-
-dependenciesPrompt
-    :: Interactive m
-    => InstalledPackageIndex
-    -> InitFlags
-    -> m [Dependency]
-dependenciesPrompt pkgIx flags = getDependencies flags $
-    retrieveDependencies silent flags [(fromString "Prelude", fromString "Prelude")] pkgIx

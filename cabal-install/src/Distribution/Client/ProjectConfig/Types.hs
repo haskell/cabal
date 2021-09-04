@@ -258,6 +258,7 @@ data PackageConfig
        packageConfigProgPrefix          :: Flag PathTemplate,
        packageConfigProgSuffix          :: Flag PathTemplate,
        packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraLibDirsStatic  :: [FilePath],
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
@@ -456,5 +457,6 @@ data BuildTimeSettings
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
        buildSettingIgnoreExpiry          :: Bool,
-       buildSettingProgPathExtra         :: [FilePath]
+       buildSettingProgPathExtra         :: [FilePath],
+       buildSettingHaddockOpen           :: Bool
      }

@@ -34,6 +34,7 @@ module Distribution.Client.Init.FlagExtractors
 , initializeTestSuitePrompt
 , packageTypePrompt
 , testMainPrompt
+, dependenciesPrompt
 ) where
 
 
@@ -56,6 +57,8 @@ import Distribution.Simple.Flag (flagElim)
 import Language.Haskell.Extension (Language(..), Extension(..))
 import Distribution.Client.Init.Prompt
 import qualified Data.Set as Set
+import Distribution.Simple.PackageIndex
+import Distribution.Client.Init.Utils
 
 
 
@@ -220,19 +223,19 @@ simpleProjectPrompt :: Interactive m => InitFlags -> m Bool
 simpleProjectPrompt flags = getSimpleProject flags $
     promptYesNo
       "Should I generate a simple project with sensible defaults"
-      (Just True)
+      (DefaultPrompt True)
 
 initializeTestSuitePrompt :: Interactive m => InitFlags -> m Bool
 initializeTestSuitePrompt flags = getInitializeTestSuite flags $
     promptYesNo
       "Should I generate a test suite for the library"
-      (Just True)
+      (DefaultPrompt True)
 
 packageTypePrompt :: Interactive m => InitFlags -> m PackageType
 packageTypePrompt flags = getPackageType flags $ do
     pt <- promptList "What does the package build"
       packageTypes
-      (Just "Executable")
+      (DefaultPrompt "Executable")
       Nothing
       False
 
@@ -249,14 +252,14 @@ packageTypePrompt flags = getPackageType flags $ do
       "Library" -> Just Library
       "Executable" -> Just Executable
       "Library and Executable" -> Just LibraryAndExecutable
-      "Test suite" -> Just TestSuite 
+      "Test suite" -> Just TestSuite
       _ -> Nothing
 
 testMainPrompt :: Interactive m => m HsFilePath
 testMainPrompt = do
     fp <- promptList "What is the main module of the test suite?"
       [defaultMainIs', "Main.lhs"]
-      (Just defaultMainIs')
+      (DefaultPrompt defaultMainIs')
       Nothing
       True
 
@@ -273,6 +276,13 @@ testMainPrompt = do
       _ -> return hs
   where
     defaultMainIs' = show defaultMainIs
+
+dependenciesPrompt
+    :: Interactive m
+    => InstalledPackageIndex
+    -> InitFlags
+    -> m [Dependency]
+dependenciesPrompt pkgIx flags = getDependencies flags (getBaseDep pkgIx flags)
 
 -- -------------------------------------------------------------------- --
 -- utilities

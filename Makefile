@@ -151,11 +151,11 @@ validate-via-docker-all : validate-via-docker-8.0.2
 validate-via-docker-all : validate-via-docker-8.2.2
 validate-via-docker-all : validate-via-docker-8.4.4
 validate-via-docker-all : validate-via-docker-8.6.5
-validate-via-docker-all : validate-via-docker-8.8.3
-validate-via-docker-all : validate-via-docker-8.10.1
+validate-via-docker-all : validate-via-docker-8.8.4
+validate-via-docker-all : validate-via-docker-8.10.4
 
-validate-dockerfiles : .docker/validate-8.10.1.dockerfile
-validate-dockerfiles : .docker/validate-8.8.3.dockerfile
+validate-dockerfiles : .docker/validate-8.10.4.dockerfile
+validate-dockerfiles : .docker/validate-8.8.4.dockerfile
 validate-dockerfiles : .docker/validate-8.6.5.dockerfile
 validate-dockerfiles : .docker/validate-8.4.4.dockerfile
 validate-dockerfiles : .docker/validate-8.2.2.dockerfile
@@ -192,11 +192,11 @@ validate-via-docker-8.4.4:
 validate-via-docker-8.6.5:
 	docker build $(DOCKERARGS) -t cabal-validate:8.6.5 -f .docker/validate-8.6.5.dockerfile .
 
-validate-via-docker-8.8.3:
-	docker build $(DOCKERARGS) -t cabal-validate:8.8.3 -f .docker/validate-8.8.3.dockerfile .
+validate-via-docker-8.8.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.8.4 -f .docker/validate-8.8.4.dockerfile .
 
-validate-via-docker-8.10.1:
-	docker build $(DOCKERARGS) -t cabal-validate:8.10.1 -f .docker/validate-8.10.1.dockerfile .
+validate-via-docker-8.10.4:
+	docker build $(DOCKERARGS) -t cabal-validate:8.10.4 -f .docker/validate-8.10.4.dockerfile .
 
 validate-via-docker-old:
 	docker build $(DOCKERARGS) -t cabal-validate:older -f .docker/validate-old.dockerfile .
@@ -235,6 +235,10 @@ bootstrap-jsons-linux: phony
 
 # TODO: when we have sphinx-build2 ?
 SPHINXCMD:=sphinx-build
+# Flag -n ("nitpick") warns about broken references
+# Flag -W turns warnings into errors
+# Flag --keep-going continues after errors
+SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
@@ -242,7 +246,7 @@ USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)
-	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) doc $(SPHINX_HTML_OUTDIR))
+	(. ./.python-sphinx-virtualenv/bin/activate && pip install -r doc/requirements.txt && $(SPHINXCMD) $(SPHINX_FLAGS) doc $(SPHINX_HTML_OUTDIR))
 
 .python-sphinx-virtualenv:
 	python3 -m venv .python-sphinx-virtualenv

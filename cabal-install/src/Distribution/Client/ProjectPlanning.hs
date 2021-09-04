@@ -338,10 +338,12 @@ rebuildProjectConfig verbosity
     ProjectConfigShared { projectConfigConfigFile } =
       projectConfigShared cliConfig
 
+    fileMonitorProjectConfig ::
+      FileMonitor
+        (FilePath, FilePath)
+        (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
     fileMonitorProjectConfig =
-      newFileMonitor (distProjectCacheFile "config") :: FileMonitor
-          (FilePath, FilePath)
-          (ProjectConfig, [PackageSpecifier UnresolvedSourcePackage])
+      newFileMonitor (distProjectCacheFile "config")
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
@@ -964,6 +966,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     --TODO: [nice to have] disable multiple instances restriction in
     -- the solver, but then make sure we can cope with that in the
     -- output.
+    resolverParams :: DepResolverParams
     resolverParams =
 
         setMaxBackjumps solverSettingMaxBackjumps
@@ -1024,13 +1027,14 @@ planPackages verbosity comp platform solver SolverSettings{..}
             | (pc, src) <- solverSettingConstraints ]
 
       . addPreferences
-          -- enable stanza preference where the user did not specify
+          -- enable stanza preference unilaterally, regardless if the user asked
+          -- accordingly or expressed no preference, to help hint the solver
           [ PackageStanzasPreference pkgname stanzas
           | pkg <- localPackages
           , let pkgname = pkgSpecifierTarget pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
-                          , Map.lookup stanza stanzaM == Nothing ]
+                          , Map.lookup stanza stanzaM /= Just False ]
           , not (null stanzas)
           ]
 
@@ -1073,6 +1077,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       $ stdResolverParams
 
+    stdResolverParams :: DepResolverParams
     stdResolverParams =
       -- Note: we don't use the standardInstallPolicy here, since that uses
       -- its own addDefaultSetupDependencies that is not appropriate for us.
@@ -1282,9 +1287,10 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         pkgConfigPlatform      = platform,
         pkgConfigCompiler      = compiler,
         pkgConfigCompilerProgs = compilerprogdb,
-        pkgConfigReplOptions   = []
+        pkgConfigReplOptions   = mempty
       }
 
+    preexistingInstantiatedPkgs :: Map UnitId FullUnitId
     preexistingInstantiatedPkgs =
         Map.fromList (mapMaybe f (SolverInstallPlan.toList solverPlan))
       where
@@ -1296,6 +1302,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                  (Map.fromList (IPI.instantiatedWith ipkg))))
         f _ = Nothing
 
+    elaboratedInstallPlan ::
+      LogProgress (InstallPlan.GenericInstallPlan IPI.InstalledPackageInfo ElaboratedConfiguredPackage)
     elaboratedInstallPlan =
       flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
         case planpkg of
@@ -1850,6 +1858,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabProgramPathExtra    = perPkgOptionNubList pkgid packageConfigProgramPathExtra
         elabConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
         elabExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
+        elabExtraLibDirsStatic  = perPkgOptionList pkgid packageConfigExtraLibDirsStatic
         elabExtraFrameworkDirs  = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
         elabExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
         elabProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
@@ -2592,7 +2601,7 @@ nubComponentTargets =
                             -> [(ComponentTarget, NonEmpty a)]
     wholeComponentOverrides ts =
       case [ ta | ta@(ComponentTarget _ WholeComponent, _) <- ts ] of
-        ((t, x):_) -> 
+        ((t, x):_) ->
                 let
                     -- Delete tuple (t, x) from original list to avoid duplicates.
                     -- Use 'deleteBy', to avoid additional Class constraint on 'nubComponentTargets'.
@@ -3463,6 +3472,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configConfigurationsFlags = elabFlagAssignment
     configConfigureArgs       = elabConfigureScriptArgs
     configExtraLibDirs        = elabExtraLibDirs
+    configExtraLibDirsStatic  = elabExtraLibDirsStatic
     configExtraFrameworkDirs  = elabExtraFrameworkDirs
     configExtraIncludeDirs    = elabExtraIncludeDirs
     configProgPrefix          = maybe mempty toFlag elabProgPrefix

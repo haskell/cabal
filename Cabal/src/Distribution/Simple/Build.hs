@@ -77,7 +77,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
-import Distribution.Simple.Utils.Json
+import Distribution.Utils.Json
 
 import Distribution.System
 import Distribution.Pretty
@@ -87,6 +87,7 @@ import Distribution.Version (thisVersion)
 import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
+import Data.ByteString.Lazy (ByteString)
 import qualified Data.Set as Set
 import System.FilePath ( (</>), (<.>), takeDirectory )
 import System.Directory ( getCurrentDirectory )
@@ -136,13 +137,13 @@ build pkg_descr lbi flags suffixes = do
 showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
   -> LocalBuildInfo      -- ^ Configuration information
   -> BuildFlags          -- ^ Flags that the user passed to build
-  -> IO String
+  -> IO ByteString
 showBuildInfo pkg_descr lbi flags = do
   let verbosity = fromFlag (buildVerbosity flags)
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
       doc = mkBuildInfo pkg_descr lbi flags targetsToBuild
-  return $ renderJson doc ""
+  return $ renderJson doc
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -385,7 +386,7 @@ addExtraAsmSources bi extras = bi { asmSources = new }
         exs = Set.fromList extras
 
 
-replComponent :: [String]
+replComponent :: ReplOptions
               -> Verbosity
               -> PackageDescription
               -> LocalBuildInfo
@@ -644,7 +645,7 @@ buildExe verbosity numJobs pkg_descr lbi exe clbi =
     UHC   -> UHC.buildExe   verbosity         pkg_descr lbi exe clbi
     _     -> die' verbosity "Building is not supported with this compiler."
 
-replLib :: [String]        -> Verbosity -> PackageDescription
+replLib :: ReplOptions     -> Verbosity -> PackageDescription
         -> LocalBuildInfo  -> Library   -> ComponentLocalBuildInfo
         -> IO ()
 replLib replFlags verbosity pkg_descr lbi lib clbi =
@@ -652,19 +653,19 @@ replLib replFlags verbosity pkg_descr lbi lib clbi =
     -- 'cabal repl' doesn't need to support 'ghc --make -j', so we just pass
     -- NoFlag as the numJobs parameter.
     GHC   -> GHC.replLib   replFlags verbosity NoFlag pkg_descr lbi lib clbi
-    GHCJS -> GHCJS.replLib replFlags verbosity NoFlag pkg_descr lbi lib clbi
+    GHCJS -> GHCJS.replLib (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi lib clbi
     _     -> die' verbosity "A REPL is not supported for this compiler."
 
-replExe :: [String]        -> Verbosity  -> PackageDescription
+replExe :: ReplOptions     -> Verbosity  -> PackageDescription
         -> LocalBuildInfo  -> Executable -> ComponentLocalBuildInfo
         -> IO ()
 replExe replFlags verbosity pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.replExe   replFlags verbosity NoFlag pkg_descr lbi exe clbi
-    GHCJS -> GHCJS.replExe replFlags verbosity NoFlag pkg_descr lbi exe clbi
+    GHCJS -> GHCJS.replExe (replOptionsFlags replFlags) verbosity NoFlag pkg_descr lbi exe clbi
     _     -> die' verbosity "A REPL is not supported for this compiler."
 
-replFLib :: [String]        -> Verbosity  -> PackageDescription
+replFLib :: ReplOptions     -> Verbosity  -> PackageDescription
          -> LocalBuildInfo  -> ForeignLib -> ComponentLocalBuildInfo
          -> IO ()
 replFLib replFlags verbosity pkg_descr lbi exe clbi =

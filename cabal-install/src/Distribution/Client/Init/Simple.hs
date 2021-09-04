@@ -16,9 +16,11 @@ import Distribution.Client.Types.SourcePackageDb (SourcePackageDb(..))
 import qualified Data.List.NonEmpty as NEL
 import Distribution.Client.Init.Utils (currentDirPkgName, mkPackageNameDep, fixupDocFiles)
 import Distribution.Client.Init.Defaults
-import Distribution.Simple.Flag (fromFlagOrDefault, flagElim)
+import Distribution.Simple.Flag (fromFlagOrDefault, flagElim, Flag(..))
 import Distribution.Client.Init.FlagExtractors
 import qualified Data.Set as Set
+import Distribution.Types.Dependency
+import Distribution.Types.PackageName (unPackageName)
 
 
 createProject
@@ -28,7 +30,7 @@ createProject
     -> SourcePackageDb
     -> InitFlags
     -> m ProjectSettings
-createProject v _pkgIx _srcDb initFlags = do
+createProject v pkgIx _srcDb initFlags = do
     pkgType <- packageTypePrompt initFlags
     isMinimal <- getMinimal initFlags
     doOverwrite <- getOverwrite initFlags
@@ -41,30 +43,32 @@ createProject v _pkgIx _srcDb initFlags = do
           doOverwrite isMinimal cs
           v pkgDir pkgType pkgName
 
+    basedFlags <- addBaseDepToFlags pkgIx initFlags
+
     case pkgType of
       Library -> do
-        libTarget <- genSimpleLibTarget initFlags
-        testTarget <- addLibDepToTest pkgName <$> genSimpleTestTarget initFlags
+        libTarget <- genSimpleLibTarget basedFlags
+        testTarget <- addLibDepToTest pkgName <$> genSimpleTestTarget basedFlags
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           (Just libTarget) Nothing testTarget
 
       Executable -> do
-        exeTarget <- genSimpleExeTarget initFlags
+        exeTarget <- genSimpleExeTarget basedFlags
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           Nothing (Just exeTarget) Nothing
 
       LibraryAndExecutable -> do
-        libTarget <- genSimpleLibTarget initFlags
-        testTarget <- addLibDepToTest pkgName <$> genSimpleTestTarget initFlags
-        exeTarget <- addLibDepToExe pkgName <$> genSimpleExeTarget initFlags
+        libTarget <- genSimpleLibTarget basedFlags
+        testTarget <- addLibDepToTest pkgName <$> genSimpleTestTarget basedFlags
+        exeTarget <- addLibDepToExe pkgName <$> genSimpleExeTarget basedFlags
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           (Just libTarget) (Just exeTarget) testTarget
-      
+
       TestSuite -> do
-        testTarget <- genSimpleTestTarget initFlags
+        testTarget <- genSimpleTestTarget basedFlags
         return $ ProjectSettings
           (mkOpts False cabalSpec) pkgDesc
           Nothing Nothing testTarget
@@ -151,3 +155,21 @@ genSimpleTestTarget flags = go =<< initializeTestSuitePrompt flags
           , _testDependencies = fromFlagOrDefault [] $ dependencies flags
           , _testBuildTools = buildToolDeps
           }
+
+-- -------------------------------------------------------------------- --
+-- Utils
+
+-- | If deps are defined, and base is present, we skip the search for base.
+-- otherwise, we look up @base@ and add it to the list.
+addBaseDepToFlags :: Interactive m => InstalledPackageIndex -> InitFlags -> m InitFlags
+addBaseDepToFlags pkgIx initFlags = case dependencies initFlags of
+  Flag as
+    | any ((==) "base" . unPackageName . depPkgName) as -> return initFlags
+    | otherwise -> do
+      based <- dependenciesPrompt pkgIx initFlags
+      return $ initFlags
+        { dependencies = Flag $ based ++ as
+        }
+  _ -> do
+    based <- dependenciesPrompt pkgIx initFlags
+    return initFlags { dependencies = Flag based }

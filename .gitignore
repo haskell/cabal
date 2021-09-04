@@ -26,6 +26,11 @@ cabal-tests.log
 /cabal-install/Setup
 /cabal-install/source-file-list
 
+.stylish-haskell.yaml
+.stylish-haskell.yml
+.ghci
+.ghcid
+
 # Output of release and bootstrap
 _build
 
@@ -69,3 +74,6 @@ register.sh
 
 # benchmarks
 bench.html
+
+# Emacs
+.projectile

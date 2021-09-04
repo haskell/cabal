@@ -51,7 +51,7 @@ emptyFlags :: InitFlags
 emptyFlags = mempty
 
 -- | Retireves the proper base version based on the GHC version
-baseVersion :: Compiler -> VersionRange 
+baseVersion :: Compiler -> VersionRange
 baseVersion Compiler {compilerId = CompilerId GHC ver} =
   let ghcToBase = baseVersion' . prettyShow $ ver in
         if null ghcToBase

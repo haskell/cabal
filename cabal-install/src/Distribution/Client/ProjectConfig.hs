@@ -324,6 +324,7 @@ resolveBuildTimeSettings verbosity
     buildSettingReportPlanningFailure
                               = fromFlag projectConfigReportPlanningFailure
     buildSettingProgPathExtra = fromNubList projectConfigProgPathExtra
+    buildSettingHaddockOpen   = False
 
     ProjectConfigBuildOnly{..} = defaults
                               <> projectConfigBuildOnly
@@ -422,8 +423,10 @@ findProjectRoot mstartdir mprojectFile = do
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
     -- then use the current dir
+    probe :: FilePath -> String -> IO (Either BadProjectRoot ProjectRoot)
     probe startdir homedir = go startdir
       where
+        go :: FilePath -> IO (Either BadProjectRoot ProjectRoot)
         go dir | isDrive dir || dir == homedir =
           case mprojectFile of
             Nothing   -> return (Right (ProjectRootImplicit startdir))

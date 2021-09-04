@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
@@ -103,6 +104,7 @@ import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
+import qualified Data.ByteString.Lazy as B
 import Data.List       (unionBy, (\\))
 
 import Distribution.PackageDescription.Parsec
@@ -284,8 +286,8 @@ showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
   buildInfoString <- showBuildInfo pkg_descr lbi' flags
 
   case fileOutput of
-    Nothing -> putStr buildInfoString
-    Just fp -> writeFile fp buildInfoString
+    Nothing -> B.putStr buildInfoString
+    Just fp -> B.writeFile fp buildInfoString
 
   postBuild hooks args flags' pkg_descr lbi'
 
@@ -715,6 +717,11 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
+-- TODO: Move to either Cabal/src/Distribution/Compat/Environment.hs
+-- or Cabal/src/Distribution/Compat/FilePath.hs:
+#ifdef mingw32_HOST_OS
+                ("PATH_SEPARATOR", Just ";") :
+#endif
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]

@@ -679,6 +679,7 @@ configure (pkg_descr0, pbi) cfg = do
         withDynExe_ = fromFlag $ configDynExe cfg
 
         withFullyStaticExe_ = fromFlag $ configFullyStaticExe cfg
+
     when (withDynExe_ && not withSharedLib_) $ warn verbosity $
            "Executables will use dynamic linking, but a shared library "
         ++ "is not being built. Linking will fail if any executables "
@@ -1011,6 +1012,7 @@ configureFinalizedPackage verbosity cfg enabled
   where
     addExtraIncludeLibDirs pkg_descr =
         let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
+                             , extraLibDirsStatic = configExtraLibDirsStatic cfg
                              , extraFrameworkDirs = configExtraFrameworkDirs cfg
                              , includeDirs = configExtraIncludeDirs cfg}
             modifyLib l        = l{ libBuildInfo        = libBuildInfo l
@@ -1638,7 +1640,8 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
       let pkgs = nub [ prettyShow pkg | PkgconfigDependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs"   : pkgs)
-      return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))
+      ldflags_static <- pkgconfig ("--libs"   : "--static" : pkgs)
+      return (ccLdOptionsBuildInfo (words ccflags) (words ldflags) (words ldflags_static))
 
 -- | Makes a 'BuildInfo' from C compiler and linker flags.
 --
@@ -1648,17 +1651,22 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
 --
 -- > ccflags <- getDbProgramOutput verbosity prog progdb ["--cflags"]
 -- > ldflags <- getDbProgramOutput verbosity prog progdb ["--libs"]
--- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags))
+-- > ldflags_static <- getDbProgramOutput verbosity prog progdb ["--libs", "--static"]
+-- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags) (words ldflags_static))
 --
-ccLdOptionsBuildInfo :: [String] -> [String] -> BuildInfo
-ccLdOptionsBuildInfo cflags ldflags =
+ccLdOptionsBuildInfo :: [String] -> [String] -> [String] -> BuildInfo
+ccLdOptionsBuildInfo cflags ldflags ldflags_static =
   let (includeDirs',  cflags')   = partition ("-I" `isPrefixOf`) cflags
       (extraLibs',    ldflags')  = partition ("-l" `isPrefixOf`) ldflags
       (extraLibDirs', ldflags'') = partition ("-L" `isPrefixOf`) ldflags'
+      (extraLibsStatic')         = filter ("-l" `isPrefixOf`) ldflags_static
+      (extraLibDirsStatic')      = filter ("-L" `isPrefixOf`) ldflags_static
   in mempty {
        includeDirs  = map (drop 2) includeDirs',
        extraLibs    = map (drop 2) extraLibs',
        extraLibDirs = map (drop 2) extraLibDirs',
+       extraLibsStatic = map (drop 2) extraLibsStatic',
+       extraLibDirsStatic = map (drop 2) extraLibDirsStatic',
        ccOptions    = cflags',
        ldOptions    = ldflags''
      }
@@ -1707,7 +1715,10 @@ checkForeignDeps pkg lbi verbosity =
                explainErrors missingHdr missingLibs)
       where
         allHeaders = collectField includes
-        allLibs    = collectField extraLibs
+        allLibs    = collectField $
+          if withFullyStaticExe lbi
+          then extraLibsStatic
+          else extraLibs
 
         ifBuildsWith headers args success failure = do
             checkDuplicateHeaders
@@ -1810,12 +1821,17 @@ checkForeignDeps pkg lbi verbosity =
                         , opt <- IPI.ccOptions dep ]
 
         commonLdArgs  = [ "-L" ++ dir
-                        | dir <- ordNub (collectField extraLibDirs) ]
+                        | dir <- ordNub $ collectField (if withFullyStaticExe lbi
+                                                         then extraLibDirsStatic
+                                                         else extraLibDirs
+                                                       ) ]
                      ++ collectField ldOptions
                      ++ [ "-L" ++ dir
                         | dir <- ordNub [ dir
                                         | dep <- deps
-                                        , dir <- IPI.libraryDirs dep ]
+                                        , dir <- if withFullyStaticExe lbi
+                                                 then IPI.libraryDirsStatic dep
+                                                 else IPI.libraryDirs dep ]
                         ]
                      --TODO: do we also need dependent packages' ld options?
         makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs

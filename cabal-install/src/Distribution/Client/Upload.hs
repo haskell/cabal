@@ -4,7 +4,7 @@ import Distribution.Client.Compat.Prelude
 import qualified Prelude as Unsafe (tail, head, read)
 
 import Distribution.Client.Types.Credentials ( Username(..), Password(..) )
-import Distribution.Client.Types.Repo (RemoteRepo(..), maybeRepoRemote)
+import Distribution.Client.Types.Repo (Repo, RemoteRepo(..), maybeRepoRemote)
 import Distribution.Client.Types.RepoName (unRepoName)
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
@@ -44,15 +44,19 @@ upload :: Verbosity -> RepoContext
        -> Maybe Username -> Maybe Password -> IsCandidate -> [FilePath]
        -> IO ()
 upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
-    let repos = repoContextRepos repoCtxt
+    let repos :: [Repo]
+        repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die' verbosity "Cannot upload. No remote repositories are configured."
         (r:rs) -> remoteRepoTryUpgradeToHttps verbosity transport (last (r:|rs))
-    let targetRepoURI = remoteRepoURI targetRepo
+    let targetRepoURI :: URI
+        targetRepoURI = remoteRepoURI targetRepo
+        domain :: String
         domain = maybe "Hackage" uriRegName $ uriAuthority targetRepoURI
         rootIfEmpty x = if null x then "/" else x
+        uploadURI :: URI
         uploadURI = targetRepoURI {
             uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</>
               case isCandidate of
@@ -167,16 +171,20 @@ promptPassword domain = do
 
 report :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repoCtxt mUsername mPassword = do
-  let repos       = repoContextRepos repoCtxt
+  let repos       :: [Repo]
+      repos       = repoContextRepos repoCtxt
+      remoteRepos :: [RemoteRepo]
       remoteRepos = mapMaybe maybeRepoRemote repos
   for_ remoteRepos $ \remoteRepo -> do
       let domain = maybe "Hackage" uriRegName $ uriAuthority (remoteRepoURI remoteRepo)
       Username username <- maybe (promptUsername domain) return mUsername
       Password password <- maybe (promptPassword domain) return mPassword
-      let auth        = (username, password)
+      let auth        :: (String, String)
+          auth        = (username, password)
 
       dotCabal <- getCabalDir
-      let srcDir = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
+      let srcDir :: FilePath
+          srcDir = dotCabal </> "reports" </> unRepoName (remoteRepoName remoteRepo)
       -- We don't want to bomb out just because we haven't built any packages
       -- from this repo yet.
       srcExists <- doesDirectoryExist srcDir
@@ -208,6 +216,7 @@ handlePackage transport verbosity uri packageUri auth isCandidate path =
                           ++ err
           exitFailure
  where
+  okMessage :: IsCandidate -> String
   okMessage IsCandidate =
     "Package successfully uploaded as candidate. "
     ++ "You can now preview the result at '" ++ show packageUri

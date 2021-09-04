@@ -143,6 +143,7 @@ downloadURI transport verbosity uri path = do
       NeedsDownload hash -> makeDownload transport' hash Nothing
 
   where
+    makeDownload :: HttpTransport -> Maybe BS8.ByteString -> Maybe String -> IO DownloadResult
     makeDownload transport' sha256 etag = withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
       result <- getHttp transport' verbosity uri etag tmpFile []
 

@@ -19,6 +19,21 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
+``cabal-version: 3.x``
+----------------------
+
+* Added fields :pkg-field:`extra-libraries-static` and
+  :pkg-field:`extra-lib-dirs-static` to allow Haskell libraries to remember
+  linker flags needed for fully static linking of system libraries into
+  executables.
+  The existing field :pkg-field:`pkgconfig-depends` can used to append
+  the relevant output of ``pkg-config --libs --static`` to these new fields
+  automatically.
+  When :pkg-field:`extra-libraries-static` is not given, it defaults to
+  :pkg-field:`extra-libraries`.
+  When :pkg-field:`extra-lib-dirs-static` is not given, it defaults to
+  :pkg-field:`extra-lib-dirs`.
+
 ``cabal-version: 3.6``
 ----------------------
 
