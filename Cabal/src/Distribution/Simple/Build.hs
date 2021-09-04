@@ -117,26 +117,7 @@ build pkg_descr lbi flags suffixes = do
   -- Before the actual building, dump out build-information.
   -- This way, if the actual compilation failed, the options have still been
   -- dumped.
-  when shouldDumpBuildInfo $ do
-    -- Changing this line might break consumers of the dumped build info.
-    -- Announce changes on mailing lists!
-    let activeTargets = allTargetsInBuildOrder' pkg_descr lbi
-    info verbosity $ "Dump build information for: "
-                  ++ intercalate ", "
-                      (map (showComponentName . componentLocalName . targetCLBI)
-                          activeTargets)
-    pwd <- getCurrentDirectory
-    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags activeTargets
-        buildInfoText = renderJson json
-    unless (null warns) $
-      warn verbosity $ "Encountered warnings while dumping build-info:\n"
-                    ++ unlines warns
-    LBS.writeFile (buildInfoPref distPref) buildInfoText
-
-  when (not shouldDumpBuildInfo) $ do
-    -- Remove existing build-info.json as it might be outdated now.
-    exists <- doesFileExist (buildInfoPref distPref)
-    when exists $ removeFile (buildInfoPref distPref)
+  dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
 
   -- Now do the actual building
   (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
@@ -158,7 +139,45 @@ build pkg_descr lbi flags suffixes = do
  where
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
-  shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo (configDumpBuildInfo (configFlags lbi)) == DumpBuildInfo
+
+
+-- | Write available build information for 'LocalBuildInfo' to disk.
+--
+-- Dumps detailed build information 'build-info.json' to the given directory.
+-- Build information contains basics such as compiler details, but also
+-- lists what modules a component contains and how to compile the component, assuming
+-- lib:Cabal made sure that dependencies are up-to-date.
+dumpBuildInfo :: Verbosity
+              -> FilePath           -- ^ To which directory should the build-info be dumped?
+              -> Flag DumpBuildInfo -- ^ Should we dump detailed build information for this component?
+              -> PackageDescription -- ^ Mostly information from the .cabal file
+              -> LocalBuildInfo     -- ^ Configuration information
+              -> BuildFlags         -- ^ Flags that the user passed to build
+              -> IO ()
+dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
+  when shouldDumpBuildInfo $ do
+    -- Changing this line might break consumers of the dumped build info.
+    -- Announce changes on mailing lists!
+    let activeTargets = allTargetsInBuildOrder' pkg_descr lbi
+    info verbosity $ "Dump build information for: "
+                  ++ intercalate ", "
+                      (map (showComponentName . componentLocalName . targetCLBI)
+                          activeTargets)
+    pwd <- getCurrentDirectory
+    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags activeTargets
+        buildInfoText = renderJson json
+    unless (null warns) $
+      warn verbosity $ "Encountered warnings while dumping build-info:\n"
+                    ++ unlines warns
+    LBS.writeFile (buildInfoPref distPref) buildInfoText
+
+  when (not shouldDumpBuildInfo) $ do
+    -- Remove existing build-info.json as it might be outdated now.
+    exists <- doesFileExist (buildInfoPref distPref)
+    when exists $ removeFile (buildInfoPref distPref)
+  where
+    shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo
+
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> LocalBuildInfo      -- ^ Configuration information
