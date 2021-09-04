@@ -54,6 +54,12 @@ jobs:
 {% endif %}
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout

@@ -39,6 +39,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -81,6 +87,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -126,6 +138,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -172,6 +190,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -218,6 +242,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -264,6 +294,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -310,6 +346,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -352,6 +394,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -394,6 +442,12 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-plan
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -440,6 +494,12 @@ jobs:
         run: apt-get install -y ghc-7.6.3-dyn
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
@@ -488,6 +548,12 @@ jobs:
         run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
       - name: Update Hackage index
         run: cabal v2-update
+      - name: Move config file
+        run: |
+          if [ -f $HOME/.cabal/config ]; then
+          mkdir -p $HOME/.config/cabal
+          cp $HOME/.cabal/config $HOME/.config/cabal/config
+          fi
       # https://github.com/actions/checkout/issues/170
       # - uses: actions/checkout@v2
       - name: Checkout
