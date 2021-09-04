@@ -179,17 +179,17 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
      where
       -- | Only add build-info file location if the Setup.hs CLI
       -- is recent enough to be able to generate build info files.
-      -- Otherwise, do not add the expected file location.
+      -- Otherwise, write 'null'.
       --
-      -- Consumers of `plan.json` can use the absence of this file location
+      -- Consumers of `plan.json` can use the nullability of this file location
       -- to indicate that the given component uses `build-type: Custom`
       -- with an old lib:Cabal version.
       buildInfoFileLocation :: J.Pair
       buildInfoFileLocation
         | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0]
-        = ("build-info" J..= J.Null)
+        = "build-info" J..= J.Null
         | otherwise
-        = ("build-info" J..= J.String (buildInfoPref dist_dir))
+        = "build-info" J..= J.String (buildInfoPref dist_dir)
 
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =

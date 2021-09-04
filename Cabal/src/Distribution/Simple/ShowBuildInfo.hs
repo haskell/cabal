@@ -93,11 +93,15 @@ mkBuildInfo
   -> PackageDescription  -- ^ Mostly information from the .cabal file
   -> LocalBuildInfo      -- ^ Configuration information
   -> BuildFlags          -- ^ Flags that the user passed to build
+  -> (ConfiguredProgram, Compiler)
+  -- ^ Compiler information.
+  -- Needs to be passed explicitly, as we can't extract that information here
+  -- without some partial function.
   -> [TargetInfo]
   -> ([String], Json)    -- ^ Json representation of buildinfo alongside generated warnings
-mkBuildInfo wdir pkg_descr lbi _flags targetsToBuild = (warnings, JsonObject buildInfoFields)
+mkBuildInfo wdir pkg_descr lbi _flags compilerInfo targetsToBuild = (warnings, JsonObject buildInfoFields)
   where
-    buildInfoFields = mkBuildInfo' (mkCompilerInfo (withPrograms lbi) (compiler lbi)) componentInfos
+    buildInfoFields = mkBuildInfo' (uncurry mkCompilerInfo compilerInfo) componentInfos
     componentInfosWithWarnings = map (mkComponentInfo wdir pkg_descr lbi . targetCLBI) targetsToBuild
     componentInfos = map snd componentInfosWithWarnings
     warnings = concatMap fst componentInfosWithWarnings
@@ -118,23 +122,12 @@ mkBuildInfo' compilerInfo componentInfos =
   , "components"        .= JsonArray componentInfos
   ]
 
-mkCompilerInfo :: ProgramDb -> Compiler -> Json
-mkCompilerInfo programDb compilerInfo = JsonObject
+mkCompilerInfo :: ConfiguredProgram -> Compiler -> Json
+mkCompilerInfo compilerProgram compilerInfo = JsonObject
   [ "flavour"     .= JsonString (prettyShow $ compilerFlavor compilerInfo)
   , "compiler-id" .= JsonString (showCompilerId compilerInfo)
-  , "path"        .= path
+  , "path"        .= JsonString (programPath compilerProgram)
   ]
-  where
-    path = maybe JsonNull (JsonString . programPath)
-            $ (flavorToProgram . compilerFlavor $ compilerInfo)
-            >>= flip lookupProgram programDb
-
-    flavorToProgram :: CompilerFlavor -> Maybe Program
-    flavorToProgram GHC   = Just ghcProgram
-    flavorToProgram GHCJS = Just ghcjsProgram
-    flavorToProgram UHC   = Just uhcProgram
-    flavorToProgram JHC   = Just jhcProgram
-    flavorToProgram _     = Nothing
 
 mkComponentInfo :: FilePath -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([String], Json)
 mkComponentInfo wdir pkg_descr lbi clbi = (warnings, JsonObject $

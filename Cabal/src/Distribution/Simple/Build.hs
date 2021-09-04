@@ -69,6 +69,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program.Builtin (ghcProgram, ghcjsProgram, uhcProgram, jhcProgram, haskellSuiteProgram)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.ShowBuildInfo
@@ -164,7 +165,13 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
                       (map (showComponentName . componentLocalName . targetCLBI)
                           activeTargets)
     pwd <- getCurrentDirectory
-    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags activeTargets
+
+    (compilerProg, _) <- case flavorToProgram (compilerFlavor (compiler lbi)) of
+      Nothing -> die' verbosity $ "dumpBuildInfo: Unknown compiler flavor: "
+                               ++ show (compilerFlavor (compiler lbi))
+      Just program -> requireProgram verbosity program (withPrograms lbi)
+
+    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags (compilerProg, compiler lbi) activeTargets
         buildInfoText = renderJson json
     unless (null warns) $
       warn verbosity $ "Encountered warnings while dumping build-info:\n"
@@ -177,6 +184,16 @@ dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
     when exists $ removeFile (buildInfoPref distPref)
   where
     shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo
+
+    -- | Given the flavor of the compiler, try to find out
+    -- which program we need.
+    flavorToProgram :: CompilerFlavor -> Maybe Program
+    flavorToProgram GHC             = Just ghcProgram
+    flavorToProgram GHCJS           = Just ghcjsProgram
+    flavorToProgram UHC             = Just uhcProgram
+    flavorToProgram JHC             = Just jhcProgram
+    flavorToProgram HaskellSuite {} = Just haskellSuiteProgram
+    flavorToProgram _     = Nothing
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
