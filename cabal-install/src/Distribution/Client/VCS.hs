@@ -398,7 +398,7 @@ vcsGit =
     vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
         -- And if there's a tag, we have to do that in a second step:
-     ++ [ (programInvocation prog (checkoutArgs tag)) {
+     ++ [ (programInvocation prog (resetArgs tag)) {
             progInvokeCwd = Just destdir
           }
         | tag <- maybeToList (srpTag repo) ]
@@ -408,7 +408,7 @@ vcsGit =
         branchArgs = case srpBranch repo of
           Just b  -> ["--branch", b]
           Nothing -> []
-        checkoutArgs tag = "checkout" : verboseArg ++ [tag, "--"]
+        resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
     vcsSyncRepos :: Verbosity
@@ -431,7 +431,11 @@ vcsGit =
         if exists
           then git localDir                 ["fetch"]
           else git (takeDirectory localDir) cloneArgs
-        git localDir checkoutArgs
+        git localDir resetArgs
+        git localDir ["submodule", "sync", "--recursive"]
+        git localDir ["submodule", "update", "--force", "--init", "--recursive"]
+        git localDir ["submodule", "foreach", "--recursive", "git clean -ffxdq"]
+        git localDir ["clean", "-ffxdq"]
       where
         git :: FilePath -> [String] -> IO ()
         git cwd args = runProgramInvocation verbosity $
@@ -439,16 +443,15 @@ vcsGit =
                            progInvokeCwd = Just cwd
                          }
 
-        cloneArgs      = ["clone", "--no-checkout", loc, localDir]
-                      ++ case peer of
-                           Nothing           -> []
-                           Just peerLocalDir -> ["--reference", peerLocalDir]
-                      ++ verboseArg
-                         where loc = srpLocation
-        checkoutArgs   = "checkout" : verboseArg ++ ["--detach", "--force"
-                         , checkoutTarget, "--" ]
-        checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
-        verboseArg     = [ "--quiet" | verbosity < Verbosity.normal ]
+        cloneArgs   = ["clone", "--no-checkout", loc, localDir]
+                   ++ case peer of
+                        Nothing           -> []
+                        Just peerLocalDir -> ["--reference", peerLocalDir]
+                   ++ verboseArg
+                      where loc = srpLocation
+        resetArgs   = "reset" : verboseArg ++ ["--hard", resetTarget, "--" ]
+        resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
+        verboseArg  = [ "--quiet" | verbosity < Verbosity.normal ]
 
 gitProgram :: Program
 gitProgram = (simpleProgram "git") {
