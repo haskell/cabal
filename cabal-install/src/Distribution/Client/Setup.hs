@@ -345,11 +345,6 @@ globalCommand commands = CommandUI {
          globalConfigFile (\v flags -> flags { globalConfigFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["default-user-config"]
-         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
-         globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
-         (reqArgFlag "FILE")
-
       ,option [] ["ignore-expiry"]
          "Ignore expiry dates on signed metadata (use only in exceptional circumstances)"
          globalIgnoreExpiry (\v flags -> flags { globalIgnoreExpiry = v })
@@ -359,14 +354,30 @@ globalCommand commands = CommandUI {
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalHttpTransport (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
+
       ,option [] ["nix"]
          "Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
          globalNix (\v flags -> flags { globalNix = v })
          (boolOpt [] [])
 
+      ,option [] ["store-dir", "storedir"]
+         "The location of the build store"
+         globalStoreDir (\v flags -> flags { globalStoreDir = v })
+         (reqArgFlag "DIR")
+
+      , option [] ["active-repositories"]
+         "The active package repositories (set to ':none' to disable all repositories)"
+         globalActiveRepos (\v flags ->  flags { globalActiveRepos = v })
+         (reqArg "REPOS" (parsecToReadE (\err -> "Error parsing active-repositories: " ++ err)
+                                        (toFlag `fmap` parsec))
+                         (map prettyShow . flagToList))
       ]
 
     -- arguments we don't want shown in the help
+    -- the remote repo flags are not useful compared to the more general "active-repositories" flag.
+    -- the global logs directory was only used in v1, while in v2 we have specific project config logs dirs
+    -- the world-file flag is long deprecated and unused
+    -- default-user-config is support for a relatively obscure workflow for v1-freeze.
     argsNotShown :: [OptionField GlobalFlags]
     argsNotShown = [
        option [] ["remote-repo"]
@@ -389,22 +400,16 @@ globalCommand commands = CommandUI {
          globalLogsDir (\v flags -> flags { globalLogsDir = v })
          (reqArgFlag "DIR")
 
+      ,option [] ["default-user-config"]
+         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
+         globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
+         (reqArgFlag "FILE")
+
       ,option [] ["world-file"]
          "The location of the world file"
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["store-dir", "storedir"]
-         "The location of the nix-local-build store"
-         globalStoreDir (\v flags -> flags { globalStoreDir = v })
-         (reqArgFlag "DIR")
-
-      , option [] ["active-repositories"]
-         "The active package repositories"
-         globalActiveRepos (\v flags ->  flags { globalActiveRepos = v })
-         (reqArg "REPOS" (parsecToReadE (\err -> "Error parsing active-repositories: " ++ err)
-                                        (toFlag `fmap` parsec))
-                         (map prettyShow . flagToList))
       ]
 
 -- ------------------------------------------------------------
