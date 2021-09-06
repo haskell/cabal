@@ -29,11 +29,11 @@ cabal v2-build cabal-tests # etc...
 Running tests
 -------------
 
-**Using Github Actions and AppVeyor.**
+**Using Github Actions.**
 If you are not in a hurry, the most convenient way to run tests on Cabal
 is to make a branch on GitHub and then open a pull request; our
-continuous integration service on Github Actions and AppVeyor will build and
-test your code.  Title your PR with WIP so we know that it does not need
+continuous integration service on Github Actions builds and
+tests your code.  Title your PR with WIP so we know that it does not need
 code review.
 
 Some tips for using Github Actions effectively:
@@ -71,10 +71,6 @@ failures:
    the precise binaries that were built by Github Actions that are being
    tested.  If you have an Ubuntu system, you can download
    the binaries and run them directly.
-
-5. Is the test failing on AppVeyor?  Consider logging in via
-   Remote Desktop to the build VM:
-   https://www.appveyor.com/docs/how-to/rdp-to-build-worker/
 
 If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
@@ -194,8 +190,9 @@ We like [this style guide][guide].
 Changelog
 ---------
 
-When opening a pull request, you should write a changelog entry.
-This is done by adding a file in the `changelog.d` directory.
+When opening a pull request, you should write a changelog entry
+(or more in case of multiple independent changes).
+This is done by adding files in the `changelog.d` directory.
 
 The files follow a simple key-value format similar to the one for .cabal files.
 

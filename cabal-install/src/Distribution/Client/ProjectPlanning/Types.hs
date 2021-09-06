@@ -95,7 +95,7 @@ import           Distribution.Simple.LocalBuildInfo
                    ( ComponentName(..), LibraryName(..) )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
-import           Distribution.Simple.Setup (HaddockTarget, TestShowDetails)
+import           Distribution.Simple.Setup (HaddockTarget, TestShowDetails, ReplOptions)
 import           Distribution.Version
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -147,7 +147,7 @@ data ElaboratedSharedConfig
        -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
        -- used.
        pkgConfigCompilerProgs :: ProgramDb,
-       pkgConfigReplOptions :: [String]
+       pkgConfigReplOptions :: ReplOptions
      }
   deriving (Show, Generic, Typeable)
   --TODO: [code cleanup] no Eq instance
@@ -267,6 +267,7 @@ data ElaboratedConfiguredPackage
        elabProgramPathExtra      :: [FilePath],
        elabConfigureScriptArgs   :: [String],
        elabExtraLibDirs          :: [FilePath],
+       elabExtraLibDirsStatic    :: [FilePath],
        elabExtraFrameworkDirs    :: [FilePath],
        elabExtraIncludeDirs      :: [FilePath],
        elabProgPrefix            :: Maybe PathTemplate,

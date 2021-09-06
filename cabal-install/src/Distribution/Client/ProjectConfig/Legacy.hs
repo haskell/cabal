@@ -428,6 +428,7 @@ convertLegacyPerPackageFlags configFlags installFlags
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraLibDirsStatic  = packageConfigExtraLibDirsStatic,
       configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configConfigurationsFlags = packageConfigFlagAssignment,
@@ -705,6 +706,7 @@ convertToLegacyAllPackageConfig
       configStripExes           = mempty,
       configStripLibs           = mempty,
       configExtraLibDirs        = mempty,
+      configExtraLibDirsStatic  = mempty,
       configExtraFrameworkDirs  = mempty,
       configConstraints         = mempty,
       configDependencies        = mempty,
@@ -777,6 +779,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraLibDirsStatic  = packageConfigExtraLibDirsStatic,
       configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configConstraints         = mempty,
       configDependencies        = mempty,
@@ -1060,6 +1063,10 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           configExtraLibDirs
           (\v conf -> conf { configExtraLibDirs = v })
+      , newLineListField "extra-lib-dirs-static"
+          showTokenQ parseTokenQ
+          configExtraLibDirsStatic
+          (\v conf -> conf { configExtraLibDirsStatic = v })
       , newLineListField "extra-framework-dirs"
           showTokenQ parseTokenQ
           configExtraFrameworkDirs

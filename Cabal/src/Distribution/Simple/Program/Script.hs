@@ -48,7 +48,7 @@ invocationAsShellScript
        ++ [ "cd " ++ quote cwd | cwd <- maybeToList mcwd ]
        ++ [ (case minput of
               Nothing     -> ""
-              Just input -> "echo " ++ quote (iodataToText input) ++ " | ")
+              Just input -> "printf '%s' " ++ quote (iodataToText input) ++ " | ")
          ++ unwords (map quote $ path : args) ++ " \"$@\""]
 
   where

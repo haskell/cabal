@@ -1,0 +1,7 @@
+synopsis: lazily decode cache files for checking invalidation
+prs: #7516
+issues: #7466
+packages: cabal-install
+description {
+- This yields a significant 15% speedup on rebuilding build plans for projects with lots of individual cabal packages.
+}

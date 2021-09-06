@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, CPP #-}
+{-# LANGUAGE ForeignFunctionInterface, ScopedTypeVariables, CPP #-}
 
 module Distribution.Client.Utils
   ( MergeResult(..)
@@ -18,6 +18,7 @@ module Distribution.Client.Utils
   , moreRecentFile, existsAndIsMoreRecentThan
   , tryFindAddSourcePackageDesc
   , tryFindPackageDesc
+  , findOpenProgramLocation
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
@@ -38,6 +39,7 @@ import Distribution.Compat.Time        ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Version
 import Distribution.Simple.Utils       ( die', findPackageDesc, noticeNoWrap )
+import Distribution.System             ( Platform (..), OS(..))
 import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
@@ -50,7 +52,7 @@ import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
          ( finally, bracket )
 import System.Directory
-         ( canonicalizePath, doesFileExist, getCurrentDirectory
+         ( canonicalizePath, doesFileExist, findExecutable, getCurrentDirectory
          , removeFile, setCurrentDirectory, getDirectoryContents, doesDirectoryExist )
 import System.IO
          ( Handle, hClose, openTempFile
@@ -74,9 +76,10 @@ import qualified System.IO.Error as IOError
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
-mergeBy :: (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
+mergeBy :: forall a b. (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
 mergeBy cmp = merge
   where
+    merge               :: [a] -> [b] -> [MergeResult a b]
     merge []     ys     = [ OnlyInRight y | y <- ys]
     merge xs     []     = [ OnlyInLeft  x | x <- xs]
     merge (x:xs) (y:ys) =
@@ -90,9 +93,10 @@ data MergeResult a b = OnlyInLeft a | InBoth a b | OnlyInRight b
 duplicates :: Ord a => [a] -> [[a]]
 duplicates = duplicatesBy compare
 
-duplicatesBy :: (a -> a -> Ordering) -> [a] -> [[a]]
+duplicatesBy :: forall a. (a -> a -> Ordering) -> [a] -> [[a]]
 duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
   where
+    eq :: a -> a -> Bool
     eq a b = case cmp a b of
                EQ -> True
                _  -> False
@@ -173,7 +177,9 @@ withEnvOverrides overrides m = do
 withExtraPathEnv :: [FilePath] -> IO a -> IO a
 withExtraPathEnv paths m = do
   oldPathSplit <- getSearchPath
-  let newPath = mungePath $ intercalate [searchPathSeparator] (paths ++ oldPathSplit)
+  let newPath :: String
+      newPath = mungePath $ intercalate [searchPathSeparator] (paths ++ oldPathSplit)
+      oldPath :: String
       oldPath = mungePath $ intercalate [searchPathSeparator] oldPathSplit
       -- TODO: This is a horrible hack to work around the fact that
       -- setEnv can't take empty values as an argument
@@ -343,6 +349,26 @@ tryFindPackageDesc verbosity depPath err = do
     case errOrCabalFile of
         Right file -> return file
         Left _ -> die' verbosity err
+
+findOpenProgramLocation :: Platform -> IO (Either String FilePath)
+findOpenProgramLocation (Platform _ os) =
+  let
+    locate name = do
+      exe <- findExecutable name
+      case exe of
+        Just s -> pure (Right s)
+        Nothing -> pure (Left ("Couldn't find file-opener program `" <> name <> "`"))
+    xdg = locate "xdg-open"
+  in case os of
+    Windows -> pure (Right "start")
+    OSX -> locate "open"
+    Linux -> xdg
+    FreeBSD -> xdg
+    OpenBSD -> xdg
+    NetBSD -> xdg
+    DragonFly -> xdg
+    _ -> pure (Left ("Couldn't determine file-opener program for " <> show os))
+
 
 -- | Phase of building a dependency. Represents current status of package
 -- dependency processing. See #4040 for details.

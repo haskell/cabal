@@ -146,6 +146,7 @@ fetchPackage verbosity repoCtxt loc = case loc of
     RemoteSourceRepoPackage _repo Nothing ->
       die' verbosity "fetchPackage: source repos not supported"
   where
+    downloadTarballPackage :: URI -> IO FilePath
     downloadTarballPackage uri = do
       transport <- repoContextGetTransport repoCtxt
       transportCheckHttps verbosity transport uri
@@ -173,6 +174,7 @@ fetchRepoTarball verbosity' repoCtxt repo pkgid = do
     -- whether we download or not is non-deterministic
     verbosity = verboseUnmarkOutput verbosity'
 
+    downloadRepoPackage :: IO FilePath
     downloadRepoPackage = case repo of
       RepoLocalNoIndex{} -> return (packageFile repo pkgid)
 
