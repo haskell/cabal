@@ -16,6 +16,7 @@ import Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
+import qualified UnitTests.Distribution.Simple.Command
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
 import qualified UnitTests.Distribution.Simple.Program.Internal
@@ -49,6 +50,8 @@ tests mtimeChangeCalibrated =
         (UnitTests.Distribution.Compat.Time.tests mtimeChange)
     , testGroup "Distribution.Compat.Graph"
         UnitTests.Distribution.Compat.Graph.tests
+    , testGroup "Distribution.Simple.Command"
+        UnitTests.Distribution.Simple.Command.tests
     , testGroup "Distribution.Simple.Glob"
         UnitTests.Distribution.Simple.Glob.tests
     , UnitTests.Distribution.Simple.Program.GHC.tests
