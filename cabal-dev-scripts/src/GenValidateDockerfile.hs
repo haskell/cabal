@@ -40,7 +40,7 @@ main = withIO $ \version src tgt -> do
 
 params :: Map.Map String Z
 params = Map.fromList
-    [ pair "8.10.4" $ Z "ghc-8.10.4" "8.10.4-bionic" False True  False True  ""
+    [ pair "8.10.7" $ Z "ghc-8.10.7" "8.10.7-bionic" False True  False True  ""
     , pair "8.8.4"  $ Z "ghc-8.8.4"  "8.8.4-bionic"  False True  False True  "--doctest --solver-benchmarks --complete-hackage"
     , pair "8.6.5"  $ Z "ghc-8.6.5"  "8.6.5-bionic"  False True  False True  ""
     , pair "8.4.4"  $ Z "ghc-8.4.4"  "8.4.4-bionic"  False True  False True  ""

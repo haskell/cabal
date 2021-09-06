@@ -23,7 +23,7 @@ main = do
             w <- run Z
                 { zJobs =
                     [ GhcJob "9.0.1"  False "--lib-only"                False ["8.8.4"] libSteps
-                    , GhcJob "8.10.4" False ""                          False ["8.8.4"] defSteps
+                    , GhcJob "8.10.7" False ""                          False ["8.8.4"] defSteps
                     , GhcJob "8.8.4"  False "--solver-benchmarks"       False []        defSteps
                     , GhcJob "8.6.5"  False "--complete-hackage-tests"  False ["8.8.4"] defSteps
                     , GhcJob "8.4.4"  False ""                          False ["8.8.4"] defSteps
@@ -40,12 +40,13 @@ main = do
                         ]
                     ]
                 , zMacosJobs =
-                    [ mkMacGhcJob "8.8.4" "https://downloads.haskell.org/~ghc/8.8.4/ghc-8.8.4-x86_64-apple-darwin.tar.xz"
+                    [ mkMacGhcJob "8.10.7" "https://downloads.haskell.org/~ghc/8.10.7/ghc-8.10.7-x86_64-apple-darwin.tar.xz"
+                    , mkMacGhcJob "8.8.4" "https://downloads.haskell.org/~ghc/8.8.4/ghc-8.8.4-x86_64-apple-darwin.tar.xz"
                     , mkMacGhcJob "8.6.5" "https://downloads.haskell.org/~ghc/8.6.5/ghc-8.6.5-x86_64-apple-darwin.tar.xz"
                     ]
                 , zWinJobs =
                     [ mkWinGhcJob "8.6.5"  Nothing           []
-                    , mkWinGhcJob "8.10.4" (Just "8.10.4")   []
+                    , mkWinGhcJob "8.10.7" (Just "8.10.7")   []
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)

@@ -18,6 +18,7 @@ jobs:
   validate-macos-8_10_7:
     name: validate.sh macos ghc-8.10.7
     runs-on: macos-latest
+    needs: validate-macos-8_8_4
     steps:
       - name: System info
         run: |
