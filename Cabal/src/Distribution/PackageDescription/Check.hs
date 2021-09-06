@@ -2143,7 +2143,7 @@ checkDuplicateModules pkg =
     checkBench = checkDups "benchmark"  benchmarkModules
     checkDups s getModules t =
                let libMap = foldCondTree Map.empty
-                                         (\(_,v) ->  Map.fromListWith (+) . map (\x -> (x,(1::Int))) $ getModules v )
+                                         (\(_,v) -> Map.fromListWith (+) . map (\x -> (x,(1::Int))) $ getModules v )
                                          (Map.unionWith (+)) -- if a module may occur in nonexclusive branches count it twice
                                          (Map.unionWith max) -- a module occurs the max of times it might appear in exclusive branches
                                          t
