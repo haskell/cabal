@@ -1,0 +1,9 @@
+synopsis: Don't output haddock stdout if verbosity is silent
+packages: Cabal
+prs: #7483
+
+description: {
+
+- Silence the output of the Haddock executable if verbosity 'silent' is set.
+- Hide output of 'stderr' if Haddock succeeded.
+}
