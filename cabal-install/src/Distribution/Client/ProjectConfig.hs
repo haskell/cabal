@@ -754,9 +754,9 @@ renderImplicitBadPackageLocation bpl = case bpl of
     BadLocGlobEmptyMatch pkglocstr ->
         "No cabal.project file or cabal file matching the default glob '"
      ++ pkglocstr ++ "' was found.\n"
-     ++ "Please create a package description file <pkgname>.cabal "
-     ++ "or a cabal.project file referencing the packages you "
-     ++ "want to build."
+     ++ "No <pkgname>.cabal was found and the current working directory is not "
+     ++ "part of a cabal project. To build (or run) local packages you need a cabal file "
+     ++ "at least. You can use 'cabal init' to create one."
     _ -> renderBadPackageLocation bpl
 
 renderBadPackageLocation :: BadPackageLocation -> String
