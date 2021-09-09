@@ -17,8 +17,9 @@
 -- * Line wrapping in the 'usageInfo' output, plus a more compact
 --   rendering of short options, and slightly less padding.
 --
--- If you want to take on the challenge of merging this with the GetOpt
--- from the base package then go for it!
+-- * Parsing of option arguments is allowed to fail.
+--
+-- * 'ReturnInOrder' argument order is removed.
 --
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -36,8 +37,34 @@ module Distribution.GetOpt (
 
 import Prelude ()
 import Distribution.Compat.Prelude
-import System.Console.GetOpt
-         ( ArgOrder(..), OptDescr(..), ArgDescr(..) )
+
+-- | What to do with options following non-options
+data ArgOrder a
+  = RequireOrder                -- ^ no option processing after first non-option
+  | Permute                     -- ^ freely intersperse options and non-options
+
+data OptDescr a =              -- description of a single options:
+   Option [Char]                --    list of short option characters
+          [String]              --    list of long option strings (without "--")
+          (ArgDescr a)          --    argument descriptor
+          String                --    explanation of option for user
+
+instance Functor OptDescr where
+    fmap f (Option a b argDescr c) = Option a b (fmap f argDescr) c
+
+-- | Describes whether an option takes an argument or not, and if so
+-- how the argument is parsed to a value of type @a@.
+--
+-- Compared to System.Console.GetOpt, we allow for parse errors.
+data ArgDescr a
+   = NoArg                   a                       -- ^   no argument expected
+   | ReqArg (String       -> Either String a) String -- ^   option requires argument
+   | OptArg (Maybe String -> Either String a) String -- ^   optional argument
+
+instance Functor ArgDescr where
+    fmap f (NoArg a)    = NoArg (f a)
+    fmap f (ReqArg g s) = ReqArg (fmap f . g) s
+    fmap f (OptArg g s) = OptArg (fmap f . g) s
 
 data OptKind a                -- kind of cmd line arg (internal use only):
    = Opt       a                --    an option
@@ -46,8 +73,8 @@ data OptKind a                -- kind of cmd line arg (internal use only):
    | EndOfOpts                  --    end-of-options marker (i.e. "--")
    | OptErr    String           --    something went wrong...
 
-data OptHelp a = OptHelp {
-      optNames :: a,
+data OptHelp = OptHelp {
+      optNames :: String,
       optHelp :: String
     }
 
@@ -155,10 +182,8 @@ getOpt' ordering optDescr (arg:args) = procNextOpt opt ordering
          procNextOpt (UnreqOpt u) _                 = (os,xs,u:us,es)
          procNextOpt (NonOpt x)   RequireOrder      = ([],x:rest,[],[])
          procNextOpt (NonOpt x)   Permute           = (os,x:xs,us,es)
-         procNextOpt (NonOpt x)   (ReturnInOrder f) = (f x :os, xs,us,es)
          procNextOpt EndOfOpts    RequireOrder      = ([],rest,[],[])
          procNextOpt EndOfOpts    Permute           = ([],rest,[],[])
-         procNextOpt EndOfOpts    (ReturnInOrder f) = (map f rest,[],[],[])
          procNextOpt (OptErr e)   _                 = (os,xs,us,e:es)
 
          (opt,rest) = getNext arg args optDescr
@@ -181,15 +206,16 @@ longOpt ls rs optDescr = long ads arg rs
          options   = if null exact then getWith isPrefixOf else exact
          ads       = [ ad | Option _ _ ad _ <- options ]
          optStr    = "--" ++ opt
+         fromRes   = fromParseResult optStr
 
          long (_:_:_)      _        rest     = (errAmbig options optStr,rest)
          long [NoArg  a  ] []       rest     = (Opt a,rest)
          long [NoArg  _  ] ('=':_)  rest     = (errNoArg optStr,rest)
          long [ReqArg _ d] []       []       = (errReq d optStr,[])
-         long [ReqArg f _] []       (r:rest) = (Opt (f r),rest)
-         long [ReqArg f _] ('=':xs) rest     = (Opt (f xs),rest)
-         long [OptArg f _] []       rest     = (Opt (f Nothing),rest)
-         long [OptArg f _] ('=':xs) rest     = (Opt (f (Just xs)),rest)
+         long [ReqArg f _] []       (r:rest) = (fromRes (f r),rest)
+         long [ReqArg f _] ('=':xs) rest     = (fromRes (f xs),rest)
+         long [OptArg f _] []       rest     = (fromRes (f Nothing),rest)
+         long [OptArg f _] ('=':xs) rest     = (fromRes (f (Just xs)),rest)
          long _            _        rest     = (UnreqOpt ("--"++ls),rest)
 
 -- handle short option
@@ -198,15 +224,16 @@ shortOpt y ys rs optDescr = short ads ys rs
   where options = [ o  | o@(Option ss _ _ _) <- optDescr, s <- ss, y == s ]
         ads     = [ ad | Option _ _ ad _ <- options ]
         optStr  = '-':[y]
+        fromRes = fromParseResult optStr
 
         short (_:_:_)        _  rest     = (errAmbig options optStr,rest)
         short (NoArg  a  :_) [] rest     = (Opt a,rest)
         short (NoArg  a  :_) xs rest     = (Opt a,('-':xs):rest)
         short (ReqArg _ d:_) [] []       = (errReq d optStr,[])
-        short (ReqArg f _:_) [] (r:rest) = (Opt (f r),rest)
-        short (ReqArg f _:_) xs rest     = (Opt (f xs),rest)
-        short (OptArg f _:_) [] rest     = (Opt (f Nothing),rest)
-        short (OptArg f _:_) xs rest     = (Opt (f (Just xs)),rest)
+        short (ReqArg f _:_) [] (r:rest) = (fromRes (f r),rest)
+        short (ReqArg f _:_) xs rest     = (fromRes (f xs),rest)
+        short (OptArg f _:_) [] rest     = (fromRes (f Nothing),rest)
+        short (OptArg f _:_) xs rest     = (fromRes (f (Just xs)),rest)
         short []             [] rest     = (UnreqOpt optStr,rest)
         short []             xs rest     = (UnreqOpt (optStr++xs),rest)
         -- This is different vs upstream = (UnreqOpt optStr,('-':xs):rest)
@@ -215,9 +242,14 @@ shortOpt y ys rs optDescr = short ads ys rs
         -- But why was no equivalent change required for longOpt? So could
         -- this change go upstream?
 
+fromParseResult :: String -> Either String a -> OptKind a
+fromParseResult optStr res = case res of
+  Right x   -> Opt x
+  Left  err -> OptErr ("invalid argument to option `" ++ optStr ++ "': " ++ err ++ "\n")
+
 -- miscellaneous error formatting
 
-errAmbig :: [OptDescr a] -> String -> OptKind a
+errAmbig :: [OptDescr a] -> String -> OptKind b
 errAmbig ods optStr = OptErr (usageInfo header ods)
    where header = "option `" ++ optStr ++ "' is ambiguous; could be one of:"
 

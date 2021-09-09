@@ -1,0 +1,19 @@
+# cabal new-test
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - cabal-gh5213-0.1 (lib) (first run)
+ - cabal-gh5213-0.1 (test:tests) (first run)
+Configuring library for cabal-gh5213-0.1..
+Preprocessing library for cabal-gh5213-0.1..
+Building library for cabal-gh5213-0.1..
+Configuring test suite 'tests' for cabal-gh5213-0.1..
+Preprocessing test suite 'tests' for cabal-gh5213-0.1..
+Building test suite 'tests' for cabal-gh5213-0.1..
+Running 1 test suites...
+Test suite tests: RUNNING...
+Test suite tests: PASS
+Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/test/cabal-gh5213-0.1-tests.log
+Test coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/tests/hpc_index.html
+1 of 1 test suites (1 of 1 test cases) passed.
+Package coverage report written to <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/cabal-gh5213-0.1/t/tests/noopt/hpc/vanilla/html/cabal-gh5213-0.1/hpc_index.html

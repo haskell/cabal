@@ -1,0 +1,4 @@
+synopsis: Add fields extra-libraries-static and extra-lib-dirs-static
+packages: Cabal
+prs: #7536
+issues: #7399, #6688

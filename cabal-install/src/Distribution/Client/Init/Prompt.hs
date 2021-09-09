@@ -29,7 +29,7 @@ import Distribution.Client.Init.Types
 
 -- | Create a prompt with optional default value that returns a
 -- String.
-promptStr :: Interactive m => String -> Maybe String -> m String
+promptStr :: Interactive m => String -> DefaultPrompt String -> m String
 promptStr = promptDefault Right id
 
 -- | Create a yes/no prompt with optional default value.
@@ -37,7 +37,7 @@ promptYesNo
     :: Interactive m
     => String
       -- ^ prompt message
-    -> Maybe Bool
+    -> DefaultPrompt Bool
       -- ^ optional default value
     -> m Bool
 promptYesNo =
@@ -53,16 +53,17 @@ promptYesNo =
 
 -- | Create a prompt with optional default value that returns a value
 --   of some Text instance.
-prompt :: (Interactive m, Parsec t, Pretty t) => String -> Maybe t -> m t
+prompt :: (Interactive m, Parsec t, Pretty t) => String -> DefaultPrompt t -> m t
 prompt = promptDefault eitherParsec prettyShow
 
 -- | Create a prompt from a prompt string and a String representation
 --   of an optional default value.
-mkDefPrompt :: String -> Maybe String -> String
+mkDefPrompt :: String -> DefaultPrompt String -> String
 mkDefPrompt msg def = msg ++ "?" ++ format def
   where
-    format Nothing = " "
-    format (Just s) = " [default: " ++ s ++ "] "
+    format MandatoryPrompt = " "
+    format OptionalPrompt = " [optional] "
+    format (DefaultPrompt s) = " [default: " ++ s ++ "] "
 
 -- | Create a prompt from a list of strings
 promptList
@@ -71,7 +72,7 @@ promptList
       -- ^ prompt
     -> [String]
       -- ^ choices
-    -> Maybe String
+    -> DefaultPrompt String
       -- ^ optional default value
     -> Maybe (String -> String)
       -- ^ modify the default value to present in-prompt
@@ -85,7 +86,7 @@ promptList msg choices def modDef hasOther = do
 
   -- Output nicely formatted list of options
   for_ prettyChoices $ \(i,c) -> do
-    let star = if Just c == def
+    let star = if DefaultPrompt c == def
           then "*"
           else " "
 
@@ -125,13 +126,13 @@ promptList msg choices def modDef hasOther = do
 
      input <- getLine
      case def of
-       Just d | null input -> return d
+       DefaultPrompt d | null input -> return d
        _ -> case readMaybe input of
          Nothing -> invalidChoice input
          Just n
            | n > 0, n <= numChoices -> return $ choices !! (n-1)
            | n == numChoices + 1, hasOther ->
-             promptStr "Please specify" Nothing
+             promptStr "Please specify" OptionalPrompt
            | otherwise -> invalidChoice (show n)
 
 -- | Create a prompt with an optional default value.
@@ -143,14 +144,14 @@ promptDefault
       -- ^ pretty-printer
     -> String
       -- ^ prompt message
-    -> Maybe t
+    -> (DefaultPrompt t)
       -- ^ optional default value
     -> m t
 promptDefault parse pprint msg def = do
   putStr $ mkDefPrompt msg (pprint <$> def)
   input <- getLine
   case def of
-    Just d | null input  -> return d
+    DefaultPrompt d | null input  -> return d
     _  -> case parse input of
       Right t  -> return t
       Left err -> do

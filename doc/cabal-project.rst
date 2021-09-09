@@ -182,7 +182,7 @@ This allows sharing of packages across different projects.
 
 .. cfg-field:: location: VCS location (usually URL)
 
-.. cfg-field:: type: VCS tag
+.. cfg-field:: tag: VCS tag
 
 .. cfg-field:: subdir: subdirectory list
 
@@ -492,22 +492,59 @@ The following settings control the behavior of the dependency solver:
 
     :default: ``:rest``
 
-    This allows to specify the active package repositories,
-    when multiple are specified. This is useful as you
-    can specify the order and the way active repositories are merged.
+    Specifies which of the package repositories defined in the configuration
+    should be active. It's also useful for specifying the order and the way
+    active repositories are merged.
+
+    When searching for a certain version of a certain package name, the list of
+    active repositories is searched last-to-first.
+
+    For example, suppose hackage.haskell.org has versions 1.0 and 2.0 of
+    package X, and my-repository has version 2.0 of a similarly named package.
+    Then, with the following configuration:
 
     ::
 
-      -- for packages in head.hackage
-      -- only versions in head.hackage are considered
+      -- Force my-repository to be the first repository considered
       active-repositories:
         , hackage.haskell.org
-        , head.hackage:override
+        , my-repository
 
-      -- Force head.hackage to be the primary repository considered
-      active-repositories: :rest, head.hackage
+    version 2.0 of X will come from my-repository, and version 1.0 will come
+    from hackage.haskell.org.
 
-      -- "Offline" mode
+    If we want to make a repository the sole provider of certain packages, we
+    can put it last in the active repositories list, and add the :override
+    modifier.
+
+    For example, if we modify the previous example like this:
+
+    ::
+
+      active-repositories:
+        , hackage.haskell.org
+        , my-repository:override
+
+    then version 1.0 of package X won't be found in any case, because X is
+    present in my-repository only in version 2.0, and the :override forbids
+    searching for other versions of X further up the list.
+
+    :override has no effect for package names that aren't present in the
+    overriding repository.
+
+    The special repository reference :rest stands for "all the other repositories"
+    and can be useful to avoid lenghty lists of repository names:
+
+    ::
+
+      -- Force my-repository to be the first repository considered
+      active-repositories: :rest, my-repository
+
+    The special repository reference "none" disables all repositories, effectively
+    putting cabal in "offline" mode:
+
+    ::
+
       active-repositories: none
 
 
@@ -605,7 +642,7 @@ feature was added.
     :synopsis: Path to compiler executable.
 
     Specify the path to a particular compiler to be used. If not an
-    absolute path, it will be resolved according to the :envvar:`PATH`
+    absolute path, it will be resolved according to the ``PATH``
     environment. The type of the compiler (GHC, GHCJS, etc) must be
     consistent with the setting of the :cfg-field:`compiler` field.
 
@@ -1369,6 +1406,13 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     The command line variant of this flag is ``--keep-temp-files`` (for
     the ``haddock`` subcommand).
 
+.. cfg-field:: open: boolean
+    :synopsis: Open generated documentation in-browser.
+
+    When generating HTML documentation, attempt to open it in a browser
+    when complete. This will use ``xdg-open`` on Linux and BSD systems,
+    ``open`` on macOS, and ``start`` on Windows.
+
 Advanced global configuration options
 -------------------------------------
 
@@ -1387,6 +1431,32 @@ Advanced global configuration options
     <https://gitlab.haskell.org/ghc/ghc/-/issues/13753>`_ that supports
     the ``-package-env -`` option that allows ignoring the package
     environment files).
+
+.. cfg-field:: build-info: True, False
+               --enable-build-info
+               --disable-build-info
+    :synopsis: Whether build information for each individual component should be
+               written in a machine readable format.
+
+    :default: ``False``
+
+    Enable generation of build information for Cabal components. Contains very
+    detailed information on how to build an individual component, such as
+    compiler version, modules of a component and how to compile the component.
+
+    The output format is in json, and the exact location can be discovered from
+    ``plan.json``, where it is identified by ``build-info`` within the items in
+    the ``install-plan``.
+    Note, that this field in ``plan.json`` can be ``null``, if and only if
+    ``build-type: Custom`` is set, and the ``Cabal`` version is too
+    old (i.e. ``< 3.7``).
+    If the field is missing entirely, the component is not a local one, thus,
+    no ``build-info`` exists for that particular component within the
+    ``install-plan``.
+
+    .. note::
+        The format and fields of the generated build information is currently experimental,
+        in the future we might add or remove fields, depending on the needs of other tooling.
 
 
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http

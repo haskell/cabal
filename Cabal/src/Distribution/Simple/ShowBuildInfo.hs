@@ -2,7 +2,7 @@
 -- This module defines a simple JSON-based format for exporting basic
 -- information about a Cabal package and the compiler configuration Cabal
 -- would use to build it. This can be produced with the
--- @cabal new-show-build-info@ command.
+-- @cabal build --enable-build-info@ command.
 --
 --
 -- This format is intended for consumption by external tooling and should
@@ -14,7 +14,7 @@
 -- Below is an example of the output this module produces,
 --
 -- @
--- { "cabal-version": "1.23.0.0",
+-- { "cabal-lib-version": "1.23.0.0",
 --   "compiler": {
 --     "flavour": "GHC",
 --     "compiler-id": "ghc-7.10.2",
@@ -34,7 +34,10 @@
 -- }
 -- @
 --
--- The @cabal-version@ property provides the version of the Cabal library
+-- The output format needs to be validated against 'doc/json-schemas/build-info.schema.json'.
+-- If the format changes, update the schema as well!
+--
+-- The @cabal-lib-version@ property provides the version of the Cabal library
 -- which generated the output. The @compiler@ property gives some basic
 -- information about the compiler Cabal would use to compile the package.
 --
@@ -54,7 +57,13 @@
 -- Note: At the moment this is only supported when using the GHC compiler.
 --
 
-module Distribution.Simple.ShowBuildInfo (mkBuildInfo) where
+{-# LANGUAGE OverloadedStrings #-}
+
+module Distribution.Simple.ShowBuildInfo (
+  mkBuildInfo, mkBuildInfo', mkCompilerInfo, mkComponentInfo
+  ) where
+
+import System.FilePath
 
 import Distribution.Compat.Prelude
 import Prelude ()
@@ -65,82 +74,110 @@ import qualified Distribution.Simple.Program.GHC as GHC
 import Distribution.PackageDescription
 import Distribution.Compiler
 import Distribution.Verbosity
-import Distribution.Simple.Compiler
-import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Compiler (Compiler, showCompilerId, compilerFlavor)
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Simple.Utils.Json
+import Distribution.Utils.Json
+import Distribution.Types.Component
+import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Text
 import Distribution.Pretty
-import Distribution.Utils.Path
 
 -- | Construct a JSON document describing the build information for a
 -- package.
 mkBuildInfo
-  :: PackageDescription  -- ^ Mostly information from the .cabal file
+  :: FilePath            -- ^ The source directory of the package
+  -> PackageDescription  -- ^ Mostly information from the .cabal file
   -> LocalBuildInfo      -- ^ Configuration information
   -> BuildFlags          -- ^ Flags that the user passed to build
+  -> (ConfiguredProgram, Compiler)
+  -- ^ Compiler information.
+  -- Needs to be passed explicitly, as we can't extract that information here
+  -- without some partial function.
   -> [TargetInfo]
-  -> Json
-mkBuildInfo pkg_descr lbi _flags targetsToBuild = info
+  -> ([String], Json)    -- ^ Json representation of buildinfo alongside generated warnings
+mkBuildInfo wdir pkg_descr lbi _flags compilerInfo targetsToBuild = (warnings, JsonObject buildInfoFields)
   where
-    targetToNameAndLBI target =
-      (componentLocalName $ targetCLBI target, targetCLBI target)
-    componentsToBuild = map targetToNameAndLBI targetsToBuild
-    (.=) :: String -> Json -> (String, Json)
-    k .= v = (k, v)
+    buildInfoFields = mkBuildInfo' (uncurry mkCompilerInfo compilerInfo) componentInfos
+    componentInfosWithWarnings = map (mkComponentInfo wdir pkg_descr lbi . targetCLBI) targetsToBuild
+    componentInfos = map snd componentInfosWithWarnings
+    warnings = concatMap fst componentInfosWithWarnings
 
-    info = JsonObject
-      [ "cabal-version" .= JsonString (display cabalVersion)
-      , "compiler"      .= mkCompilerInfo
-      , "components"    .= JsonArray (map mkComponentInfo componentsToBuild)
-      ]
+-- | A variant of 'mkBuildInfo' if you need to call 'mkCompilerInfo' and
+-- 'mkComponentInfo' yourself.
+--
+-- If you change the format or any name in the output json, don't forget to update
+-- the schema at @\/doc\/json-schemas\/build-info.schema.json@ and the docs of
+-- @--enable-build-info@\/@--disable-build-info@.
+mkBuildInfo'
+  :: Json   -- ^ The 'Json' from 'mkCompilerInfo'
+  -> [Json] -- ^ The 'Json' from 'mkComponentInfo'
+  -> [(String, Json)]
+mkBuildInfo' compilerInfo componentInfos =
+  [ "cabal-lib-version" .= JsonString (display cabalVersion)
+  , "compiler"          .= compilerInfo
+  , "components"        .= JsonArray componentInfos
+  ]
 
-    mkCompilerInfo = JsonObject
-      [ "flavour"     .= JsonString (prettyShow $ compilerFlavor $ compiler lbi)
-      , "compiler-id" .= JsonString (showCompilerId $ compiler lbi)
-      , "path"        .= path
-      ]
-      where
-        path = maybe JsonNull (JsonString . programPath)
-               $ (flavorToProgram . compilerFlavor $ compiler lbi)
-               >>= flip lookupProgram (withPrograms lbi)
+mkCompilerInfo :: ConfiguredProgram -> Compiler -> Json
+mkCompilerInfo compilerProgram compilerInfo = JsonObject
+  [ "flavour"     .= JsonString (prettyShow $ compilerFlavor compilerInfo)
+  , "compiler-id" .= JsonString (showCompilerId compilerInfo)
+  , "path"        .= JsonString (programPath compilerProgram)
+  ]
 
-        flavorToProgram :: CompilerFlavor -> Maybe Program
-        flavorToProgram GHC   = Just ghcProgram
-        flavorToProgram GHCJS = Just ghcjsProgram
-        flavorToProgram UHC   = Just uhcProgram
-        flavorToProgram JHC   = Just jhcProgram
-        flavorToProgram _     = Nothing
+mkComponentInfo :: FilePath -> PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> ([String], Json)
+mkComponentInfo wdir pkg_descr lbi clbi = (warnings, JsonObject $
+  [ "type"          .= JsonString compType
+  , "name"          .= JsonString (prettyShow name)
+  , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
+  , "compiler-args" .= JsonArray (map JsonString compilerArgs)
+  , "modules"       .= JsonArray (map (JsonString . display) modules)
+  , "src-files"     .= JsonArray (map JsonString sourceFiles)
+  , "hs-src-dirs"   .= JsonArray (map (JsonString . prettyShow) $ hsSourceDirs bi)
+  , "src-dir"       .= JsonString (addTrailingPathSeparator wdir)
+  ] <> cabalFile)
+  where
+    (warnings, compilerArgs) = getCompilerArgs bi lbi clbi
+    name = componentLocalName clbi
+    bi = componentBuildInfo comp
+    -- If this error happens, a cabal invariant has been violated
+    comp = fromMaybe (error $ "mkBuildInfo: no component " ++ prettyShow name) $ lookupComponent pkg_descr name
+    compType = case comp of
+      CLib _   -> "lib"
+      CExe _   -> "exe"
+      CTest _  -> "test"
+      CBench _ -> "bench"
+      CFLib _  -> "flib"
+    modules = case comp of
+      CLib lib -> explicitLibModules lib
+      CExe exe -> exeModules exe
+      CTest test ->
+        case testInterface test of
+          TestSuiteExeV10 _ _ -> []
+          TestSuiteLibV09 _ modName -> [modName]
+          TestSuiteUnsupported _ -> []
+      CBench bench -> benchmarkModules bench
+      CFLib flib -> foreignLibModules flib
+    sourceFiles = case comp of
+      CLib _   -> []
+      CExe exe -> [modulePath exe]
+      CTest test ->
+        case testInterface test of
+          TestSuiteExeV10 _ fp -> [fp]
+          TestSuiteLibV09 _ _ -> []
+          TestSuiteUnsupported _ -> []
+      CBench bench -> case benchmarkInterface bench of
+        BenchmarkExeV10 _ fp -> [fp]
+        BenchmarkUnsupported _ -> []
 
-    mkComponentInfo (name, clbi) = JsonObject
-      [ "type"          .= JsonString compType
-      , "name"          .= JsonString (prettyShow name)
-      , "unit-id"       .= JsonString (prettyShow $ componentUnitId clbi)
-      , "compiler-args" .= JsonArray (map JsonString $ getCompilerArgs bi lbi clbi)
-      , "modules"       .= JsonArray (map (JsonString . display) modules)
-      , "src-files"     .= JsonArray (map JsonString sourceFiles)
-      , "src-dirs"      .= JsonArray (map JsonString $ map getSymbolicPath $ hsSourceDirs bi)
-      ]
-      where
-        bi = componentBuildInfo comp
-        comp = fromMaybe (error $ "mkBuildInfo: no component " ++ prettyShow name) $ lookupComponent pkg_descr name
-        compType = case comp of
-          CLib _   -> "lib"
-          CExe _   -> "exe"
-          CTest _  -> "test"
-          CBench _ -> "bench"
-          CFLib _  -> "flib"
-        modules = case comp of
-          CLib lib -> explicitLibModules lib
-          CExe exe -> exeModules exe
-          _        -> []
-        sourceFiles = case comp of
-          CLib _   -> []
-          CExe exe -> [modulePath exe]
-          _        -> []
+      CFLib _ -> []
+    cabalFile
+      | Just fp <- pkgDescrFile lbi = [("cabal-file", JsonString fp)]
+      | otherwise                   = []
 
 -- | Get the command-line arguments that would be passed
 -- to the compiler to build the given component.
@@ -148,13 +185,15 @@ getCompilerArgs
   :: BuildInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
-  -> [String]
+  -> ([String], [String])
 getCompilerArgs bi lbi clbi =
   case compilerFlavor $ compiler lbi of
-      GHC   -> ghc
-      GHCJS -> ghc
-      c     -> error $ "ShowBuildInfo.getCompilerArgs: Don't know how to get "++
-                       "build arguments for compiler "++show c
+      GHC   -> ([], ghc)
+      GHCJS -> ([], ghc)
+      c     ->
+        ( ["ShowBuildInfo.getCompilerArgs: Don't know how to get build "
+          ++ " arguments for compiler " ++ show c]
+        , [])
   where
     -- This is absolutely awful
     ghc = GHC.renderGhcOptions (compiler lbi) (hostPlatform lbi) baseOpts

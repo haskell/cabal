@@ -294,9 +294,10 @@ findFileWithExtensionMonitored extensions searchPath baseName =
     , ext <- nub extensions ]
 
 -- | Like 'findFirstFile', but in the 'Rebuild' monad.
-findFirstFileMonitored :: (a -> FilePath) -> [a] -> Rebuild (Maybe a)
+findFirstFileMonitored :: forall a. (a -> FilePath) -> [a] -> Rebuild (Maybe a)
 findFirstFileMonitored file = findFirst
-  where findFirst []     = return Nothing
+  where findFirst        :: [a] -> Rebuild (Maybe a)
+        findFirst []     = return Nothing
         findFirst (x:xs) = do exists <- doesFileExistMonitored (file x)
                               if exists
                                 then return (Just x)

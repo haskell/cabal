@@ -17,6 +17,7 @@ module Distribution.Client.Init.Utils
 , mkPackageNameDep
 , fixupDocFiles
 , mkStringyDep
+, getBaseDep
 ) where
 
 
@@ -46,6 +47,7 @@ import Distribution.Types.PackageName
 import Distribution.Types.Dependency (Dependency, mkDependency)
 import qualified Distribution.Compat.NonEmptySet as NES
 import Distribution.Types.LibraryName
+import Distribution.Verbosity (silent)
 
 
 -- |Data type of source files found in the working directory
@@ -307,3 +309,8 @@ fixupDocFiles v pkgDesc
 
 mkStringyDep :: String -> Dependency
 mkStringyDep = mkPackageNameDep . mkPackageName
+
+
+getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
+getBaseDep pkgIx flags = retrieveDependencies silent flags
+  [(fromString "Prelude", fromString "Prelude")] pkgIx

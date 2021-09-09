@@ -49,6 +49,7 @@ normalizeOutput nenv =
           "/incoming/new-<RAND>"
     -- Normalize architecture
   . resub (posixRegexEscape (display (normalizerPlatform nenv))) "<ARCH>"
+  . normalizeBuildInfoJson
     -- Some GHC versions are chattier than others
   . resub "^ignoring \\(possibly broken\\) abi-depends field for packages" ""
     -- Normalize the current GHC version.  Apply this BEFORE packageIdRegex,
@@ -67,6 +68,30 @@ normalizeOutput nenv =
         resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")
               (prettyShow (packageName pid) ++ "-<VERSION>")
 
+    -- 'build-info.json' contains a plethora of host system specific information.
+    --
+    -- This must happen before the root-dir normalisation.
+    normalizeBuildInfoJson =
+        -- Remove ghc path from show-build-info output
+        resub ("\"path\":\"[^\"]*\"}")
+          "\"path\":\"<GHCPATH>\"}"
+        -- Remove cabal version output from show-build-info output
+      . resub ("{\"cabal-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
+              "{\"cabal-version\":\"<CABALVER>\""
+        -- Remove the package id for stuff such as:
+        -- > "-package-id","base-4.14.0.0-<some-hash>"
+        -- and replace it with:
+        -- > "-package-id","<PACKAGEDEP>"
+        --
+        -- Otherwise, output can not be properly normalized as on MacOs we remove
+        -- vowels from packages to make the names shorter.
+        -- E.g. "another-framework-0.8.1.1" -> "nthr-frmwrk-0.8.1.1"
+        --
+        -- This makes it impossible to have a stable package id, thus remove it completely.
+        -- Check manually in your test-cases if the package-id needs to be verified.
+      . resub ("\"-package-id\",\"([^\"]*)\"")
+              "\"-package-id\",\"<PACKAGEDEP>\""
+
 data NormalizerEnv = NormalizerEnv
     { normalizerRoot          :: FilePath
     , normalizerTmpDir        :: FilePath
@@ -74,6 +99,7 @@ data NormalizerEnv = NormalizerEnv
     , normalizerGhcVersion    :: Version
     , normalizerKnownPackages :: [PackageId]
     , normalizerPlatform      :: Platform
+    , normalizerCabalVersion  :: Version
     }
 
 posixSpecialChars :: [Char]

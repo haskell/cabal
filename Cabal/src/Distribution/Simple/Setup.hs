@@ -45,8 +45,9 @@ module Distribution.Simple.Setup (
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
-  ShowBuildInfoFlags(..),                defaultShowBuildFlags, showBuildInfoCommand,
+  DumpBuildInfo(..),
   ReplFlags(..),                         defaultReplFlags,     replCommand,
+  ReplOptions(..),
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
@@ -98,6 +99,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
+import Distribution.Types.DumpBuildInfo
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
@@ -231,6 +233,9 @@ data ConfigFlags = ConfigFlags {
                                                             -- paths
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraLibDirsStatic :: [FilePath],   -- ^ path to search for extra
+                                              --   libraries when linking
+                                              --   fully static executables
     configExtraFrameworkDirs :: [FilePath],   -- ^ path to search for extra
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
@@ -270,6 +275,11 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configDumpBuildInfo :: Flag DumpBuildInfo,
+      -- ^ Should we dump available build information on build?
+      -- Dump build information to disk before attempting to build,
+      -- tooling can parse these files and use them to compile the
+      -- source files themselves.
     configUseResponseFiles :: Flag Bool,
       -- ^ Whether to use response files at all. They're used for such tools
       -- as haddock, or ld.
@@ -315,6 +325,7 @@ instance Eq ConfigFlags where
     && equal configInstallDirs
     && equal configScratchDir
     && equal configExtraLibDirs
+    && equal configExtraLibDirsStatic
     && equal configExtraIncludeDirs
     && equal configIPID
     && equal configDeterministic
@@ -338,6 +349,7 @@ instance Eq ConfigFlags where
     && equal configFlagError
     && equal configRelocatable
     && equal configDebugInfo
+    && equal configDumpBuildInfo
     && equal configUseResponseFiles
     where
       equal f = on (==) f a b
@@ -388,6 +400,7 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
+    configDumpBuildInfo = NoFlag,
     configUseResponseFiles = NoFlag
   }
 
@@ -556,6 +569,17 @@ configureOptions showOrParseArgs =
                 "Don't emit debug info"
          ]
 
+      , multiOption "build-info"
+         configDumpBuildInfo
+         (\v flags -> flags { configDumpBuildInfo = v })
+         [noArg (Flag DumpBuildInfo) []
+                ["enable-build-info"]
+                "Enable build information generation during project building",
+          noArg (Flag NoDumpBuildInfo) []
+                ["disable-build-info"]
+                "Disable build information generation during project building"
+         ]
+
       ,option "" ["library-for-ghci"]
          "compile library for use with GHCi"
          configGHCiLib (\v flags -> flags { configGHCiLib = v })
@@ -631,6 +655,11 @@ configureOptions showOrParseArgs =
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option "" ["extra-lib-dirs-static"]
+         "A list of directories to search for external libraries when linking fully static executables"
+         configExtraLibDirsStatic (\v flags -> flags {configExtraLibDirsStatic = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
       ,option "" ["extra-framework-dirs"]
@@ -1656,13 +1685,30 @@ instance Semigroup BuildFlags where
 -- * REPL Flags
 -- ------------------------------------------------------------
 
+data ReplOptions = ReplOptions {
+    replOptionsFlags :: [String],
+    replOptionsNoLoad :: Flag Bool
+  }
+  deriving (Show, Generic, Typeable)
+
+instance Binary ReplOptions
+instance Structured ReplOptions
+
+
+instance Monoid ReplOptions where
+  mempty = ReplOptions mempty (Flag False)
+  mappend = (<>)
+
+instance Semigroup ReplOptions where
+  (<>) = gmappend
+
 data ReplFlags = ReplFlags {
     replProgramPaths :: [(String, FilePath)],
     replProgramArgs :: [(String, [String])],
     replDistPref    :: Flag FilePath,
     replVerbosity   :: Flag Verbosity,
     replReload      :: Flag Bool,
-    replReplOptions :: [String]
+    replReplOptions :: ReplOptions
   }
   deriving (Show, Generic, Typeable)
 
@@ -1673,7 +1719,7 @@ defaultReplFlags  = ReplFlags {
     replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
     replReload      = Flag False,
-    replReplOptions = []
+    replReplOptions = mempty
   }
 
 instance Monoid ReplFlags where
@@ -1754,9 +1800,17 @@ replCommand progDb = CommandUI
   where
     liftReplOption = liftOption replReplOptions (\v flags -> flags { replReplOptions = v })
 
-replOptions :: ShowOrParseArgs -> [OptionField [String]]
-replOptions _ = [ option [] ["repl-options"] "use this option for the repl" id
-              const (reqArg "FLAG" (succeedReadE (:[])) id) ]
+replOptions :: ShowOrParseArgs -> [OptionField ReplOptions]
+replOptions _ =
+  [ option [] ["repl-no-load"]
+    "Disable loading of project modules at REPL startup."
+    replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
+    trueArg
+  , option [] ["repl-options"]
+    "use this option for the repl"
+    replOptionsFlags (\p flags -> flags { replOptionsFlags = p ++ replOptionsFlags flags })
+    (reqArg "FLAG" (succeedReadE (:[])) id)
+  ]
 
 -- ------------------------------------------------------------
 -- * Test flags
@@ -1822,16 +1876,8 @@ testCommand = CommandUI
   { commandName         = "test"
   , commandSynopsis     =
       "Run all/specific tests in the test suite."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-tests` flag and builds"
-      ++ " the test suite.\n"
-      ++ "\n"
-      ++ "Remember that the tests' dependencies must be installed if there"
-      ++ " are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-tests`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running tests.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "test"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "test"
       [ "[FLAGS]"
@@ -1840,6 +1886,24 @@ testCommand = CommandUI
   , commandDefaultFlags = defaultTestFlags
   , commandOptions = testOptions'
   }
+
+-- | Help text for @test@ and @bench@ commands.
+testOrBenchmarkHelpText
+  :: String   -- ^ Either @"test"@ or @"benchmark"@.
+  -> String   -- ^ Help text.
+testOrBenchmarkHelpText s = unlines $ map unwords
+  [ [ "The package must have been build with configuration"
+    , concat [ "flag `--enable-", s, "s`." ]
+    ]
+  , []  -- blank line
+  , [ concat [ "Note that additional dependencies of the ", s, "s" ]
+    , "must have already been installed."
+    ]
+  , []
+  , [ "By defining UserHooks in a custom Setup.hs, the package can define"
+    , concat [ "actions to be executed before and after running ", s, "s." ]
+    ]
+  ]
 
 testOptions' ::  ShowOrParseArgs -> [OptionField TestFlags]
 testOptions' showOrParseArgs =
@@ -1936,17 +2000,8 @@ benchmarkCommand = CommandUI
   { commandName         = "bench"
   , commandSynopsis     =
       "Run all/specific benchmarks."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-benchmarks` flag and"
-      ++ " builds the benchmarks.\n"
-      ++ "\n"
-      ++ "Remember that the benchmarks' dependencies must be installed if"
-      ++ " there are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-benchmarks`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running"
-      ++ " benchmarks.\n"
+  , commandDescription  = Just $ \ _pname -> wrapText $
+      testOrBenchmarkHelpText "benchmark"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "bench"
       [ "[FLAGS]"
@@ -2146,81 +2201,6 @@ optionNumJobs get set =
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
-
-
--- ------------------------------------------------------------
--- * show-build-info command flags
--- ------------------------------------------------------------
-
-data ShowBuildInfoFlags = ShowBuildInfoFlags
-  { buildInfoBuildFlags :: BuildFlags
-  , buildInfoOutputFile :: Maybe FilePath
-  } deriving (Show, Typeable)
-
-defaultShowBuildFlags  :: ShowBuildInfoFlags
-defaultShowBuildFlags =
-    ShowBuildInfoFlags
-      { buildInfoBuildFlags = defaultBuildFlags
-      , buildInfoOutputFile = Nothing
-      }
-
-showBuildInfoCommand :: ProgramDb -> CommandUI ShowBuildInfoFlags
-showBuildInfoCommand progDb = CommandUI
-  { commandName         = "show-build-info"
-  , commandSynopsis     = "Emit details about how a package would be built."
-  , commandDescription  = Just $ \_ -> wrapText $
-         "Components encompass executables, tests, and benchmarks.\n"
-      ++ "\n"
-      ++ "Affected by configuration options, see `configure`.\n"
-  , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " show-build-info      "
-        ++ "    All the components in the package\n"
-        ++ "  " ++ pname ++ " show-build-info foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progDb
---TODO: re-enable once we have support for module/file targets
---        ++ "  " ++ pname ++ " show-build-info Foo.Bar   "
---        ++ "    A module\n"
---        ++ "  " ++ pname ++ " show-build-info Foo/Bar.hs"
---        ++ "    A file\n\n"
---        ++ "If a target is ambiguous it can be qualified with the component "
---        ++ "name, e.g.\n"
---        ++ "  " ++ pname ++ " show-build-info foo:Foo.Bar\n"
---        ++ "  " ++ pname ++ " show-build-info testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = usageAlternatives "show-build-info" $
-      [ "[FLAGS]"
-      , "COMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultShowBuildFlags
-  , commandOptions      = \showOrParseArgs ->
-      parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb
-      ++
-      [ option [] ["buildinfo-json-output"]
-                "Write the result to the given file instead of stdout"
-                buildInfoOutputFile (\pf flags -> flags { buildInfoOutputFile = pf })
-                (reqArg' "FILE" Just (maybe [] pure))
-      ]
-
-  }
-
-parseBuildFlagsForShowBuildInfoFlags :: ShowOrParseArgs -> ProgramDb -> [OptionField ShowBuildInfoFlags]
-parseBuildFlagsForShowBuildInfoFlags showOrParseArgs progDb =
-  map
-      (liftOption
-        buildInfoBuildFlags
-          (\bf flags -> flags { buildInfoBuildFlags = bf } )
-      )
-      buildFlags
-  where
-    buildFlags = buildOptions progDb showOrParseArgs
-      ++
-      [ optionVerbosity
-        buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-      , optionDistPref
-        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-      ]
 
 -- ------------------------------------------------------------
 -- * Other Utils

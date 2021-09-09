@@ -59,7 +59,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
-         ( Flag, HaddockTarget(..), TestShowDetails(..) )
+         ( Flag, HaddockTarget(..), TestShowDetails(..), DumpBuildInfo (..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate )
 import Distribution.Utils.NubList
@@ -258,6 +258,7 @@ data PackageConfig
        packageConfigProgPrefix          :: Flag PathTemplate,
        packageConfigProgSuffix          :: Flag PathTemplate,
        packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraLibDirsStatic  :: [FilePath],
        packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
@@ -270,6 +271,7 @@ data PackageConfig
        packageConfigCoverage            :: Flag Bool,
        packageConfigRelocatable         :: Flag Bool,
        packageConfigDebugInfo           :: Flag DebugInfoLevel,
+       packageConfigDumpBuildInfo       :: Flag DumpBuildInfo,
        packageConfigRunTests            :: Flag Bool, --TODO: [required eventually] use this
        packageConfigDocumentation       :: Flag Bool, --TODO: [required eventually] use this
        -- Haddock options
@@ -456,5 +458,6 @@ data BuildTimeSettings
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
        buildSettingIgnoreExpiry          :: Bool,
-       buildSettingProgPathExtra         :: [FilePath]
+       buildSettingProgPathExtra         :: [FilePath],
+       buildSettingHaddockOpen           :: Bool
      }

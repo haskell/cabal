@@ -136,6 +136,8 @@ import           Distribution.Compiler
                    ( CompilerFlavor(GHC) )
 import           Distribution.Types.ComponentName
                    ( componentNameString )
+import           Distribution.Types.InstalledPackageInfo
+                   ( InstalledPackageInfo )
 import           Distribution.Types.UnqualComponentName
                    ( UnqualComponentName, packageNameToUnqualComponentName )
 
@@ -424,6 +426,7 @@ runProjectPostBuildPhase verbosity
           projectConfigWriteGhcEnvironmentFilesPolicy . projectConfigShared
           $ projectConfig
 
+        shouldWriteGhcEnvironment :: Bool
         shouldWriteGhcEnvironment =
           case fromFlagOrDefault NeverWriteGhcEnvironmentFiles
                writeGhcEnvFilesPolicy
@@ -669,37 +672,50 @@ type AvailableTargetsMap k = Map k [AvailableTarget (UnitId, ComponentName)]
 availableTargetIndexes :: ElaboratedInstallPlan -> AvailableTargetIndexes
 availableTargetIndexes installPlan = AvailableTargetIndexes{..}
   where
+    availableTargetsByPackageIdAndComponentName ::
+      Map (PackageId, ComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageIdAndComponentName =
       availableTargets installPlan
 
+    availableTargetsByPackageId ::
+      Map PackageId [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageId =
                   Map.mapKeysWith
                     (++) (\(pkgid, _cname) -> pkgid)
                     availableTargetsByPackageIdAndComponentName
       `Map.union` availableTargetsEmptyPackages
 
+    availableTargetsByPackageName ::
+      Map PackageName [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageName =
       Map.mapKeysWith
         (++) packageName
         availableTargetsByPackageId
 
+    availableTargetsByPackageNameAndComponentName ::
+      Map (PackageName, ComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageNameAndComponentName =
       Map.mapKeysWith
         (++) (\(pkgid, cname) -> (packageName pkgid, cname))
         availableTargetsByPackageIdAndComponentName
 
+    availableTargetsByPackageNameAndUnqualComponentName ::
+      Map (PackageName, UnqualComponentName)
+          [AvailableTarget (UnitId, ComponentName)]
     availableTargetsByPackageNameAndUnqualComponentName =
       Map.mapKeysWith
         (++) (\(pkgid, cname) -> let pname  = packageName pkgid
                                      cname' = unqualComponentName pname cname
                                   in (pname, cname'))
         availableTargetsByPackageIdAndComponentName
-     where
-       unqualComponentName ::
-         PackageName -> ComponentName -> UnqualComponentName
-       unqualComponentName pkgname =
-           fromMaybe (packageNameToUnqualComponentName pkgname)
-         . componentNameString
+      where
+        unqualComponentName ::
+          PackageName -> ComponentName -> UnqualComponentName
+        unqualComponentName pkgname =
+            fromMaybe (packageNameToUnqualComponentName pkgname)
+          . componentNameString
 
     -- Add in all the empty packages. These do not appear in the
     -- availableTargetsByComponent map, since that only contains
@@ -875,6 +891,7 @@ printPlan verbosity
         in "(" ++ showBuildStatus buildStatus ++ ")"
       ]
 
+    showComp :: ElaboratedConfiguredPackage -> ElaboratedComponent -> String
     showComp elab comp =
         maybe "custom" prettyShow (compComponentName comp) ++
         if Map.null (elabInstantiatedWith elab)
@@ -889,6 +906,7 @@ printPlan verbosity
     nonDefaultFlags elab =
       elabFlagAssignment elab `diffFlagAssignment` elabFlagDefaults elab
 
+    showTargets :: ElaboratedConfiguredPackage -> String
     showTargets elab
       | null (elabBuildTargets elab) = ""
       | otherwise
@@ -897,6 +915,7 @@ printPlan verbosity
                             | t <- elabBuildTargets elab ]
         ++ ")"
 
+    showConfigureFlags :: ElaboratedConfiguredPackage -> String
     showConfigureFlags elab =
         let fullConfigureFlags
               = setupHsConfigureFlags
@@ -930,6 +949,7 @@ printPlan verbosity
             (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
             partialConfigureFlags
 
+    showBuildStatus :: BuildStatus -> String
     showBuildStatus status = case status of
       BuildStatusPreExisting -> "existing package"
       BuildStatusInstalled   -> "already installed"
@@ -947,6 +967,7 @@ printPlan verbosity
           BuildReasonEphemeralTargets -> "ephemeral targets"
       BuildStatusUpToDate {} -> "up to date" -- doesn't happen
 
+    showMonitorChangedReason :: MonitorChangedReason a -> String
     showMonitorChangedReason (MonitoredFileChanged file) =
       "file " ++ file ++ " changed"
     showMonitorChangedReason (MonitoredValueChanged _)   = "value changed"
@@ -954,6 +975,7 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache        =
       "cannot read state cache"
 
+    showBuildProfile :: String
     showBuildProfile = "Build profile: " ++ unwords [
       "-w " ++ (showCompilerId . pkgConfigCompiler) elaboratedShared,
       "-O" ++  (case packageConfigOptimization of
@@ -1001,9 +1023,11 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
          | let mentionDepOf = verbosity <= normal
          , (pkg, failureClassification) <- failuresClassification ]
   where
+    failures :: [(UnitId, BuildFailure)]
     failures =  [ (pkgid, failure)
                 | (pkgid, Left failure) <- Map.toList buildOutcomes ]
 
+    failuresClassification :: [(ElaboratedConfiguredPackage, BuildFailurePresentation)]
     failuresClassification =
       [ (pkg, classifyBuildFailure failure)
       | (pkgid, failure) <- failures
@@ -1014,6 +1038,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
 
+    dieIfNotHaddockFailure :: Verbosity -> String -> IO ()
     dieIfNotHaddockFailure
       | currentCommand == HaddockCommand            = die'
       | all isHaddockFailure failuresClassification = warn
@@ -1050,6 +1075,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     --    detail itself (e.g. ghc reporting errors on stdout)
     --  - then we do not report additional error detail or context.
     --
+    isSimpleCase :: Bool
     isSimpleCase
       | [(pkgid, failure)] <- failures
       , [pkg]              <- rootpkgs
@@ -1063,6 +1089,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     -- NB: if the Setup script segfaulted or was interrupted,
     -- we should give more detailed information.  So only
     -- assume that exit code 1 is "pedestrian failure."
+    isFailureSelfExplanatory :: BuildFailureReason -> Bool
     isFailureSelfExplanatory (BuildFailed e)
       | Just (ExitFailure 1) <- fromException e = True
 
@@ -1071,11 +1098,15 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
 
     isFailureSelfExplanatory _                  = False
 
+    rootpkgs :: [ElaboratedConfiguredPackage]
     rootpkgs =
       [ pkg
       | InstallPlan.Configured pkg <- InstallPlan.toList plan
       , hasNoDependents pkg ]
 
+    ultimateDeps
+      :: UnitId
+      -> [InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage]
     ultimateDeps pkgid =
         filter (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
                (InstallPlan.reverseDependencyClosure plan [pkgid])
@@ -1083,11 +1114,13 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     hasNoDependents :: HasUnitId pkg => pkg -> Bool
     hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
 
+    renderFailureDetail :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureDetail mentionDepOf pkg reason =
         renderFailureSummary mentionDepOf pkg reason ++ "."
      ++ renderFailureExtraDetail reason
      ++ maybe "" showException (buildFailureException reason)
 
+    renderFailureSummary :: Bool -> ElaboratedConfiguredPackage -> BuildFailureReason -> String
     renderFailureSummary mentionDepOf pkg reason =
         case reason of
           DownloadFailed  _ -> "Failed to download " ++ pkgstr
@@ -1109,6 +1142,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
                    then renderDependencyOf (installedUnitId pkg)
                    else ""
 
+    renderFailureExtraDetail :: BuildFailureReason -> String
     renderFailureExtraDetail (ConfigureFailed _) =
       " The failure occurred during the configure step."
     renderFailureExtraDetail (InstallFailed   _) =
@@ -1116,6 +1150,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
     renderFailureExtraDetail _                   =
       ""
 
+    renderDependencyOf :: UnitId -> String
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
         []         -> ""
@@ -1177,6 +1212,7 @@ dieOnBuildFailures verbosity currentCommand plan buildOutcomes
              ++ show e
 #endif
 
+    buildFailureException :: BuildFailureReason -> Maybe SomeException
     buildFailureException reason =
       case reason of
         DownloadFailed  e -> Just e
@@ -1230,6 +1266,7 @@ establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages
         mstoreDir = flagToMaybe projectConfigStoreDir
         cabalDirLayout = mkCabalDirLayout cabalDir mstoreDir mlogsDir
 
+        buildSettings :: BuildTimeSettings
         buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
                           projectConfig

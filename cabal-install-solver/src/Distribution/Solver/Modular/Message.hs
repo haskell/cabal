@@ -18,6 +18,8 @@ import Distribution.Pretty (prettyShow) -- from Cabal
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
+import Distribution.Solver.Modular.MessageUtils
+         (showUnsupportedExtension, showUnsupportedLanguage)
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
          ( FailReason(..), POption(..), ConflictingDep(..) )
@@ -215,8 +217,8 @@ showGR UserGoal            = " (user goal)"
 showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")"
 
 showFR :: ConflictSet -> FailReason -> String
-showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ prettyShow ext ++ ")"
-showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ prettyShow lang ++ ")"
+showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ showUnsupportedExtension ext ++ ")"
+showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ showUnsupportedLanguage lang ++ ")"
 showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ prettyShow pn ++ prettyShow vr ++ ", not found in the pkg-config database)"
 showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
 showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"

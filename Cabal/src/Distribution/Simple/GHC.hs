@@ -493,13 +493,13 @@ buildLib :: Verbosity          -> Cabal.Flag (Maybe Int)
          -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib = buildOrReplLib Nothing
 
-replLib :: [String]                -> Verbosity
+replLib :: ReplOptions             -> Verbosity
         -> Cabal.Flag (Maybe Int)  -> PackageDescription
         -> LocalBuildInfo          -> Library
         -> ComponentLocalBuildInfo -> IO ()
 replLib = buildOrReplLib . Just
 
-buildOrReplLib :: Maybe [String] -> Verbosity
+buildOrReplLib :: Maybe ReplOptions -> Verbosity
                -> Cabal.Flag (Maybe Int) -> PackageDescription
                -> LocalBuildInfo -> Library
                -> ComponentLocalBuildInfo -> IO ()
@@ -593,8 +593,13 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                                                 -- through to GHC's linker.
                                                 ++ maybe [] programOverrideArgs
                                                      (lookupProgram ldProgram (withPrograms lbi)),
-                      ghcOptLinkLibs          = extraLibs libBi,
-                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
+                      ghcOptLinkLibs          = if withFullyStaticExe lbi
+                                                  then extraLibsStatic libBi
+                                                  else extraLibs libBi,
+                      ghcOptLinkLibPath       = toNubListR $
+                                                  if withFullyStaticExe lbi
+                                                    then extraLibDirsStatic libBi
+                                                    else extraLibDirs libBi,
                       ghcOptLinkFrameworks    = toNubListR $ PD.frameworks libBi,
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs libBi,
@@ -604,8 +609,9 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       replOpts    = vanillaOpts {
                       ghcOptExtra        = Internal.filterGhciFlags
                                            (ghcOptExtra vanillaOpts)
-                                           <> replFlags,
-                      ghcOptNumJobs      = mempty
+                                           <> replOptionsFlags replFlags,
+                      ghcOptNumJobs      = mempty,
+                      ghcOptInputModules = replNoLoad replFlags (ghcOptInputModules vanillaOpts)
                     }
                     `mappend` linkerOpts
                     `mappend` mempty {
@@ -964,7 +970,7 @@ buildFLib
 buildFLib v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildFLib
 
 replFLib
-  :: [String]                -> Verbosity
+  :: ReplOptions             -> Verbosity
   -> Cabal.Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> ForeignLib
   -> ComponentLocalBuildInfo -> IO ()
@@ -980,7 +986,7 @@ buildExe
 buildExe v njobs pkg lbi = gbuild v njobs pkg lbi . GBuildExe
 
 replExe
-  :: [String]                -> Verbosity
+  :: ReplOptions             -> Verbosity
   -> Cabal.Flag (Maybe Int)  -> PackageDescription
   -> LocalBuildInfo          -> Executable
   -> ComponentLocalBuildInfo -> IO ()
@@ -992,9 +998,9 @@ replExe replFlags v njobs pkg lbi =
 -- 'GBuildMode' distinguishes between the various kinds of operation.
 data GBuildMode =
     GBuildExe  Executable
-  | GReplExe   [String] Executable
+  | GReplExe   ReplOptions Executable
   | GBuildFLib ForeignLib
-  | GReplFLib  [String] ForeignLib
+  | GReplFLib  ReplOptions ForeignLib
 
 gbuildInfo :: GBuildMode -> BuildInfo
 gbuildInfo (GBuildExe  exe)  = buildInfo exe
@@ -1260,6 +1266,11 @@ gbuildSources verbosity specVer tmpDir bm =
     isCxx :: FilePath -> Bool
     isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
 
+replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
+replNoLoad replFlags l
+    | replOptionsNoLoad replFlags == Flag True = mempty
+    | otherwise                                = l
+
 -- | Generic build function. See comment for 'GBuildMode'.
 gbuild :: Verbosity          -> Cabal.Flag (Maybe Int)
        -> PackageDescription -> LocalBuildInfo
@@ -1356,8 +1367,13 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
                                                 -- through to GHC's linker.
                                                 ++ maybe [] programOverrideArgs
                                                      (lookupProgram ldProgram (withPrograms lbi)),
-                      ghcOptLinkLibs          = extraLibs bnfo,
-                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs bnfo,
+                      ghcOptLinkLibs          = if withFullyStaticExe lbi
+                                                  then extraLibsStatic bnfo
+                                                  else extraLibs bnfo,
+                      ghcOptLinkLibPath       = toNubListR $
+                                                  if withFullyStaticExe lbi
+                                                    then extraLibDirsStatic bnfo
+                                                    else extraLibDirs bnfo,
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks bnfo,
                       ghcOptLinkFrameworkDirs = toNubListR $
@@ -1373,7 +1389,9 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       replOpts   = baseOpts {
                     ghcOptExtra            = Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
-                                             <> replFlags
+                                             <> replOptionsFlags replFlags,
+                    ghcOptInputModules     = replNoLoad replFlags (ghcOptInputModules baseOpts),
+                    ghcOptInputFiles       = replNoLoad replFlags (ghcOptInputFiles baseOpts)
                    }
                    -- For a normal compile we do separate invocations of ghc for
                    -- compiling as for linking. But for repl we have to do just

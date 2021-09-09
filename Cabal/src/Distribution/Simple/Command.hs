@@ -223,16 +223,15 @@ commandGetOpts :: ShowOrParseArgs -> CommandUI flags
 commandGetOpts showOrParse command =
     concatMap viewAsGetOpt (commandOptions command showOrParse)
 
-viewAsGetOpt :: OptionField a -> [GetOpt.OptDescr (a->a)]
+viewAsGetOpt :: OptionField a -> [GetOpt.OptDescr (a -> a)]
 viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
   where
     optDescrToGetOpt (ReqArg d (cs,ss) arg_desc set _) =
-         [GetOpt.Option cs ss (GetOpt.ReqArg set' arg_desc) d]
-             where set' = readEOrFail set
+         [GetOpt.Option cs ss (GetOpt.ReqArg (runReadE set) arg_desc) d]
     optDescrToGetOpt (OptArg d (cs,ss) arg_desc set def _) =
          [GetOpt.Option cs ss (GetOpt.OptArg set' arg_desc) d]
-             where set' Nothing    = def
-                   set' (Just txt) = readEOrFail set txt
+             where set' Nothing    = Right def
+                   set' (Just txt) = runReadE set txt
     optDescrToGetOpt (ChoiceOpt alts) =
          [GetOpt.Option sf lf (GetOpt.NoArg set) d | (d,(sf,lf),set,_) <- alts ]
     optDescrToGetOpt (BoolOpt d (sfT, lfT) ([],  [])  set _) =
@@ -391,13 +390,8 @@ addCommonFlags :: ShowOrParseArgs
                -> [GetOpt.OptDescr a]
                -> [GetOpt.OptDescr (Either CommonFlag a)]
 addCommonFlags showOrParseArgs options =
-     map (fmapOptDesc Left)  (commonFlags showOrParseArgs)
-  ++ map (fmapOptDesc Right) options
-  where fmapOptDesc f (GetOpt.Option s l d m) =
-                       GetOpt.Option s l (fmapArgDesc f d) m
-        fmapArgDesc f (GetOpt.NoArg a)    = GetOpt.NoArg (f a)
-        fmapArgDesc f (GetOpt.ReqArg s d) = GetOpt.ReqArg (f . s) d
-        fmapArgDesc f (GetOpt.OptArg s d) = GetOpt.OptArg (f . s) d
+     map (fmap Left)  (commonFlags showOrParseArgs)
+  ++ map (fmap Right) options
 
 -- | Parse a bunch of command line arguments
 --

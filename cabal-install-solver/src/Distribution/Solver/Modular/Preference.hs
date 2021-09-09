@@ -2,7 +2,7 @@
 -- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
-    , deferSetupChoices
+    , deferSetupExeChoices
     , deferWeakFlagChoices
     , enforceManualFlags
     , enforcePackageConstraints
@@ -51,8 +51,8 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 -- children's versions, and package option. 'addWeights' prepends the new
 -- weights to the existing weights, which gives precedence to preferences that
 -- are applied later.
-addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree d c -> Tree d c
-addWeights fs = trav go
+addWeights :: [PN -> [Ver] -> POption -> Weight] -> EndoTreeTrav d c
+addWeights fs = go
   where
     go :: TreeF d c (Tree d c) -> TreeF d c (Tree d c)
     go (PChoiceF qpn@(Q _ pn) rdm x cs) =
@@ -69,21 +69,21 @@ addWeights fs = trav go
              W.mapWeightsWithKey (\k w -> weights k ++ w) cs)
     go x                            = x
 
-addWeight :: (PN -> [Ver] -> POption -> Weight) -> Tree d c -> Tree d c
+addWeight :: (PN -> [Ver] -> POption -> Weight) -> EndoTreeTrav d c
 addWeight f = addWeights [f]
 
 version :: POption -> Ver
 version (POption (I v _) _) = v
 
 -- | Prefer to link packages whenever possible.
-preferLinked :: Tree d c -> Tree d c
+preferLinked :: EndoTreeTrav d c
 preferLinked = addWeight (const (const linked))
   where
     linked (POption _ Nothing)  = 1
     linked (POption _ (Just _)) = 0
 
 -- Works by setting weights on choice nodes. Also applies stanza preferences.
-preferPackagePreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
+preferPackagePreferences :: (PN -> PackagePreferences) -> EndoTreeTrav d c
 preferPackagePreferences pcs =
     preferPackageStanzaPreferences pcs .
     addWeights [
@@ -127,11 +127,18 @@ preferPackagePreferences pcs =
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
-preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree d c -> Tree d c
-preferPackageStanzaPreferences pcs = trav go
+-- Note that this works on packages lower in the path as well as at the top level.
+-- This is because stanza preferences apply to local packages only
+-- and for local packages, a single version is fixed, which means
+-- (for now) that all stanza preferences must be uniform at all levels.
+-- Further, even when we can have multiple versions of the same package,
+-- the build plan will be more efficient if we can attempt to keep
+-- stanza preferences aligned at all levels.
+preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> EndoTreeTrav d c
+preferPackageStanzaPreferences pcs = go
   where
-    go (SChoiceF qsn@(SN (Q pp pn) s) rdm gr _tr ts)
-      | primaryPP pp && enableStanzaPref pn s =
+    go (SChoiceF qsn@(SN (Q _pp pn) s) rdm gr _tr ts)
+      | enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
           let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
               weight k = if k then 0 else 1
@@ -221,9 +228,8 @@ processPackageConstraintS qpn s c b' (LabeledPackageConstraint (PackageConstrain
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
-                          -> Tree d c
-                          -> Tree d c
-enforcePackageConstraints pcs = trav go
+                          -> EndoTreeTrav d c
+enforcePackageConstraints pcs = go
   where
     go (PChoiceF qpn@(Q _ pn) rdm gr                    ts) =
       let c = varToConflictSet (P qpn)
@@ -268,8 +274,8 @@ enforcePackageConstraints pcs = trav go
 --
 -- This function does not enforce any of the constraints, since that is done by
 -- 'enforcePackageConstraints'.
-enforceManualFlags :: M.Map PN [LabeledPackageConstraint] -> Tree d c -> Tree d c
-enforceManualFlags pcs = trav go
+enforceManualFlags :: M.Map PN [LabeledPackageConstraint] -> EndoTreeTrav d c
+enforceManualFlags pcs = go
   where
     go (FChoiceF qfn@(FN (Q _ pn) fn) rdm gr tr Manual d ts) =
         FChoiceF qfn rdm gr tr Manual d $
@@ -295,8 +301,8 @@ enforceManualFlags pcs = trav go
     go x                                                            = x
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree d c -> Tree d c
-requireInstalled p = trav go
+requireInstalled :: (PN -> Bool) -> EndoTreeTrav d c
+requireInstalled p = go
   where
     go (PChoiceF v@(Q _ pn) rdm gr cs)
       | p pn      = PChoiceF v rdm gr (W.mapWithKey installed cs)
@@ -319,8 +325,8 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree d c -> Tree d c
-avoidReinstalls p = trav go
+avoidReinstalls :: (PN -> Bool) -> EndoTreeTrav d c
+avoidReinstalls p = go
   where
     go (PChoiceF qpn@(Q _ pn) rdm gr cs)
       | p pn      = PChoiceF qpn rdm gr disableReinstalls
@@ -337,8 +343,8 @@ avoidReinstalls p = trav go
     go x          = x
 
 -- | Require all packages to be mentioned in a constraint or as a goal.
-onlyConstrained :: (PN -> Bool) -> Tree d QGoalReason -> Tree d QGoalReason
-onlyConstrained p = trav go
+onlyConstrained :: (PN -> Bool) -> EndoTreeTrav d QGoalReason
+onlyConstrained p = go
   where
     go (PChoiceF v@(Q _ pn) _ gr _) | not (p pn)
       = FailF
@@ -348,8 +354,8 @@ onlyConstrained p = trav go
       = x
 
 -- | Sort all goals using the provided function.
-sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> Tree d c -> Tree d c
-sortGoals variableOrder = trav go
+sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> EndoTreeTrav d c
+sortGoals variableOrder = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.sortByKeys goalOrder xs)
     go x                    = x
@@ -365,8 +371,8 @@ sortGoals variableOrder = trav go
 -- | Reduce the branching degree of the search tree by removing all choices
 -- after the first successful choice at each level. The returned tree is the
 -- minimal subtree containing the path to the first backjump.
-pruneAfterFirstSuccess :: Tree d c -> Tree d c
-pruneAfterFirstSuccess = trav go
+pruneAfterFirstSuccess :: EndoTreeTrav d c
+pruneAfterFirstSuccess = go
   where
     go (PChoiceF qpn rdm gr       ts) = PChoiceF qpn rdm gr       (W.takeUntil active ts)
     go (FChoiceF qfn rdm gr w m d ts) = FChoiceF qfn rdm gr w m d (W.takeUntil active ts)
@@ -379,8 +385,8 @@ pruneAfterFirstSuccess = trav go
 -- This is unnecessary for the default search strategy, because
 -- it descends only into the first goal choice anyway,
 -- but may still make sense to just reduce the tree size a bit.
-firstGoal :: Tree d c -> Tree d c
-firstGoal = trav go
+firstGoal :: EndoTreeTrav d c
+firstGoal = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.firstOnly xs)
     go x                    = x
@@ -390,8 +396,8 @@ firstGoal = trav go
 -- possible by pruning all other goals when base is available. In nearly
 -- all cases, there's a single choice for the base package. Also, fixing
 -- base early should lead to better error messages.
-preferBaseGoalChoice :: Tree d c -> Tree d c
-preferBaseGoalChoice = trav go
+preferBaseGoalChoice :: EndoTreeTrav d c
+preferBaseGoalChoice = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.filterIfAnyByKeys isBase xs)
     go x                    = x
@@ -400,23 +406,24 @@ preferBaseGoalChoice = trav go
     isBase (Goal (P (Q _pp pn)) _) = unPN pn == "base"
     isBase _                       = False
 
--- | Deal with setup dependencies after regular dependencies, so that we can
--- will link setup dependencies against package dependencies when possible
-deferSetupChoices :: Tree d c -> Tree d c
-deferSetupChoices = trav go
+-- | Deal with setup and build-tool-depends dependencies after regular dependencies,
+-- so we will link setup/exe dependencies against package dependencies when possible
+deferSetupExeChoices :: EndoTreeTrav d c
+deferSetupExeChoices = go
   where
-    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetup xs)
+    go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.preferByKeys noSetupOrExe xs)
     go x                    = x
 
-    noSetup :: Goal QPN -> Bool
-    noSetup (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
-    noSetup _                                                  = True
+    noSetupOrExe :: Goal QPN -> Bool
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualSetup _)) _)) _) = False
+    noSetupOrExe (Goal (P (Q (PackagePath _ns (QualExe _ _)) _)) _) = False
+    noSetupOrExe _                                                  = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
 -- flags that are explicitly declared to be weak in the index.
-deferWeakFlagChoices :: Tree d c -> Tree d c
-deferWeakFlagChoices = trav go
+deferWeakFlagChoices :: EndoTreeTrav d c
+deferWeakFlagChoices = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.prefer noWeakFlag (P.prefer noWeakStanza xs))
     go x                    = x
@@ -435,8 +442,8 @@ deferWeakFlagChoices = trav go
 -- function prunes all other goals. This transformation can help the solver find
 -- a solution in fewer steps by allowing it to backtrack sooner when it is
 -- exploring a subtree with no solutions. However, each step is more expensive.
-preferReallyEasyGoalChoices :: Tree d c -> Tree d c
-preferReallyEasyGoalChoices = trav go
+preferReallyEasyGoalChoices :: EndoTreeTrav d c
+preferReallyEasyGoalChoices = go
   where
     go (GoalChoiceF rdm xs) = GoalChoiceF rdm (P.filterIfAny zeroOrOneChoices xs)
     go x                    = x
@@ -454,15 +461,21 @@ type EnforceSIR = Reader (Map (PI PN) QPN)
 -- goal resolving to that instance (there may be other goals _linking_ to that
 -- instance however).
 enforceSingleInstanceRestriction :: Tree d c -> Tree d c
-enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
+enforceSingleInstanceRestriction = (`runReader` M.empty) . go
   where
-    go :: TreeF d c (EnforceSIR (Tree d c)) -> EnforceSIR (Tree d c)
+    go :: Tree d c -> EnforceSIR (Tree d c)
 
     -- We just verify package choices.
-    go (PChoiceF qpn rdm gr cs) =
-      PChoice qpn rdm gr <$> sequenceA (W.mapWithKey (goP qpn) cs)
-    go _otherwise =
-      innM _otherwise
+    go (PChoice qpn rdm gr cs) =
+      PChoice qpn rdm gr <$> sequenceA (W.mapWithKey (goP qpn) (fmap go cs))
+    go (FChoice qfn rdm y t m d ts) =
+      FChoice qfn rdm y t m d <$> traverse go ts
+    go (SChoice qsn rdm y t ts) =
+      SChoice qsn rdm y t <$> traverse go ts
+    go (GoalChoice rdm ts) =
+      GoalChoice rdm <$> traverse go ts
+    go x@(Fail _ _) = return x
+    go x@(Done _ _) = return x
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree d c) -> EnforceSIR (Tree d c)

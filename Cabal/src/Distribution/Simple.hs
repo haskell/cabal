@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
@@ -177,7 +178,6 @@ defaultMainHelper hooks args = topHandler $ do
       [configureCommand progs `commandAddAction`
         \fs as -> configureAction hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
-      ,showBuildInfoCommand progs `commandAddAction` showBuildInfoAction    hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -261,33 +261,6 @@ buildAction hooks flags args = do
   hookedAction verbosity preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags' { buildArgs = args } args
-
-showBuildInfoAction :: UserHooks -> ShowBuildInfoFlags -> Args -> IO ()
-showBuildInfoAction hooks (ShowBuildInfoFlags flags fileOutput) args = do
-  distPref <- findDistPrefOrDefault (buildDistPref flags)
-  let verbosity = fromFlag $ buildVerbosity flags
-  lbi <- getBuildConfig hooks verbosity distPref
-  let flags' = flags { buildDistPref = toFlag distPref
-                     , buildCabalFilePath = maybeToFlag (cabalFilePath lbi)
-                     }
-
-  progs <- reconfigurePrograms verbosity
-             (buildProgramPaths flags')
-             (buildProgramArgs flags')
-             (withPrograms lbi)
-
-  pbi <- preBuild hooks args flags'
-  let lbi' = lbi { withPrograms = progs }
-      pkg_descr0 = localPkgDescr lbi'
-      pkg_descr = updatePackageDescription pbi pkg_descr0
-      -- TODO: Somehow don't ignore build hook?
-  buildInfoString <- showBuildInfo pkg_descr lbi' flags
-
-  case fileOutput of
-    Nothing -> putStr buildInfoString
-    Just fp -> writeFile fp buildInfoString
-
-  postBuild hooks args flags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do
@@ -715,6 +688,11 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
+-- TODO: Move to either Cabal/src/Distribution/Compat/Environment.hs
+-- or Cabal/src/Distribution/Compat/FilePath.hs:
+#ifdef mingw32_HOST_OS
+                ("PATH_SEPARATOR", Just ";") :
+#endif
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]

@@ -45,11 +45,13 @@ import           Distribution.Simple.GHC
                    , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
                    , writeGhcEnvironmentFile )
 import           Distribution.Simple.BuildPaths
-                   ( dllExtension, exeExtension )
+                   ( dllExtension, exeExtension, buildInfoPref )
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
 import qualified Distribution.Compat.Binary as Binary
 import           Distribution.Simple.Utils
+import           Distribution.Types.Version
+                   ( mkVersion )
 import           Distribution.Verbosity
 
 import Prelude ()
@@ -150,7 +152,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         | Just hash <- [elabPkgSourceHash elab] ] ++
         (case elabBuildStyle elab of
             BuildInplaceOnly ->
-                ["dist-dir"   J..= J.String dist_dir]
+                ["dist-dir"   J..= J.String dist_dir] ++ [buildInfoFileLocation]
             BuildAndInstall ->
                 -- TODO: install dirs?
                 []
@@ -175,6 +177,20 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
             ] ++
             bin_file (compSolverName comp)
      where
+      -- | Only add build-info file location if the Setup.hs CLI
+      -- is recent enough to be able to generate build info files.
+      -- Otherwise, write 'null'.
+      --
+      -- Consumers of `plan.json` can use the nullability of this file location
+      -- to indicate that the given component uses `build-type: Custom`
+      -- with an old lib:Cabal version.
+      buildInfoFileLocation :: J.Pair
+      buildInfoFileLocation
+        | elabSetupScriptCliVersion elab < mkVersion [3, 7, 0, 0]
+        = "build-info" J..= J.Null
+        | otherwise
+        = "build-info" J..= J.String (buildInfoPref dist_dir)
+
       packageLocationToJ :: PackageLocation (Maybe FilePath) -> J.Value
       packageLocationToJ pkgloc =
         case pkgloc of
@@ -225,9 +241,11 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
           , "subdir"   J..= fmap J.String srpSubdir
           ]
 
+      dist_dir :: FilePath
       dist_dir = distBuildDirectory distDirLayout
                     (elabDistDirParams elaboratedSharedConfig elab)
 
+      bin_file :: ComponentDeps.Component -> [J.Pair]
       bin_file c = case c of
         ComponentDeps.ComponentExe s   -> bin_file' s
         ComponentDeps.ComponentTest s  -> bin_file' s
@@ -241,6 +259,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
                then dist_dir </> "build" </> prettyShow s </> prettyShow s <.> exeExtension plat
                else InstallDirs.bindir (elabInstallDirs elab) </> prettyShow s <.> exeExtension plat
 
+      flib_file' :: (Pretty a, Show a) => a -> [J.Pair]
       flib_file' s =
         ["bin-file" J..= J.String bin]
        where
@@ -258,7 +277,6 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
 
     jdisplay :: Pretty a => a -> J.Value
     jdisplay = J.String . prettyShow
-
 
 -----------------------------------------------------------------------------
 -- Project status
@@ -580,6 +598,8 @@ postBuildProjectStatus plan previousPackagesUpToDate
                 InstallPlan.Configured srcpkg -> elabLibDeps srcpkg
                 InstallPlan.Installed  srcpkg -> elabLibDeps srcpkg
         ]
+
+    elabLibDeps :: ElaboratedConfiguredPackage -> [UnitId]
     elabLibDeps = map (newSimpleUnitId . confInstId) . elabLibDependencies
 
     -- Was a build was attempted for this package?
@@ -599,11 +619,13 @@ postBuildProjectStatus plan previousPackagesUpToDate
     buildAttempted _ (Left BuildFailure {}) = True
     buildAttempted _ (Right _)              = True
 
+    lookupBuildStatusRequiresBuild :: Bool -> UnitId -> Bool
     lookupBuildStatusRequiresBuild def ipkgid =
       case Map.lookup ipkgid pkgBuildStatus of
         Nothing          -> def -- Not in the plan subset we did the dry-run on
         Just buildStatus -> buildStatusRequiresBuild buildStatus
 
+    packagesBuildLocal :: Set UnitId
     packagesBuildLocal =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -611,6 +633,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _     -> False
           InstallPlan.Configured srcpkg -> elabLocalToProject srcpkg
 
+    packagesBuildInplace :: Set UnitId
     packagesBuildInplace =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -618,7 +641,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _     -> False
           InstallPlan.Configured srcpkg -> elabBuildStyle srcpkg
                                         == BuildInplaceOnly
-
+    packagesAlreadyInStore :: Set UnitId
     packagesAlreadyInStore =
       selectPlanPackageIdSet $ \pkg ->
         case pkg of
@@ -626,6 +649,10 @@ postBuildProjectStatus plan previousPackagesUpToDate
           InstallPlan.Installed   _ -> True
           InstallPlan.Configured  _ -> False
 
+    selectPlanPackageIdSet
+      :: (InstallPlan.GenericPlanPackage InstalledPackageInfo ElaboratedConfiguredPackage
+          -> Bool)
+      -> Set UnitId
     selectPlanPackageIdSet p = Map.keysSet
                              . Map.filter p
                              $ InstallPlan.toMap plan
@@ -902,6 +929,7 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
       ([], pkgs) -> checkSamePackageDBs pkgs
       (pkgs, _)  -> checkSamePackageDBs pkgs
   where
+    checkSamePackageDBs :: [ElaboratedConfiguredPackage] -> PackageDBStack
     checkSamePackageDBs pkgs =
       case ordNub (map elabBuildPackageDBStack pkgs) of
         [packageDbs] -> packageDbs
@@ -914,10 +942,13 @@ selectGhcEnvironmentFilePackageDbs elaboratedInstallPlan =
         -- this feature, e.g. write out multiple env files, one for each
         -- compiler / project profile.
 
+    inplacePackages :: [ElaboratedConfiguredPackage]
     inplacePackages =
       [ srcpkg
       | srcpkg <- sourcePackages
       , elabBuildStyle srcpkg == BuildInplaceOnly ]
+
+    sourcePackages :: [ElaboratedConfiguredPackage]
     sourcePackages =
       [ srcpkg
       | pkg <- InstallPlan.toList elaboratedInstallPlan

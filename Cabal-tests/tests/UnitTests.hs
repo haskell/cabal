@@ -16,6 +16,7 @@ import Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
+import qualified UnitTests.Distribution.Simple.Command
 import qualified UnitTests.Distribution.Simple.Glob
 import qualified UnitTests.Distribution.Simple.Program.GHC
 import qualified UnitTests.Distribution.Simple.Program.Internal
@@ -23,6 +24,7 @@ import qualified UnitTests.Distribution.Simple.Utils
 import qualified UnitTests.Distribution.System
 import qualified UnitTests.Distribution.Utils.CharSet
 import qualified UnitTests.Distribution.Utils.Generic
+import qualified UnitTests.Distribution.Utils.Json
 import qualified UnitTests.Distribution.Utils.NubList
 import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Utils.Structured
@@ -48,6 +50,8 @@ tests mtimeChangeCalibrated =
         (UnitTests.Distribution.Compat.Time.tests mtimeChange)
     , testGroup "Distribution.Compat.Graph"
         UnitTests.Distribution.Compat.Graph.tests
+    , testGroup "Distribution.Simple.Command"
+        UnitTests.Distribution.Simple.Command.tests
     , testGroup "Distribution.Simple.Glob"
         UnitTests.Distribution.Simple.Glob.tests
     , UnitTests.Distribution.Simple.Program.GHC.tests
@@ -57,6 +61,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Simple.Utils.tests ghcPath
     , testGroup "Distribution.Utils.Generic"
         UnitTests.Distribution.Utils.Generic.tests
+    , testGroup "Distribution.Utils.Json" $
+        UnitTests.Distribution.Utils.Json.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
     , testGroup "Distribution.Utils.ShortText"

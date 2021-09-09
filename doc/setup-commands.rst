@@ -32,7 +32,7 @@ performs the actual building, while the last both copies the build
 results to some permanent place and registers the package with GHC.
 
 .. note ::
-    
+
     Global installing of packages is not recommended.
     The :ref:`nix-style-builds` is the preferred way of building and installing
     packages.
@@ -1034,6 +1034,61 @@ Miscellaneous options
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
 
+.. option:: --enable-build-info
+
+    Generate accurate build information for build components.
+
+    Information contains meta information, such as component type, compiler type, and
+    Cabal library version used during the build, but also fine grained information,
+    such as dependencies, what modules are part of the component, etc...
+
+    On build, a file ``build-info.json`` (in the ``json`` format) will be written to
+    the root of the build directory.
+
+    .. note::
+        The format and fields of the generated build information is currently
+        experimental. In the future we might add or remove fields, depending
+        on the needs of other tooling.
+
+    :: example
+        {
+            "cabal-lib-version": "<cabal lib version>",
+            "compiler": {
+                "flavour": "<compiler name>",
+                "compiler-id": "<compiler id>",
+                "path": "<absolute path of the compiler>"
+            },
+            "components": [
+                {
+                "type": "<component type, e.g. lib | bench | exe | flib | test>",
+                "name": "<component name>",
+                "unit-id": "<unitid>",
+                "compiler-args": [
+                    "<compiler args necessary for compilation>"
+                ],
+                "modules": [
+                    "<modules in this component>"
+                ],
+                "src-files": [
+                    "<source files relative to hs-src-dirs>"
+                ],
+                "hs-src-dirs": [
+                    "<source directories of this component>"
+                ],
+                "src-dir": "<root directory of this component>",
+                "cabal-file": "<cabal file location>"
+                }
+            ]
+        }
+
+    .. jsonschema:: ./json-schemas/build-info.schema.json
+
+.. option:: --disable-build-info
+
+    (default) Do not generate detailed build information for built components.
+
+    Already generated `build-info.json` files will be removed since they would be stale otherwise.
+
 .. option:: --disable-response-files
 
     Enable workaround for older versions of programs such as ``ar`` or
@@ -1132,7 +1187,7 @@ This command takes the following options:
 .. option:: --hscolour-css=path
 
     The argument *path* denotes a CSS file, which is passed to HsColour_ as in
-    
+
     ::
 
         $ runhaskell Setup.hs hscolour --css=*path*
@@ -1358,7 +1413,7 @@ the package.
     results in real time).
 
 .. option:: --test-options=options
-    
+
     Give extra options to the test executables.
 
 .. option:: --test-option=option
