@@ -3,7 +3,7 @@
 module Main (main) where
 
 import Control.Lens     (imap)
-import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.:))
+import Data.Aeson       (FromJSON (..), eitherDecode, withObject, (.!=), (.:), (.:?))
 import Data.List        (sortOn)
 import Data.Semigroup   ((<>))
 import Data.Text        (Text)
@@ -33,6 +33,8 @@ main = generate =<< O.execParser opts where
         <$> licenses "3.0"
         <*> licenses "3.2"
         <*> licenses "3.6"
+        <*> licenses "3.9"
+        <*> licenses "3.10"
 
     template = O.strArgument $ mconcat
         [ O.metavar "SPDX.LicenseId.template.hs"
@@ -62,26 +64,17 @@ generate'
     -> (Input -> IO String)
     -> IO String
 generate' lss template = template $ Input
-    { inputLicenseIds      = licenseIds
-    , inputLicenses        = licenseValues
-    , inputLicenseList_all = mkLicenseList (== allVers)
-    , inputLicenseList_3_0 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_0 vers)
-    , inputLicenseList_3_2 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_2 vers)
-    , inputLicenseList_3_6 = mkLicenseList
-        (\vers -> vers /= allVers && Set.member SPDXLicenseListVersion_3_6 vers)
+    { inputLicenseIds       = licenseIds
+    , inputLicenses         = licenseValues
+    , inputLicenseList_all  = mkLicenseList (== allVers)
+    , inputLicenseList_perv = tabulate $ \ver -> mkLicenseList
+        (\vers -> vers /= allVers && Set.member ver vers)
     }
   where
-    PerV (LL ls_3_0) (LL ls_3_2) (LL ls_3_6) = lss
-
     constructorNames :: [(Text, License, Set.Set SPDXLicenseListVersion)]
     constructorNames
         = map (\(l, tags) -> (toConstructorName $ licenseId l, l, tags))
-        $ combine licenseId $ \ver -> case ver of
-            SPDXLicenseListVersion_3_6 -> filterDeprecated ls_3_6
-            SPDXLicenseListVersion_3_2 -> filterDeprecated ls_3_2
-            SPDXLicenseListVersion_3_0 -> filterDeprecated ls_3_0
+        $ combine licenseId $ \ver -> filterDeprecated $ unLL $ index ver lss
 
     filterDeprecated = filter (not . licenseDeprecated)
 
@@ -91,6 +84,7 @@ generate' lss template = template $ Input
         , ilId            = textShow (licenseId l)
         , ilName          = textShow (licenseName l)
         , ilIsOsiApproved = licenseOsiApproved l
+        , ilIsFsfLibre    = licenseFsfLibre l
         }
 
     licenseIds :: Text
@@ -112,11 +106,12 @@ data License = License
     { licenseId          :: !Text
     , licenseName        :: !Text
     , licenseOsiApproved :: !Bool
+    , licenseFsfLibre    :: !Bool
     , licenseDeprecated  :: !Bool
     }
   deriving (Show)
 
-newtype LicenseList = LL [License]
+newtype LicenseList = LL { unLL :: [License] }
   deriving (Show)
 
 instance FromJSON License where
@@ -124,6 +119,7 @@ instance FromJSON License where
         <$> obj .: "licenseId"
         <*> obj .: "name"
         <*> obj .: "isOsiApproved"
+        <*> obj .:? "isFsfLibre" .!= False
         <*> obj .: "isDeprecatedLicenseId"
 
 instance FromJSON LicenseList where

@@ -8,3 +8,4 @@
   `supportedGHCVersions` (`Distribution.Simple.Program.GHC`)
 - Update `Language.Haskell.Extension` list, if there are new GHC extensions
 - Update `setupMinCabalVersionConstraint` (in `Distribution.Client.ProjectPlanning`)
+- Update `Cabal.Distribution.Simple.GHC` to include new GHC version

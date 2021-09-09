@@ -1,0 +1,19 @@
+cabal-version: 3.0
+name:          version-sets
+version:       0
+tested-with:
+    ghc ==8.6.3 || ==8.4.4 || ==8.2.2 || ==8.0.2 || ==7.10.3 || ==7.8.4 || ==7.6.3 || ==7.4.2
+
+synopsis:      version set notation
+
+library
+    default-language: Haskell2010
+    build-depends:
+        network ^>=0,
+        base ==1,
+        base ==1,
+        base ==1 || ==2,
+        base ==1.2,
+        base ==1.2 || ==3.4,
+        ghc ==8.6.3 || ==8.4.4 || ==8.2.2 || ==8.0.2 || ==7.10.3 || ==7.8.4 || ==7.6.3 || ==7.4.2,
+        Cabal ^>=2.4.1.1 || ^>=2.2.0.0

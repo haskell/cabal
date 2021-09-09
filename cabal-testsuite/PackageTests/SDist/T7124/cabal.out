@@ -1,0 +1,3 @@
+# cabal v2-sdist
+Wrote tarball sdist to <TMPDIR>/pkg-a-0.tar.gz
+cabal: sdist of pkg-b-0: filepath wildcard './data.txt' does not match any files.

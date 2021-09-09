@@ -1,0 +1,92 @@
+InstalledPackageInfo {
+  sourcePackageId =
+  PackageIdentifier {
+    pkgName = PackageName
+      "Includes2",
+    pkgVersion = mkVersion
+      [0, 1, 0, 0]},
+  sourceLibName = LSubLibName
+    (UnqualComponentName "mylib"),
+  installedComponentId_ =
+  ComponentId "",
+  libVisibility =
+  LibraryVisibilityPrivate,
+  installedUnitId = UnitId
+    "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n",
+  instantiatedWith = [
+    _×_
+      (ModuleName "Database")
+      (OpenModule
+        (DefiniteUnitId
+          (DefUnitId
+            (UnitId
+              "Includes2-0.1.0.0-inplace-mysql")))
+        (ModuleName "Database.MySQL"))],
+  compatPackageKey =
+  "Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n",
+  license = Right BSD3,
+  copyright = "",
+  maintainer =
+  "ezyang@cs.stanford.edu",
+  author = "Edward Z. Yang",
+  stability = "",
+  homepage = "",
+  pkgUrl = "",
+  synopsis = "",
+  description = "",
+  category = "",
+  abiHash = AbiHash "inplace",
+  indefinite = False,
+  exposed = False,
+  exposedModules = [
+    ExposedModule {
+      exposedName = ModuleName "Mine",
+      exposedReexport = Nothing}],
+  hiddenModules = [],
+  trusted = False,
+  importDirs =
+  [
+    "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
+  libraryDirs =
+  [
+    "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
+  libraryDirsStatic = [],
+  libraryDynDirs =
+  [
+    "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/build/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
+  dataDir =
+  "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2",
+  hsLibraries = [
+    "HSIncludes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n"],
+  extraLibraries = [],
+  extraLibrariesStatic = [],
+  extraGHCiLibraries = [],
+  includeDirs = [],
+  includes = [],
+  depends = [
+    UnitId "base-4.10.1.0",
+    UnitId
+      "Includes2-0.1.0.0-inplace-mysql"],
+  abiDepends = [
+    AbiDependency {
+      depUnitId = UnitId
+        "base-4.10.1.0",
+      depAbiHash = AbiHash
+        "35a7f6be752ee4f7385cb5bf28677879"},
+    AbiDependency {
+      depUnitId = UnitId
+        "Includes2-0.1.0.0-inplace-mysql",
+      depAbiHash = AbiHash
+        "inplace"}],
+  ccOptions = [],
+  cxxOptions = [],
+  ldOptions = [],
+  frameworkDirs = [],
+  frameworks = [],
+  haddockInterfaces =
+  [
+    "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/doc/html/Includes2/Includes2.haddock"],
+  haddockHTMLs =
+  [
+    "/home/travis/build/haskell/cabal/cabal-testsuite/PackageTests/Backpack/Includes2/cabal-internal.dist/work/./dist/build/x86_64-linux/ghc-8.2.2/Includes2-0.1.0.0/l/mylib/Includes2-0.1.0.0-inplace-mylib+3gY9SyjX86dBypHcOaev1n/doc/html/Includes2"],
+  pkgRoot = Nothing}

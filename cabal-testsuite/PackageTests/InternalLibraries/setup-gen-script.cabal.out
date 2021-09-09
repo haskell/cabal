@@ -1,5 +1,4 @@
 # Setup configure
-Resolving dependencies...
 Configuring p-0.1.0.0...
 # Setup build
 Preprocessing library 'q' for p-0.1.0.0..
@@ -15,7 +14,6 @@ Warning: The directory <ROOT>/setup-gen-script.cabal.dist/usr/bin is not in the 
 Installing library in <PATH>
 # Setup register
 # Setup configure
-Resolving dependencies...
 Configuring r-0.1.0.0...
 # Setup build
 Preprocessing library for r-0.1.0.0..

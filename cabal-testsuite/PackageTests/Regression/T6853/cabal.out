@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - pkg-foo-0 (lib) (first run)
+Configuring library for pkg-foo-0..
+Preprocessing library for pkg-foo-0..
+Building library for pkg-foo-0..

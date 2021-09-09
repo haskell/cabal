@@ -1,0 +1,17 @@
+name: T6385
+version: 1.0
+build-type: Simple
+cabal-version: 2.0
+
+library top-def
+    default-language: Haskell2010
+    build-depends: base, indef, alt-containers
+    hs-source-dirs: .
+    exposed-modules: Go
+
+library top-indef
+    default-language: Haskell2010
+    build-depends: base, indef, alt-containers
+    hs-source-dirs: .
+    signatures: Hole
+    exposed-modules: Go2

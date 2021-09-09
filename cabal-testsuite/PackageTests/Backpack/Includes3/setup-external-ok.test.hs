@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 import Data.List
 import qualified Data.Char as Char
 main = setupAndCabalTest $ do
-    skipUnless =<< ghcVersionIs (>= mkVersion [8,1])
+    skipUnlessGhcVersion ">= 8.1"
     withPackageDb $ do
       containers_id <- getIPID "containers"
       withDirectory "repo/sigs-0.1.0.0" $ setup_install_with_docs ["--ipid", "sigs-0.1.0.0"]

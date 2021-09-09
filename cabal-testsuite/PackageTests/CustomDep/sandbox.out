@@ -1,5 +1,0 @@
-# cabal v1-sandbox init
-Writing a default package environment file to <ROOT>/sandbox.dist/cabal.sandbox.config
-Creating a new sandbox at <ROOT>/sandbox.dist/sandbox
-# cabal v1-sandbox add-source
-# cabal v1-sandbox add-source

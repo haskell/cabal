@@ -1,0 +1,26 @@
+# 2020 Summer
+########################################
+
+# Move tests/ dir to cabal-install/fixtures
+74ca6b96c859f2cb6c540cc19ebcc17c878390ea
+
+# Move doc/ to the top-level of the repository
+2cb296d28fe24993fbe309b1d59fbd9be074ca6e
+
+# Move Cabal sources into Cabal/src
+3cd9fded57805ab19ee15474051ec87c7d87cd39
+
+# Move cabal-install source to src/
+0d0c00951c40394929623fdf3eddca220e7b2214
+
+# Make cabal-install-solver package
+b0333ec5b73ba8f7a18223b203d999b38c75281d
+
+# 2016
+########################################
+
+# Revert the 'hs-source-dirs: src' change.
+002d709ee5ffa739076b2ac303eb1afaa03ed87c
+
+# Move source files under 'src/'.
+52d506bb4e25489f40cb5eb594dda5595aeb93ed

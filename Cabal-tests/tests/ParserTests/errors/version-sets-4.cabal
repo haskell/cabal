@@ -1,0 +1,8 @@
+cabal-version:       3.0
+name:                version-sets
+version:             0
+synopsis:            version set notation
+
+library
+  default-language: Haskell2010
+  build-depends: network == { 2.8.* }

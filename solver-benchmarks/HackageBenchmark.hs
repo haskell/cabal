@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module HackageBenchmark (
     hackageBenchmarkMain
@@ -13,28 +14,33 @@ module HackageBenchmark (
   , shouldContinueAfterFirstTrial
   ) where
 
-import Control.Monad (forM_, replicateM, unless, when)
-import qualified Data.ByteString as B
+import Control.Concurrent.Async (concurrently)
+import Control.Monad (forM, replicateM, unless, when)
+import qualified Data.ByteString as BS
 import Data.List (nub, unzip4)
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, catMaybes)
 import Data.Monoid ((<>))
 import Data.String (fromString)
+import Data.Function ((&))
 import Data.Time (NominalDiffTime, diffUTCTime, getCurrentTime)
 import qualified Data.Vector.Unboxed as V
 import Options.Applicative
-import Statistics.Sample (mean, stdDev)
+import Statistics.Sample (mean, stdDev, geometricMean)
 import Statistics.Test.MannWhitneyU ( PositionTest(..), TestResult(..)
                                     , mannWhitneyUCriticalValue
                                     , mannWhitneyUtest)
 import Statistics.Types (PValue, mkPValue)
-import System.Directory (getTemporaryDirectory)
-import System.Exit (ExitCode(..), exitFailure)
+import System.Directory (getTemporaryDirectory, createDirectoryIfMissing)
+import System.Environment (getEnvironment)
+import System.Exit (ExitCode(..), exitWith, exitFailure)
 import System.FilePath ((</>))
 import System.IO ( BufferMode(LineBuffering), hPutStrLn, hSetBuffering, stderr
                  , stdout)
 import System.Process ( StdStream(CreatePipe), CreateProcess(..), callProcess
-                      , createProcess, readProcess, shell, waitForProcess )
+                      , createProcess, readProcess, shell, waitForProcess, proc, readCreateProcessWithExitCode )
 import Text.Printf (printf)
+
+import qualified Data.Map.Strict as Map
 
 import Distribution.Package (PackageName, mkPackageName, unPackageName)
 
@@ -47,6 +53,7 @@ data Args = Args {
   , argMinRunTimeDifferenceToRerun :: Double
   , argPValue                      :: PValue Double
   , argTrials                      :: Int
+  , argConcurrently                :: Bool
   , argPrintTrials                 :: Bool
   , argPrintSkippedPackages        :: Bool
   , argTimeoutSeconds              :: Int
@@ -76,12 +83,18 @@ hackageBenchmarkMain = do
   pkgs <- getPackages args
   putStrLn ""
 
+  let concurrently' :: IO a -> IO b -> IO (a, b)
+      concurrently' | argConcurrently = concurrently
+                    | otherwise       = \ma mb -> do { a <- ma; b <- mb; return (a, b) }
+
   let -- The maximum length of the heading and package names.
       nameColumnWidth :: Int
       nameColumnWidth =
           maximum $ map length $ "package" : map unPackageName pkgs
-      runCabal1 = runCabal argTimeoutSeconds argCabal1 argCabal1Flags
-      runCabal2 = runCabal argTimeoutSeconds argCabal2 argCabal2Flags
+
+  -- create cabal runners
+  runCabal1 <- runCabal argTimeoutSeconds CabalUnderTest1 argCabal1 argCabal1Flags
+  runCabal2 <- runCabal argTimeoutSeconds CabalUnderTest2 argCabal2 argCabal2Flags
 
   -- When the output contains both trails and summaries, label each row as
   -- "trial" or "summary".
@@ -91,7 +104,7 @@ hackageBenchmarkMain = do
              nameColumnWidth "package" "result1" "result2"
              "mean1" "mean2" "stddev1" "stddev2" "speedup"
 
-  forM_ pkgs $ \pkg -> do
+  speedups :: [Double] <- fmap catMaybes $ forM pkgs $ \pkg -> do
     let printTrial msgType result1 result2 time1 time2 =
             putStrLn $
             printf "%-16s %-*s %-14s %-14s %10.3fs %10.3fs"
@@ -99,21 +112,23 @@ hackageBenchmarkMain = do
                    (show result1) (show result2)
                    (diffTimeToDouble time1) (diffTimeToDouble time2)
 
-    CabalTrial t1 r1 <- runCabal1 pkg
-    CabalTrial t2 r2 <- runCabal2 pkg
+    (CabalTrial t1 r1, CabalTrial t2 r2) <- runCabal1 pkg `concurrently'` runCabal2 pkg
+
     if not $
        shouldContinueAfterFirstTrial argMinRunTimeDifferenceToRerun t1 t2 r1 r2
-    then when argPrintSkippedPackages $
+    then do
+      when argPrintSkippedPackages $
          if argPrintTrials
          then printTrial "trial (skipping)" r1 r2 t1 t2
          else putStrLn $ printf "%-*s (first run times were too similar)"
                                 nameColumnWidth (unPackageName pkg)
+      return Nothing
     else do
       when argPrintTrials $ printTrial "trial" r1 r2 t1 t2
       (ts1, ts2, rs1, rs2) <- (unzip4 . ((t1, t2, r1, r2) :) <$>)
                             . replicateM (argTrials - 1) $ do
-        CabalTrial t1' r1' <- runCabal1 pkg
-        CabalTrial t2' r2' <- runCabal2 pkg
+
+        (CabalTrial t1' r1', CabalTrial t2' r2') <- runCabal1 pkg `concurrently'` runCabal2 pkg
         when argPrintTrials $ printTrial "trial" r1' r2' t1' t2'
         return (t1', t2', r1', r2')
 
@@ -136,7 +151,14 @@ hackageBenchmarkMain = do
                   (show result1) (show result2) mean1 mean2 stddev1 stddev2 speedup
       else when (argPrintTrials || argPrintSkippedPackages) $
            putStrLn $
-           printf "%-*s (not significant)" nameColumnWidth (unPackageName pkg)
+           printf "%-*s (not significant, speedup = %10.3f)" nameColumnWidth (unPackageName pkg) speedup
+
+      -- return speedup value
+      return (Just speedup)
+
+  -- finally, calculate the geometric mean of speedups
+  printf "Geometric mean of %d packages' speedups is %10.3f\n" (length speedups) (geometricMean (V.fromList speedups))
+
   where
     checkArgs :: Args -> IO ()
     checkArgs Args {..} = do
@@ -172,60 +194,101 @@ hackageBenchmarkMain = do
       putStrLn $ "Done, got " ++ show (length pkgs) ++ " packages."
       return pkgs
 
-runCabal :: Int -> FilePath -> [String] -> PackageName -> IO CabalTrial
-runCabal timeoutSeconds cabal flags pkg = do
-  ((exitCode, err), time) <- timeEvent $ do
-    tmpDir <- getTemporaryDirectory
+data CabalUnderTest = CabalUnderTest1 | CabalUnderTest2
 
-    let timeout = "timeout --foreground -sINT " ++ show timeoutSeconds
-        cabalCmd = unwords $
-            [ cabal
+runCabal
+    :: Int             -- ^ timeout in seconds
+    -> CabalUnderTest  -- ^ cabal under test
+    -> FilePath        -- ^ cabal
+    -> [String]        -- ^ flags
+    -> IO (PackageName  -> IO CabalTrial)  -- ^ testing function.
+runCabal timeoutSeconds cabalUnderTest cabal flags = do
+  tmpDir <- getTemporaryDirectory
 
-              -- A non-existent store directory prevents cabal from reading the
-              -- store, which would cause the size of the store to affect run
-              -- time.
-            , "--store-dir=" ++ (tmpDir </> "non-existent-store-dir")
+  -- cabal directory for this cabal under test
+  let cabalDir = tmpDir </> "solver-benchmarks-workdir" </> case cabalUnderTest of
+          CabalUnderTest1 -> "cabal1"
+          CabalUnderTest2 -> "cabal2"
 
-            , "v2-install"
+  putStrLn $ "Cabal directory (for " ++ cabal ++ ") " ++ cabalDir
+  createDirectoryIfMissing True cabalDir
 
-              -- These flags prevent a Cabal project or package environment from
-              -- affecting the install plan.
-            , "--ignore-project"
-            , "--package-env=non-existent-package-env"
+  -- shell enviroment
+  currEnv <- Map.fromList <$>  getEnvironment
+  let thisEnv :: [(String, String)]
+      thisEnv = Map.toList $ currEnv
+          & Map.insert "CABAL_CONFIG" (cabalDir </> "config")
+          & Map.insert "CABAL_DIR"     cabalDir
 
-              -- --lib allows solving for packages with libraries or
-              -- executables.
-            , "--lib"
+  -- Run cabal update, 
+  putStrLn $ "Running cabal update (using " ++ cabal ++ ") ..."
+  (ec, uout, uerr) <- readCreateProcessWithExitCode (proc cabal ["update"])
+      { cwd = Just cabalDir
+      , env = Just thisEnv
+      }
+      ""
+  unless (ec == ExitSuccess) $ do
+      putStrLn uout
+      putStrLn uerr
+      exitWith ec
 
-            , unPackageName pkg
+  -- return an actual runner
+  return $ \pkg -> do
+    ((exitCode, err), time) <- timeEvent $ do
 
-            , "--dry-run"
+      let timeout = "timeout --foreground -sINT " ++ show timeoutSeconds
+          cabalCmd = unwords $
+              [ cabal
 
-              -- The test doesn't currently handle stdout, so we suppress it
-              -- with silent. nowrap simplifies parsing the errors messages.
-            , "-vsilent+nowrap"]
+              , "v2-install"
 
-             ++ flags
-        cmd = (shell (timeout ++ " " ++ cabalCmd)) { std_err = CreatePipe }
+                -- These flags prevent a Cabal project or package environment from
+                -- affecting the install plan.
+                --
+                -- Note: we are somewhere in /tmp, hopefully there is no cabal.project on upper level
+              , "--package-env=non-existent-package-env"
 
-    -- TODO: Read stdout and compare the install plans.
-    (_, _, Just errh, ph) <- createProcess cmd
-    err <- B.hGetContents errh
-    (, err) <$> waitForProcess ph
-  let exhaustiveMsg =
-          "After searching the rest of the dependency tree exhaustively"
-      result
-        | exitCode == ExitSuccess                                                          = Solution
-        | exitCode == ExitFailure 124                                                      = Timeout
-        | fromString exhaustiveMsg `B.isInfixOf` err                                       = NoInstallPlan
-        | fromString "Backjump limit reached" `B.isInfixOf` err                            = BackjumpLimit
-        | fromString "none of the components are available to build" `B.isInfixOf` err     = Unbuildable
-        | fromString "Dependency on unbuildable" `B.isInfixOf` err                         = UnbuildableDep
-        | fromString "Dependency cycle between the following components" `B.isInfixOf` err = ComponentCycle
-        | fromString "Problem with module re-exports" `B.isInfixOf` err                    = ModReexpIssue
-        | fromString "There is no package named" `B.isInfixOf` err                         = PkgNotFound
-        | otherwise                                                                        = Unknown
-  return (CabalTrial time result)
+                -- --lib allows solving for packages with libraries or
+                -- executables.
+              , "--lib"
+
+              , unPackageName pkg
+
+              , "--dry-run"
+
+                -- The test doesn't currently handle stdout, so we suppress it
+                -- with silent. nowrap simplifies parsing the errors messages.
+              , "-vsilent+nowrap"
+
+              ]
+
+               ++ flags
+
+          cmd = (shell (timeout ++ " " ++ cabalCmd))
+              { std_err = CreatePipe
+              , env = Just thisEnv
+              , cwd = Just cabalDir
+              }
+
+      -- TODO: Read stdout and compare the install plans.
+      (_, _, Just errh, ph) <- createProcess cmd
+      err <- BS.hGetContents errh
+      (, err) <$> waitForProcess ph
+
+    let exhaustiveMsg =
+            "After searching the rest of the dependency tree exhaustively"
+        result
+          | exitCode == ExitSuccess                                                          = Solution
+          | exitCode == ExitFailure 124                                                      = Timeout
+          | fromString exhaustiveMsg `BS.isInfixOf` err                                       = NoInstallPlan
+          | fromString "Backjump limit reached" `BS.isInfixOf` err                            = BackjumpLimit
+          | fromString "none of the components are available to build" `BS.isInfixOf` err     = Unbuildable
+          | fromString "Dependency on unbuildable" `BS.isInfixOf` err                         = UnbuildableDep
+          | fromString "Dependency cycle between the following components" `BS.isInfixOf` err = ComponentCycle
+          | fromString "Problem with module re-exports" `BS.isInfixOf` err                    = ModReexpIssue
+          | fromString "There is no package named" `BS.isInfixOf` err                         = PkgNotFound
+          | otherwise                                                                        = Unknown
+    return (CabalTrial time result)
 
 isSampleLargeEnough :: PValue Double -> Int -> Bool
 isSampleLargeEnough pvalue trials =
@@ -347,6 +410,9 @@ argParser = Args
         <> value 10
         <> metavar "N"
         <> help "Number of trials for each package")
+    <*> switch
+         ( long "concurrently"
+        <> help "Run cabals concurrently")
     <*> switch
          ( long "print-trials"
         <> help "Whether to include the results from individual trials in the output")

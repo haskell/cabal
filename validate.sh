@@ -16,6 +16,7 @@ DEPSONLY=false
 DOCTEST=false
 BENCHMARKS=false
 VERBOSE=false
+HACKAGETESTSALL=false
 
 TARGETS=""
 STEPS=""
@@ -47,6 +48,8 @@ Available options:
       --extra-hc HC                 Extra compiler to run test-suite with
       --(no-)doctest                Run doctest on library
       --(no-)solver-benchmarks      Build and trial run solver-benchmarks
+      --complete-hackage-tests      Run hackage-tests on complete Hackage data
+      --partial-hackage-tests       Run hackage-tests on parts of Hackage data
   -v, --verbose                     Verbose output
   -q, --quiet                       Less output
   -s, --step STEP                   Run only specific step (can be specified mutliple times)
@@ -213,6 +216,14 @@ while [ $# -gt 0 ]; do
             BENCHMARKS=false
             shift
             ;;
+        --complete-hackage-tests)
+            HACKAGETESTSALL=true
+            shift
+            ;;
+        --partial-hackage-tests)
+            HACKAGETESTSALL=false
+            shift
+            ;;
         -v|--verbose)
             VERBOSE=true
             shift
@@ -248,7 +259,6 @@ fi
 
 if [ -z "$STEPS" ]; then
     STEPS="print-config print-tool-versions"
-    if ! $LIBONLY;  then STEPS="$STEPS make-cabal-install-dev"; fi
     STEPS="$STEPS build"
     if $DOCTEST;    then STEPS="$STEPS doctest";   fi
     if $LIBTESTS;   then STEPS="$STEPS lib-tests"; fi
@@ -261,8 +271,8 @@ if [ -z "$STEPS" ]; then
     STEPS="$STEPS time-summary"
 fi
 
-TARGETS="Cabal cabal-testsuite"
-if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install"; fi
+TARGETS="Cabal cabal-testsuite Cabal-tests Cabal-QuickCheck Cabal-tree-diff Cabal-described"
+if ! $LIBONLY;  then TARGETS="$TARGETS cabal-install cabal-install-solver cabal-benchmarks"; fi
 if $BENCHMARKS; then TARGETS="$TARGETS solver-benchmarks"; fi
 
 if $LISTSTEPS; then
@@ -348,11 +358,6 @@ step_time_summary() {
 # build
 #######################################################################
 
-step_make_cabal_install_dev() {
-print_header "make cabal-install-dev"
-timed ${RUNHASKELL} cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
-}
-
 step_build() {
 print_header "build"
 timed $CABALNEWBUILD $TARGETS --dry-run || exit 1
@@ -372,19 +377,31 @@ timed doctest -package-env=doctest-Cabal --fast Cabal/Distribution Cabal/Languag
 step_lib_tests() {
 print_header "Cabal: tests"
 
-CMD="$($CABALPLANLISTBIN Cabal:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALPLANLISTBIN Cabal:test:check-tests) $TESTSUITEJOBS --hide-successes"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:check-tests) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALPLANLISTBIN Cabal:test:parser-tests) $TESTSUITEJOBS --hide-successes"
-(cd Cabal && timed $CMD) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:parser-tests) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
 
-CMD=$($CABALPLANLISTBIN Cabal:test:hackage-tests)
-(cd Cabal && timed $CMD read-fields) || exit 1
-(cd Cabal && timed $CMD parsec d)    || exit 1
-(cd Cabal && timed $CMD roundtrip k) || exit 1
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
+
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
+(cd Cabal-tests && timed $CMD) || exit 1
+
+CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
+(cd Cabal-tests && timed $CMD read-fields) || exit 1
+
+if $HACKAGETESTSALL; then
+  (cd Cabal-tests && timed $CMD parsec)    || exit 1
+  (cd Cabal-tests && timed $CMD roundtrip) || exit 1
+else
+  (cd Cabal-tests && timed $CMD parsec d)    || exit 1
+  (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
+fi
 }
 
 # Cabal cabal-testsuite
@@ -413,7 +430,7 @@ step_cli_tests() {
 print_header "cabal-install: tests"
 
 # this are sorted in asc time used, quicker tests first.
-CMD="$($CABALPLANLISTBIN cabal-install:test:solver-quickcheck) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:long-tests) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This doesn't work in parallel either
@@ -464,7 +481,6 @@ for step in $STEPS; do
     case $step in
         print-config)             step_print_config            ;;
         print-tool-versions)      step_print_tool_versions     ;;
-        make-cabal-install-dev)   step_make_cabal_install_dev  ;;
         build)                    step_build                   ;;
         doctest)                  step_doctest                 ;;
         lib-tests)                step_lib_tests               ;;
@@ -475,7 +491,7 @@ for step in $STEPS; do
         solver-benchmarks-tests)  step_solver_benchmarks_tests ;;
         solver-benchmarks-run)    step_solver_benchmarks_run   ;;
         time-summary)             step_time_summary            ;;
-        *) 
+        *)
             echo "Invalid step $step"
             exit 1
             ;;

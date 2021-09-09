@@ -1,2 +1,0 @@
-VERSION: Just (mkVersion [2,1])
-common1.cabal:17:3: Undefined common stanza imported: windo

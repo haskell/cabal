@@ -1,0 +1,7 @@
+name:    specversion
+version: 1
+cabal-version: >= 1.10 && <1.11
+
+library
+    build-depends: base >= 4.9 && <4.10
+    hs-source-dirs: .

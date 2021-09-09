@@ -1,40 +1,50 @@
-# 3.2.0.0 [Someone](mailto:somewhere@example.com) February 2020
-  * `cabal check` verifies `cpp-options` more pedantically, allowing only
-    options starting with `-D` and `-U`.
-  * Don’t rebuild world when new ghc flags that affect how error
-    messages are presented is specified.
-  * Fix multilib build-depends parsing (#5846)
-  * Change free text `String` fields to use `ShortText` in package description
-    and installed packge info.
-  * Split `Distribution.Types.Flag` and `Distribution.Types.ConfVar`
-    `Distribution.Types.GenericPackageDescription`
-  * Add GHC-8.10 support, including new extensions to
-    `Language.Haskell.Extension`
-  * Use more `NonEmpty` instead of ordinary lists
-  * Add `Distribution.Utils.Structured` for fingeprinting `Binary` blobs
-  * Add `null`, `length` and `unsafeFromUTF8BS` to `Distribution.Utils.ShortText`
-  * Refactor `Distribution.Utils.IOData` module
-  * Rename `Distribution.Compat.MD5` to `Distribution.Utils.MD5`
-  * Add `safeHead`, `safeTail`, `safeLast` to `Distribution.Utils.Generic`
-  * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`
-  * Add `Set'` modifier to `Distribution.Parsec.Newtypes`
-  * Add `Distribution.Compat.Async`
+# 3.8.0.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) _Month _Year
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.8.0.0.md
 
-# 3.0.1.0 TBW
-  * Add GHC-8.8 flags to normaliseGhcFlags
-    ([#6379](https://github.com/haskell/cabal/pull/6379))
+# 3.6.0.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) August 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.0.0.md
+
+# 3.4.0.0 [Oleg Grenrus](mailgo:oleg.grnerus@iki.fi) February 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.4.0.0.md
+
+# 3.2.0.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Change free text `String` fields to use `ShortText` in package description
+    and installed package info.
+  * Split `Distribution.Types.Flag` and `Distribution.Types.ConfVar`
+    `Distribution.Types.GenericPackageDescription`.
+  * Add GHC-8.10 support, including new extensions to
+    `Language.Haskell.Extension`.
+  * Use more `NonEmpty` instead of ordinary lists.
+  * Add `Distribution.Utils.Structured` for fingeprinting `Binary` blobs.
+  * Add `null`, `length` and `unsafeFromUTF8BS` to `Distribution.Utils.ShortText`.
+  * Refactor `Distribution.Utils.IOData` module.
+  * Rename `Distribution.Compat.MD5` to `Distribution.Utils.MD5`.
+  * Add `safeHead`, `safeTail`, `safeLast` to `Distribution.Utils.Generic`.
+  * Add `unsnoc` and `unsnocNE` to `Distribution.Utils.Generic`.
+  * Add `Set'` modifier to `Distribution.Parsec.Newtypes`.
+  * Add `Distribution.Compat.Async`.
+
+# 3.0.2.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Disallow spaces around colon `:` in Dependency `build-depends` syntax
+    ([#6538](https://github.com/haskell/cabal/pull/6538)).
+  * Make `configure` accept any `pkg-config --modversion` output
+    ([#6541](https://github.com/haskell/cabal/pull/6541)).
+
+# 3.0.1.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
+  * Add GHC-8.8 flags to `normaliseGhcFlags`
+    ([#6379](https://github.com/haskell/cabal/pull/6379)).
   * Typo fixes
-    ([#6372](https://github.com/haskell/cabal/pull/6372))
+    ([#6372](https://github.com/haskell/cabal/pull/6372)).
   * Limit version number parts to contain at most 9 digits
-    ([#6386](https://github.com/haskell/cabal/pull/6386)
-  * Fix boundless sublibrary depedency parse failure
-    ([#5846](https://github.com/haskell/cabal/issues/5846))
+    ([#6386](https://github.com/haskell/cabal/pull/6386)).
+  * Fix boundless sublibrary dependency parse failure
+    ([#5846](https://github.com/haskell/cabal/issues/5846)).
   * `cabal check` verifies `cpp-options` more pedantically, allowing only
     options starting with `-D` and `-U`.
   * Don’t rebuild world when new ghc flags that affect how error
     messages are presented is specified.
   * Fix dropExeExtension behaviour on Windows
-    ([#6287](https://github.com/haskell/cabal/pull/6287)
+    ([#6287](https://github.com/haskell/cabal/pull/6287)).
 
 # 3.0.0.0 [Mikhail Glushenkov](mailto:mikhail.glushenkov@gmail.com) August 2019
   * The 3.0 migration guide gives advice on adapting Custom setup
@@ -164,7 +174,7 @@
       [#784](https://github.com/haskell/cabal/issues/784),
       [#5057](https://github.com/haskell/cabal/issues/5057)).
     * Wildcard syntax errors (misplaced `*`, etc), wildcards that
-      refer to missing directoies, and wildcards that do not match
+      refer to missing directories, and wildcards that do not match
       anything are now all detected by `cabal check`.
     * Wildcard ('globbing') functions have been moved from
       `Distribution.Simple.Utils` to `Distribution.Simple.Glob` and
@@ -625,7 +635,7 @@
   * Support for finding installed packages for hugs
   * Cabal version macros now have proper parenthesis
   * Reverted change to filter out deps of non-buildable components
-  * Fix for registering implace when using a specific package db
+  * Fix for registering inplace when using a specific package db
   * Fix mismatch between $os and $arch path template variables
   * Fix for finding ar.exe on Windows, always pick ghc's version
   * Fix for intra-package dependencies with ghc-6.12
@@ -787,7 +797,7 @@
 # 1.2.0  [Duncan Coutts](mailto:duncan.coutts@worc.ox.ac.uk) Sept 2007
   * To be included in GHC 6.8.x
   * New configurations feature
-  * Can make haddock docs link to hilighted sources (with hscolour)
+  * Can make haddock docs link to highlighted sources (with hscolour)
   * New flag to allow linking to haddock docs on the web
   * Supports pkg-config
   * New field `build-tools` for tool dependencies
@@ -827,7 +837,7 @@
 
   * Released with GHC 6.6
   * Added support for hoogle
-  * Allow profiling and normal builds of libs to be chosen indepentantly
+  * Allow profiling and normal builds of libs to be chosen independently
   * Default installation directories on Win32 changed
   * Register haddock docs with ghc-pkg
   * Get haddock to make hyperlinks to dependent package docs
@@ -907,7 +917,7 @@
   * Lots of bug fixes
   * spaces can sometimes be used instead of commas
   * A user manual has appeared (Thanks, ross!)
-  * for ghc 6.4, configures versionsed depends properly
+  * for ghc 6.4, configures versioned depends properly
   * more features to `./setup haddock`
 
 ----

@@ -281,21 +281,77 @@ tests = [
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
-    , testGroup "library dependencies" [
-          let db = [Right $ exAvNoLibrary "A" 1 `withExe` ExExe "exe" []]
+    , testGroup "main library dependencies" [
+          let db = [Right $ exAvNoLibrary "A" 1 `withExe` exExe "exe" []]
           in runTest $ mkTest db "install build target without a library" ["A"] $
              solverSuccess [("A", 1)]
 
         , let db = [ Right $ exAv "A" 1 [ExAny "B"]
-                   , Right $ exAvNoLibrary "B" 1 `withExe` ExExe "exe" [] ]
+                   , Right $ exAvNoLibrary "B" 1 `withExe` exExe "exe" [] ]
           in runTest $ mkTest db "reject build-depends dependency with no library" ["A"] $
              solverFailure (isInfixOf "rejecting: B-1.0.0 (does not contain library, which is required by A)")
 
-        , let exe = ExExe "exe" []
+        , let exe = exExe "exe" []
               db = [ Right $ exAv "A" 1 [ExAny "B"]
                    , Right $ exAvNoLibrary "B" 2 `withExe` exe
                    , Right $ exAv "B" 1 [] `withExe` exe ]
           in runTest $ mkTest db "choose version of build-depends dependency that has a library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+        ]
+    , testGroup "sub-library dependencies" [
+          let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAv "B" 1 [] ]
+          in runTest $
+             mkTest db "reject package that is missing required sub-library" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (does not contain library 'sub-lib', which is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1 `withSubLibrary` exSubLib "sub-lib" [] ]
+          in runTest $
+             mkTest db "reject package with private but required sub-library" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1
+                       `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies] ]
+          in runTest $ constraints [ExFlagConstraint (ScopeAnyQualifier "B") "make-lib-private" True] $
+             mkTest db "reject package with sub-library made private by flag constraint" ["A"] $
+             solverFailure $ isInfixOf $
+             "rejecting: B-1.0.0 (library 'sub-lib' is private, but it is required by A)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAvNoLibrary "B" 1
+                       `withSubLibrary` exSubLib "sub-lib" [ExFlagged "make-lib-private" (dependencies []) publicDependencies] ]
+          in runTest $
+             mkTest db "treat sub-library as visible even though flag choice could make it private" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExAny "B"]
+                   , Right $ exAv "B" 1 [] `withSubLibrary` exSubLib "sub-lib" []
+                   , Right $ exAv "C" 1 [ExSubLibAny "B" "sub-lib"] ]
+              goals :: [ExampleVar]
+              goals = [
+                  P QualNone "A"
+                , P QualNone "B"
+                , P QualNone "C"
+                ]
+          in runTest $ goalOrder goals $
+             mkTest db "reject package that requires a private sub-library" ["A", "C"] $
+             solverFailure $ isInfixOf $
+             "rejecting: C-1.0.0 (requires library 'sub-lib' from B, but the component is private)"
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib-v1"]
+                   , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib-v2" publicDependencies
+                   , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib-v1" publicDependencies ]
+          in runTest $ mkTest db "choose version of package containing correct sub-library" ["A"] $
+             solverSuccess [("A", 1), ("B", 1)]
+
+        , let db = [ Right $ exAv "A" 1 [ExSubLibAny "B" "sub-lib"]
+                   , Right $ exAv "B" 2 [] `withSubLibrary` ExSubLib "sub-lib" (dependencies [])
+                   , Right $ exAv "B" 1 [] `withSubLibrary` ExSubLib "sub-lib" publicDependencies ]
+          in runTest $ mkTest db "choose version of package with public sub-library" ["A"] $
              solverSuccess [("A", 1), ("B", 1)]
         ]
     -- build-tool-depends dependencies
@@ -370,19 +426,19 @@ tests = [
     , testGroup "Components that are unbuildable in the current environment" $
       let flagConstraint = ExFlagConstraint . ScopeAnyQualifier
       in [
-          let db = [ Right $ exAv "A" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+          let db = [ Right $ exAv "A" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies] ]
           in runTest $ constraints [flagConstraint "A" "build-lib" False] $
              mkTest db "install unbuildable library" ["A"] $
              solverSuccess [("A", 1)]
 
         , let db = [ Right $ exAvNoLibrary "A" 1
-                       `withExe` ExExe "exe" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+                       `withExe` exExe "exe" [ExFlagged "build-exe" (dependencies []) unbuildableDependencies] ]
           in runTest $ constraints [flagConstraint "A" "build-exe" False] $
              mkTest db "install unbuildable exe" ["A"] $
              solverSuccess [("A", 1)]
 
         , let db = [ Right $ exAv "A" 1 [ExAny "B"]
-                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable] ]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies] ]
           in runTest $ constraints [flagConstraint "B" "build-lib" False] $
              mkTest db "reject library dependency with unbuildable library" ["A"] $
              solverFailure $ isInfixOf $
@@ -390,15 +446,15 @@ tests = [
                 ++ "current environment, but it is required by A)"
 
         , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
-                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (Buildable []) NotBuildable]
-                       `withExe` ExExe "bt" [] ]
+                   , Right $ exAv "B" 1 [ExFlagged "build-lib" (dependencies []) unbuildableDependencies]
+                       `withExe` exExe "bt" [] ]
           in runTest $ constraints [flagConstraint "B" "build-lib" False] $
              mkTest db "allow build-tool dependency with unbuildable library" ["A"] $
              solverSuccess [("A", 1), ("B", 1)]
 
         , let db = [ Right $ exAv "A" 1 [ExBuildToolAny "B" "bt"]
                    , Right $ exAv "B" 1 []
-                       `withExe` ExExe "bt" [ExFlagged "build-exe" (Buildable []) NotBuildable] ]
+                       `withExe` exExe "bt" [ExFlagged "build-exe" (dependencies []) unbuildableDependencies] ]
           in runTest $ constraints [flagConstraint "B" "build-exe" False] $
              mkTest db "reject build-tool dependency with unbuildable exe" ["A"] $
              solverFailure $ isInfixOf $
@@ -874,11 +930,11 @@ db5 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
   , Right $ exAv "B" 1 []
-  , Right $ exAv "C" 1 [] `withTest` ExTest "testC" [ExAny "A"]
-  , Right $ exAv "D" 1 [] `withTest` ExTest "testD" [ExFix "B" 2]
-  , Right $ exAv "E" 1 [ExFix "A" 1] `withTest` ExTest "testE" [ExAny "A"]
-  , Right $ exAv "F" 1 [ExFix "A" 1] `withTest` ExTest "testF" [ExFix "A" 2]
-  , Right $ exAv "G" 1 [ExFix "A" 2] `withTest` ExTest "testG" [ExAny "A"]
+  , Right $ exAv "C" 1 [] `withTest` exTest "testC" [ExAny "A"]
+  , Right $ exAv "D" 1 [] `withTest` exTest "testD" [ExFix "B" 2]
+  , Right $ exAv "E" 1 [ExFix "A" 1] `withTest` exTest "testE" [ExAny "A"]
+  , Right $ exAv "F" 1 [ExFix "A" 1] `withTest` exTest "testF" [ExFix "A" 2]
+  , Right $ exAv "G" 1 [ExFix "A" 2] `withTest` exTest "testG" [ExAny "A"]
   ]
 
 -- Now the _dependencies_ have test suites
@@ -893,7 +949,7 @@ db6 :: ExampleDb
 db6 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
-  , Right $ exAv "B" 1 [] `withTest` ExTest "testA" [ExAny "A"]
+  , Right $ exAv "B" 1 [] `withTest` exTest "testA" [ExAny "A"]
   , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
   , Right $ exAv "D" 1 [ExAny "B"]
   ]
@@ -915,7 +971,7 @@ testTestSuiteWithFlag name =
     db = [
         Right $ exAv "A" 1 []
           `withTest`
-            ExTest "test" [exFlagged "flag" [ExFix "B" 2] []]
+            exTest "test" [exFlagged "flag" [ExFix "B" 2] []]
       , Right $ exAv "B" 1 []
       ]
 
@@ -1086,13 +1142,13 @@ dbConstraints =
 
 dbStanzaPreferences1 :: ExampleDb
 dbStanzaPreferences1 = [
-    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "test-dep"]
+    Right $ exAv "pkg" 1 [] `withTest` exTest "test" [ExAny "test-dep"]
   , Right $ exAv "test-dep" 1 []
   ]
 
 dbStanzaPreferences2 :: ExampleDb
 dbStanzaPreferences2 = [
-    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "unknown"]
+    Right $ exAv "pkg" 1 [] `withTest` exTest "test" [ExAny "unknown"]
   ]
 
 -- | This is a test case for a bug in stanza preferences (#3930). The solver
@@ -1108,7 +1164,7 @@ testStanzaPreference name =
                               []
                               [ExAny "unknown-pkg1"]]
              `withTest`
-            ExTest "test" [exFlagged "flag"
+            exTest "test" [exFlagged "flag"
                               [ExAny "unknown-pkg2"]
                               []]
       goals = [
@@ -1278,8 +1334,8 @@ testIndepGoals2 name =
   where
     db :: ExampleDb
     db = [
-        Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-      , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+        Right $ exAv "A" 1 [ExAny "C"] `withTest` exTest "test" [ExFix "D" 1]
+      , Right $ exAv "B" 1 [ExAny "C"] `withTest` exTest "test" [ExFix "D" 1]
       , Right $ exAv "C" 1 [ExAny "D"]
       , Right $ exAv "D" 1 []
       , Right $ exAv "D" 2 []
@@ -1460,7 +1516,7 @@ testIndepGoals4 name =
     db = [
         Right $ exAv "A" 1 [ExFix "E" 2]
       , Right $ exAv "B" 1 [ExAny "D"]
-      , Right $ exAv "C" 1 [ExAny "D"] `withTest` ExTest "test" [ExFix "E" 1]
+      , Right $ exAv "C" 1 [ExAny "D"] `withTest` exTest "test" [ExFix "E" 1]
       , Right $ exAv "D" 1 [ExAny "E"]
       , Right $ exAv "E" 1 []
       , Right $ exAv "E" 2 []
@@ -1617,8 +1673,8 @@ testBuildable testName unavailableDep =
                                  [ExAny "true-dep"]
                                  [ExAny "false-dep"]]
          `withExe`
-            ExExe "exe" [ unavailableDep
-                        , ExFlagged "enable-exe" (Buildable []) NotBuildable ]
+            exExe "exe" [ unavailableDep
+                        , ExFlagged "enable-exe" (dependencies []) unbuildableDependencies ]
       , Right $ exAv "true-dep" 1 []
       , Right $ exAv "false-dep" 1 []
       ]
@@ -1631,15 +1687,15 @@ dbBuildable1 = [
         [ exFlagged "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
         , exFlagged "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
      `withExes`
-        [ ExExe "exe1"
+        [ exExe "exe1"
             [ ExAny "unknown"
-            , ExFlagged "flag1" (Buildable []) NotBuildable
-            , ExFlagged "flag2" (Buildable []) NotBuildable]
-        , ExExe "exe2"
+            , ExFlagged "flag1" (dependencies []) unbuildableDependencies
+            , ExFlagged "flag2" (dependencies []) unbuildableDependencies]
+        , exExe "exe2"
             [ ExAny "unknown"
             , ExFlagged "flag1"
-                  (Buildable [])
-                  (Buildable [ExFlagged "flag2" NotBuildable (Buildable [])])]
+                  (dependencies [])
+                  (dependencies [ExFlagged "flag2" unbuildableDependencies (dependencies [])])]
          ]
   , Right $ exAv "flag1-true" 1 []
   , Right $ exAv "flag1-false" 1 []
@@ -1654,9 +1710,9 @@ dbBuildable2 = [
   , Right $ exAv "B" 1 [ExAny "unknown"]
   , Right $ exAv "B" 2 []
      `withExe`
-        ExExe "exe"
+        exExe "exe"
         [ ExAny "unknown"
-        , ExFlagged "disable-exe" NotBuildable (Buildable [])
+        , ExFlagged "disable-exe" unbuildableDependencies (dependencies [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
   ]
@@ -1870,17 +1926,17 @@ dbBuildTools = [
     Right $ exAv "A" 1 [ExBuildToolAny "bt-pkg" "exe1"]
   , Right $ exAv "B" 1 [exFlagged "flagB" [ExAny "unknown"]
                                           [ExBuildToolAny "bt-pkg" "exe1"]]
-  , Right $ exAv "C" 1 [] `withTest` ExTest "testC" [ExBuildToolAny "bt-pkg" "exe1"]
+  , Right $ exAv "C" 1 [] `withTest` exTest "testC" [ExBuildToolAny "bt-pkg" "exe1"]
   , Right $ exAv "D" 1 [ExBuildToolAny "bt-pkg" "unknown-exe"]
   , Right $ exAv "E" 1 [ExBuildToolAny "unknown-pkg" "exe1"]
   , Right $ exAv "F" 1 [exFlagged "flagF" [ExBuildToolAny "bt-pkg" "unknown-exe"]
                                           [ExAny "unknown"]]
-  , Right $ exAv "G" 1 [] `withTest` ExTest "testG" [ExBuildToolAny "bt-pkg" "unknown-exe"]
+  , Right $ exAv "G" 1 [] `withTest` exTest "testG" [ExBuildToolAny "bt-pkg" "unknown-exe"]
   , Right $ exAv "H" 1 [ExBuildToolFix "bt-pkg" "exe1" 3]
 
   , Right $ exAv "bt-pkg" 4 []
-  , Right $ exAv "bt-pkg" 3 [] `withExe` ExExe "exe2" []
-  , Right $ exAv "bt-pkg" 2 [] `withExe` ExExe "exe1" []
+  , Right $ exAv "bt-pkg" 3 [] `withExe` exExe "exe2" []
+  , Right $ exAv "bt-pkg" 2 [] `withExe` exExe "exe1" []
   , Right $ exAv "bt-pkg" 1 []
   ]
 
@@ -1924,7 +1980,7 @@ chooseExeAfterBuildToolsPackage shouldSucceed name =
                                                [ExAny "unknown"]]
       , Right $ exAv "B" 1 []
          `withExes`
-           [ExExe exe [] | exe <- if shouldSucceed then ["exe1", "exe2"] else ["exe1"]]
+           [exExe exe [] | exe <- if shouldSucceed then ["exe1", "exe2"] else ["exe1"]]
       ]
 
     goals :: [ExampleVar]
@@ -1952,7 +2008,7 @@ requireConsistentBuildToolVersions name =
       , Right $ exAv "B" 1 [] `withExes` exes
       ]
 
-    exes = [ExExe "exe1" [], ExExe "exe2" []]
+    exes = [exExe "exe1" [], exExe "exe2" []]
 
 -- | This test is similar to the failure case for
 -- chooseExeAfterBuildToolsPackage, except that the build tool is unbuildable
@@ -1972,8 +2028,8 @@ chooseUnbuildableExeAfterBuildToolsPackage name =
                                                  [ExAny "unknown"]]
       , Right $ exAvNoLibrary "B" 1
          `withExes`
-           [ ExExe "bt1" []
-           , ExExe "bt2" [ExFlagged "build-bt2" (Buildable []) NotBuildable]
+           [ exExe "bt1" []
+           , exExe "bt2" [ExFlagged "build-bt2" (dependencies []) unbuildableDependencies]
            ]
       ]
 
@@ -1989,7 +2045,7 @@ chooseUnbuildableExeAfterBuildToolsPackage name =
 -------------------------------------------------------------------------------}
 dbLegacyBuildTools1 :: ExampleDb
 dbLegacyBuildTools1 = [
-    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
+    Right $ exAv "alex" 1 [] `withExe` exExe "alex" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "alex"]
   ]
 
@@ -1997,8 +2053,8 @@ dbLegacyBuildTools1 = [
 -- package and the executable. This db has no solution.
 dbLegacyBuildTools2 :: ExampleDb
 dbLegacyBuildTools2 = [
-    Right $ exAv "alex" 1 [] `withExe` ExExe "other-exe" [],
-    Right $ exAv "other-package" 1 [] `withExe` ExExe "alex" [],
+    Right $ exAv "alex" 1 [] `withExe` exExe "other-exe" [],
+    Right $ exAv "other-package" 1 [] `withExe` exExe "alex" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "alex"]
   ]
 
@@ -2012,8 +2068,8 @@ dbLegacyBuildTools3 = [
 -- Test that we can solve for different versions of executables
 dbLegacyBuildTools4 :: ExampleDb
 dbLegacyBuildTools4 = [
-    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
-    Right $ exAv "alex" 2 [] `withExe` ExExe "alex" [],
+    Right $ exAv "alex" 1 [] `withExe` exExe "alex" [],
+    Right $ exAv "alex" 2 [] `withExe` exExe "alex" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolFix "alex" 1],
     Right $ exAv "B" 1 [ExLegacyBuildToolFix "alex" 2],
     Right $ exAv "C" 1 [ExAny "A", ExAny "B"]
@@ -2022,7 +2078,7 @@ dbLegacyBuildTools4 = [
 -- Test that exe is not related to library choices
 dbLegacyBuildTools5 :: ExampleDb
 dbLegacyBuildTools5 = [
-    Right $ exAv "alex" 1 [ExFix "A" 1] `withExe` ExExe "alex" [],
+    Right $ exAv "alex" 1 [ExFix "A" 1] `withExe` exExe "alex" [],
     Right $ exAv "A" 1 [],
     Right $ exAv "A" 2 [],
     Right $ exAv "B" 1 [ExLegacyBuildToolFix "alex" 1, ExFix "A" 2]
@@ -2031,8 +2087,8 @@ dbLegacyBuildTools5 = [
 -- Test that build-tools on build-tools works
 dbLegacyBuildTools6 :: ExampleDb
 dbLegacyBuildTools6 = [
-    Right $ exAv "alex" 1 [] `withExe` ExExe "alex" [],
-    Right $ exAv "happy" 1 [ExLegacyBuildToolAny "alex"] `withExe` ExExe "happy" [],
+    Right $ exAv "alex" 1 [] `withExe` exExe "alex" [],
+    Right $ exAv "happy" 1 [ExLegacyBuildToolAny "alex"] `withExe` exExe "happy" [],
     Right $ exAv "A" 1 [ExLegacyBuildToolAny "happy"]
   ]
 
@@ -2043,7 +2099,7 @@ dbIssue3775 = [
     Right $ exAv "warp" 1 [],
     -- NB: the warp build-depends refers to the package, not the internal
     -- executable!
-    Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` ExExe "warp" [ExAny "A"],
+    Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` exExe "warp" [ExAny "A"],
     Right $ exAv "B" 2 [ExAny "A", ExAny "warp"]
   ]
 

@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [3,0])
+leading-comma-2c.cabal:10:30: 
+unexpected 'N'
+expecting space, comma, white space or end of input
+

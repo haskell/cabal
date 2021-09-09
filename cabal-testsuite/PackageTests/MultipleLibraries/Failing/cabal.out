@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+cabal: Could not resolve dependencies:
+[__0] trying: d-0.1.0.0 (user goal)
+[__1] next goal: p (user goal)
+[__1] rejecting: p-0.1.0.0 (requires library 'privatelib' from d, but the component is private)
+[__1] fail (backjumping, conflict set: d, p)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: d (2), p (2)

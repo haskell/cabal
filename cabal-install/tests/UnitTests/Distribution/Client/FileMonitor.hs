@@ -1,6 +1,6 @@
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
-import Distribution.Deprecated.Text (simpleParse)
+import Distribution.Parsec (simpleParsec)
 
 import Data.Proxy (Proxy (..))
 import Control.Monad
@@ -819,8 +819,8 @@ absoluteRoot (RootPath root) = IO.canonicalizePath root
 
 monitorFileGlobStr :: String -> MonitorFilePath
 monitorFileGlobStr globstr
-  | Just glob <- simpleParse globstr = monitorFileGlob glob
-  | otherwise                        = error $ "Failed to parse " ++ globstr
+  | Just glob <- simpleParsec globstr = monitorFileGlob glob
+  | otherwise                         = error $ "Failed to parse " ++ globstr
 
 
 expectMonitorChanged :: (Binary a, Structured a, Binary b, Structured b)

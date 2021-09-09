@@ -1,4 +1,4 @@
-FROM    phadej/ghc:8.8.1-xenial
+FROM    phadej/ghc:8.8.3-xenial
 
 # Install cabal-plan
 RUN     mkdir -p /root/.cabal/bin && \
@@ -13,14 +13,15 @@ RUN     apt-get update
 RUN     apt-get install -y ghc-7.0.4 ghc-7.0.4-dyn ghc-7.2.2 ghc-7.2.2-dyn ghc-7.4.2 ghc-7.4.2-dyn
 
 # Update index
-RUN     cabal v2-update
+RUN     cabal v2-update --index-state="2020-06-12T23:36:15Z"
 
 # We install happy, so it's in the store; we (hopefully) don't use it directly.
 RUN     cabal v2-install happy --constraint 'happy ^>=1.19.12'
 
 # Install some other dependencies
 # Remove $HOME/.ghc so there aren't any environments
-RUN     cabal v2-install -w ghc-8.8.1 --lib \
+RUN     cabal v2-install -w ghc-8.8.3 --lib \
+          Cabal \
           aeson \
           async \
           base-compat \
@@ -31,14 +32,15 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
           echo \
           ed25519 \
           edit-distance \
-          haskell-lexer \
           HTTP \
+          lukko \
           network \
           optparse-applicative \
           pretty-show \
           regex-compat-tdfa \
+          regex-posix \
           regex-tdfa \
-          resolv \
+          rere \
           statistics \
           tar \
           tasty \
@@ -46,10 +48,25 @@ RUN     cabal v2-install -w ghc-8.8.1 --lib \
           tasty-hunit \
           tasty-quickcheck \
           tree-diff \
+          void \
           zlib \
+          resolv \
+      --constraint="rere -rere-cfg" \
+      --constraint="these -assoc" \
+      --constraint="bytestring installed" \
+      --constraint="binary     installed" \
+      --constraint="containers installed" \
+      --constraint="deepseq    installed" \
+      --constraint="directory  installed" \
+      --constraint="filepath   installed" \
+      --constraint="pretty     installed" \
+      --constraint="process    installed" \
+      --constraint="time       installed" \
+      --constraint="unix       installed" \
+      --constraint="transformers installed" \
         && rm -rf $HOME/.ghc
 
 # Validate
 WORKDIR /build
 COPY    . /build
-RUN     sh ./validate.sh -w ghc-8.8.1 -v --lib-only --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4 --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2 --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2
+RUN     sh ./validate.sh -w ghc-8.8.3 -v --lib-only --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4 --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2 --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2

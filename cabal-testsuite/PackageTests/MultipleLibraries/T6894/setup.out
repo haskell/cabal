@@ -1,0 +1,8 @@
+# Setup configure
+Warning: issue.cabal:7:30: colon specifier is experimental feature (issue #5660)
+Configuring issue-6894...
+# Setup build
+Preprocessing library 'sublib' for issue-6894..
+Building library 'sublib' for issue-6894..
+Preprocessing library for issue-6894..
+Building library for issue-6894..

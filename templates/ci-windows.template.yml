@@ -1,0 +1,74 @@
+# This file is auto-generated
+#
+# To regenerate it run
+#
+#     make github-actions
+#
+name: Windows
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types:
+      - created
+
+jobs:
+
+{############################################################################}
+{# Windows jobs                                                             #}
+{############################################################################}
+{% for job in winJobs %}
+  test-windows-{{ mangleVersion job.version }}:
+    name: test ghc-{{job.version}}
+    runs-on: windows-latest
+{% for needs in job.needs %}
+    needs: test-windows-{{ mangleVersion needs }}
+{% endfor %}
+    steps:
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '{{ job.chocoVersion }}'
+          cabal-version: '3.2.0.0'
+      - name: Print versions
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v2
+      # We cannot ask for all dependencies, but we can for Cabal.
+      - name: cabal v2-build Cabal --only-dependencies
+        run: cabal v2-build Cabal --only-dependencies
+      - name: cabal v2-build
+        run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
+      - name: cabal-install memory-usage-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:memory-usage-tests
+      - name: cabal-install long-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:long-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
+      - name: cabal-install integration-tests2
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:integration-tests2
+      - name: cabal-install unit-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
+      - name: cabal-tests
+        # Using only one job, -j1, to fail less.
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-{{ job.version }}\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
+{% endfor %}

@@ -1,0 +1,743 @@
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV3_0,
+    package = PackageIdentifier {
+      pkgName = PackageName
+        "postgresql-libpq",
+      pkgVersion = mkVersion
+        [0, 9, 4, 2]},
+    licenseRaw = Left
+      (License
+        (ELicense
+          (ELicenseId BSD_3_Clause)
+          Nothing)),
+    licenseFiles = [
+      SymbolicPath "LICENSE"],
+    copyright = concat
+      [
+        "(c) 2010 Grant Monroe\n",
+        "(c) 2011 Leon P Smith"],
+    maintainer =
+    "Oleg Grenrus <oleg.grenrus@iki.fi>",
+    author =
+    "Grant Monroe, Leon P Smith, Joey Adams",
+    stability = "",
+    testedWith = [
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 0, 4])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 2, 2])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 4, 2])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 6, 3])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 8, 4])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [7, 10, 3])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [8, 0, 2])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [8, 2, 2])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [8, 4, 3])),
+      _×_
+        GHC
+        (ThisVersion
+          (mkVersion [8, 6, 1]))],
+    homepage =
+    "https://github.com/phadej/postgresql-libpq",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis =
+    "low-level binding to libpq",
+    description = concat
+      [
+        "This is a binding to libpq: the C application\n",
+        "programmer's interface to PostgreSQL. libpq is a\n",
+        "set of library functions that allow client\n",
+        "programs to pass queries to the PostgreSQL\n",
+        "backend server and to receive the results of\n",
+        "these queries."],
+    category = "Database",
+    customFieldsPD = [],
+    buildTypeRaw = Just Custom,
+    setupBuildInfo = Just
+      SetupBuildInfo {
+        setupDepends = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 3]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet,
+          Dependency
+            (PackageName "Cabal")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [1, 10]))
+              (EarlierVersion
+                (mkVersion [2, 5])))
+            mainLibSet],
+        defaultSetupDepends = False},
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = ".",
+    extraSrcFiles = [
+      "cbits/noticehandlers.h",
+      "CHANGELOG.md"],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [
+    MkPackageFlag {
+      flagName = FlagName
+        "use-pkg-config",
+      flagDescription = "",
+      flagDefault = False,
+      flagManual = True}],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName
+            "Database.PostgreSQL.LibPQ",
+          ModuleName
+            "Database.PostgreSQL.LibPQ.Internal"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [
+            ExeDependency
+              (PackageName "hsc2hs")
+              (UnqualComponentName "hsc2hs")
+              (OrLaterVersion
+                (mkVersion [0]))],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [
+            "cbits/noticehandlers.c"],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [
+            SymbolicPath "src"],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Nothing,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = ["cbits"],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            ["-Wall"]
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [4, 3]))
+                (EarlierVersion
+                  (mkVersion [4, 13])))
+              mainLibSet,
+            Dependency
+              (PackageName "bytestring")
+              (IntersectVersionRanges
+                (OrLaterVersion
+                  (mkVersion [0, 9, 1, 0]))
+                (EarlierVersion
+                  (mkVersion [0, 11])))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [4, 3]))
+            (EarlierVersion
+              (mkVersion [4, 13])))
+          mainLibSet,
+        Dependency
+          (PackageName "bytestring")
+          (IntersectVersionRanges
+            (OrLaterVersion
+              (mkVersion [0, 9, 1, 0]))
+            (EarlierVersion
+              (mkVersion [0, 11])))
+          mainLibSet],
+      condTreeComponents = [
+        CondBranch {
+          condBranchCondition =
+          `CNot (Var (OS Windows))`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = [],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [
+                  Dependency
+                    (PackageName "unix")
+                    (IntersectVersionRanges
+                      (OrLaterVersion
+                        (mkVersion [2, 4, 2, 0]))
+                      (EarlierVersion
+                        (mkVersion [2, 8])))
+                    mainLibSet],
+                mixins = []}},
+            condTreeConstraints = [
+              Dependency
+                (PackageName "unix")
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [2, 4, 2, 0]))
+                  (EarlierVersion
+                    (mkVersion [2, 8])))
+                mainLibSet],
+            condTreeComponents = []},
+          condBranchIfFalse = Nothing},
+        CondBranch {
+          condBranchCondition =
+          `Var (OS Windows)`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = [],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [
+                  Dependency
+                    (PackageName "Win32")
+                    (IntersectVersionRanges
+                      (OrLaterVersion
+                        (mkVersion [2, 2, 0, 2]))
+                      (EarlierVersion
+                        (mkVersion [2, 7])))
+                    mainLibSet],
+                mixins = []}},
+            condTreeConstraints = [
+              Dependency
+                (PackageName "Win32")
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [2, 2, 0, 2]))
+                  (EarlierVersion
+                    (mkVersion [2, 7])))
+                mainLibSet],
+            condTreeComponents = []},
+          condBranchIfFalse = Nothing},
+        CondBranch {
+          condBranchCondition =
+          `Var (PackageFlag (FlagName "use-pkg-config"))`,
+          condBranchIfTrue = CondNode {
+            condTreeData = Library {
+              libName = LMainLibName,
+              exposedModules = [],
+              reexportedModules = [],
+              signatures = [],
+              libExposed = True,
+              libVisibility =
+              LibraryVisibilityPublic,
+              libBuildInfo = BuildInfo {
+                buildable = True,
+                buildTools = [],
+                buildToolDepends = [],
+                cppOptions = [],
+                asmOptions = [],
+                cmmOptions = [],
+                ccOptions = [],
+                cxxOptions = [],
+                ldOptions = [],
+                hsc2hsOptions = [],
+                pkgconfigDepends = [
+                  PkgconfigDependency
+                    (PkgconfigName "libpq")
+                    (PcOrLaterVersion
+                      (PkgconfigVersion "9.3h"))],
+                frameworks = [],
+                extraFrameworkDirs = [],
+                asmSources = [],
+                cmmSources = [],
+                cSources = [],
+                cxxSources = [],
+                jsSources = [],
+                hsSourceDirs = [],
+                otherModules = [],
+                virtualModules = [],
+                autogenModules = [],
+                defaultLanguage = Nothing,
+                otherLanguages = [],
+                defaultExtensions = [],
+                otherExtensions = [],
+                oldExtensions = [],
+                extraLibs = [],
+                extraLibsStatic = [],
+                extraGHCiLibs = [],
+                extraBundledLibs = [],
+                extraLibFlavours = [],
+                extraDynLibFlavours = [],
+                extraLibDirs = [],
+                extraLibDirsStatic = [],
+                includeDirs = [],
+                includes = [],
+                autogenIncludes = [],
+                installIncludes = [],
+                options = PerCompilerFlavor
+                  []
+                  [],
+                profOptions = PerCompilerFlavor
+                  []
+                  [],
+                sharedOptions =
+                PerCompilerFlavor [] [],
+                staticOptions =
+                PerCompilerFlavor [] [],
+                customFieldsBI = [],
+                targetBuildDepends = [],
+                mixins = []}},
+            condTreeConstraints = [],
+            condTreeComponents = []},
+          condBranchIfFalse = Just
+            CondNode {
+              condTreeData = Library {
+                libName = LMainLibName,
+                exposedModules = [],
+                reexportedModules = [],
+                signatures = [],
+                libExposed = True,
+                libVisibility =
+                LibraryVisibilityPublic,
+                libBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []}},
+              condTreeConstraints = [],
+              condTreeComponents = [
+                CondBranch {
+                  condBranchCondition =
+                  `Var (OS Windows)`,
+                  condBranchIfTrue = CondNode {
+                    condTreeData = Library {
+                      libName = LMainLibName,
+                      exposedModules = [],
+                      reexportedModules = [],
+                      signatures = [],
+                      libExposed = True,
+                      libVisibility =
+                      LibraryVisibilityPublic,
+                      libBuildInfo = BuildInfo {
+                        buildable = True,
+                        buildTools = [],
+                        buildToolDepends = [],
+                        cppOptions = [],
+                        asmOptions = [],
+                        cmmOptions = [],
+                        ccOptions = [],
+                        cxxOptions = [],
+                        ldOptions = [],
+                        hsc2hsOptions = [],
+                        pkgconfigDepends = [],
+                        frameworks = [],
+                        extraFrameworkDirs = [],
+                        asmSources = [],
+                        cmmSources = [],
+                        cSources = [],
+                        cxxSources = [],
+                        jsSources = [],
+                        hsSourceDirs = [],
+                        otherModules = [],
+                        virtualModules = [],
+                        autogenModules = [],
+                        defaultLanguage = Nothing,
+                        otherLanguages = [],
+                        defaultExtensions = [],
+                        otherExtensions = [],
+                        oldExtensions = [],
+                        extraLibs = ["libpq"],
+                        extraLibsStatic = [],
+                        extraGHCiLibs = [],
+                        extraBundledLibs = [],
+                        extraLibFlavours = [],
+                        extraDynLibFlavours = [],
+                        extraLibDirs = [],
+                        extraLibDirsStatic = [],
+                        includeDirs = [],
+                        includes = [],
+                        autogenIncludes = [],
+                        installIncludes = [],
+                        options = PerCompilerFlavor
+                          []
+                          [],
+                        profOptions = PerCompilerFlavor
+                          []
+                          [],
+                        sharedOptions =
+                        PerCompilerFlavor [] [],
+                        staticOptions =
+                        PerCompilerFlavor [] [],
+                        customFieldsBI = [],
+                        targetBuildDepends = [],
+                        mixins = []}},
+                    condTreeConstraints = [],
+                    condTreeComponents = []},
+                  condBranchIfFalse = Just
+                    CondNode {
+                      condTreeData = Library {
+                        libName = LMainLibName,
+                        exposedModules = [],
+                        reexportedModules = [],
+                        signatures = [],
+                        libExposed = True,
+                        libVisibility =
+                        LibraryVisibilityPublic,
+                        libBuildInfo = BuildInfo {
+                          buildable = True,
+                          buildTools = [],
+                          buildToolDepends = [],
+                          cppOptions = [],
+                          asmOptions = [],
+                          cmmOptions = [],
+                          ccOptions = [],
+                          cxxOptions = [],
+                          ldOptions = [],
+                          hsc2hsOptions = [],
+                          pkgconfigDepends = [],
+                          frameworks = [],
+                          extraFrameworkDirs = [],
+                          asmSources = [],
+                          cmmSources = [],
+                          cSources = [],
+                          cxxSources = [],
+                          jsSources = [],
+                          hsSourceDirs = [],
+                          otherModules = [],
+                          virtualModules = [],
+                          autogenModules = [],
+                          defaultLanguage = Nothing,
+                          otherLanguages = [],
+                          defaultExtensions = [],
+                          otherExtensions = [],
+                          oldExtensions = [],
+                          extraLibs = ["pq"],
+                          extraLibsStatic = [],
+                          extraGHCiLibs = [],
+                          extraBundledLibs = [],
+                          extraLibFlavours = [],
+                          extraDynLibFlavours = [],
+                          extraLibDirs = [],
+                          extraLibDirsStatic = [],
+                          includeDirs = [],
+                          includes = [],
+                          autogenIncludes = [],
+                          installIncludes = [],
+                          options = PerCompilerFlavor
+                            []
+                            [],
+                          profOptions = PerCompilerFlavor
+                            []
+                            [],
+                          sharedOptions =
+                          PerCompilerFlavor [] [],
+                          staticOptions =
+                          PerCompilerFlavor [] [],
+                          customFieldsBI = [],
+                          targetBuildDepends = [],
+                          mixins = []}},
+                      condTreeConstraints = [],
+                      condTreeComponents = [
+                        CondBranch {
+                          condBranchCondition =
+                          `Var (OS OpenBSD)`,
+                          condBranchIfTrue = CondNode {
+                            condTreeData = Library {
+                              libName = LMainLibName,
+                              exposedModules = [],
+                              reexportedModules = [],
+                              signatures = [],
+                              libExposed = True,
+                              libVisibility =
+                              LibraryVisibilityPublic,
+                              libBuildInfo = BuildInfo {
+                                buildable = True,
+                                buildTools = [],
+                                buildToolDepends = [],
+                                cppOptions = [],
+                                asmOptions = [],
+                                cmmOptions = [],
+                                ccOptions = [],
+                                cxxOptions = [],
+                                ldOptions = [],
+                                hsc2hsOptions = [],
+                                pkgconfigDepends = [],
+                                frameworks = [],
+                                extraFrameworkDirs = [],
+                                asmSources = [],
+                                cmmSources = [],
+                                cSources = [],
+                                cxxSources = [],
+                                jsSources = [],
+                                hsSourceDirs = [],
+                                otherModules = [],
+                                virtualModules = [],
+                                autogenModules = [],
+                                defaultLanguage = Nothing,
+                                otherLanguages = [],
+                                defaultExtensions = [],
+                                otherExtensions = [],
+                                oldExtensions = [],
+                                extraLibs = ["crypto", "ssl"],
+                                extraLibsStatic = [],
+                                extraGHCiLibs = [],
+                                extraBundledLibs = [],
+                                extraLibFlavours = [],
+                                extraDynLibFlavours = [],
+                                extraLibDirs = [],
+                                extraLibDirsStatic = [],
+                                includeDirs = [],
+                                includes = [],
+                                autogenIncludes = [],
+                                installIncludes = [],
+                                options = PerCompilerFlavor
+                                  []
+                                  [],
+                                profOptions = PerCompilerFlavor
+                                  []
+                                  [],
+                                sharedOptions =
+                                PerCompilerFlavor [] [],
+                                staticOptions =
+                                PerCompilerFlavor [] [],
+                                customFieldsBI = [],
+                                targetBuildDepends = [],
+                                mixins = []}},
+                            condTreeConstraints = [],
+                            condTreeComponents = []},
+                          condBranchIfFalse =
+                          Nothing}]}}]}}]},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

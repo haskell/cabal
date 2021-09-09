@@ -1,0 +1,74 @@
+cabal-version:      >=1.8
+name:               postgresql-libpq
+version:            0.9.4.2
+license:            BSD3
+license-file:       LICENSE
+copyright:
+    (c) 2010 Grant Monroe
+    (c) 2011 Leon P Smith
+
+maintainer:         Oleg Grenrus <oleg.grenrus@iki.fi>
+author:             Grant Monroe, Leon P Smith, Joey Adams
+tested-with:
+    ghc ==7.0.4 ghc ==7.2.2 ghc ==7.4.2 ghc ==7.6.3 ghc ==7.8.4
+    ghc ==7.10.3 ghc ==8.0.2 ghc ==8.2.2 ghc ==8.4.3 ghc ==8.6.1
+
+homepage:           https://github.com/phadej/postgresql-libpq
+synopsis:           low-level binding to libpq
+description:
+    This is a binding to libpq: the C application
+    programmer's interface to PostgreSQL. libpq is a
+    set of library functions that allow client
+    programs to pass queries to the PostgreSQL
+    backend server and to receive the results of
+    these queries.
+
+category:           Database
+build-type:         Custom
+extra-source-files:
+    cbits/noticehandlers.h
+    CHANGELOG.md
+
+custom-setup
+    setup-depends:
+        base >=4.3 && <5,
+        Cabal >=1.10 && <2.5
+
+flag use-pkg-config
+    default: False
+    manual:  True
+
+library
+    exposed-modules:
+        Database.PostgreSQL.LibPQ
+        Database.PostgreSQL.LibPQ.Internal
+
+    build-tools:     hsc2hs >=0
+    c-sources:       cbits/noticehandlers.c
+    hs-source-dirs:  src
+    include-dirs:    cbits
+    ghc-options:     -Wall
+    build-depends:
+        base >=4.3 && <4.13,
+        bytestring >=0.9.1.0 && <0.11
+
+    if !os(windows)
+        build-depends: unix >=2.4.2.0 && <2.8
+
+    if os(windows)
+        build-depends: Win32 >=2.2.0.2 && <2.7
+
+    if flag(use-pkg-config)
+        pkgconfig-depends: libpq >=9 && <10
+
+    else
+        if os(windows)
+            extra-libraries: libpq
+
+        else
+            extra-libraries: pq
+
+            if os(openbsd)
+                extra-libraries:
+                    crypto
+                    ssl

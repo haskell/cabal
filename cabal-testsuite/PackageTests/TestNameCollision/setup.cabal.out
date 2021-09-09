@@ -1,5 +1,4 @@
 # Setup configure
-Resolving dependencies...
 Configuring parent-0.1...
 # Setup build
 Preprocessing library for parent-0.1..
@@ -9,7 +8,6 @@ Installing library in <PATH>
 # Setup register
 Registering library for parent-0.1..
 # Setup configure
-Resolving dependencies...
 Configuring child-0.1...
 # Setup build
 Preprocessing library for child-0.1..
@@ -17,10 +15,6 @@ Building library for child-0.1..
 Preprocessing test suite 'parent' for child-0.1..
 Building test suite 'parent' for child-0.1..
 # Setup test
-Preprocessing library for child-0.1..
-Building library for child-0.1..
-Preprocessing test suite 'parent' for child-0.1..
-Building test suite 'parent' for child-0.1..
 Running 1 test suites...
 Test suite parent: RUNNING...
 Test suite parent: PASS

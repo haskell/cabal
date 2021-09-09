@@ -1,4 +1,4 @@
-cabal-version:  2.1
+cabal-version:  2.2
 name:           my
 version:        0.1
 license:        BSD-3-Clause

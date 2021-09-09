@@ -1,0 +1,117 @@
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV3_0,
+    package = PackageIdentifier {
+      pkgName = PackageName "anynone",
+      pkgVersion = mkVersion [0]},
+    licenseRaw = Left NONE,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis = "The -any none demo",
+    description = "",
+    category = "",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Just
+    CondNode {
+      condTreeData = Library {
+        libName = LMainLibName,
+        exposedModules = [
+          ModuleName "AnyNone"],
+        reexportedModules = [],
+        signatures = [],
+        libExposed = True,
+        libVisibility =
+        LibraryVisibilityPublic,
+        libBuildInfo = BuildInfo {
+          buildable = True,
+          buildTools = [],
+          buildToolDepends = [],
+          cppOptions = [],
+          asmOptions = [],
+          cmmOptions = [],
+          ccOptions = [],
+          cxxOptions = [],
+          ldOptions = [],
+          hsc2hsOptions = [],
+          pkgconfigDepends = [],
+          frameworks = [],
+          extraFrameworkDirs = [],
+          asmSources = [],
+          cmmSources = [],
+          cSources = [],
+          cxxSources = [],
+          jsSources = [],
+          hsSourceDirs = [],
+          otherModules = [],
+          virtualModules = [],
+          autogenModules = [],
+          defaultLanguage = Just
+            Haskell2010,
+          otherLanguages = [],
+          defaultExtensions = [],
+          otherExtensions = [],
+          oldExtensions = [],
+          extraLibs = [],
+          extraLibsStatic = [],
+          extraGHCiLibs = [],
+          extraBundledLibs = [],
+          extraLibFlavours = [],
+          extraDynLibFlavours = [],
+          extraLibDirs = [],
+          extraLibDirsStatic = [],
+          includeDirs = [],
+          includes = [],
+          autogenIncludes = [],
+          installIncludes = [],
+          options = PerCompilerFlavor
+            []
+            [],
+          profOptions = PerCompilerFlavor
+            []
+            [],
+          sharedOptions =
+          PerCompilerFlavor [] [],
+          staticOptions =
+          PerCompilerFlavor [] [],
+          customFieldsBI = [],
+          targetBuildDepends = [
+            Dependency
+              (PackageName "base")
+              (OrLaterVersion (mkVersion [0]))
+              mainLibSet],
+          mixins = []}},
+      condTreeConstraints = [
+        Dependency
+          (PackageName "base")
+          (OrLaterVersion (mkVersion [0]))
+          mainLibSet],
+      condTreeComponents = []},
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [],
+  condTestSuites = [],
+  condBenchmarks = []}

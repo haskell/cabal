@@ -1,0 +1,19 @@
+encoding-0.8.cabal:1:1: The field "name" is specified more than once at positions 1:1, 2:1
+encoding-0.8.cabal:4:22: Packages with 'cabal-version: 1.12' or later should specify a specific version of the Cabal spec of the form 'cabal-version: x.y'. Use 'cabal-version: 1.12'.
+cabal-version:      1.12
+name:               encoding
+version:            0.8
+extra-source-files:
+    README.md
+    "--"
+    "--"
+
+custom-setup
+    setup-depends:
+        base <5,
+        ghc-prim
+
+library
+    exposed-modules: Data.Encoding
+    ghc-options:     -Wall -O2 -threaded -rtsopts "-with-rtsopts=-N1 -A64m"
+    build-depends:   base >4.4 || ==4.4

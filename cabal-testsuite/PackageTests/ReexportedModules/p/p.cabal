@@ -3,7 +3,7 @@ version:             0.1.0.0
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
-cabal-version:       >=1.21
+cabal-version:       1.22
 
 library
   exposed-modules:     Public

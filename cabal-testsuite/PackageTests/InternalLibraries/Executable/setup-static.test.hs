@@ -18,7 +18,7 @@ import System.Directory
 -- this does build shared libraries just to make sure they
 -- don't get installed, so this test doesn't work on Windows.)
 main = setupAndCabalTest $ do
-    skipUnless =<< hasSharedLibraries
+    skipUnless "no shared libs" =<< hasSharedLibraries
     withPackageDb $ do
         -- MULTI
         forM_ [False, True] $ \is_dynamic -> do

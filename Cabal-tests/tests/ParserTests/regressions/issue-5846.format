@@ -1,0 +1,15 @@
+issue-5846.cabal:11:23: colon specifier is experimental feature (issue #5660)
+issue-5846.cabal:10:23: colon specifier is experimental feature (issue #5660)
+issue-5846.cabal:7:23: colon specifier is experimental feature (issue #5660)
+issue-5846.cabal:8:23: colon specifier is experimental feature (issue #5660)
+cabal-version: 3.0
+name:          issue
+version:       5846
+
+library
+    default-language: Haskell2010
+    build-depends:
+        lib1:{a, b},
+        lib2:c,
+        lib3:d >=1,
+        lib4:{a, b} >=1

@@ -1,0 +1,6 @@
+name: newsyntax
+version: 1
+
+library
+    build-depends: base
+    hs-source-dirs: .

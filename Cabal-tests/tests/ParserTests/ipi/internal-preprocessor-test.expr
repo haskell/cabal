@@ -1,0 +1,76 @@
+InstalledPackageInfo {
+  sourcePackageId =
+  PackageIdentifier {
+    pkgName = PackageName
+      "internal-preprocessor-test",
+    pkgVersion = mkVersion
+      [0, 1, 0, 0]},
+  sourceLibName = LMainLibName,
+  installedComponentId_ =
+  ComponentId "",
+  libVisibility =
+  LibraryVisibilityPublic,
+  installedUnitId = UnitId
+    "internal-preprocessor-test-0.1.0.0",
+  instantiatedWith = [],
+  compatPackageKey =
+  "internal-preprocessor-test-0.1.0.0",
+  license = Right
+    (GPL (Just (mkVersion [3]))),
+  copyright = "",
+  maintainer =
+  "mikhail.glushenkov@gmail.com",
+  author = "Mikhail Glushenkov",
+  stability = "",
+  homepage = "",
+  pkgUrl = "",
+  synopsis =
+  "Internal custom preprocessor example.",
+  description =
+  "See https://github.com/haskell/cabal/issues/1541#issuecomment-30155513",
+  category = "Testing",
+  abiHash = AbiHash "",
+  indefinite = False,
+  exposed = True,
+  exposedModules = [
+    ExposedModule {
+      exposedName = ModuleName "A",
+      exposedReexport = Nothing}],
+  hiddenModules = [],
+  trusted = False,
+  importDirs =
+  [
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build"],
+  libraryDirs =
+  [
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build",
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/build"],
+  libraryDirsStatic = [],
+  libraryDynDirs = [],
+  dataDir =
+  "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess",
+  hsLibraries = [
+    "HSinternal-preprocessor-test-0.1.0.0"],
+  extraLibraries = [],
+  extraLibrariesStatic = [],
+  extraGHCiLibraries = [],
+  includeDirs = [],
+  includes = [],
+  depends = [
+    UnitId
+      "base-4.8.2.0-0d6d1084fbc041e1cded9228e80e264d"],
+  abiDepends = [],
+  ccOptions = [],
+  cxxOptions = [],
+  ldOptions = [],
+  frameworkDirs = [],
+  frameworks = [],
+  haddockInterfaces =
+  [
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/doc/html/internal-preprocessor-test/internal-preprocessor-test.haddock"],
+  haddockHTMLs =
+  [
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist/doc/html/internal-preprocessor-test"],
+  pkgRoot =
+  Just
+    "/home/ogre/Documents/other-haskell/cabal/cabal-testsuite/PackageTests/CustomPreProcess/setup.dist/work/dist"}

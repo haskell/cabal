@@ -7,7 +7,7 @@ main = cabalTest $ do
   --
   -- Note: we bundle the configure script so no need to autoreconf
   -- while building
-  skipIf =<< isWindows
+  skipIfWindows
   traverse_ check
     [ "foo bar"
     , "foo\tbar"
@@ -49,5 +49,5 @@ main = cabalTest $ do
                       (Just (testCurrentDir env))
                       (testEnvironment env)
                       (programPath configured_prog)
-                      args
+                      args Nothing
         recordLog r

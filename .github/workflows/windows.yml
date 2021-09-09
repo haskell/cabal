@@ -9,10 +9,7 @@ on:
   push:
     branches:
       - master
-      - "3.2"
   pull_request:
-    branches:
-      - master
   release:
     types:
       - created
@@ -23,46 +20,39 @@ jobs:
     name: test ghc-8.6.5
     runs-on: windows-latest
     steps:
-      - name: Configure Chocolatey
-        run: choco source add -n mistuke -s https://www.myget.org/F/mistuke/api/v2
-      - name: Install msys2
-        run: choco install -y msys2
-      - name: Install Cabal
-        run: choco install -y cabal --version 3.0.0.0
-      - name: Install GHC
-        run: choco install -y ghc --version 8.6.5
-      - name: Set PATH
-        run: |
-          [Environment]::GetEnvironmentVariable("Path")
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\cabal\tools\cabal-3.0.0.0"
-          Write-Host "::add-path::C:\ProgramData\chocolatey\lib\ghc\tools\ghc-8.6.5\bin"
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.6.5'
+          cabal-version: '3.2.0.0'
       - name: Print versions
         run: |
-          ghc --version
+          [Environment]::GetEnvironmentVariable("Path")
           cabal --version
+          ghc --version
           cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
       - uses: actions/cache@v1
         with:
           path: C:\SR
-          key: linux-store-meta
+          key: windows-store-meta
       - name: Update Hackage index
         run: cabal v2-update
-      - uses: actions/checkout@v1
-      - name: make cabal-install-dev
-        run: runghc cabal-dev-scripts/src/Preprocessor.hs -o cabal-install/cabal-install.cabal -f CABAL_FLAG_LIB cabal-install/cabal-install.cabal.pp
+      - uses: actions/checkout@v2
       # We cannot ask for all dependencies, but we can for Cabal.
       - name: cabal v2-build Cabal --only-dependencies
         run: cabal v2-build Cabal --only-dependencies
       - name: cabal v2-build
         run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
       - name: cabal-install memory-usage-tests
         run: |
           cd cabal-install
           cabal v2-run cabal-install:memory-usage-tests
-      - name: cabal-install solver-quickcheck
+      - name: cabal-install long-tests
         run: |
           cd cabal-install
-          cabal v2-run cabal-install:solver-quickcheck
+          cabal v2-run cabal-install:long-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-install integration-tests2
         run: |
           cd cabal-install
@@ -73,4 +63,52 @@ jobs:
           cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
-        run: cabal v2-run cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.3.0.0\x\cabal\build\cabal\cabal.exe
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
+  test-windows-8_10_4:
+    name: test ghc-8.10.4
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.10.4'
+          cabal-version: '3.2.0.0'
+      - name: Print versions
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v2
+      # We cannot ask for all dependencies, but we can for Cabal.
+      - name: cabal v2-build Cabal --only-dependencies
+        run: cabal v2-build Cabal --only-dependencies
+      - name: cabal v2-build
+        run: cabal v2-build all
+      - name: Cabal unit-tests
+        run: |
+          cabal v2-test Cabal-tests
+      - name: cabal-install memory-usage-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:memory-usage-tests
+      - name: cabal-install long-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:long-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
+      - name: cabal-install integration-tests2
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:integration-tests2
+      - name: cabal-install unit-tests
+        run: |
+          cd cabal-install
+          cabal v2-run cabal-install:unit-tests -- --pattern "! (/FileMonitor/ || /VCS/ || /Get/)"
+      - name: cabal-tests
+        # Using only one job, -j1, to fail less.
+        run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.4\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe

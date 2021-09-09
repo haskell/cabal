@@ -1,0 +1,11 @@
+The 'subdir' field of a source-repository is not a good relative path: "trailing same directory segment: ."
+The paths 'files/<>/*.txt', 'c/**/*.c', 'C:foo/bar', '||s' are invalid on Windows, which would cause portability problems for this package. Windows file names cannot contain any of the characters ":*?<>|" and there a few reserved names including "aux", "nul", "con", "prn", "com1-9", "lpt1-9" and "clock$".
+'hs-source-dirs: ../../assoc/src' is a relative path outside of the source tree. This will not work when generating a tarball with 'sdist'.
+'extra-source-files: files/**/*.txt/' is not a good relative path: "trailing slash"
+'extra-source-files: files/../foo.txt' is not a good relative path: "parent directory segment: .."
+'license-file: LICENSE2/' is not a good relative path: "trailing slash"
+'license-file: .' is not a good relative path: "trailing dot segment"
+'hs-source-dirs: src/.' is not a good relative path: "trailing same directory segment: ."
+'hs-source-dirs: src/../src' is not a good relative path: "parent directory segment: .."
+'hs-source-dirs: src/../../assoc/src' is not a good relative path: "parent directory segment: .."
+'hs-source-dirs: ../../assoc/src' is not a good relative path: "parent directory segment: .."

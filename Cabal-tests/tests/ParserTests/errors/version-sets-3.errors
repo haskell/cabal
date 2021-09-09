@@ -1,0 +1,5 @@
+VERSION: Just (mkVersion [3,0])
+version-sets-3.cabal:8:40: 
+unexpected "}"
+expecting space or version digit (integral without leading zeroes)
+

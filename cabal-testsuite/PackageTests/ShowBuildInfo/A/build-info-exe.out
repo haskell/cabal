@@ -1,0 +1,8 @@
+# cabal build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - A-0.1.0.0 (exe:A) (first run)
+Configuring executable 'A' for A-0.1.0.0..
+Preprocessing executable 'A' for A-0.1.0.0..
+Building executable 'A' for A-0.1.0.0..

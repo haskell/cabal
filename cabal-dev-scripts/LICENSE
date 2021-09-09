@@ -1,9 +1,13 @@
-opyright (c) 2017, Cabal Development Team
+Copyright (c) 2003-2020, Cabal Development Team.
+See the AUTHORS file for the full list of copyright holders.
+
+See */LICENSE for the copyright holders of the subcomponents.
 
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+modification, are permitted provided that the following conditions are
+met:
 
     * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
@@ -13,7 +17,7 @@ modification, are permitted provided that the following conditions are met:
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the name of Cabal Development Team nor the names of other
+    * Neither the name of Isaac Jones nor the names of other
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
 

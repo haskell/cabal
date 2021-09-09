@@ -1,0 +1,27 @@
+cabal-version: 3.0
+name: cmmexperiment
+version: 0
+build-type: Simple
+
+-- This code is extracted form ghc-heap
+-- Copyright (c) 2012-2013, Joachim Breitner
+-- (and probably -2020 GHC Team)
+-- Under BSD-3-Clause
+
+library 
+  default-language: Haskell2010
+  hs-source-dirs: src
+  build-depends: base
+  exposed-modules: Demo
+
+  cmm-sources: cbits/HeapPrim.cmm
+  if impl(ghc >=8.2)
+    cmm-options: -ddump-cmm-verbose
+  else
+    cmm-options: -ddump-cmm
+
+executable demo
+  default-language: Haskell2010
+  main-is: Main.hs
+  hs-source-dirs: demo
+  build-depends: base, cmmexperiment

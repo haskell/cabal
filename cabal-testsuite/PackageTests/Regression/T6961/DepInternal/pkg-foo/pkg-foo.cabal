@@ -1,0 +1,19 @@
+cabal-version: 2.0
+name: pkg-foo
+version: 0
+build-type: Simple
+
+synopsis: This should work
+category: Test
+
+library
+  default-language: Haskell2010
+  hs-source-dirs: src
+  build-depends: base <5, internal-lib
+  exposed-modules: Lib
+
+library internal-lib
+  default-language: Haskell2010
+  hs-source-dirs: internal
+  build-depends: base <5
+  exposed-modules: InternalLib

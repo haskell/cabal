@@ -1,0 +1,14 @@
+cabal-version: 3.0
+name:          pkg-def
+version:       0.1.0.0
+
+-- there was public library. But we shouldn't need one.
+-- https://github.com/haskell/cabal/issues/6038
+
+library publib
+  default-language: Haskell2010
+  visibility:       public
+  hs-source-dirs:   publib
+  build-depends:    base
+  exposed-modules:  PkgDef
+

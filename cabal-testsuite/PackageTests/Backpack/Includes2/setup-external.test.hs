@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 main = setupAndCabalTest $ do
-    skipUnless =<< ghcVersionIs (>= mkVersion [8,1])
+    skipUnlessGhcVersion ">= 8.1"
     withPackageDb $ do
       withDirectory "mylib" $ setup_install_with_docs ["--ipid", "mylib-0.1.0.0"]
       withDirectory "mysql" $ setup_install_with_docs ["--ipid", "mysql-0.1.0.0"]

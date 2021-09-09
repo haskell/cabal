@@ -1,0 +1,8 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - zlib-1.1 (lib:zlib) (first run)
+Configuring zlib-1.1...
+Preprocessing library for zlib-1.1..
+Building library for zlib-1.1..

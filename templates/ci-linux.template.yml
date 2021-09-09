@@ -1,0 +1,69 @@
+# This file is auto-generated
+#
+# To regenerate it run
+#
+#     make github-actions
+#
+name: Linux
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+    types:
+      - created
+
+jobs:
+{% for job in jobs %}
+  validate-{{ mangleVersion job.version }}{% if job.old %}-old{% endif %}:
+    name: validate.sh {%if job.old %}old GHCs{% else %}ghc-{{job.version}}{% endif %}
+    runs-on: ubuntu-18.04
+{% for needs in job.needs %}
+    needs: validate-{{ mangleVersion needs }}
+{% endfor %}
+    container:
+      image: phadej/ghc:{{job.version}}-{% if job.xenial %}xenial{% else %}bionic{% endif %}
+    steps:
+      - name: System info
+        run: |
+          uname -a
+      - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+        run: |
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+      - name: Install cabal-plan
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
+          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
+          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
+          rm -f cabal-plan.xz
+          chmod a+x $HOME/.cabal/bin/cabal-plan
+{% if or job.xenial job.old %}
+      - name: apt-get update
+        run: apt-get update
+{% endif %}
+{% if job.xenial %}
+      - name: Install dynamic libraries
+        run: apt-get install -y ghc-{{job.version}}-dyn
+{% endif %}
+{% if job.old %}
+      - name: Install extra compilers
+        run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
+{% endif %}
+      - name: Update Hackage index
+        run: cabal v2-update
+      # https://github.com/actions/checkout/issues/170
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          echo $GITHUB_REF $GITHUB_SHA
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
+{% for step in job.steps %}
+      - name: Validate {{step}}
+        run: sh validate.sh -j 2 -w ghc-{{job.version}} -v {{job.flags}} -s {{step}}
+{% endfor %}
+{% endfor %}

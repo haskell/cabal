@@ -1,0 +1,3 @@
+public-multilib-1.cabal:16:27: visibility is experimental feature (issue #5660)
+No 'maintainer' field.
+No 'description' field.

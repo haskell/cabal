@@ -1,0 +1,34 @@
+name:               cabal-benchmarks
+version:            3
+copyright:          2003-2021, Cabal Development Team (see AUTHORS file)
+license:            BSD3
+license-file:       LICENSE
+author:             Cabal Development Team <cabal-devel@haskell.org>
+maintainer:         cabal-devel@haskell.org
+homepage:           http://www.haskell.org/cabal/
+bug-reports:        https://github.com/haskell/cabal/issues
+synopsis:           Benchmarks for the cabal dependency solver
+description:
+  This package contains benchmarks that test cabal's dependency solver by running the cabal executable.
+
+category:           Distribution
+cabal-version:      >=1.10
+build-type:         Simple
+extra-source-files: README.md
+
+source-repository head
+  type:     git
+  location: https://github.com/haskell/cabal/
+  subdir:   cabal-benchmarks
+
+test-suite cabal-benchmarks
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  main-is:          CabalBenchmarks.hs
+  hs-source-dirs:   bench
+  ghc-options:      -threaded -Wall -fwarn-tabs
+  build-depends:
+      base
+    , bytestring
+    , Cabal
+    , criterion   >=1.5.6.2 && <1.6

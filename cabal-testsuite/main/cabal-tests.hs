@@ -7,6 +7,7 @@ import Test.Cabal.Workdir
 import Test.Cabal.Script
 import Test.Cabal.Server
 import Test.Cabal.Monad
+import Test.Cabal.TestCode
 
 import Distribution.Verbosity        (normal, verbose, Verbosity)
 import Distribution.Simple.Utils     (getDirectoryContentsRecursive)
@@ -17,7 +18,6 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Exception
 import Control.Monad
-import qualified Control.Exception as E
 import GHC.Conc (numCapabilities)
 import Data.List
 import Text.Printf
@@ -111,7 +111,11 @@ main = do
         hPutStrLn stderr $ "Using dist dir: " ++ dist_dir
     -- Get ready to go!
     senv <- mkScriptEnv verbosity
-    let runTest runner path
+
+    let runTest :: (Maybe cwd -> [unusedEnv] -> FilePath -> [String] -> IO result)
+                -> FilePath
+                -> IO result
+        runTest runner path
             = runner Nothing [] path $
                 ["--builddir", dist_dir, path] ++ renderCommonArgs (mainCommonArgs args)
 
@@ -144,6 +148,7 @@ main = do
             work_queue <- newMVar all_tests
             unexpected_fails_var  <- newMVar []
             unexpected_passes_var <- newMVar []
+            skipped_var <- newMVar []
 
             chan <- newChan
             let logAll msg = writeChan chan (ServerLogMsg AllServers msg)
@@ -174,25 +179,16 @@ main = do
                             r <- runTest (runOnServer server) path
                             end <- getTime
                             let time = end - start
-                                code = serverResultExitCode r
-                                status
-                                  | code == ExitSuccess
-                                  = "OK"
-                                  | code == ExitFailure skipExitCode
-                                  = "SKIP"
-                                  | code == ExitFailure expectedBrokenExitCode
-                                  = "KNOWN FAIL"
-                                  | code == ExitFailure unexpectedSuccessExitCode
-                                  = "UNEXPECTED OK"
-                                  | otherwise
-                                  = "FAIL"
-                            unless (mainArgHideSuccesses args && status == "OK") $ do
+                                code = serverResultTestCode r
+
+                            unless (mainArgHideSuccesses args && code == TestCodeOk) $ do
                                 logMeta $
-                                    path ++ replicate (margin - length path) ' ' ++ status ++
+                                    path ++ replicate (margin - length path) ' ' ++ displayTestCode code ++
                                     if time >= 0.01
                                         then printf " (%.2fs)" time
                                         else ""
-                            when (status == "FAIL") $ do -- TODO: ADT
+
+                            when (code == TestCodeFail) $ do
                                 let description
                                       | mainArgQuiet args = serverResultStderr r
                                       | otherwise =
@@ -204,54 +200,38 @@ main = do
                                        ++ "*** unexpected failure for " ++ path ++ "\n\n"
                                 modifyMVar_ unexpected_fails_var $ \paths ->
                                     return (path:paths)
-                            when (status == "UNEXPECTED OK") $
+
+                            when (code == TestCodeUnexpectedOk) $
                                 modifyMVar_ unexpected_passes_var $ \paths ->
                                     return (path:paths)
+
+                            when (isTestCodeSkip code) $
+                                modifyMVar_ skipped_var $ \paths ->
+                                    return (path:paths)
+
                             go server
 
-            mask $ \restore -> do
-                -- Start as many threads as requested by -j to spawn
-                -- GHCi servers and start running tests off of the
-                -- run queue.
-                -- NB: we don't use 'withAsync' because it's more
-                -- convenient to generate n threads this way (and when
-                -- one fails, we can cancel everyone at once.)
-                as <- replicateM (mainArgThreads args)
-                                 (async (restore (withNewServer chan senv go)))
-                restore (mapM_ wait as) `E.catch` \e -> do
-                    -- Be patient, because if you ^C again, you might
-                    -- leave some zombie GHCi processes around!
-                    logAll "Shutting down GHCi sessions (please be patient)..."
-                    -- Start cleanup on all threads concurrently.
-                    mapM_ (async . cancel) as
-                    -- Wait for the threads to finish cleaning up.  NB:
-                    -- do NOT wait on the cancellation asynchronous actions;
-                    -- these complete when the message is *delivered*, not
-                    -- when cleanup is done.
-                    rs <- mapM waitCatch as
-                    -- Take a look at the returned exit codes, and figure out
-                    -- if something errored in an unexpected way.  This
-                    -- could mean there's a zombie.
-                    forM_ rs $ \r -> case r of
-                        Left err
-                          | Just ThreadKilled <- fromException err
-                          -> return ()
-                          | otherwise
-                          -> logAll ("Unexpected failure on GHCi exit: " ++ show e)
-                        _ -> return ()
-                    -- Propagate the exception
-                    throwIO (e :: SomeException)
+            -- Start as many threads as requested by -j to spawn
+            -- GHCi servers and start running tests off of the
+            -- run queue.
+            replicateConcurrently_ (mainArgThreads args) (withNewServer chan senv go)
 
             unexpected_fails  <- takeMVar unexpected_fails_var
             unexpected_passes <- takeMVar unexpected_passes_var
-            if not (null (unexpected_fails ++ unexpected_passes))
-                then do
-                    unless (null unexpected_passes) . logAll $
-                        "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
-                    unless (null unexpected_fails) . logAll $
-                        "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
-                    exitFailure
-                else logAll "OK"
+            skipped           <- takeMVar skipped_var
+
+            -- print skipped
+            logAll $ "SKIPPED " ++ show (length skipped) ++ " tests"
+
+            -- print failed or ook
+            if null (unexpected_fails ++ unexpected_passes)
+            then logAll "OK"
+            else do
+                unless (null unexpected_passes) . logAll $
+                    "UNEXPECTED OK: " ++ intercalate " " unexpected_passes
+                unless (null unexpected_fails) . logAll $
+                    "UNEXPECTED FAIL: " ++ intercalate " " unexpected_fails
+                exitFailure
 
 findTests :: IO [FilePath]
 findTests = getDirectoryContentsRecursive "."
