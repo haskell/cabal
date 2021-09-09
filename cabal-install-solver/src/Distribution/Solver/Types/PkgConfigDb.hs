@@ -12,7 +12,7 @@
 -- Read the list of packages available to pkg-config.
 -----------------------------------------------------------------------------
 module Distribution.Solver.Types.PkgConfigDb
-    ( PkgConfigDb
+    ( PkgConfigDb (..)
     , readPkgConfigDb
     , pkgConfigDbFromList
     , pkgConfigPkgIsPresent
