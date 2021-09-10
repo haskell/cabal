@@ -396,8 +396,9 @@ curlTransport prog =
                    [ ["--header", show name ++ ": " ++ value]
                    | Header name value <- reqHeaders ]
 
-          resp <- getProgramInvocationOutput verbosity
+          resp <- getProgramInvocationOutput verbosity $ addAuthConfig Nothing uri
                     (programInvocation prog args)
+
           withFile tmpFile ReadMode $ \hnd -> do
             headers <- hGetContents hnd
             (code, _err, etag') <- parseResponse verbosity uri resp headers
@@ -405,15 +406,25 @@ curlTransport prog =
 
     posthttp = noPostYet
 
-    addAuthConfig auth progInvocation = progInvocation
-      { progInvokeInput = do
-          (uname, passwd) <- auth
-          return $ IODataText $ unlines
-            [ "--digest"
-            , "--user " ++ uname ++ ":" ++ passwd
-            ]
-      , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
-      }
+    addAuthConfig auth uri progInvocation = do
+      case uriAuthority uri of
+        Just (URIAuth u _ _) -> progInvocation
+          -- all `uriUserInfo` values have '@' as a suffix. drop it.
+          { progInvokeInput = Just $ IODataText $ unlines $
+              [ "--digest"
+              , "--user " ++ filter (/= '@') u
+              ]
+          , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+          }
+        Nothing -> progInvocation
+          { progInvokeInput = do
+              (uname, passwd) <- auth
+              return $ IODataText $ unlines
+                [ "--digest"
+                , "--user " ++ uname ++ ":" ++ passwd
+                ]
+          , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+          }
 
     posthttpfile verbosity uri path auth = do
         let args = [ show uri
@@ -424,7 +435,7 @@ curlTransport prog =
                    , "--header", "Accept: text/plain"
                    , "--location"
                    ]
-        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
+        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth uri
                   (programInvocation prog args)
         (code, err, _etag) <- parseResponse verbosity uri resp ""
         return (code, err)
@@ -441,7 +452,7 @@ curlTransport prog =
                 ++ concat
                    [ ["--header", show name ++ ": " ++ value]
                    | Header name value <- headers ]
-        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
+        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth uri
                   (programInvocation prog args)
         (code, err, _etag) <- parseResponse verbosity uri resp ""
         return (code, err)
