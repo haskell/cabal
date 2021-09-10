@@ -7,8 +7,7 @@ packages: Cabal/Cabal-tree-diff/
 packages: Cabal/Cabal-described
 packages: cabal-benchmarks/
 
--- Uncomment to allow picking up extra local unpacked deps:
---optional-packages: */
+optional-packages: ./vendored/*/*.cabal
 
 -- Remove after hackage-repo-tool release
 allow-newer:
