@@ -1,4 +1,0 @@
-synopsis: --dry-run and --only-download effect v2-configure, v2-freeze, v2-run, and v2-exec
-pr: #7407
-issues: #7379
-decription: { v2-configure, v2-freeze, v2-run, and v2-exec now behave expectedly under the --dry-run and --only-download flags }

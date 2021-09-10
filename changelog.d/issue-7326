@@ -1,4 +1,0 @@
-synopsis: Assume list-bin target selectors are for executables
-packages: cabal-install
-issues: #7326
-prs: #7335
