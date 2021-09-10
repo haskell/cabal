@@ -1,0 +1,10 @@
+synopsis: Backtrack when no pkg-config is present
+packages: Cabal
+prs: #7621
+issues: #7448
+
+description: {
+
+When solving for pkgconfig-depends, when pkg-config is not present, the cabal solver will now backtrack and try a different automatic flag and dependency configuration, just as it does if pkg-config is present, but does not contain the specified package.
+
+}
