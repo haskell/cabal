@@ -33,9 +33,11 @@ main = defaultMainWithHooks
         platformIndependent = True,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
           do info verbosity ("Preprocessing " ++ inFile ++ " to " ++ outFile)
-             callProcess progPath [inFile, outFile],
 #if MIN_VERSION_Cabal(3,7,0)
+             callProcess progPath [inFile, outFile],
         ppOrdering = unsorted
+#else
+             callProcess progPath [inFile, outFile]
 #endif
         }
       where
