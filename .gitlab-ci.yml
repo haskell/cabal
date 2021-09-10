@@ -3,7 +3,7 @@ variables:
   DOCKER_REV: "853f348f9caf38b08740b280296fbd34e09abb3a"
 
   GHC_VERSION: 8.10.7
-  CABAL_INSTALL_VERSION: 3.2.0.0
+  CABAL_INSTALL_VERSION: 3.4.0.0
 
 workflow:
   rules:
@@ -48,12 +48,37 @@ build-x86_64-linux-alpine:
 build-x86_64-freebsd:
   extends: .build
   tags:
-    - x86_64-freebsd
+    - x86_64-freebsd13
 
 build-x86_64-darwin:
   extends: .build
   tags:
     - x86_64-darwin
+
+build-aarch64-darwin:
+  tags:
+    - aarch64-darwin-m1
+  script: |
+    set -Eeuo pipefail
+    function runInNixShell() {
+      time nix-shell $CI_PROJECT_DIR/.gitlab/shell.nix \
+        -I nixpkgs=https://github.com/angerman/nixpkgs/archive/75f7281738b.tar.gz \
+        --argstr system "aarch64-darwin" \
+        --pure \
+        --keep CI_PROJECT_DIR \
+        --keep MACOSX_DEPLOYMENT_TARGET \
+        --keep GHC_VERSION \
+        --keep CABAL_INSTALL_VERSION \
+        --run "$1" 2>&1
+    }
+    runInNixShell "cabal update && mkdir vendored && cd vendored && cabal unpack network-3.1.2.1 && cd network-3.1.2.1 && autoreconf -fi" 2>&1
+    runInNixShell "./.gitlab/ci.sh" 2>&1
+  variables:
+    MACOSX_DEPLOYMENT_TARGET: "10.7"
+  artifacts:
+    expire_in: 2 week
+    paths:
+      - out
 
 build-x86_64-windows:
   extends: .build

@@ -13,8 +13,7 @@ packages: cabal-benchmarks/
 
 packages: vendor/cabal-doctest-1.0.8
 
--- Uncomment to allow picking up extra local unpacked deps:
---optional-packages: */
+optional-packages: ./vendored/*/*.cabal
 
 -- Remove after hackage-repo-tool release
 allow-newer:
