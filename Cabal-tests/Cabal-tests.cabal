@@ -31,6 +31,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Described
     UnitTests.Distribution.PkgconfigVersion
+    UnitTests.Distribution.Simple.Command
     UnitTests.Distribution.Simple.Glob
     UnitTests.Distribution.Simple.Program.GHC
     UnitTests.Distribution.Simple.Program.Internal

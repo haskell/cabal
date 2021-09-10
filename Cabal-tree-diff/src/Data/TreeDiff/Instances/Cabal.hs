@@ -29,6 +29,7 @@ import Distribution.Simple.Setup                   (HaddockTarget, TestShowDetai
 import Distribution.System
 import Distribution.Types.AbiHash                  (AbiHash)
 import Distribution.Types.ComponentId              (ComponentId)
+import Distribution.Types.DumpBuildInfo            (DumpBuildInfo)
 import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.UnitId                   (DefUnitId, UnitId)
 import Distribution.Utils.NubList                  (NubList)
@@ -74,6 +75,7 @@ instance ToExpr CompilerId
 instance ToExpr ComponentId
 instance ToExpr DebugInfoLevel
 instance ToExpr DefUnitId
+instance ToExpr DumpBuildInfo
 instance ToExpr ExeDependency
 instance ToExpr Executable
 instance ToExpr ExecutableScope

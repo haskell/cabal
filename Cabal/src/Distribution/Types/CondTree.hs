@@ -10,6 +10,7 @@ module Distribution.Types.CondTree (
     CondBranch(..),
     condIfThen,
     condIfThenElse,
+    foldCondTree,
     mapCondTree,
     mapTreeConstrs,
     mapTreeConds,
@@ -179,3 +180,15 @@ ignoreConditions :: (Semigroup a, Semigroup c) => CondTree v c a -> (a, c)
 ignoreConditions (CondNode a c ifs) = foldl (<>) (a, c) $ concatMap f ifs
   where f (CondBranch _ t me) = ignoreConditions t
                        : maybeToList (fmap ignoreConditions me)
+
+
+-- | Flatten a CondTree. This will traverse the CondTree by taking all
+--  possible paths into account, but merging inclusive when two paths
+--  may co-exist, and exclusively when the paths are an if/else
+foldCondTree :: forall b c a v. b -> ((c, a) -> b) -> (b -> b -> b) -> (b -> b -> b) -> CondTree v c a -> b
+foldCondTree e u mergeInclusive mergeExclusive = goTree
+  where
+    goTree :: CondTree v c a -> b
+    goTree (CondNode a c ifs) = u (c, a) `mergeInclusive` foldl goBranch e ifs
+    goBranch :: b -> CondBranch v c a -> b
+    goBranch acc (CondBranch _ t mt) = mergeInclusive acc (maybe (goTree t) (mergeExclusive (goTree t) . goTree) mt)

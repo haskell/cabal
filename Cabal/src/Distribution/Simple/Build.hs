@@ -19,7 +19,7 @@
 --
 
 module Distribution.Simple.Build (
-    build, showBuildInfo, repl,
+    build, repl,
     startInterpreter,
 
     initialBuildSteps,
@@ -69,6 +69,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.BuildToolDepends
 import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program.Builtin (ghcProgram, ghcjsProgram, uhcProgram, jhcProgram, haskellSuiteProgram)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.ShowBuildInfo
@@ -87,10 +88,10 @@ import Distribution.Version (thisVersion)
 import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad
-import Data.ByteString.Lazy (ByteString)
 import qualified Data.Set as Set
+import qualified Data.ByteString.Lazy as LBS
 import System.FilePath ( (</>), (<.>), takeDirectory )
-import System.Directory ( getCurrentDirectory )
+import System.Directory ( getCurrentDirectory, removeFile, doesFileExist )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -114,6 +115,12 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
+  -- Before the actual building, dump out build-information.
+  -- This way, if the actual compilation failed, the options have still been
+  -- dumped.
+  dumpBuildInfo verbosity distPref (configDumpBuildInfo (configFlags lbi)) pkg_descr lbi flags
+
+  -- Now do the actual building
   (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
     let comp = targetComponent target
         clbi = targetCLBI target
@@ -128,22 +135,65 @@ build pkg_descr lbi flags suffixes = do
     mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
                    lbi' suffixes comp clbi distPref
     return (maybe index (Index.insert `flip` index) mb_ipi)
+
   return ()
  where
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
 
 
-showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
-  -> LocalBuildInfo      -- ^ Configuration information
-  -> BuildFlags          -- ^ Flags that the user passed to build
-  -> IO ByteString
-showBuildInfo pkg_descr lbi flags = do
-  let verbosity = fromFlag (buildVerbosity flags)
-  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
-  let targetsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-      doc = mkBuildInfo pkg_descr lbi flags targetsToBuild
-  return $ renderJson doc
+-- | Write available build information for 'LocalBuildInfo' to disk.
+--
+-- Dumps detailed build information 'build-info.json' to the given directory.
+-- Build information contains basics such as compiler details, but also
+-- lists what modules a component contains and how to compile the component, assuming
+-- lib:Cabal made sure that dependencies are up-to-date.
+dumpBuildInfo :: Verbosity
+              -> FilePath           -- ^ To which directory should the build-info be dumped?
+              -> Flag DumpBuildInfo -- ^ Should we dump detailed build information for this component?
+              -> PackageDescription -- ^ Mostly information from the .cabal file
+              -> LocalBuildInfo     -- ^ Configuration information
+              -> BuildFlags         -- ^ Flags that the user passed to build
+              -> IO ()
+dumpBuildInfo verbosity distPref dumpBuildInfoFlag pkg_descr lbi flags = do
+  when shouldDumpBuildInfo $ do
+    -- Changing this line might break consumers of the dumped build info.
+    -- Announce changes on mailing lists!
+    let activeTargets = allTargetsInBuildOrder' pkg_descr lbi
+    info verbosity $ "Dump build information for: "
+                  ++ intercalate ", "
+                      (map (showComponentName . componentLocalName . targetCLBI)
+                          activeTargets)
+    pwd <- getCurrentDirectory
+
+    (compilerProg, _) <- case flavorToProgram (compilerFlavor (compiler lbi)) of
+      Nothing -> die' verbosity $ "dumpBuildInfo: Unknown compiler flavor: "
+                               ++ show (compilerFlavor (compiler lbi))
+      Just program -> requireProgram verbosity program (withPrograms lbi)
+
+    let (warns, json) = mkBuildInfo pwd pkg_descr lbi flags (compilerProg, compiler lbi) activeTargets
+        buildInfoText = renderJson json
+    unless (null warns) $
+      warn verbosity $ "Encountered warnings while dumping build-info:\n"
+                    ++ unlines warns
+    LBS.writeFile (buildInfoPref distPref) buildInfoText
+
+  when (not shouldDumpBuildInfo) $ do
+    -- Remove existing build-info.json as it might be outdated now.
+    exists <- doesFileExist (buildInfoPref distPref)
+    when exists $ removeFile (buildInfoPref distPref)
+  where
+    shouldDumpBuildInfo = fromFlagOrDefault NoDumpBuildInfo dumpBuildInfoFlag == DumpBuildInfo
+
+    -- | Given the flavor of the compiler, try to find out
+    -- which program we need.
+    flavorToProgram :: CompilerFlavor -> Maybe Program
+    flavorToProgram GHC             = Just ghcProgram
+    flavorToProgram GHCJS           = Just ghcjsProgram
+    flavorToProgram UHC             = Just uhcProgram
+    flavorToProgram JHC             = Just jhcProgram
+    flavorToProgram HaskellSuite {} = Just haskellSuiteProgram
+    flavorToProgram _     = Nothing
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file

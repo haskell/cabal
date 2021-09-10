@@ -5,6 +5,7 @@ module Test.Cabal.Plan (
     Plan,
     DistDirOrBinFile(..),
     planDistDir,
+    buildInfoFile,
 ) where
 
 import Distribution.Parsec (simpleParsec)
@@ -27,6 +28,7 @@ data InstallItem
 -- local or inplace package
 data ConfiguredInplace = ConfiguredInplace
     { configuredInplaceDistDir       :: FilePath
+    , configuredInplaceBuildInfo     :: Maybe FilePath
     , configuredInplacePackageName   :: PackageName
     , configuredInplaceComponentName :: Maybe ComponentName }
 
@@ -57,9 +59,10 @@ instance FromJSON InstallItem where
 instance FromJSON ConfiguredInplace where
     parseJSON (Object v) = do
         dist_dir <- v .: "dist-dir"
+        build_info <- v .:? "build-info"
         pkg_name <- v .: "pkg-name"
         component_name <- v .:? "component-name"
-        return (ConfiguredInplace dist_dir pkg_name component_name)
+        return (ConfiguredInplace dist_dir build_info pkg_name component_name)
     parseJSON invalid = typeMismatch "ConfiguredInplace" invalid
 
 instance FromJSON ConfiguredGlobal where
@@ -109,3 +112,25 @@ planDistDir plan pkg_name cname =
                     Nothing     -> True
                     Just cname' -> cname == cname'
         return $ DistDir $ configuredInplaceDistDir conf
+
+buildInfoFile :: Plan -> PackageName -> ComponentName -> FilePath
+buildInfoFile plan pkg_name cname =
+    case concatMap p (planInstallPlan plan) of
+        [Just x] -> x
+        [Nothing] -> error $ "buildInfoFile: component " ++ prettyShow cname
+                    ++ " of package " ++ prettyShow pkg_name ++ " does not"
+                    ++ " have a build info-file"
+        []  -> error $ "buildInfoFile: component " ++ prettyShow cname
+                    ++ " of package " ++ prettyShow pkg_name ++ " either does not"
+                    ++ " exist in the install plan or build info-file"
+        _   -> error $ "buildInfoFile: found multiple copies of component " ++ prettyShow cname
+                    ++ " of package " ++ prettyShow pkg_name ++ " in install plan"
+  where
+    p APreExisting      = []
+    p (AConfiguredGlobal _) = []
+    p (AConfiguredInplace conf) = do
+        guard (configuredInplacePackageName conf == pkg_name)
+        guard $ case configuredInplaceComponentName conf of
+                    Nothing     -> True
+                    Just cname' -> cname == cname'
+        return $ configuredInplaceBuildInfo conf

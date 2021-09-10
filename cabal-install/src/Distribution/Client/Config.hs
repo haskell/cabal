@@ -409,6 +409,7 @@ instance Semigroup SavedConfig where
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
         configUseResponseFiles    = combine configUseResponseFiles,
+        configDumpBuildInfo       = combine configDumpBuildInfo,
         configAllowDependingOnPrivateLibs =
             combine configAllowDependingOnPrivateLibs
         }

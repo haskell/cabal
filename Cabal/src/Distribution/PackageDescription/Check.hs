@@ -155,6 +155,7 @@ checkPackage gpkg mpkg =
   ++ checkUnicodeXFields gpkg
   ++ checkPathsModuleExtensions pkg
   ++ checkSetupVersions gpkg
+  ++ checkDuplicateModules gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -241,13 +242,8 @@ checkLibrary :: PackageDescription -> Library -> [PackageCheck]
 checkLibrary pkg lib =
   catMaybes [
 
-    check (not (null moduleDuplicates)) $
-       PackageBuildImpossible $
-            "Duplicate modules in library: "
-         ++ commaSep (map prettyShow moduleDuplicates)
-
   -- TODO: This check is bogus if a required-signature was passed through
-  , check (null (explicitLibModules lib) && null (reexportedModules lib)) $
+    check (null (explicitLibModules lib) && null (reexportedModules lib)) $
       PackageDistSuspiciousWarn $
            showLibraryName (libName lib) ++ " does not expose any modules"
 
@@ -278,10 +274,6 @@ checkLibrary pkg lib =
       | specVersion pkg >= ver = Nothing
       | otherwise              = check cond pc
 
-    -- TODO: not sure if this check is always right in Backpack
-    moduleDuplicates = dups (explicitLibModules lib ++
-                             map moduleReexportName (reexportedModules lib))
-
 allExplicitIncludes :: L.HasBuildInfo a => a -> [FilePath]
 allExplicitIncludes x = view L.includes x ++ view L.installIncludes x
 
@@ -307,11 +299,6 @@ checkExecutable pkg exe =
            "The package uses a C/C++/obj-C source file for the 'main-is' field. "
         ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
 
-  , check (not (null moduleDuplicates)) $
-       PackageBuildImpossible $
-            "Duplicate modules in executable '" ++ prettyShow (exeName exe) ++ "': "
-         ++ commaSep (map prettyShow moduleDuplicates)
-
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (exeModules exe)) (exeModulesAutogen exe)) $
@@ -324,8 +311,6 @@ checkExecutable pkg exe =
       (not $ and $ map (flip elem (view L.includes exe)) (view L.autogenIncludes exe)) $
       PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
-  where
-    moduleDuplicates = dups (exeModules exe)
 
 checkTestSuite :: PackageDescription -> TestSuite -> [PackageCheck]
 checkTestSuite pkg test =
@@ -344,11 +329,6 @@ checkTestSuite pkg test =
           ++ "The known test suite types are: "
           ++ commaSep (map prettyShow knownTestTypes)
       _ -> Nothing
-
-  , check (not $ null moduleDuplicates) $
-      PackageBuildImpossible $
-           "Duplicate modules in test suite '" ++ prettyShow (testName test) ++ "': "
-        ++ commaSep (map prettyShow moduleDuplicates)
 
   , check mainIsWrongExt $
       PackageBuildImpossible $
@@ -374,8 +354,6 @@ checkTestSuite pkg test =
       PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
   where
-    moduleDuplicates = dups $ testModules test
-
     mainIsWrongExt = case testInterface test of
       TestSuiteExeV10 _ f -> not $ fileExtensionSupportedLanguage f
       _                   -> False
@@ -402,11 +380,6 @@ checkBenchmark _pkg bm =
           ++ commaSep (map prettyShow knownBenchmarkTypes)
       _ -> Nothing
 
-  , check (not $ null moduleDuplicates) $
-      PackageBuildImpossible $
-           "Duplicate modules in benchmark '" ++ prettyShow (benchmarkName bm) ++ "': "
-        ++ commaSep (map prettyShow moduleDuplicates)
-
   , check mainIsWrongExt $
       PackageBuildImpossible $
            "The 'main-is' field must specify a '.hs' or '.lhs' file "
@@ -425,8 +398,6 @@ checkBenchmark _pkg bm =
       PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
   ]
   where
-    moduleDuplicates = dups $ benchmarkModules bm
-
     mainIsWrongExt = case benchmarkInterface bm of
       BenchmarkExeV10 _ f -> takeExtension f `notElem` [".hs", ".lhs"]
       _                   -> False
@@ -2157,6 +2128,29 @@ checkSetupVersions pkg =
         ++ "packages will need some changes to compile with it. If you are "
         ++ "not sure what upper bound to use then use the next major "
         ++ "version."
+
+checkDuplicateModules :: GenericPackageDescription -> [PackageCheck]
+checkDuplicateModules pkg =
+       concatMap checkLib   (maybe id (:) (condLibrary pkg) . map snd $ condSubLibraries pkg)
+    ++ concatMap checkExe   (map snd $ condExecutables pkg)
+    ++ concatMap checkTest  (map snd $ condTestSuites  pkg)
+    ++ concatMap checkBench (map snd $ condBenchmarks  pkg)
+  where
+    -- the duplicate modules check is has not been thoroughly vetted for backpack
+    checkLib   = checkDups "library" (\l -> explicitLibModules l ++ map moduleReexportName (reexportedModules l))
+    checkExe   = checkDups "executable" exeModules
+    checkTest  = checkDups "test suite" testModules
+    checkBench = checkDups "benchmark"  benchmarkModules
+    checkDups s getModules t =
+               let libMap = foldCondTree Map.empty
+                                         (\(_,v) -> Map.fromListWith (+) . map (\x -> (x,(1::Int))) $ getModules v )
+                                         (Map.unionWith (+)) -- if a module may occur in nonexclusive branches count it twice
+                                         (Map.unionWith max) -- a module occurs the max of times it might appear in exclusive branches
+                                         t
+                   dupLibs = Map.keys $ Map.filter (>1) libMap
+               in if null dupLibs
+                    then []
+                    else [PackageBuildImpossible $ "Duplicate modules in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibs)]
 
 -- ------------------------------------------------------------
 -- * Utils

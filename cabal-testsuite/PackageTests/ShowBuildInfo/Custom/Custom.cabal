@@ -1,0 +1,21 @@
+cabal-version:      3.0
+name:               Custom
+version:            0.1.0.0
+
+build-type:         Custom
+
+custom-setup
+  setup-depends: Cabal >= 3.7, base
+
+library
+    exposed-modules:  MyLib
+    build-depends:    base
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable great-exe
+    main-is:          Main.hs
+    build-depends:    base, Custom
+    hs-source-dirs:   app
+    default-language: Haskell2010
+

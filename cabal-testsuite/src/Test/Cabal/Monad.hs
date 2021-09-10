@@ -48,6 +48,8 @@ module Test.Cabal.Monad (
     CommonArgs(..),
     renderCommonArgs,
     commonArgParser,
+    -- * Version Constants
+    cabalVersionLibrary,
 ) where
 
 import Test.Cabal.Script
@@ -63,9 +65,11 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
 import Distribution.Simple.Configure
     ( configCompilerEx )
+import qualified Distribution.Simple.Utils as U (cabalVersion)
 import Distribution.Text
 
 import Distribution.Verbosity
+import Distribution.Version
 
 import Data.Monoid ((<>), mempty)
 import qualified Control.Exception as E
@@ -399,6 +403,7 @@ mkNormalizerEnv = do
     list_out <- liftIO $ readProcess (programPath ghc_pkg_program)
                       ["list", "--global", "--simple-output"] ""
     tmpDir <- liftIO $ getTemporaryDirectory
+
     return NormalizerEnv {
         normalizerRoot
             = addTrailingPathSeparator (testSourceDir env),
@@ -411,8 +416,14 @@ mkNormalizerEnv = do
         normalizerKnownPackages
             = mapMaybe simpleParse (words list_out),
         normalizerPlatform
-            = testPlatform env
+            = testPlatform env,
+        normalizerCabalVersion
+            = cabalVersionLibrary
     }
+    where
+
+cabalVersionLibrary :: Version
+cabalVersionLibrary = U.cabalVersion
 
 requireProgramM :: Program -> TestM ConfiguredProgram
 requireProgramM program = do

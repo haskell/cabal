@@ -559,7 +559,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
@@ -618,6 +618,7 @@ instance Arbitrary PackageConfig where
                          , packageConfigCoverage = x25
                          , packageConfigRelocatable = x26
                          , packageConfigDebugInfo = x27
+                         , packageConfigDumpBuildInfo = x27_1
                          , packageConfigRunTests = x28
                          , packageConfigDocumentation = x29
                          , packageConfigHaddockHoogle = x30
@@ -674,6 +675,7 @@ instance Arbitrary PackageConfig where
                       , packageConfigCoverage = x25'
                       , packageConfigRelocatable = x26'
                       , packageConfigDebugInfo = x27'
+                      , packageConfigDumpBuildInfo = x27_1'
                       , packageConfigRunTests = x28'
                       , packageConfigDocumentation = x29'
                       , packageConfigHaddockHoogle = x30'
@@ -703,7 +705,7 @@ instance Arbitrary PackageConfig where
           (x10', x11', x12', x13', x14'),
           (x15', x16', x53', x17', x18', x19')),
          ((x20', x20_1', x21', x22', x23', x24'),
-          (x25', x26', x27', x28', x29'),
+          (x25', x26', x27', x27_1', x28', x29'),
           (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x43', x39'),
           (x40', x41'),
@@ -717,7 +719,7 @@ instance Arbitrary PackageConfig where
                   map NonEmpty x18,
                   x19)),
                ((x20, x20_1, x21, x22, x23, x24),
-                 (x25, x26, x27, x28, x29),
+                 (x25, x26, x27, x27_1, x28, x29),
                  (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, x43, fmap NonEmpty x39),
                  (x40, x41),
