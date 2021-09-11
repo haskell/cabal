@@ -97,6 +97,9 @@ import           Distribution.Utils.NubList
 import           Distribution.Utils.LogProgress
 import           Distribution.Utils.MapAccum
 
+import qualified Distribution.Client.BuildReports.Storage as BuildReports
+         ( storeLocal, fromPlanningFailure )
+
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import           Distribution.Solver.Types.ConstraintSource
@@ -581,11 +584,14 @@ rebuildInstallPlan verbosity
                                    (compilerInfo compiler)
 
             notice verbosity "Resolving dependencies..."
-            plan <- foldProgress logMsg (die' verbosity) return $
+            planOrError <- foldProgress logMsg (pure . Left) (pure . Right) $
               planPackages verbosity compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
-            return (plan, pkgConfigDB, tis, ar)
+            case planOrError of
+              Left msg -> do reportPlanningFailure projectConfig compiler platform localPackages
+                             die' verbosity msg
+              Right plan -> return (plan, pkgConfigDB, tis, ar)
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
@@ -718,6 +724,44 @@ rebuildInstallPlan verbosity
         return improvedPlan
       where
         compid = compilerId (pkgConfigCompiler elaboratedShared)
+
+
+-- | If a 'PackageSpecifier' refers to a single package, return Just that
+-- package.
+
+
+reportPlanningFailure :: ProjectConfig -> Compiler -> Platform -> [PackageSpecifier UnresolvedSourcePackage] -> IO ()
+reportPlanningFailure projectConfig comp platform pkgSpecifiers = when reportFailure $
+
+    BuildReports.storeLocal (compilerInfo comp)
+                            (fromNubList $ projectConfigSummaryFile . projectConfigBuildOnly $ projectConfig)
+                            buildReports platform
+
+    -- TODO may want to handle the projectConfigLogFile paramenter here, or just remove it entirely?
+  where
+    reportFailure = Cabal.fromFlag . projectConfigReportPlanningFailure . projectConfigBuildOnly $ projectConfig
+    pkgids = mapMaybe theSpecifiedPackage pkgSpecifiers
+    buildReports = BuildReports.fromPlanningFailure platform
+                       (compilerId comp) pkgids
+                       -- TODO we may want to get more flag assignments and merge them here?
+                       (packageConfigFlagAssignment . projectConfigAllPackages $ projectConfig)
+
+    theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
+    theSpecifiedPackage pkgSpec =
+       case pkgSpec of
+          NamedPackage name [PackagePropertyVersion version]
+            -> PackageIdentifier name <$> trivialRange version
+          NamedPackage _ _ -> Nothing
+          SpecificSourcePackage pkg -> Just $ packageId pkg
+    -- | If a range includes only a single version, return Just that version.
+    trivialRange :: VersionRange -> Maybe Version
+    trivialRange = foldVersionRange
+        Nothing
+        Just     -- "== v"
+        (\_ -> Nothing)
+        (\_ -> Nothing)
+        (\_ _ -> Nothing)
+        (\_ _ -> Nothing)
 
 
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
