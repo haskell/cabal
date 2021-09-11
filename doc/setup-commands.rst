@@ -1050,7 +1050,8 @@ Miscellaneous options
         experimental. In the future we might add or remove fields, depending
         on the needs of other tooling.
 
-    :: example
+    .. code-block:: json
+
         {
             "cabal-lib-version": "<cabal lib version>",
             "compiler": {
