@@ -202,7 +202,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           die' verbosity $ "No support for preprocessing benchmark "
                         ++ "type " ++ prettyShow tt
   where
-    builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
+    builtinHaskellSuffixes = ["hs", "lhs", "lhs.tex", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]

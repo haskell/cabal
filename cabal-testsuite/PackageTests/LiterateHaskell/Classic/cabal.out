@@ -1,0 +1,10 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - test-0 (exe:foo) (first run)
+Configuring executable 'foo' for test-0..
+Preprocessing executable 'foo' for test-0..
+Building executable 'foo' for test-0..
+# test foo
+it works
