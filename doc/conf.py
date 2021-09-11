@@ -15,7 +15,11 @@ import cabaldomain
 
 version = "3.6.0.0"
 
-extensions = ['sphinx.ext.extlinks', 'sphinx.ext.todo']
+extensions = [
+    'sphinx.ext.extlinks',
+    'sphinx.ext.todo',
+    'sphinx-jsonschema'
+]
 
 templates_path = ['_templates']
 source_suffix = '.rst'
