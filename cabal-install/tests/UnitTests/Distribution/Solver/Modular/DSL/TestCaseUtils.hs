@@ -43,7 +43,7 @@ import Distribution.Verbosity
 
 -- cabal-install
 import qualified Distribution.Solver.Types.PackagePath as P
-import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
+import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb (..), pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 import Distribution.Client.Dependency (foldProgress)
@@ -166,7 +166,7 @@ mkTest :: ExampleDb
        -> [String]
        -> SolverResult
        -> SolverTest
-mkTest = mkTestExtLangPC Nothing Nothing []
+mkTest = mkTestExtLangPC Nothing Nothing (Just [])
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -174,7 +174,7 @@ mkTestExts :: [Extension]
            -> [String]
            -> SolverResult
            -> SolverTest
-mkTestExts exts = mkTestExtLangPC (Just exts) Nothing []
+mkTestExts exts = mkTestExtLangPC (Just exts) Nothing (Just [])
 
 mkTestLangs :: [Language]
             -> ExampleDb
@@ -182,25 +182,25 @@ mkTestLangs :: [Language]
             -> [String]
             -> SolverResult
             -> SolverTest
-mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) []
+mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) (Just [])
 
-mkTestPCDepends :: [(String, String)]
+mkTestPCDepends :: Maybe [(String, String)]
                 -> ExampleDb
                 -> String
                 -> [String]
                 -> SolverResult
                 -> SolverTest
-mkTestPCDepends pkgConfigDb = mkTestExtLangPC Nothing Nothing pkgConfigDb
+mkTestPCDepends mPkgConfigDb = mkTestExtLangPC Nothing Nothing mPkgConfigDb
 
 mkTestExtLangPC :: Maybe [Extension]
                 -> Maybe [Language]
-                -> [(String, String)]
+                -> Maybe [(String, String)]
                 -> ExampleDb
                 -> String
                 -> [String]
                 -> SolverResult
                 -> SolverTest
-mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
+mkTestExtLangPC exts langs mPkgConfigDb db label targets result = SolverTest {
     testLabel                = label
   , testTargets              = targets
   , testResult               = result
@@ -219,7 +219,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testDb                   = db
   , testSupportedExts        = exts
   , testSupportedLangs       = langs
-  , testPkgConfigDb          = pkgConfigDbFromList pkgConfigDb
+  , testPkgConfigDb          = maybe NoPkgConfigDb pkgConfigDbFromList mPkgConfigDb
   , testEnableAllTests       = EnableAllTests False
   }
 

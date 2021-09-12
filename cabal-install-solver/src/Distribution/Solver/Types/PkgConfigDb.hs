@@ -12,7 +12,7 @@
 -- Read the list of packages available to pkg-config.
 -----------------------------------------------------------------------------
 module Distribution.Solver.Types.PkgConfigDb
-    ( PkgConfigDb
+    ( PkgConfigDb (..)
     , readPkgConfigDb
     , pkgConfigDbFromList
     , pkgConfigPkgIsPresent
@@ -95,11 +95,12 @@ pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
       Nothing       -> False    -- Package not present in the DB.
       Just Nothing  -> True     -- Package present, but version unknown.
       Just (Just v) -> withinPkgconfigVersionRange v vr
--- If we could not read the pkg-config database successfully we allow
--- the check to succeed. The plan found by the solver may fail to be
--- executed later on, but we have no grounds for rejecting the plan at
--- this stage.
-pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
+-- If we could not read the pkg-config database successfully we fail.
+-- The plan found by the solver can't be executed later, because pkg-config itself
+-- is going to be called in the build phase to get the library location for linking
+-- so even if there is a library, it would need to be passed manual flags anyway.
+pkgConfigPkgIsPresent NoPkgConfigDb _ _ = False
+
 
 
 -- | Query the version of a package in the @pkg-config@ database.

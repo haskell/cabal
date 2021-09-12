@@ -25,6 +25,7 @@ module Distribution.Client.BuildReports.Anonymous (
     parseBuildReport,
     parseBuildReportList,
     showBuildReport,
+    cabalInstallID
 --    showList,
   ) where
 
