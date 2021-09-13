@@ -121,7 +121,10 @@ import           Distribution.Client.Types
                    ( GenericReadyPackage(..), UnresolvedSourcePackage
                    , PackageSpecifier(..)
                    , SourcePackageDb(..)
-                   , WriteGhcEnvironmentFilesPolicy(..) )
+                   , WriteGhcEnvironmentFilesPolicy(..)
+                   , PackageLocation(..)
+                   , DocsResult(..)
+                   , TestsResult(..) )
 import           Distribution.Solver.Types.PackageIndex
                    ( lookupPackageName )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -130,6 +133,12 @@ import           Distribution.Client.TargetSelector
                    , ComponentKind(..), componentKind
                    , readTargetSelectors, reportTargetSelectorProblems )
 import           Distribution.Client.DistDirLayout
+
+import           Distribution.Client.BuildReports.Anonymous (cabalInstallID)
+import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
+import qualified Distribution.Client.BuildReports.Storage as BuildReports
+         ( storeLocal )
+
 import           Distribution.Client.Config (getCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
@@ -160,13 +169,16 @@ import           Distribution.Verbosity
 import           Distribution.Version
                    ( mkVersion )
 import           Distribution.Simple.Compiler
-                   ( compilerCompatVersion, showCompilerId
+                   ( compilerCompatVersion, showCompilerId, compilerId, compilerInfo
                    , OptimisationLevel(..))
+
+import           Distribution.System
+                   ( Platform(Platform) )
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import           Control.Exception (assert)
+import           Control.Exception ( assert )
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
@@ -405,7 +417,7 @@ runProjectPostBuildPhase _ ProjectBaseContext{buildSettings} _ _
   = return ()
 
 runProjectPostBuildPhase verbosity
-                         ProjectBaseContext {..} ProjectBuildContext {..}
+                         ProjectBaseContext {..} bc@ProjectBuildContext {..}
                          buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
@@ -443,6 +455,9 @@ runProjectPostBuildPhase verbosity
                                      elaboratedPlanOriginal
                                      elaboratedShared
                                      postBuildStatus
+
+    -- Write the build reports
+    writeBuildReports buildSettings bc elaboratedPlanToExecute buildOutcomes
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
@@ -984,6 +999,59 @@ printPlan verbosity
                 Setup.Flag MaximumOptimisation -> "2"
                 Setup.NoFlag                   -> "1")]
       ++ "\n"
+
+
+writeBuildReports :: BuildTimeSettings -> ProjectBuildContext -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+writeBuildReports settings buildContext plan buildOutcomes = do
+  let plat@(Platform arch os) = pkgConfigPlatform . elaboratedShared $ buildContext
+      comp = pkgConfigCompiler . elaboratedShared $ buildContext
+      getRepo (RepoTarballPackage r _ _) = Just r
+      getRepo _ = Nothing
+      fromPlanPackage (InstallPlan.Configured pkg) (Just result) =
+            let installOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      DependentFailed p -> BuildReports.DependencyFailed p
+                      DownloadFailed _  -> BuildReports.DownloadFailed
+                      UnpackFailed _ -> BuildReports.UnpackFailed
+                      ConfigureFailed _ -> BuildReports.ConfigureFailed
+                      BuildFailed _ -> BuildReports.BuildFailed
+                      TestsFailed _ -> BuildReports.TestsFailed
+                      InstallFailed _ -> BuildReports.InstallFailed
+
+                      ReplFailed _ -> BuildReports.InstallOk
+                      HaddocksFailed _ -> BuildReports.InstallOk
+                      BenchFailed _ -> BuildReports.InstallOk
+
+                   Right _br -> BuildReports.InstallOk
+
+                docsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      HaddocksFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultDocs br of
+                      DocsNotTried -> BuildReports.NotTried
+                      DocsFailed -> BuildReports.Failed
+                      DocsOk -> BuildReports.Ok
+
+                testsOutcome = case result of
+                   Left bf -> case buildFailureReason bf of
+                      TestsFailed _ -> BuildReports.Failed
+                      _ -> BuildReports.NotTried
+                   Right br -> case buildResultTests br of
+                      TestsNotTried -> BuildReports.NotTried
+                      TestsOk -> BuildReports.Ok
+
+            in Just $ (BuildReports.BuildReport (packageId pkg) os arch (compilerId comp) cabalInstallID (elabFlagAssignment pkg) (map packageId $ elabLibDependencies pkg) installOutcome docsOutcome testsOutcome, getRepo . elabPkgSourceLocation $ pkg) -- TODO handle failure log files?
+      fromPlanPackage _ _ = Nothing
+      buildReports = mapMaybe (\x -> fromPlanPackage x (InstallPlan.lookupBuildOutcome x buildOutcomes)) $ InstallPlan.toList plan
+
+
+  BuildReports.storeLocal (compilerInfo comp)
+                          (buildSettingSummaryFile settings)
+                          buildReports
+                          plat
+  -- Note this doesn't handle the anonymous build reports set by buildSettingBuildReports but those appear to not be used or missed from v1
+  -- The usage pattern appears to be that rather than rely on flags to cabal to send build logs to the right place and package them with reports, etc, it is easier to simply capture its output to an appropriate handle.
 
 -- | If there are build failures then report them and throw an exception.
 --
