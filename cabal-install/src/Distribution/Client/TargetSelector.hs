@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor,
              RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- TODO
 {-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 -----------------------------------------------------------------------------
@@ -92,7 +94,7 @@ import qualified System.Directory as IO
          ( doesFileExist, doesDirectoryExist, canonicalizePath
          , getCurrentDirectory )
 import System.FilePath
-         ( (</>), (<.>), normalise, dropTrailingPathSeparator )
+         ( (</>), (<.>), normalise, dropTrailingPathSeparator, equalFilePath )
 import Text.EditDistance
          ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 import Distribution.Utils.Path
@@ -1746,14 +1748,14 @@ knownPackageName KnownPackageName{pinfoName} = pinfoName
 emptyKnownTargets :: KnownTargets
 emptyKnownTargets = KnownTargets [] [] [] [] [] []
 
-getKnownTargets :: (Applicative m, Monad m)
+getKnownTargets :: forall m a. (Applicative m, Monad m)
                 => DirActions m
                 -> [PackageSpecifier (SourcePackage (PackageLocation a))]
                 -> m KnownTargets
 getKnownTargets dirActions@DirActions{..} pkgs = do
     pinfo <- traverse (collectKnownPackageInfo dirActions) pkgs
     cwd   <- getCurrentDirectory
-    let (ppinfo, opinfo) = selectPrimaryPackage cwd pinfo
+    (ppinfo, opinfo) <- selectPrimaryPackage cwd pinfo
     return KnownTargets {
       knownPackagesAll       = pinfo,
       knownPackagesPrimary   = ppinfo,
@@ -1763,14 +1765,19 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
       knownComponentsOther   = allComponentsIn opinfo
     }
   where
+    mPkgDir :: KnownPackage -> Maybe FilePath
+    mPkgDir KnownPackage { pinfoDirectory = Just (dir,_) } = Just dir
+    mPkgDir _ = Nothing
+    
     selectPrimaryPackage :: FilePath
                          -> [KnownPackage]
-                         -> ([KnownPackage], [KnownPackage])
-    selectPrimaryPackage cwd = partition isPkgDirCwd
-      where
-        isPkgDirCwd KnownPackage { pinfoDirectory = Just (dir,_) }
-          | dir == cwd = True
-        isPkgDirCwd _  = False
+                         -> m ([KnownPackage], [KnownPackage])
+    selectPrimaryPackage _ [] = return ([] , []) 
+    selectPrimaryPackage cwd (pkg : packages) = do
+      (ppinfo, opinfo) <- selectPrimaryPackage cwd packages
+      isPkgDirCwd <- maybe (pure False) (compareFilePath dirActions cwd) (mPkgDir pkg)
+      return (if isPkgDirCwd then (pkg : ppinfo, opinfo) else (ppinfo, pkg : opinfo))
+       
     allComponentsIn ps =
       [ c | KnownPackage{pinfoComponents} <- ps, c <- pinfoComponents ]
 
@@ -2164,6 +2171,18 @@ matchComponentModuleFile cs str = do
                                       -- is stored without the extension
 
 -- utils
+
+-- | Compare two filepaths for equality using DirActions' canonicalizePath
+-- to normalize AND canonicalize filepaths before comparison.
+compareFilePath :: (Applicative m, Monad m) => DirActions m
+                -> FilePath -> FilePath -> m Bool
+compareFilePath DirActions{..} fp1 fp2
+  | equalFilePath fp1 fp2 = pure True -- avoid unnecessary IO if we can match earlier
+  | otherwise = do
+    c1 <- canonicalizePath fp1
+    c2 <- canonicalizePath fp2
+    pure $ equalFilePath c1 c2
+
 
 matchFile :: [(FilePath, a)] -> FilePath -> Match (FilePath, a)
 matchFile fs =

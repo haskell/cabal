@@ -98,12 +98,13 @@ tests config =
     , testCase "proj conf1"    (testExceptionInProjectConfig config)
     ]
   , testGroup "Target selectors" $
-    [ testCaseSteps "valid"             testTargetSelectors
-    , testCase      "bad syntax"        testTargetSelectorBadSyntax
-    , testCaseSteps "ambiguous syntax"  testTargetSelectorAmbiguous
-    , testCase      "no current pkg"    testTargetSelectorNoCurrentPackage
-    , testCase      "no targets"        testTargetSelectorNoTargets
-    , testCase      "project empty"     testTargetSelectorProjectEmpty
+    [ testCaseSteps "valid"              testTargetSelectors
+    , testCase      "bad syntax"         testTargetSelectorBadSyntax
+    , testCaseSteps "ambiguous syntax"   testTargetSelectorAmbiguous
+    , testCase      "no current pkg"     testTargetSelectorNoCurrentPackage
+    , testCase      "no targets"         testTargetSelectorNoTargets
+    , testCase      "project empty"      testTargetSelectorProjectEmpty
+    , testCase      "canonicalized path" testTargetSelectorCanonicalizedPath
     , testCase      "problems (common)"  (testTargetProblemsCommon config)
     , testCaseSteps "problems (build)"   (testTargetProblemsBuild config)
     , testCaseSteps "problems (repl)"    (testTargetProblemsRepl config)
@@ -552,6 +553,28 @@ testTargetSelectorProjectEmpty = do
   where
     testdir = "targets/empty"
     config  = mempty
+
+
+-- | Ensure we don't miss primary package and produce
+-- TargetSelectorNoTargetsInCwd error due to symlink or
+-- drive capitalisation mismatch when no targets are given
+testTargetSelectorCanonicalizedPath :: Assertion
+testTargetSelectorCanonicalizedPath = do
+  (_, _, _, localPackages, _) <- configureProject testdir config
+  cwd <- getCurrentDirectory
+  let virtcwd = cwd </> basedir </> symlink
+  -- Check that the symlink is there before running test as on Windows
+  -- some versions/configurations of git won't pull down/create the symlink
+  canRunTest <- doesDirectoryExist virtcwd
+  when canRunTest (do
+      let dirActions' = (dirActions symlink) { TS.getCurrentDirectory = return virtcwd }
+      Right ts <- readTargetSelectorsWith dirActions' localPackages Nothing []
+      ts @?= [TargetPackage TargetImplicitCwd ["p-0.1"] Nothing])
+  cleanProject testdir
+  where
+    testdir = "targets/simple"
+    symlink = "targets/symbolic-link-to-simple"
+    config = mempty
 
 
 testTargetProblemsCommon :: ProjectConfig -> Assertion
