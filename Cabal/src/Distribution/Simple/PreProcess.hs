@@ -25,7 +25,8 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
                                 PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
-                                ppHappy, ppAlex, ppUnlit, platformDefines
+                                ppHappy, ppAlex, ppUnlit, platformDefines,
+                                unsorted
                                )
     where
 
@@ -109,11 +110,28 @@ data PreProcessor = PreProcessor {
   --       eg alex and happy have --ghc flags. However we can't really include
   --       ghc-specific code into supposedly portable source tarballs.
 
+  -- | This function can reorder /all/ modules, not just those that the
+  -- require the preprocessor in question. As such, this function should be
+  -- well-behaved and not reorder modules it doesn't have dominion over!
+  ppOrdering :: Verbosity
+             -> [FilePath] -- Source directories
+             -> [ModuleName] -- Module names
+             -> IO [ModuleName], -- Sorted modules
+
   runPreProcessor :: (FilePath, FilePath) -- Location of the source file relative to a base dir
                   -> (FilePath, FilePath) -- Output file name, relative to an output base dir
                   -> Verbosity -- verbosity
                   -> IO ()     -- Should exit if the preprocessor fails
   }
+
+-- | Just present the modules in the order given; this is the default and it is
+-- appropriate for preprocessors which do not have any sort of dependencies
+-- between modules.
+unsorted :: Verbosity
+         -> [FilePath]
+         -> [ModuleName]
+         -> IO [ModuleName]
+unsorted _ _ ms = pure ms
 
 -- | Function to determine paths to possible extra C sources for a
 -- preprocessor: just takes the path to the build directory and uses
@@ -162,22 +180,28 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
   (CLib lib@Library{ libBuildInfo = bi }) -> do
     let dirs = map getSymbolicPath (hsSourceDirs bi) ++
              [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
-      pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
+    let hndlrs = localHandlers bi
+    mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
+    for_ (map ModuleName.toFilePath mods) $
+      pre dirs (componentBuildDir lbi clbi) hndlrs
   (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                      ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
-      pre dirs flibDir (localHandlers bi)
+    let hndlrs = localHandlers bi
+    mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
+    for_ (map ModuleName.toFilePath mods) $
+      pre dirs flibDir hndlrs
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let nm' = unUnqualComponentName nm
     let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
         dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
                                     ,autogenPackageModulesDir lbi]
-    for_ (map ModuleName.toFilePath $ otherModules bi) $
-      pre dirs exeDir (localHandlers bi)
+    let hndlrs = localHandlers bi
+    mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
+    for_ (map ModuleName.toFilePath mods) $
+      pre dirs exeDir hndlrs
     pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
   CTest test@TestSuite{ testName = nm } -> do
@@ -202,6 +226,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
           die' verbosity $ "No support for preprocessing benchmark "
                         ++ "type " ++ prettyShow tt
   where
+    orderingFromHandlers v d hndlrs mods =
+      foldM (\acc (_,pp) -> ppOrdering pp v d acc) mods hndlrs
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
@@ -332,6 +358,7 @@ ppGreenCard :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProc
 ppGreenCard _ lbi _
     = PreProcessor {
         platformIndependent = False,
+        ppOrdering = unsorted,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
           runDbProgram verbosity greencardProgram (withPrograms lbi)
               (["-tffi", "-o" ++ outFile, inFile])
@@ -343,6 +370,7 @@ ppUnlit :: PreProcessor
 ppUnlit =
   PreProcessor {
     platformIndependent = True,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       withUTF8FileContents inFile $ \contents ->
         either (writeUTF8File outFile) (die' verbosity) (unlit inFile contents)
@@ -365,6 +393,7 @@ ppGhcCpp :: Program -> (Version -> Bool)
 ppGhcCpp program xHs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (prog, version, _) <- requireProgramVersion verbosity
                               program anyVersion (withPrograms lbi)
@@ -385,6 +414,7 @@ ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo ->
 ppCpphs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (cpphsProg, cpphsVersion, _) <- requireProgramVersion verbosity
                                         cpphsProgram anyVersion (withPrograms lbi)
@@ -401,6 +431,7 @@ ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcess
 ppHsc2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
       (hsc2hsProg, hsc2hsVersion, _) <- requireProgramVersion verbosity
@@ -554,6 +585,7 @@ ppC2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppC2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = \(inBaseDir, inRelativeFile)
                        (outBaseDir, outRelativeFile) verbosity -> do
       (c2hsProg, _, _) <- requireProgramVersion verbosity
@@ -713,6 +745,7 @@ standardPP :: LocalBuildInfo -> Program -> [String] -> PreProcessor
 standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
+    ppOrdering = unsorted,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       runDbProgram verbosity prog (withPrograms lbi)
                            (args ++ ["-o", outFile, inFile])

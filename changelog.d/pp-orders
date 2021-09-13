@@ -1,0 +1,10 @@
+synopsis: Allow preprocessors to register a reordering
+packages: Cabal
+issues: #55 #1906
+significance: significant
+
+description: {
+
+- Changes the PreProcessor type to include a field ppOrdering so that modules are presented to the preprocessor in the right order (w.r.t. dependencies)
+
+}
