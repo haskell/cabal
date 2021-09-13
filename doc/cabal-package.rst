@@ -629,19 +629,78 @@ describe the package as a whole:
     and is rather intended as extra metadata for use by third party
     tooling, such as e.g. CI tooling.
 
-    Here's a typical usage example
+    Here's a typical usage example:
 
     ::
 
-        tested-with: GHC == 8.6.3, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
+        tested-with: GHC == 9.0.1, GHC == 8.10.4, GHC == 8.8.4,
+                     GHC == 8.6.5, GHC == 8.4.4, GHC == 8.2.2, GHC == 8.0.2,
                      GHC == 7.10.3, GHC == 7.8.4, GHC == 7.6.3, GHC == 7.4.2
 
-    which can (starting with Cabal 3.0) also be written using the more
-    concise set notation syntax
+    The same can be spread over several lines, for instance:
 
     ::
 
-        tested-with: GHC == { 8.6.3, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
+        tested-with: GHC == 9.0.1
+                   , GHC == 8.10.4
+                   , GHC == 8.8.4
+                   , GHC == 8.6.5
+                   , GHC == 8.4.4
+                   , GHC == 8.2.2
+                   , GHC == 8.0.2
+                   , GHC == 7.10.3
+                   , GHC == 7.8.4
+                   , GHC == 7.6.3
+                   , GHC == 7.4.2
+
+    The separating comma can also be dropped altogether:
+
+    ::
+
+        tested-with:
+          GHC == 9.0.1
+          GHC == 8.10.4
+          GHC == 8.8.4
+          GHC == 8.6.5
+          GHC == 8.4.4
+          GHC == 8.2.2
+          GHC == 8.0.2
+          GHC == 7.10.3
+          GHC == 7.8.4
+          GHC == 7.6.3
+          GHC == 7.4.2
+
+    However, this alternative might
+    `disappear <https://github.com/haskell/cabal/issues/4894#issuecomment-909008657>`__
+    in the future.
+
+    Starting with :pkg-field:`cabal-version` 3.0,
+    there are further conveniences.
+
+    1. A preceding ``,`` is allowed, so a bullet-list style
+       is possible (recommended):
+
+        ::
+
+            tested-with:
+              , GHC == 9.0.1
+              , GHC == 8.10.4
+              , GHC == 8.8.4
+              , GHC == 8.6.5
+              , GHC == 8.4.4
+              , GHC == 8.2.2
+              , GHC == 8.0.2
+              , GHC == 7.10.3
+              , GHC == 7.8.4
+              , GHC == 7.6.3
+              , GHC == 7.4.2
+
+
+    2. A concise set notation syntax is available:
+
+       ::
+
+           tested-with: GHC == { 9.0.1, 8.10.4, 8.8.4, 8.6.5, 8.4.4, 8.2.2, 8.0.2, 7.10.3, 7.8.4, 7.6.3, 7.4.2 }
 
 .. pkg-field:: data-files: filename list
 
