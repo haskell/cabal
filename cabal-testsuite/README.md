@@ -53,7 +53,7 @@ Otherwise, here is a walkthrough:
    other, use `setupTest` or `cabalTest`).
 
    Code runs in the `TestM` monad, which manages some administrative
-   environment (e.g., the test that is running, etc.)
+   environment (e.g., the test that is running, etc.).
    `Test.Cabal.Prelude` contains a number of useful functions
    for testing implemented in this monad, including the functions `cabal`
    and `setup` which let you invoke those respective programs.  You should
@@ -63,7 +63,7 @@ Otherwise, here is a walkthrough:
    because it isn't implemented. Implement it!
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
-   you add or modify a test; it is automatically picked up.)
+   you add or modify a test; it is automatically picked up).
    The first time you run a test, assuming everything else is
    in order, it will complain that the actual output doesn't match
    the expected output.  Use the `--accept` flag to accept the
@@ -72,7 +72,7 @@ Otherwise, here is a walkthrough:
 We also support a `.multitest.hs` prefix; eventually this will
 allow multiple tests to be defined in one file but run in parallel;
 at the moment, these just indicate long running tests that should
-be run early (to avoid straggling.)
+be run early (to avoid straggling).
 
 Frequently asked questions
 --------------------------
@@ -109,13 +109,13 @@ function you should use depends on how you built the executable:
   placed *after* you have invoked `new-build`.  (Grep
   for an example!)
 
-**How do I turn of accept tests? My test output wobbles to much.**
+**How do I turn off accept tests? My test output wobbles too much.**
 Use `recordMode DoNotRecord`.  This should be a last resort; consider
 modifying Cabal so that the output is stable.  If you must do this, make
 sure you add extra, manual tests to ensure the output looks like what
 you expect.
 
-**How can I manually test for a string in output?**  Use the hyphenated
+**How can I manually test for a string in output?**  Use the primed
 variants of a command (e.g., `cabal'` rather than `cabal`) and use
 `assertOutputContains`.  Note that this will search over BOTH stdout
 and stderr.
@@ -146,7 +146,7 @@ modifying source files, or interact with Cabal commands which are
 not hermetic (e.g., `cabal freeze`).  In this case, cabal-testsuite
 supports opting into a hermetic test, where we first make copy of all
 the relevant source code before starting the test.  You can opt into
-this mode using the 'withSourceCopy' combinator (search for examples!)
+this mode using the `withSourceCopy` combinator (search for examples!)
 This mode is subject to the following limitations:
 
 * You must be running the test inside a valid Git checkout of the test
@@ -222,7 +222,8 @@ welcome.
 Expect tests
 ------------
 
-An expect test is a test where we read out the output of the test
+An expect test (aka _golden test_)
+is a test where we read out the output of the test
 and compare it directly against a saved copy of the test output.
 When test output changes, you can ask the test suite to "accept"
 the new output, which automatically overwrites the old expected
@@ -237,16 +238,16 @@ sure we've picked up the correct output in all cases.
 Still, we'd like to take advantage of expect tests for Cabal's error
 reporting.  So here's our strategy:
 
-1. We have a new verbosity flag +markoutput which lets you toggle the emission
-   of '-----BEGIN CABAL OUTPUT-----' and  '-----END CABAL OUTPUT-----'
+1. We have a new verbosity flag `+markoutput` which lets you toggle the emission
+   of `-----BEGIN CABAL OUTPUT-----` and  `-----END CABAL OUTPUT-----`
    stanzas.
 
 2. When someone requests an expect test, we ONLY consider output between
    these flags.
 
 The expectation is that Cabal will only enclose output it controls
-between these stanzas.  In practice, this just means we wrap die,
-warn and notice with these markers.
+between these stanzas.  In practice, this just means we wrap `die`,
+`warn` and `notice` with these markers.
 
 An added benefit of this strategy is that we can continue operating
 at high verbosity by default (which is very helpful for having useful
@@ -266,7 +267,7 @@ situations.  Here are the most common ones:
 
 * We have some munging on the output, to remove common sources of
   non-determinism: paths, GHC versions, boot package versions, etc.
-  Check normalizeOutput to see what we do.  Note that we save
+  Check `normalizeOutput` to see what we do.  Note that we save
   *normalized* output, so if you modify the normalizer you will
   need to rerun the test suite accepting everything.
 
@@ -279,9 +280,9 @@ situations.  Here are the most common ones:
 
 Some other notes:
 
-* It's good style to put default-language in all your stanzas, so
-  Cabal doesn't complain about it (that warning is marked!)  Ditto
-  with cabal-version at the top of your Cabal file.
+* It's good style to put `default-language` in all your stanzas, so
+  Cabal doesn't complain about it (that warning is marked!).  Ditto
+  with `cabal-version` at the top of your Cabal file.
 
 * If you can't get the output of a test to be deterministic, no
   problem: just exclude it from recording and do a manual test
