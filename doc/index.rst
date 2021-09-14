@@ -1,5 +1,5 @@
 
-Welcome to the Cabal User Guide
+Welcome to the Cabal User Guide!
 ===============================
 
 .. toctree::
