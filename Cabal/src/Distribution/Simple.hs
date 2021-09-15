@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
@@ -688,11 +687,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       pathEnv = maybe (intercalate spSep extraPath)
                 ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) :
--- TODO: Move to either Cabal/src/Distribution/Compat/Environment.hs
--- or Cabal/src/Distribution/Compat/FilePath.hs:
-#ifdef mingw32_HOST_OS
                 ("PATH_SEPARATOR", Just ";") :
-#endif
                 [("PATH", Just pathEnv) | not (null extraPath)]
       hp = hostPlatform lbi
       maybeHostFlag = if hp == buildPlatform then [] else ["--host=" ++ show (pretty hp)]
