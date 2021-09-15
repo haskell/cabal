@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple
@@ -97,7 +98,11 @@ import Distribution.System (buildPlatform)
 import System.Environment (getArgs, getProgName)
 import System.Directory   (removeFile, doesFileExist
                           ,doesDirectoryExist, removeDirectoryRecursive)
-import System.FilePath                      (searchPathSeparator, takeDirectory, (</>), splitDirectories, dropDrive)
+import System.FilePath    (searchPathSeparator, takeDirectory, (</>),
+                           splitDirectories, dropDrive)
+#ifdef mingw32_HOST_OS
+import System.FilePath    (normalise, splitDrive)
+#endif
 import Distribution.Compat.ResponseFile (expandResponse)
 import Distribution.Compat.Directory        (makeAbsolute)
 import Distribution.Compat.Environment      (getEnvironment)
@@ -670,7 +675,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- TODO: We don't check for colons, tildes or leading dashes. We
   -- also should check the builddir's path, destdir, and all other
   -- paths as well.
-  let configureFile' = intercalate "/" $ splitDirectories configureFile
+  let configureFile' = toUnix configureFile
   for_ badAutoconfCharacters $ \(c, cname) ->
     when (c `elem` dropDrive configureFile') $
       warn verbosity $ concat
@@ -709,6 +714,19 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
                ++ "If you are not on Windows, ensure that an 'sh' command "
                ++ "is discoverable in your path."
+
+-- | Convert Windows path to Unix ones
+toUnix :: String -> String
+#ifdef mingw32_HOST_OS
+toUnix s = let tmp = normalise s
+               (l, rest) = case splitDrive tmp of
+                             ([],  x) -> ("/"      , x)
+                             (h:_, x) -> ('/':h:"/", x)
+               parts = splitDirectories rest
+           in  l ++ intercalate "/" parts
+#else
+toUnix s = intercalate "/" $ splitDirectories s
+#endif
 
 badAutoconfCharacters :: [(Char, String)]
 badAutoconfCharacters =
