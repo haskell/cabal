@@ -37,20 +37,12 @@ jobs:
     name: Bootstrap on macOS
     runs-on: macos-latest
     steps:
-      - name: Install GHC
-        run: |
-          cd $(mktemp -d)
-          curl -sLO "https://downloads.haskell.org/~ghc/8.10.7/ghc-8.10.7-x86_64-apple-darwin.tar.xz"
-          tar -xJf ghc-*.tar.xz
-          cd ghc-*
-          ./configure --prefix=/opt/ghc/8.10.7
-          sudo make install
       - uses: actions/checkout@v2
 
       # We use linux dependencies
       - name: bootstrap.py
         run: |
-          python3 bootstrap/bootstrap.py -w /opt/ghc/8.10.7/bin/ghc -d bootstrap/linux-8.10.7.json
+          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc 8.10.7) -d bootstrap/linux-8.10.7.json
 
       - name: Smoke test
         run: |
