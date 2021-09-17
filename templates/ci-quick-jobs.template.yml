@@ -24,8 +24,6 @@ jobs:
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
-          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - uses: actions/cache@v1
         with:
           path: ~/.cabal/store
@@ -52,8 +50,6 @@ jobs:
       - name: Set PATH
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "/opt/cabal/3.2/bin" >> $GITHUB_PATH
-          echo "/opt/ghc/8.10.4/bin" >> $GITHUB_PATH
       - name: Install cabal-env
         run: |
           mkdir -p $HOME/.cabal/bin
