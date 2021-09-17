@@ -60,6 +60,7 @@ render z_root = execWriter $ do
     return ()
   tell "\n"
   tell "import qualified Control.Exception as Exception\n"
+  tell "import qualified Data.List as List\n"
   tell "import Data.Version (Version(..))\n"
   tell "import System.Environment (getEnv)\n"
   tell "import Prelude\n"
@@ -295,8 +296,8 @@ render z_root = execWriter $ do
   tell "joinFileName \".\" fname = fname\n"
   tell "joinFileName dir \"\"    = dir\n"
   tell "joinFileName dir fname\n"
-  tell "  | isPathSeparator (last dir) = dir ++ fname\n"
-  tell "  | otherwise                  = dir ++ pathSeparator : fname\n"
+  tell "  | isPathSeparator (List.last dir) = dir ++ fname\n"
+  tell "  | otherwise                       = dir ++ pathSeparator : fname\n"
   tell "\n"
   tell "pathSeparator :: Char\n"
   if (zIsWindows z_root)
