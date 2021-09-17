@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.6.1.0",
+            "version": "3.7.0.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -98,29 +98,6 @@
         },
         {
             "source": "hackage",
-            "package": "cryptohash-sha256",
-            "version": "0.11.102.0",
-            "flags": [
-                "-exe",
-                "+use-cbits"
-            ],
-            "cabal_sha256": "797a0af7b8a0e654cbddd3df6b9de02d2cbfcb2292cf001399ab53910fbbb76c",
-            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
-            "revision": 1
-        },
-        {
-            "source": "hackage",
-            "package": "echo",
-            "version": "0.1.4",
-            "flags": [
-                "-example"
-            ],
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "revision": 0
-        },
-        {
-            "source": "hackage",
             "package": "splitmix",
             "version": "0.1.0.3",
             "flags": [
@@ -147,6 +124,42 @@
             "cabal_sha256": "4d33a49cd383d50af090f1b888642d10116e43809f9da6023d9fc6f67d2656ee",
             "src_sha256": "3e8885ee2f56ad4da940f043ae8f981ee2fe336b5e8e4ba3f7436cff4f526c4a",
             "revision": 1
+        },
+        {
+            "source": "local",
+            "package": "cabal-install-solver",
+            "version": "3.7.0.0",
+            "flags": [
+                "-debug-conflict-sets",
+                "-debug-expensive-assertions",
+                "-debug-tracetree"
+            ],
+            "cabal_sha256": null,
+            "src_sha256": null,
+            "revision": null
+        },
+        {
+            "source": "hackage",
+            "package": "cryptohash-sha256",
+            "version": "0.11.102.0",
+            "flags": [
+                "-exe",
+                "+use-cbits"
+            ],
+            "cabal_sha256": "797a0af7b8a0e654cbddd3df6b9de02d2cbfcb2292cf001399ab53910fbbb76c",
+            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
+            "revision": 1
+        },
+        {
+            "source": "hackage",
+            "package": "echo",
+            "version": "0.1.4",
+            "flags": [
+                "-example"
+            ],
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "revision": 0
         },
         {
             "source": "hackage",
@@ -245,11 +258,20 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.6.0.0",
+            "version": "3.7.0.0",
             "flags": [
-                "-debug-conflict-sets",
-                "-debug-expensive-assertions",
-                "-debug-tracetree",
+                "+lukko",
+                "+native-dns"
+            ],
+            "cabal_sha256": null,
+            "src_sha256": null,
+            "revision": null
+        },
+        {
+            "source": "local",
+            "package": "cabal-install",
+            "version": "3.7.0.0",
+            "flags": [
                 "+lukko",
                 "+native-dns"
             ],
@@ -346,6 +368,10 @@
         {
             "package": "stm",
             "version": "2.5.0.1"
+        },
+        {
+            "package": "exceptions",
+            "version": "0.10.4"
         }
     ]
 }
