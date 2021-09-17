@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.7.0.0",
+            "version": "3.6.1.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -25,10 +25,10 @@
         {
             "source": "hackage",
             "package": "th-compat",
-            "version": "0.1.2",
+            "version": "0.1.3",
             "flags": [],
-            "cabal_sha256": "3d55de1adc542c1a870c9ada90da2fbbe5f4e8bcd3eed545a55c3df9311b32a8",
-            "src_sha256": "2bc45d0199de3dc65ebc9b71251799f5238869dbc6a66bdf0c06c7e23d603801",
+            "cabal_sha256": "a16dd922947a6877defe52c4c38d1ab48ed3f85a826930f5d1a568741d619993",
+            "src_sha256": "6b5059caf6714f47da92953badf2f556119877e09708c14e206b3ae98b8681c6",
             "revision": 0
         },
         {
@@ -58,13 +58,13 @@
         {
             "source": "hackage",
             "package": "hashable",
-            "version": "1.3.2.0",
+            "version": "1.3.3.0",
             "flags": [
                 "+integer-gmp",
                 "-random-initial-seed"
             ],
-            "cabal_sha256": "02bc544e3546713b1d76a3c5bfc836a5fd19a5b4348ef4a52bb973d0c35a4b89",
-            "src_sha256": "59bd964b6fe52b04825cf5402c87981068c051f351b2cb940b75f1c60719d637",
+            "cabal_sha256": "7f3b67151162a1dfe8472dc30430af98ed5470801d3f4b6c9b8d7a7443c920d4",
+            "src_sha256": "99a578e58fb6a869593841e4b3184f5b52c921bcb0d661d2b3a06e6526cb85dc",
             "revision": 0
         },
         {
@@ -98,6 +98,29 @@
         },
         {
             "source": "hackage",
+            "package": "cryptohash-sha256",
+            "version": "0.11.102.0",
+            "flags": [
+                "-exe",
+                "+use-cbits"
+            ],
+            "cabal_sha256": "797a0af7b8a0e654cbddd3df6b9de02d2cbfcb2292cf001399ab53910fbbb76c",
+            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
+            "revision": 1
+        },
+        {
+            "source": "hackage",
+            "package": "echo",
+            "version": "0.1.4",
+            "flags": [
+                "-example"
+            ],
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "revision": 0
+        },
+        {
+            "source": "hackage",
             "package": "splitmix",
             "version": "0.1.0.3",
             "flags": [
@@ -124,53 +147,6 @@
             "cabal_sha256": "4d33a49cd383d50af090f1b888642d10116e43809f9da6023d9fc6f67d2656ee",
             "src_sha256": "3e8885ee2f56ad4da940f043ae8f981ee2fe336b5e8e4ba3f7436cff4f526c4a",
             "revision": 1
-        },
-        {
-            "source": "local",
-            "package": "cabal-install-solver",
-            "version": "3.7.0.0",
-            "flags": [
-                "-debug-conflict-sets",
-                "-debug-expensive-assertions",
-                "-debug-tracetree"
-            ],
-            "cabal_sha256": null,
-            "src_sha256": null,
-            "revision": null
-        },
-        {
-            "source": "hackage",
-            "package": "cryptohash-sha256",
-            "version": "0.11.102.0",
-            "flags": [
-                "-exe",
-                "+use-cbits"
-            ],
-            "cabal_sha256": "797a0af7b8a0e654cbddd3df6b9de02d2cbfcb2292cf001399ab53910fbbb76c",
-            "src_sha256": "8ad6e9875a9128f6cd66d65d80f9f85dd0559c73ac00bb37f71fbee820d10519",
-            "revision": 1
-        },
-        {
-            "source": "hackage",
-            "package": "echo",
-            "version": "0.1.4",
-            "flags": [
-                "-example"
-            ],
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "revision": 0
-        },
-        {
-            "source": "hackage",
-            "package": "exceptions",
-            "version": "0.10.4",
-            "flags": [
-                "+transformers-0-4"
-            ],
-            "cabal_sha256": "d2546046d7ba4b460d3bc7fd269cd2c52d0b7fb3cfecc038715dd0881b78a484",
-            "src_sha256": "4d0bfb4355cffcd67d300811df9d5fe44ea3594ed63750795bfc1f797abd84cf",
-            "revision": 2
         },
         {
             "source": "hackage",
@@ -205,9 +181,9 @@
                 "-old-bytestring",
                 "-old-time"
             ],
-            "cabal_sha256": "94ded05718fe75b88c98e7113feeb9fca50688a7e59b6aefd80a6f48438c5062",
+            "cabal_sha256": "d8699f46b485f105eea9c7158f3d432ca578e6bbe5d68751184e9899a41d430d",
             "src_sha256": "b384449f62b2b0aa3e6d2cb1004b8060b01f21ec93e7b63e7af6d8fad8a9f1de",
-            "revision": 3
+            "revision": 4
         },
         {
             "source": "hackage",
@@ -218,9 +194,9 @@
                 "-non-blocking-ffi",
                 "-pkg-config"
             ],
-            "cabal_sha256": "28f4d460c260e074cab833625454564b9783a3389b7bb91fd54da2790b39592c",
+            "cabal_sha256": "262a93dbf370be59f4ee57f3b1a51b338bc2c309797daa37c14f2262ae61dae4",
             "src_sha256": "807f6bddf9cb3c517ce5757d991dde3c7e319953a22c86ee03d74534bd5abc88",
-            "revision": 0
+            "revision": 1
         },
         {
             "source": "hackage",
@@ -269,20 +245,11 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.7.0.0",
+            "version": "3.6.0.0",
             "flags": [
-                "+lukko",
-                "+native-dns"
-            ],
-            "cabal_sha256": null,
-            "src_sha256": null,
-            "revision": null
-        },
-        {
-            "source": "local",
-            "package": "cabal-install",
-            "version": "3.7.0.0",
-            "flags": [
+                "-debug-conflict-sets",
+                "-debug-expensive-assertions",
+                "-debug-tracetree",
                 "+lukko",
                 "+native-dns"
             ],
