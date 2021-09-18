@@ -18,11 +18,11 @@ executable gen-spdx
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0
-    , base                  >=4.10     && <4.15
+    , base                  >=4.10     && <4.16
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1
+    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1
     , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
@@ -35,11 +35,11 @@ executable gen-spdx-exc
   ghc-options:      -Wall
   build-depends:
     , aeson                 ^>=1.4.1.0 || ^>=1.5.2.0
-    , base                  >=4.10     && <4.15
+    , base                  >=4.10     && <4.16
     , bytestring
     , containers
     , Diff                  ^>=0.4
-    , lens                  ^>=4.18.1 || ^>=4.19.1
+    , lens                  ^>=4.18.1 || ^>=4.19.1 || ^>=5.0.1
     , optparse-applicative  ^>=0.15.1.0 || ^>=0.16.0.0
     , text
     , zinza                 ^>=0.2
