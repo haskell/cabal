@@ -37,6 +37,8 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
+      - name: make cabal-install-dev
+        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # all dependencies of Cabal already there (due to GHC depending on Cabal)
       - name: cabal v2-build Cabal
         run: cabal v2-build Cabal
@@ -132,6 +134,8 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
+      - name: make cabal-install-dev
+        run: cp cabal-install/cabal-install.cabal.dev cabal-install/cabal-install.cabal
       # all dependencies of Cabal already there (due to GHC depending on Cabal)
       - name: cabal v2-build Cabal
         run: cabal v2-build Cabal
