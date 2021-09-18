@@ -21,6 +21,7 @@ import Foreign.C
 {% endif %}
 
 import qualified Control.Exception as Exception
+import qualified Data.List as List
 import Data.Version (Version(..))
 import System.Environment (getEnv)
 import Prelude
@@ -166,8 +167,8 @@ joinFileName ""  fname = fname
 joinFileName "." fname = fname
 joinFileName dir ""    = dir
 joinFileName dir fname
-  | isPathSeparator (last dir) = dir ++ fname
-  | otherwise                  = dir ++ pathSeparator : fname
+  | isPathSeparator (List.last dir) = dir ++ fname
+  | otherwise                       = dir ++ pathSeparator : fname
 
 pathSeparator :: Char
 {% if isWindows %}
