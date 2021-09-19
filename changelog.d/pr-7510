@@ -1,4 +1,0 @@
-synopsis: Set PATH_SEPARATOR=";" when calling ./configure on Windows; this fix is necessary for autoconf >= 2.70
-packages: Cabal
-prs: #7510
-issues: #7494
