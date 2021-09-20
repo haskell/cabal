@@ -406,25 +406,26 @@ curlTransport prog =
 
     posthttp = noPostYet
 
-    addAuthConfig auth uri progInvocation = do
-      case uriAuthority uri of
-        Just (URIAuth u _ _) -> progInvocation
-          -- all `uriUserInfo` values have '@' as a suffix. drop it.
-          { progInvokeInput = Just $ IODataText $ unlines $
+    addAuthConfig explicitAuth uri progInvocation = do
+      -- attempt to derive a u/p pair from the uri authority if one exists
+      -- all `uriUserInfo` values have '@' as a suffix. drop it.
+      let uriDerivedAuth = case uriAuthority uri of
+                               (Just (URIAuth u _ _)) | not (null u) -> Just $ filter (/= '@') u
+                               _ -> Nothing
+      -- prefer passed in auth to auth derived from uri. If neither exist, then no auth
+      let mbAuthString = case (explicitAuth, uriDerivedAuth) of
+                          (Just (uname, passwd), _) -> Just (uname ++ ":" ++ passwd)
+                          (Nothing, Just a) -> Just a
+                          (Nothing, Nothing) -> Nothing
+      case mbAuthString of
+        Just up -> progInvocation
+          { progInvokeInput = Just . IODataText . unlines $
               [ "--digest"
-              , "--user " ++ filter (/= '@') u
+              , "--user " ++ up
               ]
           , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
           }
         Nothing -> progInvocation
-          { progInvokeInput = do
-              (uname, passwd) <- auth
-              return $ IODataText $ unlines
-                [ "--digest"
-                , "--user " ++ uname ++ ":" ++ passwd
-                ]
-          , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
-          }
 
     posthttpfile verbosity uri path auth = do
         let args = [ show uri
