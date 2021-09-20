@@ -1,4 +1,9 @@
-# Cabal [![Hackage version](https://img.shields.io/hackage/v/Cabal.svg?label=Hackage)](https://hackage.haskell.org/package/Cabal) [![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal) [![Artifacts](https://github.com/haskell/cabal/actions/workflows/artifacts.yml/badge.svg?branch=master)](https://github.com/haskell/cabal/actions/workflows/artifacts.yml?query=branch%3Amaster) [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
+# Cabal
+
+[![Hackage version](https://img.shields.io/hackage/v/Cabal.svg?label=Hackage)](https://hackage.haskell.org/package/Cabal)
+[![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
+[![Artifacts](https://github.com/haskell/cabal/actions/workflows/artifacts.yml/badge.svg?branch=master)](https://github.com/haskell/cabal/actions/workflows/artifacts.yml?query=branch%3Amaster)
+[![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
