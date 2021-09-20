@@ -268,6 +268,7 @@ data TestSuiteStanza = TestSuiteStanza
     , _testStanzaMainIs     :: Maybe FilePath
     , _testStanzaTestModule :: Maybe ModuleName
     , _testStanzaBuildInfo  :: BuildInfo
+    , _testStanzaCodeGenerators :: [String]
     }
 
 instance L.HasBuildInfo TestSuiteStanza where
@@ -289,6 +290,10 @@ testStanzaBuildInfo :: Lens' TestSuiteStanza BuildInfo
 testStanzaBuildInfo f s = fmap (\x -> s { _testStanzaBuildInfo = x }) (f (_testStanzaBuildInfo s))
 {-# INLINE testStanzaBuildInfo #-}
 
+testStanzaCodeGenerators :: Lens' TestSuiteStanza [String]
+testStanzaCodeGenerators f s = fmap (\x -> s { _testStanzaCodeGenerators = x }) (f (_testStanzaCodeGenerators s))
+{-# INLINE testStanzaCodeGenerators #-}
+
 testSuiteFieldGrammar
     :: ( FieldGrammar c g, Applicative (g TestSuiteStanza), Applicative (g BuildInfo)
        , c (Identity ModuleName)
@@ -296,6 +301,7 @@ testSuiteFieldGrammar
        , c (List CommaFSep (Identity ExeDependency) ExeDependency)
        , c (List CommaFSep (Identity LegacyExeDependency) LegacyExeDependency)
        , c (List CommaFSep (Identity PkgconfigDependency) PkgconfigDependency)
+       , c (List CommaFSep Token String)
        , c (List CommaVCat (Identity Dependency) Dependency)
        , c (List CommaVCat (Identity Mixin) Mixin)
        , c (List FSep (MQuoted Extension) Extension)
@@ -315,23 +321,20 @@ testSuiteFieldGrammar = TestSuiteStanza
     <*> optionalFieldAla "main-is"     FilePathNT testStanzaMainIs
     <*> optionalField    "test-module"            testStanzaTestModule
     <*> blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
+    <*> monoidalFieldAla "code-generators"        (alaList'  CommaFSep Token)     testStanzaCodeGenerators
+          ^^^ availableSince CabalSpecV3_6 [] -- TODO 3_8
 
 validateTestSuite :: Position -> TestSuiteStanza -> ParseResult TestSuite
 validateTestSuite pos stanza = case _testStanzaTestType stanza of
-    Nothing -> return $
-        emptyTestSuite { testBuildInfo = _testStanzaBuildInfo stanza }
+    Nothing -> pure basicTestSuite
 
     Just tt@(TestTypeUnknown _ _) ->
-        pure emptyTestSuite
-            { testInterface = TestSuiteUnsupported tt
-            , testBuildInfo = _testStanzaBuildInfo stanza
-            }
+        pure basicTestSuite
+            { testInterface = TestSuiteUnsupported tt }
 
     Just tt | tt `notElem` knownTestTypes ->
-        pure emptyTestSuite
-            { testInterface = TestSuiteUnsupported tt
-            , testBuildInfo = _testStanzaBuildInfo stanza
-            }
+        pure basicTestSuite
+            { testInterface = TestSuiteUnsupported tt }
 
     Just tt@(TestTypeExe ver) -> case _testStanzaMainIs stanza of
         Nothing   -> do
@@ -340,22 +343,18 @@ validateTestSuite pos stanza = case _testStanzaTestType stanza of
         Just file -> do
             when (isJust (_testStanzaTestModule stanza)) $
                 parseWarning pos PWTExtraBenchmarkModule (extraField "test-module" tt)
-            pure emptyTestSuite
-                { testInterface = TestSuiteExeV10 ver file
-                , testBuildInfo = _testStanzaBuildInfo stanza
-                }
+            pure basicTestSuite
+                { testInterface = TestSuiteExeV10 ver file }
 
     Just tt@(TestTypeLib ver) -> case _testStanzaTestModule stanza of
          Nothing      -> do
-             parseFailure pos (missingField "test-module" tt)
-             pure emptyTestSuite
+            parseFailure pos (missingField "test-module" tt)
+            pure emptyTestSuite
          Just module_ -> do
             when (isJust (_testStanzaMainIs stanza)) $
                 parseWarning pos PWTExtraMainIs (extraField "main-is" tt)
-            pure emptyTestSuite
-                { testInterface = TestSuiteLibV09 ver module_
-                , testBuildInfo = _testStanzaBuildInfo stanza
-                }
+            pure basicTestSuite
+                { testInterface = TestSuiteLibV09 ver module_ }
 
   where
     missingField name tt = "The '" ++ name ++ "' field is required for the "
@@ -363,6 +362,11 @@ validateTestSuite pos stanza = case _testStanzaTestType stanza of
 
     extraField   name tt = "The '" ++ name ++ "' field is not used for the '"
                         ++ prettyShow tt ++ "' test suite type."
+    basicTestSuite =
+             emptyTestSuite {
+                  testBuildInfo = _testStanzaBuildInfo stanza
+                , testCodeGenerators = _testStanzaCodeGenerators stanza
+             }
 
 unvalidateTestSuite :: TestSuite -> TestSuiteStanza
 unvalidateTestSuite t = TestSuiteStanza
@@ -370,6 +374,7 @@ unvalidateTestSuite t = TestSuiteStanza
     , _testStanzaMainIs     = ma
     , _testStanzaTestModule = mo
     , _testStanzaBuildInfo  = testBuildInfo t
+    , _testStanzaCodeGenerators = testCodeGenerators t
     }
   where
     (ty, ma, mo) = case testInterface t of
