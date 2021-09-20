@@ -34,7 +34,7 @@ import Distribution.Types.Flag
          ( FlagAssignment, showFlagAssignment )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
-         , ProfDetailLevel(..), showProfDetailLevel )
+         , ProfDetailLevel(..), PackageDB, showProfDetailLevel )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
 import Distribution.Types.PkgconfigVersion (PkgconfigVersion)
@@ -200,6 +200,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
        pkgHashProgSuffix          :: Maybe PathTemplate,
+       pkgHashPackageDbs          :: [Maybe PackageDB],
 
        -- Haddock options
        pkgHashDocumentation       :: Bool,
@@ -293,6 +294,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
+      , opt   "package-dbs" [] (unwords . map show) pkgHashPackageDbs
 
       , opt   "documentation"  False prettyShow pkgHashDocumentation
       , opt   "haddock-hoogle" False prettyShow pkgHashHaddockHoogle

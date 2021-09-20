@@ -456,6 +456,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigHcPath               <- arbitraryFlag arbitraryShortToken
         projectConfigHcPkg                <- arbitraryFlag arbitraryShortToken
         projectConfigHaddockIndex         <- arbitrary
+        projectConfigPackageDBs           <- shortListOf 2 arbitrary
         projectConfigRemoteRepos          <- arbitrary
         projectConfigLocalNoIndexRepos    <- arbitrary
         projectConfigActiveRepos          <- arbitrary
@@ -494,6 +495,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPath
         <*> shrinkerAla (fmap NonEmpty) projectConfigHcPkg
         <*> shrinker projectConfigHaddockIndex
+        <*> shrinker projectConfigPackageDBs
         <*> shrinker projectConfigRemoteRepos
         <*> shrinker projectConfigLocalNoIndexRepos
         <*> shrinker projectConfigActiveRepos
