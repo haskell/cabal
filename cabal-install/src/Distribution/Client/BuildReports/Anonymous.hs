@@ -34,7 +34,7 @@ import Prelude ()
 
 import Distribution.CabalSpecVersion
 import Distribution.Client.BuildReports.Types
-import Distribution.Client.Utils              (cabalInstallVersion)
+import Distribution.Client.Version            (cabalInstallVersion)
 import Distribution.Compiler                  (CompilerId (..))
 import Distribution.FieldGrammar
 import Distribution.Fields                    (readFields, showFields)

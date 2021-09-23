@@ -111,10 +111,10 @@ import Distribution.Client.Types.Credentials  (Password (..))
 import Distribution.Client.Init               (initCmd)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
-import Distribution.Client.Utils              (determineNumJobs
-                                              ,relaxEncodingErrors
-                                              ,cabalInstallVersion
-                                              )
+import Distribution.Client.Utils
+         ( determineNumJobs, relaxEncodingErrors )
+import Distribution.Client.Version
+         ( cabalInstallVersion )
 
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
