@@ -27,6 +27,7 @@ module Distribution.Fields (
     PError (..),
     showPError,
     -- * Pretty printing
+    CommentPosition (..),
     PrettyField (..),
     showFields,
     -- ** Transformation from Field

@@ -11,6 +11,7 @@
 --
 module Distribution.Fields.Pretty (
     -- * Fields
+    CommentPosition (..),
     PrettyField (..),
     showFields,
     showFields',
@@ -33,6 +34,12 @@ import qualified Distribution.Fields.Parser as P
 import qualified Data.ByteString  as BS
 import qualified Text.PrettyPrint as PP
 
+-- | This type is used to discern when a comment block should go 
+--   before or after a cabal-like file field, otherwise it would
+--   be hardcoded to a single position. It is often used in
+--   conjunction with @PrettyField@.
+data CommentPosition = CommentBefore [String] | CommentAfter [String] | NoComment
+
 data PrettyField ann
     = PrettyField ann FieldName PP.Doc
     | PrettySection ann FieldName [PP.Doc] [PrettyField ann]
@@ -46,12 +53,12 @@ data PrettyField ann
 -- This unsafety is left in place so one could generate empty lines
 -- between comment lines.
 --
-showFields :: (ann -> [String]) -> [PrettyField ann] -> String
+showFields :: (ann -> CommentPosition) -> [PrettyField ann] -> String
 showFields rann = showFields' rann (const id) 4
 
 -- | 'showFields' with user specified indentation.
 showFields'
-  :: (ann -> [String])
+  :: (ann -> CommentPosition)
      -- ^ Convert an annotation to lined to preceed the field or section.
   -> (ann -> [String] -> [String])
      -- ^ Post-process non-annotation produced lines.
@@ -76,7 +83,7 @@ showFields' rann post n = unlines . renderFields (Opts rann indent post)
     indent2 xs = ' ' : ' ' : xs
 
 data Opts ann = Opts
-  { _optAnnotation :: ann -> [String]
+  { _optAnnotation :: ann -> CommentPosition
   , _optIndent :: String -> String
   , _optPostprocess :: ann -> [String] -> [String]
   }
@@ -115,10 +122,18 @@ flattenBlocks = go0 where
 
 renderField :: Opts ann -> Int -> PrettyField ann -> Block
 renderField (Opts rann indent post) fw (PrettyField ann name doc) =
-    Block before after $ comments ++ post ann lines'
+    Block before after content
   where
+    content = case comments of
+      CommentBefore cs -> cs ++ post ann lines'
+      CommentAfter  cs -> post ann lines' ++ cs
+      NoComment        -> post ann lines'
     comments = rann ann
-    before = if null comments then NoMargin else Margin
+    before = case comments of
+      CommentBefore [] -> NoMargin
+      CommentAfter  [] -> NoMargin
+      NoComment        -> NoMargin
+      _                -> Margin
 
     (lines', after) = case lines narrow of
         []           -> ([ name' ++ ":" ], NoMargin)
@@ -133,11 +148,16 @@ renderField (Opts rann indent post) fw (PrettyField ann name doc) =
     narrowStyle = PP.style { PP.lineLength = PP.lineLength PP.style - fw }
 
 renderField opts@(Opts rann indent post) _ (PrettySection ann name args fields) = Block Margin Margin $
-    rann ann
-    ++
-    post ann [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ]
+    
+    attachComments
+      (post ann [ PP.render $ PP.hsep $ PP.text (fromUTF8BS name) : args ])
     ++
     map indent (renderFields opts fields)
+  where
+    attachComments content = case rann ann of
+      CommentBefore cs -> cs ++ content
+      CommentAfter  cs -> content ++ cs
+      NoComment        -> content
 
 renderField _ _ PrettyEmpty = Block NoMargin NoMargin mempty
 

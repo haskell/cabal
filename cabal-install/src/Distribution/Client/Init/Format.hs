@@ -66,7 +66,7 @@ fieldD
 fieldD fieldName fieldContents fieldComments includeField opts
     | fieldContents == empty =
       -- If there is no content, optionally produce a commented out field.
-      fieldSEmptyContents fieldComments
+      fieldSEmptyContents $ CommentBefore fieldComments
     | otherwise =
         -- If the "--no-comments" or "--minimal" flag is set, strip comments.
         let comments
@@ -77,6 +77,10 @@ fieldD fieldName fieldContents fieldComments includeField opts
         -- If the "--minimal" flag is set, strip comments.
         in fieldSWithContents comments
   where
+    commentPositionFor fn
+      | fn == "cabal-version" = CommentAfter
+      | otherwise = CommentBefore
+
     isMinimal = _optMinimal opts
     hasNoComments = _optNoComments opts
 
@@ -88,21 +92,23 @@ fieldD fieldName fieldContents fieldComments includeField opts
         empty
 
     fieldSWithContents cs =
-      PrettyField (withComments (map ("-- " ++) cs)) fieldName fieldContents
+      PrettyField (withComments . commentPositionFor fieldName $ map ("-- " ++) cs) fieldName fieldContents
 
 
 -- | A field annotation instructing the pretty printer to comment out the field
 --   and any contents, with no comments.
-commentedOutWithComments :: [String] -> FieldAnnotation
-commentedOutWithComments = FieldAnnotation True . map ("-- " ++)
+commentedOutWithComments :: CommentPosition -> FieldAnnotation
+commentedOutWithComments (CommentBefore cs) = FieldAnnotation True . CommentBefore $ map ("-- " ++) cs
+commentedOutWithComments (CommentAfter  cs) = FieldAnnotation True . CommentAfter  $ map ("-- " ++) cs
+commentedOutWithComments NoComment = FieldAnnotation True NoComment
 
 -- | A field annotation with the specified comment lines.
-withComments :: [String] -> FieldAnnotation
+withComments :: CommentPosition -> FieldAnnotation
 withComments = FieldAnnotation False
 
 -- | A field annotation with no comments.
 annNoComments :: FieldAnnotation
-annNoComments = FieldAnnotation False []
+annNoComments = FieldAnnotation False NoComment
 
 postProcessFieldLines :: FieldAnnotation -> [String] -> [String]
 postProcessFieldLines ann
@@ -277,6 +283,8 @@ mkPkgDescription opts pkgDesc =
       , "and can be different from the cabal-install (the tool) version and the"
       , "Cabal (the library) version you are using. As such, the Cabal (the library)"
       , "version used must be equal or greater than the version stated in this field."
+      , "Starting from the specification version 2.2, the cabal-version field must be"
+      , "the first thing in the cabal file."
       ]
       False
       opts
