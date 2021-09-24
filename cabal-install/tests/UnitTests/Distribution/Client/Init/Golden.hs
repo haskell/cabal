@@ -271,24 +271,27 @@ goldenCabalTests v pkgIx srcDb = testGroup ".cabal file golden tests"
 
         (Right (ProjectSettings opts pkgDesc (Just libTarget) (Just exeTarget) (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               libStanza  = mkLibStanza  opts $ libTarget {_libDependencies  = mangleBaseDep libTarget  _libDependencies}
               exeStanza  = mkExeStanza  opts $ exeTarget {_exeDependencies  = mangleBaseDep exeTarget  _exeDependencies}
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [libStanza, exeStanza, testStanza]
+          mkStanza $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
         (Right (ProjectSettings opts pkgDesc (Just libTarget) Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               libStanza  = mkLibStanza  opts $ libTarget  {_libDependencies  = mangleBaseDep libTarget  _libDependencies}
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
 
-          mkStanza $ pkgFields ++ [libStanza, testStanza]
+          mkStanza $ pkgFields ++ [commonStanza, libStanza, testStanza]
         
         (Right (ProjectSettings opts pkgDesc Nothing Nothing (Just testTarget), _)) -> do
           let pkgFields = mkPkgDescription opts pkgDesc
+              commonStanza = mkCommonStanza opts
               testStanza = mkTestStanza opts $ testTarget {_testDependencies = mangleBaseDep testTarget _testDependencies}
           
-          mkStanza $ pkgFields ++ [testStanza]
+          mkStanza $ pkgFields ++ [commonStanza, testStanza]
 
         (Right (ProjectSettings _ _ l e t, _)) -> assertFailure $
           show l ++ "\n" ++ show e ++ "\n" ++ show t

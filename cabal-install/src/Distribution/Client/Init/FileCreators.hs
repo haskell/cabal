@@ -61,12 +61,13 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       writeChangeLog opts pkgDesc
 
       let pkgFields = mkPkgDescription opts pkgDesc
+          commonStanza = mkCommonStanza opts
 
       libStanza <- prepareLibTarget opts libTarget
       exeStanza <- prepareExeTarget opts exeTarget
       testStanza <- prepareTestTarget opts testTarget
 
-      writeCabalFile opts $ pkgFields ++ [libStanza, exeStanza, testStanza]
+      writeCabalFile opts $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
         message opts "\nWarning: no synopsis given. You should edit the .cabal file and add one."

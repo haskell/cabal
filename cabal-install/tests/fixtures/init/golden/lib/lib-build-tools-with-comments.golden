@@ -1,4 +1,7 @@
 library
+    -- Import common warning flags.
+    import:             warnings
+
     -- Modules exported by the library.
     exposed-modules:    MyLib
 

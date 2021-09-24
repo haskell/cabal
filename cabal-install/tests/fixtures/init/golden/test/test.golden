@@ -1,4 +1,5 @@
 test-suite y-test
+    import:           warnings
     default-language: Haskell2010
 
     -- Modules included in this executable, other than Main.
