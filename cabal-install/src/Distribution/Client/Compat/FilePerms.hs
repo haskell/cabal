@@ -7,10 +7,10 @@ module Distribution.Client.Compat.FilePerms (
   ) where
 
 import Prelude (FilePath, IO, return)
-import Data.Bits ((.|.))
 
 #ifndef mingw32_HOST_OS
 import Prelude ((<$>))
+import Data.Bits ((.|.))
 import System.Posix.Types
          ( FileMode )
 import System.Posix.Files
