@@ -6,20 +6,15 @@ module Distribution.Client.Compat.FilePerms (
   setFileHidden,
   ) where
 
-import Prelude (FilePath, IO, return, ($))
+import Prelude (FilePath, IO, return)
 import Data.Bits ((.|.))
 
 #ifndef mingw32_HOST_OS
+import Prelude ((<$>))
 import System.Posix.Types
          ( FileMode )
-import System.Posix.Internals
-         ( withFilePath
-         , c_chmod
-         , c_stat, sizeof_stat, st_mode )
-import Foreign.C
-         ( throwErrnoPathIfMinus1_ )
-import Foreign.Marshal.Alloc
-         ( allocaBytes )
+import System.Posix.Files
+         ( getFileStatus, fileMode, setFileMode )
 #else
 import System.Win32.File (setFileAttributes, fILE_ATTRIBUTE_HIDDEN)
 #endif /* mingw32_HOST_OS */
@@ -33,13 +28,10 @@ setFileExecutable path = addFileMode path 0o755 -- file perms -rwxr-xr-x
 setFileHidden     _    = return ()
 
 addFileMode :: FilePath -> FileMode -> IO ()
-addFileMode name m =
-  withFilePath name $ \s -> allocaBytes sizeof_stat $ \ptr_stat -> do
-    throwErrnoPathIfMinus1_ "addFileMode: stat" name $
-         c_stat s ptr_stat
-    o <- st_mode ptr_stat
-    throwErrnoPathIfMinus1_ "addFileMode: chmod" name $
-         c_chmod s (m .|. o)
+addFileMode name m = do
+  o <- fileMode <$> getFileStatus name
+  setFileMode name (m .|. o)
+
 #else
 setFileOrdinary   _ = return ()
 setFileExecutable _ = return ()
