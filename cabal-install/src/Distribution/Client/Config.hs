@@ -112,7 +112,7 @@ import Distribution.Simple.Program
          ( defaultProgramDb )
 import Distribution.Simple.Utils
          ( die', notice, warn, lowercase, cabalVersion, toUTF8BS )
-import Distribution.Client.Utils
+import Distribution.Client.Version
          ( cabalInstallVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
