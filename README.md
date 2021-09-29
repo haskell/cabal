@@ -7,9 +7,6 @@
 [![IRC chat](https://img.shields.io/badge/chat-on%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
 [![Matrix chat](https://img.shields.io/badge/chat-on%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
 
-**[IRC](https://web.libera.chat/#hackage)**
-**[Matrix](https://matrix.to/#/#hackage:libera.chat)**
-
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
 This Cabal Git repository contains the following packages:
