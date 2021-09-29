@@ -45,4 +45,4 @@ Installing cabal-install without cabal-install
 ----------------------------------------------
 
 Assuming you don't have a pre-existing copy of `cabal-install`,
-look into `bootstrap` directory.
+look into [`bootstrap`](bootstrap) directory.
