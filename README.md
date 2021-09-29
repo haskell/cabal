@@ -4,8 +4,8 @@
 [![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
 [![Artifacts](https://github.com/haskell/cabal/actions/workflows/artifacts.yml/badge.svg?branch=master)](https://github.com/haskell/cabal/actions/workflows/artifacts.yml?query=branch%3Amaster)
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
-**[IRC](https://web.libera.chat/#hackage)**
-**[Matrix](https://matrix.to/#/#hackage:libera.chat)**
+[![IRC chat](https://img.shields.io/badge/chat-via%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
+[![Matrix chat](https://img.shields.io/badge/chat-via%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
 
 <img src="https://www.haskell.org/cabal/images/Cabal-light.png" align="right">
 
@@ -45,4 +45,4 @@ Installing cabal-install without cabal-install
 ----------------------------------------------
 
 Assuming you don't have a pre-existing copy of `cabal-install`,
-look into `bootstrap` directory.
+look into [`bootstrap`](bootstrap) directory.
