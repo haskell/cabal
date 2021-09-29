@@ -22,7 +22,6 @@ module Distribution.Client.Utils
   , relaxEncodingErrors
   , ProgressPhase (..)
   , progressMessage
-  , cabalInstallVersion
   , pvpize
   , incVersion
   , getCurrentYear
@@ -394,10 +393,6 @@ progressMessage verbosity phase subject = do
         ProgressInstalling  -> "Installing   "
         ProgressCompleted   -> "Completed    "
 
--- TODO: write a test around this. Don't abuse Paths_cabal_install.
---
-cabalInstallVersion :: Version
-cabalInstallVersion = mkVersion [3,6]
 
 -- | Given a version, return an API-compatible (according to PVP) version range.
 --

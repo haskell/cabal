@@ -33,7 +33,9 @@ import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile, IOData (..) )
 import Distribution.Client.Utils
-         ( withTempFileName, cabalInstallVersion )
+         ( withTempFileName )
+import Distribution.Client.Version
+         ( cabalInstallVersion )
 import Distribution.Client.Types
          ( unRepoName, RemoteRepo(..) )
 import Distribution.System

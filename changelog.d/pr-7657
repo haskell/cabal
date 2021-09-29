@@ -1,0 +1,6 @@
+synopsis: Regenerate bootstrap/ with GHC updated from 8.10.4 to 8.10.7
+pr: #7657 #7658
+description: {
+
+- This regenerates bootstrap plans using new package versions and also updating GHC from 8.10.4 to 8.10.7, as requested by GHC HQ.
+}

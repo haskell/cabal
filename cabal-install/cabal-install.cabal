@@ -192,6 +192,7 @@ library
         Distribution.Client.Utils.Json
         Distribution.Client.Utils.Parsec
         Distribution.Client.VCS
+        Distribution.Client.Version
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.World
 
