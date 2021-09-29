@@ -4,6 +4,9 @@
 [![Stackage version](https://www.stackage.org/package/Cabal/badge/lts?label=Stackage)](https://www.stackage.org/package/Cabal)
 [![Artifacts](https://github.com/haskell/cabal/actions/workflows/artifacts.yml/badge.svg?branch=master)](https://github.com/haskell/cabal/actions/workflows/artifacts.yml?query=branch%3Amaster)
 [![Documentation Status](http://readthedocs.org/projects/cabal/badge/?version=latest)](http://cabal.readthedocs.io/en/latest/?badge=latest)
+[![IRC chat](https://img.shields.io/badge/chat-on%20libera-brightgreen.svg)](https://web.libera.chat/#hackage)
+[![Matrix chat](https://img.shields.io/badge/chat-on%20matrix-brightgreen.svg)](https://matrix.to/#/#hackage:libera.chat)
+
 **[IRC](https://web.libera.chat/#hackage)**
 **[Matrix](https://matrix.to/#/#hackage:libera.chat)**
 
