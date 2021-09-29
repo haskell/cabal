@@ -67,6 +67,7 @@ import Distribution.SPDX.License (License)
 import Distribution.ModuleName
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
+import Distribution.Fields.Pretty
 import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified System.Directory as P
@@ -439,6 +440,6 @@ data DefaultPrompt t
 data FieldAnnotation = FieldAnnotation
   { annCommentedOut :: Bool
     -- ^ True iif the field and its contents should be commented out.
-  , annCommentLines :: [String]
+  , annCommentLines :: CommentPosition
     -- ^ Comment lines to place before the field or section.
   }

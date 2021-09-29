@@ -243,7 +243,7 @@ roundtripTest testFieldsTransform fpath bs = do
         then do
             parsecFields <- assertRight $ Parsec.readFields patchedBs
             let prettyFields = PP.fromParsecFields parsecFields
-            let bs'' = PP.showFields (return []) prettyFields
+            let bs'' = PP.showFields (return PP.NoComment) prettyFields
             z0 <- parse "3rd" (toUTF8BS bs'')
 
             -- note: we compare "raw" GPDs, on purpose; stricter equality
