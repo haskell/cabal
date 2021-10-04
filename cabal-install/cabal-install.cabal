@@ -320,7 +320,7 @@ Test-Suite unit-tests
           tar,
           time,
           zlib,
-          tasty >= 1.2.3 && <1.4,
+          tasty >= 1.2.3 && <1.5,
           tasty-golden >=2.3.1.1 && <2.4,
           tasty-quickcheck,
           tasty-hunit >= 0.10,
@@ -348,7 +348,7 @@ Test-Suite memory-usage-tests
   build-depends:
         cabal-install,
         containers,
-        tasty >= 1.2.3 && <1.4,
+        tasty >= 1.2.3 && <1.5,
         tasty-hunit >= 0.10
 
 
@@ -368,7 +368,7 @@ test-suite integration-tests2
         containers,
         directory,
         filepath,
-        tasty >= 1.2.3 && <1.4,
+        tasty >= 1.2.3 && <1.5,
         tasty-hunit >= 0.10,
         tagged
 
@@ -405,7 +405,7 @@ test-suite long-tests
         network-uri >= 2.6.2.0 && <2.6.4.0,
         random,
         tagged,
-        tasty >= 1.2.3 && <1.4,
+        tasty >= 1.2.3 && <1.5,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         QuickCheck >= 2.14 && <2.15,
