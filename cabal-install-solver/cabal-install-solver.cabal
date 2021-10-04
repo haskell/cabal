@@ -139,6 +139,6 @@ Test-Suite unit-tests
      , base        >= 4.10  && <4.15
      , Cabal
      , cabal-install-solver
-     , tasty       >= 1.2.3 && <1.4
+     , tasty       >= 1.2.3 && <1.5
      , tasty-quickcheck
      , tasty-hunit >= 0.10
