@@ -43,10 +43,11 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
+import Distribution.Types.CondTree (CondTree (..), CondBranch (..), condIfThen, condIfThenElse)
 import Distribution.PackageDescription
-         ( dispFlagAssignment )
+         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment (..) )
 import Distribution.Simple.Compiler
-         ( OptimisationLevel(..), DebugInfoLevel(..) )
+         ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, fromFlagOrDefault
@@ -92,16 +93,35 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (ParsecParser)
+import Distribution.Parsec (ParsecParser, zeroPos)
+import Distribution.System (Platform (..))
 
 import qualified Data.Map as Map
-import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS
 
 import Network.URI (URI (..))
+
+import Distribution.Fields.ConfVar (parseConditionConfVar)
+import qualified Distribution.Fields.ParseResult as FPR
+import Distribution.Fields.Field (SectionArg (..))
+
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
 --
+
+-- ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a legacy config. It can be finalized by providing the conditional resolution invo
+-- and then resolving and downloading the imports
+
+type ProjectConfigImport = String
+
+type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] LegacyProjectConfig
+
+finalizeProjectConfigSkeleton :: Platform -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> IO LegacyProjectConfig
+finalizeProjectConfigSkeleton = undefined
+
+
+
 
 -- | We already have parsers\/pretty-printers for almost all the fields in the
 -- project config file, but they're in terms of the types used for the command
@@ -853,6 +873,34 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 ------------------------------------------------
 -- Parsing and showing the project config file
 --
+
+
+parseLegacyProjectSkeleton :: FilePath -> BS.ByteString -> ParseResult ProjectConfigSkeleton
+parseLegacyProjectSkeleton source bs = _ . packResult . mconcat . go $ BS.lines bs
+ where
+  go :: [BS.ByteString] -> [([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
+  go (l:ls)
+       | Just condition <- parseCond l =
+            let (clause, rest) = splitTillIndented ls
+            in case rest of
+                (r:rs) | (BS.pack "else") `BS.isPrefixOf` r -> -- TODO handle elif
+                     let (elseClause, lastRest) = splitTillIndented rs
+                     in ([condIfThenElse condition (clauseToNode clause) (clauseToNode elseClause)], [], []) : go lastRest
+                _ -> ([condIfThen condition (clauseToNode clause)], [], []) : go rest
+       | Just imp <- parseImport l = ([], [imp], []) : go ls
+       | otherwise = ([], [], [l]) : go ls
+  packResult :: ([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree ConfVar [ProjectConfigImport] [BS.ByteString]
+  packResult (branches, imps, ls) = CondNode ls imps branches
+  splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
+  clauseToNode ls = CondNode ls [] [] -- TODO extract imports from lines
+  parseCond :: BS.ByteString -> Maybe (Condition ConfVar)
+  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case FPR.runParseResult (parseConditionConfVar [SecArgOther zeroPos (BS.drop 3 l)]) of -- todo drop end also
+                                                      (_, Left _) -> Nothing
+                                                      (_, Right x) -> Just x
+
+              | otherwise = Nothing
+  parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
+                | otherwise = Nothing
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig source =
