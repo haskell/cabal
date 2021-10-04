@@ -45,6 +45,17 @@ build-x86_64-linux-alpine:
     - x86_64-linux
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-alpine3_12:$DOCKER_REV"
 
+build-i386-linux-alpine:
+  extends: .build
+  tags:
+    - x86_64-linux
+  image: "i386/alpine:3.12"
+  before_script:
+    # for GHC
+    - apk add --no-cache bash curl gcc g++ binutils binutils-gold bsd-compat-headers gmp-dev ncurses-dev libffi-dev make xz tar perl
+    # for cabal build
+    - apk add --no-cache zlib zlib-dev zlib-static
+
 build-x86_64-freebsd:
   extends: .build
   tags:
