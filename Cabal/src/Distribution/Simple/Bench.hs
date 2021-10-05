@@ -58,7 +58,7 @@ bench args pkg_descr lbi flags = do
                   -- Check that the benchmark executable exists.
                   exists <- doesFileExist cmd
                   unless exists $ die' verbosity $
-                      "Error: Could not find benchmark program \""
+                      "Could not find benchmark program \""
                       ++ cmd ++ "\". Did you build the package first?"
 
                   notice verbosity $ startMessage name
