@@ -1,0 +1,3 @@
+synopsis: `cabal sdist` works in projects with `extra-packages`
+issues: #7698
+packages: cabal-install
