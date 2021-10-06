@@ -83,10 +83,10 @@ setFileExecutable path = addFileMode path 0o755 -- file perms -rwxr-xr-x
 addFileMode :: FilePath -> FileMode -> IO ()
 addFileMode name m =
   withFilePath name $ \s -> allocaBytes sizeof_stat $ \ptr_stat -> do
-    throwErrnoPathIfMinus1_ "maskFileMode: stat" name $
+    throwErrnoPathIfMinus1_ "addFileMode: stat" name $
          c_stat s ptr_stat
     o <- st_mode ptr_stat
-    throwErrnoPathIfMinus1_ "maskFileMode: chmod" name $
+    throwErrnoPathIfMinus1_ "addFileMode: chmod" name $
          c_chmod s (m .|. o)
 #else
 setFileOrdinary   _ = return ()
