@@ -1,5 +1,5 @@
 # cabal unpack
 Warning: <ROOT>/cabal.config: Unrecognized stanza on line 3
-Warning: The package list for 'x.y.z' does not exist. Run 'cabal update' to download it.RemoteRepo {remoteRepoName = RepoName "x.y.z", remoteRepoURI = http://x.y.z/, remoteRepoSecure = Nothing, remoteRepoRootKeys = [], remoteRepoKeyThreshold = 0, remoteRepoShouldTryHttps = False}
+Warning: The package list for 'x.y.z' does not exist. Run 'cabal update' to download it.
 Error: cabal: There is no package named 'a-b-s-e-n-t'. 
 You may need to run 'cabal update' to get the latest list of available packages.
