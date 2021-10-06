@@ -7,5 +7,9 @@
 -- Needs to be checked manually whether it meets expectations.
 
 import Test.Cabal.Prelude
-main = cabalTest $ do
-    fails $ cabal "unpack" ["BNFC"]
+main = cabalTest $
+  fails $
+  cabalG
+    [ "--config-file", "cabal.config" ]
+    "unpack"
+    [ "a-b-s-e-n-t" ]
