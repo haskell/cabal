@@ -32,6 +32,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 
 run cabal v2-install cabal-install \
     -w "ghc-$GHC_VERSION" \
+	--project-file=cabal.project.release \
     --installdir="$CI_PROJECT_DIR/out" \
     --install-method=copy \
     --overwrite-policy=always \
