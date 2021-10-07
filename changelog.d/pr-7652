@@ -1,0 +1,9 @@
+synopsis: Windows: redo the fix to breakage caused by new autoconf; the wrong fix made cabal sometimes fail with old autoconf
+pr: #7652 #7651
+issues: #7649 #7494
+significance: significant
+description: {
+
+- Reverts #7510 that failed on Windows when used with pre-generated scripts included in packages such as network, time, process.
+- Adds a subtler fix/workaround for the deficiencies of new autoconf versions on Windows.
+}
