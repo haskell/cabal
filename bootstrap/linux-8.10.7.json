@@ -3,7 +3,7 @@
         {
             "source": "local",
             "package": "Cabal",
-            "version": "3.6.2.0",
+            "version": "3.6.1.0",
             "flags": [
                 "-bundled-binary-generic"
             ],
@@ -181,9 +181,9 @@
                 "-old-bytestring",
                 "-old-time"
             ],
-            "cabal_sha256": "94ded05718fe75b88c98e7113feeb9fca50688a7e59b6aefd80a6f48438c5062",
+            "cabal_sha256": "d8699f46b485f105eea9c7158f3d432ca578e6bbe5d68751184e9899a41d430d",
             "src_sha256": "b384449f62b2b0aa3e6d2cb1004b8060b01f21ec93e7b63e7af6d8fad8a9f1de",
-            "revision": 3
+            "revision": 4
         },
         {
             "source": "hackage",
@@ -194,9 +194,9 @@
                 "-non-blocking-ffi",
                 "-pkg-config"
             ],
-            "cabal_sha256": "28f4d460c260e074cab833625454564b9783a3389b7bb91fd54da2790b39592c",
+            "cabal_sha256": "262a93dbf370be59f4ee57f3b1a51b338bc2c309797daa37c14f2262ae61dae4",
             "src_sha256": "807f6bddf9cb3c517ce5757d991dde3c7e319953a22c86ee03d74534bd5abc88",
-            "revision": 0
+            "revision": 1
         },
         {
             "source": "hackage",
@@ -245,7 +245,7 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.6.1.0",
+            "version": "3.6.0.0",
             "flags": [
                 "-debug-conflict-sets",
                 "-debug-expensive-assertions",
