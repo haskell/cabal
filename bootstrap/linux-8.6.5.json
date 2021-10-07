@@ -245,7 +245,7 @@
         {
             "source": "local",
             "package": "cabal-install",
-            "version": "3.6.1.0",
+            "version": "3.6.2.0",
             "flags": [
                 "-debug-conflict-sets",
                 "-debug-expensive-assertions",
