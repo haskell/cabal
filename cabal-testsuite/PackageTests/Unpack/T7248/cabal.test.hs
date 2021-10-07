@@ -11,5 +11,5 @@ main = cabalTest $
   fails $
   cabalG
     [ "--config-file", "cabal.config" ]
-    "unpack"
+    "get"
     [ "a-b-s-e-n-t" ]
