@@ -1,5 +1,5 @@
 synopsis: Handle option argument parse errors without 'error'
-packages: Cabal, cabal-install
+packages: Cabal cabal-install
 prs: #7579
 issues: #7573
 description: {
