@@ -1,4 +1,4 @@
 synopsis: 'cabal check' to fail when no upper bounds for base or Cabal are present in setup dependencies
-packages: Cabal, cabal-install
+packages: Cabal cabal-install
 issues: #4683
-prs: #5370, #7409
+prs: #5370 #7409
