@@ -22,12 +22,17 @@ module Distribution.Client.Manpage
 
 import Distribution.Client.Compat.Prelude
 import Prelude ()
+import qualified Data.List.NonEmpty as List1
 
+import Distribution.Client.Init.Utils   (trim)
+  -- TODO #7744: move 'trim' to a more canonical place
 import Distribution.Client.ManpageFlags
 import Distribution.Client.Setup        (globalCommand)
-import Distribution.Compat.Process      (createProcess)
 import Distribution.Simple.Command
 import Distribution.Simple.Flag         (fromFlagOrDefault)
+import Distribution.Simple.Utils
+  ( IOData(..), IODataMode(..), createProcessWithEnv, rawSystemStdInOut )
+import qualified Distribution.Verbosity as Verbosity
 import System.IO                        (hClose, hPutStr)
 
 import qualified System.Process as Process
@@ -50,23 +55,43 @@ manpageCmd pname commands flags
     = putStrLn contents
     | otherwise
     = do
-        let cmd  = "man"
-            args = ["-l", "-"]
+        -- 2021-10-08, issue #7714
+        -- @cabal man --raw | man -l -@ does not work on macOS/BSD,
+        -- because BSD-man does not support option @-l@, rather would
+        -- accept directly a file argument, e.g. @man /dev/stdin@.
+        -- The following works both on macOS and Linux
+        -- (but not on Windows out-of-the-box):
+        --
+        --   cabal man --raw | nroff -man /dev/stdin | less
+        --
+        -- So let us simulate this!
 
-        (mb_in, _, _, ph) <- createProcess (Process.proc cmd args)
-            { Process.std_in  = Process.CreatePipe
-            , Process.std_out = Process.Inherit
-            , Process.std_err = Process.Inherit
-            }
+        -- Feed contents into @nroff -man /dev/stdin@
+        (formatted, _errors, ec1) <- rawSystemStdInOut
+          Verbosity.normal
+          "nroff"
+          [ "-man", "/dev/stdin" ]
+          Nothing  -- Inherit working directory
+          Nothing  -- Inherit environment
+          (Just $ IODataText contents)
+          IODataModeText
 
-        -- put contents
-        for_ mb_in $ \hin -> do
-            hPutStr hin contents
-            hClose hin
+        unless (ec1 == ExitSuccess) $ exitWith ec1
 
-        -- wait for process to exit, propagate exit code
-        ec <- Process.waitForProcess ph
-        exitWith ec
+        -- Pipe output of @nroff@ into @less@
+        (Just inLess, _, _, procLess) <- createProcessWithEnv
+          Verbosity.normal
+          "less"
+          []
+          Nothing  -- Inherit working directory
+          Nothing  -- Inherit environment
+          Process.CreatePipe  -- in
+          Process.Inherit     -- out
+          Process.Inherit     -- err
+
+        hPutStr inLess formatted
+        hClose  inLess
+        exitWith =<< Process.waitForProcess procLess
   where
     contents :: String
     contents = manpage pname commands
@@ -117,7 +142,7 @@ manpage pname commands = unlines $
 commandSynopsisLines :: String -> CommandSpec action -> [String]
 commandSynopsisLines pname (CommandSpec ui _ NormalCommand) =
   [ ".B " ++ pname ++ " " ++ (commandName ui)
-  , ".R - " ++ commandSynopsis ui
+  , "- " ++ commandSynopsis ui
   , ".br"
   ]
 commandSynopsisLines _ (CommandSpec _ _ HiddenCommand) = []
@@ -129,8 +154,8 @@ commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
   , commandUsage ui pname
   , ""
   ] ++
-  optional commandDescription ++
-  optional commandNotes ++
+  optional removeLineBreaks commandDescription ++
+  optional id commandNotes ++
   [ "Flags:"
   , ".RS"
   ] ++
@@ -139,10 +164,26 @@ commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
   , ""
   ]
   where
-    optional field =
+    optional f field =
       case field ui of
-        Just text -> [text pname, ""]
+        Just text -> [ f $ text pname, "" ]
         Nothing   -> []
+    -- 2021-10-12, https://github.com/haskell/cabal/issues/7714#issuecomment-940842905
+    -- Line breaks just before e.g. 'new-build' cause weird @nroff@ warnings.
+    -- Thus:
+    -- Remove line breaks but preserve paragraph breaks.
+    -- We group lines by empty/non-empty and then 'unwords'
+    -- blocks consisting of non-empty lines.
+    removeLineBreaks
+      = unlines
+      . concatMap unwordsNonEmpty
+      . List1.groupWith null
+      . map trim
+      . lines
+    unwordsNonEmpty :: List1.NonEmpty String -> [String]
+    unwordsNonEmpty ls1 = if null (List1.head ls1) then ls else [unwords ls]
+      where ls = List1.toList ls1
+
 commandDetailsLines _ (CommandSpec _ _ HiddenCommand) = []
 
 optionsLines :: CommandUI flags -> [String]
