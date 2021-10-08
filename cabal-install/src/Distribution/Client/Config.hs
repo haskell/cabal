@@ -743,8 +743,21 @@ loadRawConfig verbosity configFileFlag = do
     Nothing -> do
       notice verbosity $
         "Config file path source is " ++ sourceMsg source ++ "."
-      notice verbosity $ "Config file " ++ configFile ++ " not found."
-      createDefaultConfigFile verbosity [] configFile
+      -- 2021-10-07, issue #7705
+      -- Only create default config file if name was not given explicitly
+      -- via option --config-file or environment variable.
+      case source of
+        Default -> do
+          notice verbosity msgNotFound
+          createDefaultConfigFile verbosity [] configFile
+        CommandlineOption   -> failNoConfigFile
+        EnvironmentVariable -> failNoConfigFile
+      where
+        msgNotFound = unwords [ "Config file not found:", configFile ]
+        failNoConfigFile = die' verbosity $ unlines
+          [ msgNotFound
+          , "(Config files can be created via the cabal-command 'user-config init'.)"
+          ]
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -757,8 +770,10 @@ loadRawConfig verbosity configFileFlag = do
 
   where
     sourceMsg CommandlineOption =   "commandline option"
-    sourceMsg EnvironmentVariable = "env var CABAL_CONFIG"
+    sourceMsg EnvironmentVariable = "environment variable CABAL_CONFIG"
     sourceMsg Default =             "default config file"
+
+-- | Provenance of the config file.
 
 data ConfigFileSource = CommandlineOption
                       | EnvironmentVariable

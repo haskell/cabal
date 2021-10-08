@@ -284,6 +284,7 @@ cabalGArgs global_args cmd args input = do
               , "v1-freeze"
               , "check"
               , "get", "unpack"
+              , "info"
               ]
           = [ ]
 
