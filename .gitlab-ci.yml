@@ -82,7 +82,9 @@ build-aarch64-darwin:
         --keep CABAL_INSTALL_VERSION \
         --run "$1" 2>&1
     }
-    runInNixShell "cabal update && mkdir vendored && cd vendored && cabal unpack network-3.1.2.1 && cd network-3.1.2.1 && autoreconf -fi" 2>&1
+    # temporary fix
+    runInNixShell "cabal update && mkdir vendored && cd vendored && cabal unpack network-3.1.2.2 && cd network-3.1.2.2 && autoreconf -fi" 2>&1
+
     runInNixShell "./.gitlab/ci.sh" 2>&1
   variables:
     MACOSX_DEPLOYMENT_TARGET: "10.7"
