@@ -4,16 +4,6 @@ tests: False
 benchmarks: False
 optimization: True
 
-<<<<<<< HEAD
 optional-packages: ./vendored/*/*.cabal
 
-package Cabal
-  ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
-
-package parsec
-  ghc-options: -fexpose-all-unfoldings
-
 constraints: network < 3.1.2.3
-=======
-constraints: network < 3.1.2.3
->>>>>>> 472977ecf (remove unnecessary flags from release project file (#7729))
