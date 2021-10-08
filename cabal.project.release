@@ -2,10 +2,8 @@ packages: Cabal/
 packages: cabal-install/
 tests: False
 benchmarks: False
-optimizations: True
+optimization: True
 
-package Cabal
-  ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
+optional-packages: ./vendored/*/*.cabal
 
-package parsec
-  ghc-options: -fexpose-all-unfoldings
+
