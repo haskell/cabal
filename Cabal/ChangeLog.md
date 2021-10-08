@@ -10,6 +10,20 @@
 # 3.4.0.0 [Oleg Grenrus](mailgo:oleg.grnerus@iki.fi) February 2021
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.4.0.0.md
 
+# 3.4.1.0 [Emily Pillmore](mailto:emilypi@cohomolo.gy) October 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.4.1.0.md
+
+# 3.4.0.0 [Oleg Grenrus](mailto:oleg.grnerus@iki.fi) February 2021
+  * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.4.0.0.md
+
+# 3.2.1.0 [Oleg Grenrus](mailto:oleg.grenris@iki.fi) October 2020
+  * Pass `cxx-options` with `-optcxx` for GHC >= 8.10
+  * Use process jobs when calling subprocesses
+  * Require custom-setup for `cabal-version: 1.24` and later
+  * Accept `linux-androideabi` as an alias for Android
+  * Fix ghci being launched before other sources are built
+  * Require cabal-versions >=1.25 to be exact
+
 # 3.2.0.0 [Herbert Valerio Riedel](mailto:hvr@gnu.org) April 2020
   * Change free text `String` fields to use `ShortText` in package description
     and installed package info.
