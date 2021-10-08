@@ -59,10 +59,15 @@ build-i386-linux-alpine:
     # for cabal build
     - apk add --no-cache zlib zlib-dev zlib-static
 
-build-x86_64-freebsd:
+build-x86_64-freebsd13:
   extends: .build
   tags:
     - x86_64-freebsd13
+
+build-x86_64-freebsd12:
+  extends: .build
+  tags:
+    - x86_64-freebsd12
 
 build-x86_64-darwin:
   extends: .build
