@@ -6,10 +6,11 @@ Configuration
 Overview
 --------
 
-The global configuration file for ``cabal-install`` is
-``~/.cabal/config``. If you do not have this file, ``cabal`` will create
-it for you on the first call to ``cabal update``. Alternatively, you can
-explicitly ask ``cabal`` to create it for you using
+The global configuration file for ``cabal-install`` is by default
+``$HOME/.cabal/config``. If you do not have this file, ``cabal`` will create
+it for you on the first call to ``cabal update``
+(details see `configuration file discovery`_).
+Alternatively, you can explicitly ask ``cabal`` to create it for you using
 
 .. code-block:: console
 
@@ -64,23 +65,23 @@ Various environment variables affect ``cabal-install``.
     Note, the nix-style builds build directory (``dist-newstyle``)
     is not affected by this environment variable.
 
+.. _config-file-discovery:
+
 Configuration file discovery
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1. If ``$CABAL_CONFIG`` is set use it,
-2. otherwise if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``
-3. otherwise use ``getAppUserDirectory "cabal"``
+The configuration file location is determined as follows:
 
-If the configuration file doesn't exist ``cabal-install``
-will generate the default one, with directories based on
-``$CABAL_DIR`` (if set) or ``getAppUserDirectory "cabal"`` prefix.
+1. If option ``--config-file`` is given, use it;
+2. otherwise, if ``$CABAL_CONFIG`` is set use it;
+3. otherwise, if ``$CABAL_DIR`` is set use ``$CABAL_DIR/config``;
+4. otherwise use ``config`` in ``getAppUserDirectory "cabal"``.
 
-.. note:
-
-    If ``$CABAL_CONFIG`` is set, but the file doesn't exist,
-    one will be generated with ``$CABAL_DIR`` or ``getAppUserDirectory "cabal"``
-    based prefixes. In other words not the prefixes based on a
-    directory part of ``$CABAL_CONFIG`` path.
+If the configuration file does not exist, and it was not given
+explicitly via ``--config-file`` or ``$CABAL_CONFIG``, then
+``cabal-install`` will generate the default one, with directories
+based on ``$CABAL_DIR`` (if set) or ``getAppUserDirectory "cabal"``
+prefix.
 
 Repository specification
 ------------------------
