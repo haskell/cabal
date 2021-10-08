@@ -6,8 +6,4 @@ optimization: True
 
 optional-packages: ./vendored/*/*.cabal
 
-package Cabal
-  ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
 
-package parsec
-  ghc-options: -fexpose-all-unfoldings
