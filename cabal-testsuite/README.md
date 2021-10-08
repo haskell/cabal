@@ -36,12 +36,13 @@ is similar to what you want to test.
 Otherwise, here is a walkthrough:
 
 1. Create the package(s) that you need for your test in a
-   new directory.  (Currently, tests are stored in `PackageTests`
-   and `tests`; we might reorganize this soon.)
+   new directory.
+   (Currently (2021-10-06), tests are stored in `PackageTests`,
+   with the exception of one test stored in `tests`.)
 
 2. Create one or more `.test.hs` scripts in your directory, using
    the template:
-   ```
+   ```haskell
    import Test.Cabal.Prelude
    main = setupAndCabalTest $ do
        -- your test code here
@@ -61,6 +62,17 @@ Otherwise, here is a walkthrough:
    are possible (grep for use-sites of functions to see how they
    are used).  If you don't see something anywhere, that's probably
    because it isn't implemented. Implement it!
+
+   To include parts that are supposed to fail (in the sense that a
+   non-zero exit code is returned), there is the `fails` combinator,
+   e.g.:
+   ```haskell
+   main = cabalTest $ do
+     fails $ cabal "bad-command" [ "bad", "args" ]
+     cabal "good-command" [ "good", "args" ]
+     fails $ cabal "another-bad-one" [ ... ]
+     ...
+   ```
 
 3. Run your tests using `cabal-tests` (no need to rebuild when
    you add or modify a test; it is automatically picked up).
