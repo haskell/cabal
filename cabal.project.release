@@ -3,7 +3,3 @@ packages: cabal-install/
 tests: False
 benchmarks: False
 optimization: True
-
-optional-packages: ./vendored/*/*.cabal
-
-
