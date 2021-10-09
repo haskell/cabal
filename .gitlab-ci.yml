@@ -40,6 +40,7 @@ build-armv7-linux-deb10:
     TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
+  retry: 2
 
 build-x86_64-linux:
   extends: .build
@@ -153,3 +154,4 @@ build-x86_64-windows:
     TARBALL_ARCHIVE_SUFFIX: x86_64-windows
     TARBALL_EXT: zip
     ADD_CABAL_ARGS: ""
+  retry: 2
