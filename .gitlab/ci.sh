@@ -43,3 +43,20 @@ run cabal v2-build ${args[@]} cabal-install
 mkdir "$CI_PROJECT_DIR/out"
 cp "$(cabal list-bin ${args[@]} cabal-install:exe:cabal)" "$CI_PROJECT_DIR/out/cabal"
 cp dist-newstyle/cache/plan.json "$CI_PROJECT_DIR/out/plan.json"
+cd "$CI_PROJECT_DIR/out/"
+
+# create tarball/zip
+TARBALL_PREFIX="cabal-install-$("$CI_PROJECT_DIR/out/cabal" --numeric-version)"
+case "${TARBALL_EXT}" in
+    zip)
+        zip "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" cabal plan.json
+        ;;
+    tar.xz)
+        tar caf "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" cabal plan.json
+        ;;
+    *)
+        fail "Unknown TARBALL_EXT: ${TARBALL_EXT}"
+        ;;
+esac
+
+rm cabal plan.json
