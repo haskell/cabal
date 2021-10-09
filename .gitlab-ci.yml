@@ -3,7 +3,7 @@ variables:
   DOCKER_REV: "853f348f9caf38b08740b280296fbd34e09abb3a"
 
   GHC_VERSION: 8.10.7
-  CABAL_INSTALL_VERSION: 3.4.0.0
+  CABAL_INSTALL_VERSION: 3.6.2.0
 
 workflow:
   rules:
@@ -19,31 +19,53 @@ workflow:
   artifacts:
     expire_in: 2 week
     paths:
-      - out
+      - out/*
 
 build-aarch64-linux-deb10:
   extends: .build
   tags:
     - aarch64-linux
   image: "registry.gitlab.haskell.org/ghc/ci-images/aarch64-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: aarch64-linux-deb10
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-armv7-linux-deb10:
   extends: .build
   tags:
     - armv7-linux
   image: "registry.gitlab.haskell.org/ghc/ci-images/armv7-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
+  retry: 2
 
 build-x86_64-linux:
   extends: .build
   tags:
     - x86_64-linux
-  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb9:$DOCKER_REV"
+  image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-deb10:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-linux-alpine:
   extends: .build
   tags:
     - x86_64-linux
+  before_script:
+    # for cabal build
+    - sudo apk add --no-cache zlib zlib-dev zlib-static
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-alpine3_12:$DOCKER_REV"
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
 build-i386-linux-alpine:
   extends: .build
@@ -55,16 +77,39 @@ build-i386-linux-alpine:
     - apk add --no-cache bash curl gcc g++ binutils binutils-gold bsd-compat-headers gmp-dev ncurses-dev libffi-dev make xz tar perl
     # for cabal build
     - apk add --no-cache zlib zlib-dev zlib-static
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
 
-build-x86_64-freebsd:
+build-x86_64-freebsd13:
   extends: .build
   tags:
     - x86_64-freebsd13
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd13
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
+
+build-x86_64-freebsd12:
+  extends: .build
+  tags:
+    - x86_64-freebsd12
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd12
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-darwin:
   extends: .build
   tags:
     - x86_64-darwin
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-darwin
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-aarch64-darwin:
   tags:
@@ -80,18 +125,37 @@ build-aarch64-darwin:
         --keep MACOSX_DEPLOYMENT_TARGET \
         --keep GHC_VERSION \
         --keep CABAL_INSTALL_VERSION \
+        --keep TARBALL_ARCHIVE_SUFFIX \
+        --keep TARBALL_EXT \
+        --keep ADD_CABAL_ARGS \
         --run "$1" 2>&1
     }
-    runInNixShell "cabal update && mkdir vendored && cd vendored && cabal unpack network-3.1.2.1 && cd network-3.1.2.1 && autoreconf -fi" 2>&1
     runInNixShell "./.gitlab/ci.sh" 2>&1
   variables:
     MACOSX_DEPLOYMENT_TARGET: "10.7"
+    TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
+    TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
   artifacts:
     expire_in: 2 week
     paths:
-      - out
+      - out/*
 
 build-x86_64-windows:
   extends: .build
+  script:
+    - Set-ExecutionPolicy Bypass -Scope Process -Force;[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Invoke-WebRequest https://www.haskell.org/ghcup/sh/bootstrap-haskell.ps1 -UseBasicParsing))) -ArgumentList $false, $true, $true, $false, $false, $false, $false, "$CI_PROJECT_DIR"
+    - ./ghcup/msys64/usr/bin/bash '-lc' 'pacman --noconfirm -S zip'
+    - $env:CHERE_INVOKING = "yes"
+    - ./ghcup/msys64/usr/bin/bash '-lc' "TARBALL_ARCHIVE_SUFFIX=$env:TARBALL_ARCHIVE_SUFFIX TARBALL_EXT=$env:TARBALL_EXT ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
+  after_script:
+    - "[Environment]::SetEnvironmentVariable('GHCUP_INSTALL_BASE_PREFIX', $null, [System.EnvironmentVariableTarget]::User)"
+    - "[Environment]::SetEnvironmentVariable('GHCUP_MSYS2', $null, [System.EnvironmentVariableTarget]::User)"
+    - "[Environment]::SetEnvironmentVariable('CABAL_DIR', $null, [System.EnvironmentVariableTarget]::User)"
   tags:
     - new-x86_64-windows
+  variables:
+    TARBALL_ARCHIVE_SUFFIX: x86_64-windows
+    TARBALL_EXT: zip
+    ADD_CABAL_ARGS: ""
+  retry: 2
