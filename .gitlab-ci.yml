@@ -49,7 +49,7 @@ build-x86_64-linux:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
     TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
+    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-linux-alpine:
   extends: .build
@@ -62,7 +62,7 @@ build-x86_64-linux-alpine:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
     TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-executable-static"
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
 build-i386-linux-alpine:
   extends: .build
@@ -77,7 +77,7 @@ build-i386-linux-alpine:
   variables:
     TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
     TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-executable-static"
+    ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
 
 build-x86_64-freebsd13:
   extends: .build
@@ -86,7 +86,7 @@ build-x86_64-freebsd13:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd13
     TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
+    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-freebsd12:
   extends: .build
@@ -95,7 +95,7 @@ build-x86_64-freebsd12:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd12
     TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: ""
+    ADD_CABAL_ARGS: "--enable-split-sections"
 
 build-x86_64-darwin:
   extends: .build

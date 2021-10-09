@@ -33,7 +33,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 args=(
     -w "ghc-$GHC_VERSION"
     --disable-profiling
-    --enable-split-sections
     --enable-executable-stripping
     --project-file=cabal.project.release
     ${ADD_CABAL_ARGS}
