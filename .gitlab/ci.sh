@@ -30,14 +30,16 @@ export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
 
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 
-run cabal v2-install cabal-install \
-    -w "ghc-$GHC_VERSION" \
-    --installdir="$CI_PROJECT_DIR/out" \
-    --install-method=copy \
-    --overwrite-policy=always \
-    --enable-executable-static \
-    --disable-profiling \
-    --enable-split-sections \
+args=(
+    -w "ghc-$GHC_VERSION"
+    --enable-executable-static
+    --disable-profiling
+    --enable-split-sections
     --enable-executable-stripping
+)
 
+run cabal v2-build ${args[@]} cabal-install
+
+mkdir "$CI_PROJECT_DIR/out"
+cp "$(cabal list-bin ${args[@]} cabal-install:exe:cabal)" "$CI_PROJECT_DIR/out/cabal"
 cp dist-newstyle/cache/plan.json "$CI_PROJECT_DIR/out/plan.json"

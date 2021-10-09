@@ -43,6 +43,9 @@ build-x86_64-linux-alpine:
   extends: .build
   tags:
     - x86_64-linux
+  before_script:
+    # for cabal build
+    - sudo apk add --no-cache zlib zlib-dev zlib-static
   image: "registry.gitlab.haskell.org/ghc/ci-images/x86_64-linux-alpine3_12:$DOCKER_REV"
 
 build-i386-linux-alpine:
