@@ -29,6 +29,7 @@ build-aarch64-linux-deb10:
   variables:
     TARBALL_ARCHIVE_SUFFIX: aarch64-linux-deb10
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-armv7-linux-deb10:
   extends: .build
@@ -38,6 +39,7 @@ build-armv7-linux-deb10:
   variables:
     TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-x86_64-linux:
   extends: .build
@@ -47,6 +49,7 @@ build-x86_64-linux:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-deb10
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-x86_64-linux-alpine:
   extends: .build
@@ -59,6 +62,7 @@ build-x86_64-linux-alpine:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-linux-alpine
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-executable-static"
 
 build-i386-linux-alpine:
   extends: .build
@@ -73,6 +77,7 @@ build-i386-linux-alpine:
   variables:
     TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: "--enable-executable-static"
 
 build-x86_64-freebsd13:
   extends: .build
@@ -81,6 +86,7 @@ build-x86_64-freebsd13:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd13
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-x86_64-freebsd12:
   extends: .build
@@ -89,6 +95,7 @@ build-x86_64-freebsd12:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd12
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-x86_64-darwin:
   extends: .build
@@ -97,6 +104,7 @@ build-x86_64-darwin:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-darwin
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
 
 build-aarch64-darwin:
   tags:
@@ -114,6 +122,7 @@ build-aarch64-darwin:
         --keep CABAL_INSTALL_VERSION \
         --keep TARBALL_ARCHIVE_SUFFIX \
         --keep TARBALL_EXT \
+        --keep ADD_CABAL_ARGS \
         --run "$1" 2>&1
     }
     runInNixShell "./.gitlab/ci.sh" 2>&1
@@ -121,6 +130,7 @@ build-aarch64-darwin:
     MACOSX_DEPLOYMENT_TARGET: "10.7"
     TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
     TARBALL_EXT: tar.xz
+    ADD_CABAL_ARGS: ""
   artifacts:
     expire_in: 2 week
     paths:
@@ -133,3 +143,4 @@ build-x86_64-windows:
   variables:
     TARBALL_ARCHIVE_SUFFIX: x86_64-windows
     TARBALL_EXT: zip
+    ADD_CABAL_ARGS: ""

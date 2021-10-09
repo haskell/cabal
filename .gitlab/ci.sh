@@ -32,10 +32,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 
 args=(
     -w "ghc-$GHC_VERSION"
-    --enable-executable-static
     --disable-profiling
     --enable-split-sections
     --enable-executable-stripping
+    ${ADD_CABAL_ARGS}
 )
 
 run cabal v2-build ${args[@]} cabal-install
