@@ -35,6 +35,7 @@ args=(
     --disable-profiling
     --enable-split-sections
     --enable-executable-stripping
+    --project-file=cabal.project.release
     ${ADD_CABAL_ARGS}
 )
 
