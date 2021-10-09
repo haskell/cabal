@@ -19,7 +19,7 @@ workflow:
   artifacts:
     expire_in: 2 week
     paths:
-      - out
+      - out/*
 
 build-aarch64-linux-deb10:
   extends: .build
@@ -139,7 +139,7 @@ build-aarch64-darwin:
   artifacts:
     expire_in: 2 week
     paths:
-      - out
+      - out/*
 
 build-x86_64-windows:
   extends: .build
