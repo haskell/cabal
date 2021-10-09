@@ -30,6 +30,11 @@ export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
 
 curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
 
+# https://github.com/haskell/cabal/issues/7313#issuecomment-811851884
+if [ "$(getconf LONG_BIT)" == "32" ] ; then
+    echo 'constraints: lukko -ofd-locking' >> cabal.project.release.local
+fi
+
 args=(
     -w "ghc-$GHC_VERSION"
     --disable-profiling

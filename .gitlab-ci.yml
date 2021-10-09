@@ -40,6 +40,8 @@ build-armv7-linux-deb10:
     TARBALL_ARCHIVE_SUFFIX: armv7-linux-deb1
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
   retry: 2
 
 build-x86_64-linux:
@@ -79,6 +81,8 @@ build-i386-linux-alpine:
     TARBALL_ARCHIVE_SUFFIX: i386-linux-alpine
     TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: "--enable-split-sections --enable-executable-static"
+    # temp, because 3.6.2.0 is broken
+    CABAL_INSTALL_VERSION: 3.4.0.0
 
 build-x86_64-freebsd13:
   extends: .build
