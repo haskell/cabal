@@ -311,10 +311,13 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         srcpkgDescrOverride      = Nothing
       }
 
+      testsEnabled :: Bool
       testsEnabled = fromFlagOrDefault False $ configTests configFlags
+      benchmarksEnabled :: Bool
       benchmarksEnabled =
         fromFlagOrDefault False $ configBenchmarks configFlags
 
+      resolverParams :: DepResolverParams
       resolverParams =
           removeLowerBounds
           (fromMaybe (AllowOlder mempty) $ configAllowOlder configExFlags)
@@ -392,7 +395,9 @@ configurePackage verbosity platform comp scriptOptions configFlags
     scriptOptions (Just pkg) configureCommand configureFlags (const extraArgs)
 
   where
+    gpkg :: PkgDesc.GenericPackageDescription
     gpkg = srcpkgDescription spkg
+    configureFlags :: Version -> ConfigFlags
     configureFlags   = filterConfigureFlags configFlags {
       configIPID = if isJust (flagToMaybe (configIPID configFlags))
                     -- Make sure cabal configure --ipid works.
@@ -420,6 +425,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
                                     `mappend` configTests configFlags
     }
 
+    pkg :: PkgDesc.PackageDescription
     pkg = case finalizePD flags (enableStanzas stanzas)
            (const True)
            platform comp [] gpkg of

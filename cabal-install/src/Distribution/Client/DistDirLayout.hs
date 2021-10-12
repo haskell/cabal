@@ -28,7 +28,7 @@ import Prelude ()
 import System.FilePath
 
 import Distribution.Package
-         ( PackageId, ComponentId, UnitId )
+         ( PackageId, PackageIdentifier, ComponentId, UnitId )
 import Distribution.Compiler
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack, OptimisationLevel(..) )
@@ -182,14 +182,21 @@ defaultDistDirLayout projectRoot mdistDirectory =
       ProjectRootImplicit dir      -> (dir, dir </> "cabal.project")
       ProjectRootExplicit dir file -> (dir, dir </> file)
 
+    distProjectRootDirectory :: FilePath
     distProjectRootDirectory = projectRootDir
+
+    distProjectFile :: String -> FilePath
     distProjectFile ext      = projectFile <.> ext
 
+    distDirectory :: FilePath
     distDirectory = distProjectRootDirectory
                 </> fromMaybe "dist-newstyle" mdistDirectory
     --TODO: switch to just dist at some point, or some other new name
 
+    distBuildRootDirectory :: FilePath
     distBuildRootDirectory   = distDirectory </> "build"
+
+    distBuildDirectory :: DistDirParams -> FilePath
     distBuildDirectory params =
         distBuildRootDirectory </>
         prettyShow (distParamPlatform params) </>
@@ -212,27 +219,44 @@ defaultDistDirLayout projectRoot mdistDirectory =
                 then ""
                 else uid_str)
 
+    distUnpackedSrcRootDirectory :: FilePath
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
+
+    distUnpackedSrcDirectory :: PackageId -> FilePath
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
                                       </> prettyShow pkgid
     -- we shouldn't get name clashes so this should be fine:
+    distDownloadSrcDirectory :: FilePath
     distDownloadSrcDirectory       = distUnpackedSrcRootDirectory
 
+    distProjectCacheDirectory :: FilePath
     distProjectCacheDirectory = distDirectory </> "cache"
+
+    distProjectCacheFile :: FilePath -> FilePath
     distProjectCacheFile name = distProjectCacheDirectory </> name
 
+    distPackageCacheDirectory :: DistDirParams -> FilePath
     distPackageCacheDirectory params = distBuildDirectory params </> "cache"
+
+    distPackageCacheFile :: DistDirParams -> String -> FilePath
     distPackageCacheFile params name = distPackageCacheDirectory params </> name
 
+    distSdistFile :: PackageIdentifier -> FilePath
     distSdistFile pid = distSdistDirectory </> prettyShow pid <.> "tar.gz"
 
+    distSdistDirectory :: FilePath
     distSdistDirectory = distDirectory </> "sdist"
 
+    distTempDirectory :: FilePath
     distTempDirectory = distDirectory </> "tmp"
 
+    distBinDirectory :: FilePath
     distBinDirectory = distDirectory </> "bin"
 
+    distPackageDBPath :: CompilerId -> FilePath
     distPackageDBPath compid = distDirectory </> "packagedb" </> prettyShow compid
+
+    distPackageDB :: CompilerId -> PackageDB
     distPackageDB = SpecificPackageDB . distPackageDBPath
 
 
@@ -240,24 +264,31 @@ defaultStoreDirLayout :: FilePath -> StoreDirLayout
 defaultStoreDirLayout storeRoot =
     StoreDirLayout {..}
   where
+    storeDirectory :: CompilerId -> FilePath
     storeDirectory compid =
       storeRoot </> prettyShow compid
 
+    storePackageDirectory :: CompilerId -> UnitId -> FilePath
     storePackageDirectory compid ipkgid =
       storeDirectory compid </> prettyShow ipkgid
 
+    storePackageDBPath :: CompilerId -> FilePath
     storePackageDBPath compid =
       storeDirectory compid </> "package.db"
 
+    storePackageDB :: CompilerId -> PackageDB
     storePackageDB compid =
       SpecificPackageDB (storePackageDBPath compid)
 
+    storePackageDBStack :: CompilerId -> PackageDBStack
     storePackageDBStack compid =
       [GlobalPackageDB, storePackageDB compid]
 
+    storeIncomingDirectory :: CompilerId -> FilePath
     storeIncomingDirectory compid =
       storeDirectory compid </> "incoming"
 
+    storeIncomingLock :: CompilerId -> UnitId -> FilePath
     storeIncomingLock compid unitid =
       storeIncomingDirectory compid </> prettyShow unitid <.> "lock"
 
@@ -273,7 +304,10 @@ mkCabalDirLayout :: FilePath -- ^ Cabal directory
 mkCabalDirLayout cabalDir mstoreDir mlogDir =
     CabalDirLayout {..}
   where
+    cabalStoreDirLayout :: StoreDirLayout
     cabalStoreDirLayout =
         defaultStoreDirLayout (fromMaybe (cabalDir </> "store") mstoreDir)
+    cabalLogsDirectory :: FilePath
     cabalLogsDirectory = fromMaybe (cabalDir </> "logs") mlogDir
+    cabalWorldFile :: FilePath
     cabalWorldFile = cabalDir </> "world"

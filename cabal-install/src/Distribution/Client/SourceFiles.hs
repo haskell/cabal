@@ -158,9 +158,11 @@ needBuildInfo pkg_descr bi modules = do
         findFileMonitored ("." : includeDirs bi) f
             >>= maybe (return ()) need
   where
+    findNeededModules :: [String] -> Rebuild ()
     findNeededModules exts = traverse_
         (findNeededModule exts)
         (modules ++ otherModules bi)
+    findNeededModule :: [String] -> ModuleName -> Rebuild ()
     findNeededModule exts m =
         findFileWithExtensionMonitored
             (ppSuffixes knownSuffixHandlers ++ exts)

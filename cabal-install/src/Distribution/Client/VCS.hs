@@ -268,9 +268,11 @@ vcsBzr =
                               = "branch"
                   | otherwise = "get"
 
+        tagArgs :: [String]
         tagArgs = case srpTag repo of
           Nothing  -> []
           Just tag -> ["-r", "tag:" ++ tag]
+        verboseArg :: [String]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
     vcsSyncRepos :: Verbosity -> ConfiguredProgram
@@ -307,15 +309,19 @@ vcsDarcs =
     vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
       where
+        cloneArgs :: [String]
         cloneArgs  = [cloneCmd, srcuri, destdir] ++ tagArgs ++ verboseArg
         -- At some point the @clone@ command was introduced as an alias for
         -- @get@, and @clone@ seems to be the recommended one now.
+        cloneCmd :: String
         cloneCmd   | programVersion prog >= Just (mkVersion [2,8])
                                = "clone"
                    | otherwise = "get"
+        tagArgs :: [String]
         tagArgs    = case srpTag repo of
           Nothing  -> []
           Just tag -> ["-t", tag]
+        verboseArg :: [String]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
     vcsSyncRepos :: Verbosity -> ConfiguredProgram
@@ -327,7 +333,9 @@ vcsDarcs =
         for_ secondaryRepos $ \ (repo, localDir) ->
           vcsSyncRepo verbosity prog repo localDir $ Just primaryLocalDir
       where
+        dirs :: [FilePath]
         dirs = primaryLocalDir : (snd <$> secondaryRepos)
+        monitors :: [MonitorFilePath]
         monitors = monitorDirectoryExistence <$> dirs
 
     vcsSyncRepo verbosity prog SourceRepositoryPackage{..} localDir _peer =
@@ -347,13 +355,17 @@ vcsDarcs =
         darcsWithOutput :: FilePath -> [String] -> IO String
         darcsWithOutput = darcs' getProgramInvocationOutput
 
+        darcs' :: (Verbosity -> ProgramInvocation -> t) -> FilePath -> [String] -> t
         darcs' f cwd args = f verbosity (programInvocation prog args)
           { progInvokeCwd = Just cwd }
 
+        cloneArgs :: [String]
         cloneArgs = ["clone"] ++ tagArgs ++ [srpLocation, localDir] ++ verboseArg
+        tagArgs :: [String]
         tagArgs    = case srpTag of
           Nothing  -> []
           Just tag -> ["-t" ++ tag]
+        verboseArg :: [String]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
 darcsProgram :: Program
@@ -662,8 +674,10 @@ vcsPijul =
           }
         | tag <- maybeToList (srpTag repo) ]
       where
+        cloneArgs :: [String]
         cloneArgs  = ["clone", srcuri, destdir]
                      ++ branchArgs
+        branchArgs :: [String]
         branchArgs = case srpBranch repo of
           Just b  -> ["--from-branch", b]
           Nothing -> []
@@ -697,11 +711,13 @@ vcsPijul =
                            progInvokeCwd = Just cwd
                          }
 
+        cloneArgs :: [String]
         cloneArgs      = ["clone", loc, localDir]
                       ++ case peer of
                            Nothing           -> []
                            Just peerLocalDir -> [peerLocalDir]
                          where loc = srpLocation
+        checkoutArgs :: [String]
         checkoutArgs   = "checkout" :  ["--force", checkoutTarget, "--" ]
         checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag) -- TODO: this is definitely wrong.
 

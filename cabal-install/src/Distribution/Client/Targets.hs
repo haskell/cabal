@@ -202,7 +202,8 @@ readUserTarget targetstr =
       parentDirExists <- case takeDirectory filename of
                            []  -> return False
                            dir -> doesDirectoryExist dir
-      let result
+      let result :: Maybe (Either UserTargetProblem UserTarget)
+          result
             | isDir
             = Just (Right (UserTargetLocalDir filename))
 
@@ -239,6 +240,7 @@ readUserTarget targetstr =
             Just (Right (UserTargetRemoteTarball uri))
         _ -> Nothing
 
+    extensionIsTarGz :: FilePath -> Bool
     extensionIsTarGz f = takeExtension f                 == ".gz"
                       && takeExtension (dropExtension f) == ".tar"
 
@@ -317,10 +319,11 @@ resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- users are allowed to give package names case-insensitively, so we must
     -- disambiguate named package references
-    let (problems, packageSpecifiers) =
+    let (problems, packageSpecifiers) :: ([PackageTargetProblem], [PackageSpecifier UnresolvedSourcePackage]) =
            disambiguatePackageTargets available availableExtra packageTargets
 
         -- use any extra specific available packages to help us disambiguate
+        availableExtra :: [PackageName]
         availableExtra = [ packageName pkg
                          | PackageTargetLocation pkg <- packageTargets ]
 

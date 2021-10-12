@@ -55,7 +55,8 @@ packageDirToSdist verbosity gpd dir = do
         thisDie v s = die' v $ "sdist of " <> prettyShow (packageId gpd) ++ ": " ++ s
 
     files' <- listPackageSourcesWithDie verbosity thisDie dir (flattenPackageDescription gpd) knownSuffixHandlers
-    let files = nub $ sort $ map normalise files'
+    let files :: [FilePath]
+        files = nub $ sort $ map normalise files'
 
     let entriesM :: StateT (Set.Set FilePath) (WriterT [Tar.Entry] IO) ()
         entriesM = do
@@ -91,5 +92,6 @@ packageDirToSdist verbosity gpd dir = do
         -- Windows; we need a post-1980 date. One gigasecond
         -- after the epoch is during 2001-09-09, so that does
         -- nicely. See #5596.
+        setModTime :: Tar.Entry -> Tar.Entry
         setModTime entry = entry { Tar.entryTime = 1000000000 }
     return . normalize . GZip.compress . Tar.write $ fmap setModTime entries

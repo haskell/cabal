@@ -100,16 +100,19 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
     else unpack pkgs
 
   where
+    resolverParams :: SourcePackageDb -> [PackageSpecifier UnresolvedSourcePackage] -> DepResolverParams
     resolverParams sourcePkgDb pkgSpecifiers =
         --TODO: add command-line constraint and preference args for unpack
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
+    prefix :: String
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
     clone :: [UnresolvedSourcePackage] -> IO ()
     clone = clonePackagesFromSourceRepo verbosity prefix kind
           . map (\pkg -> (packageId pkg, packageSourceRepos pkg))
       where
+        kind :: Maybe RepoKind
         kind = fromFlag . getSourceRepository $ getFlags
         packageSourceRepos :: SourcePackage loc -> [PD.SourceRepo]
         packageSourceRepos = PD.sourceRepos
@@ -140,6 +143,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
           LocalUnpackedPackage _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
+        usePristine :: Bool
         usePristine = fromFlagOrDefault False (getPristine getFlags)
 
 checkTarget :: Verbosity -> UserTarget -> IO ()
@@ -291,7 +295,8 @@ clonePackagesFromSourceRepo verbosity destDirPrefix
         Left SourceRepoLocationUnspecified ->
           throwIO (ClonePackageNoRepoLocation pkgid repo)
 
-      let destDir = destDirPrefix </> prettyShow (packageName pkgid)
+      let destDir :: FilePath
+          destDir = destDirPrefix </> prettyShow (packageName pkgid)
       destDirExists  <- doesDirectoryExist destDir
       destFileExists <- doesFileExist      destDir
       when (destDirExists || destFileExists) $
