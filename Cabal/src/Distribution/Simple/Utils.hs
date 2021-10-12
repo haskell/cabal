@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -42,6 +43,7 @@ module Distribution.Simple.Utils (
 
         -- * exceptions
         handleDoesNotExist,
+        ignoreSigPipe,
 
         -- * running programs
         rawSystemExit,
@@ -944,11 +946,13 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
         Just ioe -> throwIO (ioeSetFileName ioe ("output of " ++ path))
         Nothing  -> throwIO exc
 
-    ignoreSigPipe :: IO () -> IO ()
-    ignoreSigPipe = Exception.handle $ \e -> case e of
-        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
-            | Errno ioe == ePIPE -> return ()
-        _ -> throwIO e
+-- | Ignore SIGPIPE in a subcomputation.
+--
+ignoreSigPipe :: IO () -> IO ()
+ignoreSigPipe = Exception.handle $ \case
+    GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
+        | Errno ioe == ePIPE -> return ()
+    e -> throwIO e
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we

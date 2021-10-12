@@ -31,7 +31,7 @@ import Distribution.Client.Setup        (globalCommand)
 import Distribution.Simple.Command
 import Distribution.Simple.Flag         (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( IOData(..), IODataMode(..), createProcessWithEnv, rawSystemStdInOut )
+  ( IOData(..), IODataMode(..), createProcessWithEnv, ignoreSigPipe, rawSystemStdInOut )
 import qualified Distribution.Verbosity as Verbosity
 import System.IO                        (hClose, hPutStr)
 
@@ -54,7 +54,7 @@ manpageCmd pname commands flags
     | fromFlagOrDefault False (manpageRaw flags)
     = putStrLn contents
     | otherwise
-    = do
+    = ignoreSigPipe $ do
         -- 2021-10-08, issue #7714
         -- @cabal man --raw | man -l -@ does not work on macOS/BSD,
         -- because BSD-man does not support option @-l@, rather would
