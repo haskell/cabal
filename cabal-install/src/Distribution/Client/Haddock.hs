@@ -64,6 +64,7 @@ regenerateHaddockIndex verbosity pkgs progdb index = do
 
   where
     (destDir,destFile) = splitFileName index
+    pkgs' :: [InstalledPackageInfo]
     pkgs' = [ maximumBy (comparing packageVersion) pkgvers'
             | (_pname, pkgvers) <- allPackagesByName pkgs
             , let pkgvers' = filter exposed pkgvers

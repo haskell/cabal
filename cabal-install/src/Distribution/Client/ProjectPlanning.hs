@@ -593,6 +593,7 @@ rebuildInstallPlan verbosity
                              die' verbosity msg
               Right plan -> return (plan, pkgConfigDB, tis, ar)
       where
+        corePackageDbs :: [PackageDB]
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
                            projectConfigShared
