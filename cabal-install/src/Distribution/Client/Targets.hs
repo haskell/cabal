@@ -53,7 +53,6 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Package
          ( Package(..), PackageName, unPackageName, mkPackageName
          , packageName )
-import Distribution.Types.Dependency
 import Distribution.Client.Types
          ( PackageLocation(..), ResolvedPkgLoc, UnresolvedSourcePackage
          , PackageSpecifier(..) )
@@ -65,7 +64,6 @@ import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
-import qualified Distribution.Client.World as World
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.Tar as Tar
@@ -79,11 +77,11 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.Types.Flag
-         ( nullFlagAssignment, parsecFlagAssignmentNonEmpty )
+         ( parsecFlagAssignmentNonEmpty )
 import Distribution.Version
-         ( anyVersion, isAnyVersion )
+         ( isAnyVersion )
 import Distribution.Simple.Utils
-         ( die', warn, lowercase )
+         ( die', lowercase )
 
 import Distribution.PackageDescription.Parsec
          ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
@@ -115,13 +113,6 @@ data UserTarget =
      -- > cabal install 'foo < 2'
      --
      UserTargetNamed PackageVersionConstraint
-
-     -- | A special virtual package that refers to the collection of packages
-     -- recorded in the world file that the user specifically installed.
-     --
-     -- > cabal install world
-     --
-   | UserTargetWorld
 
      -- | A specific package that is unpacked in a local directory, often the
      -- current directory.
@@ -180,11 +171,6 @@ data UserTargetProblem
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case eitherParsec targetstr of
-      Right (PackageVersionConstraint pkgn verrange)
-        | pkgn == mkPackageName "world"
-          -> return $ if verrange == anyVersion
-                      then Right UserTargetWorld
-                      else Left  UserTargetBadWorldPkg
       Right dep -> return (Right (UserTargetNamed dep))
       Left _err -> do
         fileTarget <- testFileTargets targetstr
@@ -305,17 +291,16 @@ reportUserTargetProblems verbosity problems = do
 resolveUserTargets :: Package pkg
                    => Verbosity
                    -> RepoContext
-                   -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
                    -> IO [PackageSpecifier UnresolvedSourcePackage]
-resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
+resolveUserTargets verbosity repoCtxt available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
     -- package references
     packageTargets <- traverse (readPackageTarget verbosity)
                   =<< traverse (fetchPackageTarget verbosity repoCtxt) . concat
-                  =<< traverse (expandUserTarget verbosity worldFile) userTargets
+                  =<< traverse (expandUserTarget verbosity) userTargets
 
     -- users are allowed to give package names case-insensitively, so we must
     -- disambiguate named package references
@@ -357,25 +342,14 @@ data PackageTarget pkg =
 -- (each of which refers to only one package).
 --
 expandUserTarget :: Verbosity
-                 -> FilePath
                  -> UserTarget
                  -> IO [PackageTarget (PackageLocation ())]
-expandUserTarget verbosity worldFile userTarget = case userTarget of
+expandUserTarget verbosity userTarget = case userTarget of
 
     UserTargetNamed (PackageVersionConstraint name vrange) ->
       let props = [ PackagePropertyVersion vrange
                   | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name props userTarget]
-
-    UserTargetWorld -> do
-      worldPkgs <- World.getContents verbosity worldFile
-      --TODO: should we warn if there are no world targets?
-      return [ PackageTargetNamed name props userTarget
-             | World.WorldPkgInfo (Dependency name vrange _) flags <- worldPkgs
-             , let props = [ PackagePropertyVersion vrange
-                           | not (isAnyVersion vrange) ]
-                        ++ [ PackagePropertyFlags flags
-                           | not (nullFlagAssignment flags) ] ]
 
     UserTargetLocalDir dir ->
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
@@ -554,8 +528,7 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
 reportPackageTargetProblems :: Verbosity
                             -> [PackageTargetProblem] -> IO ()
 reportPackageTargetProblems verbosity problems = do
-    case [ pkg | PackageNameUnknown pkg originalTarget <- problems
-               , not (isUserTagetWorld originalTarget) ] of
+    case [ pkg | PackageNameUnknown pkg _ <- problems ] of
       []    -> return ()
       pkgs  -> die' verbosity $ unlines
                        [ "There is no package named '" ++ prettyShow name ++ "'. "
@@ -573,16 +546,6 @@ reportPackageTargetProblems verbosity problems = do
                            ++ intercalate ", " [ "'" ++ prettyShow m ++ "'" | m <- matches]
                            ++ "."
                          | (name, matches) <- ambiguities ]
-
-    case [ pkg | PackageNameUnknown pkg UserTargetWorld <- problems ] of
-      []   -> return ()
-      pkgs -> warn verbosity $
-                 "The following 'world' packages will be ignored because "
-              ++ "they refer to packages that cannot be found: "
-              ++ intercalate ", " (map prettyShow pkgs) ++ "\n"
-              ++ "You can suppress this warning by correcting the world file."
-  where
-    isUserTagetWorld UserTargetWorld = True; isUserTagetWorld _ = False
 
 
 -- ------------------------------------------------------------

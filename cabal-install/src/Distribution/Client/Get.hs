@@ -67,7 +67,7 @@ get :: Verbosity
 get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repoCtxt globalFlags getFlags userTargets = do
+get verbosity repoCtxt _ getFlags userTargets = do
   let useSourceRepo = case getSourceRepository getFlags of
                         NoFlag -> False
                         _      -> True
@@ -84,7 +84,6 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   (sourcePkgDb, _, _) <- getSourcePackagesAtIndexState verbosity repoCtxt idxState activeRepos
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                   (fromFlag $ globalWorldFile globalFlags)
                    (packageIndex sourcePkgDb)
                    userTargets
 

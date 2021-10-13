@@ -500,7 +500,6 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
@@ -586,7 +585,6 @@ convertToLegacySharedConfig
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalActiveRepos       = projectConfigActiveRepos,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,

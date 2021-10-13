@@ -147,8 +147,7 @@ data StoreDirLayout = StoreDirLayout {
 data CabalDirLayout = CabalDirLayout {
        cabalStoreDirLayout        :: StoreDirLayout,
 
-       cabalLogsDirectory         :: FilePath,
-       cabalWorldFile             :: FilePath
+       cabalLogsDirectory         :: FilePath
      }
 
 
@@ -309,5 +308,3 @@ mkCabalDirLayout cabalDir mstoreDir mlogDir =
         defaultStoreDirLayout (fromMaybe (cabalDir </> "store") mstoreDir)
     cabalLogsDirectory :: FilePath
     cabalLogsDirectory = fromMaybe (cabalDir </> "logs") mlogDir
-    cabalWorldFile :: FilePath
-    cabalWorldFile = cabalDir </> "world"

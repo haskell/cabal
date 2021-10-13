@@ -105,14 +105,13 @@ getFreezePkgs :: Verbosity
               -> FreezeFlags
               -> IO [SolverPlanPackage]
 getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb
-      globalFlags freezeFlags = do
+      _ freezeFlags = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
     pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                       (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]
 

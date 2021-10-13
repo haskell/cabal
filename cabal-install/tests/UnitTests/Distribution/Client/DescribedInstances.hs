@@ -7,7 +7,6 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Described
 import Data.List ((\\))
 
-import Distribution.Types.Dependency   (Dependency)
 import Distribution.Types.PackageId    (PackageIdentifier)
 import Distribution.Types.PackageName  (PackageName)
 import Distribution.Types.VersionRange (VersionRange)
@@ -19,7 +18,6 @@ import Distribution.Client.IndexUtils.Timestamp   (Timestamp)
 import Distribution.Client.Targets                (UserConstraint)
 import Distribution.Client.Types                  (RepoName)
 import Distribution.Client.Types.AllowNewer       (RelaxDepSubject, RelaxDeps, RelaxedDep)
-import Distribution.Client.World                  (WorldPkgInfo)
 import Distribution.Client.Glob                   (FilePathGlob)
 
 -------------------------------------------------------------------------------
@@ -78,15 +76,6 @@ instance Described FilePathGlob where
 
         normal   = reChars $ ['\0'..'\128'] \\ "*{},/\\"
         escape   = fromString "\\" <> reChars "*{},"
-
--------------------------------------------------------------------------------
--- WorldPkgInfo
--------------------------------------------------------------------------------
-
-instance Described WorldPkgInfo where
-  describe _ =
-    describe (Proxy :: Proxy Dependency)
-    <> REOpt (RESpaces1 <> "--flags=\"" <> describeFlagAssignmentNonEmpty <> "\"")
 
 -------------------------------------------------------------------------------
 -- AllowNewer

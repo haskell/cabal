@@ -407,11 +407,6 @@ globalCommand commands = CommandUI {
          globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
-      ,option [] ["world-file"]
-         "The location of the world file"
-         globalWorldFile (\v flags -> flags { globalWorldFile = v })
-         (reqArgFlag "FILE")
-
       ]
 
 -- ------------------------------------------------------------

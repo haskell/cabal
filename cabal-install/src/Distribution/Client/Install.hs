@@ -86,7 +86,6 @@ import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import Distribution.Client.Types.OverwritePolicy (OverwritePolicy (..))
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
-import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.JobControl
 
@@ -129,8 +128,6 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
-import Distribution.Types.Dependency
-         ( Dependency (..), mainLibSet )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
@@ -257,7 +254,7 @@ makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repoCtxt, comp, _, progdb,
-   globalFlags, _, configExFlags, installFlags, _, _, _) mUserTargets = do
+   _, _, configExFlags, installFlags, _, _, _) mUserTargets = do
 
     let idxState = flagToMaybe (installIndexState installFlags)
 
@@ -282,7 +279,6 @@ makeInstallContext verbosity
                         | otherwise         = userTargets0
 
         pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                         (fromFlag $ globalWorldFile globalFlags)
                          (packageIndex sourcePkgDb)
                          userTargets
         return (userTargets, pkgSpecifiers)
@@ -810,13 +806,7 @@ postInstallActions :: Verbosity
 postInstallActions verbosity
   (packageDBs, _, comp, platform, progdb
   ,globalFlags, configFlags, _, installFlags, _, _, _)
-  targets installPlan buildOutcomes = do
-
-  unless oneShot $
-    World.insert verbosity worldFile
-      --FIXME: does not handle flags
-      [ World.WorldPkgInfo (Dependency pn vr mainLibSet) mempty
-      | UserTargetNamed (PackageVersionConstraint pn vr) <- targets ]
+  _ installPlan buildOutcomes = do
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)
                                                   installPlan buildOutcomes
@@ -840,8 +830,6 @@ postInstallActions verbosity
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
-    oneShot        = fromFlag (installOneShot installFlags)
-    worldFile      = fromFlag $ globalWorldFile globalFlags
 
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()

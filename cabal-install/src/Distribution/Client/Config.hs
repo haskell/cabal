@@ -243,7 +243,6 @@ instance Semigroup SavedConfig where
         globalLocalNoIndexRepos = lastNonEmptyNL globalLocalNoIndexRepos,
         globalActiveRepos       = combine globalActiveRepos,
         globalLogsDir           = combine globalLogsDir,
-        globalWorldFile         = combine globalWorldFile,
         globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport,
         globalNix               = combine globalNix,
@@ -540,7 +539,6 @@ baseSavedConfig = do
   userPrefix <- getCabalDir
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
-  worldFile  <- defaultWorldFile
   return mempty {
     savedConfigureFlags  = mempty {
       configHcFlavor     = toFlag defaultCompiler,
@@ -552,8 +550,7 @@ baseSavedConfig = do
     },
     savedGlobalFlags = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalLogsDir      = toFlag logsDir,
-      globalWorldFile    = toFlag worldFile
+      globalLogsDir      = toFlag logsDir
     }
   }
 
@@ -567,14 +564,12 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir    <- defaultCacheDir
   logsDir     <- defaultLogsDir
-  worldFile   <- defaultWorldFile
   extraPath   <- defaultExtraPath
   installPath <- defaultInstallPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [defaultRemoteRepo],
-      globalWorldFile    = toFlag worldFile
+      globalRemoteRepos  = toNubList [defaultRemoteRepo]
     },
     savedConfigureFlags  = mempty {
       configProgramPathExtra = toNubList extraPath
@@ -613,12 +608,6 @@ defaultLogsDir :: IO FilePath
 defaultLogsDir = do
   dir <- getCabalDir
   return $ dir </> "logs"
-
--- | Default position of the world file
-defaultWorldFile :: IO FilePath
-defaultWorldFile = do
-  dir <- getCabalDir
-  return $ dir </> "world"
 
 defaultExtraPath :: IO [FilePath]
 defaultExtraPath = do
