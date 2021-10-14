@@ -405,8 +405,7 @@ resolveBuildTimeSettings verbosity
 findProjectRoot :: Maybe FilePath -- ^ starting directory, or current directory
                 -> Maybe FilePath -- ^ @cabal.project@ file name override
                 -> IO (Either BadProjectRoot ProjectRoot)
-findProjectRoot _ (Just projectFile)
-  | isAbsolute projectFile = do
+findProjectRoot _ (Just projectFile) = do
     exists <- doesFileExist projectFile
     if exists
       then do projectFile' <- canonicalizePath projectFile
@@ -415,13 +414,13 @@ findProjectRoot _ (Just projectFile)
               return (Right projectRoot)
       else return (Left (BadProjectRootExplicitFile projectFile))
 
-findProjectRoot mstartdir mprojectFile = do
+findProjectRoot mstartdir Nothing = do
     startdir <- maybe getCurrentDirectory canonicalizePath mstartdir
     homedir  <- getHomeDirectory
     probe startdir homedir
   where
     projectFileName :: String
-    projectFileName = fromMaybe "cabal.project" mprojectFile
+    projectFileName = "cabal.project"
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
     -- then use the current dir
@@ -430,9 +429,7 @@ findProjectRoot mstartdir mprojectFile = do
       where
         go :: FilePath -> IO (Either BadProjectRoot ProjectRoot)
         go dir | isDrive dir || dir == homedir =
-          case mprojectFile of
-            Nothing   -> return (Right (ProjectRootImplicit startdir))
-            Just file -> return (Left (BadProjectRootExplicitFile file))
+          return (Right (ProjectRootImplicit startdir))
         go dir = do
           exists <- doesFileExist (dir </> projectFileName)
           if exists

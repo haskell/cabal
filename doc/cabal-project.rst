@@ -288,10 +288,14 @@ package, and thus apply globally:
     ``--project-file=my.project``, then the other files that will
     be probed are ``my.project.freeze`` and ``my.project.local``.
 
-    If the specified project file is a relative path, we will
-    look for the file relative to the current working directory,
-    and then for the parent directory, until the project file is
-    found or we have hit the top of the user's home directory.
+    The location of the ``--project-file`` also dictates the project
+    root with respect to which all other locations, like packages, are
+    resolved.
+
+    If a project file is not specified, we will look for the file relative
+    to the current working directory, and then for the parent directory,
+    until the project file is found or we have hit the top of the user's
+    home directory.
 
     This option cannot be specified via a ``cabal.project`` file.
 
