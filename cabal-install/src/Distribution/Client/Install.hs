@@ -162,11 +162,9 @@ import qualified Data.ByteString as BS
 --   * complain about flags that do not apply to any package given as target
 --     so flags do not apply to dependencies, only listed, can use flag
 --     constraints for dependencies
---   * only record applicable flags in world file
 -- * allow flag constraints
 -- * allow installed constraints
 -- * allow flag and installed preferences
--- * change world file to use cabal section syntax
 --   * allow persistent configure flags for each package individually
 
 -- ------------------------------------------------------------
@@ -794,7 +792,6 @@ theSpecifiedPackage pkgSpec =
 --  * build reporting, local and remote
 --  * symlinking binaries
 --  * updating indexes
---  * updating world file
 --  * error reporting
 --
 postInstallActions :: Verbosity

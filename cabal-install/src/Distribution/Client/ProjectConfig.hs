@@ -311,7 +311,6 @@ resolveBuildTimeSettings verbosity
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
-    buildSettingOneShot       = fromFlag    projectConfigOneShot
     buildSettingNumJobs       = determineNumJobs projectConfigNumJobs
     buildSettingKeepGoing     = fromFlag    projectConfigKeepGoing
     buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
@@ -336,7 +335,6 @@ resolveBuildTimeSettings verbosity
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigKeepGoing             = toFlag False,
-      projectConfigOneShot               = toFlag False,
       projectConfigOfflineMode           = toFlag False,
       projectConfigKeepTempFiles         = toFlag False,
       projectConfigIgnoreExpiry          = toFlag False

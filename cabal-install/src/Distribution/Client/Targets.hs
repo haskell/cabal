@@ -165,7 +165,6 @@ data UserTargetProblem
    | UserTargetUnexpectedUriScheme String
    | UserTargetUnrecognisedUri     String
    | UserTargetUnrecognised        String
-   | UserTargetBadWorldPkg
   deriving Show
 
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
@@ -240,13 +239,8 @@ reportUserTargetProblems verbosity problems = do
                   | name <- target ]
              ++ "Targets can be:\n"
              ++ " - package names, e.g. 'pkgname', 'pkgname-1.0.1', 'pkgname < 2.0'\n"
-             ++ " - the special 'world' target\n"
              ++ " - cabal files 'pkgname.cabal' or package directories 'pkgname/'\n"
              ++ " - package tarballs 'pkgname.tar.gz' or 'http://example.com/pkgname.tar.gz'"
-
-    case [ () | UserTargetBadWorldPkg <- problems ] of
-      [] -> return ()
-      _  -> die' verbosity "The special 'world' target does not take any version."
 
     case [ target | UserTargetNonexistantFile target <- problems ] of
       []     -> return ()

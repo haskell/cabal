@@ -378,7 +378,6 @@ globalCommand commands = CommandUI {
     -- arguments we don't want shown in the help
     -- the remote repo flags are not useful compared to the more general "active-repositories" flag.
     -- the global logs directory was only used in v1, while in v2 we have specific project config logs dirs
-    -- the world-file flag is long deprecated and unused
     -- default-user-config is support for a relatively obscure workflow for v1-freeze.
     argsNotShown :: [OptionField GlobalFlags]
     argsNotShown = [
@@ -1568,7 +1567,6 @@ data InstallFlags = InstallFlags {
     -- when removing v1 commands
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
-    installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
@@ -1609,7 +1607,6 @@ defaultInstallFlags = InstallFlags {
     installReportPlanningFailure = Flag False,
     installSymlinkBinDir   = mempty,
     installPerComponent    = Flag True,
-    installOneShot         = Flag False,
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
     installRunTests        = mempty,
@@ -1903,11 +1900,6 @@ installOptions showOrParseArgs =
           "Per-component builds when possible"
           installPerComponent (\v flags -> flags { installPerComponent = v })
           (boolOpt [] [])
-
-      , option [] ["one-shot"]
-          "Do not record the packages in the world file."
-          installOneShot (\v flags -> flags { installOneShot = v })
-          (yesNoOpt showOrParseArgs)
 
       , option [] ["run-tests"]
           "Run package test suites during installation."
