@@ -161,6 +161,7 @@ globalCommand commands = CommandUI {
           , "info"
           , "user-config"
           , "get"
+          , "unpack"
           , "init"
           , "configure"
           , "build"
@@ -248,6 +249,7 @@ globalCommand commands = CommandUI {
         , par
         , startGroup "package"
         , addCmd "get"
+        , addCmd "unpack"
         , addCmd "init"
         , par
         , addCmd "configure"
@@ -1313,17 +1315,8 @@ getCommand :: CommandUI GetFlags
 getCommand = CommandUI {
     commandName         = "get",
     commandSynopsis     = "Download/Extract a package's source code (repository).",
-    commandDescription  = Just $ \_ -> wrapText $
-          "Creates a local copy of a package's source code. By default it gets "
-       ++ "the source\ntarball and unpacks it in a local subdirectory. "
-       ++ "Alternatively, with -s it will\nget the code from the source "
-       ++ "repository specified by the package.\n",
-    commandNotes        = Just $ \pname ->
-          "Examples:\n"
-       ++ "  " ++ pname ++ " get hlint\n"
-       ++ "    Download the latest stable version of hlint;\n"
-       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
-       ++ "    Download the source repository (i.e. git clone from github).\n",
+    commandDescription  = Just $ \_ -> wrapText $ unlines descriptionOfGetCommand,
+    commandNotes        = Just $ \pname -> unlines $ notesOfGetCommand "get" pname,
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -1364,12 +1357,38 @@ getCommand = CommandUI {
        ]
   }
 
+-- | List of lines describing command @get@.
+descriptionOfGetCommand :: [String]
+descriptionOfGetCommand =
+  [ "Creates a local copy of a package's source code. By default it gets the source"
+  , "tarball and unpacks it in a local subdirectory. Alternatively, with -s it will"
+  , "get the code from the source repository specified by the package."
+  ]
+
+-- | Notes for the command @get@.
+notesOfGetCommand
+  :: String    -- ^ Either @"get"@ or @"unpack"@.
+  -> String    -- ^ E.g. @"cabal"@.
+  -> [String]  -- ^ List of lines.
+notesOfGetCommand cmd pname =
+  [ "Examples:"
+  , "  " ++ unwords [ pname, cmd, "hlint" ]
+  , "    Download the latest stable version of hlint;"
+  , "  " ++ unwords [ pname, cmd, "lens --source-repository=head" ]
+  , "    Download the source repository of lens (i.e. git clone from github)."
+  ]
+
 -- 'cabal unpack' is a deprecated alias for 'cabal get'.
 unpackCommand :: CommandUI GetFlags
-unpackCommand = getCommand {
-  commandName  = "unpack",
-  commandUsage = usagePackages "unpack"
+unpackCommand = getCommand
+  { commandName        = "unpack"
+  , commandSynopsis    = synopsis
+  , commandNotes       = Just $ \ pname -> unlines $
+      notesOfGetCommand "unpack" pname
+  , commandUsage       = usagePackages "unpack"
   }
+  where
+  synopsis = "Deprecated alias for 'get'."
 
 instance Monoid GetFlags where
   mempty = gmempty
