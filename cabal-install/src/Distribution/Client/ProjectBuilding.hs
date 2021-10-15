@@ -1016,9 +1016,13 @@ buildAndInstallUnpackedPackage verbosity
             -- https://github.com/haskell/cabal/issues/4130
             createDirectoryIfMissingVerbose verbosity True entryDir
 
-            LBS.writeFile
-              (entryDir </> "cabal-hash.txt")
-              (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+            let hashFile         = entryDir </> "cabal-hash.txt"
+                outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
+
+            LBS.writeFile hashFile outPkgHashInputs
+            notice verbosity $ "File with the inputs used to compute the package hash created: " ++ hashFile
+            debug verbosity $ "Package hash inputs:"
+            debug verbosity $ show outPkgHashInputs
 
             -- Ensure that there are no files in `tmpDir`, that are
             -- not in `entryDir`. While this breaks the
