@@ -113,7 +113,6 @@ import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
-import           Distribution.Client.RebuildMonad ( runRebuild )
 
 import           Distribution.Client.TargetProblem
                    ( TargetProblem (..) )
@@ -1313,7 +1312,6 @@ establishDummyProjectBaseContext
   -> CurrentCommand
   -> IO ProjectBaseContext
 establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
-
     cabalDir <- getCabalDir
 
     let ProjectConfigBuildOnly {
