@@ -44,13 +44,12 @@ This will generate the following files:
 .. code-block:: console
 
     $ ls
+    app/Main.hs
     CHANGELOG.md
-    Main.hs
     myfirstapp.cabal
-    Setup.hs
 
 
-``Main.hs`` is where your package's code lives. By default ``cabal init``
+``app/Main.hs`` is where your package's code lives. By default ``cabal init``
 creates an executable with the same name as the package ``myfirstapp`` in this
 case, you can instruct ``cabal init`` to generate just a library (with
 ``--lib``) or both a library and executable with (``--libandexe``); for the full
@@ -110,14 +109,17 @@ the ``executable myfirstapp`` section to include ``haskell-say``:
    executable myfirstapp
        main-is: Main.hs
        build-depends:
-           base >=4.11 && <4.12,
+           base ^>=4.14.3.0,
            haskell-say ^>=1.0.0.0
+       hs-source-dirs:   app
+       default-language: Haskell2010
+
 
 .. NOTE::
    ``^>=1.0.0.0`` means use version 1.0.0.0 of the library or any more recent
    minor release with the same major version.
 
-Next we'll update ``Main.hs`` to use the ``HaskellSay`` library:
+Next we'll update ``app/Main.hs`` to use the ``HaskellSay`` library:
 
 .. code-block:: haskell
 
