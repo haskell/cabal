@@ -1305,20 +1305,16 @@ data BuildFailurePresentation =
 establishDummyProjectBaseContext
   :: Verbosity
   -> ProjectConfig
+     -- ^ Project configuration including the global config if needed
   -> DistDirLayout
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
   -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
-    cabalDir <- getCabalDir
+establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
 
-    globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
-                  $ projectConfigConfigFile
-                  $ projectConfigShared cliConfig
-    let projectConfig = globalConfig <> cliConfig
+    cabalDir <- getCabalDir
 
     let ProjectConfigBuildOnly {
           projectConfigLogsDir
