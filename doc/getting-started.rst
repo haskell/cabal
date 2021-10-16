@@ -45,10 +45,13 @@ This will generate the following files:
 
 .. code-block:: console
 
-    $ ls
-    app/Main.hs
-    CHANGELOG.md
-    myfirstapp.cabal
+    $ tree
+    .
+    ├── app
+    │   └── Main.hs
+    ├── CHANGELOG.md
+    └── myfirstapp.cabal
+
 
 
 ``app/Main.hs`` is where your package's code lives. By default ``cabal init``
