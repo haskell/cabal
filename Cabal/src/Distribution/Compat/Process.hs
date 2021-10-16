@@ -6,10 +6,13 @@ module Distribution.Compat.Process (
     rawSystem,
     -- * Additions
     enableProcessJobs,
+    cleanUpProcessOnInterrupt,
     ) where
 
+import Control.Monad (forM_)
 import System.Exit (ExitCode (..))
 import System.IO   (Handle)
+import System.Signal
 
 import           System.Process (CreateProcess, ProcessHandle)
 import qualified System.Process as Process
@@ -54,12 +57,22 @@ createProcess = Process.createProcess . enableProcessJobs
 rawSystem :: String -> [String] -> IO ExitCode
 rawSystem cmd args = do
 #if MIN_VERSION_process(1,2,0)
-  (_,_,_,p) <- createProcess (Process.proc cmd args) { Process.delegate_ctlc = True }
+  pp@(_, _, _, p) <- createProcess (Process.proc cmd args) { Process.delegate_ctlc = True }
+  cleanUpProcessOnInterrupt pp
   waitForProcess p
 #else
   -- With very old 'process', just do its rawSystem
   Process.rawSystem cmd args
 #endif
+
+
+-- | Installs signal handlers to clean up the process on interrupt of:
+--     - '[sigINT, sigTERM]'
+cleanUpProcessOnInterrupt :: (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle) -> IO ()
+cleanUpProcessOnInterrupt (stdin, stdout, stderr, p) = 
+  forM_ [sigINT, sigTERM] $ \sig ->
+    installHandler sig (\_ -> Process.cleanupProcess (stdin, stdout, stderr, p))
+
 
 -- | 'System.Process.runInteractiveProcess' with process jobs enabled when
 -- appropriate. See 'enableProcessJobs'.

@@ -237,7 +237,7 @@ import qualified Control.Exception as Exception
 import Foreign.C.Error (Errno (..), ePIPE)
 import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Numeric (showFFloat)
-import Distribution.Compat.Process  (createProcess, rawSystem, runInteractiveProcess)
+import Distribution.Compat.Process  (createProcess, rawSystem, runInteractiveProcess, cleanUpProcessOnInterrupt)
 import System.Process
          ( ProcessHandle
          , showCommandForUser, waitForProcess)
@@ -800,8 +800,10 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
+    pp@(_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
                                        (mbToStd inp) (mbToStd out) (mbToStd err)
+    cleanUpProcessOnInterrupt pp
+
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
@@ -897,6 +899,7 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
      (runInteractiveProcess path args mcwd menv)
      (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
     $ \(inh,outh,errh,pid) -> do
+      cleanUpProcessOnInterrupt (Just inh,Just outh,Just errh,pid)
 
       -- output mode depends on what the caller wants
       -- but the errors are always assumed to be text (in the current locale)
