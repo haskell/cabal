@@ -16,9 +16,6 @@ data ConstraintSource =
   -- | Local cabal.project file
   | ConstraintSourceProjectConfig FilePath
 
-  -- | Sandbox config file, which is ./cabal.sandbox.config by default.
-  | ConstraintSourceSandboxConfig FilePath
-
   -- | User config file, which is ./cabal.config by default.
   | ConstraintSourceUserConfig FilePath
 
@@ -64,8 +61,6 @@ showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
 showConstraintSource (ConstraintSourceProjectConfig path) =
     "project config " ++ path
-showConstraintSource (ConstraintSourceSandboxConfig path) =
-    "sandbox config " ++ path
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"
