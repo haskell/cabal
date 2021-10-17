@@ -97,6 +97,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -1020,9 +1021,12 @@ buildAndInstallUnpackedPackage verbosity
                 outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
 
             LBS.writeFile hashFile outPkgHashInputs
-            notice verbosity $ "File with the inputs used to compute the package hash created: " ++ hashFile
-            debug verbosity $ "Package hash inputs:"
-            debug verbosity $ show outPkgHashInputs
+            notice verbosity $
+              "File with the inputs used to compute the package hash: " ++ hashFile
+            debug verbosity "Package hash inputs:"
+            traverse_
+              (debug verbosity . ("> " ++))
+              (lines $ LBS.Char8.unpack outPkgHashInputs)
 
             -- Ensure that there are no files in `tmpDir`, that are
             -- not in `entryDir`. While this breaks the
