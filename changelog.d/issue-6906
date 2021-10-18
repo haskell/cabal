@@ -1,0 +1,4 @@
+synopsis: cabal v2 commands (install, repl, run) uses duplicate global config and rebuilds libs twice in the store
+packages: cabal-install
+issues: #6907
+prs: #7753 #7759

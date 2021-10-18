@@ -164,9 +164,9 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     let
       with =
         establishProjectBaseContext verbosity cliConfig OtherCommand
-      without config = do
-        distDirLayout <- establishDummyDistDirLayout verbosity (config <> cliConfig) tmpDir
-        establishDummyProjectBaseContext verbosity (config <> cliConfig) distDirLayout [] OtherCommand
+      without globalConfig = do
+        distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) tmpDir
+        establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
 
     baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
 

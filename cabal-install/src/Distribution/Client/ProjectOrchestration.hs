@@ -113,7 +113,6 @@ import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
-import           Distribution.Client.RebuildMonad ( runRebuild )
 
 import           Distribution.Client.TargetProblem
                    ( TargetProblem (..) )
@@ -1305,20 +1304,15 @@ data BuildFailurePresentation =
 establishDummyProjectBaseContext
   :: Verbosity
   -> ProjectConfig
+     -- ^ Project configuration including the global config if needed
   -> DistDirLayout
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
   -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
+establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
     cabalDir <- getCabalDir
-
-    globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
-                  $ projectConfigConfigFile
-                  $ projectConfigShared cliConfig
-    let projectConfig = globalConfig <> cliConfig
 
     let ProjectConfigBuildOnly {
           projectConfigLogsDir

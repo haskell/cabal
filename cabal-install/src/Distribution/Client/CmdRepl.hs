@@ -197,8 +197,8 @@ replCommand = Client.installCommand {
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
     let
-      with           = withProject    cliConfig             verbosity targetStrings
-      without config = withoutProject (config <> cliConfig) verbosity targetStrings
+      with                 = withProject    cliConfig                   verbosity targetStrings
+      without globalConfig = withoutProject (globalConfig <> cliConfig) verbosity targetStrings
 
     (baseCtx, targetSelectors, finalizer, replType) <-
       withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
