@@ -2037,7 +2037,7 @@ instance Semigroup UploadFlags where
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Create a new cabal project.",
+    commandSynopsis = "Create a new cabal package.",
     commandDescription = Just $ \_ -> wrapText $
          "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
       ++ "\n"      
