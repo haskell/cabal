@@ -1020,9 +1020,11 @@ buildAndInstallUnpackedPackage verbosity
             let hashFile         = entryDir </> "cabal-hash.txt"
                 outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
 
+            info verbosity $
+              "creating file with the inputs used to compute the package hash: " ++ hashFile
+
             LBS.writeFile hashFile outPkgHashInputs
-            notice verbosity $
-              "File with the inputs used to compute the package hash: " ++ hashFile
+
             debug verbosity "Package hash inputs:"
             traverse_
               (debug verbosity . ("> " ++))
