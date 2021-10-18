@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 
-main = cabalTest $
+main = cabalTest $ do
    cabalG' ["--config=cabal.config"] "v2-install" ["-v3"]
    assertOutputContains "File with the inputs used to compute the package hash:"
    assertOutputContains "extra-lib-dirs: bar"
