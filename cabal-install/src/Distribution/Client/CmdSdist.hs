@@ -19,7 +19,7 @@ import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), defaultNixStyleFlags )
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
-    , readTargetSelectors, reportTargetSelectorProblems )
+    , readTargetSelectors', reportTargetSelectorProblems )
 import Distribution.Client.Setup
     ( GlobalFlags(..) )
 import Distribution.Solver.Types.SourcePackage
@@ -143,7 +143,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     let localPkgs = localPackages baseCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-        =<< readTargetSelectors localPkgs Nothing targetStrings
+        =<< readTargetSelectors' localPkgs Nothing targetStrings
 
     -- elaborate path, create target directory
     mOutputPath' <- case mOutputPath of

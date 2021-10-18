@@ -238,8 +238,8 @@ installAction flags@NixStyleFlags { extraFlags = clientInstallFlags', .. } targe
         else do
           targetSelectors <-
             either (reportTargetSelectorProblems verbosity) return
-            =<< readTargetSelectors (localPackages localBaseCtx)
-                                    Nothing targetStrings''
+            =<< readTargetSelectors (localPackages localBaseCtx) Nothing flags
+                 targetStrings''
 
           (specs, selectors) <-
             getSpecsAndTargetSelectors
@@ -429,7 +429,7 @@ getSpecsAndTargetSelectors
   -> [TargetSelector]
   -> DistDirLayout
   -> ProjectBaseContext
-  -> Maybe ComponentKindFilter
+  -> Maybe ComponentKind
   -> IO ([PackageSpecifier UnresolvedSourcePackage], [TargetSelector])
 getSpecsAndTargetSelectors verbosity reducedVerbosity pkgDb targetSelectors localDistDirLayout localBaseCtx targetFilter =
   withInstallPlan reducedVerbosity localBaseCtx $ \elaboratedPlan _ -> do

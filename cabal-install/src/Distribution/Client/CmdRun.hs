@@ -180,7 +180,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
           else reportTargetSelectorProblems verbosity err
 
     (baseCtx', targetSelectors) <-
-      readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
+      readTargetSelectors (localPackages baseCtx) (Just ExeKind) flags (take 1 targetStrings)
         >>= \case
           Left err@(TargetSelectorNoTargetsInProject:_)
             | (script:_) <- targetStrings -> scriptOrError script err

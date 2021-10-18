@@ -609,7 +609,9 @@ convertToLegacySharedConfig
       configAllowOlder    = projectConfigAllowOlder,
       configAllowNewer    = projectConfigAllowNewer,
       configWriteGhcEnvironmentFilesPolicy
-                          = projectConfigWriteGhcEnvironmentFilesPolicy
+                          = projectConfigWriteGhcEnvironmentFilesPolicy,
+      configPickFirstTarget
+                          = mempty
     }
 
     installFlags = InstallFlags {

@@ -89,7 +89,8 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
             = projCtx
 
     targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                   =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+                   =<< readTargetSelectors (localPackages baseCtx) Nothing flags
+                         targetStrings
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
