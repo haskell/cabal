@@ -45,14 +45,16 @@ This will generate the following files:
 
 .. code-block:: console
 
-    $ ls
-    CHANGELOG.md
-    Main.hs
-    myfirstapp.cabal
-    Setup.hs
+    $ tree
+    .
+    ├── app
+    │   └── Main.hs
+    ├── CHANGELOG.md
+    └── myfirstapp.cabal
 
 
-``Main.hs`` is where your package's code lives. By default ``cabal init``
+
+``app/Main.hs`` is where your package's code lives. By default ``cabal init``
 creates an executable with the same name as the package ``myfirstapp`` in this
 case, you can instruct ``cabal init`` to generate just a library (with
 ``--lib``) or both a library and executable with (``--libandexe``); for the full
@@ -70,25 +72,22 @@ As mentioned above, ``cabal init`` with no arguments generates a package with a
 single executable that prints ``"Hello, Haskell!"`` to the terminal. To run the
 executable enter the following command:
 
-``cabal run :myfirstapp``
+``cabal run myfirstapp``
 
 You should see the following output in the terminal:
 
 .. code-block:: console
 
-     $ cabal run :myfirstapp
+     $ cabal run myfirstapp
      ...
      Hello, Haskell!
-
-.. note:: The ``:`` prefix in ``:myfirstapp`` signifies that the
-	  ``myfirstapp`` target is part of the current package.
 
 Notice that we didn't need to run a `build` command before ``cabal run``, this
 is because ``cabal run`` first determines if the code needs to be re-built
 before running the executable. If you just want to build a target you can do so
 with ``cabal build``:
 
-``cabal build :myfirstapp``
+``cabal build myfirstapp``
 
 
 Adding dependencies
@@ -115,14 +114,16 @@ the ``executable myfirstapp`` section to include ``haskell-say``:
    executable myfirstapp
        main-is: Main.hs
        build-depends:
-           base >=4.11 && <4.12,
+           base ^>=4.14.3.0,
            haskell-say ^>=1.0.0.0
+       hs-source-dirs:   app
+       default-language: Haskell2010
 
 .. NOTE::
    ``^>=1.0.0.0`` means use version 1.0.0.0 of the library or any more recent
    minor release with the same major version.
 
-Next we'll update ``Main.hs`` to use the ``HaskellSay`` library:
+Next we'll update ``app/Main.hs`` to use the ``HaskellSay`` library:
 
 .. code-block:: haskell
 
