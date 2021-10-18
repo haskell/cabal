@@ -1017,13 +1017,13 @@ buildAndInstallUnpackedPackage verbosity
             -- https://github.com/haskell/cabal/issues/4130
             createDirectoryIfMissingVerbose verbosity True entryDir
 
-            let hashFile         = entryDir </> "cabal-hash.txt"
+            let hashFileName     = entryDir </> "cabal-hash.txt"
                 outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
 
             info verbosity $
-              "creating file with the inputs used to compute the package hash: " ++ hashFile
+              "creating file with the inputs used to compute the package hash: " ++ hashFileName
 
-            LBS.writeFile hashFile outPkgHashInputs
+            LBS.writeFile hashFileName outPkgHashInputs
 
             debug verbosity "Package hash inputs:"
             traverse_
