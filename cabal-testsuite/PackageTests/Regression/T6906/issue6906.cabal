@@ -1,12 +1,12 @@
-cabal-version: 2.4
+cabal-version: 3.0
 name:          issue6906
 version:       0
-synopsis:      No duplicate entries for extra-*-dirs config options in the inouts used to compute the package hash
+synopsis:      No duplicate entries for extra-*-dirs config options in the inputs used to compute the package hash
 description:   When informed in the global config
 author:        Javier Neira
 category:      Tests
 maintainer:    atreyu.bbb@gmail.com
 
 executable issue6906
-  build-depends:    base <5
+  build-depends:    base
   main-is:  main.hs
