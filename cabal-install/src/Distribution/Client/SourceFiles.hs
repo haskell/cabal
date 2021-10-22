@@ -12,11 +12,14 @@
 -- we cannot "see" easily.
 module Distribution.Client.SourceFiles (needElaboratedConfiguredPackage) where
 
+import Control.Monad.IO.Class
+
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.RebuildMonad
 
 import Distribution.Solver.Types.OptionalStanza
 
+import Distribution.Simple.Glob (matchDirFileGlobWithDie)
 import Distribution.Simple.PreProcess
 
 import Distribution.Types.PackageDescription
@@ -35,6 +38,7 @@ import Distribution.ModuleName
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
+import Distribution.Verbosity (silent)
 
 import System.FilePath
 
@@ -138,13 +142,14 @@ needBuildInfo pkg_descr bi modules = do
     -- A.hs-boot; need to track both.
     findNeededModules ["hs", "lhs", "hsig", "lhsig"]
     findNeededModules ["hs-boot", "lhs-boot"]
+    expandedExtraSrcFiles <- liftIO $ fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchDirFileGlobWithDie silent (\ _ _ -> return []) (specVersion pkg_descr) "." fpath
     traverse_ needIfExists $ concat
         [ cSources bi
         , cxxSources bi
         , jsSources bi
         , cmmSources bi
         , asmSources bi
-        , extraSrcFiles pkg_descr
+        , expandedExtraSrcFiles
         ]
     for_ (installIncludes bi) $ \f ->
         findFileMonitored ("." : includeDirs bi) f
