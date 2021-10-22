@@ -63,7 +63,7 @@ import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Map  as Map
 import System.FilePath
-         ( takeDirectory )
+         ( takeDirectory, (</>) )
 import System.Directory
          ( doesDirectoryExist
          , removeDirectoryRecursive
@@ -398,17 +398,18 @@ vcsGit =
     vcsCloneRepo verbosity prog repo srcuri destdir =
         [ programInvocation prog cloneArgs ]
         -- And if there's a tag, we have to do that in a second step:
-     ++ [ (programInvocation prog (checkoutArgs tag)) {
-            progInvokeCwd = Just destdir
-          }
-        | tag <- maybeToList (srpTag repo) ]
+     ++ [ git (resetArgs tag) | tag <- maybeToList (srpTag repo) ]
+     ++ [ git (["submodule", "sync", "--recursive"] ++ verboseArg)
+        , git (["submodule", "update", "--init", "--force", "--recursive"] ++ verboseArg)
+        ]
       where
+        git args   = (programInvocation prog args) {progInvokeCwd = Just destdir}
         cloneArgs  = ["clone", srcuri, destdir]
                      ++ branchArgs ++ verboseArg
         branchArgs = case srpBranch repo of
           Just b  -> ["--branch", b]
           Nothing -> []
-        checkoutArgs tag = "checkout" : verboseArg ++ [tag, "--"]
+        resetArgs tag = "reset" : verboseArg ++ ["--hard", tag, "--"]
         verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
 
     vcsSyncRepos :: Verbosity
@@ -431,7 +432,20 @@ vcsGit =
         if exists
           then git localDir                 ["fetch"]
           else git (takeDirectory localDir) cloneArgs
-        git localDir checkoutArgs
+        -- Before trying to checkout other commits, all submodules must be
+        -- de-initialised and the .git/modules directory must be deleted. This
+        -- is needed because sometimes `git submodule sync` does not actually
+        -- update the submodule source URL. Detailed description here:
+        -- https://git.coop/-/snippets/85
+        git localDir ["submodule", "deinit", "--force", "--all"]
+        let gitModulesDir = localDir </> ".git" </> "modules"
+        gitModulesExists <- doesDirectoryExist gitModulesDir
+        when gitModulesExists $ removeDirectoryRecursive gitModulesDir
+        git localDir resetArgs
+        git localDir $ ["submodule", "sync", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "update", "--force", "--init", "--recursive"] ++ verboseArg
+        git localDir $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+        git localDir $ ["clean", "-ffxdq"]
       where
         git :: FilePath -> [String] -> IO ()
         git cwd args = runProgramInvocation verbosity $
@@ -439,16 +453,15 @@ vcsGit =
                            progInvokeCwd = Just cwd
                          }
 
-        cloneArgs      = ["clone", "--no-checkout", loc, localDir]
-                      ++ case peer of
-                           Nothing           -> []
-                           Just peerLocalDir -> ["--reference", peerLocalDir]
-                      ++ verboseArg
-                         where loc = srpLocation
-        checkoutArgs   = "checkout" : verboseArg ++ ["--detach", "--force"
-                         , checkoutTarget, "--" ]
-        checkoutTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
-        verboseArg     = [ "--quiet" | verbosity < Verbosity.normal ]
+        cloneArgs   = ["clone", "--no-checkout", loc, localDir]
+                   ++ case peer of
+                        Nothing           -> []
+                        Just peerLocalDir -> ["--reference", peerLocalDir]
+                   ++ verboseArg
+                      where loc = srpLocation
+        resetArgs   = "reset" : verboseArg ++ ["--hard", resetTarget, "--" ]
+        resetTarget = fromMaybe "HEAD" (srpBranch `mplus` srpTag)
+        verboseArg  = [ "--quiet" | verbosity < Verbosity.normal ]
 
 gitProgram :: Program
 gitProgram = (simpleProgram "git") {

@@ -1,0 +1,8 @@
+synopsis: Support Git submodules in source-package-respository
+packages: cabal-install
+prs: #7625
+issues: #5536
+descripion: {
+- Fetch all source-package-respositories with all the submodules
+- Use `git reset --hard` instaed of `git checkout` for source-package-respositories
+}
