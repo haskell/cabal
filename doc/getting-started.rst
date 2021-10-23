@@ -31,42 +31,41 @@ Once you have an empty directory we can initialize our package:
 
 .. code-block:: console
 
-    $ cabal init --cabal-version=2.4 --license=NONE -p myfirstapp
+    $ cabal init -n
 
-.. note:: ``cabal-version`` refers to the
-          `version of the .cabal file format specification <file-format-changelog.html>`__,
-          that can be different from the versions of the cabal library and tool
-          in use. It is common to use a slightly older cabal-version, to strike
-          a compromise between feature availability and backward compatibility.
+.. note:: ``-n`` stands for ``--non-interactive``, which means that cabal will try to guess
+          how to set up the project for you and use the default settings, which will serve us
+          well for the purpose of this tutorial.
+          When setting up your projects in the future, you will likely want to ommit ``-n``
+          and do just ``cabal init``, so that cabal will interactively ask you
+          for the details on how the project should be set up
+          (while still offering reasonable defaults on every step).
+          Also, you can run ``cabal init --help`` to get more info on how ``cabal init`` can be used.
 
 This will generate the following files:
 
 .. code-block:: console
 
-    $ ls
-    CHANGELOG.md
-    Main.hs
-    myfirstapp.cabal
-    Setup.hs
+    $ tree
+    .
+    ├── app
+    │   └── Main.hs
+    ├── CHANGELOG.md
+    └── myfirstapp.cabal
 
+``app/Main.hs`` is where your package's code lives.
 
-``Main.hs`` is where your package's code lives. By default ``cabal init``
-creates an executable with the same name as the package ``myfirstapp`` in this
-case, you can instruct ``cabal init`` to generate just a library (with
-``--lib``) or both a library and executable with (``--libandexe``); for the full
-set of options see ``cabal init --help``.
-
-``myfirstapp.cabal`` is Cabal's metadata file which describes your package and
-its dependencies. We'll be updating this file in a little bit when we add an
-external dependency to our package.
+``myfirstapp.cabal`` is Cabal's metadata file which describes your package,
+how it is built and its dependencies. We'll be updating this file in a
+little bit when we add an external dependency to our package.
 
 
 Running the application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-As mentioned above, ``cabal init`` with no arguments generates a package with a
-single executable that prints ``"Hello, Haskell!"`` to the terminal. To run the
-executable enter the following command:
+When we ran ``cabal init -n`` above, it generated a package with a single executable
+named same as the package (in this case ``myfirstapp``) that prints ``"Hello, Haskell!"``
+to the terminal. To run the executable enter the following command:
 
 ``cabal run myfirstapp``
 
@@ -78,10 +77,10 @@ You should see the following output in the terminal:
      ...
      Hello, Haskell!
 
-Notice that we didn't need to run a `build` command before ``cabal run``, this
-is because ``cabal run`` first determines if the code needs to be re-built
-before running the executable. If you just want to build a target you can do so
-with ``cabal build``:
+Notice that we didn't need to run a `build` command before we ran ``cabal run``.
+This is because ``cabal run`` automatically determines if the code needs to be (re)built
+before running the executable.
+If you just want to build a target without running it, you can do so with ``cabal build``:
 
 ``cabal build myfirstapp``
 
@@ -108,16 +107,21 @@ the ``executable myfirstapp`` section to include ``haskell-say``:
 .. code-block:: cabal
 
    executable myfirstapp
+       import: warnings
        main-is: Main.hs
        build-depends:
-           base >=4.11 && <4.12,
+           base ^>=4.14.3.0,
            haskell-say ^>=1.0.0.0
+       hs-source-dirs: app
+       default-language: Haskell2010
+       
 
 .. NOTE::
    ``^>=1.0.0.0`` means use version 1.0.0.0 of the library or any more recent
-   minor release with the same major version.
+   minor release with the same major version. To put it simply, this means
+   use the latest version of the library that starts with ``1.0``.
 
-Next we'll update ``Main.hs`` to use the ``HaskellSay`` library:
+Next we'll update ``app/Main.hs`` to use the ``HaskellSay`` library:
 
 .. code-block:: haskell
 
@@ -131,7 +135,7 @@ Next we'll update ``Main.hs`` to use the ``HaskellSay`` library:
 
 ``import HaskellSay (haskellSay)`` brings the ``haskellSay`` function from the
 module named ``HaskellSay`` into scope. The ``HaskellSay`` module is defined in
-the ``haskell-say`` packages that we added a dependency on above.
+the ``haskell-say`` package that we added as a dependency above.
 
 Now you can build and re-run your code to see the new output:
 

@@ -2037,17 +2037,14 @@ instance Semigroup UploadFlags where
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Create a new .cabal package file.",
+    commandSynopsis = "Create a new cabal package.",
     commandDescription = Just $ \_ -> wrapText $
-         "Create a .cabal, Setup.hs, and optionally a LICENSE file.\n"
-      ++ "\n"
-      ++ "Calling init with no arguments creates an executable, "
-      ++ "guessing as many options as possible. The interactive "
-      ++ "mode can be invoked by the -i/--interactive flag, which "
-      ++ "will try to guess as much as possible and prompt you for "
-      ++ "the rest. You can change init to always be interactive by "
-      ++ "setting the interactive flag in your configuration file. "
-      ++ "Command-line arguments are provided for scripting purposes.\n",
+         "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
+      ++ "\n"      
+      ++ "Calling init with no arguments runs interactive mode, "
+      ++ "which will try to guess as much as possible and prompt you for the rest.\n"
+      ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
+      ++ "which will let you specify the options via flags and will use the defaults for the rest.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",
