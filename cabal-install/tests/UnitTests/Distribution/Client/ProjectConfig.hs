@@ -384,7 +384,6 @@ instance Arbitrary ProjectConfigBuildOnly where
         <*> arbitrary
         <*> arbitrary
         <*> (fmap getShortToken <$> arbitrary)
-        <*> arbitrary
         <*> arbitraryNumJobs
         <*> arbitrary
         <*> arbitrary
@@ -406,7 +405,6 @@ instance Arbitrary ProjectConfigBuildOnly where
                                   , projectConfigBuildReports = x05
                                   , projectConfigReportPlanningFailure = x06
                                   , projectConfigSymlinkBinDir = x07
-                                  , projectConfigOneShot = x08
                                   , projectConfigNumJobs = x09
                                   , projectConfigKeepGoing = x10
                                   , projectConfigOfflineMode = x11
@@ -425,7 +423,6 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigBuildReports = x05'
                                , projectConfigReportPlanningFailure = x06'
                                , projectConfigSymlinkBinDir = x07'
-                               , projectConfigOneShot = x08'
                                , projectConfigNumJobs = postShrink_NumJobs x09'
                                , projectConfigKeepGoing = x10'
                                , projectConfigOfflineMode = x11'
@@ -436,12 +433,12 @@ instance Arbitrary ProjectConfigBuildOnly where
                                , projectConfigLogsDir = x16
                                , projectConfigClientInstallFlags = x17' }
       | ((x00', x01', x02', x03', x04'),
-         (x05', x06', x07', x08', x09'),
+         (x05', x06', x07',       x09'),
          (x10', x11', x12',       x14'),
          (            x17', x18'      ))
           <- shrink
                ((x00, x01, x02, x03, x04),
-                (x05, x06, x07, x08, preShrink_NumJobs x09),
+                (x05, x06, x07,      preShrink_NumJobs x09),
                 (x10, x11, x12,      x14),
                 (          x17, x18     ))
       ]

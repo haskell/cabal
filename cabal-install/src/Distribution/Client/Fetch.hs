@@ -78,7 +78,7 @@ fetch verbosity _ _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
 fetch verbosity packageDBs repoCtxt comp platform progdb
-      globalFlags fetchFlags userTargets = do
+      _ fetchFlags userTargets = do
 
     traverse_ (checkTarget verbosity) userTargets
 
@@ -87,7 +87,6 @@ fetch verbosity packageDBs repoCtxt comp platform progdb
     pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
-                       (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        userTargets
 

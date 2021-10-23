@@ -144,7 +144,6 @@ def step_config(args: Args):
         logs-dir:          {args.builddir}/cabal/logs
         store-dir:         {args.builddir}/cabal/store
         symlink-bindir:    {args.builddir}/bin
-        world-file:        {args.builddir}/cabal/world
         extra-prog-path:   {extraprogpath}
 
         jobs: 1

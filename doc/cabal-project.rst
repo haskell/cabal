@@ -1521,17 +1521,8 @@ Advanced global configuration options
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
 
-.. cfg-field:: world-file: path
-               --world-file=FILE
-    :deprecated:
-
-    [STRIKEOUT:The location of the world file.] Deprecated.
-
-    The command line variant of this flag is ``--world-file=FILE``.
-
 Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
-``remote-build-reporting``, ``report-planned-failure``, ``one-shot``,
-``offline``.
+``remote-build-reporting``, ``report-planned-failure``, ``offline``.
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^

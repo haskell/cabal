@@ -194,7 +194,6 @@ library
         Distribution.Client.VCS
         Distribution.Client.Version
         Distribution.Client.Win32SelfUpgrade
-        Distribution.Client.World
 
     build-depends:
         async      >= 2.0      && < 2.3,

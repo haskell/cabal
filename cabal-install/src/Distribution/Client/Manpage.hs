@@ -42,7 +42,6 @@ data FileInfo = FileInfo String String -- ^ path, description
 files :: [FileInfo]
 files =
   [ (FileInfo "~/.cabal/config" "The defaults that can be overridden with command-line options.")
-  , (FileInfo "~/.cabal/world"  "A list of all packages whose installation has been explicitly requested.")
   ]
 
 manpageCmd :: String -> [CommandSpec a] -> ManpageFlags -> IO ()
