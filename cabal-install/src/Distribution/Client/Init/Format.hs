@@ -64,18 +64,9 @@ fieldD
     -> WriteOpts
     -> PrettyField FieldAnnotation
 fieldD fieldName fieldContents fieldComments includeField opts
-    | fieldContents == empty =
-      -- If there is no content, optionally produce a commented out field.
-      fieldSEmptyContents $ CommentBefore fieldComments
-    | otherwise =
-        -- If the "--no-comments" or "--minimal" flag is set, strip comments.
-        let comments
-              | isMinimal = []
-              | hasNoComments = []
-              | otherwise = fieldComments
-
-        -- If the "--minimal" flag is set, strip comments.
-        in fieldSWithContents comments
+      -- If the "--no-comments" or "--minimal" flag is set, strip comments.
+    | hasNoComments || isMinimal = contents NoComment
+    | otherwise                  = contents $ commentPositionFor fieldName fieldComments
   where
     commentPositionFor fn
       | fn == "cabal-version" = CommentAfter
@@ -83,6 +74,11 @@ fieldD fieldName fieldContents fieldComments includeField opts
 
     isMinimal = _optMinimal opts
     hasNoComments = _optNoComments opts
+
+    contents
+        -- If there is no content, optionally produce a commented out field.
+      | fieldContents == empty = fieldSEmptyContents
+      | otherwise              = fieldSWithContents
 
     fieldSEmptyContents cs
       | not includeField || isMinimal = PrettyEmpty
@@ -92,7 +88,7 @@ fieldD fieldName fieldContents fieldComments includeField opts
         empty
 
     fieldSWithContents cs =
-      PrettyField (withComments . commentPositionFor fieldName $ map ("-- " ++) cs) fieldName fieldContents
+      PrettyField (withComments cs) fieldName fieldContents
 
 
 -- | A field annotation instructing the pretty printer to comment out the field
@@ -104,7 +100,9 @@ commentedOutWithComments NoComment = FieldAnnotation True NoComment
 
 -- | A field annotation with the specified comment lines.
 withComments :: CommentPosition -> FieldAnnotation
-withComments = FieldAnnotation False
+withComments (CommentBefore cs) = FieldAnnotation False . CommentBefore $ map ("-- " ++) cs
+withComments (CommentAfter  cs) = FieldAnnotation False . CommentAfter  $ map ("-- " ++) cs
+withComments NoComment = FieldAnnotation False NoComment
 
 -- | A field annotation with no comments.
 annNoComments :: FieldAnnotation

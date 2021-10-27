@@ -110,8 +110,8 @@ goldenExeTests
     -> PackageName
     -> TestTree
 goldenExeTests v pkgIx pkgDir pkgName = testGroup "exe golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenExe "exe.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenExe "exe-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Executable pkgName defaultCabalVersion
         in runGoldenExe opts exeArgs emptyFlags
 
@@ -148,12 +148,13 @@ goldenLibTests
     -> PackageName
     -> TestTree
 goldenLibTests v pkgIx pkgDir pkgName = testGroup "lib golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenLib "lib.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenLib "lib-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenLib opts libArgs emptyFlags
 
-    , goldenVsString "Empty flags, simple, no options" (goldenLib "lib-simple.golden") $
+    , goldenVsString "Empty flags, simple, no options, no comments"
+      (goldenLib "lib-simple-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenLib opts libArgs emptyFlags
 
@@ -190,8 +191,8 @@ goldenTestTests
     -> PackageName
     -> TestTree
 goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
-    [ goldenVsString "Empty flags, not simple, no options"
-      (goldenTest "test.golden") $
+    [ goldenVsString "Empty flags, not simple, no options, no comments"
+      (goldenTest "test-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs emptyFlags
 
@@ -215,8 +216,8 @@ goldenTestTests v pkgIx pkgDir pkgName = testGroup "test golden tests"
         let opts = WriteOpts False False False v pkgDir Library pkgName defaultCabalVersion
         in runGoldenTest opts testArgs (emptyFlags {buildTools = Flag ["happy"]})
     
-    , goldenVsString "Standalone tests, empty flags, not simple, no options"
-      (goldenTest "standalone-test.golden") $
+    , goldenVsString "Standalone tests, empty flags, not simple, no options, no comments"
+      (goldenTest "standalone-test-no-comments.golden") $
         let opts = WriteOpts False False True v pkgDir TestSuite pkgName defaultCabalVersion
         in runGoldenTest opts testArgs emptyFlags
 
