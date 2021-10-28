@@ -654,7 +654,7 @@ configureExOptions _showOrParseArgs src =
       "the backup of the config file before any alterations"
       configBackup (\v flags -> flags { configBackup = v })
       (boolOpt [] [])
-  , option [] ["constraint"]
+  , option "c" ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"

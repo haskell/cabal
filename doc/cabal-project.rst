@@ -300,7 +300,7 @@ Solver configuration options
 The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: constraints: constraints list (comma separated)
-               --constraint="pkg >= 2.0"
+               --constraint="pkg >= 2.0", -c "pkg >= 2.0"
     :synopsis: Extra dependencies constraints.
 
     Add extra constraints to the version bounds, flag settings,
