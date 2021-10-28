@@ -71,5 +71,7 @@ jobs:
         path: html/
 
     - name: Check security of requirements.txt
+      env:
+        SKJOLD_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        make SKJOLD_GITHUB_API_TOKEN=${{ secrets.GITHUB_TOKEN }} -C doc check-requirements
+        make -C doc check-requirements

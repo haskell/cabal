@@ -3,14 +3,15 @@
 # skjold needs a personal github access token.  This needs no permissions,
 # it is only required to query the GitHub GraphQL API v4.
 # See: https://pythonawesome.com/security-audit-python-project-dependencies-against-security-advisory-databases/
-# We attempt to get it from the environment variable GITHUB_TOKEN.
+# We attempt to get it from the environment variable SKJOLD_GITHUB_API_TOKEN
+# or GITHUB_TOKEN.
 # It can also be passed to this Makefile via either:
 #
 #   make GITHUB_TOKEN=... (build-and-)check-requirements
 #   make SKJOLD_GITHUB_API_TOKEN=... (build-and-)check-requirements
 #
 #
-SKJOLD_GITHUB_API_TOKEN=${GITHUB_TOKEN}
+SKJOLD_GITHUB_API_TOKEN ?= ${GITHUB_TOKEN}
 
 .PHONY: build-and-check-requirements
 build-and-check-requirements: requirements.txt check-requirements
@@ -30,14 +31,20 @@ requirements.txt: requirements.in
 # See: https://pythonawesome.com/security-audit-python-project-dependencies-against-security-advisory-databases/
 .PHONY: check-requirements
 check-requirements:
-	@if [ "\'${SKJOLD_GITHUB_API_TOKEN}\'" == "\'\'" ] \
+	@if [ -z "$${SKJOLD_GITHUB_API_TOKEN}" ] \
 	; then \
-	  echo "WARNING: Neither SKOLD_GITHUB_API_TOKEN nor GITHUB_TOKEN is set." \
+	  echo "WARNING: Neither SKJOLD_GITHUB_API_TOKEN nor GITHUB_TOKEN is set." \
 	; echo "Vulnerability check via skjold might fail when using the GitHub GraphQL API." \
 	; fi
 	. ../.python-sphinx-virtualenv/bin/activate \
 	  && pip install skjold \
 	  && skjold audit
 # NB: For portability, we use '.' (sh etc.) instead of 'source' (bash).
+
+# Debug print environment variables
+debug:
+	@echo "GITHUB_TOKEN = ${GITHUB_TOKEN}"
+	@echo "SKJOLD_GITHUB_API_TOKEN = $${SKJOLD_GITHUB_API_TOKEN}"
+	@echo "Is SKJOLD_GITHUB_API_TOKEN set? $${SKJOLD_GITHUB_API_TOKEN:+yes}"
 
 # EOF
