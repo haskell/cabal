@@ -251,3 +251,12 @@ $(USERGUIDE_STAMP) : doc/*.rst
 .python-sphinx-virtualenv:
 	python3 -m venv .python-sphinx-virtualenv
 	(. ./.python-sphinx-virtualenv/bin/activate)
+
+# This goal is intended for manual invocation, always rebuilds.
+.PHONY: users-guide-requirements
+users-guide-requirements: doc/requirements.txt
+
+.PHONY: doc/requirements.txt
+doc/requirements.txt: .python-sphinx-virtualenv
+	. .python-sphinx-virtualenv/bin/activate \
+	  && make -C doc build-and-check-requirements
