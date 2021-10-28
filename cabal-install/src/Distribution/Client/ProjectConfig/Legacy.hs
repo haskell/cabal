@@ -1,8 +1,14 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds, FlexibleInstances #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
 module Distribution.Client.ProjectConfig.Legacy (
+
+   -- Project config skeletons
+    ProjectConfigSkeleton,
+    parseProjectSkeleton,
+    instantiateProjectConfigSkeleton,
+    singletonProjectConfigSkeleton,
 
     -- * Project config in terms of legacy types
     LegacyProjectConfig,
@@ -17,13 +23,12 @@ module Distribution.Client.ProjectConfig.Legacy (
 
     -- * Internals, just for tests
     parsePackageLocationTokenQ,
-    renderPackageLocationToken,
+    renderPackageLocationToken
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Types.Flag (parsecFlagAssignment)
+import Distribution.Types.Flag (parsecFlagAssignment, FlagName)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
@@ -43,9 +48,10 @@ import Distribution.Solver.Types.ConstraintSource
 import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
-import Distribution.Types.CondTree (CondTree (..), CondBranch (..), condIfThen, condIfThenElse)
+import Distribution.Types.CondTree (CondTree (..), CondBranch (..), condIfThen, condIfThenElse, mapTreeConds)
 import Distribution.PackageDescription
          ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment (..) )
+import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
@@ -94,9 +100,10 @@ import Distribution.Simple.Command
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
 import Distribution.Parsec (ParsecParser, zeroPos)
-import Distribution.System (Platform (..))
+import Distribution.System (Platform (..), OS, Arch)
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.ByteString.Char8 as BS
 
 import Network.URI (URI (..))
@@ -107,21 +114,119 @@ import Distribution.Fields.Field (SectionArg (..))
 
 
 ------------------------------------------------------------------
--- Representing the project config file in terms of legacy types
+-- Handle extended project config files with conditionals and imports.
 --
 
--- ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a legacy config. It can be finalized by providing the conditional resolution invo
+-- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
 -- and then resolving and downloading the imports
-
+type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] ProjectConfig
 type ProjectConfigImport = String
 
-type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] LegacyProjectConfig
 
-finalizeProjectConfigSkeleton :: Platform -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> IO LegacyProjectConfig
-finalizeProjectConfigSkeleton = undefined
+instance Semigroup (CondTree ConfVar [ProjectConfigImport] ProjectConfig) where
+  (CondNode a c bs) <> (CondNode a' c' bs') = CondNode (a <> a') (c <> c') (bs <> bs')
 
+instance Monoid (CondTree ConfVar [ProjectConfigImport] ProjectConfig) where
+   mappend = (<>)
+   mempty = CondNode mempty mempty mempty
 
+singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
+singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
+instantiateProjectConfigSkeleton :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
+instantiateProjectConfigSkeleton os arch impl flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel -- TODO bail on flags
+    where
+        go :: CondTree
+               FlagName
+               [ProjectConfigImport]
+               ProjectConfig
+             -> ProjectConfig
+        go (CondNode l _imps ts) =
+           let branches = concatMap processBranch ts
+           in l <> mconcat branches
+        processBranch (CondBranch cnd t mf) = case cnd of
+           (Lit True) ->  [go t]
+           (Lit False) -> maybe ([]) ((:[]) . go) mf
+           _ -> []
+
+{-
+
+   where
+        go :: CondTree
+               FlagName
+               [ProjectConfigImport]
+               ProjectConfig
+             -> IO (ParseResult ProjectConfig)
+        go (CondNode l imps ts) = do
+           -- ugly code to avoid defining legacy parse results explicitly as a monad transformer. shrug.
+           impSkel <- sequenceA <$> mapM readImportConfig imps
+           impConfig <-  fmap (fmap mconcat) . fmap (join . fmap sequenceA) . sequenceA $ fmap (mapM (instantiateProjectConfigSkeleton os arch impl flags)) impSkel
+           branches <- mconcatParse . concat <$> mapM processBranch ts
+           pure $ mconcatParse [pure l, impConfig, branches]
+        processBranch (CondBranch cnd t mf) = case cnd of
+           (Lit True) -> (:[]) <$> go t
+           (Lit False) -> maybe (pure []) (fmap (:[]) . go) mf
+           _ -> pure []
+        mconcatParse = fmap mconcat . sequenceA
+-}
+
+-- TODO ensure parse doesn't have flags setting compiler inside conditionals
+parseProjectSkeleton :: FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
+ where
+  linesToNode :: [BS.ByteString] -> IO (CondTree ConfVar [ProjectConfigImport] [BS.ByteString])
+  linesToNode ls = packResult . mconcat <$> go ls
+
+  packResult :: ([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree ConfVar [ProjectConfigImport] [BS.ByteString]
+  packResult (branches, imps, ls) = CondNode ls imps branches
+
+  go :: [BS.ByteString] -> IO [([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
+  go (l:ls)
+       | Just condition <- parseCond l =
+            let (clause, rest) = splitTillIndented ls
+            in case rest of
+                (r:rs) | (BS.pack "else") `BS.isPrefixOf` r -> -- TODO handle elif
+                     let (elseClause, lastRest) = splitTillIndented rs
+                     in do
+                        c1 <- linesToNode clause
+                        c2 <- linesToNode elseClause
+                        (([condIfThenElse condition c1 c2], [], []) :) <$> go lastRest
+                _ -> do
+                     c1 <- linesToNode clause
+                     (([condIfThen condition c1], [], []) :) <$>  go rest
+       | Just imp <- parseImport l = do x <- go . BS.lines =<< fetchImportConfig imp
+                                        ((([], [imp], []) : x) ++) <$> go ls
+       | otherwise = (([], [], [l]) :) <$> go ls
+  go [] = pure []
+
+  splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
+
+  parseCond :: BS.ByteString -> Maybe (Condition ConfVar)
+  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case FPR.runParseResult (parseConditionConfVar [SecArgOther zeroPos (BS.takeWhile (/=')') $ BS.drop 3 l)]) of
+                                                      (_, Left _) -> Nothing
+                                                      (_, Right x) -> Just x
+
+              | otherwise = Nothing
+  parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
+                | otherwise = Nothing
+  runInnerParsers :: CondTree ConfVar [ProjectConfigImport] [BS.ByteString] -> ParseResult ProjectConfigSkeleton
+  runInnerParsers = traverse (fmap (addProvenance . convertLegacyProjectConfig) . parseLegacyProjectConfig source . BS.unlines)
+
+  addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
+
+  fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
+  fetchImportConfig = BS.readFile -- todo, handle http
+
+{-
+-- todo handlehttp
+readImportConfig :: ProjectConfigImport -> IO (ParseResult ProjectConfigSkeleton)
+readImportConfig x = parseProjectSkeleton x <$> BS.readFile x
+-- todo add extra files to file change monitor
+-}
+
+------------------------------------------------------------------
+-- Representing the project config file in terms of legacy types
+--
 
 -- | We already have parsers\/pretty-printers for almost all the fields in the
 -- project config file, but they're in terms of the types used for the command
@@ -874,33 +979,6 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-
-parseLegacyProjectSkeleton :: FilePath -> BS.ByteString -> ParseResult ProjectConfigSkeleton
-parseLegacyProjectSkeleton source bs = _ . packResult . mconcat . go $ BS.lines bs
- where
-  go :: [BS.ByteString] -> [([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
-  go (l:ls)
-       | Just condition <- parseCond l =
-            let (clause, rest) = splitTillIndented ls
-            in case rest of
-                (r:rs) | (BS.pack "else") `BS.isPrefixOf` r -> -- TODO handle elif
-                     let (elseClause, lastRest) = splitTillIndented rs
-                     in ([condIfThenElse condition (clauseToNode clause) (clauseToNode elseClause)], [], []) : go lastRest
-                _ -> ([condIfThen condition (clauseToNode clause)], [], []) : go rest
-       | Just imp <- parseImport l = ([], [imp], []) : go ls
-       | otherwise = ([], [], [l]) : go ls
-  packResult :: ([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree ConfVar [ProjectConfigImport] [BS.ByteString]
-  packResult (branches, imps, ls) = CondNode ls imps branches
-  splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
-  clauseToNode ls = CondNode ls [] [] -- TODO extract imports from lines
-  parseCond :: BS.ByteString -> Maybe (Condition ConfVar)
-  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case FPR.runParseResult (parseConditionConfVar [SecArgOther zeroPos (BS.drop 3 l)]) of -- todo drop end also
-                                                      (_, Left _) -> Nothing
-                                                      (_, Right x) -> Just x
-
-              | otherwise = Nothing
-  parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
-                | otherwise = Nothing
 
 parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig source =

@@ -36,6 +36,7 @@ import Distribution.Client.DistDirLayout
          ( DistDirLayout(..) )
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ProjectConfig.Types
+import Distribution.Types.CondTree (ignoreConditions)
 
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
@@ -128,7 +129,7 @@ configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
           then do
             conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig v (distDirLayout baseCtx)
-            return (baseCtx, conf <> cliConfig)
+            return (baseCtx, (fst $ ignoreConditions conf) <> cliConfig) -- TODO ugh. maybe don't have extra configs have conditions, only main configs
           else
             return (baseCtx, cliConfig)
   where

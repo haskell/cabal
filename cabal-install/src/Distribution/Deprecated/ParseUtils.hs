@@ -106,6 +106,14 @@ instance Monad ParseResult where
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
 
+instance Foldable ParseResult where
+  foldMap _ (ParseFailed _ ) = mempty
+  foldMap f (ParseOk _ x) = f x
+
+instance Traversable ParseResult where
+  traverse _ (ParseFailed err) = pure (ParseFailed err)
+  traverse f (ParseOk ws x) = ParseOk ws <$> f x
+
 #if !(MIN_VERSION_base(4,9,0))
         fail = parseResultFail
 #elif !(MIN_VERSION_base(4,13,0))

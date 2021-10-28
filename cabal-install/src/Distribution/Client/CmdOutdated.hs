@@ -302,7 +302,7 @@ depsFromNewFreezeFile verbosity mprojectFile = do
   projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
                     readProjectLocalFreezeConfig verbosity distDirLayout
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
-                $ projectConfig
+                $ undefined projectConfig -- TODO instantiate
       deps    = userConstraintsToDependencies ucnstrs
       freezeFile = distProjectFile distDirLayout "freeze"
   freezeFileExists <- doesFileExist freezeFile

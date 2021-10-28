@@ -503,13 +503,13 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 readProjectConfig :: Verbosity
                   -> Flag FilePath
                   -> DistDirLayout
-                  -> Rebuild ProjectConfig
+                  -> Rebuild ProjectConfigSkeleton
 readProjectConfig verbosity configFileFlag distDirLayout = do
     global <- readGlobalConfig                verbosity configFileFlag
     local  <- readProjectLocalConfigOrDefault verbosity distDirLayout
     freeze <- readProjectLocalFreezeConfig    verbosity distDirLayout
     extra  <- readProjectLocalExtraConfig     verbosity distDirLayout
-    return (global <> local <> freeze <> extra)
+    return (singletonProjectConfigSkeleton global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
@@ -517,7 +517,7 @@ readProjectConfig verbosity configFileFlag distDirLayout = do
 --
 readProjectLocalConfigOrDefault :: Verbosity
                                 -> DistDirLayout
-                                -> Rebuild ProjectConfig
+                                -> Rebuild ProjectConfigSkeleton
 readProjectLocalConfigOrDefault verbosity distDirLayout = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
@@ -525,7 +525,7 @@ readProjectLocalConfigOrDefault verbosity distDirLayout = do
       readProjectFile verbosity distDirLayout "" "project file"
     else do
       monitorFiles [monitorNonExistentFile projectFile]
-      return defaultImplicitProjectConfig
+      return (singletonProjectConfigSkeleton defaultImplicitProjectConfig)
 
   where
     projectFile = distProjectFile distDirLayout ""
@@ -544,7 +544,7 @@ readProjectLocalConfigOrDefault verbosity distDirLayout = do
 -- principle can be edited manually or by other tools.
 --
 readProjectLocalExtraConfig :: Verbosity -> DistDirLayout
-                            -> Rebuild ProjectConfig
+                            -> Rebuild ProjectConfigSkeleton
 readProjectLocalExtraConfig verbosity distDirLayout =
     readProjectFile verbosity distDirLayout "local"
                              "project local configuration file"
@@ -554,7 +554,7 @@ readProjectLocalExtraConfig verbosity distDirLayout =
 -- principle can be edited manually or by other tools.
 --
 readProjectLocalFreezeConfig :: Verbosity -> DistDirLayout
-                             -> Rebuild ProjectConfig
+                             -> Rebuild ProjectConfigSkeleton
 readProjectLocalFreezeConfig verbosity distDirLayout =
     readProjectFile verbosity distDirLayout "freeze"
                              "project freeze file"
@@ -565,13 +565,14 @@ readProjectFile :: Verbosity
                 -> DistDirLayout
                 -> String
                 -> String
-                -> Rebuild ProjectConfig
+                -> Rebuild ProjectConfigSkeleton
 readProjectFile verbosity DistDirLayout{distProjectFile}
                          extensionName extensionDescription = do
     exists <- liftIO $ doesFileExist extensionFile
     if exists
       then do monitorFiles [monitorFileHashed extensionFile]
-              addProjectFileProvenance <$> liftIO readExtensionFile
+              -- addProjectFileProvenance <$>
+              liftIO readExtensionFile
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
@@ -579,26 +580,24 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-        . (parseProjectConfig extensionFile)
+      =<< parseProjectSkeleton extensionFile
       =<< BS.readFile extensionFile
-
+{-
     addProjectFileProvenance config =
       config {
-        projectConfigProvenance =
-          Set.insert (Explicit extensionFile) (projectConfigProvenance config)
+        projectConfigProvenance = _ config
+          -- Set.insert (Explicit extensionFile) (projectConfigProvenance config)
       }
-
-
+-}
+{-
 -- | Parse the 'ProjectConfig' format.
 --
 -- For the moment this is implemented in terms of parsers for legacy
 -- configuration types, plus a conversion.
 --
-parseProjectConfig :: FilePath -> BS.ByteString -> OldParser.ParseResult ProjectConfig
-parseProjectConfig source content =
-    convertLegacyProjectConfig <$>
-      (parseLegacyProjectConfig source content)
-
+parseProjectConfigSkeleton :: FilePath -> BS.ByteString -> IO (OldParser.ParseResult ProjectConfigSkeleton)
+parseProjectConfigSkeleton source content = (parseProjectSkeleton source content)
+-}
 
 -- | Render the 'ProjectConfig' format.
 --

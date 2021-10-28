@@ -76,6 +76,7 @@ import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.Store
 import           Distribution.Client.ProjectConfig
+import           Distribution.Client.ProjectConfig.Legacy
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
@@ -322,10 +323,12 @@ rebuildProjectConfig verbosity
       runRebuild distProjectRootDirectory
       $ rerunIfChanged verbosity
                        fileMonitorProjectConfig
-                       fileMonitorProjectConfigKey
+                       fileMonitorProjectConfigKey -- todo check deps too?
       $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
-          projectConfig <- phaseReadProjectConfig
+          projectConfigSkeleton <- phaseReadProjectConfig -- ignoreConditions
+          (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst $ PD.ignoreConditions projectConfigSkeleton)
+          let projectConfig = instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty projectConfigSkeleton
           localPackages <- phaseReadLocalPackages projectConfig
           return (projectConfig, localPackages)
 
@@ -353,7 +356,7 @@ rebuildProjectConfig verbosity
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
     --
-    phaseReadProjectConfig :: Rebuild ProjectConfig
+    phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
       readProjectConfig verbosity projectConfigConfigFile distDirLayout
 
@@ -378,6 +381,63 @@ rebuildProjectConfig verbosity
                                  projectConfigShared
                                  projectConfigBuildOnly
                                  pkgLocations
+
+
+configureCompiler :: Verbosity ->
+                     DistDirLayout ->
+                     ProjectConfig ->
+                     Rebuild (Compiler, Platform, ProgramDb)
+configureCompiler verbosity
+                  DistDirLayout {
+                     distProjectCacheFile
+                   }
+                  ProjectConfig {
+                             projectConfigShared = ProjectConfigShared {
+                               projectConfigHcFlavor,
+                               projectConfigHcPath,
+                               projectConfigHcPkg
+                             },
+                             projectConfigLocalPackages = PackageConfig {
+                               packageConfigProgramPaths,
+                               packageConfigProgramArgs,
+                               packageConfigProgramPathExtra
+                             }
+                           } = do
+        let fileMonitorCompiler       = newFileMonitor . distProjectCacheFile $ "compiler"
+
+        progsearchpath <- liftIO $ getSystemSearchPath
+        rerunIfChanged verbosity fileMonitorCompiler
+                       (hcFlavor, hcPath, hcPkg, progsearchpath,
+                        packageConfigProgramPaths,
+                        packageConfigProgramArgs,
+                        packageConfigProgramPathExtra) $ do
+
+          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+          result@(_, _, progdb') <- liftIO $
+            Cabal.configCompilerEx
+              hcFlavor hcPath hcPkg
+              progdb verbosity
+
+        -- Note that we added the user-supplied program locations and args
+        -- for /all/ programs, not just those for the compiler prog and
+        -- compiler-related utils. In principle we don't know which programs
+        -- the compiler will configure (and it does vary between compilers).
+        -- We do know however that the compiler will only configure the
+        -- programs it cares about, and those are the ones we monitor here.
+          monitorFiles (programsMonitorFiles progdb')
+
+          return result
+      where
+        hcFlavor = flagToMaybe projectConfigHcFlavor
+        hcPath   = flagToMaybe projectConfigHcPath
+        hcPkg    = flagToMaybe projectConfigHcPkg
+        progdb   =
+            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
+          . modifyProgramSearchPath
+              (++ [ ProgramSearchPathDir dir
+                  | dir <- fromNubList packageConfigProgramPathExtra ])
+          $ defaultProgramDb
 
 
 -- | Return an up-to-date elaborated install plan.
@@ -451,7 +511,6 @@ rebuildInstallPlan verbosity
       return (improvedPlan, elaboratedPlan, elaboratedShared, totalIndexState, activeRepos)
 
   where
-    fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
     fileMonitorSolverPlan     = newFileMonitorInCacheDir "solver-plan"
     fileMonitorSourceHashes   = newFileMonitorInCacheDir "source-hashes"
     fileMonitorElaboratedPlan = newFileMonitorInCacheDir "elaborated-plan"
@@ -468,7 +527,9 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler ProjectConfig {
+    phaseConfigureCompiler = configureCompiler verbosity distDirLayout
+{-
+    ProjectConfig {
                              projectConfigShared = ProjectConfigShared {
                                projectConfigHcFlavor,
                                projectConfigHcPath,
@@ -513,7 +574,7 @@ rebuildInstallPlan verbosity
               (++ [ ProgramSearchPathDir dir
                   | dir <- fromNubList packageConfigProgramPathExtra ])
           $ defaultProgramDb
-
+-}
 
     -- Configuring other programs.
     --
