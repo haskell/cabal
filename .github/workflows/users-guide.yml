@@ -7,6 +7,9 @@ on:
     branches:
     - master
     paths:
+    - 'doc/Makefile'
+    - 'doc/pyproject.toml'
+    - 'doc/requirements.in'
     - 'doc/requirements.txt'
     - 'doc/*.inc'
     - 'doc/*.py'
@@ -15,6 +18,9 @@ on:
     - '.github/workflows/users-guide.yml'
   pull_request:
     paths:
+    - 'doc/Makefile'
+    - 'doc/pyproject.toml'
+    - 'doc/requirements.in'
     - 'doc/requirements.txt'
     - 'doc/*.inc'
     - 'doc/*.py'
@@ -24,6 +30,10 @@ on:
   release:
     types:
       - created
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
@@ -59,3 +69,9 @@ jobs:
       with:
         name: users-guide-html
         path: html/
+
+    - name: Check security of requirements.txt
+      env:
+        SKJOLD_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        make -C doc check-requirements
