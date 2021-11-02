@@ -166,7 +166,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
             CD.ComponentBench s
                | s == selectedComponent -> [bin_file' s]
             CD.ComponentFLib s
-               | s == selectedComponent -> [bin_file' s]
+               | s == selectedComponent -> [flib_file' s]
             _ -> []
 
         plat :: Platform
