@@ -115,7 +115,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
                                     elaboratedPlan
             return (elaboratedPlan', targets)
 
-    (selectedUnitId, _selectedComponent) <-
+    (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleComponentOrElse
         (die' verbosity $ "No or multiple targets given, but the run "
@@ -128,12 +128,13 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         Nothing  -> die' verbosity "No or multiple targets given..."
         Just gpp -> return $ IP.foldPlanPackage
             (const []) -- IPI don't have executables
-            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx))
+            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
             gpp
 
     case binfiles of
+        []     -> die' verbosity "No target found"
         [exe] -> putStrLn exe
-        _     -> die' verbosity "No or multiple targets given"
+        execs -> die' verbosity $ "Multiple targets found: " <> show execs
   where
     defaultVerbosity = verboseStderr silent
     verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
@@ -142,9 +143,11 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
     elaboratedPackage
         :: DistDirLayout
         -> ElaboratedSharedConfig
+        -> UnqualComponentName
+            -- TODO we should also include the component kind in addition to the name
         -> ElaboratedConfiguredPackage
         -> [FilePath]
-    elaboratedPackage distDirLayout elaboratedSharedConfig elab = case elabPkgOrComp elab of
+    elaboratedPackage distDirLayout elaboratedSharedConfig selectedComponent elab = case elabPkgOrComp elab of
         ElabPackage pkg ->
             [ bin
             | (c, _) <- CD.toList $ CD.zip (pkgLibDependencies pkg)
@@ -156,11 +159,15 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         dist_dir = distBuildDirectory distDirLayout (elabDistDirParams elaboratedSharedConfig elab)
 
         bin_file c = case c of
-            CD.ComponentExe s   -> [bin_file' s]
-            CD.ComponentTest s  -> [bin_file' s]
-            CD.ComponentBench s -> [bin_file' s]
-            CD.ComponentFLib s  -> [flib_file' s]
-            _                -> []
+            CD.ComponentExe s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentTest s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentBench s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentFLib s
+               | s == selectedComponent -> [bin_file' s]
+            _ -> []
 
         plat :: Platform
         plat = pkgConfigPlatform elaboratedSharedConfig
