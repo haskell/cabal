@@ -134,7 +134,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
     case binfiles of
         []     -> die' verbosity "No target found"
         [exe] -> putStrLn exe
-        execs -> die' verbosity $ "Multiple targets found: " <> show execs
+        _ -> die' verbosity "Multiple targets found"
   where
     defaultVerbosity = verboseStderr silent
     verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
@@ -144,7 +144,6 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         :: DistDirLayout
         -> ElaboratedSharedConfig
         -> UnqualComponentName
-            -- TODO we should also include the component kind in addition to the name
         -> ElaboratedConfiguredPackage
         -> [FilePath]
     elaboratedPackage distDirLayout elaboratedSharedConfig selectedComponent elab = case elabPkgOrComp elab of
