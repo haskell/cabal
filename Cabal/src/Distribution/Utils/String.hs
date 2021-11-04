@@ -95,5 +95,6 @@ encodeStringUtf8 (c:cs)
     w8ShiftR :: Int -> Word8
     w8ShiftR = fromIntegral . shiftR (ord c)
 
+-- @since 3.8.0.0
 trim :: String -> String
 trim = dropWhile isSpace . dropWhileEnd isSpace
