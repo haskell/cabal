@@ -65,7 +65,6 @@ module Distribution.FieldGrammar.Parsec (
     fieldLinesToStream,
     )  where
 
-import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)
