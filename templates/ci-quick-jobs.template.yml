@@ -28,6 +28,11 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-meta
+      - name: ghcup
+        run: |
+          ghcup config set cache true
+          ghcup install ghc recommended
+          ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install alex
@@ -62,6 +67,11 @@ jobs:
         with:
           path: ~/.cabal/store
           key: linux-store-doctest
+      - name: ghcup
+        run: |
+          ghcup config set cache true
+          ghcup install ghc recommended
+          ghcup set ghc recommended
       - name: Update Hackage index
         run: cabal v2-update
       - name: Install doctest
