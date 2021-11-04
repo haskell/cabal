@@ -1819,7 +1819,7 @@ replOptions _ =
   , option [] ["repl-options"]
     "use this option for the repl"
     replOptionsFlags (\p flags -> flags { replOptionsFlags = p })
-    (reqArg "FLAG" (succeedReadE (:[])) id)
+    (reqArg "FLAG" (succeedReadE words) id)
   ]
 
 -- ------------------------------------------------------------
