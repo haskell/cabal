@@ -13,7 +13,6 @@ module Distribution.FieldGrammar.FieldDescrs (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Lens    (aview, cloneLens)
 import Distribution.Utils.String (trim)
 import Distribution.Compat.Newtype
