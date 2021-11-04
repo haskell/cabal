@@ -94,6 +94,7 @@ library
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
     Distribution.Utils.MD5
+    Distribution.Utils.String
     Distribution.Utils.Structured
     Distribution.Compat.CreatePipe
     Distribution.Compat.Directory
@@ -333,7 +334,6 @@ library
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
-    Distribution.Utils.String
     Distribution.Simple.Build.Macros.Z
     Distribution.Simple.Build.PathsModule.Z
     Distribution.Simple.GHC.EnvironmentParser

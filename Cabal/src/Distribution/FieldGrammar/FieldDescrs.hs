@@ -15,6 +15,7 @@ import Prelude ()
 
 import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Lens    (aview, cloneLens)
+import Distribution.Utils.String (trim)
 import Distribution.Compat.Newtype
 import Distribution.FieldGrammar
 import Distribution.Pretty         (Pretty (..), showFreeText)
@@ -114,8 +115,6 @@ parsecFreeText = dropDotLines <$ C.spaces <*> many C.anyChar
     trim' :: String -> String
     trim' = dropWhileEnd (`elem` (" \t" :: String))
 
-    trim :: String -> String
-    trim = dropWhile isSpace . dropWhileEnd isSpace
 
 class    (P.Parsec a, Pretty a) => ParsecPretty a
 instance (P.Parsec a, Pretty a) => ParsecPretty a

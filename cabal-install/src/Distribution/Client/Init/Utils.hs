@@ -39,6 +39,7 @@ import qualified Distribution.Package as P
 import qualified Distribution.Types.PackageName as PN
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
 import Distribution.Simple.Setup (Flag(..))
+import Distribution.Utils.String (trim)
 import Distribution.Version
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Types
@@ -202,11 +203,6 @@ takeWhile' p = takeWhile p . trim
 
 dropWhile' :: (Char -> Bool) -> String -> String
 dropWhile' p = dropWhile p . trim
-
-trim :: String -> String
-trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
-  where
-    removeLeadingSpace  = dropWhile isSpace
 
 -- | Check whether a potential source file is located in one of the
 --   source directories.
