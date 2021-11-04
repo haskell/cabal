@@ -2,11 +2,14 @@ module Distribution.Utils.String
     ( -- * Encode to/from UTF8
       decodeStringUtf8
     , encodeStringUtf8
+    , trim
     ) where
 
 import Data.Word
 import Data.Bits
 import Data.Char (chr,ord)
+import Data.List (dropWhileEnd)
+import GHC.Unicode (isSpace)
 
 -- | Decode 'String' from UTF8-encoded octets.
 --
@@ -91,3 +94,7 @@ encodeStringUtf8 (c:cs)
     w8 = fromIntegral (ord c) :: Word8
     w8ShiftR :: Int -> Word8
     w8ShiftR = fromIntegral . shiftR (ord c)
+
+-- @since 3.8.0.0
+trim :: String -> String
+trim = dropWhile isSpace . dropWhileEnd isSpace

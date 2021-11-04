@@ -121,7 +121,7 @@ getGlobalPackageDir verbosity progdb = do
     let pkgdir = trimEnd output
     return pkgdir
   where
-    trimEnd = reverse . dropWhile isSpace . reverse
+    trimEnd = dropWhileEnd isSpace
 
 getUserPackageDir :: IO FilePath
 getUserPackageDir = do

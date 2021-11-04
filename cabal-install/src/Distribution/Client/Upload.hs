@@ -12,6 +12,7 @@ import Distribution.Client.Setup
          ( IsCandidate(..), RepoContext(..) )
 
 import Distribution.Simple.Utils (notice, warn, info, die', toUTF8BS)
+import Distribution.Utils.String (trim)
 import Distribution.Client.Config
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
@@ -228,7 +229,3 @@ handlePackage transport verbosity uri packageUri auth isCandidate path =
 formatWarnings :: String -> String
 formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
 
--- Trim
-trim :: String -> String
-trim = f . f
-      where f = reverse . dropWhile isSpace

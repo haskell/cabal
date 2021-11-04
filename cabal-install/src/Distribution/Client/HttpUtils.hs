@@ -32,6 +32,7 @@ import qualified Control.Exception as Exception
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile, IOData (..) )
+import Distribution.Utils.String (trim)
 import Distribution.Client.Utils
          ( withTempFileName )
 import Distribution.Client.Version
@@ -889,12 +890,6 @@ statusParseFail :: Verbosity -> URI -> String -> IO a
 statusParseFail verbosity uri r =
     die' verbosity $ "Failed to download " ++ show uri ++ " : "
        ++ "No Status Code could be parsed from response: " ++ r
-
--- Trim
-trim :: String -> String
-trim = f . f
-      where f = reverse . dropWhile isSpace
-
 
 ------------------------------------------------------------------------------
 -- Multipart stuff partially taken from cgi package.
