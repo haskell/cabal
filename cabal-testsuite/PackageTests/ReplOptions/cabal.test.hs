@@ -21,20 +21,20 @@ main = do
     assertOutputContains "  -fdefer-typed-holes" res
   cabalTest' "single-repl-options-multiple-flags-negative" $ do
     cabal' "clean" []
-    res <- local setTestAsNegative $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
+    res <- local negativeTest $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
     assertOutputDoesNotContain "Ok, two modules loaded." res
     assertOutputContains "ghc: unrecognised flag: -fdiagnostics-show-baret" res
     assertOutputContains "did you mean one of:" res
   cabalTest' "multiple-repl-options-multiple-flags" $ do
     cabal' "clean" []
     res <- cabalWithStdin "v2-repl" [
-      "--repl-options=-fenable-th-splice-warnings -fwrite-interface",
+      "--repl-options=-fignore-optim-changes -fwrite-interface",
         "--repl-options=-fdefer-type-errors -fdefer-typed-holes"
       ] ":set"
     assertOutputContains "Ok, two modules loaded." res
     assertOutputContains "  -fwrite-interface" res
-    assertOutputContains "  -fenable-th-splice-warnings" res
+    assertOutputContains "  -fignore-optim-changes" res
     assertOutputContains "  -fdefer-typed-holes" res
     assertOutputContains "  -fdefer-type-errors" res
       where
-        setTestAsNegative env = env { testShouldFail = True }
+        negativeTest env = env { testShouldFail = True }
