@@ -6,35 +6,35 @@ main = do
     cabal' "clean" []
     res <- cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface"] ":set"
     assertOutputContains "Ok, two modules loaded." res
-    assertOutputContains "-fwrite-interface" res
+    assertOutputContains "  -fwrite-interface" res
   cabalTest' "multiple-repl-options" $ do
     cabal' "clean" []
-    res <- cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface", "--repl-options=-fdiagnostics-show-caret"] ":set"
+    res <- cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface", "--repl-options=-fdefer-typed-holes"] ":set"
     assertOutputContains "Ok, two modules loaded." res
-    assertOutputContains "-fwrite-interface" res
-    assertOutputContains "-fdiagnostics-show-caret" res
+    assertOutputContains "  -fwrite-interface" res
+    assertOutputContains "  -fdefer-typed-holes" res
   cabalTest' "single-repl-options-multiple-flags" $ do
     cabal' "clean" []
-    res <- cabalWithStdin "v2-repl" ["--repl-options=-fdiagnostics-show-caret -fwrite-interface"] ":set"
+    res <- cabalWithStdin "v2-repl" ["--repl-options=-fdefer-typed-holes -fwrite-interface"] ":set"
     assertOutputContains "Ok, two modules loaded." res
-    assertOutputContains "-fwrite-interface" res
-    assertOutputContains "-fdiagnostics-show-caret" res
+    assertOutputContains "  -fwrite-interface" res
+    assertOutputContains "  -fdefer-typed-holes" res
   cabalTest' "single-repl-options-multiple-flags-negative" $ do
     cabal' "clean" []
-    res <- local setTestAsNegative $ cabalWithStdin "v2-repl" ["--repl-options=-fdiagnostics-show-baret -fwrite-interface"] ":set"
+    res <- local setTestAsNegative $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
     assertOutputDoesNotContain "Ok, two modules loaded." res
-    assertOutputContains "-fwrite-interface" res
-    assertOutputContains "-fdiagnostics-show-baret" res
     assertOutputContains "ghc: unrecognised flag: -fdiagnostics-show-baret" res
     assertOutputContains "did you mean one of:" res
   cabalTest' "multiple-repl-options-multiple-flags" $ do
     cabal' "clean" []
     res <- cabalWithStdin "v2-repl" [
-      "--repl-options=-fdiagnostics-show-caret -fwrite-interface",
+      "--repl-options=-fenable-th-splice-warnings -fwrite-interface",
         "--repl-options=-fdefer-type-errors -fdefer-typed-holes"
       ] ":set"
     assertOutputContains "Ok, two modules loaded." res
-    assertOutputContains "-fwrite-interface" res
-    assertOutputContains "-fdiagnostics-show-caret" res
+    assertOutputContains "  -fwrite-interface" res
+    assertOutputContains "  -fenable-th-splice-warnings" res
+    assertOutputContains "  -fdefer-typed-holes" res
+    assertOutputContains "  -fdefer-type-errors" res
       where
         setTestAsNegative env = env { testShouldFail = True }
