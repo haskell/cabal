@@ -196,6 +196,7 @@ data ProjectConfigShared
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag ReorderGoals,
        projectConfigCountConflicts    :: Flag CountConflicts,
+       projectConfigBuildTypeCustom   :: Flag Bool,
        projectConfigFineGrainedConflicts :: Flag FineGrainedConflicts,
        projectConfigMinimizeConflictSet :: Flag MinimizeConflictSet,
        projectConfigStrongFlags       :: Flag StrongFlags,
@@ -409,6 +410,7 @@ data SolverSettings
        solverSettingAllowBootLibInstalls :: AllowBootLibInstalls,
        solverSettingOnlyConstrained   :: OnlyConstrained,
        solverSettingIndexState        :: Maybe TotalIndexState,
+       solverSettingBuildTypeCustom   :: Bool,
        solverSettingActiveRepos       :: Maybe ActiveRepos,
        solverSettingIndependentGoals  :: IndependentGoals
        -- Things that only make sense for manual mode, not --local mode

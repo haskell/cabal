@@ -270,6 +270,7 @@ linkDeps target = \deps -> do
       (Simple (LDep _ (Ext  _))   _, _) -> return ()
       (Simple (LDep _ (Lang _))   _, _) -> return ()
       (Simple (LDep _ (Pkg  _ _)) _, _) -> return ()
+      (Simple (LDep _ (BT _))     _, _) -> return ()
 
     requalify :: FlaggedDeps QPN -> UpdateState (FlaggedDeps QPN)
     requalify deps = do

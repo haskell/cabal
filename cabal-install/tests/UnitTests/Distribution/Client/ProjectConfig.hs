@@ -477,6 +477,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigAllowBootLibInstalls <- arbitrary
         projectConfigOnlyConstrained      <- arbitrary
         projectConfigPerComponent         <- arbitrary
+        projectConfigBuildTypeCustom      <- arbitrary
         projectConfigIndependentGoals     <- arbitrary
         projectConfigProgPathExtra        <- toNubList <$> listOf arbitraryShortToken
         return ProjectConfigShared {..}
@@ -509,6 +510,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigMaxBackjumps
         <*> shrinker projectConfigReorderGoals
         <*> shrinker projectConfigCountConflicts
+        <*> shrinker projectConfigBuildTypeCustom
         <*> shrinker projectConfigFineGrainedConflicts
         <*> shrinker projectConfigMinimizeConflictSet
         <*> shrinker projectConfigStrongFlags

@@ -89,6 +89,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go g o ((Simple (LDep _dr (Ext _ext )) _)  : ngs) = go g o ngs
     go g o ((Simple (LDep _dr (Lang _lang))_)  : ngs) = go g o ngs
     go g o ((Simple (LDep _dr (Pkg _pn _vr))_) : ngs) = go g o ngs
+    go g o ((Simple (LDep _dr (BT _bt))_)      : ngs) = go g o ngs
 
     addIfAbsent :: Eq a => a -> [a] -> [a]
     addIfAbsent x xs = if x `elem` xs then xs else x : xs

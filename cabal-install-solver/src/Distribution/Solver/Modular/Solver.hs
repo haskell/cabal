@@ -44,6 +44,7 @@ import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.PSQ as PSQ
 
 import Distribution.Simple.Setup (BooleanFlag(..))
+import qualified Distribution.Types.BuildType as C
 
 #ifdef DEBUG_TRACETREE
 import qualified Distribution.Solver.Modular.ConflictSet as CS
@@ -68,6 +69,7 @@ data SolverConfig = SolverConfig {
   strongFlags            :: StrongFlags,
   allowBootLibInstalls   :: AllowBootLibInstalls,
   onlyConstrained        :: OnlyConstrained,
+  buildTypes             :: Maybe (S.Set C.BuildType),
   maxBackjumps           :: Maybe Int,
   enableBackjumping      :: EnableBackjumping,
   solveExecutables       :: SolveExecutables,
@@ -138,7 +140,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        P.enforceManualFlags userConstraints
     validationCata   = P.enforceSingleInstanceRestriction .
                        validateLinking idx .
-                       validateTree cinfo idx pkgConfigDB
+                       validateTree cinfo idx pkgConfigDB (buildTypes sc)
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        (if asBool (allowBootLibInstalls sc)
                         then id

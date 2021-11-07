@@ -344,6 +344,7 @@ convCondTree flags dr pkg os arch cinfo pn fds comp getInfo solveExes@(SolveExec
               ++ L.map (\e -> D.Simple (LDep dr (Ext  e)) comp) (allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (LDep dr (Lang l)) comp) (allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(PkgconfigDependency pkn vr) -> D.Simple (LDep dr (Pkg pkn vr)) comp) (pkgconfigDepends bi) -- unconditional pkg-config dependencies
+              ++ [D.Simple (LDep dr (BT (buildType pkg))) comp]
               ++ concatMap (convBranch flags dr pkg os arch cinfo pn fds comp getInfo solveExes) branches
               -- build-tools dependencies
               -- NB: Only include these dependencies if SolveExecutables

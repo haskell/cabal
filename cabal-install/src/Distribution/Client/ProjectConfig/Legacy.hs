@@ -380,6 +380,7 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
       installCountConflicts     = projectConfigCountConflicts,
+      installBuildTypeCustom    = projectConfigBuildTypeCustom,
       installFineGrainedConflicts = projectConfigFineGrainedConflicts,
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installPerComponent       = projectConfigPerComponent,
@@ -622,6 +623,7 @@ convertToLegacySharedConfig
       installUpgradeDeps       = mempty, --projectConfigUpgradeDeps,
       installReorderGoals      = projectConfigReorderGoals,
       installCountConflicts    = projectConfigCountConflicts,
+      installBuildTypeCustom   = projectConfigBuildTypeCustom,
       installFineGrainedConflicts = projectConfigFineGrainedConflicts,
       installMinimizeConflictSet = projectConfigMinimizeConflictSet,
       installIndependentGoals  = projectConfigIndependentGoals,
@@ -1025,7 +1027,7 @@ legacySharedConfigFieldDescrs constraintSrc = concat
       , "remote-build-reporting", "report-planning-failure"
       , "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
-      , "max-backjumps", "reorder-goals", "count-conflicts"
+      , "max-backjumps", "reorder-goals", "count-conflicts", "build-type-custom"
       , "fine-grained-conflicts" , "minimize-conflict-set", "independent-goals"
       , "strong-flags" , "allow-boot-library-installs"
       , "reject-unconstrained-dependencies", "index-state"

@@ -219,6 +219,7 @@ showGR (DependencyGoal dr) = " (dependency of " ++ showDependencyReason dr ++ ")
 showFR :: ConflictSet -> FailReason -> String
 showFR _ (UnsupportedExtension ext)       = " (conflict: requires " ++ showUnsupportedExtension ext ++ ")"
 showFR _ (UnsupportedLanguage lang)       = " (conflict: requires " ++ showUnsupportedLanguage lang ++ ")"
+showFR _ (UnsupportedBuildType bt)        = " (conflict: disallowed build-type " ++ prettyShow bt ++ ")"
 showFR _ (MissingPkgconfigPackage pn vr)  = " (conflict: pkg-config package " ++ prettyShow pn ++ prettyShow vr ++ ", not found in the pkg-config database)"
 showFR _ (NewPackageDoesNotMatchExistingConstraint d) = " (conflict: " ++ showConflictingDep d ++ ")"
 showFR _ (ConflictingConstraints d1 d2)   = " (conflict: " ++ L.intercalate ", " (L.map showConflictingDep [d1, d2]) ++ ")"

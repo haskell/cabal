@@ -45,6 +45,7 @@ module Distribution.Client.Dependency (
     setPreferenceDefault,
     setReorderGoals,
     setCountConflicts,
+    setBuildTypeCustom,
     setFineGrainedConflicts,
     setMinimizeConflictSet,
     setIndependentGoals,
@@ -156,6 +157,7 @@ data DepResolverParams = DepResolverParams {
        depResolverAvoidReinstalls   :: AvoidReinstalls,
        depResolverShadowPkgs        :: ShadowPkgs,
        depResolverStrongFlags       :: StrongFlags,
+       depResolverBuildTypeCustom   :: Bool,
 
        -- | Whether to allow base and its dependencies to be installed.
        depResolverAllowBootLibInstalls :: AllowBootLibInstalls,
@@ -195,6 +197,7 @@ showDepResolverParams p =
   ++ "\navoid reinstalls: "  ++ show (asBool (depResolverAvoidReinstalls  p))
   ++ "\nshadow packages: "   ++ show (asBool (depResolverShadowPkgs       p))
   ++ "\nstrong flags: "      ++ show (asBool (depResolverStrongFlags      p))
+  ++ "\nbuild type custom: " ++ show (depResolverBuildTypeCustom p)
   ++ "\nallow boot library installs: " ++ show (asBool (depResolverAllowBootLibInstalls p))
   ++ "\nonly constrained packages: " ++ show (depResolverOnlyConstrained p)
   ++ "\nmax backjumps: "     ++ maybe "infinite" show
@@ -253,6 +256,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverAvoidReinstalls   = AvoidReinstalls False,
        depResolverShadowPkgs        = ShadowPkgs False,
        depResolverStrongFlags       = StrongFlags False,
+       depResolverBuildTypeCustom   = True,
        depResolverAllowBootLibInstalls = AllowBootLibInstalls False,
        depResolverOnlyConstrained   = OnlyConstrainedNone,
        depResolverMaxBackjumps      = Nothing,
@@ -303,6 +307,9 @@ setCountConflicts count params =
     params {
       depResolverCountConflicts = count
     }
+
+setBuildTypeCustom :: Bool -> DepResolverParams -> DepResolverParams
+setBuildTypeCustom x params = params { depResolverBuildTypeCustom = x }
 
 setFineGrainedConflicts :: FineGrainedConflicts -> DepResolverParams -> DepResolverParams
 setFineGrainedConflicts fineGrained params =
@@ -705,14 +712,15 @@ resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
-  $ runSolver solver (SolverConfig reordGoals cntConflicts fineGrained minimize
-                      indGoals noReinstalls
-                      shadowing strFlags allowBootLibs onlyConstrained_ maxBkjumps enableBj
-                      solveExes order verbosity (PruneAfterFirstSuccess False))
+  $ runSolver solver solverConfig
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
-
+    solverConfig = SolverConfig reordGoals cntConflicts fineGrained minimize
+                      indGoals noReinstalls
+                      shadowing strFlags allowBootLibs onlyConstrained_ buildTypeCustom_ maxBkjumps enableBj
+                      solveExes order verbosity (PruneAfterFirstSuccess False)
+    buildTypeCustom_ = if buildTypeCustom then Nothing else Just $ Set.fromList [PD.Simple, PD.Configure, PD.Make]
     finalparams@(DepResolverParams
       targets constraints
       prefs defpref
@@ -726,6 +734,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       noReinstalls
       shadowing
       strFlags
+      buildTypeCustom
       allowBootLibs
       onlyConstrained_
       maxBkjumps
@@ -992,7 +1001,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _fineGrained
                               _minimizeConflictSet _indGoals _avoidReinstalls
-                              _shadowing _strFlags _maxBjumps _enableBj _solveExes
+                              _shadowing _strFlags _buildTypeCustom _maxBjumps _enableBj _solveExes
                               _allowBootLibInstalls _onlyConstrained _order _verbosity) =
     collectEithers $ map selectPackage (Set.toList targets)
   where

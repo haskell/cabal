@@ -38,6 +38,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
+import qualified Distribution.Types.BuildType as C
 
 #ifdef DEBUG_CONFLICT_SETS
 import GHC.Stack (CallStack)
@@ -97,6 +98,7 @@ import GHC.Stack (CallStack)
 data ValidateState = VS {
   supportedExt        :: Extension -> Bool,
   supportedLang       :: Language  -> Bool,
+  supportedBuildType  :: C.BuildType -> Bool,
   presentPkgs         :: PkgconfigName -> PkgconfigVersionRange  -> Bool,
   index               :: Index,
 
@@ -202,6 +204,7 @@ validate = go
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
+      btypeSupported <- asks supportedBuildType
       pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
@@ -216,7 +219,7 @@ validate = go
       -- plus the dependency information we have for that instance
       let newactives = extractAllDeps pfa psa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent newactives
+      let mnppa = extend extSupported langSupported btypeSupported pkgPresent newactives
                    =<< extendWithPackageChoice (PI qpn i) ppa
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
@@ -246,6 +249,7 @@ validate = go
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
+      btypeSupported <- asks supportedBuildType
       pkgPresent     <- asks presentPkgs   -- obtain the present pkg-config pkgs
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
@@ -264,7 +268,7 @@ validate = go
       let newactives = extractNewDeps (F qfn) b npfa psa qdeps
           mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      let mnppa = extend extSupported langSupported btypeSupported pkgPresent newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
         Left (c, fr)         -> return (Fail c fr) -- inconsistency found
         Right (nppa, rComps') ->
@@ -276,6 +280,7 @@ validate = go
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
+      btypeSupported <- asks supportedBuildType
       pkgPresent     <- asks presentPkgs -- obtain the present pkg-config pkgs
       svd            <- asks saved         -- obtain saved dependencies
       aComps         <- asks availableComponents
@@ -294,7 +299,7 @@ validate = go
       let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
           mNewRequiredComps = extendRequiredComponents qpn aComps rComps newactives
       -- As in the package case, we try to extend the partial assignment.
-      let mnppa = extend extSupported langSupported pkgPresent newactives ppa
+      let mnppa = extend extSupported langSupported btypeSupported pkgPresent newactives ppa
       case liftM2 (,) mnppa mNewRequiredComps of
         Left (c, fr)         -> return (Fail c fr) -- inconsistency found
         Right (nppa, rComps') ->
@@ -390,11 +395,12 @@ extractNewDeps v b fa sa = go
 -- or the successfully extended assignment.
 extend :: (Extension -> Bool)            -- ^ is a given extension supported
        -> (Language  -> Bool)            -- ^ is a given language supported
+       -> (C.BuildType -> Bool)          -- ^ is a given build-type supported
        -> (PkgconfigName -> PkgconfigVersionRange -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> [LDep QPN]
        -> PPreAssignment
        -> Either Conflict PPreAssignment
-extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle ppa newactives
+extend extSupported langSupported btypeSupported pkgPresent newactives ppa = foldM extendSingle ppa newactives
   where
 
     extendSingle :: PPreAssignment -> LDep QPN -> Either Conflict PPreAssignment
@@ -407,6 +413,9 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
     extendSingle a (LDep dr (Pkg pn vr))  =
       if pkgPresent pn vr then Right a
                           else Left (dependencyReasonToConflictSet dr, MissingPkgconfigPackage pn vr)
+    extendSingle a (LDep dr (BT bt)) =
+      if btypeSupported bt then Right a
+                           else Left (dependencyReasonToConflictSet dr, UnsupportedBuildType bt)
     extendSingle a (LDep dr (Dep dep@(PkgComponent qpn _) ci)) =
       let mergedDep = M.findWithDefault (MergedDepConstrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge mergedDep (PkgDep dr dep ci) of
@@ -572,14 +581,23 @@ extendRequiredComponents eqpn available = foldM extendSingle
 
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
-validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
+validateTree
+    :: CompilerInfo
+    -> Index
+    -> PkgConfigDb
+    -> Maybe (S.Set C.BuildType)
+    -> Tree d c
+    -> Tree d c
+validateTree cinfo idx pkgConfigDb bts t = runValidate (validate t) VS {
     supportedExt        = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                                 (\ es -> let s = S.fromList es in \ x -> S.member x s)
                                 (compilerInfoExtensions cinfo)
   , supportedLang       = maybe (const True)
                                 (flip L.elem) -- use list lookup because language list is small and no Ord instance
                                 (compilerInfoLanguages  cinfo)
+  , supportedBuildType  = maybe (const True)
+                                (flip S.member)
+                                bts
   , presentPkgs         = pkgConfigPkgIsPresent pkgConfigDb
   , index               = idx
   , saved               = M.empty

@@ -1024,6 +1024,8 @@ planPackages verbosity comp platform solver SolverSettings{..}
 
       . setCountConflicts solverSettingCountConflicts
 
+      . setBuildTypeCustom solverSettingBuildTypeCustom
+
       . setFineGrainedConflicts solverSettingFineGrainedConflicts
 
       . setMinimizeConflictSet solverSettingMinimizeConflictSet

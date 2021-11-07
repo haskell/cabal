@@ -36,6 +36,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnitId (UnitId)
 import Language.Haskell.Extension (Extension, Language)
+import qualified Distribution.Types.BuildType as C
 
 type Weight = Double
 
@@ -129,6 +130,7 @@ data FailReason = UnsupportedExtension Extension
                 | DependenciesNotLinked String
                 | CyclicDependencies
                 | UnsupportedSpecVer Ver
+                | UnsupportedBuildType C.BuildType
   deriving (Eq, Show)
 
 -- | Information about a dependency involved in a conflict, for error messages.

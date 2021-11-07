@@ -58,6 +58,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Types.LibraryName
 import Distribution.Types.PkgconfigVersionRange
 import Distribution.Types.UnqualComponentName
+import qualified Distribution.Types.BuildType as C
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -123,6 +124,7 @@ data Dep qpn = Dep (PkgComponent qpn) CI  -- ^ dependency on a package component
              | Ext Extension              -- ^ dependency on a language extension
              | Lang Language              -- ^ dependency on a language version
              | Pkg PkgconfigName PkgconfigVersionRange  -- ^ dependency on a pkg-config package
+             | BT C.BuildType -- ^ dependency on a build-type.
   deriving Functor
 
 -- | An exposed component within a package. This type is used to represent
@@ -200,6 +202,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
+    goD (BT bt)       _    = BT bt
     goD (Dep dep@(PkgComponent qpn (ExposedExe _)) ci) _ =
         Dep (Q (PackagePath ns (QualExe pn qpn)) <$> dep) ci
     goD (Dep dep@(PkgComponent qpn (ExposedLib _)) ci) comp

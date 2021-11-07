@@ -930,6 +930,7 @@ data FetchFlags = FetchFlags {
       fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag ReorderGoals,
+      fetchBuildTypeCustom  :: Flag Bool,
       fetchCountConflicts   :: Flag CountConflicts,
       fetchFineGrainedConflicts :: Flag FineGrainedConflicts,
       fetchMinimizeConflictSet :: Flag MinimizeConflictSet,
@@ -950,6 +951,7 @@ defaultFetchFlags = FetchFlags {
     fetchDryRun    = toFlag False,
     fetchSolver           = Flag defaultSolver,
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
+    fetchBuildTypeCustom  = Flag True,
     fetchReorderGoals     = Flag (ReorderGoals False),
     fetchCountConflicts   = Flag (CountConflicts True),
     fetchFineGrainedConflicts = Flag (FineGrainedConflicts True),
@@ -1015,6 +1017,7 @@ fetchCommand = CommandUI {
                          fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchCountConflicts   (\v flags -> flags { fetchCountConflicts   = v })
+                         fetchBuildTypeCustom  (\v flags -> flags { fetchBuildTypeCustom  = v })
                          fetchFineGrainedConflicts (\v flags -> flags { fetchFineGrainedConflicts = v })
                          fetchMinimizeConflictSet (\v flags -> flags { fetchMinimizeConflictSet = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
@@ -1037,6 +1040,7 @@ data FreezeFlags = FreezeFlags {
       freezeMaxBackjumps     :: Flag Int,
       freezeReorderGoals     :: Flag ReorderGoals,
       freezeCountConflicts   :: Flag CountConflicts,
+      freezeBuildTypeCustom  :: Flag Bool,
       freezeFineGrainedConflicts :: Flag FineGrainedConflicts,
       freezeMinimizeConflictSet :: Flag MinimizeConflictSet,
       freezeIndependentGoals :: Flag IndependentGoals,
@@ -1056,6 +1060,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
     freezeReorderGoals     = Flag (ReorderGoals False),
     freezeCountConflicts   = Flag (CountConflicts True),
+    freezeBuildTypeCustom  = Flag True,
     freezeFineGrainedConflicts = Flag (FineGrainedConflicts True),
     freezeMinimizeConflictSet = Flag (MinimizeConflictSet False),
     freezeIndependentGoals = Flag (IndependentGoals False),
@@ -1110,6 +1115,7 @@ freezeCommand = CommandUI {
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
                          freezeCountConflicts   (\v flags -> flags { freezeCountConflicts   = v })
+                         freezeBuildTypeCustom  (\v flags -> flags { freezeBuildTypeCustom  = v })
                          freezeFineGrainedConflicts (\v flags -> flags { freezeFineGrainedConflicts = v })
                          freezeMinimizeConflictSet (\v flags -> flags { freezeMinimizeConflictSet = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
@@ -1544,6 +1550,7 @@ data InstallFlags = InstallFlags {
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
     installCountConflicts   :: Flag CountConflicts,
+    installBuildTypeCustom  :: Flag Bool,
     installFineGrainedConflicts :: Flag FineGrainedConflicts,
     installMinimizeConflictSet :: Flag MinimizeConflictSet,
     installIndependentGoals :: Flag IndependentGoals,
@@ -1586,6 +1593,7 @@ defaultInstallFlags = InstallFlags {
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
     installCountConflicts  = Flag (CountConflicts True),
+    installBuildTypeCustom = Flag True,
     installFineGrainedConflicts = Flag (FineGrainedConflicts True),
     installMinimizeConflictSet = Flag (MinimizeConflictSet False),
     installIndependentGoals= Flag (IndependentGoals False),
@@ -1811,6 +1819,7 @@ installOptions showOrParseArgs =
                         installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
                         installCountConflicts   (\v flags -> flags { installCountConflicts   = v })
+                        installBuildTypeCustom  (\v flags -> flags { installBuildTypeCustom  = v })
                         installFineGrainedConflicts (\v flags -> flags { installFineGrainedConflicts = v })
                         installMinimizeConflictSet (\v flags -> flags { installMinimizeConflictSet = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
@@ -2387,6 +2396,7 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
                   -> (flags -> Flag ReorderGoals)     -> (Flag ReorderGoals     -> flags -> flags)
                   -> (flags -> Flag CountConflicts)   -> (Flag CountConflicts   -> flags -> flags)
+                  -> (flags -> Flag Bool)             -> (Flag Bool -> flags -> flags)
                   -> (flags -> Flag FineGrainedConflicts) -> (Flag FineGrainedConflicts -> flags -> flags)
                   -> (flags -> Flag MinimizeConflictSet) -> (Flag MinimizeConflictSet -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
@@ -2395,7 +2405,7 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> (flags -> Flag OnlyConstrained)  -> (Flag OnlyConstrained  -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc getbtcustom setbtcustom
                   getfgc setfgc getmc setmc getig setig getsip setsip
                   getstrfl setstrfl getib setib getoc setoc =
   [ option [] ["max-backjumps"]
@@ -2407,6 +2417,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
       (fmap asBool . getrg)
       (setrg . fmap ReorderGoals)
+      (yesNoOpt showOrParseArgs)
+  , option [] ["build-type-custom"]
+      "Allow build-type: Custom packages."
+      getbtcustom
+      setbtcustom
       (yesNoOpt showOrParseArgs)
   , option [] ["count-conflicts"]
       "Try to speed up solving by preferring goals that are involved in a lot of conflicts (default)."

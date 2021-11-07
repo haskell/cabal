@@ -251,6 +251,7 @@ resolveSolverSettings ProjectConfig{
     solverSettingAllowBootLibInstalls = fromFlag projectConfigAllowBootLibInstalls
     solverSettingOnlyConstrained   = fromFlag projectConfigOnlyConstrained
     solverSettingIndexState        = flagToMaybe projectConfigIndexState
+    solverSettingBuildTypeCustom   = fromFlag projectConfigBuildTypeCustom
     solverSettingActiveRepos       = flagToMaybe projectConfigActiveRepos
     solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
