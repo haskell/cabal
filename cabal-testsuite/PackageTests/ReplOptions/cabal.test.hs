@@ -28,12 +28,12 @@ main = do
   cabalTest' "multiple-repl-options-multiple-flags" $ do
     cabal' "clean" []
     res <- cabalWithStdin "v2-repl" [
-      "--repl-options=-fignore-optim-changes -fwrite-interface",
+      "--repl-options=-fforce-recomp -fwrite-interface",
         "--repl-options=-fdefer-type-errors -fdefer-typed-holes"
       ] ":set"
     assertOutputContains "Ok, two modules loaded." res
     assertOutputContains "  -fwrite-interface" res
-    assertOutputContains "  -fignore-optim-changes" res
+    assertOutputContains "  -fforce-recomp" res
     assertOutputContains "  -fdefer-typed-holes" res
     assertOutputContains "  -fdefer-type-errors" res
       where
