@@ -23,7 +23,7 @@ main = do
     cabal' "clean" []
     res <- local negativeTest $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
     assertOutputDoesNotContain "Ok, two modules loaded." res
-    assertOutputContains "ghc: unrecognised flag: -fdiagnostics-show-baret" res
+    assertOutputContains "unrecognised flag: -fdiagnostics-show-baret" res
     assertOutputContains "did you mean one of:" res
   cabalTest' "multiple-repl-options-multiple-flags" $ do
     cabal' "clean" []
