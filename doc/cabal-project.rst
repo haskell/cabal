@@ -1622,6 +1622,16 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--(no-)strong-flags``.
 
+.. cfg-field:: build-type-custom: boolean
+              --build-type-custom
+              --no-build-type-custom:
+    :synopsis: Allow solver to select packages which use :pkg-field:`build-type` ``Custom``
+
+    :default: True
+
+    Allow (or disallow) the dependency solver to select packages which
+    use :pkg-field:`build-type` ``Custom``.
+
 .. cfg-field:: allow-boot-library-installs: boolean
                --allow-boot-library-installs
                --no-allow-boot-library-installs
