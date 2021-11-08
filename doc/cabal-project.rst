@@ -322,9 +322,9 @@ The following settings control the behavior of the dependency solver:
         constraints: bar == 2.1,
                      bar +foo -baz
 
-    Valid constraints take the same form as for the `constraint
-    command line option
-    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
+    The option ``--constraint`` only takes a single constraint, not a
+    comma-separated list of constraints.  To make up for this, it can
+    appear several times on the command line.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
