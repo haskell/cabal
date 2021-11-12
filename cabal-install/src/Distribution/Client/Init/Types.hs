@@ -311,6 +311,7 @@ class Monad m => Interactive m where
     canonicalizePathNoThrow :: FilePath -> m FilePath
     readProcessWithExitCode :: FilePath -> [String] -> String -> m (ExitCode, String, String)
     getEnvironment :: m [(String, String)]
+    getCurrentYear :: m Integer
     listFilesInside :: (FilePath -> m Bool) -> FilePath -> m [FilePath]
     listFilesRecursive :: FilePath -> m [FilePath]
 
@@ -320,6 +321,7 @@ class Monad m => Interactive m where
     createDirectory :: FilePath -> m ()
     removeDirectory :: FilePath -> m ()
     writeFile :: FilePath -> String -> m ()
+    removeExistingFile :: FilePath -> m ()
     copyFile :: FilePath -> FilePath -> m ()
     renameDirectory :: FilePath -> FilePath -> m ()
     message :: Verbosity -> String -> m ()
@@ -341,6 +343,7 @@ instance Interactive IO where
     canonicalizePathNoThrow = P.canonicalizePathNoThrow
     readProcessWithExitCode = P.readProcessWithExitCode
     getEnvironment = P.getEnvironment
+    getCurrentYear = P.getCurrentYear
     listFilesInside = P.listFilesInside
     listFilesRecursive = P.listFilesRecursive
 
@@ -349,6 +352,7 @@ instance Interactive IO where
     createDirectory = P.createDirectory
     removeDirectory = P.removeDirectoryRecursive
     writeFile = P.writeFile
+    removeExistingFile = P.removeExistingFile
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
     message q = unless (q == silent) . putStrLn
@@ -372,6 +376,7 @@ instance Interactive PurePrompt where
       input <- pop
       return (ExitSuccess, input, "")
     getEnvironment = fmap (map read) popList
+    getCurrentYear = fmap read pop
     listFilesInside pred' !_ = do
       input <- map splitDirectories <$> popList
       map joinPath <$> filterM (fmap and . traverse pred') input
@@ -382,6 +387,7 @@ instance Interactive PurePrompt where
     createDirectory !_ = return ()
     removeDirectory !_ = return ()
     writeFile !_ !_ = return ()
+    removeExistingFile !_ = return ()
     copyFile !_ !_ = return ()
     renameDirectory !_ !_ = return ()
     message !_ !_ = return ()
