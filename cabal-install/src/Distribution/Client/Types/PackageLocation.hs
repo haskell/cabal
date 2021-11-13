@@ -24,8 +24,10 @@ type ResolvedPkgLoc = PackageLocation FilePath
 
 data PackageLocation local =
 
-    -- | An unpacked package in the given dir, or current dir
-    LocalUnpackedPackage FilePath
+    -- | An unpacked package in the given dir, or current dir,
+    -- with the given .cabal file name within the given dir.
+    -- If Nothing, this will default to @'PackageId' <.> "cabal"@.
+    LocalUnpackedPackage FilePath (Maybe FilePath)
 
     -- | A package as a tarball that's available as a local tarball
   | LocalTarballPackage FilePath

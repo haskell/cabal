@@ -468,7 +468,7 @@ testTargetSelectorAmbiguous reportSubCase = do
     mkpkgAt pkgidstr exes loc =
       SourcePackage {
         srcpkgPackageId = pkgid,
-        srcpkgSource = LocalUnpackedPackage loc,
+        srcpkgSource = LocalUnpackedPackage loc Nothing,
         srcpkgDescrOverride  = Nothing,
         srcpkgDescription = GenericPackageDescription {
           packageDescription = emptyPackageDescription { package = pkgid },

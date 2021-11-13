@@ -1229,7 +1229,7 @@ installLocalPackage verbosity pkgid location distPref installPkg =
 
   case location of
 
-    LocalUnpackedPackage dir ->
+    LocalUnpackedPackage dir _cabalFile ->
       installPkg (Just dir)
 
     RemoteSourceRepoPackage _repo dir ->

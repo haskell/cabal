@@ -195,7 +195,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
       case mloc of
         Nothing -> return BuildStatusDownload
 
-        Just (LocalUnpackedPackage srcdir) ->
+        Just (LocalUnpackedPackage srcdir _) ->
           -- For the case of a user-managed local dir, irrespective of the
           -- build style, we build from that directory and put build
           -- artifacts under the shared dist directory.

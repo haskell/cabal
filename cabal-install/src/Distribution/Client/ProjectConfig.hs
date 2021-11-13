@@ -1041,7 +1041,7 @@ readSourcePackageLocalDirectory
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
-    let location = LocalUnpackedPackage (root </> dir)
+    let location = LocalUnpackedPackage (root </> dir) (Just cabalFile)
     liftIO $ fmap (mkSpecificSourcePackage location)
            . readSourcePackageCabalFile verbosity cabalFile
          =<< BS.readFile (root </> cabalFile)

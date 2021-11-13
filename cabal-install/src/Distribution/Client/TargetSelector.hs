@@ -836,9 +836,6 @@ reportTargetSelectorProblems verbosity problems = do
                   "Multiple packages have been found:\n  "
                ++ unlines (map prettyShow pkgids)
 
-
-        where
-
     case [ t | TargetSelectorNoScript t <- problems ] of
       []  -> return ()
       target:_ ->
@@ -1837,7 +1834,7 @@ collectKnownPackageInfo dirActions@DirActions{..}
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
-        LocalUnpackedPackage dir -> do
+        LocalUnpackedPackage dir _cabalFile -> do
           dirabs <- canonicalizePath dir
           dirrel <- makeRelativeToCwd dirActions dirabs
           --TODO: ought to get this earlier in project reading

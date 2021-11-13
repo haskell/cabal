@@ -77,7 +77,7 @@ import qualified Hackage.Security.Client as Sec
 --
 isFetched :: UnresolvedPkgLoc -> IO Bool
 isFetched loc = case loc of
-    LocalUnpackedPackage _dir       -> return True
+    LocalUnpackedPackage _dir _     -> return True
     LocalTarballPackage  _file      -> return True
     RemoteTarballPackage _uri local -> return (isJust local)
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
@@ -91,8 +91,8 @@ isFetched loc = case loc of
 checkFetched :: UnresolvedPkgLoc
              -> IO (Maybe ResolvedPkgLoc)
 checkFetched loc = case loc of
-    LocalUnpackedPackage dir  ->
-      return (Just $ LocalUnpackedPackage dir)
+    LocalUnpackedPackage dir cabalFile ->
+      return (Just $ LocalUnpackedPackage dir cabalFile)
     LocalTarballPackage  file ->
       return (Just $ LocalTarballPackage  file)
     RemoteTarballPackage uri (Just file) ->
@@ -126,8 +126,8 @@ fetchPackage :: Verbosity
              -> UnresolvedPkgLoc
              -> IO ResolvedPkgLoc
 fetchPackage verbosity repoCtxt loc = case loc of
-    LocalUnpackedPackage dir  ->
-      return (LocalUnpackedPackage dir)
+    LocalUnpackedPackage dir cabalFile ->
+      return (LocalUnpackedPackage dir cabalFile)
     LocalTarballPackage  file ->
       return (LocalTarballPackage  file)
     RemoteTarballPackage uri (Just file) ->

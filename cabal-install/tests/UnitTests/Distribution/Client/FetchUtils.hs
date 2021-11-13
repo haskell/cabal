@@ -60,10 +60,10 @@ testEmpty = do
 testPassLocalPackage :: Assertion
 testPassLocalPackage = do
   let repoCtxt = error "repoCtxt undefined"
-      loc = LocalUnpackedPackage "a"
+      loc = LocalUnpackedPackage "a" Nothing
   res <- asyncFetchPackages verbosity repoCtxt [loc] $ \downloadMap ->
     waitAsyncFetchPackage verbosity downloadMap loc
-  res @?= LocalUnpackedPackage "a"
+  res @?= LocalUnpackedPackage "a" Nothing
 
 testHttp :: Assertion
 testHttp = withFakeRepoCtxt get200 $ \repoCtxt repo -> do

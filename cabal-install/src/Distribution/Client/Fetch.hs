@@ -216,7 +216,7 @@ checkTarget verbosity target = case target of
 
 fetchPackage :: Verbosity -> RepoContext -> PackageLocation a -> IO ()
 fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
-    LocalUnpackedPackage _dir  -> return ()
+    LocalUnpackedPackage _dir _cabalFile -> return ()
     LocalTarballPackage  _file -> return ()
 
     RemoteTarballPackage _uri _ ->

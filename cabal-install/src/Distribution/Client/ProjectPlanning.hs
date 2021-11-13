@@ -2096,8 +2096,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 shouldBeLocal :: PackageSpecifier (SourcePackage (PackageLocation loc)) -> Maybe PackageId
 shouldBeLocal NamedPackage{}              = Nothing
 shouldBeLocal (SpecificSourcePackage pkg) = case srcpkgSource pkg of
-    LocalUnpackedPackage _ -> Just (packageId pkg)
-    _                      -> Nothing
+    LocalUnpackedPackage _ _ -> Just (packageId pkg)
+    _                        -> Nothing
 
 -- | Given a 'ElaboratedPlanPackage', report if it matches a 'ComponentName'.
 matchPlanPkg :: (ComponentName -> Bool) -> ElaboratedPlanPackage -> Bool

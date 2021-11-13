@@ -152,7 +152,7 @@ get verbosity repoCtxt _ getFlags userTargets = do
             die' verbosity $ "The 'get' command does no yet support targets "
                           ++ "that are remote source repositories."
 
-          LocalUnpackedPackage _ ->
+          LocalUnpackedPackage _ _ ->
             error "Distribution.Client.Get.unpack: the impossible happened."
       where
         usePristine :: Bool

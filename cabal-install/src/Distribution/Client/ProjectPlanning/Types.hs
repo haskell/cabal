@@ -446,7 +446,7 @@ dataDirEnvVarForPackage distDirLayout pkg =
        , Just $ srcPath (elabPkgSourceLocation pkg)
             </> dataDir (elabPkgDescription pkg))
   where
-    srcPath (LocalUnpackedPackage path) = path
+    srcPath (LocalUnpackedPackage path _cabalFile) = path
     srcPath (LocalTarballPackage _path) = unpackedPath
     srcPath (RemoteTarballPackage _uri _localTar) = unpackedPath
     srcPath (RepoTarballPackage _repo _packageId _localTar) = unpackedPath
