@@ -472,12 +472,12 @@ resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] ckf =
     ([TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind) ], [])
 
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _
-  | [pkgid] <- pkgids =
+  | [(pkgid, _)] <- knownPackages =
     ([], [TargetPackage TargetImplicitCwd [pkgid] Nothing])
   | otherwise =
-    ([TargetSelectorNotSinglePackage pkgids], [])
+    ([TargetSelectorNotSinglePackage knownPackages], [])
   where
-    pkgids = [ pinfoId | KnownPackage{pinfoId} <- knownPackagesPrimary ]
+    knownPackages = [ (pinfoId, pinfoPackageFile) | KnownPackage{pinfoId, pinfoPackageFile} <- knownPackagesPrimary ]
 
 resolveTargetSelectors knowntargets targetStrs mfilter =
     partitionEithers
@@ -597,7 +597,11 @@ data TargetSelectorProblem
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
-   | TargetSelectorNotSinglePackage [PackageId]
+   | TargetSelectorNotSinglePackage [(PackageId, Maybe (FilePath, FilePath))]
+      -- ^ Some PackageIds were duplicated.
+      -- Track them and their provenance if available.
+      -- The tuple is expected to hold an absolute and a relative filepath to
+      -- the respective cabal file.
    | TargetSelectorNoTargetsInCwd Bool
      -- ^ bool that flags when it is acceptable to suggest "all" as a target
    | TargetSelectorNoTargetsInProject
@@ -822,19 +826,15 @@ reportTargetSelectorProblems verbosity problems = do
       _:_ ->
         die' verbosity noPackageErrorMessage
 
-    case [ pkgids | TargetSelectorNotSinglePackage pkgids <- problems ] of
+    case [ knownPkgs | TargetSelectorNotSinglePackage knownPkgs <- problems ] of
       []      -> return ()
-      mpkgids ->
-        let
-          allpkgids = concat mpkgids
-        in
-          case allpkgids of
-            [] ->
-              die' verbosity noPackageErrorMessage
-            pkgids ->
-              die' verbosity $
-                  "Multiple packages have been found:\n  "
-               ++ unlines (map prettyShow pkgids)
+      mknownPkgs -> case concat mknownPkgs of
+        [] ->
+          die' verbosity noPackageErrorMessage
+        pkgids ->
+          die' verbosity $
+               "Multiple packages have been found:\n"
+            ++ unlines ( map (uncurry prettyAmbiguousPackageProvenance) pkgids)
 
     case [ t | TargetSelectorNoScript t <- problems ] of
       []  -> return ()
@@ -855,6 +855,13 @@ reportTargetSelectorProblems verbosity problems = do
          ++ "file in the root directory of your project. This file lists the "
          ++ "packages in your project and all other build configuration. "
          ++ "See the Cabal user guide for full details."
+
+
+    prettyAmbiguousPackageProvenance :: PackageId -> Maybe (FilePath, FilePath) -> String
+    prettyAmbiguousPackageProvenance pkgid provenance =
+      prettyShow pkgid ++ (case provenance of
+        Nothing -> mempty
+        Just (_, relativeCabalFile) -> " defined in: " ++ relativeCabalFile)
 
 
 ----------------------------------
@@ -1758,7 +1765,9 @@ data KnownPackage =
      KnownPackage {
        pinfoId          :: PackageId,
        pinfoDirectory   :: Maybe (FilePath, FilePath),
+       -- ^ Absolute path and relative path of the root directory of this package.
        pinfoPackageFile :: Maybe (FilePath, FilePath),
+       -- ^ Absolute path and relative path to the .cabal file of this package.
        pinfoComponents  :: [KnownComponent]
      }
    | KnownPackageName {
@@ -1834,12 +1843,12 @@ collectKnownPackageInfo dirActions@DirActions{..}
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
-        LocalUnpackedPackage dir _cabalFile -> do
+        LocalUnpackedPackage dir cabalFile -> do
           dirabs <- canonicalizePath dir
           dirrel <- makeRelativeToCwd dirActions dirabs
           --TODO: ought to get this earlier in project reading
-          let fileabs = dirabs </> prettyShow (packageName pkg) <.> "cabal"
-              filerel = dirrel </> prettyShow (packageName pkg) <.> "cabal"
+          let fileabs = dirabs </> fromMaybe (prettyShow (packageName pkg) <.> "cabal") cabalFile
+              filerel = dirrel </> fromMaybe (prettyShow (packageName pkg) <.> "cabal") cabalFile
           exists <- doesFileExist fileabs
           return ( Just (dirabs, dirrel)
                  , if exists then Just (fileabs, filerel) else Nothing
