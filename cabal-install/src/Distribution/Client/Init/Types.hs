@@ -69,6 +69,7 @@ import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
 import Distribution.Fields.Pretty
 import Language.Haskell.Extension ( Language(..), Extension )
+import qualified System.IO
 
 import qualified System.Directory as P
 import qualified System.Process as P
@@ -322,6 +323,7 @@ class Monad m => Interactive m where
     copyFile :: FilePath -> FilePath -> m ()
     renameDirectory :: FilePath -> FilePath -> m ()
     message :: Verbosity -> String -> m ()
+    hFlush :: System.IO.Handle -> m ()
 
     -- misc functions
     break :: m Bool
@@ -350,6 +352,7 @@ instance Interactive IO where
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
     message q = unless (q == silent) . putStrLn
+    hFlush = System.IO.hFlush
 
     break = return False
     throwPrompt = throwM
@@ -382,6 +385,7 @@ instance Interactive PurePrompt where
     copyFile !_ !_ = return ()
     renameDirectory !_ !_ = return ()
     message !_ !_ = return ()
+    hFlush _ = return ()
 
     break = return True
     throwPrompt (BreakException e) = PurePrompt $ \s -> Left $ BreakException
