@@ -37,6 +37,7 @@ module Distribution.Client.Init.Types
 , BreakException(..)
 , PurePrompt(..)
 , evalPrompt
+, Severity(..)
   -- * Aliases
 , IsLiterate
 , IsSimple
@@ -324,8 +325,8 @@ class Monad m => Interactive m where
     removeExistingFile :: FilePath -> m ()
     copyFile :: FilePath -> FilePath -> m ()
     renameDirectory :: FilePath -> FilePath -> m ()
-    message :: Verbosity -> String -> m ()
     hFlush :: System.IO.Handle -> m ()
+    message :: Verbosity -> Severity -> String -> m ()
 
     -- misc functions
     break :: m Bool
@@ -355,8 +356,9 @@ instance Interactive IO where
     removeExistingFile = P.removeExistingFile
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
-    message q = unless (q == silent) . putStrLn
     hFlush = System.IO.hFlush
+    message q severity = unless (q == silent)
+      . putStrLn . (("\n" ++ show severity ++ ": ") ++)
 
     break = return False
     throwPrompt = throwM
@@ -390,8 +392,11 @@ instance Interactive PurePrompt where
     removeExistingFile !_ = return ()
     copyFile !_ !_ = return ()
     renameDirectory !_ !_ = return ()
-    message !_ !_ = return ()
     hFlush _ = return ()
+    message !_ !severity !msg = case severity of
+      Error -> PurePrompt $ \_ -> Left $ BreakException
+        (show severity ++ ": " ++ msg)
+      _     -> return ()
 
     break = return True
     throwPrompt (BreakException e) = PurePrompt $ \s -> Left $ BreakException
@@ -426,6 +431,10 @@ popList = pop >>= \a -> case P.safeRead a of
 newtype BreakException = BreakException String deriving (Eq, Show)
 
 instance Exception BreakException
+
+-- | Used to inform the intent of prompted messages.
+--
+data Severity = Log | Info | Warning | Error deriving (Eq, Show)
 
 -- | Convenience alias for the literate haskell flag
 --

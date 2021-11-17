@@ -47,14 +47,13 @@ import System.FilePath ((</>), (<.>))
 writeProject :: Interactive m => ProjectSettings -> m ()
 writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
     | null pkgName = do
-      message opts "\nError: no package name given, so no .cabal file can be generated\n"
+      message opts T.Error "no package name given, so no .cabal file can be generated\n"
     | otherwise = do
 
       -- clear prompt history a bit"
-      message opts
-        $ "\nUsing cabal specification: "
+      message opts T.Log
+        $ "Using cabal specification: "
         ++ showCabalSpecVersion (_optCabalSpec opts)
-        ++ "\n"
 
       writeLicense opts pkgDesc
       writeChangeLog opts pkgDesc
@@ -69,9 +68,9 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       writeCabalFile opts $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
-        message opts "\nWarning: no synopsis given. You should edit the .cabal file and add one."
+        message opts T.Warning "no synopsis given. You should edit the .cabal file and add one."
 
-      message opts "You may want to edit the .cabal file and add a Description field."
+      message opts T.Info "You may want to edit the .cabal file and add a Description field."
   where
     pkgName = unPackageName $ _optPkgName opts
 
@@ -169,9 +168,9 @@ writeLicense writeOpts pkgDesc = do
   year <- show <$> getCurrentYear
   case licenseFile year (_pkgAuthor pkgDesc) of
     Just licenseText -> do
-      message writeOpts "\nCreating LICENSE..."
+      message writeOpts T.Log "Creating LICENSE..."
       writeFileSafe writeOpts "LICENSE" licenseText
-    Nothing -> message writeOpts "Warning: unknown license type, you must put a copy in LICENSE yourself."
+    Nothing -> message writeOpts T.Warning "unknown license type, you must put a copy in LICENSE yourself."
   where
     getLid (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)) =
       Just lid
@@ -214,7 +213,7 @@ writeChangeLog opts pkgDesc
     ]
 
   go = do
-    message opts ("Creating " ++ defaultChangelog ++"...")
+    message opts T.Log ("Creating " ++ defaultChangelog ++"...")
     writeFileSafe opts defaultChangelog changeLog
 
 -- -------------------------------------------------------------------- --
@@ -222,7 +221,7 @@ writeChangeLog opts pkgDesc
 
 -- | Possibly generate a message to stdout, taking into account the
 --   --quiet flag.
-message :: Interactive m => WriteOpts -> String -> m ()
+message :: Interactive m => WriteOpts -> T.Severity -> String -> m ()
 message opts = T.message (_optVerbosity opts)
 
 -- | Write a file \"safely\" if it doesn't exist, backing up any existing version when
@@ -238,7 +237,7 @@ writeFileSafe opts fileName content = do
 
     go exists
 
-    message opts $ action ++ " file " ++ fileName ++ "..."
+    message opts T.Log $ action ++ " file " ++ fileName ++ "..."
     writeFile fileName content
   where
     doOverwrite = _optOverwrite opts
@@ -248,9 +247,8 @@ writeFileSafe opts fileName content = do
         removeExistingFile fileName
       | exists, not doOverwrite = do
         newName <- findNewPath fileName
-        message opts $ concat
-          [ "Warning: "
-          , fileName
+        message opts T.Log $ concat
+          [ fileName
           , " already exists. Backing up old version in "
           , newName
           ]
@@ -270,7 +268,7 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
 
     go dir exists
 
-    message opts $ action ++ " directory ./" ++ dir ++ "..."
+    message opts T.Log $ action ++ " directory ./" ++ dir ++ "..."
     createDirectory dir
   where
     doOverwrite = _optOverwrite opts
@@ -280,9 +278,8 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
         removeDirectory dir
       | exists, not doOverwrite = do
         newDir <- findNewPath dir
-        message opts $ concat
-          [ "Warning: "
-          , dir
+        message opts T.Log $ concat
+          [ dir
           , " already exists. Backing up old version in "
           , newDir
           ]
