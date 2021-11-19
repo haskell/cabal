@@ -1,12 +1,23 @@
-resolver: lts-11.6
+resolver: lts-18.17
+
 packages:
 - Cabal-syntax/
 - Cabal/
+- Cabal-described
+- Cabal-QuickCheck/
+- Cabal-tests/
+- Cabal-tree-diff/
+- cabal-benchmarks/
+- cabal-install-solver/
 - cabal-install/
 - cabal-testsuite/
+- solver-benchmarks/
+
 extra-deps:
-  - resolv-0.1.1.1
-  - QuickCheck-2.11.3
+- rere-0.2@sha256:ec1d87554c03755d89f3401c5e5c27827e61dde835c54cbdaf509136ce8f6f2b,4079
+
+allow-newer: true
+
 nix:
   packages:
   - autoconf
