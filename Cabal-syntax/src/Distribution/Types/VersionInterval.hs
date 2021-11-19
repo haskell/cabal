@@ -40,7 +40,7 @@ import Distribution.Types.VersionRange.Internal
 
 -- To test this module, and to run version range normalisation benchmarks:
 --
--- cabal run Cabal:unit-tests -- -p Distribution.Version
+-- cabal run Cabal-tests:unit-tests -- -p Distribution.Version
 -- cabal run cabal-benchmarks -- -o bench.html normaliseVersionRange
 
 -------------------------------------------------------------------------------

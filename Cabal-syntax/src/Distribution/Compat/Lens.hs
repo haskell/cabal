@@ -238,7 +238,7 @@ instance Functor (Pretext a b) where
 --
 -- First start a repl
 --
--- > cabal new-repl Cabal:hackage-tests
+-- > cabal new-repl Cabal-tests:hackage-tests
 --
 -- Because @--extra-package@ isn't yet implemented, we use a test-suite
 -- with @generics-sop@ dependency.

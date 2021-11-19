@@ -77,7 +77,7 @@ example, to build a test suite named ``package-tests``, use the command:
 
 Targets can be qualified with package names. So to request
 ``package-tests`` *from* the ``Cabal`` package, use
-``Cabal:package-tests``.
+``Cabal-tests:package-tests``.
 
 Unlike sandboxes, there is no need to setup a sandbox or ``add-source``
 projects; just check in ``cabal.project`` to your repository and
