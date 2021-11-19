@@ -279,27 +279,23 @@ haddock pkg_descr lbi suffixes flags' = do
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
 
-              case libName lib of
-                LMainLibName ->
-                  pure index
-                LSubLibName _ -> do
-                  pwd <- getCurrentDirectory
+              pwd <- getCurrentDirectory
 
-                  let
-                    ipi = inplaceInstalledPackageInfo
-                            pwd (flag haddockDistPref) pkg_descr
-                            (mkAbiHash "inplace") lib lbi' clbi
+              let
+                ipi = inplaceInstalledPackageInfo
+                        pwd (flag haddockDistPref) pkg_descr
+                        (mkAbiHash "inplace") lib lbi' clbi
 
-                  debug verbosity $ "Registering inplace:\n"
-                    ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
+              debug verbosity $ "Registering inplace:\n"
+                ++ (InstalledPackageInfo.showInstalledPackageInfo ipi)
 
-                  registerPackage verbosity (compiler lbi') (withPrograms lbi')
-                    (withPackageDB lbi') ipi
-                    HcPkg.defaultRegisterOptions {
-                      HcPkg.registerMultiInstance = True
-                    }
+              registerPackage verbosity (compiler lbi') (withPrograms lbi')
+                (withPackageDB lbi') ipi
+                HcPkg.defaultRegisterOptions {
+                  HcPkg.registerMultiInstance = True
+                }
 
-                  return $ PackageIndex.insert ipi index
+              return $ PackageIndex.insert ipi index
 
         CFLib flib -> (when (flag haddockForeignLibs) $ do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
