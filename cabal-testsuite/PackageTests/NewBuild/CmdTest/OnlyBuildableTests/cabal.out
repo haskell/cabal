@@ -1,0 +1,25 @@
+# cabal v2-test
+Resolving dependencies...
+Error: cabal: Could not resolve dependencies:
+[__0] trying: package-with-unbuildable-test-1.0 (user goal)
+[__1] trying: package-with-unbuildable-test:*test
+[__2] next goal: base (dependency of package-with-unbuildable-test *test)
+[__2] rejecting: base-<VERSION>/installed-<HASH> (conflict: package-with-unbuildable-test *test => base<1 && >1)
+[__2] fail (backjumping, conflict set: base, package-with-unbuildable-test, package-with-unbuildable-test:test)
+After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: package-with-unbuildable-test (4), package-with-unbuildable-test:test (4), base (2)
+# cabal v2-test
+Resolving dependencies...
+Error: cabal: Cannot test all the packages in the project because none of the components are available to build: the test suite 'buildable-test' and the test suite 'unbuildable-test' are  not available because building test suites has been disabled in the configuration
+# cabal v2-test
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - package-with-buildable-test-1.0 (test:buildable-test) (first run)
+Configuring test suite 'buildable-test' for package-with-buildable-test-1.0..
+Preprocessing test suite 'buildable-test' for package-with-buildable-test-1.0..
+Building test suite 'buildable-test' for package-with-buildable-test-1.0..
+Running 1 test suites...
+Test suite buildable-test: RUNNING...
+Test suite buildable-test: PASS
+Test suite logged to: <ROOT>/cabal.dist/work/./dist/build/<ARCH>/ghc-<GHCVER>/package-with-buildable-test-1.0/t/buildable-test/test/package-with-buildable-test-1.0-buildable-test.log
+1 of 1 test suites (1 of 1 test cases) passed.
