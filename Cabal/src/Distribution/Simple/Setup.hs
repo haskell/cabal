@@ -698,10 +698,15 @@ configureOptions showOrParseArgs =
             (parsecToReadE ("Cannot parse module substitution: " ++) (fmap (:[]) parsecModSubstEntry))
             (map (Disp.renderStyle defaultStyle . dispModSubstEntry)))
 
-      ,option "" ["tests"]
-         "dependency checking and compilation for test suites listed in the package description file."
+      ,multiOption "tests"
          configTests (\v flags -> flags { configTests = v })
-         (boolOpt [] [])
+         [noArg (Flag True) []
+                ["enable-test","enable-tests"]
+                "Build all the test suites listed in the package description file."
+         ,noArg (Flag False) []
+                ["disable-test","disable-tests"]
+                "Do not build any test suites."
+         ]
 
       ,option "" ["coverage"]
          "build package with Haskell Program Coverage. (GHC only)"
@@ -719,10 +724,15 @@ configureOptions showOrParseArgs =
          (\v flags -> flags { configExactConfiguration = v })
          trueArg
 
-      ,option "" ["benchmarks"]
-         "dependency checking and compilation for benchmarks listed in the package description file."
+      ,multiOption "benchmarks"
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
-         (boolOpt [] [])
+         [noArg (Flag True) []
+                ["enable-benchmark","enable-benchmarks"]
+                "Build all the benchmarks listed in the package description file."
+         ,noArg (Flag False) []
+                ["disable-benchmark","disable-benchmarks"]
+                "Do not build any benchmarks."
+         ]
 
       ,option "" ["relocatable"]
          "building a package that is relocatable. (GHC only)"
