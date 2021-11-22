@@ -16,6 +16,7 @@ module Distribution.Client.InstallSymlink (
     symlinkBinaries,
     symlinkBinary,
     trySymlink,
+    promptRun
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (ioError)
@@ -193,8 +194,8 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
   ok <- targetOkToOverwrite (publicBindir </> publicName)
                             (privateBindir </> privateName)
   case ok of
-    NotExists         ->           mkLink >> return True
-    OkToOverwrite     -> rmLink >> mkLink >> return True
+    NotExists         -> mkLink
+    OkToOverwrite     -> overwrite
     NotOurFile ->
       case overwritePolicy of
         NeverOverwrite  -> return False
@@ -202,15 +203,22 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
         PromptOverwrite -> maybeOverwrite
   where
     relativeBindir = makeRelative publicBindir privateBindir
-    mkLink = createFileLink (relativeBindir </> privateName) (publicBindir   </> publicName)
-    rmLink = removeFile (publicBindir </> publicName)
-    overwrite = True <$ (rmLink *> mkLink)
+    mkLink :: IO Bool
+    mkLink = True <$ createFileLink (relativeBindir </> privateName) (publicBindir </> publicName)
+    rmLink :: IO Bool
+    rmLink = True <$ removeFile (publicBindir </> publicName)
+    overwrite :: IO Bool
+    overwrite = rmLink *> mkLink
     maybeOverwrite :: IO Bool
-    maybeOverwrite = do
-      a <- promptYesNo
-        "Existing file found while installing symlink. Do you want to unlink that file? (y/n)"
-        MandatoryPrompt
-      if a then overwrite else pure a
+    maybeOverwrite
+      = promptRun
+        "Existing file found while installing symlink. Do you want to overwrite that file? (y/n)"
+        overwrite
+
+promptRun :: String -> IO Bool -> IO Bool
+promptRun s m = do
+  a <- promptYesNo s MandatoryPrompt
+  if a then m else pure a
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or

@@ -90,7 +90,7 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.RebuildMonad
          ( runRebuild )
 import Distribution.Client.InstallSymlink
-         ( symlinkBinary, trySymlink )
+         ( symlinkBinary, trySymlink, promptRun )
 import Distribution.Client.Types.OverwritePolicy
          ( OverwritePolicy (..) )
 import Distribution.Simple.Flag
@@ -140,8 +140,6 @@ import System.Directory
          , removeFile, removeDirectory, copyFile )
 import System.FilePath
          ( (</>), (<.>), takeDirectory, takeBaseName )
-import Distribution.Client.Init.Types (DefaultPrompt(MandatoryPrompt))
-import Distribution.Client.Init.Prompt (promptYesNo)
 
 installCommand :: CommandUI (NixStyleFlags ClientInstallFlags)
 installCommand = CommandUI
@@ -833,11 +831,10 @@ installBuiltExe verbosity overwritePolicy
     overwrite :: IO Bool
     overwrite = remove >> copy
     maybeOverwrite :: IO Bool
-    maybeOverwrite = do
-      a <- promptYesNo
-        "Existing file found while installing executable. Do you want to unlink that file? (y/n)"
-        MandatoryPrompt
-      if a then overwrite else pure a
+    maybeOverwrite
+      = promptRun
+        "Existing file found while installing executable. Do you want to overwrite that file? (y/n)"
+        overwrite
 
 -- | Create 'GhcEnvironmentFileEntry's for packages with exposed libraries.
 entriesForLibraryComponents :: TargetsMap -> [GhcEnvironmentFileEntry]
