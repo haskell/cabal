@@ -386,12 +386,12 @@ instance Interactive PurePrompt where
 
     putStr !_ = return ()
     putStrLn !_ = return ()
-    createDirectory !_ = return ()
-    removeDirectory !_ = return ()
-    writeFile !_ !_ = return ()
-    removeExistingFile !_ = return ()
-    copyFile !_ !_ = return ()
-    renameDirectory !_ !_ = return ()
+    createDirectory !d = checkInvalidPath d ()
+    removeDirectory !d = checkInvalidPath d ()
+    writeFile !f !_ = checkInvalidPath f ()
+    removeExistingFile !f = checkInvalidPath f ()
+    copyFile !f !_ = checkInvalidPath f ()
+    renameDirectory !d !_ = checkInvalidPath d ()
     hFlush _ = return ()
     message !_ !severity !msg = case severity of
       Error -> PurePrompt $ \_ -> Left $ BreakException
@@ -421,6 +421,14 @@ popList = pop >>= \a -> case P.safeRead a of
     Nothing -> throwPrompt $ BreakException ("popList: " ++ show a)
     Just as -> return as
 
+checkInvalidPath :: String -> a -> PurePrompt a
+checkInvalidPath path act = 
+    -- The check below is done this way so it's easier to append
+    -- more invalid paths in the future, if necessary
+    if path `elem` ["."] then
+      throwPrompt $ BreakException $ "Invalid path: " ++ path
+    else
+      return act
 
 -- | A pure exception thrown exclusively by the pure prompter
 -- to cancel infinite loops in the prompting process.
