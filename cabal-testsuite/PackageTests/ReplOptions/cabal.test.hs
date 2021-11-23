@@ -1,5 +1,4 @@
 import Test.Cabal.Prelude
-import Control.Monad.Reader (local)
 
 main = do
   cabalTest' "single-repl-options" $ do
@@ -21,7 +20,7 @@ main = do
     assertOutputContains "  -fdefer-typed-holes" res
   cabalTest' "single-repl-options-multiple-flags-negative" $ do
     cabal' "clean" []
-    res <- local negativeTest $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
+    res <- fails $ cabalWithStdin "v2-repl" ["--repl-options=-fwrite-interface -fdiagnostics-show-baret"] ":set"
     assertOutputDoesNotContain "Ok, two modules loaded." res
     assertOutputContains "unrecognised flag: -fdiagnostics-show-baret" res
     assertOutputContains "did you mean one of:" res
@@ -36,5 +35,4 @@ main = do
     assertOutputContains "  -fforce-recomp" res
     assertOutputContains "  -fdefer-typed-holes" res
     assertOutputContains "  -fdefer-type-errors" res
-      where
-        negativeTest env = env { testShouldFail = True }
+
