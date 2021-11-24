@@ -701,10 +701,10 @@ configureOptions showOrParseArgs =
       ,multiOption "tests"
          configTests (\v flags -> flags { configTests = v })
          [noArg (Flag True) []
-                ["enable-test","enable-tests"]
+                ["enable-tests", "enable-test"]
                 "Build all the test suites listed in the package description file."
          ,noArg (Flag False) []
-                ["disable-test","disable-tests"]
+                ["disable-tests", "disable-test"]
                 "Do not build any test suites."
          ]
 
@@ -727,10 +727,10 @@ configureOptions showOrParseArgs =
       ,multiOption "benchmarks"
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
          [noArg (Flag True) []
-                ["enable-benchmark","enable-benchmarks"]
+                ["enable-benchmarks", "enable-benchmark"]
                 "Build all the benchmarks listed in the package description file."
          ,noArg (Flag False) []
-                ["disable-benchmark","disable-benchmarks"]
+                ["disable-benchmarks", "disable-benchmark"]
                 "Do not build any benchmarks."
          ]
 
