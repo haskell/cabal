@@ -343,6 +343,7 @@ isVerboseTimestamp = isVerboseFlag VTimestamp
 -- @since 3.4.0.0
 isVerboseStderr :: Verbosity -> Bool
 isVerboseStderr = isVerboseFlag VStderr
+{-# DEPRECATED isVerboseStderr "Cabal output should generally not go to stdout." #-}
 
 -- | Test if we should output warnings when we log.
 isVerboseNoWarn :: Verbosity -> Bool
