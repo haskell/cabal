@@ -115,7 +115,8 @@ createProject comp v pkgIx srcDb initFlags = do
   case pkgType of
     Library -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
+      testTarget <- addLibDepToTest pkgName <$>
+        genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
@@ -130,8 +131,10 @@ createProject comp v pkgIx srcDb initFlags = do
 
     LibraryAndExecutable -> do
       libTarget <- genLibTarget initFlags comp pkgIx cabalSpec
-      exeTarget <- genExeTarget initFlags comp pkgIx cabalSpec
-      testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
+      exeTarget <- addLibDepToExe pkgName <$>
+        genExeTarget initFlags comp pkgIx cabalSpec
+      testTarget <- addLibDepToTest pkgName <$>
+        genTestTarget initFlags comp pkgIx cabalSpec
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
