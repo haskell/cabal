@@ -22,7 +22,7 @@ import Distribution.ModuleName (fromString)
 import Distribution.Simple.Flag
 import Data.List (foldl')
 import qualified Data.Set as Set
-import Distribution.Client.Init.Utils (mkStringyDep)
+import Distribution.Client.Init.Utils (mkPackageNameDep, mkStringyDep)
 
 tests
     :: Verbosity
@@ -105,7 +105,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeLanguage        exe @?= Haskell98
             _exeOtherModules    exe @?= []
             _exeOtherExts       exe @?= []
-            _exeDependencies    exe @?= []
+            _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= []
 
             _testMainIs       test @?= HsFilePath "quxTest/Main.hs" Standard
@@ -113,8 +113,13 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testLanguage     test @?= Haskell98
             _testOtherModules test @?= []
             _testOtherExts    test @?= []
-            _testDependencies test @?= []
+            _testDependencies test @?! []
             _testBuildTools   test @?= []
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -185,7 +190,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeLanguage        exe @?= Haskell98
             _exeOtherModules    exe @?= []
             _exeOtherExts       exe @?= []
-            _exeDependencies    exe @?= []
+            _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= []
 
             _testMainIs       test @?= HsFilePath "quxTest/Main.hs" Standard
@@ -193,8 +198,13 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testLanguage     test @?= Haskell98
             _testOtherModules test @?= []
             _testOtherExts    test @?= []
-            _testDependencies test @?= []
+            _testDependencies test @?! []
             _testBuildTools   test @?= []
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -369,6 +379,11 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testDependencies test @?! []
             _testBuildTools   test @?= [mkStringyDep "happy:happy"]
 
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
+
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
             exe  @?! Nothing
@@ -499,6 +514,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _testOtherExts    test @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _testDependencies test @?! []
             _testBuildTools   test @?= [mkStringyDep "happy:happy"]
+            
+            assertBool "The library should be a dependency of the test executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _testDependencies test
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
@@ -639,6 +657,9 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _exeOtherExts       exe @?= map EnableExtension [OverloadedStrings, LambdaCase, RankNTypes, RecordWildCards]
             _exeDependencies    exe @?! []
             _exeBuildTools      exe @?= [mkStringyDep "happy:happy"]
+
+            assertBool "The library should be a dependency of the executable" $
+              mkPackageNameDep (_optPkgName opts) `elem` _exeDependencies exe
 
           Right (ProjectSettings _ _ lib exe test, _) -> do
             lib  @?! Nothing
