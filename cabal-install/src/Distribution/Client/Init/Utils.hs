@@ -18,6 +18,8 @@ module Distribution.Client.Init.Utils
 , fixupDocFiles
 , mkStringyDep
 , getBaseDep
+, addLibDepToExe
+, addLibDepToTest
 ) where
 
 
@@ -310,3 +312,18 @@ mkStringyDep = mkPackageNameDep . mkPackageName
 getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
 getBaseDep pkgIx flags = retrieveDependencies silent flags
   [(fromString "Prelude", fromString "Prelude")] pkgIx
+
+-- Add package name as dependency of test suite
+--
+addLibDepToTest :: PackageName -> Maybe TestTarget -> Maybe TestTarget
+addLibDepToTest _ Nothing = Nothing
+addLibDepToTest n (Just t) = Just $ t
+  { _testDependencies = _testDependencies t ++ [mkPackageNameDep n]
+  }
+
+-- Add package name as dependency of executable
+--
+addLibDepToExe :: PackageName -> ExeTarget -> ExeTarget
+addLibDepToExe n exe = exe
+  { _exeDependencies = _exeDependencies exe ++ [mkPackageNameDep n]
+  }
