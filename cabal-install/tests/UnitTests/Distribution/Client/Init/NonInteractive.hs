@@ -1195,7 +1195,8 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
           [ testSimple "base version bounds is correct"
             (fmap
               (flip foldl' anyVersion $ \a (Dependency n v _) ->
-                if unPackageName n == "base" then v else a)
+                if unPackageName n == "base" && baseVersion comp /= anyVersion
+                  then v else a)
             . (\x -> dependenciesHeuristics x "" pkgIx))
             (baseVersion comp)
             [ "True"
