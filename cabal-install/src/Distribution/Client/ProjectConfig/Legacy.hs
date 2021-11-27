@@ -49,7 +49,7 @@ import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
-         ( Flag(Flag), toFlag, fromFlagOrDefault
+         ( Flag(NoFlag, Flag), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
@@ -84,7 +84,7 @@ import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken
-         , simpleFieldParsec
+         , simpleField, simpleFieldParsec
          )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -1078,6 +1078,14 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           configConfigureArgs
           (\v conf -> conf { configConfigureArgs = v })
+      , simpleField "tests"
+          prettyPrintEnableStanza parseEnableStanza
+          configTests
+          (\v conf -> conf { configTests = v })
+      , simpleField "benchmarks"
+          prettyPrintEnableStanza parseEnableStanza
+          configBenchmarks
+          (\v conf -> conf { configBenchmarks = v })
       , simpleFieldParsec "flags"
           dispFlagAssignment parsecFlagAssignment
           configConfigurationsFlags
@@ -1093,7 +1101,6 @@ legacyPackageConfigFieldDescrs =
       , "profiling-detail", "library-profiling-detail"
       , "library-for-ghci", "split-objs", "split-sections"
       , "executable-stripping", "library-stripping"
-      , "tests", "benchmarks"
       , "coverage", "library-coverage"
       , "relocatable"
         -- not "extra-include-dirs", "extra-lib-dirs", "extra-framework-dirs"
@@ -1253,6 +1260,15 @@ legacyPackageConfigFieldDescrs =
 
     prefixTest name | "test-" `isPrefixOf` name = name
                     | otherwise = "test-" ++ name
+
+    prettyPrintEnableStanza v = case v of
+      NoFlag     -> mempty
+      Flag True  -> Disp.text "EnableAll"
+      Flag False -> Disp.text "DisableAll"
+
+    parseEnableStanza
+        = (Flag True  <$ (Parse.string "EnableAll"  <|> Parse.string "True"))
+      <|> (Flag False <$ (Parse.string "DisableAll" <|> Parse.string "False"))
 
 
 legacyPackageConfigFGSectionDescrs
