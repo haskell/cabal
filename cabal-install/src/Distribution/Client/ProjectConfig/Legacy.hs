@@ -149,27 +149,6 @@ instantiateProjectConfigSkeleton os arch impl flags skel = go $ mapTreeConds (fs
            (Lit False) -> maybe ([]) ((:[]) . go) mf
            _ -> []
 
-{-
-
-   where
-        go :: CondTree
-               FlagName
-               [ProjectConfigImport]
-               ProjectConfig
-             -> IO (ParseResult ProjectConfig)
-        go (CondNode l imps ts) = do
-           -- ugly code to avoid defining legacy parse results explicitly as a monad transformer. shrug.
-           impSkel <- sequenceA <$> mapM readImportConfig imps
-           impConfig <-  fmap (fmap mconcat) . fmap (join . fmap sequenceA) . sequenceA $ fmap (mapM (instantiateProjectConfigSkeleton os arch impl flags)) impSkel
-           branches <- mconcatParse . concat <$> mapM processBranch ts
-           pure $ mconcatParse [pure l, impConfig, branches]
-        processBranch (CondBranch cnd t mf) = case cnd of
-           (Lit True) -> (:[]) <$> go t
-           (Lit False) -> maybe (pure []) (fmap (:[]) . go) mf
-           _ -> pure []
-        mconcatParse = fmap mconcat . sequenceA
--}
-
 -- TODO ensure parse doesn't have flags setting compiler inside conditionals
 parseProjectSkeleton :: FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
 parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)

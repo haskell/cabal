@@ -36,7 +36,6 @@ import Distribution.Client.DistDirLayout
          ( DistDirLayout(..) )
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ProjectConfig.Types
-import Distribution.Types.CondTree (ignoreConditions)
 
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
