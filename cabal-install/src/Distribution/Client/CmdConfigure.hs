@@ -128,7 +128,7 @@ configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
           then do
             conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
               readProjectLocalExtraConfig v (distDirLayout baseCtx)
-            return (baseCtx, (fst $ ignoreConditions conf) <> cliConfig) -- TODO ugh. maybe don't have extra configs have conditions, only main configs
+            return (baseCtx, conf <> cliConfig) -- TODO ugh. maybe don't have extra configs have conditions, only main configs
           else
             return (baseCtx, cliConfig)
   where

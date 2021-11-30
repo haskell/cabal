@@ -108,9 +108,11 @@ import qualified Data.ByteString.Char8 as BS
 
 import Network.URI (URI (..))
 
-import Distribution.Fields.ConfVar (parseConditionConfVar)
+import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 import qualified Distribution.Fields.ParseResult as FPR
 import Distribution.Fields.Field (SectionArg (..))
+
+
 
 
 ------------------------------------------------------------------
@@ -149,7 +151,10 @@ instantiateProjectConfigSkeleton os arch impl flags skel = go $ mapTreeConds (fs
            (Lit False) -> maybe ([]) ((:[]) . go) mf
            _ -> []
 
+
 -- TODO ensure parse doesn't have flags setting compiler inside conditionals
+
+-- NOTE a nice refactor would be to use readFields directly to get a tree structure.
 parseProjectSkeleton :: FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
 parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
  where
@@ -181,9 +186,9 @@ parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
   splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
 
   parseCond :: BS.ByteString -> Maybe (Condition ConfVar)
-  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case FPR.runParseResult (parseConditionConfVar [SecArgOther zeroPos (BS.takeWhile (/=')') $ BS.drop 3 l)]) of
-                                                      (_, Left _) -> Nothing
-                                                      (_, Right x) -> Just x
+  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case parseConditionConfVarFromClause l of
+                                                      Left err -> error (show err) -- TODO improve error reporting here
+                                                      Right x -> Just x
 
               | otherwise = Nothing
   parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
@@ -198,9 +203,11 @@ parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
 
 {-
 -- todo handlehttp
-readImportConfig :: ProjectConfigImport -> IO (ParseResult ProjectConfigSkeleton)
-readImportConfig x = parseProjectSkeleton x <$> BS.readFile x
 -- todo add extra files to file change monitor
+
+-- TODO handle importing legacy freeze as well
+-- TODO handle merge semantics for constraints specially
+
 -}
 
 ------------------------------------------------------------------
