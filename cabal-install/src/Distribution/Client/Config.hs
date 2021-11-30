@@ -883,8 +883,14 @@ commentSavedConfig = do
       removeRootKeys :: RemoteRepo -> RemoteRepo
       removeRootKeys r = r { remoteRepoRootKeys = [] }
 
--- | All config file fields.
+-- | The parser and pretty-printer for the 'SavedConfig' fields are mostly
+-- derived from the command-line options for the various commands (@cabal
+-- configure@, @cabal install@, etc.). When the format in the configuration
+-- file differs from the format in the command-line option, we define a
+-- separate 'FieldDescr' here.
 --
+-- Fields which are valid in both a 'ProjectConfig' and a 'SavedConfig' also
+-- need a separate 'FieldDescr' in 'legacyProjectConfigFieldDescrs'.
 configFieldDescriptions :: ConstraintSource -> [FieldDescr SavedConfig]
 configFieldDescriptions src =
 

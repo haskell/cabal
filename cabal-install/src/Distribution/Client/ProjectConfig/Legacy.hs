@@ -103,14 +103,8 @@ import Network.URI (URI (..))
 -- Representing the project config file in terms of legacy types
 --
 
--- | We already have parsers\/pretty-printers for almost all the fields in the
--- project config file, but they're in terms of the types used for the command
--- line flags for Setup.hs or cabal commands. We don't want to redefine them
--- all, at least not yet so for the moment we use the parsers at the old types
--- and use conversion functions.
---
--- Ultimately if\/when this project-based approach becomes the default then we
--- can redefine the parsers directly for the new types.
+-- | Used when parsing and pretty-printing 'ProjectConfig', as it was easier to
+-- write two way conversions than to implement a new parser and pretty-printer.
 --
 data LegacyProjectConfig = LegacyProjectConfig {
        legacyPackages          :: [String],
@@ -171,8 +165,8 @@ instance Semigroup LegacySharedConfig where
 -- line into a 'ProjectConfig' value that can combined with configuration from
 -- other sources.
 --
--- At the moment this uses the legacy command line flag types. See
--- 'LegacyProjectConfig' for an explanation.
+-- TODO: why is this in the Legacy module? There's nothing "legacy" about these
+-- "convertLegacy*" functions as far as I can tell.
 --
 commandLineFlagsToProjectConfig :: GlobalFlags
                                 -> NixStyleFlags a
@@ -272,8 +266,7 @@ convertLegacyGlobalConfig
 
 
 -- | Convert the project config from the legacy types to the 'ProjectConfig'
--- and associated types. See 'LegacyProjectConfig' for an explanation of the
--- approach.
+-- and associated types.
 --
 convertLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
 convertLegacyProjectConfig
@@ -875,6 +868,14 @@ showLegacyProjectConfig config =
     constraintSrc = ConstraintSourceProjectConfig "unused"
 
 
+-- | The parser and pretty-printer for the 'LegacyProjectConfig' (and thus
+-- 'ProjectConfig') fields are mostly derived from the command-line options for
+-- the various commands (@cabal configure@, @cabal install@, etc.). When the
+-- format in the configuration file differs from the format in the command-line
+-- option, we define a separate 'FieldDescr' here.
+--
+-- Fields which are valid in both a 'ProjectConfig' and a 'SavedConfig' also
+-- need a separate 'FieldDescr' in 'configFieldDescriptions'.
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
 
