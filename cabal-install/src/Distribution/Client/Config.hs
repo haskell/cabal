@@ -143,7 +143,7 @@ import qualified Data.Map as M
 import qualified Data.ByteString as BS
 
 --
--- * Configuration saved in the config file
+-- * Configuration saved in the @~/.cabal/config@ file
 --
 
 data SavedConfig = SavedConfig
