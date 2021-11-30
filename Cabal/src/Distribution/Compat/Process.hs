@@ -27,7 +27,7 @@ import           System.Process (waitForProcess)
 --
 -- Unfortunately the process job support is badly broken in @process@ releases
 -- prior to 1.6.9, so we disable it in these versions, despite the fact that
--- this means we may see sporatic build failures without jobs.
+-- this means we may see sporadic build failures without jobs.
 enableProcessJobs :: CreateProcess -> CreateProcess
 #ifdef MIN_VERSION_process
 #if MIN_VERSION_process(1,6,9)
