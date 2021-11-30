@@ -1,0 +1,4 @@
+synopsis: Fix v2-haddock results in "unexpected status"
+packages: cabal-install
+prs: #7843
+issues: #6679
