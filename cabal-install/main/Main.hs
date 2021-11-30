@@ -232,7 +232,7 @@ mainWorker args = do
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
       , regularCmd getCommand getAction
-      , hiddenCmd  unpackCommand unpackAction
+      , regularCmd unpackCommand unpackAction
       , regularCmd checkCommand checkAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction

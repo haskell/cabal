@@ -8,7 +8,7 @@ description {
 
 - Moves `cabal-install-solver` out to its own directory, and treats it as its own separate project. Addresses #6090, #7224, and #3781
 
-- Enable HPC coverage:
+- Enable HPC coverage
 
   - absorb `cabal-install-solver-dsl` module into the test modules, and
     incorporate it into its own test target.

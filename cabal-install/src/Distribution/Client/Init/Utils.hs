@@ -18,6 +18,8 @@ module Distribution.Client.Init.Utils
 , fixupDocFiles
 , mkStringyDep
 , getBaseDep
+, addLibDepToExe
+, addLibDepToTest
 ) where
 
 
@@ -39,6 +41,7 @@ import qualified Distribution.Package as P
 import qualified Distribution.Types.PackageName as PN
 import Distribution.Simple.PackageIndex (InstalledPackageIndex, moduleNameIndex)
 import Distribution.Simple.Setup (Flag(..))
+import Distribution.Utils.String (trim)
 import Distribution.Version
 import Distribution.Client.Init.Defaults
 import Distribution.Client.Init.Types
@@ -203,11 +206,6 @@ takeWhile' p = takeWhile p . trim
 dropWhile' :: (Char -> Bool) -> String -> String
 dropWhile' p = dropWhile p . trim
 
-trim :: String -> String
-trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
-  where
-    removeLeadingSpace  = dropWhile isSpace
-
 -- | Check whether a potential source file is located in one of the
 --   source directories.
 isSourceFile :: Maybe [FilePath] -> SourceFileEntry -> Bool
@@ -314,3 +312,18 @@ mkStringyDep = mkPackageNameDep . mkPackageName
 getBaseDep :: Interactive m => InstalledPackageIndex -> InitFlags -> m [Dependency]
 getBaseDep pkgIx flags = retrieveDependencies silent flags
   [(fromString "Prelude", fromString "Prelude")] pkgIx
+
+-- Add package name as dependency of test suite
+--
+addLibDepToTest :: PackageName -> Maybe TestTarget -> Maybe TestTarget
+addLibDepToTest _ Nothing = Nothing
+addLibDepToTest n (Just t) = Just $ t
+  { _testDependencies = _testDependencies t ++ [mkPackageNameDep n]
+  }
+
+-- Add package name as dependency of executable
+--
+addLibDepToExe :: PackageName -> ExeTarget -> ExeTarget
+addLibDepToExe n exe = exe
+  { _exeDependencies = _exeDependencies exe ++ [mkPackageNameDep n]
+  }

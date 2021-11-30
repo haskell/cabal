@@ -113,7 +113,6 @@ import qualified Distribution.Client.ProjectPlanning as ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.ProjectPlanOutput
-import           Distribution.Client.RebuildMonad ( runRebuild )
 
 import           Distribution.Client.TargetProblem
                    ( TargetProblem (..) )
@@ -763,26 +762,24 @@ filterTargetsKindWith p ts =
         , p (componentKind cname) ]
 
 selectBuildableTargets :: [AvailableTarget k] -> [k]
-selectBuildableTargets ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
+selectBuildableTargets = selectBuildableTargetsWith (const True)
+
+zipBuildableTargetsWith :: (TargetRequested -> Bool)
+                        -> [AvailableTarget k] -> [(k, AvailableTarget k)]
+zipBuildableTargetsWith p ts =
+    [ (k, t) | t@(AvailableTarget _ _ (TargetBuildable k req) _) <- ts, p req ]
 
 selectBuildableTargetsWith :: (TargetRequested -> Bool)
                           -> [AvailableTarget k] -> [k]
-selectBuildableTargetsWith p ts =
-    [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
+selectBuildableTargetsWith p = map fst . zipBuildableTargetsWith p
 
 selectBuildableTargets' :: [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargets' ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k _) _ <- ts ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ _) _) <- ts ]
+selectBuildableTargets' = selectBuildableTargetsWith' (const True)
 
 selectBuildableTargetsWith' :: (TargetRequested -> Bool)
                            -> [AvailableTarget k] -> ([k], [AvailableTarget ()])
-selectBuildableTargetsWith' p ts =
-    (,) [ k | AvailableTarget _ _ (TargetBuildable k req) _ <- ts, p req ]
-        [ forgetTargetDetail t
-        | t@(AvailableTarget _ _ (TargetBuildable _ req) _) <- ts, p req ]
+selectBuildableTargetsWith' p =
+  (fmap . map) forgetTargetDetail . unzip . zipBuildableTargetsWith p
 
 
 forgetTargetDetail :: AvailableTarget k -> AvailableTarget ()
@@ -1307,20 +1304,15 @@ data BuildFailurePresentation =
 establishDummyProjectBaseContext
   :: Verbosity
   -> ProjectConfig
+     -- ^ Project configuration including the global config if needed
   -> DistDirLayout
      -- ^ Where to put the dist directory
   -> [PackageSpecifier UnresolvedSourcePackage]
      -- ^ The packages to be included in the project
   -> CurrentCommand
   -> IO ProjectBaseContext
-establishDummyProjectBaseContext verbosity cliConfig distDirLayout localPackages currentCommand = do
+establishDummyProjectBaseContext verbosity projectConfig distDirLayout localPackages currentCommand = do
     cabalDir <- getCabalDir
-
-    globalConfig <- runRebuild ""
-                  $ readGlobalConfig verbosity
-                  $ projectConfigConfigFile
-                  $ projectConfigShared cliConfig
-    let projectConfig = globalConfig <> cliConfig
 
     let ProjectConfigBuildOnly {
           projectConfigLogsDir

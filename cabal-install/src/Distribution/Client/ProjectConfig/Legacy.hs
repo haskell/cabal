@@ -611,7 +611,6 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
@@ -631,7 +630,6 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       installBuildReports       = projectConfigBuildReports,
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir      = projectConfigSymlinkBinDir,
-      installOneShot            = projectConfigOneShot,
       installNumJobs            = projectConfigNumJobs,
       installKeepGoing          = projectConfigKeepGoing,
       installOfflineMode        = projectConfigOfflineMode
@@ -697,7 +695,6 @@ convertToLegacySharedConfig
       globalLocalNoIndexRepos = projectConfigLocalNoIndexRepos,
       globalActiveRepos       = projectConfigActiveRepos,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
       globalHttpTransport     = projectConfigHttpTransport,
       globalNix               = mempty,
@@ -753,7 +750,6 @@ convertToLegacySharedConfig
       installReportPlanningFailure = projectConfigReportPlanningFailure,
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
       installPerComponent      = projectConfigPerComponent,
-      installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
       installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
@@ -1139,7 +1135,7 @@ legacySharedConfigFieldDescrs constraintSrc = concat
       , "root-cmd", "symlink-bindir"
       , "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "one-shot", "jobs", "keep-going", "offline", "per-component"
+      , "jobs", "keep-going", "offline", "per-component"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "count-conflicts"
       , "fine-grained-conflicts" , "minimize-conflict-set", "independent-goals"

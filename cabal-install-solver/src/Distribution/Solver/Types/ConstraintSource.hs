@@ -16,9 +16,6 @@ data ConstraintSource =
   -- | Local cabal.project file
   | ConstraintSourceProjectConfig FilePath
 
-  -- | Sandbox config file, which is ./cabal.sandbox.config by default.
-  | ConstraintSourceSandboxConfig FilePath
-
   -- | User config file, which is ./cabal.config by default.
   | ConstraintSourceUserConfig FilePath
 
@@ -31,10 +28,6 @@ data ConstraintSource =
 
   -- | Internal requirement to use installed versions of packages like ghc-prim.
   | ConstraintSourceNonUpgradeablePackage
-
-  -- | Internal requirement to use the add-source version of a package when that
-  -- version is installed and the source is modified.
-  | ConstraintSourceModifiedAddSourceDep
 
   -- | Internal constraint used by @cabal freeze@.
   | ConstraintSourceFreeze
@@ -64,15 +57,11 @@ showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
 showConstraintSource (ConstraintSourceProjectConfig path) =
     "project config " ++ path
-showConstraintSource (ConstraintSourceSandboxConfig path) =
-    "sandbox config " ++ path
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"
 showConstraintSource ConstraintSourceNonUpgradeablePackage =
     "non-upgradeable package"
-showConstraintSource ConstraintSourceModifiedAddSourceDep =
-    "modified add-source dependency"
 showConstraintSource ConstraintSourceFreeze = "cabal freeze"
 showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"

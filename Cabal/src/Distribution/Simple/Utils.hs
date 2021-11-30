@@ -188,8 +188,9 @@ import Distribution.System
 import Distribution.Version
 import Distribution.Compat.Async
 import Distribution.Compat.CopyFile
-import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.FilePath as FilePath
+import Distribution.Compat.Internal.TempFile
+import Distribution.Compat.Lens (Lens', over)
 import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
@@ -328,13 +329,8 @@ verbatimUserError :: String -> IOError
 verbatimUserError = ioeSetVerbatim . userError
 
 dieWithLocation' :: Verbosity -> FilePath -> Maybe Int -> String -> IO a
-dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
-    ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++
+dieWithLocation' verbosity filename mb_lineno msg =
+    die' verbosity $
               filename ++ (case mb_lineno of
                             Just lineno -> ":" ++ show lineno
                             Nothing -> "") ++
@@ -342,20 +338,45 @@ dieWithLocation' verbosity filename mb_lineno msg = withFrozenCallStack $ do
 
 die' :: Verbosity -> String -> IO a
 die' verbosity msg = withFrozenCallStack $ do
-    ts <- getPOSIXTime
-    pname <- getProgName
     ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            . wrapTextVerbosity verbosity
-            $ pname ++ ": " ++ msg
+          =<< annotateErrorString verbosity
+          =<< pure . wrapTextVerbosity verbosity
+          =<< pure . addErrorPrefix
+          =<< prefixWithProgName msg
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
     -- TODO: should this have program name or not?
-    ts <- getPOSIXTime
     ioError . verbatimUserError
-            . withMetadata ts AlwaysMark VerboseTrace verbosity
-            $ msg
+          =<< annotateErrorString verbosity
+              (addErrorPrefix msg)
+
+-- | Prefixing a message to indicate that it is a fatal error,
+-- if the 'errorPrefix' is not already present.
+addErrorPrefix :: String -> String
+addErrorPrefix msg
+  | errorPrefix `isPrefixOf` msg = msg
+      -- Backpack prefixes its errors already with "Error:", see
+      -- 'Distribution.Utils.LogProgress.dieProgress'.
+      -- Taking it away there destroys the layout, so we rather
+      -- check here whether the prefix is already present.
+  | otherwise                    = unwords [errorPrefix, msg]
+
+-- | A prefix indicating that a message is a fatal error.
+errorPrefix :: String
+errorPrefix = "Error:"
+
+-- | Prefix an error string with program name from 'getProgName'
+prefixWithProgName :: String -> IO String
+prefixWithProgName msg = do
+    pname <- getProgName
+    return $ pname ++ ": " ++ msg
+
+-- | Annotate an error string with timestamp and 'withMetadata'.
+annotateErrorString :: Verbosity -> String -> IO String
+annotateErrorString verbosity msg = do
+    ts <- getPOSIXTime
+    return $ withMetadata ts AlwaysMark VerboseTrace verbosity msg
 
 -- | Given a block of IO code that may raise an exception, annotate
 -- it with the metadata from the current scope.  Use this as close
@@ -365,11 +386,16 @@ dieNoWrap verbosity msg = withFrozenCallStack $ do
 annotateIO :: Verbosity -> IO a -> IO a
 annotateIO verbosity act = do
     ts <- getPOSIXTime
-    modifyIOError (f ts) act
-  where
-    f ts ioe = ioeSetErrorString ioe
-             . withMetadata ts NeverMark VerboseTrace verbosity
-             $ ioeGetErrorString ioe
+    flip modifyIOError act $
+      ioeModifyErrorString $ withMetadata ts NeverMark VerboseTrace verbosity
+
+-- | A semantic editor for the error message inside an 'IOError'.
+ioeModifyErrorString :: (String -> String) -> IOError -> IOError
+ioeModifyErrorString = over ioeErrorString
+
+-- | A lens for the error message inside an 'IOError'.
+ioeErrorString :: Lens' IOError String
+ioeErrorString f ioe = ioeSetErrorString ioe <$> f (ioeGetErrorString ioe)
 
 
 {-# NOINLINE topHandlerWith #-}
@@ -415,7 +441,7 @@ topHandlerWith cont prog = do
                                l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in wrapText (pname ++ ": " ++ file ++ detail)
+          in wrapText $ addErrorPrefix $ pname ++ ": " ++ file ++ detail
         _ ->
           displaySomeException se ++ "\n"
 
@@ -1129,7 +1155,7 @@ findModuleFileEx verbosity searchPath extensions mod_name =
                              (ModuleName.toFilePath mod_name)
   where
     notFound = die' verbosity $
-      "Error: Could not find module: " ++ prettyShow mod_name
+      "Could not find module: " ++ prettyShow mod_name
       ++ " with any suffix: "          ++ show extensions
       ++ " in the search path: "       ++ show searchPath
 

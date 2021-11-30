@@ -114,7 +114,8 @@ import Data.Char (isLower)
 import qualified Data.Map as Map
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath, removeFile, renameFile, getDirectoryContents )
+         , canonicalizePath, removeFile, renameFile, getDirectoryContents
+         , makeRelativeToCurrentDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 ,isRelative )
@@ -523,6 +524,8 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       platform@(Platform _hostArch hostOS) = hostPlatform lbi
       has_code = not (componentIsIndefinite clbi)
 
+  relLibTargetDir <- makeRelativeToCurrentDirectory libTargetDir
+
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp platform
 
@@ -604,7 +607,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptLinkFrameworkDirs = toNubListR $
                                                 PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
-                                             [libTargetDir </> x | x <- cLikeObjs]
+                                             [relLibTargetDir </> x | x <- cLikeObjs]
                    }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = Internal.filterGhciFlags
@@ -659,7 +662,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     info verbosity "Building C++ Sources..."
     sequence_
       [ do let baseCxxOpts    = Internal.componentCxxGhcOptions verbosity implInfo
-                                lbi libBi clbi libTargetDir filename
+                                lbi libBi clbi relLibTargetDir filename
                vanillaCxxOpts = if isGhcDynamic
                                 then baseCxxOpts { ghcOptFPic = toFlag True }
                                 else baseCxxOpts
@@ -688,7 +691,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     info verbosity "Building C Sources..."
     sequence_
       [ do let baseCcOpts    = Internal.componentCcGhcOptions verbosity implInfo
-                               lbi libBi clbi libTargetDir filename
+                               lbi libBi clbi relLibTargetDir filename
                vanillaCcOpts = if isGhcDynamic
                                -- Dynamic GHC requires C sources to be built
                                -- with -fPIC for REPL to work. See #2207.
@@ -719,7 +722,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     info verbosity "Building Assembler Sources..."
     sequence_
       [ do let baseAsmOpts    = Internal.componentAsmGhcOptions verbosity implInfo
-                                lbi libBi clbi libTargetDir filename
+                                lbi libBi clbi relLibTargetDir filename
                vanillaAsmOpts = if isGhcDynamic
                                 -- Dynamic GHC requires objects to be built
                                 -- with -fPIC for REPL to work. See #2207.
@@ -750,7 +753,7 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
     info verbosity "Building C-- Sources..."
     sequence_
       [ do let baseCmmOpts    = Internal.componentCmmGhcOptions verbosity implInfo
-                                lbi libBi clbi libTargetDir filename
+                                lbi libBi clbi relLibTargetDir filename
                vanillaCmmOpts = if isGhcDynamic
                                 -- Dynamic GHC requires C sources to be built
                                 -- with -fPIC for REPL to work. See #2207.
@@ -791,14 +794,14 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
         cLikeSharedObjs      = map (`replaceExtension` ("dyn_" ++ objExtension))
                                cLikeSources
         compiler_id          = compilerId (compiler lbi)
-        vanillaLibFilePath   = libTargetDir </> mkLibName uid
-        profileLibFilePath   = libTargetDir </> mkProfLibName uid
-        sharedLibFilePath    = libTargetDir </>
+        vanillaLibFilePath   = relLibTargetDir </> mkLibName uid
+        profileLibFilePath   = relLibTargetDir </> mkProfLibName uid
+        sharedLibFilePath    = relLibTargetDir </>
                                mkSharedLibName (hostPlatform lbi) compiler_id uid
-        staticLibFilePath    = libTargetDir </>
+        staticLibFilePath    = relLibTargetDir </>
                                mkStaticLibName (hostPlatform lbi) compiler_id uid
-        ghciLibFilePath      = libTargetDir </> Internal.mkGHCiLibName uid
-        ghciProfLibFilePath  = libTargetDir </> Internal.mkGHCiProfLibName uid
+        ghciLibFilePath      = relLibTargetDir </> Internal.mkGHCiLibName uid
+        ghciProfLibFilePath  = relLibTargetDir </> Internal.mkGHCiProfLibName uid
         libInstallPath       = libdir $
                                absoluteComponentInstallDirs
                                pkg_descr lbi uid NoCopyDest
@@ -822,16 +825,16 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       , x <- allLibModules lib clbi ]
 
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
-                      libTargetDir objExtension True
+                      relLibTargetDir objExtension True
     hProfObjs <-
       if withProfLib lbi
               then Internal.getHaskellObjects implInfo lib lbi clbi
-                      libTargetDir ("p_" ++ objExtension) True
+                      relLibTargetDir ("p_" ++ objExtension) True
               else return []
     hSharedObjs <-
       if withSharedLib lbi
               then Internal.getHaskellObjects implInfo lib lbi clbi
-                      libTargetDir ("dyn_" ++ objExtension) False
+                      relLibTargetDir ("dyn_" ++ objExtension) False
               else return []
 
     unless (null hObjs && null cLikeObjs && null stubObjs) $ do
@@ -839,15 +842,15 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       let staticObjectFiles =
                  hObjs
-              ++ map (libTargetDir </>) cLikeObjs
+              ++ map (relLibTargetDir </>) cLikeObjs
               ++ stubObjs
           profObjectFiles =
                  hProfObjs
-              ++ map (libTargetDir </>) cLikeProfObjs
+              ++ map (relLibTargetDir </>) cLikeProfObjs
               ++ stubProfObjs
           dynamicObjectFiles =
                  hSharedObjs
-              ++ map (libTargetDir </>) cLikeSharedObjs
+              ++ map (relLibTargetDir </>) cLikeSharedObjs
               ++ stubSharedObjs
           -- After the relocation lib is created we invoke ghc -shared
           -- with the dependencies spelled out as -package arguments

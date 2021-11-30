@@ -102,6 +102,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
              , "install-plan"      J..= installPlanToJ elaboratedInstallPlan
              ]
   where
+    plat :: Platform
     plat@(Platform arch os) = pkgConfigPlatform elaboratedSharedConfig
 
     installPlanToJ :: ElaboratedInstallPlan -> [J.Value]

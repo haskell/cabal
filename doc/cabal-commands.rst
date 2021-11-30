@@ -298,7 +298,8 @@ symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
 .. warning::
 
   If not every package has an executable to install, use ``all:exes`` rather
-  than ``all`` as the target.
+  than ``all`` as the target. To overwrite an installation, use
+  ``--overwrite-policy=always`` as the default policy is ``never``.
 
 For example this command will build the latest ``cabal-install`` and symlink
 its ``cabal`` executable:

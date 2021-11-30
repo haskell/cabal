@@ -276,7 +276,16 @@ cabalGArgs global_args cmd args input = do
     -- overwritable
     when (cmd == "v1-freeze") requireHasSourceCopy
     let extra_args
-          | cmd `elem` ["v1-update", "outdated", "user-config", "man", "v1-freeze", "check"]
+          | cmd `elem`
+              [ "v1-update"
+              , "outdated"
+              , "user-config"
+              , "man"
+              , "v1-freeze"
+              , "check"
+              , "get", "unpack"
+              , "info"
+              ]
           = [ ]
 
           -- new-build commands are affected by testCabalProjectFile

@@ -161,6 +161,7 @@ globalCommand commands = CommandUI {
           , "info"
           , "user-config"
           , "get"
+          , "unpack"
           , "init"
           , "configure"
           , "build"
@@ -248,6 +249,7 @@ globalCommand commands = CommandUI {
         , par
         , startGroup "package"
         , addCmd "get"
+        , addCmd "unpack"
         , addCmd "init"
         , par
         , addCmd "configure"
@@ -376,7 +378,6 @@ globalCommand commands = CommandUI {
     -- arguments we don't want shown in the help
     -- the remote repo flags are not useful compared to the more general "active-repositories" flag.
     -- the global logs directory was only used in v1, while in v2 we have specific project config logs dirs
-    -- the world-file flag is long deprecated and unused
     -- default-user-config is support for a relatively obscure workflow for v1-freeze.
     argsNotShown :: [OptionField GlobalFlags]
     argsNotShown = [
@@ -403,11 +404,6 @@ globalCommand commands = CommandUI {
       ,option [] ["default-user-config"]
          "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
          globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
-         (reqArgFlag "FILE")
-
-      ,option [] ["world-file"]
-         "The location of the world file"
-         globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
 
       ]
@@ -658,7 +654,7 @@ configureExOptions _showOrParseArgs src =
       "the backup of the config file before any alterations"
       configBackup (\v flags -> flags { configBackup = v })
       (boolOpt [] [])
-  , option [] ["constraint"]
+  , option "c" ["constraint"]
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"
@@ -1313,17 +1309,8 @@ getCommand :: CommandUI GetFlags
 getCommand = CommandUI {
     commandName         = "get",
     commandSynopsis     = "Download/Extract a package's source code (repository).",
-    commandDescription  = Just $ \_ -> wrapText $
-          "Creates a local copy of a package's source code. By default it gets "
-       ++ "the source\ntarball and unpacks it in a local subdirectory. "
-       ++ "Alternatively, with -s it will\nget the code from the source "
-       ++ "repository specified by the package.\n",
-    commandNotes        = Just $ \pname ->
-          "Examples:\n"
-       ++ "  " ++ pname ++ " get hlint\n"
-       ++ "    Download the latest stable version of hlint;\n"
-       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
-       ++ "    Download the source repository (i.e. git clone from github).\n",
+    commandDescription  = Just $ \_ -> wrapText $ unlines descriptionOfGetCommand,
+    commandNotes        = Just $ \pname -> unlines $ notesOfGetCommand "get" pname,
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -1364,12 +1351,38 @@ getCommand = CommandUI {
        ]
   }
 
+-- | List of lines describing command @get@.
+descriptionOfGetCommand :: [String]
+descriptionOfGetCommand =
+  [ "Creates a local copy of a package's source code. By default it gets the source"
+  , "tarball and unpacks it in a local subdirectory. Alternatively, with -s it will"
+  , "get the code from the source repository specified by the package."
+  ]
+
+-- | Notes for the command @get@.
+notesOfGetCommand
+  :: String    -- ^ Either @"get"@ or @"unpack"@.
+  -> String    -- ^ E.g. @"cabal"@.
+  -> [String]  -- ^ List of lines.
+notesOfGetCommand cmd pname =
+  [ "Examples:"
+  , "  " ++ unwords [ pname, cmd, "hlint" ]
+  , "    Download the latest stable version of hlint;"
+  , "  " ++ unwords [ pname, cmd, "lens --source-repository=head" ]
+  , "    Download the source repository of lens (i.e. git clone from github)."
+  ]
+
 -- 'cabal unpack' is a deprecated alias for 'cabal get'.
 unpackCommand :: CommandUI GetFlags
-unpackCommand = getCommand {
-  commandName  = "unpack",
-  commandUsage = usagePackages "unpack"
+unpackCommand = getCommand
+  { commandName        = "unpack"
+  , commandSynopsis    = synopsis
+  , commandNotes       = Just $ \ pname -> unlines $
+      notesOfGetCommand "unpack" pname
+  , commandUsage       = usagePackages "unpack"
   }
+  where
+  synopsis = "Deprecated alias for 'get'."
 
 instance Monoid GetFlags where
   mempty = gmempty
@@ -1554,7 +1567,6 @@ data InstallFlags = InstallFlags {
     -- when removing v1 commands
     installSymlinkBinDir    :: Flag FilePath,
     installPerComponent     :: Flag Bool,
-    installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
     installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
@@ -1595,7 +1607,6 @@ defaultInstallFlags = InstallFlags {
     installReportPlanningFailure = Flag False,
     installSymlinkBinDir   = mempty,
     installPerComponent    = Flag True,
-    installOneShot         = Flag False,
     installNumJobs         = mempty,
     installKeepGoing       = Flag False,
     installRunTests        = mempty,
@@ -1890,11 +1901,6 @@ installOptions showOrParseArgs =
           installPerComponent (\v flags -> flags { installPerComponent = v })
           (boolOpt [] [])
 
-      , option [] ["one-shot"]
-          "Do not record the packages in the world file."
-          installOneShot (\v flags -> flags { installOneShot = v })
-          (yesNoOpt showOrParseArgs)
-
       , option [] ["run-tests"]
           "Run package test suites during installation."
           installRunTests (\v flags -> flags { installRunTests = v })
@@ -2018,17 +2024,14 @@ instance Semigroup UploadFlags where
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Create a new .cabal package file.",
+    commandSynopsis = "Create a new cabal package.",
     commandDescription = Just $ \_ -> wrapText $
-         "Create a .cabal, Setup.hs, and optionally a LICENSE file.\n"
-      ++ "\n"
-      ++ "Calling init with no arguments creates an executable, "
-      ++ "guessing as many options as possible. The interactive "
-      ++ "mode can be invoked by the -i/--interactive flag, which "
-      ++ "will try to guess as much as possible and prompt you for "
-      ++ "the rest. You can change init to always be interactive by "
-      ++ "setting the interactive flag in your configuration file. "
-      ++ "Command-line arguments are provided for scripting purposes.\n",
+         "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
+      ++ "\n"      
+      ++ "Calling init with no arguments runs interactive mode, "
+      ++ "which will try to guess as much as possible and prompt you for the rest.\n"
+      ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
+      ++ "which will let you specify the options via flags and will use the defaults for the rest.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
          "Usage: " ++ pname ++ " init [FLAGS]\n",

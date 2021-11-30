@@ -106,7 +106,7 @@ import Data.ByteString.Lazy          ( ByteString )
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), inits, stripPrefix, intersect, dropWhileEnd )
+    ( (\\), inits, stripPrefix, intersect)
 import qualified Data.Map as Map
 import System.Directory
     ( canonicalizePath, createDirectoryIfMissing, doesFileExist

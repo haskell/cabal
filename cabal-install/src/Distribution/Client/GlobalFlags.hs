@@ -65,7 +65,6 @@ data GlobalFlags = GlobalFlags
     , globalLocalNoIndexRepos :: NubList LocalRepo
     , globalActiveRepos       :: Flag ActiveRepos
     , globalLogsDir           :: Flag FilePath
-    , globalWorldFile         :: Flag FilePath
     , globalIgnoreExpiry      :: Flag Bool    -- ^ Ignore security expiry dates
     , globalHttpTransport     :: Flag String
     , globalNix               :: Flag Bool  -- ^ Integrate with Nix
@@ -84,7 +83,6 @@ defaultGlobalFlags  = GlobalFlags
     , globalLocalNoIndexRepos = mempty
     , globalActiveRepos       = mempty
     , globalLogsDir           = mempty
-    , globalWorldFile         = mempty
     , globalIgnoreExpiry      = Flag False
     , globalHttpTransport     = mempty
     , globalNix               = Flag False

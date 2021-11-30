@@ -4,9 +4,3 @@ packages: cabal-install/
 tests: False
 benchmarks: False
 optimization: True
-
-package Cabal
-  ghc-options: -fexpose-all-unfoldings -fspecialise-aggressively
-
-package parsec
-  ghc-options: -fexpose-all-unfoldings

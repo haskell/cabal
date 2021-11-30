@@ -405,7 +405,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
 
     errMissingPackageList repoRemote =
          "The package list for '" ++ unRepoName (remoteRepoName repoRemote)
-      ++ "' does not exist. Run 'cabal update' to download it." ++ show repoRemote
+      ++ "' does not exist. Run 'cabal update' to download it."
     errOutdatedPackageList repoRemote dt =
          "The package list for '" ++ unRepoName (remoteRepoName repoRemote)
       ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
