@@ -284,6 +284,7 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.Init.NonInteractive
       UnitTests.Distribution.Client.Init.Simple
       UnitTests.Distribution.Client.Init.Utils
+      UnitTests.Distribution.Client.Init.FileCreators
       UnitTests.Distribution.Client.Store
       UnitTests.Distribution.Client.Tar
       UnitTests.Distribution.Client.TreeDiffInstances
@@ -320,6 +321,7 @@ Test-Suite unit-tests
           time,
           zlib,
           tasty >= 1.2.3 && <1.5,
+          tasty-expected-failure,
           tasty-golden >=2.3.1.1 && <2.4,
           tasty-quickcheck,
           tasty-hunit >= 0.10,
