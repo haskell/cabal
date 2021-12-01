@@ -963,6 +963,19 @@ configFieldDescriptions src =
                caseWarning = PWarning $
                  "The '" ++ name
                  ++ "' field is case sensitive, use 'True' or 'False'.")
+       ,liftField configTests (\v flags -> flags { configTests = v }) $
+        let name = "tests" in
+        FieldDescr name
+          (\f -> case f of
+                   Flag False -> Disp.text "DisableAll"
+                   Flag True  -> Disp.text "EnableAll"
+                   _          -> Disp.empty)
+          (\line str _ -> case () of
+           _ |  str == "DisableAll" -> ParseOk [] (Flag False)
+             |  str == "False"      -> ParseOk [] (Flag False)
+             |  str == "EnableAll"  -> ParseOk [] (Flag True)
+             |  str == "True"       -> ParseOk [] (Flag True)
+             | otherwise       -> ParseFailed (NoParse name line))
        ]
 
   ++ toSavedConfig liftConfigExFlag
