@@ -321,7 +321,6 @@ Test-Suite unit-tests
           time,
           zlib,
           tasty >= 1.2.3 && <1.5,
-          tasty-expected-failure,
           tasty-golden >=2.3.1.1 && <2.4,
           tasty-quickcheck,
           tasty-hunit >= 0.10,
