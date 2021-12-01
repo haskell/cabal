@@ -1,0 +1,4 @@
+synopsis: Fix post-checkout-command crash when 0 exit status bug
+issues: #7641
+packages: cabal-install
+prs: #7847
