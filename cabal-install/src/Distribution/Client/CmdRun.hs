@@ -36,6 +36,8 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.GlobalFlags
          ( defaultGlobalFlags )
+import Distribution.Client.Config
+         ( getCabalDir )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Command
@@ -104,7 +106,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
 import qualified Text.Parsec as P
 import System.Directory
-         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
+         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, makeAbsolute )
 import System.FilePath
          ( (</>), isValid, isPathSeparator, takeExtension )
 
@@ -165,11 +167,11 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     let
       with =
         establishProjectBaseContext verbosity cliConfig OtherCommand
-      without globalConfig = do
-        distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) tmpDir
+      without dir globalConfig = do
+        distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) dir
         establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
 
-    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
+    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without tmpDir)
 
     let
       scriptOrError script err = do
@@ -177,9 +179,16 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
         let pol | takeExtension script == ".lhs" = LiterateHaskell
                 | otherwise                      = PlainHaskell
         if exists
-          then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tmpDir
+          then do
+            cacheDir <- getScriptCacheDirectory script
+            ctx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without cacheDir)
+            BS.readFile script >>= handleScriptCase verbosity pol ctx cacheDir
           else reportTargetSelectorProblems verbosity err
 
+    -- We pass the baseCtx made with tmpDir to readTargetSelectors and only create a ctx with cacheDir
+    -- if no target is found because we want global targets to have higher priority than scripts.
+    -- In case of a collision, `cabal run target` can be rewritten as `cabal run ./target`
+    -- to specify the script, but there is no alternate way to specify the global target.
     (baseCtx', targetSelectors) <-
       readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
         >>= \case
@@ -278,14 +287,14 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
         ++ exeName
         ++ ":\n"
         ++ unlines (fmap (\p -> " - in package " ++ prettyShow (elabUnitId p)) elabPkgs)
-    let exePath = binDirectoryFor (distDirLayout baseCtx)
+    let exePath = binDirectoryFor (distDirLayout baseCtx')
                                   (elaboratedShared buildCtx)
                                   pkg
                                   exeName
                </> exeName
     let args = drop 1 targetStrings
-        dryRun = buildSettingDryRun (buildSettings baseCtx)
-              || buildSettingOnlyDownload (buildSettings baseCtx)
+        dryRun = buildSettingDryRun (buildSettings baseCtx')
+              || buildSettingOnlyDownload (buildSettings baseCtx')
 
     if dryRun
        then notice verbosity "Running of executable suppressed by flag(s)"
@@ -306,6 +315,16 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+
+-- | Get the directory for caching a script build.
+--
+-- The only identity of a script is it's absolute path, so append that path
+-- to <cabal_dir>/script-builds/ to get the cache directory.
+getScriptCacheDirectory :: FilePath -> IO FilePath
+getScriptCacheDirectory script = do
+    scriptAbs <- dropWhile (\c -> c == '/' || c == '\\') <$> makeAbsolute script
+    cabalDir <- getCabalDir
+    return $ cabalDir </> "script-builds" </> scriptAbs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
 -- invoked as a script interpreter, i.e. via
