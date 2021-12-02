@@ -8,7 +8,8 @@
 module Distribution.Client.ScriptUtils (
     getScriptCacheDirectoryRoot, getScriptCacheDirectory,
     withTempTempDirectory,
-    getContextAndSelectorsWithScripts
+    getContextAndSelectorsWithScripts,
+    isLiterate, readScriptBlockFromScript
   ) where
 
 import Prelude ()
@@ -123,8 +124,7 @@ getContextAndSelectorsWithScripts flags@NixStyleFlags {..} targetStrings globalF
     let
       scriptOrError script err = do
         exists <- doesFileExist script
-        let pol | takeExtension script == ".lhs" = LiterateHaskell
-                | otherwise                      = PlainHaskell
+        let pol = isLiterate script
         if exists
           then do
             cacheDir <- getScriptCacheDirectory script
@@ -165,6 +165,14 @@ parseScriptBlock str =
 readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
+-- | Extract the first encountered script metadata block started end
+-- terminated by the bellow tokens or die.
+--
+-- * @{- cabal:@
+--
+-- * @-}@
+--
+-- Return the metadata and the contents of the file without the #! line.
 readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Executable, BS.ByteString)
 readScriptBlockFromScript verbosity pol str = do
     str' <- case extractScriptBlock pol str of
@@ -212,6 +220,12 @@ extractScriptBlock _pol str = goPre (BS.lines str)
 data PlainOrLiterate
     = PlainHaskell
     | LiterateHaskell
+
+-- | Test if a filepath is for a literate Haskell file.
+--
+isLiterate :: FilePath -> PlainOrLiterate
+isLiterate p | takeExtension p == ".lhs" = LiterateHaskell
+             | otherwise                 = PlainHaskell
 
 handleScriptCase
   :: Verbosity

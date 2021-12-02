@@ -46,6 +46,8 @@ import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
+import Distribution.Client.ScriptUtils
+         ( getScriptCacheDirectory, isLiterate, readScriptBlockFromScript )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
@@ -85,6 +87,8 @@ import Distribution.Types.PackageDescription
          ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
          ( fakePackageId )
+import Distribution.Types.Executable
+         ( Executable(..), emptyExecutable )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.Version
@@ -93,6 +97,8 @@ import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Utils.Generic
          ( safeHead )
+import Distribution.Utils.Path
+         ( unsafeMakeSymbolicPath )
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -102,14 +108,18 @@ import Language.Haskell.Extension
 import Distribution.CabalSpecVersion
          ( CabalSpecVersion (..) )
 
+import Control.Monad
+        ( (<=<) )
+import qualified Data.ByteString.Char8 as BS
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive )
+         ( getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive
+         , doesFileExist, canonicalizePath)
 import System.FilePath
-         ( (</>) )
+         ( (</>), joinPath, splitPath, pathSeparator, takeFileName )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -345,43 +355,68 @@ withProject cliConfig verbosity targetStrings = do
 withoutProject :: ProjectConfig -> Verbosity -> [String]
                -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
 withoutProject config verbosity extraArgs = do
-  unless (null extraArgs) $
-    die' verbosity $ "'repl' doesn't take any extra arguments when outside a project: " ++ unwords extraArgs
+  maybeScript <- case extraArgs of
+    []       -> return Nothing
+    [script] -> do
+      exists <- doesFileExist script
+      if exists
+      then return $ Just script
+      else die' verbosity $ "'repl' argument is not an script file: " ++ unwords extraArgs
+    _        -> die' verbosity $ "'repl' takes a single script argument: " ++ unwords extraArgs
 
-  globalTmp <- getTemporaryDirectory
-  tempDir <- createTempDirectory globalTmp "cabal-repl."
+
+  let
+    mkTmpDir = do
+      globalTmp <- getTemporaryDirectory
+      createTempDirectory globalTmp "cabal-repl."
+    readExec script =
+      fmap fst . readScriptBlockFromScript verbosity (isLiterate script) =<< BS.readFile script
+
+  dir <- maybe mkTmpDir (getScriptCacheDirectory . ("repl:" ++)) maybeScript
+  scriptExecutable <- maybe (return emptyExecutable) readExec maybeScript
+  -- For scripts, we want to use cwd in hs-source-dirs, but hs-source-dirs wants a relative path
+  backtocwd <- relativePathBackToCurrentDirectory dir
 
   -- We need to create a dummy package that lives in our dummy project.
   let
     sourcePackage = SourcePackage
       { srcpkgPackageId     = pkgId
       , srcpkgDescription   = genericPackageDescription
-      , srcpkgSource        = LocalUnpackedPackage tempDir
+      , srcpkgSource        = LocalUnpackedPackage dir
       , srcpkgDescrOverride = Nothing
       }
     genericPackageDescription = emptyGenericPackageDescription
       & L.packageDescription .~ packageDescription
-      & L.condLibrary        .~ Just (CondNode library [baseDep] [])
+      & ( if isNothing maybeScript
+          then L.condLibrary     .~ Just (CondNode library [baseDep] [])
+          else L.condExecutables .~ [("script", CondNode executable (targetBuildDepends eBuildInfo) [])] )
     packageDescription = emptyPackageDescription
       { package = pkgId
       , specVersion = CabalSpecV2_2
       , licenseRaw = Left SPDX.NONE
       }
-    library = emptyLibrary { libBuildInfo = buildInfo }
-    buildInfo = emptyBuildInfo
+    pkgId = fakePackageId
+
+    library = emptyLibrary { libBuildInfo = lBuildInfo }
+    lBuildInfo = emptyBuildInfo
       { targetBuildDepends = [baseDep]
       , defaultLanguage = Just Haskell2010
       }
     baseDep = Dependency "base" anyVersion mainLibSet
-    pkgId = fakePackageId
 
-  writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
+    executable = scriptExecutable
+      { modulePath = maybe "" takeFileName maybeScript
+      , buildInfo = eBuildInfo
+        { defaultLanguage =
+          case defaultLanguage eBuildInfo of
+            just@(Just _) -> just
+            Nothing       -> Just Haskell2010
+        , hsSourceDirs = [unsafeMakeSymbolicPath backtocwd]
+       }
+      }
+    eBuildInfo = buildInfo scriptExecutable
 
-  let ghciScriptPath = tempDir </> "setcwd.ghci"
-  cwd <- getCurrentDirectory
-  writeFile ghciScriptPath (":cd " ++ cwd)
-
-  distDirLayout <- establishDummyDistDirLayout verbosity config tempDir
+  distDirLayout <- establishDummyDistDirLayout verbosity config dir
   baseCtx <-
     establishDummyProjectBaseContext
       verbosity
@@ -390,11 +425,25 @@ withoutProject config verbosity extraArgs = do
       [SpecificSourcePackage sourcePackage]
       OtherCommand
 
+  writeGenericPackageDescription (dir </> "fake-package.cabal") genericPackageDescription
+  maybe (return ()) (writeFile (dir </> "scriptlocation") <=< canonicalizePath) maybeScript
+
+  let ghciScriptPath = dir </> "setcwd.ghci"
+  cwd <- getCurrentDirectory
+  writeFile ghciScriptPath (":cd " ++ cwd)
+
   let
     targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-    finalizer = handleDoesNotExist () (removeDirectoryRecursive tempDir)
+    finalizer | isNothing maybeScript = handleDoesNotExist () (removeDirectoryRecursive dir)
+              | otherwise             = return ()
 
   return (baseCtx, targetSelectors, finalizer, GlobalRepl ghciScriptPath)
+
+relativePathBackToCurrentDirectory :: FilePath -> IO FilePath
+relativePathBackToCurrentDirectory d = do
+  toRoot <- joinPath . map (const "..") . splitPath . dropWhile (== pathSeparator) <$> canonicalizePath d
+  cwd <- dropWhile (== pathSeparator) <$> getCurrentDirectory
+  return $ toRoot </> cwd
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
