@@ -240,15 +240,16 @@ There are a few main venues of communication:
 * For more organizational concerns, the [mailing
   list](http://www.haskell.org/mailman/listinfo/cabal-devel) is used.
 
-* Many developers idle on `#hackage` on `irc.freenode.net` ([archives](http://ircbrowse.net/browse/hackage)).  `#ghc` ([archives](http://ircbrowse.net/browse/ghc)) is also a decently good bet.
+* Many developers idle on `#hackage` on [irc.libera.net](https://libera.chat) ([archives](http://ircbrowse.net/browse/hackage)).  `#ghc` ([archives](http://ircbrowse.net/browse/ghc)) is also a decently good bet.
+  * You can join the channel using a web client, even anonymously: https://kiwiirc.com/nextclient/irc.libera.chat/?nick=Guest%7C?#hackage
 
 Releases
 --------
 
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
-Currently, @23Skidoo, @rthomas, @tibbe and @dcoutts have access to
-`haskell.org/cabal`, and @davean is the point of contact for getting
+Currently, [@emilypi](https://github.com/emilypi) and [@gbaz](https://github.com/gbaz) have access to
+`haskell.org/cabal`, and [@mikolaj](https://github.com/mikolaj) is the point of contact for getting
 permissions.
 
 API Documentation
