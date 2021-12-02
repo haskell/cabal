@@ -159,6 +159,7 @@ library
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.PackageEnvironment
         Distribution.Client.SavedFlags
+        Distribution.Client.ScriptUtils
         Distribution.Client.Security.DNS
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup

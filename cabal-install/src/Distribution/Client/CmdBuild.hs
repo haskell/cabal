@@ -32,6 +32,8 @@ import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
          ( wrapText, die' )
+import Distribution.Client.ScriptUtils
+         ( withTempTempDirectory, getContextAndSelectorsWithScripts )
 
 import qualified Data.Map as Map
 
@@ -95,7 +97,7 @@ defaultBuildFlags = BuildFlags
 -- "Distribution.Client.ProjectOrchestration"
 --
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
-buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings globalFlags = do
+buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings globalFlags = withTempTempDirectory $ \tmpDir -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
                                  <> buildOnlyConfigure buildFlags)
@@ -103,11 +105,7 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
             | onlyConfigure = TargetActionConfigure
             | otherwise = TargetActionBuild
 
-    baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
-
-    targetSelectors <-
-      either (reportTargetSelectorProblems verbosity) return
-      =<< readTargetSelectors (localPackages baseCtx) Nothing targetStrings
+    (baseCtx, targetSelectors) <- getContextAndSelectorsWithScripts flags targetStrings globalFlags tmpDir
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -141,8 +139,6 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
     runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags
-                  mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @bench@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
