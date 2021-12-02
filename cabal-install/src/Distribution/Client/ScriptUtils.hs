@@ -6,7 +6,7 @@
 -- | Utilities to help commands with scripts
 --
 module Distribution.Client.ScriptUtils (
-    getScriptCacheDirectory,
+    getScriptCacheDirectoryRoot, getScriptCacheDirectory,
     withTempTempDirectory,
     getContextAndSelectorsWithScripts
   ) where
@@ -65,15 +65,27 @@ import Distribution.Types.PackageName.Magic
          ( fakePackageId )
 import Language.Haskell.Extension
          ( Language(..) )
+import Distribution.Client.HashValue
+         ( hashValue, showHashValue )
 
 import Control.Exception
-        ( bracket )
+         ( bracket )
 import qualified Data.ByteString.Char8 as BS
+import Data.ByteString.Lazy ()
 import qualified Text.Parsec as P
 import System.Directory
-         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, makeAbsolute )
+         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, canonicalizePath )
 import System.FilePath
          ( (</>), takeExtension )
+
+
+-- | Get the directory where script builds are cached.
+--
+-- <cabal_dir>/script-builds
+getScriptCacheDirectoryRoot :: IO FilePath
+getScriptCacheDirectoryRoot = do
+    cabalDir <- getCabalDir
+    return $ cabalDir </> "script-builds"
 
 -- | Get the directory for caching a script build.
 --
@@ -81,9 +93,9 @@ import System.FilePath
 -- to <cabal_dir>/script-builds/ to get the cache directory.
 getScriptCacheDirectory :: FilePath -> IO FilePath
 getScriptCacheDirectory script = do
-    scriptAbs <- dropWhile (\c -> c == '/' || c == '\\') <$> makeAbsolute script
-    cabalDir <- getCabalDir
-    return $ cabalDir </> "script-builds" </> scriptAbs
+    cacheDir <- getScriptCacheDirectoryRoot
+    scriptHash <- showHashValue . hashValue . fromString <$> canonicalizePath script
+    return $ cacheDir </> scriptHash
 
 -- | Create a new temporary directory inside the directory for temporary files
 -- and delete it after use.
@@ -117,7 +129,7 @@ getContextAndSelectorsWithScripts flags@NixStyleFlags {..} targetStrings globalF
           then do
             cacheDir <- getScriptCacheDirectory script
             ctx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without cacheDir)
-            BS.readFile script >>= handleScriptCase verbosity pol ctx cacheDir
+            BS.readFile script >>= handleScriptCase verbosity pol ctx cacheDir script
           else reportTargetSelectorProblems verbosity err
 
     -- We pass the baseCtx made with tmpDir to readTargetSelectors and only create a ctx with cacheDir
@@ -206,9 +218,10 @@ handleScriptCase
   -> PlainOrLiterate
   -> ProjectBaseContext
   -> FilePath
+  -> FilePath
   -> BS.ByteString
   -> IO (ProjectBaseContext, [TargetSelector])
-handleScriptCase verbosity pol baseCtx dir scriptContents = do
+handleScriptCase verbosity pol baseCtx dir scriptPath scriptContents = do
   (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
 
   -- We need to create a dummy package that lives in our dummy project.
@@ -245,6 +258,7 @@ handleScriptCase verbosity pol baseCtx dir scriptContents = do
     pkgId = fakePackageId
 
   writeGenericPackageDescription (dir </> "fake-package.cabal") genericPackageDescription
+  writeFile (dir </> "scriptlocation") =<< canonicalizePath scriptPath
   BS.writeFile (dir </> mainName) contents'
 
   let
