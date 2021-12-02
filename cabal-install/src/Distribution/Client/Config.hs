@@ -965,17 +965,10 @@ configFieldDescriptions src =
                  ++ "' field is case sensitive, use 'True' or 'False'.")
        ,liftField configTests (\v flags -> flags { configTests = v }) $
         let name = "tests" in
-        FieldDescr name
-          (\f -> case f of
-                   Flag False -> Disp.text "DisableAll"
-                   Flag True  -> Disp.text "EnableAll"
-                   _          -> Disp.empty)
-          (\line str _ -> case () of
-           _ |  str == "DisableAll" -> ParseOk [] (Flag False)
-             |  str == "False"      -> ParseOk [] (Flag False)
-             |  str == "EnableAll"  -> ParseOk [] (Flag True)
-             |  str == "True"       -> ParseOk [] (Flag True)
-             | otherwise       -> ParseFailed (NoParse name line))
+        FieldDescr name prettyPrintEnableStanza (parseEnableStanza name)
+       ,liftField configBenchmarks (\v flags -> flags { configBenchmarks = v }) $
+        let name = "benchmarks" in
+        FieldDescr name prettyPrintEnableStanza (parseEnableStanza name)
        ]
 
   ++ toSavedConfig liftConfigExFlag
@@ -1046,6 +1039,17 @@ configFieldDescriptions src =
 
     toRelaxDeps True  = RelaxDepsAll
     toRelaxDeps False = mempty
+
+    prettyPrintEnableStanza NoFlag       = Disp.empty
+    prettyPrintEnableStanza (Flag False) = Disp.text "DisableAll"
+    prettyPrintEnableStanza (Flag True)  = Disp.text "EnableAll"
+
+    parseEnableStanza name line str _ = case () of
+      _ |  str == "DisableAll" -> ParseOk [] (Flag False)
+        |  str == "False"      -> ParseOk [] (Flag False)
+        |  str == "EnableAll"  -> ParseOk [] (Flag True)
+        |  str == "True"       -> ParseOk [] (Flag True)
+        | otherwise            -> ParseFailed (NoParse name line)
 
 
 -- TODO: next step, make the deprecated fields elicit a warning.
