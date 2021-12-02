@@ -5,9 +5,9 @@ main = cabalTest $ do
     -- possibilities, they are only the two extremes: build _all_ the tests,
     -- and build _none_ of the tests.
     --
-    -- The default, which does not currently correspond to a named option, is
-    -- to only build the tests for which a build plan can be found, and to
-    -- silently ignore the tests for which a build plan cannot be found.
+    -- The default, "--only-buildable-tests", is to only build the tests for
+    -- which a build plan can be found, and to silently ignore the tests for
+    -- which a build plan cannot be found.
     
     -- This project has two package; one with a buildable test, and one with an
     -- unbuildable test. If we request both tests to be built and run, then
@@ -20,4 +20,4 @@ main = cabalTest $ do
 
     -- If we request the buildable tests to be built and run, then "cabal test"
     -- should successfully build one test.
-    cabal "v2-test" ["all"]
+    cabal "v2-test" ["--only-buildable-tests", "all"]

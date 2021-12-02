@@ -700,7 +700,10 @@ configureOptions showOrParseArgs =
 
       ,multiOption "tests"
          configTests (\v flags -> flags { configTests = v })
-         [noArg (Flag True) []
+         [noArg NoFlag []
+                ["only-buildable-tests", "only-buildable-test"]
+                "Build the tests if a build plan can be found, don't build them otherwise. The decision is made independently for each package, not for each test suite."
+         ,noArg (Flag True) []
                 ["enable-tests", "enable-test"]
                 "Build all the test suites listed in the package description file."
          ,noArg (Flag False) []
@@ -726,7 +729,10 @@ configureOptions showOrParseArgs =
 
       ,multiOption "benchmarks"
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
-         [noArg (Flag True) []
+         [noArg NoFlag []
+                ["only-buildable-benchmarks", "only-buildable-benchmark"]
+                "Build the benchmarks if a build plan can be found, don't build them otherwise. The decision is made independently for each package, not for each benchmark."
+         ,noArg (Flag True) []
                 ["enable-benchmarks", "enable-benchmark"]
                 "Build all the benchmarks listed in the package description file."
          ,noArg (Flag False) []

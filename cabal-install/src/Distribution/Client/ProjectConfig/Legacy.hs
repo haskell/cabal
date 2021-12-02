@@ -1263,13 +1263,14 @@ legacyPackageConfigFieldDescrs =
                     | otherwise = "test-" ++ name
 
     prettyPrintEnableStanza v = case v of
-      NoFlag     -> mempty
+      NoFlag     -> Disp.text "OnlyBuildable"
       Flag True  -> Disp.text "EnableAll"
       Flag False -> Disp.text "DisableAll"
 
     parseEnableStanza
-        = (Flag True  <$ (Parse.string "EnableAll"  <|> Parse.string "True"))
-      <|> (Flag False <$ (Parse.string "DisableAll" <|> Parse.string "False"))
+        = (NoFlag     <$ Parse.string "OnlyBuildable")
+      <|> (Flag True  <$ (Parse.string "EnableAll"     <|> Parse.string "True"))
+      <|> (Flag False <$ (Parse.string "DisableAll"    <|> Parse.string "False"))
 
 
 legacyPackageConfigFGSectionDescrs
