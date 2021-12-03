@@ -28,6 +28,9 @@ import           System.Win32.Info.Version (dwMajorVersion, dwMinorVersion, getV
 -------------------------------------------------------------------------------
 
 #if defined(mingw32_HOST_OS) && MIN_VERSION_process(1,6,9)
+-- This exception, needed to support Windows 7, could be removed when
+-- the lowest GHC version cabal supports is a GHC that doesn’t support
+-- Windows 7 any more.
 {-# NOINLINE isWindows8OrLater #-}
 isWindows8OrLater :: Bool
 isWindows8OrLater = unsafePerformIO $ do
