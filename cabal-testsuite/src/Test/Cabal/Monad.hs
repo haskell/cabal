@@ -35,6 +35,7 @@ module Test.Cabal.Monad (
     testSourceCopyDir,
     testCabalDir,
     testUserCabalConfigFile,
+    FileDescriptor(..),
     testActualFile,
     -- * Skipping tests
     skip,
@@ -351,23 +352,29 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
 
     check_expect accept = do
         env <- getTestEnv
-        actual_raw <- liftIO $ readFileOrEmpty (testActualFile env)
-        expect <- liftIO $ readFileOrEmpty (testExpectFile env)
         norm_env <- mkNormalizerEnv
-        let actual = normalizeOutput norm_env actual_raw
-        when (words actual /= words expect) $ do
-            -- First try whitespace insensitive diff
-            let actual_fp = testNormalizedActualFile env
-                expect_fp = testNormalizedExpectFile env
-            liftIO $ writeFile actual_fp actual
-            liftIO $ writeFile expect_fp expect
-            liftIO $ putStrLn "Actual output differs from expected:"
-            b <- diff ["-uw"] expect_fp actual_fp
-            unless b . void $ diff ["-u"] expect_fp actual_fp
-            if accept
-                then do liftIO $ putStrLn "Accepting new output."
-                        liftIO $ writeFileNoCR (testExpectFile env) actual
-                else liftIO $ exitWith (ExitFailure 1)
+        [Out, Stdout, Stderr] `forM_` \fd -> do
+            exists <- liftIO $ doesFileExist $ testFile NotNormalized Expect fd env
+            when exists $ do
+              actual <- normalizeOutput norm_env <$> liftIO (readFileOrEmpty (testFile NotNormalized Actual fd env))
+              expect <- liftIO $ readFileOrEmpty (testFile NotNormalized Expect fd env)
+              when (words actual /= words expect) $ do
+                -- First try whitespace insensitive diff
+                let
+                  actualFile = testFile Normalized Actual fd env
+                  expectFile = testFile Normalized Expect fd env
+                liftIO $ do
+                  writeFile expectFile  actual
+                  writeFile actualFile expect
+                  putStrLn "Actual output differs from expected:"
+                b <- diff ["-uw"] expectFile actualFile
+                unless b . void $ diff ["-u"] expectFile actualFile
+                liftIO $
+                  if accept
+                  then do
+                    putStrLn "Accepting new output."
+                    writeFileNoCR (testFile NotNormalized Expect Stdout env) actual
+                  else exitWith (ExitFailure 1)
 
 readFileOrEmpty :: FilePath -> IO String
 readFileOrEmpty f = readFile f `E.catch` \e ->
@@ -596,18 +603,23 @@ testCabalDir env = testHomeDir env </> ".cabal"
 testUserCabalConfigFile :: TestEnv -> FilePath
 testUserCabalConfigFile env = testCabalDir env </> "config"
 
--- | The file where the expected output of the test lives
-testExpectFile :: TestEnv -> FilePath
-testExpectFile env = testSourceDir env </> testName env <.> "out"
+data Expected = Expect | Actual deriving (Show, Eq, Ord, Enum, Read, Bounded)
+data Normalized = Normalized | NotNormalized deriving (Show, Eq, Ord, Enum, Read, Bounded)
+data FileDescriptor = Out | Stdout | Stderr deriving (Show, Eq, Ord, Enum, Read, Bounded)
 
--- | Where we store the actual output
-testActualFile :: TestEnv -> FilePath
-testActualFile env = testWorkDir env </> testName env <.> "comp.out"
+testFile :: Normalized -> Expected -> FileDescriptor -> TestEnv -> FilePath
+testFile n e f = \env -> sourceDir env </> testName env <.> suffix
+  where
+  suffix
+    =   case e of { Expect -> "" ; Actual -> "comp" }
+    <.> case f of { Out -> "out" ; Stdout -> "stdout" ; Stderr -> "stderr" }
+    <.> case n of { Normalized -> "normalized" ; NotNormalized -> "" }
+  sourceDir env = case (e, n) of
+    (_, Normalized) -> testWorkDir env
+    (Actual, _) -> testWorkDir env
+    _ -> testSourceDir env
+{-# INLINE testFile #-}
 
--- | Where we will write the normalized actual file (for diffing)
-testNormalizedActualFile :: TestEnv -> FilePath
-testNormalizedActualFile env = testActualFile env <.> "normalized"
-
--- | Where we will write the normalized expected file (for diffing)
-testNormalizedExpectFile :: TestEnv -> FilePath
-testNormalizedExpectFile env = testWorkDir env </> testName env <.> "out.normalized"
+testActualFile :: FileDescriptor -> TestEnv -> FilePath
+testActualFile fd env = testFile NotNormalized Actual fd env
+{-# INLINE testActualFile #-}

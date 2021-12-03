@@ -15,12 +15,18 @@ import System.IO
 import System.Exit
 import System.Directory
 import System.FilePath
+import Data.Foldable (traverse_)
 
 -- | The result of invoking the command line.
 data Result = Result
     { resultExitCode    :: ExitCode
     , resultCommand     :: String
-    , resultOutput      :: String
+    -- | Output sent to any file descriptor.
+    , resultOut         :: String
+    -- | Output sent to stdout.
+    , resultStdout      :: String
+    -- | Output sent to stderr.
+    , resultStderr      :: String
     } deriving Show
 
 -- | Run a command, streaming its output to stdout, and return a 'Result'
@@ -46,22 +52,23 @@ run _verbosity mb_cwd env_overrides path0 args input = do
 
     mb_env <- getEffectiveEnvironment env_overrides
     putStrLn $ "+ " ++ showCommandForUser path args
-    (readh, writeh) <- Compat.createPipe
-    hSetBuffering readh LineBuffering
-    hSetBuffering writeh LineBuffering
-    let drain = do
-            r <- hGetContents readh
-            putStr r -- forces the output
-            hClose readh
+    (readstdout, writestdout) <- Compat.createPipe
+    (readstderr, writestderr) <- Compat.createPipe
+    (readall, writeall) <- Compat.createPipe
+    traverse_ (`hSetBuffering` LineBuffering) [ stdout, readstdout, writestdout, readstderr, writestderr, readall, writeall ]
+    let mkDrain h = do
+            r <- hGetContents' h
+            hPutStr writeall r
             return r
-    withAsync drain $ \sync -> do
+    withAsync (mkDrain readstdout) $ \syncstdout -> do
+    withAsync (mkDrain readstderr) $ \syncstderr -> do
 
     let prc = (proc path args)
           { cwd = mb_cwd
           , env = mb_env
           , std_in = case input of { Just _ -> CreatePipe; Nothing -> Inherit }
-          , std_out = UseHandle writeh
-          , std_err = UseHandle writeh
+          , std_out = UseHandle writestdout
+          , std_err = UseHandle writestderr
           }
     (stdin_h, _, _, procHandle) <- createProcess prc
 
@@ -74,10 +81,23 @@ run _verbosity mb_cwd env_overrides path0 args input = do
 
     -- wait for the program to terminate
     exitcode <- waitForProcess procHandle
-    out <- wait sync
+    rStdout <- wait syncstdout
+    rStderr <- wait syncstderr
+    hClose writeall
+
+    rAll <- hGetContents' readall
 
     return Result {
             resultExitCode = exitcode,
             resultCommand = showCommandForUser path args,
-            resultOutput = out
+            resultOut = rAll,
+            resultStdout = rStdout,
+            resultStderr = rStderr
         }
+
+-- `hGetContents'` is in since base-4.15.0.0 -- which we don't have.
+hGetContents' :: Handle -> IO String
+hGetContents' h = do
+  v <- hGetContents h
+  length v `seq` hClose h
+  pure v

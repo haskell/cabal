@@ -33,7 +33,14 @@ recordBuildInfo pkgName cname = do
   recordMode RecordAll $ do
     recordHeader ["show-build-info", prettyShow pkgName, prettyShow cname]
     buildInfo <- liftIO $ readFile fp
-    recordLog $ Result ExitSuccess "build --enable-build-info" buildInfo
+    recordLog $ Result
+      { resultExitCode = ExitSuccess
+      , resultCommand = "build --enable-build-info"
+      -- TODO: Consider if these three fields are instantiated correctly.
+      , resultOut = buildInfo
+      , resultStdout = buildInfo
+      , resultStderr = mempty
+      }
 
 -- | Decode the given filepath into a 'BuildInfo'.
 --

@@ -563,14 +563,17 @@ withRepo repo_dir m = do
 requireSuccess :: Result -> TestM Result
 requireSuccess r@Result { resultCommand = cmd
                         , resultExitCode = exitCode
-                        , resultOutput = output } = withFrozenCallStack $ do
+                        , resultStdout
+                        , resultStderr } = withFrozenCallStack $ do
     env <- getTestEnv
     when (exitCode /= ExitSuccess && not (testShouldFail env)) $
         assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
-        "Output:\n" ++ output ++ "\n"
+        "Stdout:\n" ++ resultStdout ++ "\n" ++
+        "Stderr:\n" ++ resultStderr ++ "\n"
     when (exitCode == ExitSuccess && testShouldFail env) $
         assertFailure $ "Command " ++ cmd ++ " succeeded.\n" ++
-        "Output:\n" ++ output ++ "\n"
+        "Stdout:\n" ++ resultStdout ++ "\n" ++
+        "Stderr:\n" ++ resultStderr ++ "\n"
     return r
 
 initWorkDir :: TestM ()
@@ -595,21 +598,30 @@ recordHeader args = do
             initWorkDir
             liftIO $ putStr str_header
             liftIO $ C.appendFile (testWorkDir env </> "test.log") header
-            liftIO $ C.appendFile (testActualFile env) header
+            liftIO $ C.appendFile (testActualFile Out env) header
 
 recordLog :: Result -> TestM ()
-recordLog res = do
+recordLog Result{resultOut, resultStdout, resultStderr, resultCommand} = do
     env <- getTestEnv
     let mode = testRecordMode env
     initWorkDir
     liftIO $ C.appendFile (testWorkDir env </> "test.log")
-                         (C.pack $ "+ " ++ resultCommand res ++ "\n"
-                            ++ resultOutput res ++ "\n\n")
-    liftIO . C.appendFile (testActualFile env) . C.pack . testRecordNormalizer env $
-        case mode of
-            RecordAll    -> unlines (lines (resultOutput res))
-            RecordMarked -> getMarkedOutput (resultOutput res)
+                         (C.pack $ "+ " ++ resultCommand ++ "\n"
+                            ++ "OUT\n" <> resultOut ++ "\n"
+                            ++ "STDOUT\n" <> resultStdout ++ "\n"
+                            ++ "STDERR\n" <> resultStderr ++ "\n"
+                            ++ "\n")
+    let report f txt
+          = liftIO
+          . C.appendFile f
+          . C.pack
+          . testRecordNormalizer env $ case mode of
+            RecordAll    -> unlines (lines txt)
+            RecordMarked -> getMarkedOutput txt
             DoNotRecord  -> ""
+    report (testActualFile Out env) resultOut
+    report (testActualFile Stdout env) resultStdout
+    report (testActualFile Stderr env) resultStderr
 
 getMarkedOutput :: String -> String -- trailing newline
 getMarkedOutput out = unlines (go (lines out) False)
@@ -669,7 +681,7 @@ shouldNotExist path =
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
 assertRegex msg regex r =
     withFrozenCallStack $
-    let out = resultOutput r
+    let out = resultStdout r
     in assertBool (msg ++ ",\nactual output:\n" ++ out)
        (out =~ regex)
 
@@ -695,14 +707,14 @@ assertOutputContains needle result =
     withFrozenCallStack $
     unless (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ " expected: " ++ needle
-  where output = resultOutput result
+  where output = resultStdout result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
 assertOutputDoesNotContain needle result =
     withFrozenCallStack $
     when (needle `isInfixOf` (concatOutput output)) $
     assertFailure $ "unexpected: " ++ needle
-  where output = resultOutput result
+  where output = resultStdout result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -897,7 +909,7 @@ withSourceCopy m = do
     let cwd  = testCurrentDir env
         dest = testSourceCopyDir env
     r <- git' "ls-files" ["--cached", "--modified"]
-    forM_ (lines (resultOutput r)) $ \f -> do
+    forM_ (lines (resultStdout r)) $ \f -> do
         unless (isTestFile f) $ do
             liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
             liftIO $ copyFile (cwd </> f) (dest </> f)
@@ -923,7 +935,7 @@ getIPID :: String -> TestM String
 getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
     -- Don't choke on warnings from ghc-pkg
-    case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
+    case mapMaybe (stripPrefix "id: ") (lines (resultStdout r)) of
         -- ~/.cabal/store may contain multiple versions of single package
         -- we pick first one. It should work
         (x:_) -> return (takeWhile (not . Char.isSpace) x)

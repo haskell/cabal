@@ -1,0 +1,3 @@
+synopsis: Test where Cabal writes output to
+packages: Cabal
+issues: #7790
