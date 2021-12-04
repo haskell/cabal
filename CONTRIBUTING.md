@@ -246,7 +246,7 @@ Releases
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
 Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fgaz) and [@Mikolaj](https://github.com/Mikolaj) have access to
-`haskell.org/cabal`, and [@mikolaj](https://github.com/mikolaj) is the point of contact for getting
+`haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
 API Documentation
