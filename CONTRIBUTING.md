@@ -237,7 +237,7 @@ There are a few main venues of communication:
   list](http://www.haskell.org/mailman/listinfo/cabal-devel) is used.
 
 * Many developers idle on `#hackage` on [`irc.libera.chat`](https://libera.chat). The `#ghc` channel is also a decently good bet.
-  * You can join the channel using a web client, even anonymously: https://kiwiirc.com/nextclient/irc.libera.chat/?nick=Guest%7C?#hackage
+  * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
   * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
 
 Releases
