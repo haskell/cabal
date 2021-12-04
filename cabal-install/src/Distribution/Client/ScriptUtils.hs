@@ -24,11 +24,13 @@ import Distribution.Client.Config
          ( getCabalDir )
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
+import Distribution.Simple.Setup
+         ( Flag(..) )
 import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( warn, die'
+         ( warn, die', createDirectoryIfMissingVerbose
          , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
@@ -128,7 +130,10 @@ getContextAndSelectorsWithScripts flags@NixStyleFlags {..} targetStrings globalF
         if exists
           then do
             cacheDir <- getScriptCacheDirectory script
-            ctx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without cacheDir)
+            -- In the script case we always want a dummy context
+            ctx <- withProjectOrGlobalConfig verbosity (Flag True)  globalConfigFlag with (without cacheDir)
+            -- if --buildDir was passed, establishing the dummy context will create cacheDir
+            createDirectoryIfMissingVerbose verbosity True cacheDir
             BS.readFile script >>= handleScriptCase verbosity pol ctx cacheDir script
           else reportTargetSelectorProblems verbosity err
 
