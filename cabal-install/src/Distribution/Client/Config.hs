@@ -1040,17 +1040,17 @@ configFieldDescriptions src =
     toRelaxDeps True  = RelaxDepsAll
     toRelaxDeps False = mempty
 
-    prettyPrintEnableStanza NoFlag       = Disp.text "OnlyBuildable"
+    prettyPrintEnableStanza NoFlag       = Disp.text "EnableWhenPossible"
     prettyPrintEnableStanza (Flag False) = Disp.text "DisableAll"
     prettyPrintEnableStanza (Flag True)  = Disp.text "EnableAll"
 
     parseEnableStanza name line str _ = case () of
-      _ |  str == "OnlyBuildable" -> ParseOk [] NoFlag
-        |  str == "DisableAll"    -> ParseOk [] (Flag False)
-        |  str == "False"         -> ParseOk [] (Flag False)
-        |  str == "EnableAll"     -> ParseOk [] (Flag True)
-        |  str == "True"          -> ParseOk [] (Flag True)
-        | otherwise               -> ParseFailed (NoParse name line)
+      _ |  str == "EnableWhenPossible" -> ParseOk [] NoFlag
+        |  str == "DisableAll"         -> ParseOk [] (Flag False)
+        |  str == "False"              -> ParseOk [] (Flag False)
+        |  str == "EnableAll"          -> ParseOk [] (Flag True)
+        |  str == "True"               -> ParseOk [] (Flag True)
+        | otherwise                    -> ParseFailed (NoParse name line)
 
 
 -- TODO: next step, make the deprecated fields elicit a warning.
