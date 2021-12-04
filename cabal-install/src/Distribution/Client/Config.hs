@@ -121,6 +121,7 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Types.EnableComponentType
 
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
@@ -1040,16 +1041,17 @@ configFieldDescriptions src =
     toRelaxDeps True  = RelaxDepsAll
     toRelaxDeps False = mempty
 
-    prettyPrintEnableStanza NoFlag       = Disp.text "EnableWhenPossible"
-    prettyPrintEnableStanza (Flag False) = Disp.text "DisableAll"
-    prettyPrintEnableStanza (Flag True)  = Disp.text "EnableAll"
+    prettyPrintEnableStanza NoFlag                    = Disp.text "EnableWhenPossible"
+    prettyPrintEnableStanza (Flag EnableWhenPossible) = Disp.text "EnableWhenPossible"
+    prettyPrintEnableStanza (Flag DisableAll)         = Disp.text "DisableAll"
+    prettyPrintEnableStanza (Flag EnableAll)          = Disp.text "EnableAll"
 
     parseEnableStanza name line str _ = case () of
-      _ |  str == "EnableWhenPossible" -> ParseOk [] NoFlag
-        |  str == "DisableAll"         -> ParseOk [] (Flag False)
-        |  str == "False"              -> ParseOk [] (Flag False)
-        |  str == "EnableAll"          -> ParseOk [] (Flag True)
-        |  str == "True"               -> ParseOk [] (Flag True)
+      _ |  str == "EnableWhenPossible" -> ParseOk [] (Flag EnableWhenPossible)
+        |  str == "DisableAll"         -> ParseOk [] (Flag DisableAll)
+        |  str == "False"              -> ParseOk [] (Flag DisableAll)
+        |  str == "EnableAll"          -> ParseOk [] (Flag EnableAll)
+        |  str == "True"               -> ParseOk [] (Flag EnableAll)
         | otherwise                    -> ParseFailed (NoParse name line)
 
 

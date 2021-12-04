@@ -20,6 +20,8 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo              (SourceRepositoryPackage)
 
+import Distribution.Types.EnableComponentType
+
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()
 import Network.URI
@@ -39,6 +41,7 @@ instance ToExpr ClientInstallFlags
 instance ToExpr CombineStrategy
 instance ToExpr ConstraintSource
 instance ToExpr CountConflicts
+instance ToExpr EnableComponentType
 instance ToExpr FineGrainedConflicts
 instance ToExpr IndependentGoals
 instance ToExpr InstallMethod

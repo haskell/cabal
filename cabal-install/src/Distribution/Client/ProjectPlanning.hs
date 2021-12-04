@@ -120,6 +120,7 @@ import           Distribution.Types.AnnotatedId
 import           Distribution.Types.ComponentName
 import           Distribution.Types.DumpBuildInfo
                    ( DumpBuildInfo (..) )
+import           Distribution.Types.EnableComponentType
 import           Distribution.Types.LibraryName
 import           Distribution.Types.GivenComponent
   (GivenComponent(..))
@@ -619,9 +620,9 @@ rebuildInstallPlan verbosity
                   isLocal = isJust (shouldBeLocal pkg)
                   stanzas
                     | isLocal = Map.fromList $
-                      [ (TestStanzas, enabled)
+                      [ (TestStanzas, enabled == EnableAll)
                       | enabled <- flagToList testsEnabled ] ++
-                      [ (BenchStanzas , enabled)
+                      [ (BenchStanzas , enabled == EnableAll)
                       | enabled <- flagToList benchmarksEnabled ]
                     | otherwise = Map.fromList [(TestStanzas, False), (BenchStanzas, False) ]
             ]
@@ -1818,8 +1819,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
-            tests      = perPkgOptionMaybe pkgid packageConfigTests
-            benchmarks = perPkgOptionMaybe pkgid packageConfigBenchmarks
+            tests      = fmap (== EnableAll) $ perPkgOptionMaybe pkgid packageConfigTests
+            benchmarks = fmap (== EnableAll) $ perPkgOptionMaybe pkgid packageConfigBenchmarks
 
         -- This is a placeholder which will get updated by 'pruneInstallPlanPass1'
         -- and 'pruneInstallPlanPass2'.  We can't populate it here
@@ -3558,10 +3559,12 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configPackageDBs          = Nothing : map Just elabBuildPackageDBStack
 
     configTests               = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (TestStanzas  `optStanzaSetMember` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (if TestStanzas  `optStanzaSetMember` pkgStanzasEnabled pkg
+                                                               then EnableAll else DisableAll)
                                     ElabComponent _ -> mempty
     configBenchmarks          = case elabPkgOrComp of
-                                    ElabPackage pkg -> toFlag (BenchStanzas `optStanzaSetMember` pkgStanzasEnabled pkg)
+                                    ElabPackage pkg -> toFlag (if BenchStanzas `optStanzaSetMember` pkgStanzasEnabled pkg
+                                                               then EnableAll else DisableAll)
                                     ElabComponent _ -> mempty
 
     configExactConfiguration  = toFlag True

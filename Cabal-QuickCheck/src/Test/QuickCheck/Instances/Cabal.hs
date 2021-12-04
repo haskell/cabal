@@ -29,6 +29,7 @@ import Distribution.Simple.Setup                   (HaddockTarget (..), TestShow
 import Distribution.SPDX
 import Distribution.System
 import Distribution.Types.Dependency
+import Distribution.Types.EnableComponentType
 import Distribution.Types.Flag                     (FlagAssignment, FlagName, mkFlagAssignment, mkFlagName, unFlagAssignment)
 import Distribution.Types.IncludeRenaming
 import Distribution.Types.LibraryName
@@ -491,6 +492,13 @@ instance Arbitrary PackageDB where
 -------------------------------------------------------------------------------
 
 instance Arbitrary DumpBuildInfo where
+    arbitrary = arbitraryBoundedEnum
+
+-------------------------------------------------------------------------------
+-- EnableComponentType
+-------------------------------------------------------------------------------
+
+instance Arbitrary EnableComponentType where
     arbitrary = arbitraryBoundedEnum
 
 -------------------------------------------------------------------------------

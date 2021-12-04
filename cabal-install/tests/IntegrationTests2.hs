@@ -36,6 +36,8 @@ import Distribution.Solver.Types.ConstraintSource
          ( ConstraintSource(ConstraintSourceUnknown) )
 import Distribution.Solver.Types.PackageConstraint
          ( PackageProperty(PackagePropertySource) )
+import Distribution.Types.EnableComponentType
+         ( EnableComponentType(..) )
 
 import qualified Distribution.Client.CmdBuild   as CmdBuild
 import qualified Distribution.Client.CmdRepl    as CmdRepl
@@ -638,7 +640,7 @@ testTargetProblemsCommon config0 = do
     testdir = "targets/complex"
     config  = config0 {
       projectConfigLocalPackages = (projectConfigLocalPackages config0) {
-        packageConfigBenchmarks = toFlag False
+        packageConfigBenchmarks = toFlag DisableAll
       }
     , projectConfigShared = (projectConfigShared config0) {
         projectConfigConstraints =
@@ -664,7 +666,7 @@ testTargetProblemsBuild config reportSubCase = do
       "targets/all-disabled"
       config {
         projectConfigLocalPackages = (projectConfigLocalPackages config) {
-          packageConfigBenchmarks = toFlag False
+          packageConfigBenchmarks = toFlag DisableAll
         }
       }
       CmdBuild.selectPackageTargets
@@ -687,8 +689,8 @@ testTargetProblemsBuild config reportSubCase = do
     -- whole package selects those component kinds too
     do (_,elaboratedPlan,_) <- planProject "targets/variety" config {
            projectConfigLocalPackages = (projectConfigLocalPackages config) {
-             packageConfigTests      = toFlag True,
-             packageConfigBenchmarks = toFlag True
+             packageConfigTests      = toFlag EnableAll,
+             packageConfigBenchmarks = toFlag EnableAll
            }
          }
        assertProjectDistinctTargets
@@ -708,8 +710,8 @@ testTargetProblemsBuild config reportSubCase = do
     -- whole package only selects the library, foreign lib and exes
     do (_,elaboratedPlan,_) <- planProject "targets/variety" config {
            projectConfigLocalPackages = (projectConfigLocalPackages config) {
-             packageConfigTests      = toFlag False,
-             packageConfigBenchmarks = toFlag False
+             packageConfigTests      = toFlag DisableAll,
+             packageConfigBenchmarks = toFlag DisableAll
            }
          }
        assertProjectDistinctTargets
@@ -928,7 +930,7 @@ testTargetProblemsTest config reportSubCase = do
       "targets/tests-disabled"
       config {
         projectConfigLocalPackages = (projectConfigLocalPackages config) {
-          packageConfigTests = toFlag False
+          packageConfigTests = toFlag DisableAll
         }
       }
       CmdTest.selectPackageTargets
@@ -1030,7 +1032,7 @@ testTargetProblemsBench config reportSubCase = do
       "targets/benchmarks-disabled"
       config {
         projectConfigLocalPackages = (projectConfigLocalPackages config) {
-          packageConfigBenchmarks = toFlag False
+          packageConfigBenchmarks = toFlag DisableAll
         }
       }
       CmdBench.selectPackageTargets

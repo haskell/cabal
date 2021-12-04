@@ -100,6 +100,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Distribution.Types.ComponentId
 import Distribution.Types.DumpBuildInfo
+import Distribution.Types.EnableComponentType
 import Distribution.Types.GivenComponent
 import Distribution.Types.Module
 import Distribution.Types.PackageVersionConstraint
@@ -264,8 +265,8 @@ data ConfigFlags = ConfigFlags {
       -- package does not use Backpack, or we just want to typecheck
       -- the indefinite package.
     configConfigurationsFlags :: FlagAssignment,
-    configTests               :: Flag Bool, -- ^Enable test suite compilation
-    configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
+    configTests               :: Flag EnableComponentType, -- ^Enable test suite compilation
+    configBenchmarks          :: Flag EnableComponentType, -- ^Enable benchmark compilation
     configCoverage :: Flag Bool, -- ^Enable program coverage
     configLibCoverage :: Flag Bool, -- ^Enable program coverage (deprecated)
     configExactConfiguration  :: Flag Bool,
@@ -392,8 +393,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = NoFlag,
     configStripLibs    = NoFlag,
-    configTests        = Flag False,
-    configBenchmarks   = Flag False,
+    configTests        = Flag EnableWhenPossible,
+    configBenchmarks   = Flag EnableWhenPossible,
     configCoverage     = Flag False,
     configLibCoverage  = NoFlag,
     configExactConfiguration = Flag False,
@@ -700,13 +701,13 @@ configureOptions showOrParseArgs =
 
       ,multiOption "tests"
          configTests (\v flags -> flags { configTests = v })
-         [noArg NoFlag []
+         [noArg (Flag EnableWhenPossible) []
                 ["enable-tests-when-possible", "enable-test-if-possible"]
                 "Build the tests if a build plan can be found, don't build them otherwise. The decision is made independently for each package, not for each test suite."
-         ,noArg (Flag True) []
+         ,noArg (Flag EnableAll) []
                 ["enable-tests", "enable-test"]
                 "Build all the test suites listed in the package description file."
-         ,noArg (Flag False) []
+         ,noArg (Flag DisableAll) []
                 ["disable-tests", "disable-test"]
                 "Do not build any test suites."
          ]
@@ -729,13 +730,13 @@ configureOptions showOrParseArgs =
 
       ,multiOption "benchmarks"
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
-         [noArg NoFlag []
+         [noArg (Flag EnableWhenPossible) []
                 ["enable-benchmarks-when-possible", "enable-benchmark-if-possible"]
                 "Build the benchmarks if a build plan can be found, don't build them otherwise. The decision is made independently for each package, not for each benchmark."
-         ,noArg (Flag True) []
+         ,noArg (Flag EnableAll) []
                 ["enable-benchmarks", "enable-benchmark"]
                 "Build all the benchmarks listed in the package description file."
-         ,noArg (Flag False) []
+         ,noArg (Flag DisableAll) []
                 ["disable-benchmarks", "disable-benchmark"]
                 "Do not build any benchmarks."
          ]

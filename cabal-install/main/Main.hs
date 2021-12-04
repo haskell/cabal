@@ -149,6 +149,8 @@ import Distribution.Simple.Utils
          , findPackageDesc, tryFindPackageDesc )
 import Distribution.Text
          ( display )
+import Distribution.Types.EnableComponentType
+         ( EnableComponentType(..) )
 import Distribution.Verbosity as Verbosity
          ( normal )
 import Distribution.Version
@@ -526,7 +528,7 @@ installAction
         -- '--run-tests' implies '--enable-tests'.
         maybeForceTests installFlags' configFlags' =
           if fromFlagOrDefault False (installRunTests installFlags')
-          then configFlags' { configTests = toFlag True }
+          then configFlags' { configTests = toFlag EnableAll }
           else configFlags'
 
 testAction :: (BuildFlags, TestFlags) -> [String] -> GlobalFlags
@@ -538,11 +540,12 @@ testAction (buildFlags, testFlags) extraArgs globalFlags = do
   let buildFlags'    = buildFlags
                       { buildVerbosity = testVerbosity testFlags }
       checkFlags = Check $ \_ flags@(configFlags, configExFlags) ->
-        if fromFlagOrDefault False (configTests configFlags)
+        if fromFlagOrDefault EnableWhenPossible (configTests configFlags)
+             == EnableAll
           then pure (mempty, flags)
           else do
             info verbosity "reconfiguring to enable tests"
-            let flags' = ( configFlags { configTests = toFlag True }
+            let flags' = ( configFlags { configTests = toFlag EnableAll }
                         , configExFlags
                         )
             pure (Any True, flags')
@@ -612,11 +615,12 @@ benchmarkAction
                       { buildVerbosity = benchmarkVerbosity benchmarkFlags }
 
   let checkFlags = Check $ \_ flags@(configFlags, configExFlags) ->
-        if fromFlagOrDefault False (configBenchmarks configFlags)
+        if fromFlagOrDefault EnableWhenPossible (configBenchmarks configFlags)
+             == EnableAll
           then pure (mempty, flags)
           else do
             info verbosity "reconfiguring to enable benchmarks"
-            let flags' = ( configFlags { configBenchmarks = toFlag True }
+            let flags' = ( configFlags { configBenchmarks = toFlag EnableAll }
                         , configExFlags
                         )
             pure (Any True, flags')

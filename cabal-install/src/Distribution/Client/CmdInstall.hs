@@ -113,6 +113,8 @@ import Distribution.Simple.GHC
          , renderGhcEnvironmentFile, readGhcEnvironmentFile, ParseErrorExc )
 import Distribution.System
          ( Platform , buildOS, OS (Windows) )
+import Distribution.Types.EnableComponentType
+         ( EnableComponentType(..) )
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Types.UnqualComponentName
@@ -408,10 +410,10 @@ verifyPreconditionsOrDie verbosity configFlags = do
   -- We never try to build tests/benchmarks for remote packages.
   -- So we set them as disabled by default and error if they are explicitly
   -- enabled.
-  when (configTests configFlags == Flag True) $
+  when (configTests configFlags == Flag EnableAll) $
     die' verbosity $ "--enable-tests was specified, but tests can't "
                   ++ "be enabled in a remote package"
-  when (configBenchmarks configFlags == Flag True) $
+  when (configBenchmarks configFlags == Flag EnableAll) $
     die' verbosity $ "--enable-benchmarks was specified, but benchmarks can't "
                   ++ "be enabled in a remote package"
 
@@ -741,8 +743,8 @@ environmentFileToSpecifiers ipi = foldMap $ \case
 -- | Disables tests and benchmarks if they weren't explicitly enabled.
 disableTestsBenchsByDefault :: ConfigFlags -> ConfigFlags
 disableTestsBenchsByDefault configFlags =
-  configFlags { configTests = Flag False <> configTests configFlags
-              , configBenchmarks = Flag False <> configBenchmarks configFlags }
+  configFlags { configTests = Flag DisableAll <> configTests configFlags
+              , configBenchmarks = Flag DisableAll <> configBenchmarks configFlags }
 
 -- | Symlink/copy every exe from a package from the store to a given location
 installUnitExes

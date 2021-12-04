@@ -128,6 +128,8 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), HasMungedPackageId(..), HasUnitId(..)
          , UnitId )
+import Distribution.Types.EnableComponentType
+         ( EnableComponentType(..) )
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
@@ -422,8 +424,12 @@ planPackages verbosity comp platform solver
 
     stanzas           = [ TestStanzas | testsEnabled ]
                      ++ [ BenchStanzas | benchmarksEnabled ]
-    testsEnabled      = fromFlagOrDefault False $ configTests configFlags
-    benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
+    testsEnabled      = fromFlagOrDefault EnableWhenPossible
+                                          (configTests configFlags)
+                     == EnableAll
+    benchmarksEnabled = fromFlagOrDefault EnableWhenPossible
+                                          (configBenchmarks configFlags)
+                     == EnableAll
 
     reinstall        = fromFlag (installOverrideReinstall installFlags) ||
                        fromFlag (installReinstall         installFlags)
@@ -1193,8 +1199,9 @@ installReadyPackage platform cinfo configFlags
                             <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
-    configBenchmarks         = toFlag False,
-    configTests              = toFlag (TestStanzas `optStanzaSetMember` stanzas)
+    configBenchmarks         = toFlag DisableAll,
+    configTests              = toFlag (if TestStanzas `optStanzaSetMember` stanzas
+                                       then EnableAll else DisableAll)
   } source pkg pkgoverride
   where
     pkg = case finalizePD flags (enableStanzas stanzas)
@@ -1413,7 +1420,7 @@ installUnpackedPackage verbosity installLock numJobs
       haddockVerbosity = toFlag verbosity',
       haddockDistPref  = configDistPref configFlags
     }
-    testsEnabled = fromFlag (configTests configFlags)
+    testsEnabled = fromFlag (configTests configFlags) == EnableAll
                    && fromFlagOrDefault False (installRunTests installFlags)
     testFlags' = filterTestFlags testFlags {
       Cabal.testDistPref = configDistPref configFlags

@@ -63,6 +63,7 @@ import Distribution.Simple.PackageIndex as PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
          ( Package(..), packageName, PackageId )
+import Distribution.Types.EnableComponentType
 import Distribution.Types.GivenComponent
          ( GivenComponent(..) )
 import Distribution.Types.PackageVersionConstraint
@@ -312,10 +313,13 @@ planLocalPackage verbosity comp platform configFlags configExFlags
       }
 
       testsEnabled :: Bool
-      testsEnabled = fromFlagOrDefault False $ configTests configFlags
+      testsEnabled = fromFlagOrDefault EnableWhenPossible
+                                       (configTests configFlags)
+                  == EnableAll
       benchmarksEnabled :: Bool
-      benchmarksEnabled =
-        fromFlagOrDefault False $ configBenchmarks configFlags
+      benchmarksEnabled = fromFlagOrDefault EnableWhenPossible
+                                            (configBenchmarks configFlags)
+                       == EnableAll
 
       resolverParams :: DepResolverParams
       resolverParams =
@@ -419,9 +423,11 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- NB: if the user explicitly specified
       -- --enable-tests/--enable-benchmarks, always respect it.
       -- (But if they didn't, let solver decide.)
-      configBenchmarks         = toFlag (BenchStanzas `optStanzaSetMember` stanzas)
+      configBenchmarks         = toFlag (if BenchStanzas `optStanzaSetMember` stanzas
+                                         then EnableAll else DisableAll)
                                     `mappend` configBenchmarks configFlags,
-      configTests              = toFlag (TestStanzas `optStanzaSetMember` stanzas)
+      configTests              = toFlag (if TestStanzas `optStanzaSetMember` stanzas
+                                         then EnableAll else DisableAll)
                                     `mappend` configTests configFlags
     }
 

@@ -92,6 +92,7 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
+import Distribution.Types.EnableComponentType
 import Distribution.Parsec (ParsecParser)
 
 import qualified Data.Map as Map
@@ -1263,14 +1264,15 @@ legacyPackageConfigFieldDescrs =
                     | otherwise = "test-" ++ name
 
     prettyPrintEnableStanza v = case v of
-      NoFlag     -> Disp.text "EnableWhenPossible"
-      Flag True  -> Disp.text "EnableAll"
-      Flag False -> Disp.text "DisableAll"
+      NoFlag                   -> Disp.text "EnableWhenPossible"
+      Flag EnableWhenPossible  -> Disp.text "EnableWhenPossible"
+      Flag EnableAll           -> Disp.text "EnableAll"
+      Flag DisableAll          -> Disp.text "DisableAll"
 
     parseEnableStanza
-        = (NoFlag     <$ Parse.string "EnableWhenPossible")
-      <|> (Flag True  <$ (Parse.string "EnableAll"  <|> Parse.string "True"))
-      <|> (Flag False <$ (Parse.string "DisableAll" <|> Parse.string "False"))
+        = (Flag EnableWhenPossible <$ Parse.string "EnableWhenPossible")
+      <|> (Flag EnableAll  <$ (Parse.string "EnableAll"  <|> Parse.string "True"))
+      <|> (Flag DisableAll <$ (Parse.string "DisableAll" <|> Parse.string "False"))
 
 
 legacyPackageConfigFGSectionDescrs
