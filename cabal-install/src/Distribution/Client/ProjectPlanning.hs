@@ -2600,7 +2600,7 @@ availableSourceTargets elab =
             | otherwise      -> TargetBuildable (elabUnitId elab, cname)
                                                 TargetRequestedByDefault
 
-          -- it is not an optional stanza, so a testsuite or benchmark
+          -- it is an optional stanza, so a testsuite or benchmark
           Just stanza ->
             case (optStanzaLookup stanza (elabStanzasRequested elab), -- TODO
                   optStanzaSetMember stanza (elabStanzasAvailable elab)) of
