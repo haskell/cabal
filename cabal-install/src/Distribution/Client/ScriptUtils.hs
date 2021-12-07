@@ -6,7 +6,7 @@
 -- | Utilities to help commands with scripts
 --
 module Distribution.Client.ScriptUtils (
-    getScriptCacheDirectoryRoot, getScriptCacheDirectory, ensureScriptCacheDirectory,
+    getScriptCacheDirectoryRoot, getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
     updateContextAndWriteProjectFile, updateContextAndWriteScriptProjectFiles,
     fakeProjectSourcePackage, lSrcpkgDescription
@@ -51,7 +51,7 @@ import Distribution.FieldGrammar
 import Distribution.PackageDescription.FieldGrammar
          ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
-         ( writeGenericPackageDescription )
+         ( writeGenericPackageDescription, showGenericPackageDescription )
 import Distribution.Parsec
          ( Position(..) )
 import Distribution.Fields
@@ -75,6 +75,8 @@ import Language.Haskell.Extension
          ( Language(..) )
 import Distribution.Client.HashValue
          ( hashValue, showHashValue )
+import Distribution.Simple.Utils
+         ( readUTF8File )
 
 import Control.Concurrent.MVar
          ( newEmptyMVar, putMVar, tryTakeMVar )
@@ -97,23 +99,24 @@ getScriptCacheDirectoryRoot = do
   cabalDir <- getCabalDir
   return $ cabalDir </> "script-builds"
 
+-- | Get the hash of a script path.
+getScriptHash :: String -> FilePath -> IO String
+getScriptHash prefix script = showHashValue . hashValue . fromString . (prefix ++) <$> canonicalizePath script
+
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
 -- hashed path to <cabalDir>/script-builds/ to get the cache directory.
-getScriptCacheDirectory :: FilePath -> IO FilePath
-getScriptCacheDirectory script = do
-  cacheDir <- getScriptCacheDirectoryRoot
-  scriptHash <- showHashValue . hashValue . fromString <$> canonicalizePath script
-  return $ cacheDir </> scriptHash
+getScriptCacheDirectory :: String -> FilePath -> IO FilePath
+getScriptCacheDirectory prefix script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash prefix script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
 -- hashed path to <cabalDir>/script-builds/ to get the cache directory.
-ensureScriptCacheDirectory :: Verbosity -> FilePath -> IO FilePath
-ensureScriptCacheDirectory verbosity script = do
-  cacheDir <- getScriptCacheDirectory script
+ensureScriptCacheDirectory :: Verbosity -> String -> FilePath -> IO FilePath
+ensureScriptCacheDirectory verbosity prefix script = do
+  cacheDir <- getScriptCacheDirectory prefix script
   createDirectoryIfMissingVerbose verbosity True cacheDir
   return cacheDir
 
@@ -185,7 +188,7 @@ withContextAndSelectors noTargets cachePrefix kind flags@NixStyleFlags {..} targ
       exists <- doesFileExist script
       if exists then do
         -- In the script case we always want a dummy context even when ignoreProject is False
-        let mkCacheDir = ensureScriptCacheDirectory verbosity (cachePrefix ++ script)
+        let mkCacheDir = ensureScriptCacheDirectory verbosity cachePrefix script
         (_, ctx) <- withProjectOrGlobalConfig verbosity (Flag True) globalConfigFlag with (without mkCacheDir)
 
         let projectRoot = distProjectRootDirectory $ distDirLayout ctx
@@ -214,7 +217,16 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
 updateContextAndWriteProjectFile :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
 updateContextAndWriteProjectFile ctx srcPkg = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-  writeGenericPackageDescription (projectRoot </> "fake-package.cabal") (srcpkgDescription srcPkg)
+      projectFile = projectRoot </> "fake-package.cabal"
+      writeProjectFile = writeGenericPackageDescription (projectRoot </> "fake-package.cabal") (srcpkgDescription srcPkg)
+  projectFileExists <- doesFileExist projectFile
+  -- TODO This if is here to prevent reconfiguration of cached repl packages.
+  -- It's worth investigating why it's need in the first place.
+  if projectFileExists then do
+    contents <- readUTF8File projectFile
+    when (contents /= showGenericPackageDescription (srcpkgDescription srcPkg))
+      writeProjectFile
+  else writeProjectFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
 -- | In a script context, add a 'SourcePackage' to the context and write a fake-package.cabal file

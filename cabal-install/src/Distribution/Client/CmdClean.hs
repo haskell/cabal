@@ -93,11 +93,12 @@ cleanAction CleanFlags{..} extraArgs _ = do
         die' verbosity $ "'clean' extra arguments should be script files: "
                          ++ unwords notScripts
 
-    if null extraArgs then do
-        projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
 
-        let distLayout = defaultDistDirLayout projectRoot mdistDirectory
+    let distLayout = defaultDistDirLayout projectRoot mdistDirectory
 
+    -- Do not clean a project if just running a script in it's directory
+    when (null extraArgs || isJust mdistDirectory) $ do
         if saveConfig then do
             let buildRoot = distBuildRootDirectory distLayout
 
@@ -113,19 +114,22 @@ cleanAction CleanFlags{..} extraArgs _ = do
             handleDoesNotExist () $ removeDirectoryRecursive distRoot
 
         removeEnvFiles (distProjectRootDirectory distLayout)
-    else do
-        -- when cleaning script builds, also clean orphaned caches
-        toClean  <- Set.fromList <$> mapM canonicalizePath extraArgs
-        cacheDir <- getScriptCacheDirectoryRoot
-        caches   <- listDirectory cacheDir
-        paths    <- fmap concat . forM caches $ \cache -> do
-            let locFile = cacheDir </> cache </> "scriptlocation"
-            exists <- doesFileExist locFile
-            if exists then pure . (,) (cacheDir </> cache) <$> readFile locFile else return []
-        forM_ paths $ \(cache, script) -> do
-            exists <- doesFileExist script
-            unless (exists && script `Set.notMember` toClean) $ do
-                removeDirectoryRecursive cache
+
+    -- Clean specified script build caches and orphaned caches.
+    -- There is currently no good way to specify to only clean orphaned caches.
+    -- It would be better as part of an explicit gc step (see issue #3333)
+    toClean  <- Set.fromList <$> mapM canonicalizePath extraArgs
+    cacheDir <- getScriptCacheDirectoryRoot
+    caches   <- listDirectory cacheDir
+    paths    <- fmap concat . forM caches $ \cache -> do
+        let locFile = cacheDir </> cache </> "scriptlocation"
+        exists <- doesFileExist locFile
+        if exists then pure . (,) (cacheDir </> cache) <$> readFile locFile else return []
+    forM_ paths $ \(cache, script) -> do
+        exists <- doesFileExist script
+        when (not exists || script `Set.member` toClean) $ do
+            info verbosity ("Deleting cache (" ++ cache ++ ") for script (" ++ script ++ ")")
+            removeDirectoryRecursive cache
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
