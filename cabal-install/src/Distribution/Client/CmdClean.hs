@@ -120,7 +120,8 @@ cleanAction CleanFlags{..} extraArgs _ = do
     -- It would be better as part of an explicit gc step (see issue #3333)
     toClean  <- Set.fromList <$> mapM canonicalizePath extraArgs
     cacheDir <- getScriptCacheDirectoryRoot
-    caches   <- listDirectory cacheDir
+    existsCD <- doesDirectoryExist cacheDir
+    caches   <- if existsCD then listDirectory cacheDir else return []
     paths    <- fmap concat . forM caches $ \cache -> do
         let locFile = cacheDir </> cache </> "scriptlocation"
         exists <- doesFileExist locFile
