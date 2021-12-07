@@ -61,7 +61,7 @@ import Distribution.Simple.Program.Run
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Client.ScriptUtils
-         ( withTempTempDirectory, getContextAndSelectorsWithScripts )
+         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteScriptProjectFiles )
 
 import qualified Data.Set as Set
 import System.Directory
@@ -118,8 +118,9 @@ runCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags {..} targetStrings globalFlags = withTempTempDirectory $ \tmpDir -> do
-    (baseCtx, targetSelectors) <- getContextAndSelectorsWithScripts flags targetStrings globalFlags tmpDir
+runAction flags@NixStyleFlags {..} targetStrings globalFlags
+  = withContextAndSelectors RejectNoTargets "" (Just ExeKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+    baseCtx <- updateContextAndWriteScriptProjectFiles ctx targetCtx
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

@@ -23,6 +23,8 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import Distribution.Client.DistDirLayout
+         ( DistDirLayout(..) )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
@@ -36,23 +38,19 @@ import Distribution.Client.TargetProblem
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
-import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfig
-         , projectConfigConfigFile )
-import Distribution.Client.ProjectFlags
-         ( flagIgnoreProject )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
 import Distribution.Client.ScriptUtils
-         ( getScriptCacheDirectory, isLiterate, readScriptBlockFromScript )
+         ( AcceptNoTargets(..), withContextAndSelectors, TargetContext(..)
+         , updateContextAndWriteProjectFile, fakeProjectSourcePackage, lSrcpkgDescription )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
+         ( PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, ReplOptions(..), replOptions
          , Flag(..), toFlag, falseArg )
@@ -65,12 +63,10 @@ import Distribution.Simple.Compiler
          ( compilerCompatVersion )
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
-import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
          ( parsecCommaList )
 import Distribution.ReadE
          ( ReadE, parsecToReadE )
-import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Types.BuildInfo
@@ -81,14 +77,8 @@ import Distribution.Types.CondTree
          ( CondTree(..), traverseCondTreeC )
 import Distribution.Types.Dependency
          ( Dependency(..), mainLibSet )
-import Distribution.Types.GenericPackageDescription
-         ( emptyGenericPackageDescription )
-import Distribution.Types.PackageDescription
-         ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.PackageName.Magic
-         ( fakePackageId )
 import Distribution.Types.Executable
-         ( Executable(..), emptyExecutable )
+         ( Executable(..) )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.Version
@@ -102,22 +92,16 @@ import Distribution.Utils.Path
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', debugNoWrap, createTempDirectory, handleDoesNotExist )
+         ( wrapText, die', debugNoWrap )
 import Language.Haskell.Extension
          ( Language(..) )
-import Distribution.CabalSpecVersion
-         ( CabalSpecVersion (..) )
 
-import Control.Monad
-        ( (<=<) )
-import qualified Data.ByteString.Char8 as BS
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive
-         , doesFileExist, canonicalizePath)
+         ( getCurrentDirectory, doesFileExist, canonicalizePath)
 import System.FilePath
          ( (</>), joinPath, splitPath, pathSeparator, takeFileName )
 
@@ -205,18 +189,51 @@ replCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
-    let
-      with                 = withProject    cliConfig                   verbosity targetStrings
-      without globalConfig = withoutProject (globalConfig <> cliConfig) verbosity targetStrings
-
-    (baseCtx, targetSelectors, finalizer, replType) <-
-      withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
-
-    when (buildSettingOnlyDeps (buildSettings baseCtx)) $
+replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags
+  = withContextAndSelectors AcceptNoTargets "repl:" (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+    when (buildSettingOnlyDeps (buildSettings ctx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
           ++ "You may wish to use 'build --only-dependencies' and then "
           ++ "use 'repl'."
+
+    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+
+    (replType, baseCtx) <- case targetCtx of
+      ProjectContext     -> return (ProjectRepl, ctx)
+      GlobalContext      -> do
+        unless (null targetStrings) $
+          die' verbosity $ "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
+
+        let
+          sourcePackage = fakeProjectSourcePackage projectRoot
+            & lSrcpkgDescription . L.condLibrary
+            .~ Just (CondNode library [baseDep] [])
+          library = emptyLibrary { libBuildInfo = lBuildInfo }
+          lBuildInfo = emptyBuildInfo
+            { targetBuildDepends = [baseDep]
+            , defaultLanguage = Just Haskell2010
+            }
+          baseDep = Dependency "base" anyVersion mainLibSet
+
+        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
+      ScriptContext {..} -> do
+        unless (length targetStrings == 1) $
+          die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+        existsScriptPath <- doesFileExist scriptPath
+        unless existsScriptPath $
+          die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+
+        -- We want to use cwd in hs-source-dirs, but hs-source-dirs wants a relative path
+        backtocwd <- relativePathBackToCurrentDirectory projectRoot
+        let
+          sourcePackage = fakeProjectSourcePackage projectRoot
+            & lSrcpkgDescription . L.condExecutables
+            .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+          executable = scriptExecutable
+            & L.modulePath   .~ takeFileName scriptPath
+            & L.hsSourceDirs .~ [unsafeMakeSymbolicPath backtocwd]
+
+        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
 
     (originalComponent, baseCtx') <- if null (envPackages envFlags)
       then return (Nothing, baseCtx)
@@ -284,11 +301,16 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
           replFlags' = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing  -> []
-          replFlags'' = case replType of
-            GlobalRepl scriptPath
-              | Just version <- compilerCompatVersion GHC compiler
-              , version >= minGhciScriptVersion -> ("-ghci-script" ++ scriptPath) : replFlags'
-            _                                   -> replFlags'
+
+        -- The '-ghci-script' flag is path to a GHCi script responsible for changing to the
+        -- correct directory. Only works on GHC >= 7.6, though. 🙁
+        replFlags'' <- case replType of
+          GlobalRepl | compilerCompatVersion GHC compiler >= Just minGhciScriptVersion -> do
+            let ghciScriptPath = projectRoot </> "setcwd.ghci"
+            cwd <- getCurrentDirectory
+            writeFile ghciScriptPath (":cd " ++ cwd)
+            return $ ("-ghci-script" ++ ghciScriptPath) : replFlags'
+          _ -> return replFlags'
 
         return (buildCtx, replFlags'')
 
@@ -301,12 +323,8 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx'
     runProjectPostBuildPhase verbosity baseCtx' buildCtx' buildOutcomes
-    finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = flagIgnoreProject projectFlags
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
     validatedTargets elaboratedPlan targetSelectors = do
       -- Interpret the targets on the command line as repl targets
@@ -334,110 +352,9 @@ data OriginalComponentInfo = OriginalComponentInfo
   }
   deriving (Show)
 
--- | Tracks what type of GHCi instance we're creating.
-data ReplType = ProjectRepl
-              | GlobalRepl FilePath -- ^ The 'FilePath' argument is path to a GHCi
-                                    --   script responsible for changing to the
-                                    --   correct directory. Only works on GHC geq
-                                    --   7.6, though. 🙁
-              deriving (Show, Eq)
-
-withProject :: ProjectConfig -> Verbosity -> [String]
-            -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
-withProject cliConfig verbosity targetStrings = do
-  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
-
-  targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                 =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
-
-  return (baseCtx, targetSelectors, return (), ProjectRepl)
-
-withoutProject :: ProjectConfig -> Verbosity -> [String]
-               -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
-withoutProject config verbosity extraArgs = do
-  maybeScript <- case extraArgs of
-    []       -> return Nothing
-    [script] -> do
-      exists <- doesFileExist script
-      if exists
-      then return $ Just script
-      else die' verbosity $ "'repl' argument is not an script file: " ++ unwords extraArgs
-    _        -> die' verbosity $ "'repl' takes a single script argument: " ++ unwords extraArgs
-
-
-  let
-    mkTmpDir = do
-      globalTmp <- getTemporaryDirectory
-      createTempDirectory globalTmp "cabal-repl."
-    readExec script =
-      fmap fst . readScriptBlockFromScript verbosity (isLiterate script) =<< BS.readFile script
-
-  dir <- maybe mkTmpDir (getScriptCacheDirectory . ("repl:" ++)) maybeScript
-  scriptExecutable <- maybe (return emptyExecutable) readExec maybeScript
-  -- For scripts, we want to use cwd in hs-source-dirs, but hs-source-dirs wants a relative path
-  backtocwd <- relativePathBackToCurrentDirectory dir
-
-  -- We need to create a dummy package that lives in our dummy project.
-  let
-    sourcePackage = SourcePackage
-      { srcpkgPackageId     = pkgId
-      , srcpkgDescription   = genericPackageDescription
-      , srcpkgSource        = LocalUnpackedPackage dir
-      , srcpkgDescrOverride = Nothing
-      }
-    genericPackageDescription = emptyGenericPackageDescription
-      & L.packageDescription .~ packageDescription
-      & ( if isNothing maybeScript
-          then L.condLibrary     .~ Just (CondNode library [baseDep] [])
-          else L.condExecutables .~ [("script", CondNode executable (targetBuildDepends eBuildInfo) [])] )
-    packageDescription = emptyPackageDescription
-      { package = pkgId
-      , specVersion = CabalSpecV2_2
-      , licenseRaw = Left SPDX.NONE
-      }
-    pkgId = fakePackageId
-
-    library = emptyLibrary { libBuildInfo = lBuildInfo }
-    lBuildInfo = emptyBuildInfo
-      { targetBuildDepends = [baseDep]
-      , defaultLanguage = Just Haskell2010
-      }
-    baseDep = Dependency "base" anyVersion mainLibSet
-
-    executable = scriptExecutable
-      { modulePath = maybe "" takeFileName maybeScript
-      , buildInfo = eBuildInfo
-        { defaultLanguage =
-          case defaultLanguage eBuildInfo of
-            just@(Just _) -> just
-            Nothing       -> Just Haskell2010
-        , hsSourceDirs = [unsafeMakeSymbolicPath backtocwd]
-       }
-      }
-    eBuildInfo = buildInfo scriptExecutable
-
-  distDirLayout <- establishDummyDistDirLayout verbosity config dir
-  baseCtx <-
-    establishDummyProjectBaseContext
-      verbosity
-      config
-      distDirLayout
-      [SpecificSourcePackage sourcePackage]
-      OtherCommand
-
-  writeGenericPackageDescription (dir </> "fake-package.cabal") genericPackageDescription
-  maybe (return ()) (writeFile (dir </> "scriptlocation") <=< canonicalizePath) maybeScript
-
-  let ghciScriptPath = dir </> "setcwd.ghci"
-  cwd <- getCurrentDirectory
-  writeFile ghciScriptPath (":cd " ++ cwd)
-
-  let
-    targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-    finalizer | isNothing maybeScript = handleDoesNotExist () (removeDirectoryRecursive dir)
-              | otherwise             = return ()
-
-  return (baseCtx, targetSelectors, finalizer, GlobalRepl ghciScriptPath)
+-- Tracks what type of GHCi instance we're creating.
+data ReplType = ProjectRepl | GlobalRepl
+  deriving (Show, Eq)
 
 relativePathBackToCurrentDirectory :: FilePath -> IO FilePath
 relativePathBackToCurrentDirectory d = do

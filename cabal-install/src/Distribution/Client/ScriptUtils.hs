@@ -6,16 +6,21 @@
 -- | Utilities to help commands with scripts
 --
 module Distribution.Client.ScriptUtils (
-    getScriptCacheDirectoryRoot, getScriptCacheDirectory,
-    withTempTempDirectory,
-    getContextAndSelectorsWithScripts,
-    isLiterate, readScriptBlockFromScript
+    getScriptCacheDirectoryRoot, getScriptCacheDirectory, ensureScriptCacheDirectory,
+    withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
+    updateContextAndWriteProjectFile, updateContextAndWriteScriptProjectFiles,
+    fakeProjectSourcePackage, lSrcpkgDescription
   ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude hiding (toList)
 
+import Distribution.Compat.Lens
+import qualified Distribution.Types.Lens as L
+
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.DistDirLayout
+         ( DistDirLayout(..) )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..) )
 import Distribution.Client.Setup
@@ -40,7 +45,7 @@ import Distribution.Client.ProjectFlags
 import Distribution.Client.TargetSelector
          ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..) )
+         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.FieldGrammar
          ( takeFields, parseFieldGrammar )
 import Distribution.PackageDescription.FieldGrammar
@@ -71,6 +76,8 @@ import Language.Haskell.Extension
 import Distribution.Client.HashValue
          ( hashValue, showHashValue )
 
+import Control.Concurrent.MVar
+         ( newEmptyMVar, putMVar, tryTakeMVar )
 import Control.Exception
          ( bracket )
 import qualified Data.ByteString.Char8 as BS
@@ -84,78 +91,149 @@ import System.FilePath
 
 -- | Get the directory where script builds are cached.
 --
--- <cabal_dir>/script-builds
+-- <cabalDir>/script-builds
 getScriptCacheDirectoryRoot :: IO FilePath
 getScriptCacheDirectoryRoot = do
-    cabalDir <- getCabalDir
-    return $ cabalDir </> "script-builds"
+  cabalDir <- getCabalDir
+  return $ cabalDir </> "script-builds"
 
 -- | Get the directory for caching a script build.
 --
--- The only identity of a script is it's absolute path, so append that path
--- to <cabal_dir>/script-builds/ to get the cache directory.
+-- The only identity of a script is it's absolute path, so append the
+-- hashed path to <cabalDir>/script-builds/ to get the cache directory.
 getScriptCacheDirectory :: FilePath -> IO FilePath
 getScriptCacheDirectory script = do
-    cacheDir <- getScriptCacheDirectoryRoot
-    scriptHash <- showHashValue . hashValue . fromString <$> canonicalizePath script
-    return $ cacheDir </> scriptHash
+  cacheDir <- getScriptCacheDirectoryRoot
+  scriptHash <- showHashValue . hashValue . fromString <$> canonicalizePath script
+  return $ cacheDir </> scriptHash
 
--- | Create a new temporary directory inside the directory for temporary files
--- and delete it after use.
-withTempTempDirectory :: (FilePath -> IO a) -> IO a
-withTempTempDirectory = bracket getTmp rmTmp
-  where
-    getTmp = getTemporaryDirectory >>= flip createTempDirectory "cabal-repl."
-    rmTmp  = handleDoesNotExist () . removeDirectoryRecursive
+-- | Get the directory for caching a script build and ensure it exists.
+--
+-- The only identity of a script is it's absolute path, so append the
+-- hashed path to <cabalDir>/script-builds/ to get the cache directory.
+ensureScriptCacheDirectory :: Verbosity -> FilePath -> IO FilePath
+ensureScriptCacheDirectory verbosity script = do
+  cacheDir <- getScriptCacheDirectory script
+  createDirectoryIfMissingVerbose verbosity True cacheDir
+  return cacheDir
+
+-- | What your command should do when no targets are found.
+data AcceptNoTargets
+  = RejectNoTargets -- ^ die on 'TargetSelectorNoTargetsInProject'
+  | AcceptNoTargets -- ^ return a default 'TargetSelector'
+  deriving (Eq, Show)
+
+-- | Information about the context in which we found the 'TargetSelector's.
+data TargetContext
+  = ProjectContext -- ^ The target selectors are part of a project.
+  | GlobalContext  -- ^ The target selectors are from the global context.
+  | ScriptContext { scriptPath :: FilePath, scriptExecutable :: Executable, scriptContents :: BS.ByteString }
+  -- ^ The target selectors refer to a script.
+  deriving (Eq, Show)
 
 -- | Determine whether the targets represent regular targets or a script
---  invocation and return the proper context and target selectors.
---  Report problems if selectors are valid as neither regular targets
---  or as a script.
-getContextAndSelectorsWithScripts :: NixStyleFlags a -> [String] -> GlobalFlags -> FilePath -> IO (ProjectBaseContext, [TargetSelector])
-getContextAndSelectorsWithScripts flags@NixStyleFlags {..} targetStrings globalFlags tmpDir = do
-    let
-      with =
-        establishProjectBaseContext verbosity cliConfig OtherCommand
-      without dir globalConfig = do
-        distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) dir
-        establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
+-- and return the proper context and target selectors.
+-- Report problems if selectors are valid as neither regular targets or as a script.
+--
+-- In the case that the context refers to a temporary directory,
+-- delete it after the action finishes.
+withContextAndSelectors
+  :: AcceptNoTargets     -- ^ What your command should do when no targets are found.
+  -> String              -- ^ A prefix to add to the path before hashing, if you don't want to use the default cache dir.
+  -> Maybe ComponentKind -- ^ A target filter
+  -> NixStyleFlags a     -- ^ Command line flags
+  -> [String]            -- ^ Target strings or a script and args.
+  -> GlobalFlags         -- ^ Global flags.
+  -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
+  -- ^ The body of your command action.
+  -> IO b
+withContextAndSelectors noTargets cachePrefix kind flags@NixStyleFlags {..} targetStrings globalFlags act
+  = withTemporaryTempDirectory $ \mkTmpDir -> do
+    (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
 
-    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without tmpDir)
+    -- In the case where a selector is both a valid target and script, assume it is a target,
+    -- because you can disambiguate the script with "./script"
+    let truncateExe = if kind == Just ExeKind then take 1 else id
+    (tc', ctx', sels) <- readTargetSelectors (localPackages ctx) kind (truncateExe targetStrings) >>= \case
+      Left err@(TargetSelectorNoTargetsInProject:_)
+        | [] <- targetStrings
+        , AcceptNoTargets <- noTargets -> return (tc, ctx, defaultTarget)
+        | (script:_) <- targetStrings  -> scriptOrError script err
+      Left err@(TargetSelectorNoSuch t _:_)
+        | TargetString1 script <- t    -> scriptOrError script err
+      Left err@(TargetSelectorExpected t _ _:_)
+        | TargetString1 script <- t    -> scriptOrError script err
+      Left err                         -> reportTargetSelectorProblems verbosity err
+      Right sels                       -> return (tc, ctx, sels)
 
-    let
-      scriptOrError script err = do
-        exists <- doesFileExist script
-        let pol = isLiterate script
-        if exists
-          then do
-            cacheDir <- getScriptCacheDirectory script
-            -- In the script case we always want a dummy context
-            ctx <- withProjectOrGlobalConfig verbosity (Flag True)  globalConfigFlag with (without cacheDir)
-            -- if --buildDir was passed, establishing the dummy context will create cacheDir
-            createDirectoryIfMissingVerbose verbosity True cacheDir
-            BS.readFile script >>= handleScriptCase verbosity pol ctx cacheDir script
-          else reportTargetSelectorProblems verbosity err
-
-    -- We pass the baseCtx made with tmpDir to readTargetSelectors and only create a ctx with cacheDir
-    -- if no target is found because we want global targets to have higher priority than scripts.
-    -- In case of a collision, `cabal run target` can be rewritten as `cabal run ./target`
-    -- to specify the script, but there is no alternate way to specify the global target.
-    readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
-        >>= \case
-          Left err@(TargetSelectorNoTargetsInProject:_)
-            | (script:_) <- targetStrings -> scriptOrError script err
-          Left err@(TargetSelectorNoSuch t _:_)
-            | TargetString1 script <- t   -> scriptOrError script err
-          Left err@(TargetSelectorExpected t _ _:_)
-            | TargetString1 script <- t   -> scriptOrError script err
-          Left err   -> reportTargetSelectorProblems verbosity err
-          Right sels -> return (baseCtx, sels)
+    act tc' ctx' sels
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     ignoreProject = flagIgnoreProject projectFlags
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
     globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+    defaultTarget = [TargetPackage TargetExplicitNamed [fakePackageId] Nothing]
+
+    with = do
+      ctx <- establishProjectBaseContext verbosity cliConfig OtherCommand
+      return (ProjectContext, ctx)
+    without mkDir globalConfig = do
+      distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) =<< mkDir
+      ctx <- establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
+      return (GlobalContext, ctx)
+    scriptOrError script err = do
+      exists <- doesFileExist script
+      if exists then do
+        -- In the script case we always want a dummy context even when ignoreProject is False
+        let mkCacheDir = ensureScriptCacheDirectory verbosity (cachePrefix ++ script)
+        (_, ctx) <- withProjectOrGlobalConfig verbosity (Flag True) globalConfigFlag with (without mkCacheDir)
+
+        let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+        writeFile (projectRoot </> "scriptlocation") =<< canonicalizePath script
+
+        (executable, contents) <- readScriptBlockFromScript verbosity =<< BS.readFile script
+
+        let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
+        return (ScriptContext script executable' contents, ctx, defaultTarget)
+      else reportTargetSelectorProblems verbosity err
+
+withTemporaryTempDirectory :: (IO FilePath -> IO a) -> IO a
+withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rmTmp m) act
+  where
+    -- We return an (IO Filepath) instead of a FilePath for two reasons:
+    -- 1) To give the consumer the discretion to not create the tmpDir,
+    --    but still grantee that it's deleted if they do create it
+    -- 2) Because the path returned by createTempDirectory is not predicable
+    getMkTmp m = return $ do
+      tmpDir <- getTemporaryDirectory >>= flip createTempDirectory "cabal-repl."
+      putMVar m tmpDir
+      return tmpDir
+    rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
+
+-- | Add the 'SourcePackage' to the context and use it to write a fake-package.cabal file.
+updateContextAndWriteProjectFile :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
+updateContextAndWriteProjectFile ctx srcPkg = do
+  let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+  writeGenericPackageDescription (projectRoot </> "fake-package.cabal") (srcpkgDescription srcPkg)
+  return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
+
+-- | In a script context, add a 'SourcePackage' to the context and write a fake-package.cabal file
+-- and the script source file (Main.hs or Main.lhs).
+updateContextAndWriteScriptProjectFiles :: ProjectBaseContext -> TargetContext -> IO ProjectBaseContext
+updateContextAndWriteScriptProjectFiles ctx = \case
+  ProjectContext     -> return ctx
+  GlobalContext      -> return ctx
+  ScriptContext {..} -> do
+    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+        mainName = if takeExtension scriptPath == ".lhs" then "Main.lhs" else "Main.hs"
+
+        sourcePackage = fakeProjectSourcePackage projectRoot
+          & lSrcpkgDescription . L.condExecutables
+          .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+        executable = scriptExecutable & L.modulePath .~ mainName
+
+    BS.writeFile (projectRoot </> mainName) scriptContents
+    updateContextAndWriteProjectFile ctx sourcePackage
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
@@ -178,9 +256,9 @@ readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block
 -- * @-}@
 --
 -- Return the metadata and the contents of the file without the #! line.
-readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity pol str = do
-    str' <- case extractScriptBlock pol str of
+readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
+readScriptBlockFromScript verbosity str = do
+    str' <- case extractScriptBlock str of
               Left e -> die' verbosity $ "Failed extracting script block: " ++ e
               Right x -> return x
     when (BS.all isSpace str') $ warn verbosity "Empty script block"
@@ -200,8 +278,8 @@ readScriptBlockFromScript verbosity pol str = do
 --
 -- In case of missing or unterminated blocks a 'Left'-error is
 -- returned.
-extractScriptBlock :: PlainOrLiterate -> BS.ByteString -> Either String BS.ByteString
-extractScriptBlock _pol str = goPre (BS.lines str)
+extractScriptBlock :: BS.ByteString -> Either String BS.ByteString
+extractScriptBlock str = goPre (BS.lines str)
   where
     isStartMarker = (== startMarker) . stripTrailSpace
     isEndMarker   = (== endMarker) . stripTrailSpace
@@ -222,68 +300,31 @@ extractScriptBlock _pol str = goPre (BS.lines str)
     startMarker = fromString "{- cabal:"
     endMarker   = fromString "-}"
 
-data PlainOrLiterate
-    = PlainHaskell
-    | LiterateHaskell
-
--- | Test if a filepath is for a literate Haskell file.
---
-isLiterate :: FilePath -> PlainOrLiterate
-isLiterate p | takeExtension p == ".lhs" = LiterateHaskell
-             | otherwise                 = PlainHaskell
-
-handleScriptCase
-  :: Verbosity
-  -> PlainOrLiterate
-  -> ProjectBaseContext
-  -> FilePath
-  -> FilePath
-  -> BS.ByteString
-  -> IO (ProjectBaseContext, [TargetSelector])
-handleScriptCase verbosity pol baseCtx dir scriptPath scriptContents = do
-  (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
-
-  -- We need to create a dummy package that lives in our dummy project.
-  let
-    mainName = case pol of
-      PlainHaskell    -> "Main.hs"
-      LiterateHaskell -> "Main.lhs"
-
+-- | The base for making a 'SourcePackage' for a fake project.
+-- It needs a 'Distribution.Types.Library.Library' or 'Executable' depending on the command.
+fakeProjectSourcePackage :: FilePath -> SourcePackage (PackageLocation loc)
+fakeProjectSourcePackage projectRoot = sourcePackage
+  where
     sourcePackage = SourcePackage
-      { srcpkgPackageId      = pkgId
-      , srcpkgDescription    = genericPackageDescription
-      , srcpkgSource         = LocalUnpackedPackage dir
-      , srcpkgDescrOverride  = Nothing
+      { srcpkgPackageId     = fakePackageId
+      , srcpkgDescription   = genericPackageDescription
+      , srcpkgSource        = LocalUnpackedPackage projectRoot
+      , srcpkgDescrOverride = Nothing
       }
-    genericPackageDescription  = emptyGenericPackageDescription
-      { GPD.packageDescription = packageDescription
-      , condExecutables        = [("script", CondNode executable' targetBuildDepends [])]
-      }
-    executable' = executable
-      { modulePath = mainName
-      , buildInfo = binfo
-        { defaultLanguage =
-          case defaultLanguage of
-            just@(Just _) -> just
-            Nothing       -> Just Haskell2010
-        }
-      }
-    binfo@BuildInfo{..} = buildInfo executable
+    genericPackageDescription = emptyGenericPackageDescription
+      { GPD.packageDescription = packageDescription }
     packageDescription = emptyPackageDescription
-      { package = pkgId
+      { package = fakePackageId
       , specVersion = CabalSpecV2_2
       , licenseRaw = Left SPDX.NONE
       }
-    pkgId = fakePackageId
 
-  writeGenericPackageDescription (dir </> "fake-package.cabal") genericPackageDescription
-  writeFile (dir </> "scriptlocation") =<< canonicalizePath scriptPath
-  BS.writeFile (dir </> mainName) contents'
+-- Lenses
+-- | A lens for the 'srcpkgDescription' field of 'SourcePackage'
+lSrcpkgDescription :: Lens' (SourcePackage loc) GenericPackageDescription
+lSrcpkgDescription f s = fmap (\x -> s { srcpkgDescription = x }) (f (srcpkgDescription s))
+{-# inline lSrcpkgDescription #-}
 
-  let
-    baseCtx' = baseCtx
-      { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage] }
-    targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-
-  return (baseCtx', targetSelectors)
-
+lLocalPackages :: Lens' ProjectBaseContext [PackageSpecifier UnresolvedSourcePackage]
+lLocalPackages f s = fmap (\x -> s { localPackages = x }) (f (localPackages s))
+{-# inline lLocalPackages #-}
