@@ -1,0 +1,17 @@
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - fake-package-0 (exe:script) (first run)
+Configuring executable 'script' for fake-package-0..
+Preprocessing executable 'script' for fake-package-0..
+Building executable 'script' for fake-package-0..
+# cabal v2-build
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - fake-package-0 (exe:script) (configuration changed)
+Configuring executable 'script' for fake-package-0..
+Preprocessing executable 'script' for fake-package-0..
+Building executable 'script' for fake-package-0..
+# cabal v2-clean

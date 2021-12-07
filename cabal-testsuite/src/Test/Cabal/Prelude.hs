@@ -61,7 +61,7 @@ import System.Exit (ExitCode (..))
 import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (getTemporaryDirectory, getCurrentDirectory, copyFile, removeFile, copyFile, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
+import System.Directory (getTemporaryDirectory, getCurrentDirectory, copyFile, removeFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -291,6 +291,10 @@ cabalGArgs global_args cmd args input = do
           -- new-build commands are affected by testCabalProjectFile
           | cmd == "v2-sdist"
           = [ "--project-file", testCabalProjectFile env ]
+
+          | cmd == "v2-clean"
+          = [ "--builddir", testDistDir env
+            , "--project-file", testCabalProjectFile env ]
 
           | "v2-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
@@ -665,6 +669,16 @@ shouldNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
 shouldNotExist path =
     withFrozenCallStack $
     liftIO $ doesFileExist path >>= assertBool (path ++ " should exist") . not
+
+shouldDirectoryExist :: MonadIO m => WithCallStack (FilePath -> m ())
+shouldDirectoryExist path =
+    withFrozenCallStack $
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist")
+
+shouldDirectoryNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
+shouldDirectoryNotExist path =
+    withFrozenCallStack $
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
 assertRegex msg regex r =
