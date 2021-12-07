@@ -93,7 +93,7 @@ import System.FilePath
 
 -- | Get the directory where script builds are cached.
 --
--- <cabalDir>/script-builds
+-- CABAL_DIR\/script-builds\/
 getScriptCacheDirectoryRoot :: IO FilePath
 getScriptCacheDirectoryRoot = do
   cabalDir <- getCabalDir
@@ -106,14 +106,14 @@ getScriptHash prefix script = showHashValue . hashValue . fromString . (prefix +
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to <cabalDir>/script-builds/ to get the cache directory.
+-- hashed path to CABAL_DIR\/script-builds\/ to get the cache directory.
 getScriptCacheDirectory :: String -> FilePath -> IO FilePath
 getScriptCacheDirectory prefix script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash prefix script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to <cabalDir>/script-builds/ to get the cache directory.
+-- hashed path to CABAL_DIR\/script-builds\/ to get the cache directory.
 ensureScriptCacheDirectory :: Verbosity -> String -> FilePath -> IO FilePath
 ensureScriptCacheDirectory verbosity prefix script = do
   cacheDir <- getScriptCacheDirectory prefix script
