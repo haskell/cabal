@@ -1,7 +1,5 @@
 import Test.Cabal.Prelude
 import System.Directory (copyFile, removeFile)
-import System.Environment (setEnv)
-import Distribution.Client.ScriptUtils (getScriptCacheDirectory)
 
 main = cabalTest . void $ do
     env <- getTestEnv
@@ -13,9 +11,8 @@ main = cabalTest . void $ do
     liftIO $ removeFile (td </> "script2.hs")
     cabal' "v2-clean" []
 
-    liftIO $ setEnv "CABAL_DIR" (testCabalDir env)
-    cacheDir  <- liftIO $ getScriptCacheDirectory "" (testCurrentDir env </> "script.hs")
-    cacheDir2 <- liftIO $ getScriptCacheDirectory "" (testCurrentDir env </> "script2.hs")
+    cacheDir  <- getScriptCacheDirectory "" (td </> "script.hs")
+    cacheDir2 <- getScriptCacheDirectory "" (td </> "script2.hs")
 
     shouldDirectoryExist cacheDir
     shouldDirectoryNotExist cacheDir2
