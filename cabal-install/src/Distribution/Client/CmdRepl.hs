@@ -103,7 +103,7 @@ import qualified Data.Set as Set
 import System.Directory
          ( getCurrentDirectory, doesFileExist, canonicalizePath)
 import System.FilePath
-         ( (</>), joinPath, splitPath, pathSeparator, takeFileName )
+         ( (</>), dropDrive, joinPath, splitPath, pathSeparator, takeFileName )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -358,7 +358,7 @@ data ReplType = ProjectRepl | GlobalRepl
 
 relativePathBackToCurrentDirectory :: FilePath -> IO FilePath
 relativePathBackToCurrentDirectory d = do
-  toRoot <- joinPath . map (const "..") . splitPath . dropWhile (== pathSeparator) <$> canonicalizePath d
+  toRoot <- joinPath . map (const "..") . splitPath . dropDrive <$> canonicalizePath d
   cwd <- dropWhile (== pathSeparator) <$> getCurrentDirectory
   return $ toRoot </> cwd
 
