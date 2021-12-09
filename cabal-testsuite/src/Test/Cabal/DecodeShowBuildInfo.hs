@@ -37,7 +37,7 @@ recordBuildInfo pkgName cname = do
       { resultExitCode = ExitSuccess
       , resultCommand = "build --enable-build-info"
       -- TODO: Consider if these three fields are instantiated correctly.
-      , resultOut = buildInfo
+      , resultOutput = buildInfo
       , resultStdout = buildInfo
       , resultStderr = mempty
       }

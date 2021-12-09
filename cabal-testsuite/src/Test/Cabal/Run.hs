@@ -22,7 +22,7 @@ data Result = Result
     { resultExitCode    :: ExitCode
     , resultCommand     :: String
     -- | Output sent to any file descriptor.
-    , resultOut         :: String
+    , resultOutput      :: String
     -- | Output sent to stdout.
     , resultStdout      :: String
     -- | Output sent to stderr.
@@ -90,7 +90,7 @@ run _verbosity mb_cwd env_overrides path0 args input = do
     return Result {
             resultExitCode = exitcode,
             resultCommand = showCommandForUser path args,
-            resultOut = rAll,
+            resultOutput = rAll,
             resultStdout = rStdout,
             resultStderr = rStderr
         }

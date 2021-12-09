@@ -601,16 +601,20 @@ recordHeader args = do
             liftIO $ C.appendFile (testActualFile Out env) header
 
 recordLog :: Result -> TestM ()
-recordLog Result{resultOut, resultStdout, resultStderr, resultCommand} = do
+recordLog Result{resultOutput, resultStdout, resultStderr, resultCommand} = do
     env <- getTestEnv
     let mode = testRecordMode env
     initWorkDir
-    liftIO $ C.appendFile (testWorkDir env </> "test.log")
-                         (C.pack $ "+ " ++ resultCommand ++ "\n"
-                            ++ "OUT\n" <> resultOut ++ "\n"
-                            ++ "STDOUT\n" <> resultStdout ++ "\n"
-                            ++ "STDERR\n" <> resultStderr ++ "\n"
-                            ++ "\n")
+    liftIO
+      $ C.appendFile (testWorkDir env </> "test.log")
+      $ C.pack $ unlines
+        [ "+ " <> resultCommand, "OUT"
+        , resultOutput
+        , "STDOUT"
+        , resultStdout
+        , "STDERR"
+        , resultStderr
+        ]
     let report f txt
           = liftIO
           . C.appendFile f
@@ -619,7 +623,7 @@ recordLog Result{resultOut, resultStdout, resultStderr, resultCommand} = do
             RecordAll    -> unlines (lines txt)
             RecordMarked -> getMarkedOutput txt
             DoNotRecord  -> ""
-    report (testActualFile Out env) resultOut
+    report (testActualFile Out env) resultOutput
     report (testActualFile Stdout env) resultStdout
     report (testActualFile Stderr env) resultStderr
 
