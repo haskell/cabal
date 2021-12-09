@@ -33,7 +33,7 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die' )
 import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteScriptProjectFiles )
+         ( AcceptNoTargets(..), withContextAndSelectors, updateAndPersistScriptContext, TargetContext(..) )
 
 import qualified Data.Map as Map
 
@@ -106,7 +106,10 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
             | onlyConfigure = TargetActionConfigure
             | otherwise = TargetActionBuild
 
-    baseCtx <- updateContextAndWriteScriptProjectFiles ctx targetCtx
+    baseCtx <- case targetCtx of
+      ProjectContext                      -> return ctx
+      GlobalContext                       -> return ctx
+      ScriptContext path exemeta contents -> updateAndPersistScriptContext ctx path exemeta contents
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

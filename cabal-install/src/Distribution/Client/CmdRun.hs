@@ -61,7 +61,7 @@ import Distribution.Simple.Program.Run
 import Distribution.Types.UnitId
          ( UnitId )
 import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteScriptProjectFiles )
+         ( AcceptNoTargets(..), withContextAndSelectors, updateAndPersistScriptContext, TargetContext(..) )
 
 import qualified Data.Set as Set
 import System.Directory
@@ -120,7 +120,10 @@ runCommand = CommandUI
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags {..} targetStrings globalFlags
   = withContextAndSelectors RejectNoTargets "" (Just ExeKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
-    baseCtx <- updateContextAndWriteScriptProjectFiles ctx targetCtx
+    baseCtx <- case targetCtx of
+      ProjectContext                      -> return ctx
+      GlobalContext                       -> return ctx
+      ScriptContext path exemeta contents -> updateAndPersistScriptContext ctx path exemeta contents
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

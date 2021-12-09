@@ -8,7 +8,7 @@
 module Distribution.Client.ScriptUtils (
     getScriptCacheDirectoryRoot, getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
-    updateContextAndWriteProjectFile, updateContextAndWriteScriptProjectFiles,
+    updateContextAndWriteProjectFile, updateAndPersistScriptContext,
     fakeProjectSourcePackage, lSrcpkgDescription
   ) where
 
@@ -244,24 +244,20 @@ updateContextAndWriteProjectFile ctx srcPkg = do
   else writeProjectFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
--- | In a project or global context do nothing and return the base context unchanged.
--- In a script context, write a .cabal file and the script source file (Main.hs or Main.lhs)
--- and add a 'SourcePackage' to the base context.
-updateContextAndWriteScriptProjectFiles :: ProjectBaseContext -> TargetContext -> IO ProjectBaseContext
-updateContextAndWriteScriptProjectFiles ctx = \case
-  ProjectContext -> return ctx
-  GlobalContext  -> return ctx
-  ScriptContext scriptPath scriptExecutable scriptContents -> do
-    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-        mainName = if takeExtension scriptPath == ".lhs" then "Main.lhs" else "Main.hs"
+-- Write a .cabal file and the script source file (Main.hs or Main.lhs)
+-- and add add the executable metadata to the base context.
+updateAndPersistScriptContext :: ProjectBaseContext -> FilePath -> Executable -> BS.ByteString -> IO ProjectBaseContext
+updateAndPersistScriptContext ctx scriptPath scriptExecutable scriptContents = do
+  let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+      mainName = if takeExtension scriptPath == ".lhs" then "Main.lhs" else "Main.hs"
 
-        sourcePackage = fakeProjectSourcePackage projectRoot
-          & lSrcpkgDescription . L.condExecutables
-          .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
-        executable = scriptExecutable & L.modulePath .~ mainName
+      sourcePackage = fakeProjectSourcePackage projectRoot
+        & lSrcpkgDescription . L.condExecutables
+        .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+      executable = scriptExecutable & L.modulePath .~ mainName
 
-    BS.writeFile (projectRoot </> mainName) scriptContents
-    updateContextAndWriteProjectFile ctx sourcePackage
+  BS.writeFile (projectRoot </> mainName) scriptContents
+  updateContextAndWriteProjectFile ctx sourcePackage
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
