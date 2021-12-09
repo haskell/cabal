@@ -11,9 +11,13 @@ import Distribution.Types.Version
 nonExistentPackageThisIsCabalBug :: PackageName
 nonExistentPackageThisIsCabalBug = mkPackageName "nonexistent-package-this-is-a-cabal-bug"
 
--- | Used by @cabal new-repl@ and @cabal new-run@
+-- | Used by @cabal new-repl@, @cabal new-run@ and @cabal new-build@
 fakePackageName :: PackageName
 fakePackageName = mkPackageName "fake-package"
+
+-- | Used by @cabal new-run@ and @cabal new-build@
+fakePackageCabalFileName :: FilePath
+fakePackageCabalFileName = "fake-package.cabal"
 
 -- | 'fakePackageName' with 'version0'.
 fakePackageId :: PackageId

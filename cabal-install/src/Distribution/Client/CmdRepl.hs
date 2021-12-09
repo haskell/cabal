@@ -199,8 +199,8 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
     (replType, baseCtx) <- case targetCtx of
-      ProjectContext     -> return (ProjectRepl, ctx)
-      GlobalContext      -> do
+      ProjectContext -> return (ProjectRepl, ctx)
+      GlobalContext  -> do
         unless (null targetStrings) $
           die' verbosity $ "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
 
@@ -216,7 +216,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
           baseDep = Dependency "base" anyVersion mainLibSet
 
         (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
-      ScriptContext {..} -> do
+      ScriptContext scriptPath scriptExecutable _ -> do
         unless (length targetStrings == 1) $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
         existsScriptPath <- doesFileExist scriptPath

@@ -71,7 +71,7 @@ import Distribution.Types.GenericPackageDescription as GPD
 import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
-    ( fakePackageId )
+    ( fakePackageId, fakePackageCabalFileName )
 import Language.Haskell.Extension
     ( Language(..) )
 import Distribution.Client.HashValue
@@ -144,8 +144,9 @@ data AcceptNoTargets
 data TargetContext
   = ProjectContext -- ^ The target selectors are part of a project.
   | GlobalContext  -- ^ The target selectors are from the global context.
-  | ScriptContext { scriptPath :: FilePath, scriptExecutable :: Executable, scriptContents :: BS.ByteString }
-  -- ^ The target selectors refer to a script.
+  | ScriptContext FilePath Executable BS.ByteString
+  -- ^ The target selectors refer to a script. Contains the path to the script and
+  -- the executable of contents parsed from the script
   deriving (Eq, Show)
 
 -- | Determine whether the targets represent regular targets or a script
@@ -227,12 +228,12 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
       return tmpDir
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
--- | Add the 'SourcePackage' to the context and use it to write a fake-package.cabal file.
+-- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
 updateContextAndWriteProjectFile :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
 updateContextAndWriteProjectFile ctx srcPkg = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-      projectFile = projectRoot </> "fake-package.cabal"
-      writeProjectFile = writeGenericPackageDescription (projectRoot </> "fake-package.cabal") (srcpkgDescription srcPkg)
+      projectFile = projectRoot </> fakePackageCabalFileName
+      writeProjectFile = writeGenericPackageDescription (projectRoot </> fakePackageCabalFileName) (srcpkgDescription srcPkg)
   projectFileExists <- doesFileExist projectFile
   -- TODO This is here to prevent reconfiguration of cached repl packages.
   -- It's worth investigating why it's needed in the first place.
@@ -244,13 +245,13 @@ updateContextAndWriteProjectFile ctx srcPkg = do
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
 -- | In a project or global context do nothing and return the base context unchanged.
--- In a script context, write a fake-package.cabal file and the script source file (Main.hs or Main.lhs)
+-- In a script context, write a .cabal file and the script source file (Main.hs or Main.lhs)
 -- and add a 'SourcePackage' to the base context.
 updateContextAndWriteScriptProjectFiles :: ProjectBaseContext -> TargetContext -> IO ProjectBaseContext
 updateContextAndWriteScriptProjectFiles ctx = \case
-  ProjectContext     -> return ctx
-  GlobalContext      -> return ctx
-  ScriptContext {..} -> do
+  ProjectContext -> return ctx
+  GlobalContext  -> return ctx
+  ScriptContext scriptPath scriptExecutable scriptContents -> do
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         mainName = if takeExtension scriptPath == ".lhs" then "Main.lhs" else "Main.hs"
 
