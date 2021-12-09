@@ -683,11 +683,10 @@ shouldNotExist path =
     liftIO $ doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
-assertRegex msg regex r =
-    withFrozenCallStack $
-    let out = resultStdout r
-    in assertBool (msg ++ ",\nactual output:\n" ++ out)
-       (out =~ regex)
+assertRegex msg regex Result{ resultOutput }
+  = withFrozenCallStack
+  $ assertBool (msg ++ ",\nactual output:\n" ++ resultOutput)
+  $ resultOutput =~ regex
 
 fails :: TestM a -> TestM a
 fails = withReaderT (\env -> env { testShouldFail = not (testShouldFail env) })
@@ -707,18 +706,16 @@ recordNormalizer f =
     withReaderT (\env -> env { testRecordNormalizer = testRecordNormalizer env . f })
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains needle result =
+assertOutputContains needle Result{resultOutput} =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
+    unless (needle `isInfixOf` (concatOutput resultOutput)) $
     assertFailure $ " expected: " ++ needle
-  where output = resultStdout result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
+assertOutputDoesNotContain needle Result{resultOutput} =
     withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
+    when (needle `isInfixOf` (concatOutput resultOutput)) $
     assertFailure $ "unexpected: " ++ needle
-  where output = resultStdout result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =
@@ -913,7 +910,7 @@ withSourceCopy m = do
     let cwd  = testCurrentDir env
         dest = testSourceCopyDir env
     r <- git' "ls-files" ["--cached", "--modified"]
-    forM_ (lines (resultStdout r)) $ \f -> do
+    forM_ (lines (resultOutput r)) $ \f -> do
         unless (isTestFile f) $ do
             liftIO $ createDirectoryIfMissing True (takeDirectory (dest </> f))
             liftIO $ copyFile (cwd </> f) (dest </> f)
@@ -939,7 +936,7 @@ getIPID :: String -> TestM String
 getIPID pn = do
     r <- ghcPkg' "field" ["--global", pn, "id"]
     -- Don't choke on warnings from ghc-pkg
-    case mapMaybe (stripPrefix "id: ") (lines (resultStdout r)) of
+    case mapMaybe (stripPrefix "id: ") (lines (resultOutput r)) of
         -- ~/.cabal/store may contain multiple versions of single package
         -- we pick first one. It should work
         (x:_) -> return (takeWhile (not . Char.isSpace) x)
