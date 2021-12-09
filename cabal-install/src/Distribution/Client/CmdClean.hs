@@ -87,7 +87,9 @@ cleanAction CleanFlags{..} extraArgs _ = do
         mdistDirectory = flagToMaybe cleanDistDir
         mprojectFile   = flagToMaybe cleanProjectFile
 
-    -- assume all files passed are the names of scripts
+    -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
+    --
+    -- For now assume all files passed are the names of scripts
     notScripts <- filterM (fmap not . doesFileExist) extraArgs
     unless (null notScripts) $
         die' verbosity $ "'clean' extra arguments should be script files: "

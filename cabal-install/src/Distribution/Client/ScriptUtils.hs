@@ -20,100 +20,114 @@ import qualified Distribution.Types.Lens as L
 
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.DistDirLayout
-         ( DistDirLayout(..) )
+    ( DistDirLayout(..) )
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags (..) )
+    ( NixStyleFlags (..) )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ConfigFlags(..) )
+    ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.Config
-         ( getCabalDir )
+    ( getCabalDir )
 import Distribution.Simple.Flag
-         ( fromFlagOrDefault )
+    ( fromFlagOrDefault )
 import Distribution.Simple.Setup
-         ( Flag(..) )
-import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
+    ( Flag(..) )
+import Distribution.CabalSpecVersion
+    (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
-         ( normal )
+    ( normal )
 import Distribution.Simple.Utils
-         ( warn, die', createDirectoryIfMissingVerbose
-         , createTempDirectory, handleDoesNotExist )
+    ( warn, die', createDirectoryIfMissingVerbose
+    , createTempDirectory, handleDoesNotExist )
 import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), ProjectConfigShared(..)
-         , withProjectOrGlobalConfig )
+    ( ProjectConfig(..), ProjectConfigShared(..)
+    , withProjectOrGlobalConfig )
 import Distribution.Client.ProjectFlags
-         ( flagIgnoreProject )
+    ( flagIgnoreProject )
 import Distribution.Client.TargetSelector
-         ( TargetSelectorProblem(..), TargetString(..) )
+    ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
+    ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.FieldGrammar
-         ( takeFields, parseFieldGrammar )
+    ( takeFields, parseFieldGrammar )
 import Distribution.PackageDescription.FieldGrammar
-         ( executableFieldGrammar )
+    ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
-         ( writeGenericPackageDescription, showGenericPackageDescription )
+    ( writeGenericPackageDescription, showGenericPackageDescription )
 import Distribution.Parsec
-         ( Position(..) )
+    ( Position(..) )
 import Distribution.Fields
-         ( ParseResult, parseString, parseFatalFailure, readFields )
+    ( ParseResult, parseString, parseFatalFailure, readFields )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
-         ( SourcePackage(..) )
+    ( SourcePackage(..) )
 import Distribution.Types.BuildInfo
-         ( BuildInfo(..) )
+    ( BuildInfo(..) )
 import Distribution.Types.CondTree
-         ( CondTree(..) )
+    ( CondTree(..) )
 import Distribution.Types.Executable
-         ( Executable(..) )
+    ( Executable(..) )
 import Distribution.Types.GenericPackageDescription as GPD
-         ( GenericPackageDescription(..), emptyGenericPackageDescription )
+    ( GenericPackageDescription(..), emptyGenericPackageDescription )
 import Distribution.Types.PackageDescription
-         ( PackageDescription(..), emptyPackageDescription )
+    ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
-         ( fakePackageId )
+    ( fakePackageId )
 import Language.Haskell.Extension
-         ( Language(..) )
+    ( Language(..) )
 import Distribution.Client.HashValue
-         ( hashValue, showHashValue )
+    ( hashValue, showHashValue )
 import Distribution.Simple.Utils
-         ( readUTF8File )
+    ( readUTF8File )
 
 import Control.Concurrent.MVar
-         ( newEmptyMVar, putMVar, tryTakeMVar )
+    ( newEmptyMVar, putMVar, tryTakeMVar )
 import Control.Exception
-         ( bracket )
+    ( bracket )
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Text.Parsec as P
 import System.Directory
-         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, canonicalizePath )
+    ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, canonicalizePath )
 import System.FilePath
-         ( (</>), takeExtension )
+    ( (</>), takeExtension )
 
 
 -- | Get the directory where script builds are cached.
 --
--- CABAL_DIR\/script-builds\/
+-- @CABAL_DIR\/script-builds\/@
 getScriptCacheDirectoryRoot :: IO FilePath
 getScriptCacheDirectoryRoot = do
   cabalDir <- getCabalDir
   return $ cabalDir </> "script-builds"
 
--- | Get the hash of a script path.
+-- | Get the hash of (@prefix@ ++ the script's absolute path)
+--
+-- Two hashes for the same @prefix@ will be the same whenever
+-- the absolute path is the same. Two hashes with different
+-- @prefix@ will always differ.
+--
+-- @prefix@ must not contain path separator characters because
+-- it could cause unwanted collisions.
 getScriptHash :: String -> FilePath -> IO String
-getScriptHash prefix script = showHashValue . hashValue . fromString . (prefix ++) <$> canonicalizePath script
+getScriptHash prefix script
+  | '/' `notElem` prefix && '\\' `notElem` prefix = showHashValue . hashValue . fromString . (prefix ++) <$> canonicalizePath script
+  | otherwise                                     = error "getScriptHash: prefix must not contain '/' or '\\'"
 
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to CABAL_DIR\/script-builds\/ to get the cache directory.
+-- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+--
+-- @prefix@ must not contain path separator characters.
 getScriptCacheDirectory :: String -> FilePath -> IO FilePath
 getScriptCacheDirectory prefix script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash prefix script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
--- hashed path to CABAL_DIR\/script-builds\/ to get the cache directory.
+-- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
+--
+-- @prefix@ must not contain path separator characters.
 ensureScriptCacheDirectory :: Verbosity -> String -> FilePath -> IO FilePath
 ensureScriptCacheDirectory verbosity prefix script = do
   cacheDir <- getScriptCacheDirectory prefix script
@@ -136,7 +150,7 @@ data TargetContext
 
 -- | Determine whether the targets represent regular targets or a script
 -- and return the proper context and target selectors.
--- Report problems if selectors are valid as neither regular targets or as a script.
+-- Die with an error message if selectors are valid as neither regular targets or as a script.
 --
 -- In the case that the context refers to a temporary directory,
 -- delete it after the action finishes.
@@ -220,8 +234,8 @@ updateContextAndWriteProjectFile ctx srcPkg = do
       projectFile = projectRoot </> "fake-package.cabal"
       writeProjectFile = writeGenericPackageDescription (projectRoot </> "fake-package.cabal") (srcpkgDescription srcPkg)
   projectFileExists <- doesFileExist projectFile
-  -- TODO This if is here to prevent reconfiguration of cached repl packages.
-  -- It's worth investigating why it's need in the first place.
+  -- TODO This is here to prevent reconfiguration of cached repl packages.
+  -- It's worth investigating why it's needed in the first place.
   if projectFileExists then do
     contents <- readUTF8File projectFile
     when (contents /= showGenericPackageDescription (srcpkgDescription srcPkg))
@@ -229,8 +243,9 @@ updateContextAndWriteProjectFile ctx srcPkg = do
   else writeProjectFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
--- | In a script context, add a 'SourcePackage' to the context and write a fake-package.cabal file
--- and the script source file (Main.hs or Main.lhs).
+-- | In a project or global context do nothing and return the base context unchanged.
+-- In a script context, write a fake-package.cabal file and the script source file (Main.hs or Main.lhs)
+-- and add a 'SourcePackage' to the base context.
 updateContextAndWriteScriptProjectFiles :: ProjectBaseContext -> TargetContext -> IO ProjectBaseContext
 updateContextAndWriteScriptProjectFiles ctx = \case
   ProjectContext     -> return ctx

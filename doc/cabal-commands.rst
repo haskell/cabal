@@ -276,7 +276,7 @@ cause extra store packages to be built (for example,
 for all transitive dependencies are built and installed.)
 
 When building a script, the executable is cached under the cabal directory.
-See ``cabal v2-run`` for more information on the format for scripts.
+See ``cabal v2-run`` for more information on scripts.
 
 In addition ``cabal v2-build`` accepts these flags:
 
@@ -331,16 +331,14 @@ cannot be excluded for technical reasons).
 
     $ cabal v2-repl --build-depends vector --no-transitive-deps
 
-Scripts can be passing the path to the script as the target.
+``v2-repl`` can open scripts by passing the path to the script as the target.
 
 ::
 
-    $ cabal v2-repl script.hs
+    $ cabal v2-repl path/to/script
 
-If the name of the script matches another target, the other target is preferred.
-To load the script instead pass it as an explicit path: ./script.hs
-
-See ``cabal v2-run`` for more information on the format for scripts.
+The configuration information for the script is cached under the cabal directory.
+See ``cabal v2-run`` for more information on scripts.
 
 cabal v2-run
 -------------
@@ -396,8 +394,16 @@ interpreter, or through this command:
 
 ::
 
-    $ cabal v2-run script.hs
-    $ cabal v2-run script.hs -- --arg1 # args are passed like this
+    $ cabal v2-run path/to/script
+    $ cabal v2-run path/to/script -- --arg1 # args are passed like this
+
+The executable is cached under the cabal directory, and can be pre-built with
+``cabal v2-build path/to/script`` and the cache can be removed with
+``cabal v2-clean path/to/script``.
+
+A note on targets: Whenever a command takes a script target and it matches the
+name of another target, the other target is preferred. To load the script
+instead pass it as an explicit path: ./script
 
 cabal v2-freeze
 ----------------
