@@ -103,7 +103,7 @@ import qualified Data.Set as Set
 import System.Directory
          ( getCurrentDirectory, doesFileExist, canonicalizePath)
 import System.FilePath
-         ( (</>), dropDrive, joinPath, splitPath, takeFileName )
+         ( (</>), dropDrive, joinPath, splitPath, dropFileName, takeFileName )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -223,15 +223,16 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
         unless existsScriptPath $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
 
-        -- We want to use cwd in hs-source-dirs, but hs-source-dirs wants a relative path
-        backtocwd <- relativePathBackToCurrentDirectory projectRoot
+        -- We want to use the script dir in hs-source-dirs, but hs-source-dirs wants a relpath from the projectRoot
+        -- and ghci also needs to be able to find that script from cwd using that relpath
+        backtoscript <- doublyRelativePath projectRoot (dropFileName scriptPath)
         let
           sourcePackage = fakeProjectSourcePackage projectRoot
             & lSrcpkgDescription . L.condExecutables
             .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
           executable = scriptExecutable
             & L.modulePath   .~ takeFileName scriptPath
-            & L.hsSourceDirs .~ [unsafeMakeSymbolicPath backtocwd]
+            & L.hsSourceDirs .~ [unsafeMakeSymbolicPath backtoscript]
 
         (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
 
@@ -356,11 +357,19 @@ data OriginalComponentInfo = OriginalComponentInfo
 data ReplType = ProjectRepl | GlobalRepl
   deriving (Show, Eq)
 
-relativePathBackToCurrentDirectory :: FilePath -> IO FilePath
-relativePathBackToCurrentDirectory d = do
-  toRoot <- joinPath . map (const "..") . splitPath . dropDrive <$> canonicalizePath d
+-- Workaround for hs-script-dirs not taking absolute paths.
+-- Construct a path to b that is relative to both a and cwd.
+doublyRelativePath :: FilePath -> FilePath -> IO FilePath
+doublyRelativePath a b = do
+  cpa <- dropDrive <$> canonicalizePath a
   cwd <- dropDrive <$> getCurrentDirectory
-  return $ toRoot </> cwd
+  cpb <- dropDrive <$> canonicalizePath b
+  let cpaSegs = splitPath cpa
+      cwdSegs = splitPath cwd
+      -- Make sure we get all the way down to root from either a or b
+      toRoot = joinPath . map (const "..") $ if length cpaSegs > length cwdSegs then cpaSegs else cwdSegs
+  -- Climb down to b from root
+  return $ toRoot </> cpb
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
