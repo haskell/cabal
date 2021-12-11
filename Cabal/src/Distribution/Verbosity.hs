@@ -42,10 +42,10 @@ module Distribution.Verbosity (
   verboseMarkOutput, isVerboseMarkOutput,
   verboseUnmarkOutput,
 
-  -- * line-wrapping
+  -- * Line wrapping
   verboseNoWrap, isVerboseNoWrap,
 
-  -- * timestamps
+  -- * Time stamps
   verboseTimestamp, isVerboseTimestamp,
   verboseNoTimestamp,
 
@@ -98,23 +98,24 @@ instance Bounded Verbosity where
 instance Binary Verbosity
 instance Structured Verbosity
 
--- We shouldn't print /anything/ unless an error occurs in silent mode
+-- | In 'silent' mode, we should not print /anything/ unless an error occurs.
 silent :: Verbosity
 silent = mkVerbosity Silent
 
--- Print stuff we want to see by default
+-- | Print stuff we want to see by default.
 normal :: Verbosity
 normal = mkVerbosity Normal
 
--- Be more verbose about what's going on
+-- | Be more verbose about what's going on.
 verbose :: Verbosity
 verbose = mkVerbosity Verbose
 
--- Not only are we verbose ourselves (perhaps even noisier than when
--- being "verbose"), but we tell everything we run to be verbose too
+-- | Not only are we verbose ourselves (perhaps even noisier than when
+-- being 'verbose'), but we tell everything we run to be verbose too.
 deafening :: Verbosity
 deafening = mkVerbosity Deafening
 
+-- | Increase verbosity level, but stay 'silent' if we are.
 moreVerbose :: Verbosity -> Verbosity
 moreVerbose v =
     case vLevel v of
@@ -123,6 +124,7 @@ moreVerbose v =
         Verbose   -> v { vLevel = Deafening }
         Deafening -> v
 
+-- | Decrease verbosity level, but stay 'deafening' if we are.
 lessVerbose :: Verbosity -> Verbosity
 lessVerbose v =
     verboseQuiet $
@@ -146,6 +148,7 @@ lessVerbose v =
 modifyVerbosity :: (Verbosity -> Verbosity) -> Verbosity -> Verbosity
 modifyVerbosity f v = v { vLevel = vLevel (f v) }
 
+-- | Numeric verbosity level @0..3@: @0@ is 'silent', @3@ is 'deafening'.
 intToVerbosity :: Int -> Maybe Verbosity
 intToVerbosity 0 = Just (mkVerbosity Silent)
 intToVerbosity 1 = Just (mkVerbosity Normal)
@@ -271,7 +274,7 @@ verboseUnmarkOutput = verboseNoFlag VMarkOutput
 verboseNoWrap :: Verbosity -> Verbosity
 verboseNoWrap = verboseFlag VNoWrap
 
--- | Mark the verbosity as quiet
+-- | Mark the verbosity as quiet.
 verboseQuiet :: Verbosity -> Verbosity
 verboseQuiet v = v { vQuiet = True }
 
@@ -283,31 +286,31 @@ verboseTimestamp = verboseFlag VTimestamp
 verboseNoTimestamp :: Verbosity -> Verbosity
 verboseNoTimestamp = verboseNoFlag VTimestamp
 
--- | Turn on timestamps for log messages.
+-- | Switch logging to 'stderr'.
 --
 -- @since 3.4.0.0
 verboseStderr :: Verbosity -> Verbosity
 verboseStderr = verboseFlag VStderr
 
--- | Turn off timestamps for log messages.
+-- | Switch logging to 'stdout'.
 --
 -- @since 3.4.0.0
 verboseNoStderr :: Verbosity -> Verbosity
 verboseNoStderr = verboseNoFlag VStderr
 
--- | Turn off warnings for log messages
+-- | Turn off warnings for log messages.
 verboseNoWarn :: Verbosity -> Verbosity
 verboseNoWarn = verboseFlag VNoWarn
 
--- | Helper function for flag enabling functions
+-- | Helper function for flag enabling functions.
 verboseFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
 verboseFlag flag v = v { vFlags = Set.insert flag (vFlags v) }
 
--- | Helper function for flag disabling functions
+-- | Helper function for flag disabling functions.
 verboseNoFlag :: VerbosityFlag -> (Verbosity -> Verbosity)
 verboseNoFlag flag v = v { vFlags = Set.delete flag (vFlags v) }
 
--- | Turn off all flags
+-- | Turn off all flags.
 verboseNoFlags :: Verbosity -> Verbosity
 verboseNoFlags v = v { vFlags = Set.empty }
 
@@ -330,7 +333,7 @@ isVerboseMarkOutput = isVerboseFlag VMarkOutput
 isVerboseNoWrap :: Verbosity -> Bool
 isVerboseNoWrap = isVerboseFlag VNoWrap
 
--- | Test if we had called 'lessVerbose' on the verbosity
+-- | Test if we had called 'lessVerbose' on the verbosity.
 isVerboseQuiet :: Verbosity -> Bool
 isVerboseQuiet = vQuiet
 
@@ -338,7 +341,7 @@ isVerboseQuiet = vQuiet
 isVerboseTimestamp :: Verbosity -> Bool
 isVerboseTimestamp = isVerboseFlag VTimestamp
 
--- | Test if we should output to stderr when we log.
+-- | Test if we should output to 'stderr' when we log.
 --
 -- @since 3.4.0.0
 isVerboseStderr :: Verbosity -> Bool

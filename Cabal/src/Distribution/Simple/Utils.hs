@@ -457,6 +457,7 @@ displaySomeException se =
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 
+-- | Depending on 'isVerboseStderr', set the output handle to 'stderr' or 'stdout'.
 verbosityHandle :: Verbosity -> Handle
 verbosityHandle verbosity
     | isVerboseStderr verbosity = stderr
