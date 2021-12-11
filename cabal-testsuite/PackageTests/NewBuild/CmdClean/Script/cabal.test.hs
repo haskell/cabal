@@ -5,7 +5,7 @@ main = cabalTest . void $ do
     cabal' "v2-clean" ["script.hs"]
 
     env <- getTestEnv
-    cacheDir <- getScriptCacheDirectory "" (testCurrentDir env </> "script.hs")
+    cacheDir <- getScriptCacheDirectory (testCurrentDir env </> "script.hs")
 
     shouldDirectoryNotExist cacheDir
     shouldDirectoryNotExist (testDistDir env)

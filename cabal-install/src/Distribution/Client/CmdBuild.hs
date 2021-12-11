@@ -33,7 +33,7 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, die' )
 import Distribution.Client.ScriptUtils
-         ( AcceptNoTargets(..), withContextAndSelectors, updateAndPersistScriptContext, TargetContext(..) )
+         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
 
 import qualified Data.Map as Map
 
@@ -98,7 +98,7 @@ defaultBuildFlags = BuildFlags
 --
 buildAction :: NixStyleFlags BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings globalFlags
-  = withContextAndSelectors RejectNoTargets "" Nothing flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+  = withContextAndSelectors RejectNoTargets Nothing flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
     -- TODO: This flags defaults business is ugly
     let onlyConfigure = fromFlag (buildOnlyConfigure defaultBuildFlags
                                  <> buildOnlyConfigure buildFlags)
@@ -107,9 +107,9 @@ buildAction flags@NixStyleFlags { extraFlags = buildFlags, ..} targetStrings glo
             | otherwise = TargetActionBuild
 
     baseCtx <- case targetCtx of
-      ProjectContext                      -> return ctx
-      GlobalContext                       -> return ctx
-      ScriptContext path exemeta contents -> updateAndPersistScriptContext ctx path exemeta contents
+      ProjectContext             -> return ctx
+      GlobalContext              -> return ctx
+      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do

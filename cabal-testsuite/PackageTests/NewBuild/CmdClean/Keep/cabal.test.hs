@@ -11,8 +11,8 @@ main = cabalTest . void $ do
     liftIO $ removeFile (td </> "script2.hs")
     cabal' "v2-clean" []
 
-    cacheDir  <- getScriptCacheDirectory "" (td </> "script.hs")
-    cacheDir2 <- getScriptCacheDirectory "" (td </> "script2.hs")
+    cacheDir  <- getScriptCacheDirectory (td </> "script.hs")
+    cacheDir2 <- getScriptCacheDirectory (td </> "script2.hs")
 
     shouldDirectoryExist cacheDir
     shouldDirectoryNotExist cacheDir2

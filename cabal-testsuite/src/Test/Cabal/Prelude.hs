@@ -752,10 +752,10 @@ concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
 
 -- | The directory where script build artifacts are expected to be cached
-getScriptCacheDirectory :: String -> FilePath -> TestM FilePath
-getScriptCacheDirectory prefix script = do
+getScriptCacheDirectory :: FilePath -> TestM FilePath
+getScriptCacheDirectory script = do
     cabalDir <- testCabalDir `fmap` getTestEnv
-    hashinput <- liftIO $ (prefix ++) `fmap` canonicalizePath script
+    hashinput <- liftIO $ canonicalizePath script
     let hash = C.unpack . Base16.encode . SHA256.hash . C.pack $ hashinput
     return $ cabalDir </> "script-builds" </> hash
 

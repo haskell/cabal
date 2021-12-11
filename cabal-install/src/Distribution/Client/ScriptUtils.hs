@@ -8,7 +8,7 @@
 module Distribution.Client.ScriptUtils (
     getScriptCacheDirectoryRoot, getScriptHash, getScriptCacheDirectory, ensureScriptCacheDirectory,
     withContextAndSelectors, AcceptNoTargets(..), TargetContext(..),
-    updateContextAndWriteProjectFile, updateAndPersistScriptContext,
+    updateContextAndWriteProjectFile, updateContextAndWriteProjectFile',
     fakeProjectSourcePackage, lSrcpkgDescription
   ) where
 
@@ -72,6 +72,8 @@ import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
     ( fakePackageId, fakePackageCabalFileName )
+import Distribution.Utils.Path
+    ( unsafeMakeSymbolicPath )
 import Language.Haskell.Extension
     ( Language(..) )
 import Distribution.Client.HashValue
@@ -87,9 +89,9 @@ import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
 import qualified Text.Parsec as P
 import System.Directory
-    ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist, canonicalizePath )
+    ( canonicalizePath, doesFileExist, getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
-    ( (</>), takeExtension )
+    ( (</>), dropDrive, dropFileName, joinPath, splitPath, takeFileName )
 
 
 -- | Get the directory where script builds are cached.
@@ -100,37 +102,27 @@ getScriptCacheDirectoryRoot = do
   cabalDir <- getCabalDir
   return $ cabalDir </> "script-builds"
 
--- | Get the hash of (@prefix@ ++ the script's absolute path)
+-- | Get the hash of a script's absolute path)
 --
--- Two hashes for the same @prefix@ will be the same whenever
--- the absolute path is the same. Two hashes with different
--- @prefix@ will always differ.
---
--- @prefix@ must not contain path separator characters because
--- it could cause unwanted collisions.
-getScriptHash :: String -> FilePath -> IO String
-getScriptHash prefix script
-  | '/' `notElem` prefix && '\\' `notElem` prefix = showHashValue . hashValue . fromString . (prefix ++) <$> canonicalizePath script
-  | otherwise                                     = error "getScriptHash: prefix must not contain '/' or '\\'"
+-- Two hashes will be the same as long as the absolute paths
+-- are the same.
+getScriptHash :: FilePath -> IO String
+getScriptHash script = showHashValue . hashValue . fromString <$> canonicalizePath script
 
 -- | Get the directory for caching a script build.
 --
 -- The only identity of a script is it's absolute path, so append the
 -- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
---
--- @prefix@ must not contain path separator characters.
-getScriptCacheDirectory :: String -> FilePath -> IO FilePath
-getScriptCacheDirectory prefix script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash prefix script
+getScriptCacheDirectory :: FilePath -> IO FilePath
+getScriptCacheDirectory script = (</>) <$> getScriptCacheDirectoryRoot <*> getScriptHash script
 
 -- | Get the directory for caching a script build and ensure it exists.
 --
 -- The only identity of a script is it's absolute path, so append the
 -- hashed path to @CABAL_DIR\/script-builds\/@ to get the cache directory.
---
--- @prefix@ must not contain path separator characters.
-ensureScriptCacheDirectory :: Verbosity -> String -> FilePath -> IO FilePath
-ensureScriptCacheDirectory verbosity prefix script = do
-  cacheDir <- getScriptCacheDirectory prefix script
+ensureScriptCacheDirectory :: Verbosity -> FilePath -> IO FilePath
+ensureScriptCacheDirectory verbosity script = do
+  cacheDir <- getScriptCacheDirectory script
   createDirectoryIfMissingVerbose verbosity True cacheDir
   return cacheDir
 
@@ -144,9 +136,9 @@ data AcceptNoTargets
 data TargetContext
   = ProjectContext -- ^ The target selectors are part of a project.
   | GlobalContext  -- ^ The target selectors are from the global context.
-  | ScriptContext FilePath Executable BS.ByteString
+  | ScriptContext FilePath Executable
   -- ^ The target selectors refer to a script. Contains the path to the script and
-  -- the executable of contents parsed from the script
+  -- the executable metadata parsed from the script
   deriving (Eq, Show)
 
 -- | Determine whether the targets represent regular targets or a script
@@ -157,7 +149,6 @@ data TargetContext
 -- delete it after the action finishes.
 withContextAndSelectors
   :: AcceptNoTargets     -- ^ What your command should do when no targets are found.
-  -> String              -- ^ A prefix to add to the path before hashing, if you don't want to use the default cache dir.
   -> Maybe ComponentKind -- ^ A target filter
   -> NixStyleFlags a     -- ^ Command line flags
   -> [String]            -- ^ Target strings or a script and args.
@@ -165,7 +156,7 @@ withContextAndSelectors
   -> (TargetContext -> ProjectBaseContext -> [TargetSelector] -> IO b)
   -- ^ The body of your command action.
   -> IO b
-withContextAndSelectors noTargets cachePrefix kind flags@NixStyleFlags {..} targetStrings globalFlags act
+withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings globalFlags act
   = withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
 
@@ -203,16 +194,16 @@ withContextAndSelectors noTargets cachePrefix kind flags@NixStyleFlags {..} targ
       exists <- doesFileExist script
       if exists then do
         -- In the script case we always want a dummy context even when ignoreProject is False
-        let mkCacheDir = ensureScriptCacheDirectory verbosity cachePrefix script
+        let mkCacheDir = ensureScriptCacheDirectory verbosity script
         (_, ctx) <- withProjectOrGlobalConfig verbosity (Flag True) globalConfigFlag with (without mkCacheDir)
 
         let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         writeFile (projectRoot </> "scriptlocation") =<< canonicalizePath script
 
-        (executable, contents) <- readScriptBlockFromScript verbosity =<< BS.readFile script
+        executable <- readScriptBlockFromScript verbosity =<< BS.readFile script
 
         let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
-        return (ScriptContext script executable' contents, ctx, defaultTarget)
+        return (ScriptContext script executable', ctx, defaultTarget)
       else reportTargetSelectorProblems verbosity err
 
 withTemporaryTempDirectory :: (IO FilePath -> IO a) -> IO a
@@ -229,8 +220,8 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
     rmTmp m _ = tryTakeMVar m >>= maybe (return ()) (handleDoesNotExist () . removeDirectoryRecursive)
 
 -- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
-updateContextAndWriteProjectFile :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
-updateContextAndWriteProjectFile ctx srcPkg = do
+updateContextAndWriteProjectFile' :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
+updateContextAndWriteProjectFile' ctx srcPkg = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
       projectFile = projectRoot </> fakePackageCabalFileName
       writeProjectFile = writeGenericPackageDescription (projectRoot </> fakePackageCabalFileName) (srcpkgDescription srcPkg)
@@ -244,20 +235,38 @@ updateContextAndWriteProjectFile ctx srcPkg = do
   else writeProjectFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
--- Write a .cabal file and the script source file (Main.hs or Main.lhs)
--- and add add the executable metadata to the base context.
-updateAndPersistScriptContext :: ProjectBaseContext -> FilePath -> Executable -> BS.ByteString -> IO ProjectBaseContext
-updateAndPersistScriptContext ctx scriptPath scriptExecutable scriptContents = do
+-- | Add add the executable metadata to the context and write a .cabal file.
+updateContextAndWriteProjectFile :: ProjectBaseContext -> FilePath -> Executable -> IO ProjectBaseContext
+updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-      mainName = if takeExtension scriptPath == ".lhs" then "Main.lhs" else "Main.hs"
 
-      sourcePackage = fakeProjectSourcePackage projectRoot
-        & lSrcpkgDescription . L.condExecutables
-        .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
-      executable = scriptExecutable & L.modulePath .~ mainName
+  -- We want to use the script dir in hs-source-dirs, but hs-source-dirs wants a relpath from the projectRoot
+  -- and ghci also needs to be able to find that script from cwd using that relpath
+  backtoscript <- doublyRelativePath projectRoot scriptPath
+  let
+    sourcePackage = fakeProjectSourcePackage projectRoot
+      & lSrcpkgDescription . L.condExecutables
+      .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+    executable = scriptExecutable
+      & L.modulePath   .~ takeFileName scriptPath
+      & L.hsSourceDirs %~ (unsafeMakeSymbolicPath backtoscript :)
 
-  BS.writeFile (projectRoot </> mainName) scriptContents
-  updateContextAndWriteProjectFile ctx sourcePackage
+  updateContextAndWriteProjectFile' ctx sourcePackage
+
+-- | Workaround for hs-script-dirs not taking absolute paths.
+-- Construct a path to scriptPath that is relative to both
+-- the project rood and working directory.
+doublyRelativePath :: FilePath -> FilePath -> IO FilePath
+doublyRelativePath projectRoot scriptPath = do
+  prd <- dropDrive <$> canonicalizePath projectRoot
+  cwd <- dropDrive <$> getCurrentDirectory
+  spd <- dropDrive . dropFileName <$> canonicalizePath scriptPath
+  let prdSegs = splitPath prd
+      cwdSegs = splitPath cwd
+      -- Make sure we get all the way down to root from either a or b
+      toRoot = joinPath . map (const "..") $ if length prdSegs > length cwdSegs then prdSegs else cwdSegs
+  -- Climb down to b from root
+  return $ toRoot </> spd
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =
@@ -279,16 +288,14 @@ readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block
 --
 -- * @-}@
 --
--- Return the metadata and the contents of the file without the #! line.
-readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO (Executable, BS.ByteString)
+-- Return the metadata.
+readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlockFromScript verbosity str = do
     str' <- case extractScriptBlock str of
               Left e -> die' verbosity $ "Failed extracting script block: " ++ e
               Right x -> return x
     when (BS.all isSpace str') $ warn verbosity "Empty script block"
-    (\x -> (x, noShebang)) <$> readScriptBlock verbosity str'
-  where
-    noShebang = BS.unlines . filter (not . BS.isPrefixOf "#!") . BS.lines $ str
+    readScriptBlock verbosity str'
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens

@@ -5,8 +5,7 @@ main = cabalTest . void $ do
     assertOutputContains "Hello World" res
 
     env      <- getTestEnv
-    cacheDir <- getScriptCacheDirectory "repl:" (testCurrentDir env </> "script.hs")
+    cacheDir <- getScriptCacheDirectory $ testCurrentDir env </> "script.hs"
 
     shouldExist $ cacheDir </> "fake-package.cabal"
     shouldExist $ cacheDir </> "scriptlocation"
-    shouldNotExist $ cacheDir </> "Main.hs"

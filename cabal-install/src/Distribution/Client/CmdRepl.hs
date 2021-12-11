@@ -45,7 +45,8 @@ import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, TargetContext(..)
-         , updateContextAndWriteProjectFile, fakeProjectSourcePackage, lSrcpkgDescription )
+         , updateContextAndWriteProjectFile, updateContextAndWriteProjectFile'
+         , fakeProjectSourcePackage, lSrcpkgDescription )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
@@ -77,8 +78,6 @@ import Distribution.Types.CondTree
          ( CondTree(..), traverseCondTreeC )
 import Distribution.Types.Dependency
          ( Dependency(..), mainLibSet )
-import Distribution.Types.Executable
-         ( Executable(..) )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.Version
@@ -87,8 +86,6 @@ import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Utils.Generic
          ( safeHead )
-import Distribution.Utils.Path
-         ( unsafeMakeSymbolicPath )
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
@@ -101,9 +98,9 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( getCurrentDirectory, doesFileExist, canonicalizePath)
+         ( doesFileExist, getCurrentDirectory )
 import System.FilePath
-         ( (</>), dropDrive, joinPath, splitPath, dropFileName, takeFileName )
+         ( (</>) )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -190,7 +187,7 @@ replCommand = Client.installCommand {
 --
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
 replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags
-  = withContextAndSelectors AcceptNoTargets "repl:" (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+  = withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
           ++ "You may wish to use 'build --only-dependencies' and then "
@@ -215,26 +212,15 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
             }
           baseDep = Dependency "base" anyVersion mainLibSet
 
-        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
-      ScriptContext scriptPath scriptExecutable _ -> do
+        (,) GlobalRepl <$> updateContextAndWriteProjectFile' ctx sourcePackage
+      ScriptContext scriptPath scriptExecutable -> do
         unless (length targetStrings == 1) $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
         existsScriptPath <- doesFileExist scriptPath
         unless existsScriptPath $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
 
-        -- We want to use the script dir in hs-source-dirs, but hs-source-dirs wants a relpath from the projectRoot
-        -- and ghci also needs to be able to find that script from cwd using that relpath
-        backtoscript <- doublyRelativePath projectRoot (dropFileName scriptPath)
-        let
-          sourcePackage = fakeProjectSourcePackage projectRoot
-            & lSrcpkgDescription . L.condExecutables
-            .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
-          executable = scriptExecutable
-            & L.modulePath   .~ takeFileName scriptPath
-            & L.hsSourceDirs .~ [unsafeMakeSymbolicPath backtoscript]
-
-        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx sourcePackage
+        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
     (originalComponent, baseCtx') <- if null (envPackages envFlags)
       then return (Nothing, baseCtx)
@@ -356,20 +342,6 @@ data OriginalComponentInfo = OriginalComponentInfo
 -- Tracks what type of GHCi instance we're creating.
 data ReplType = ProjectRepl | GlobalRepl
   deriving (Show, Eq)
-
--- Workaround for hs-script-dirs not taking absolute paths.
--- Construct a path to b that is relative to both a and cwd.
-doublyRelativePath :: FilePath -> FilePath -> IO FilePath
-doublyRelativePath a b = do
-  cpa <- dropDrive <$> canonicalizePath a
-  cwd <- dropDrive <$> getCurrentDirectory
-  cpb <- dropDrive <$> canonicalizePath b
-  let cpaSegs = splitPath cpa
-      cwdSegs = splitPath cwd
-      -- Make sure we get all the way down to root from either a or b
-      toRoot = joinPath . map (const "..") $ if length cpaSegs > length cwdSegs then cpaSegs else cwdSegs
-  -- Climb down to b from root
-  return $ toRoot </> cpb
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId

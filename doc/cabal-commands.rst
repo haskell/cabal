@@ -337,7 +337,8 @@ cannot be excluded for technical reasons).
 
     $ cabal v2-repl path/to/script
 
-The configuration information for the script is cached under the cabal directory.
+The configuration information for the script is cached under the cabal directory
+and can be pre-built with ``cabal v2-build path/to/script``.
 See ``cabal v2-run`` for more information on scripts.
 
 cabal v2-run
@@ -383,7 +384,9 @@ a script that looks like:
     {- cabal:
     build-depends: base ^>= 4.11
                 , shelly ^>= 1.8.1
+    other-modules: M
     -}
+    import M
 
     main :: IO ()
     main = do

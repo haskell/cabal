@@ -4,8 +4,7 @@ main = cabalTest . void $ do
     cabal' "v2-build" ["script.hs"]
 
     env      <- getTestEnv
-    cacheDir <- getScriptCacheDirectory "" (testCurrentDir env </> "script.hs")
+    cacheDir <- getScriptCacheDirectory $ testCurrentDir env </> "script.hs"
 
     shouldExist $ cacheDir </> "fake-package.cabal"
-    shouldExist $ cacheDir </> "Main.hs"
     shouldExist $ cacheDir </> "scriptlocation"
