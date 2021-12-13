@@ -4,6 +4,7 @@ module Distribution.Types.EnableComponentType (
     EnableComponentType(..),
 
     defaultEnableComponentType,
+    enableComponentTypeToRequest,
 ) where
 
 import Prelude ()
@@ -36,3 +37,14 @@ instance Structured EnableComponentType
 -- @since 3.7.0.0
 defaultEnableComponentType :: EnableComponentType
 defaultEnableComponentType = EnableWhenPossible
+
+-- | With the 'EnableAll' and 'DisableAll' settings, the user makes an explicit
+-- request, either to definitely enable or to definitely disable a certain type
+-- of component. However, with 'EnableWhenPossible', the user is not making any
+-- request.
+--
+-- @since 3.7.0.0
+enableComponentTypeToRequest :: EnableComponentType -> Maybe Bool
+enableComponentTypeToRequest EnableAll = Just True
+enableComponentTypeToRequest DisableAll = Just False
+enableComponentTypeToRequest EnableWhenPossible = Nothing

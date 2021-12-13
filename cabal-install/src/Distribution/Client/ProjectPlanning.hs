@@ -1819,8 +1819,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             BenchStanzas -> listToMaybe [ v | v <- maybeToList benchmarks, _ <- PD.benchmarks elabPkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
-            tests      = fmap (== EnableAll) $ perPkgOptionMaybe pkgid packageConfigTests
-            benchmarks = fmap (== EnableAll) $ perPkgOptionMaybe pkgid packageConfigBenchmarks
+            tests      = enableComponentTypeToRequest $ perPkgOptionFlag pkgid EnableWhenPossible packageConfigTests
+            benchmarks = enableComponentTypeToRequest $ perPkgOptionFlag pkgid EnableWhenPossible packageConfigBenchmarks
 
         -- This is a placeholder which will get updated by 'pruneInstallPlanPass1'
         -- and 'pruneInstallPlanPass2'.  We can't populate it here
