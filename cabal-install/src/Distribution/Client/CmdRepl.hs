@@ -52,6 +52,8 @@ import Distribution.Client.Setup
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageSpecifier(..), UnresolvedSourcePackage )
+import Distribution.Client.Utils
+         ( makeRelativeToCwd )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, ReplOptions(..), replOptions
          , Flag(..), toFlag, falseArg )
@@ -93,14 +95,16 @@ import Distribution.Simple.Utils
 import Language.Haskell.Extension
          ( Language(..) )
 
+import Control.Monad
+         ( mapM )
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( doesFileExist, getCurrentDirectory )
+         ( canonicalizePath, doesFileExist, getCurrentDirectory )
 import System.FilePath
-         ( (</>) )
+         ( (</>), dropFileName, isAbsolute )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -195,8 +199,8 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-    (replType, baseCtx) <- case targetCtx of
-      ProjectContext -> return (ProjectRepl, ctx)
+    (replType, mScript, baseCtx) <- case targetCtx of
+      ProjectContext -> return (ProjectRepl, Nothing, ctx)
       GlobalContext  -> do
         unless (null targetStrings) $
           die' verbosity $ "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
@@ -212,7 +216,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
             }
           baseDep = Dependency "base" anyVersion mainLibSet
 
-        (,) GlobalRepl <$> updateContextAndWriteProjectFile' ctx sourcePackage
+        (,,) GlobalRepl Nothing <$> updateContextAndWriteProjectFile' ctx sourcePackage
       ScriptContext scriptPath scriptExecutable -> do
         unless (length targetStrings == 1) $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
@@ -220,7 +224,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
         unless existsScriptPath $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
 
-        (,) GlobalRepl <$> updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
+        (,,) GlobalRepl (Just scriptPath) <$> updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
     (originalComponent, baseCtx') <- if null (envPackages envFlags)
       then return (Nothing, baseCtx)
@@ -301,10 +305,13 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
         return (buildCtx, replFlags'')
 
+    incDir <- maybeToList <$> mapM (canonicalizePath . dropFileName)                              mScript
+    script <- maybeToList <$> mapM (\s -> if isAbsolute s then return s else makeRelativeToCwd s) mScript
     let buildCtx' = buildCtx
           { elaboratedShared = (elaboratedShared buildCtx)
             { pkgConfigReplOptions = replFlags
-              { replOptionsFlags = (replOptionsFlags replFlags) ++ replFlags''
+              { replOptionsFlags  = replOptionsFlags replFlags ++ replFlags'' ++ fmap ("-i" ++) incDir ++ script
+              , replOptionsNoLoad = maybe (replOptionsNoLoad replFlags) (const $ Flag True) mScript
           } } }
     printPlan verbosity baseCtx' buildCtx'
 

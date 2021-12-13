@@ -18,45 +18,45 @@ import Distribution.Client.Compat.Prelude hiding (toList)
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import Distribution.CabalSpecVersion
+    ( CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Client.ProjectOrchestration
-import Distribution.Client.DistDirLayout
-    ( DistDirLayout(..) )
-import Distribution.Client.NixStyleOptions
-    ( NixStyleFlags (..) )
-import Distribution.Client.Setup
-    ( GlobalFlags(..), ConfigFlags(..) )
 import Distribution.Client.Config
     ( getCabalDir )
-import Distribution.Simple.Flag
-    ( fromFlagOrDefault )
-import Distribution.Simple.Setup
-    ( Flag(..) )
-import Distribution.CabalSpecVersion
-    (CabalSpecVersion (..), cabalSpecLatest)
-import Distribution.Verbosity
-    ( normal )
-import Distribution.Simple.Utils
-    ( warn, die', createDirectoryIfMissingVerbose
-    , createTempDirectory, handleDoesNotExist )
+import Distribution.Client.DistDirLayout
+    ( DistDirLayout(..) )
+import Distribution.Client.HashValue
+    ( hashValue, showHashValue )
+import Distribution.Client.NixStyleOptions
+    ( NixStyleFlags (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig(..), ProjectConfigShared(..)
-    , withProjectOrGlobalConfig )
+    ( ProjectConfig(..), ProjectConfigShared(..), withProjectOrGlobalConfig )
 import Distribution.Client.ProjectFlags
     ( flagIgnoreProject )
+import Distribution.Client.Setup
+    ( ConfigFlags(..), GlobalFlags(..) )
 import Distribution.Client.TargetSelector
     ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.Types
     ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
+import Distribution.Client.Utils
+    ( makeRelativeToDir )
 import Distribution.FieldGrammar
-    ( takeFields, parseFieldGrammar )
+    ( parseFieldGrammar, takeFields )
+import Distribution.Fields
+    ( ParseResult, parseFatalFailure, parseString, readFields )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
-    ( writeGenericPackageDescription, showGenericPackageDescription )
+    ( showGenericPackageDescription, writeGenericPackageDescription )
 import Distribution.Parsec
     ( Position(..) )
-import Distribution.Fields
-    ( ParseResult, parseString, parseFatalFailure, readFields )
+import Distribution.Simple.Flag
+    ( fromFlagOrDefault )
+import Distribution.Simple.Setup
+    ( Flag(..) )
+import Distribution.Simple.Utils
+    ( createDirectoryIfMissingVerbose, createTempDirectory, die', handleDoesNotExist, readUTF8File, warn )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
     ( SourcePackage(..) )
@@ -71,15 +71,13 @@ import Distribution.Types.GenericPackageDescription as GPD
 import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
-    ( fakePackageId, fakePackageCabalFileName )
+    ( fakePackageCabalFileName, fakePackageId )
 import Distribution.Utils.Path
     ( unsafeMakeSymbolicPath )
+import Distribution.Verbosity
+    ( normal )
 import Language.Haskell.Extension
     ( Language(..) )
-import Distribution.Client.HashValue
-    ( hashValue, showHashValue )
-import Distribution.Simple.Utils
-    ( readUTF8File )
 
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, tryTakeMVar )
@@ -87,11 +85,11 @@ import Control.Exception
     ( bracket )
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
-import qualified Text.Parsec as P
 import System.Directory
-    ( canonicalizePath, doesFileExist, getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive )
+    ( canonicalizePath, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
-    ( (</>), dropDrive, dropFileName, joinPath, splitPath, takeFileName )
+    ( (</>), dropFileName, takeFileName )
+import qualified Text.Parsec as P
 
 
 -- | Get the directory where script builds are cached.
@@ -241,8 +239,7 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
   -- We want to use the script dir in hs-source-dirs, but hs-source-dirs wants a relpath from the projectRoot
-  -- and ghci also needs to be able to find that script from cwd using that relpath
-  backtoscript <- doublyRelativePath projectRoot scriptPath
+  backtoscript <- makeRelativeToDir (dropFileName scriptPath) projectRoot
   let
     sourcePackage = fakeProjectSourcePackage projectRoot
       & lSrcpkgDescription . L.condExecutables
@@ -252,21 +249,6 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
       & L.hsSourceDirs %~ (unsafeMakeSymbolicPath backtoscript :)
 
   updateContextAndWriteProjectFile' ctx sourcePackage
-
--- | Workaround for hs-script-dirs not taking absolute paths.
--- Construct a path to scriptPath that is relative to both
--- the project rood and working directory.
-doublyRelativePath :: FilePath -> FilePath -> IO FilePath
-doublyRelativePath projectRoot scriptPath = do
-  prd <- dropDrive <$> canonicalizePath projectRoot
-  cwd <- dropDrive <$> getCurrentDirectory
-  spd <- dropDrive . dropFileName <$> canonicalizePath scriptPath
-  let prdSegs = splitPath prd
-      cwdSegs = splitPath cwd
-      -- Make sure we get all the way down to root from either a or b
-      toRoot = joinPath . map (const "..") $ if length prdSegs > length cwdSegs then prdSegs else cwdSegs
-  -- Climb down to b from root
-  return $ toRoot </> spd
 
 parseScriptBlock :: BS.ByteString -> ParseResult Executable
 parseScriptBlock str =

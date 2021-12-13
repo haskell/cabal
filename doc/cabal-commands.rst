@@ -384,9 +384,7 @@ a script that looks like:
     {- cabal:
     build-depends: base ^>= 4.11
                 , shelly ^>= 1.8.1
-    other-modules: M
     -}
-    import M
 
     main :: IO ()
     main = do
