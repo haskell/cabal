@@ -423,7 +423,7 @@ topHandlerWith cont prog = do
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (message pname se)
+      putErr (message pname se)
       cont se
 
     message :: String -> Exception.SomeException -> String
@@ -457,11 +457,6 @@ displaySomeException se =
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 
-verbosityHandle :: Verbosity -> Handle
-verbosityHandle verbosity
-    | isVerboseStderr verbosity = stderr
-    | otherwise                 = stdout
-
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
 -- We display these at the 'normal' verbosity level.
@@ -471,9 +466,10 @@ warn verbosity msg = withFrozenCallStack $ do
   when ((verbosity >= normal) && not (isVerboseNoWarn verbosity)) $ do
     ts <- getPOSIXTime
     hFlush stdout
-    hPutStr stderr . withMetadata ts NormalMark FlagTrace verbosity
-                   . wrapTextVerbosity verbosity
-                   $ "Warning: " ++ msg
+    putErr
+      . withMetadata ts NormalMark FlagTrace verbosity
+      . wrapTextVerbosity verbosity
+      $ "Warning: " ++ msg
 
 -- | Useful status messages.
 --
@@ -485,9 +481,8 @@ warn verbosity msg = withFrozenCallStack $ do
 notice :: Verbosity -> String -> IO ()
 notice verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h
+    putErr
         $ withMetadata ts NormalMark FlagTrace verbosity
         $ wrapTextVerbosity verbosity
         $ msg
@@ -498,9 +493,8 @@ notice verbosity msg = withFrozenCallStack $ do
 noticeNoWrap :: Verbosity -> String -> IO ()
 noticeNoWrap verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h . withMetadata ts NormalMark FlagTrace verbosity $ msg
+    putErr . withMetadata ts NormalMark FlagTrace verbosity $ msg
 
 -- | Pretty-print a 'Disp.Doc' status message at 'normal' verbosity
 -- level.  Use this if you need fancy formatting.
@@ -508,9 +502,8 @@ noticeNoWrap verbosity msg = withFrozenCallStack $ do
 noticeDoc :: Verbosity -> Disp.Doc -> IO ()
 noticeDoc verbosity msg = withFrozenCallStack $ do
   when (verbosity >= normal) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h
+    putErr
         $ withMetadata ts NormalMark FlagTrace verbosity
         $ Disp.renderStyle defaultStyle
         $ msg
@@ -529,9 +522,8 @@ setupMessage verbosity msg pkgid = withFrozenCallStack $ do
 info :: Verbosity -> String -> IO ()
 info verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h
+    putErr
         $ withMetadata ts NeverMark FlagTrace verbosity
         $ wrapTextVerbosity verbosity
         $ msg
@@ -539,11 +531,16 @@ info verbosity msg = withFrozenCallStack $
 infoNoWrap :: Verbosity -> String -> IO ()
 infoNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= verbose) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h
+    putErr
         $ withMetadata ts NeverMark FlagTrace verbosity
         $ msg
+
+putErr :: String -> IO ()
+putErr = hPutStr stderr
+
+putErrLn :: String -> IO ()
+putErrLn = hPutStrLn stderr
 
 -- | Detailed internal debugging information
 --
@@ -552,11 +549,11 @@ infoNoWrap verbosity msg = withFrozenCallStack $
 debug :: Verbosity -> String -> IO ()
 debug verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h $ withMetadata ts NeverMark FlagTrace verbosity
-              $ wrapTextVerbosity verbosity
-              $ msg
+    putErr
+      $ withMetadata ts NeverMark FlagTrace verbosity
+      $ wrapTextVerbosity verbosity
+      $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
     hFlush stdout
 
@@ -565,9 +562,8 @@ debug verbosity msg = withFrozenCallStack $
 debugNoWrap :: Verbosity -> String -> IO ()
 debugNoWrap verbosity msg = withFrozenCallStack $
   when (verbosity >= deafening) $ do
-    let h = verbosityHandle verbosity
     ts <- getPOSIXTime
-    hPutStr h
+    putErr
         $ withMetadata ts NeverMark FlagTrace verbosity
         $ msg
     -- ensure that we don't lose output if we segfault/infinite loop
@@ -580,7 +576,7 @@ chattyTry :: String  -- ^ a description of the action we were attempting
           -> IO ()
 chattyTry desc action =
   catchIO action $ \exception ->
-    hPutStrLn stderr $ "Error while " ++ desc ++ ": " ++ show exception
+    putErrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
 -- | Run an IO computation, returning @e@ if it raises a "file
 -- does not exist" error.

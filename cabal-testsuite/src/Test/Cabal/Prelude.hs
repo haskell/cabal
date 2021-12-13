@@ -563,14 +563,17 @@ withRepo repo_dir m = do
 requireSuccess :: Result -> TestM Result
 requireSuccess r@Result { resultCommand = cmd
                         , resultExitCode = exitCode
-                        , resultOutput = output } = withFrozenCallStack $ do
+                        , resultStdout
+                        , resultStderr } = withFrozenCallStack $ do
     env <- getTestEnv
     when (exitCode /= ExitSuccess && not (testShouldFail env)) $
         assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
-        "Output:\n" ++ output ++ "\n"
+        "Stdout:\n" ++ resultStdout ++ "\n" ++
+        "Stderr:\n" ++ resultStderr ++ "\n"
     when (exitCode == ExitSuccess && testShouldFail env) $
         assertFailure $ "Command " ++ cmd ++ " succeeded.\n" ++
-        "Output:\n" ++ output ++ "\n"
+        "Stdout:\n" ++ resultStdout ++ "\n" ++
+        "Stderr:\n" ++ resultStderr ++ "\n"
     return r
 
 initWorkDir :: TestM ()
@@ -595,21 +598,34 @@ recordHeader args = do
             initWorkDir
             liftIO $ putStr str_header
             liftIO $ C.appendFile (testWorkDir env </> "test.log") header
-            liftIO $ C.appendFile (testActualFile env) header
+            liftIO $ C.appendFile (testActualFile Out env) header
 
 recordLog :: Result -> TestM ()
-recordLog res = do
+recordLog Result{resultOutput, resultStdout, resultStderr, resultCommand} = do
     env <- getTestEnv
     let mode = testRecordMode env
     initWorkDir
-    liftIO $ C.appendFile (testWorkDir env </> "test.log")
-                         (C.pack $ "+ " ++ resultCommand res ++ "\n"
-                            ++ resultOutput res ++ "\n\n")
-    liftIO . C.appendFile (testActualFile env) . C.pack . testRecordNormalizer env $
-        case mode of
-            RecordAll    -> unlines (lines (resultOutput res))
-            RecordMarked -> getMarkedOutput (resultOutput res)
+    liftIO
+      $ C.appendFile (testWorkDir env </> "test.log")
+      $ C.pack $ unlines
+        [ "+ " <> resultCommand, "OUT"
+        , resultOutput
+        , "STDOUT"
+        , resultStdout
+        , "STDERR"
+        , resultStderr
+        ]
+    let report f txt
+          = liftIO
+          . C.appendFile f
+          . C.pack
+          . testRecordNormalizer env $ case mode of
+            RecordAll    -> unlines (lines txt)
+            RecordMarked -> getMarkedOutput txt
             DoNotRecord  -> ""
+    report (testActualFile Out env) resultOutput
+    report (testActualFile Stdout env) resultStdout
+    report (testActualFile Stderr env) resultStderr
 
 getMarkedOutput :: String -> String -- trailing newline
 getMarkedOutput out = unlines (go (lines out) False)
@@ -667,11 +683,10 @@ shouldNotExist path =
     liftIO $ doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
-assertRegex msg regex r =
-    withFrozenCallStack $
-    let out = resultOutput r
-    in assertBool (msg ++ ",\nactual output:\n" ++ out)
-       (out =~ regex)
+assertRegex msg regex Result{ resultOutput }
+  = withFrozenCallStack
+  $ assertBool (msg ++ ",\nactual output:\n" ++ resultOutput)
+  $ resultOutput =~ regex
 
 fails :: TestM a -> TestM a
 fails = withReaderT (\env -> env { testShouldFail = not (testShouldFail env) })
@@ -691,18 +706,16 @@ recordNormalizer f =
     withReaderT (\env -> env { testRecordNormalizer = testRecordNormalizer env . f })
 
 assertOutputContains :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputContains needle result =
+assertOutputContains needle Result{resultOutput} =
     withFrozenCallStack $
-    unless (needle `isInfixOf` (concatOutput output)) $
+    unless (needle `isInfixOf` (concatOutput resultOutput)) $
     assertFailure $ " expected: " ++ needle
-  where output = resultOutput result
 
 assertOutputDoesNotContain :: MonadIO m => WithCallStack (String -> Result -> m ())
-assertOutputDoesNotContain needle result =
+assertOutputDoesNotContain needle Result{resultOutput} =
     withFrozenCallStack $
-    when (needle `isInfixOf` (concatOutput output)) $
+    when (needle `isInfixOf` (concatOutput resultOutput)) $
     assertFailure $ "unexpected: " ++ needle
-  where output = resultOutput result
 
 assertFindInFile :: MonadIO m => WithCallStack (String -> FilePath -> m ())
 assertFindInFile needle path =

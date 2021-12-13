@@ -1,0 +1,7 @@
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - my-0 (lib) (first run)
+Configuring library for my-0..
+Preprocessing library for my-0..
+Building library for my-0..
