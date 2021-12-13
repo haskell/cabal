@@ -229,7 +229,7 @@ updateContextAndWriteProjectFile' ctx srcPkg = do
   -- TODO This is here to prevent reconfiguration of cached repl packages.
   -- It's worth investigating why it's needed in the first place.
   if projectFileExists then do
-    contents <- readUTF8File projectFile
+    contents <- force <$> readUTF8File projectFile
     when (contents /= showGenericPackageDescription (srcpkgDescription srcPkg))
       writeProjectFile
   else writeProjectFile
