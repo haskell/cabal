@@ -305,8 +305,10 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
         return (buildCtx, replFlags'')
 
-    incDir <- maybeToList <$> mapM (canonicalizePath . dropFileName)                              mScript
-    script <- maybeToList <$> mapM (\s -> if isAbsolute s then return s else makeRelativeToCwd s) mScript
+    incDir <- maybeToList <$> mapM (canonicalizePath . dropFileName) mScript
+    script <- if replOptionsNoLoad replFlags == Flag True
+              then return []
+              else maybeToList <$> mapM (\s -> if isAbsolute s then return s else makeRelativeToCwd s) mScript
     let buildCtx' = buildCtx
           { elaboratedShared = (elaboratedShared buildCtx)
             { pkgConfigReplOptions = replFlags
