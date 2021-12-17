@@ -118,8 +118,8 @@ runCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags {..} targetStrings globalFlags
-  = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
+  = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags $ \targetCtx ctx targetSelectors -> do
     baseCtx <- case targetCtx of
       ProjectContext             -> return ctx
       GlobalContext              -> return ctx
@@ -216,8 +216,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags
                                   pkg
                                   exeName
                </> exeName
-    let args = drop 1 targetStrings
-        dryRun = buildSettingDryRun (buildSettings baseCtx)
+    let dryRun = buildSettingDryRun (buildSettings baseCtx)
               || buildSettingOnlyDownload (buildSettings baseCtx)
 
     if dryRun
@@ -234,6 +233,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags
            }
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    (targetStr, args) = splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
 -- invoked as a script interpreter, i.e. via

@@ -160,8 +160,7 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
 
     -- In the case where a selector is both a valid target and script, assume it is a target,
     -- because you can disambiguate the script with "./script"
-    let truncateExe = if kind == Just ExeKind then take 1 else id
-    (tc', ctx', sels) <- readTargetSelectors (localPackages ctx) kind (truncateExe targetStrings) >>= \case
+    (tc', ctx', sels) <- readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
       Left err@(TargetSelectorNoTargetsInProject:_)
         | [] <- targetStrings
         , AcceptNoTargets <- noTargets -> return (tc, ctx, defaultTarget)
