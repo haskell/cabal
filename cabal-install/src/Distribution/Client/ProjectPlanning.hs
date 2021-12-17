@@ -2600,9 +2600,13 @@ availableSourceTargets elab =
             | otherwise      -> TargetBuildable (elabUnitId elab, cname)
                                                 TargetRequestedByDefault
 
-          -- it is an optional stanza, so a testsuite or benchmark
+          -- it is an optional stanza, so a testsuite or benchmark.
+          --
+          -- TODO: once 'elabStanzasRequested' has been upgraded to an
+          -- ADT with three cases (see TODO note for 'elabStanzasRequested'),
+          -- use those to pick a better failure cause here.
           Just stanza ->
-            case (optStanzaLookup stanza (elabStanzasRequested elab), -- TODO
+            case (optStanzaLookup stanza (elabStanzasRequested elab),
                   optStanzaSetMember stanza (elabStanzasAvailable elab)) of
               _ | not withinPlan -> TargetNotLocal
               (Just False,   _)  -> TargetDisabledByUser
