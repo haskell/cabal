@@ -1,8 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: repl
 --
@@ -63,7 +63,7 @@ import Distribution.Simple.Command
 import Distribution.Compiler
          ( CompilerFlavor(GHC) )
 import Distribution.Simple.Compiler
-         ( compilerCompatVersion )
+         ( Compiler, compilerCompatVersion )
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
 import Distribution.Parsec
@@ -83,7 +83,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.Version
-         ( mkVersion )
+         ( Version, mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Utils.Generic
@@ -95,8 +95,6 @@ import Distribution.Simple.Utils
 import Language.Haskell.Extension
          ( Language(..) )
 
-import Control.Monad
-         ( mapM )
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
@@ -190,7 +188,7 @@ replCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags
+replAction flags@NixStyleFlags { extraFlags = (replOpts, envFlags), ..} targetStrings globalFlags
   = withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
     when (buildSettingOnlyDeps (buildSettings ctx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
@@ -199,8 +197,8 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
     let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-    (replType, mScript, baseCtx) <- case targetCtx of
-      ProjectContext -> return (ProjectRepl, Nothing, ctx)
+    baseCtx <- case targetCtx of
+      ProjectContext -> return ctx
       GlobalContext  -> do
         unless (null targetStrings) $
           die' verbosity $ "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
@@ -216,7 +214,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
             }
           baseDep = Dependency "base" anyVersion mainLibSet
 
-        (,,) GlobalRepl Nothing <$> updateContextAndWriteProjectFile' ctx sourcePackage
+        updateContextAndWriteProjectFile' ctx sourcePackage
       ScriptContext scriptPath scriptExecutable -> do
         unless (length targetStrings == 1) $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
@@ -224,7 +222,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
         unless existsScriptPath $
           die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
 
-        (,,) GlobalRepl (Just scriptPath) <$> updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
+        updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
     (originalComponent, baseCtx') <- if null (envPackages envFlags)
       then return (Nothing, baseCtx)
@@ -253,7 +251,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, replFlags'') <- withInstallPlan verbosity baseCtx' $
+    (buildCtx, compiler, replOpts') <- withInstallPlan verbosity baseCtx' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx'
 
@@ -285,36 +283,18 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
           ElaboratedSharedConfig { pkgConfigCompiler = compiler } = elaboratedShared'
 
-          -- First version of GHC where GHCi supported the flag we need.
-          -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
-          minGhciScriptVersion = mkVersion [7, 6]
-
-          replFlags' = case originalComponent of
+          replFlags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing  -> []
 
-        -- The '-ghci-script' flag is path to a GHCi script responsible for changing to the
-        -- correct directory. Only works on GHC >= 7.6, though. 🙁
-        replFlags'' <- case replType of
-          GlobalRepl | compilerCompatVersion GHC compiler >= Just minGhciScriptVersion -> do
-            let ghciScriptPath = projectRoot </> "setcwd.ghci"
-            cwd <- getCurrentDirectory
-            writeFile ghciScriptPath (":cd " ++ cwd)
-            return $ ("-ghci-script" ++ ghciScriptPath) : replFlags'
-          _ -> return replFlags'
+        return (buildCtx, compiler, replOpts & lReplOptionsFlags %~ (++ replFlags))
 
-        return (buildCtx, replFlags'')
+    replOpts'' <- case targetCtx of
+      ProjectContext         -> return replOpts'
+      GlobalContext          -> usingGhciScript compiler projectRoot replOpts'
+      ScriptContext script _ -> usingGhciScript compiler projectRoot replOpts' >>= usingScriptOptions script
 
-    incDir <- maybeToList <$> mapM (canonicalizePath . dropFileName) mScript
-    script <- if replOptionsNoLoad replFlags == Flag True
-              then return []
-              else maybeToList <$> mapM (\s -> if isAbsolute s then return s else makeRelativeToCwd s) mScript
-    let buildCtx' = buildCtx
-          { elaboratedShared = (elaboratedShared buildCtx)
-            { pkgConfigReplOptions = replFlags
-              { replOptionsFlags  = replOptionsFlags replFlags ++ replFlags'' ++ fmap ("-i" ++) incDir ++ script
-              , replOptionsNoLoad = maybe (replOptionsNoLoad replFlags) (const $ Flag True) mScript
-          } } }
+    let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
     printPlan verbosity baseCtx' buildCtx'
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx'
@@ -347,10 +327,6 @@ data OriginalComponentInfo = OriginalComponentInfo
   , ociOriginalDeps :: [UnitId]
   }
   deriving (Show)
-
--- Tracks what type of GHCi instance we're creating.
-data ReplType = ProjectRepl | GlobalRepl
-  deriving (Show, Eq)
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
@@ -387,6 +363,45 @@ generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = f
     trans' = trans \\ ociOriginalDeps
     flags  = fmap (("-package-id " ++) . prettyShow) . (\\ exeDeps)
       $ if includeTransitive then trans' else deps'
+
+-- | Add repl options to ensure the repl actually starts in the current working directory.
+--
+-- In a global or script context, when we are using a fake package, @cabal repl@
+-- starts in the fake package directory instead of the directory it was called from,
+-- so we need to tell ghci to change back to the correct directory.
+--
+-- The @-ghci-script@ flag is path to the ghci script responsible for changing to the
+-- correct directory. Only works on GHC >= 7.6, though. 🙁
+usingGhciScript :: Compiler -> FilePath -> ReplOptions -> IO ReplOptions
+usingGhciScript compiler projectRoot replOpts
+  | compilerCompatVersion GHC compiler >= Just minGhciScriptVersion = do
+      let ghciScriptPath = projectRoot </> "setcwd.ghci"
+      cwd <- getCurrentDirectory
+      writeFile ghciScriptPath (":cd " ++ cwd)
+      return $ replOpts & lReplOptionsFlags %~ (("-ghci-script" ++ ghciScriptPath) :)
+  | otherwise = return replOpts
+
+-- | First version of GHC where GHCi supported the flag we need.
+-- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
+minGhciScriptVersion :: Version
+minGhciScriptVersion = mkVersion [7, 6]
+
+-- | Add repl options to let ghci locate the script and it's local dependencies.
+--
+-- We can't rely on the fake project file to locate the script and it's local
+-- dependencies because it uses paths relative to the fake project directory,
+-- not the current working directory. We don't want to overwrite the project file
+-- because it will invalidate the cache. Instead we pass the path to the script explicitly.
+-- We also pass cwd as an include dir in case the script has local dependencies.
+usingScriptOptions :: FilePath -> ReplOptions -> IO ReplOptions
+usingScriptOptions script replOpts = do
+  incDir  <- canonicalizePath $ dropFileName script
+  let replNoLoad = fromFlagOrDefault False $ replOptionsNoLoad replOpts
+  scriptFlag <- if | replNoLoad        -> return []
+                   | isAbsolute script -> return [script]
+                   | otherwise         -> (:[]) <$> makeRelativeToCwd script
+  return $ replOpts & lReplOptionsFlags  %~ (++ ("-i" ++ incDir) : scriptFlag)
+                    & lReplOptionsNoLoad .~ toFlag True
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -535,3 +550,20 @@ explanationSingleComponentLimitation =
     "The reason for this limitation is that current versions of ghci do not "
  ++ "support loading multiple components as source. Load just one component "
  ++ "and when you make changes to a dependent component then quit and reload."
+
+-- Lenses
+lElaboratedShared :: Lens' ProjectBuildContext ElaboratedSharedConfig
+lElaboratedShared f s = fmap (\x -> s { elaboratedShared = x }) (f (elaboratedShared s))
+{-# inline lElaboratedShared #-}
+
+lPkgConfigReplOptions :: Lens' ElaboratedSharedConfig ReplOptions
+lPkgConfigReplOptions f s = fmap (\x -> s { pkgConfigReplOptions = x }) (f (pkgConfigReplOptions s))
+{-# inline lPkgConfigReplOptions #-}
+
+lReplOptionsFlags :: Lens' ReplOptions [String]
+lReplOptionsFlags f s = fmap (\x -> s { replOptionsFlags = x }) (f (replOptionsFlags s))
+{-# inline lReplOptionsFlags #-}
+
+lReplOptionsNoLoad :: Lens' ReplOptions (Flag Bool)
+lReplOptionsNoLoad f s = fmap (\x -> s { replOptionsNoLoad = x }) (f (replOptionsNoLoad s))
+{-# inline lReplOptionsNoLoad #-}
