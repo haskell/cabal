@@ -82,7 +82,7 @@ prepareLibTarget
     -> m (PrettyField FieldAnnotation)
 prepareLibTarget _ Nothing = return PrettyEmpty
 prepareLibTarget opts (Just libTarget) = do
-    void $ writeDirectoriesSafe opts srcDirs
+    void $ writeDirectoriesSafe opts $ filter (/= ".") srcDirs
     -- avoid writing when conflicting exposed paths may
     -- exist.
     when (expMods == (myLibModule :| [])) $ do

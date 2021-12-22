@@ -5,7 +5,6 @@ module UnitTests.Distribution.Client.Init.FileCreators
   ) where
 
 import Test.Tasty
-import Test.Tasty.ExpectedFailure
 import Test.Tasty.HUnit
 
 import UnitTests.Distribution.Client.Init.Utils
@@ -28,7 +27,7 @@ tests
     -> TestTree
 tests _v _initFlags comp pkgIx srcDb =
   testGroup "Distribution.Client.Init.FileCreators"
-    [ expectFail $ testCase "Check . as source directory" $ do
+    [ testCase "Check . as source directory" $ do
         let dummyFlags' = dummyFlags
               { packageType = Flag LibraryAndExecutable
               , minimal = Flag False
@@ -41,14 +40,40 @@ tests _v _initFlags comp pkgIx srcDb =
               , buildTools = Flag []
               , mainIs = Flag "quxApp/Main.hs"
               , dependencies = Flag []
-              --, sourceDirs = Flag ["."]
+              , sourceDirs = Flag ["."]
               }
             inputs =
+              -- createProject stuff
               [ "True"
               , "[\"quxTest/Main.hs\"]"
+              -- writeProject stuff
+              -- writeLicense
               , "2021"
+              -- writeFileSafe
               , "True"
+              -- findNewPath
+              , "False"
+              -- writeChangeLog
+              -- writeFileSafe
+              , "False"
+              -- prepareLibTarget
+              -- writeDirectoriesSafe
               , "True"
+              -- findNewPath
+              , "False"
+              -- prepareExeTarget
+              -- writeDirectoriesSafe
+              , "False"
+              -- writeFileSafe
+              , "False"
+              -- prepareTestTarget
+              -- writeDirectoriesSafe
+              , "False"
+              -- writeFileSafe
+              , "False"
+              -- writeCabalFile
+              -- writeFileSafe
+              , "False"
               ]
 
         case flip _runPrompt inputs $ do
