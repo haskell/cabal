@@ -39,8 +39,6 @@ import Distribution.Client.TargetSelector
     ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.Types
     ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
-import Distribution.Client.Utils
-    ( makeRelativeToDir )
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
@@ -72,8 +70,6 @@ import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
     ( fakePackageCabalFileName, fakePackageId )
-import Distribution.Utils.Path
-    ( unsafeMakeSymbolicPath )
 import Distribution.Verbosity
     ( normal )
 import Language.Haskell.Extension
@@ -88,9 +84,19 @@ import Data.ByteString.Lazy ()
 import System.Directory
     ( canonicalizePath, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
-    ( (</>), dropFileName, takeFileName )
+    ( (</>) )
 import qualified Text.Parsec as P
 
+-- A note on multi-module script support #6787:
+-- Multi-module scripts are not supported and support is non-trivial.
+-- What you want to do is pass the absolute path to the script's directory in hs-source-dirs,
+-- but hs-source-dirs only accepts relative paths. This leaves you with several options none
+-- of which are particularly appealing.
+-- 1) Loosen the requirement that hs-source-dirs take relative paths
+-- 2) Add a field to BuildInfo that acts like an hs-source-dir, but accepts an absolute path
+-- 3) Use a path relative to the project root in hs-source-dirs, and pass extra flags to the
+--    repl to deal with the fact that the repl is relative to the working directory and not
+--    the project root.
 
 -- | Get the directory where script builds are cached.
 --
@@ -237,15 +243,13 @@ updateContextAndWriteProjectFile :: ProjectBaseContext -> FilePath -> Executable
 updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
   let projectRoot = distProjectRootDirectory $ distDirLayout ctx
 
-  -- We want to use the script dir in hs-source-dirs, but hs-source-dirs wants a relpath from the projectRoot
-  backtoscript <- makeRelativeToDir (dropFileName scriptPath) projectRoot
+  absScript <- canonicalizePath scriptPath
   let
     sourcePackage = fakeProjectSourcePackage projectRoot
       & lSrcpkgDescription . L.condExecutables
       .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable = scriptExecutable
-      & L.modulePath   .~ takeFileName scriptPath
-      & L.hsSourceDirs %~ (unsafeMakeSymbolicPath backtoscript :)
+      & L.modulePath .~ absScript
 
   updateContextAndWriteProjectFile' ctx sourcePackage
 

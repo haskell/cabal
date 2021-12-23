@@ -63,8 +63,6 @@ normalizeOutput nenv =
         else id)
   -- hackage-security locks occur non-deterministically
   . resub "(Released|Acquired|Waiting) .*hackage-security-lock\n" ""
-  -- repl script uses "relative" absolute paths which will depend on the source location and trigger this warning
-  . resub "'hs-source-dirs: .*' is a relative path" "'hs-source-dirs: <PATH>' is a relative path"
   where
     packageIdRegex pid =
         resub (posixRegexEscape (display pid) ++ "(-[A-Za-z0-9.-]+)?")

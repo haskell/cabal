@@ -52,8 +52,6 @@ import Distribution.Client.Setup
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
          ( PackageSpecifier(..), UnresolvedSourcePackage )
-import Distribution.Client.Utils
-         ( makeRelativeToCwd )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, ReplOptions(..), replOptions
          , Flag(..), toFlag, falseArg )
@@ -100,9 +98,9 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( canonicalizePath, doesFileExist, getCurrentDirectory )
+         ( doesFileExist, getCurrentDirectory )
 import System.FilePath
-         ( (</>), dropFileName, isAbsolute )
+         ( (</>) )
 
 data EnvFlags = EnvFlags
   { envPackages :: [Dependency]
@@ -290,9 +288,8 @@ replAction flags@NixStyleFlags { extraFlags = (replOpts, envFlags), ..} targetSt
         return (buildCtx, compiler, replOpts & lReplOptionsFlags %~ (++ replFlags))
 
     replOpts'' <- case targetCtx of
-      ProjectContext         -> return replOpts'
-      GlobalContext          -> usingGhciScript compiler projectRoot replOpts'
-      ScriptContext script _ -> usingGhciScript compiler projectRoot replOpts' >>= usingScriptOptions script
+      ProjectContext -> return replOpts'
+      _              -> usingGhciScript compiler projectRoot replOpts'
 
     let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
     printPlan verbosity baseCtx' buildCtx'
@@ -385,23 +382,6 @@ usingGhciScript compiler projectRoot replOpts
 -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
 minGhciScriptVersion :: Version
 minGhciScriptVersion = mkVersion [7, 6]
-
--- | Add repl options to let ghci locate the script and it's local dependencies.
---
--- We can't rely on the fake project file to locate the script and it's local
--- dependencies because it uses paths relative to the fake project directory,
--- not the current working directory. We don't want to overwrite the project file
--- because it will invalidate the cache. Instead we pass the path to the script explicitly.
--- We also pass cwd as an include dir in case the script has local dependencies.
-usingScriptOptions :: FilePath -> ReplOptions -> IO ReplOptions
-usingScriptOptions script replOpts = do
-  incDir  <- canonicalizePath $ dropFileName script
-  let replNoLoad = fromFlagOrDefault False $ replOptionsNoLoad replOpts
-  scriptFlag <- if | replNoLoad        -> return []
-                   | isAbsolute script -> return [script]
-                   | otherwise         -> (:[]) <$> makeRelativeToCwd script
-  return $ replOpts & lReplOptionsFlags  %~ (++ ("-i" ++ incDir) : scriptFlag)
-                    & lReplOptionsNoLoad .~ toFlag True
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -563,7 +543,3 @@ lPkgConfigReplOptions f s = fmap (\x -> s { pkgConfigReplOptions = x }) (f (pkgC
 lReplOptionsFlags :: Lens' ReplOptions [String]
 lReplOptionsFlags f s = fmap (\x -> s { replOptionsFlags = x }) (f (replOptionsFlags s))
 {-# inline lReplOptionsFlags #-}
-
-lReplOptionsNoLoad :: Lens' ReplOptions (Flag Bool)
-lReplOptionsNoLoad f s = fmap (\x -> s { replOptionsNoLoad = x }) (f (replOptionsNoLoad s))
-{-# inline lReplOptionsNoLoad #-}
