@@ -67,7 +67,7 @@ import qualified Data.Set as Set
 -- 'UnitId'.
 --
 -- In the absence of Backpack, there are no holes to fill, so any such
--- component always has an empty module substitution; thus we can lossly
+-- component always has an empty module substitution; thus we can loosely
 -- represent it as an 'OpenUnitId uid'.
 --
 -- For a source component using Backpack, however, there is more
