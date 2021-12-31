@@ -236,6 +236,10 @@ A cabal command target can take any of the following forms:
 -  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
    component of which the given filepath is a part of will be built.
 
+-  A script target: ``path/to/script``, which specifies the path to a script
+   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
+   Script targets are not part of a package.
+
 cabal v2-build
 ---------------
 
@@ -262,6 +266,7 @@ Some example targets:
                                        # "app/Main.hs"
     $ cabal v2-build Lib               # build the library component to
                                        # which the module "Lib" belongs
+    $ cabal v2-build path/to/script    # build the script as an executable
 
 Beyond a list of targets, ``cabal v2-build`` accepts all the flags that
 ``cabal v2-configure`` takes. Most of these flags are only taken into
@@ -269,6 +274,9 @@ consideration when building local packages; however, some flags may
 cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
+
+When building a script, the executable is cached under the cabal directory.
+See ``cabal v2-run`` for more information on scripts.
 
 In addition ``cabal v2-build`` accepts these flags:
 
@@ -322,6 +330,16 @@ cannot be excluded for technical reasons).
 ::
 
     $ cabal v2-repl --build-depends vector --no-transitive-deps
+
+``v2-repl`` can open scripts by passing the path to the script as the target.
+
+::
+
+    $ cabal v2-repl path/to/script
+
+The configuration information for the script is cached under the cabal directory
+and can be pre-built with ``cabal v2-build path/to/script``.
+See ``cabal v2-run`` for more information on scripts.
 
 cabal v2-run
 -------------
@@ -377,8 +395,16 @@ interpreter, or through this command:
 
 ::
 
-    $ cabal v2-run script.hs
-    $ cabal v2-run script.hs -- --arg1 # args are passed like this
+    $ cabal v2-run path/to/script
+    $ cabal v2-run path/to/script -- --arg1 # args are passed like this
+
+The executable is cached under the cabal directory, and can be pre-built with
+``cabal v2-build path/to/script`` and the cache can be removed with
+``cabal v2-clean path/to/script``.
+
+A note on targets: Whenever a command takes a script target and it matches the
+name of another target, the other target is preferred. To load the script
+instead pass it as an explicit path: ./script
 
 cabal v2-freeze
 ----------------
@@ -542,6 +568,12 @@ By default, it removes the entire folder, but it can also spare the configuratio
 and caches if the ``--save-config`` option is given, in which case it only removes
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
+
+``cabal v2-clean [FLAGS] path/to/script`` cleans up the temporary files and build
+artifacts for the script, which are stored under the .cabal/script-builds directory.
+
+In addition when clean is invoked it will remove all script build artifacts for
+which the corresponding script no longer exists.
 
 cabal v2-sdist
 ---------------
