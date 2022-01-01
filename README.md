@@ -28,18 +28,18 @@ Installing cabal-install (preferred, with cabal-install)
 
 Assuming that you have a pre-existing, recent version of `cabal-install`, run:
 
-~~~~
+```
 cabal install cabal-install
-~~~~
+```
 
 To get the latest version of `cabal-install`. (You may want to `cabal update` first.)
 
 To install the latest version from the Git repository, clone the
 Git repository and then run:
 
-~~~~
+```
 cabal install --project-file=cabal.project.release cabal-install
-~~~~
+```
 
 Installing cabal-install without cabal-install
 ----------------------------------------------
