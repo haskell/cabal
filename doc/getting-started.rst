@@ -19,19 +19,16 @@ and how to add external dependencies.
 Initializing the application
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Start by creating a ``myfirstapp`` directory to hold the project files, these
-instructions work in unix shells and PowerShell (if you're on Windows).
+Start by initialising our ``myfirstapp`` project, these instructions work in
+unix shells and PowerShell (if you're on Windows).
 
 .. code-block:: console
 
-    $ mkdir myfirstapp
-    $ cd myfirstapp
+    $ cabal init myfirstapp -n
 
-Once you have an empty directory we can initialize our package:
-
-.. code-block:: console
-
-    $ cabal init -n
+.. note:: ``myfirstapp`` stands for the directory (or path) where the project
+          will reside in, if ommited, ``cabal init`` will do its proceedings
+          in the directory it's called in.
 
 .. note:: ``-n`` stands for ``--non-interactive``, which means that cabal will try to guess
           how to set up the project for you and use the default settings, which will serve us
@@ -48,10 +45,11 @@ This will generate the following files:
 
     $ tree
     .
-    ├── app
-    │   └── Main.hs
-    ├── CHANGELOG.md
-    └── myfirstapp.cabal
+    └── myfirstapp
+        ├── app
+        │   └── Main.hs
+        ├── CHANGELOG.md
+        └── myfirstapp.cabal
 
 ``app/Main.hs`` is where your package's code lives.
 
@@ -63,11 +61,15 @@ little bit when we add an external dependency to our package.
 Running the application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-When we ran ``cabal init -n`` above, it generated a package with a single executable
-named same as the package (in this case ``myfirstapp``) that prints ``"Hello, Haskell!"``
-to the terminal. To run the executable enter the following command:
+When we ran ``cabal init myfirstapp -n`` above, it generated a package with a single 
+executable named same as the package (in this case ``myfirstapp``) that prints
+``"Hello, Haskell!"`` to the terminal. To run the executable enter the project's
+directory and run it, by inputting the following commands:
 
-``cabal run myfirstapp``
+.. code-block:: console
+
+    cd myfirstapp
+    cabal run myfirstapp
 
 You should see the following output in the terminal:
 

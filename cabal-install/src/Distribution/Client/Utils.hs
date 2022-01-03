@@ -237,9 +237,10 @@ makeRelativeCanonical path dir
   | takeDrive path /= takeDrive dir = path
   | otherwise                       = go (splitPath path) (splitPath dir)
   where
-    go (p:ps) (d:ds) | p == d = go ps ds
-    go    []     []           = "./"
-    go    ps     ds           = joinPath (replicate (length ds) ".." ++ ps)
+    go (p:ps) (d:ds) | p' == d' = go ps ds
+      where (p', d') = (dropTrailingPathSeparator p, dropTrailingPathSeparator d)
+    go    []     []             = "./"
+    go    ps     ds             = joinPath (replicate (length ds) ".." ++ ps)
 
 -- | Convert a 'FilePath' to a lazy 'ByteString'. Each 'Char' is
 -- encoded as a little-endian 'Word32'.

@@ -2031,10 +2031,12 @@ initCommand = CommandUI {
       ++ "Calling init with no arguments runs interactive mode, "
       ++ "which will try to guess as much as possible and prompt you for the rest.\n"
       ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
-      ++ "which will let you specify the options via flags and will use the defaults for the rest.\n",
+      ++ "which will let you specify the options via flags and will use the defaults for the rest.\n"
+      ++ "It is also possible to call init with a single argument, which denotes the project's desired "
+      ++ "root directory.\n",
     commandNotes = Nothing,
     commandUsage = \pname ->
-         "Usage: " ++ pname ++ " init [FLAGS]\n",
+         "Usage: " ++ pname ++ " init [PROJECT ROOT] [FLAGS]\n",
     commandDefaultFlags = IT.defaultInitFlags,
     commandOptions = initOptions
   }

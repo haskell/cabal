@@ -1,0 +1,15 @@
+synopsis:  Better support for scripts
+packages: cabal-install
+prs: #7851
+issues: #7842 #6354 #6149.
+
+description: {
+
+- Script support improved or added across relevant commands.
+- `cabal run script` will now cache results and will not do a fresh build every time.
+- `cabal build script` added. It will build the cache for script.
+- `cabal repl script` added. It will open a repl for script using the cache if available.
+- `cabal clean script` added. It will clean the cache for script.
+- `cabal clean` will now remove script caches for which there is no marching script.
+
+}

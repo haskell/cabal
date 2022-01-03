@@ -52,6 +52,8 @@ import qualified Data.ByteString.Lazy as BSL
 import Control.Monad (unless, when, void, forM_, liftM2, liftM4)
 import Control.Monad.Trans.Reader (withReaderT, runReaderT)
 import Control.Monad.IO.Class (MonadIO (..))
+import qualified Crypto.Hash.SHA256 as SHA256
+import qualified Data.ByteString.Base16 as Base16
 import qualified Data.ByteString.Char8 as C
 import Data.List (isInfixOf, stripPrefix, isPrefixOf, intercalate)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -61,7 +63,7 @@ import System.Exit (ExitCode (..))
 import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (getTemporaryDirectory, getCurrentDirectory, copyFile, removeFile, copyFile, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
+import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, removeFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -291,6 +293,10 @@ cabalGArgs global_args cmd args input = do
           -- new-build commands are affected by testCabalProjectFile
           | cmd == "v2-sdist"
           = [ "--project-file", testCabalProjectFile env ]
+
+          | cmd == "v2-clean"
+          = [ "--builddir", testDistDir env
+            , "--project-file", testCabalProjectFile env ]
 
           | "v2-" `isPrefixOf` cmd
           = [ "--builddir", testDistDir env
@@ -666,6 +672,16 @@ shouldNotExist path =
     withFrozenCallStack $
     liftIO $ doesFileExist path >>= assertBool (path ++ " should exist") . not
 
+shouldDirectoryExist :: MonadIO m => WithCallStack (FilePath -> m ())
+shouldDirectoryExist path =
+    withFrozenCallStack $
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist")
+
+shouldDirectoryNotExist :: MonadIO m => WithCallStack (FilePath -> m ())
+shouldDirectoryNotExist path =
+    withFrozenCallStack $
+    liftIO $ doesDirectoryExist path >>= assertBool (path ++ " should exist") . not
+
 assertRegex :: MonadIO m => String -> String -> Result -> m ()
 assertRegex msg regex r =
     withFrozenCallStack $
@@ -734,6 +750,14 @@ assertFileDoesNotContain path needle =
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+
+-- | The directory where script build artifacts are expected to be cached
+getScriptCacheDirectory :: FilePath -> TestM FilePath
+getScriptCacheDirectory script = do
+    cabalDir <- testCabalDir `fmap` getTestEnv
+    hashinput <- liftIO $ canonicalizePath script
+    let hash = C.unpack . Base16.encode . SHA256.hash . C.pack $ hashinput
+    return $ cabalDir </> "script-builds" </> hash
 
 ------------------------------------------------------------------------
 -- * Skipping tests

@@ -16,6 +16,7 @@ module Distribution.Client.InstallSymlink (
     symlinkBinaries,
     symlinkBinary,
     trySymlink,
+    promptRun
   ) where
 
 import Distribution.Client.Compat.Prelude hiding (ioError)
@@ -62,6 +63,8 @@ import Control.Exception
 
 import Distribution.Client.Compat.Directory ( createFileLink, getSymbolicLinkTarget, pathIsSymbolicLink )
 import Distribution.Client.Types.OverwritePolicy
+import Distribution.Client.Init.Types ( DefaultPrompt(MandatoryPrompt) )
+import Distribution.Client.Init.Prompt ( promptYesNo )
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -191,16 +194,31 @@ symlinkBinary overwritePolicy publicBindir privateBindir publicName privateName 
   ok <- targetOkToOverwrite (publicBindir </> publicName)
                             (privateBindir </> privateName)
   case ok of
-    NotExists         ->           mkLink >> return True
-    OkToOverwrite     -> rmLink >> mkLink >> return True
+    NotExists         -> mkLink
+    OkToOverwrite     -> overwrite
     NotOurFile ->
       case overwritePolicy of
-        NeverOverwrite  ->                     return False
-        AlwaysOverwrite -> rmLink >> mkLink >> return True
+        NeverOverwrite  -> return False
+        AlwaysOverwrite -> overwrite
+        PromptOverwrite -> maybeOverwrite
   where
     relativeBindir = makeRelative publicBindir privateBindir
-    mkLink = createFileLink (relativeBindir </> privateName) (publicBindir   </> publicName)
-    rmLink = removeFile (publicBindir </> publicName)
+    mkLink :: IO Bool
+    mkLink = True <$ createFileLink (relativeBindir </> privateName) (publicBindir </> publicName)
+    rmLink :: IO Bool
+    rmLink = True <$ removeFile (publicBindir </> publicName)
+    overwrite :: IO Bool
+    overwrite = rmLink *> mkLink
+    maybeOverwrite :: IO Bool
+    maybeOverwrite
+      = promptRun
+        "Existing file found while installing symlink. Do you want to overwrite that file? (y/n)"
+        overwrite
+
+promptRun :: String -> IO Bool -> IO Bool
+promptRun s m = do
+  a <- promptYesNo s MandatoryPrompt
+  if a then m else pure a
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or

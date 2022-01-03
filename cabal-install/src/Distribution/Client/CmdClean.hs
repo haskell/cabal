@@ -8,6 +8,8 @@ import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), defaultDistDirLayout )
 import Distribution.Client.ProjectConfig
     ( findProjectRoot )
+import Distribution.Client.ScriptUtils
+    ( getScriptCacheDirectoryRoot )
 import Distribution.Client.Setup
     ( GlobalFlags )
 import Distribution.ReadE ( succeedReadE )
@@ -22,9 +24,14 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
     ( normal )
 
+import Control.Monad
+    ( forM, forM_, mapM )
+import qualified Data.Set as Set
 import System.Directory
     ( removeDirectoryRecursive, removeFile
-    , doesDirectoryExist, getDirectoryContents )
+    , doesDirectoryExist, doesFileExist
+    , getDirectoryContents, listDirectory
+    , canonicalizePath )
 import System.FilePath
     ( (</>) )
 
@@ -80,16 +87,21 @@ cleanAction CleanFlags{..} extraArgs _ = do
         mdistDirectory = flagToMaybe cleanDistDir
         mprojectFile   = flagToMaybe cleanProjectFile
 
-    unless (null extraArgs) $
-        die' verbosity $ "'clean' doesn't take any extra arguments: "
-                         ++ unwords extraArgs
+    -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
+    --
+    -- For now assume all files passed are the names of scripts
+    notScripts <- filterM (fmap not . doesFileExist) extraArgs
+    unless (null notScripts) $
+        die' verbosity $ "'clean' extra arguments should be script files: "
+                         ++ unwords notScripts
 
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
 
     let distLayout = defaultDistDirLayout projectRoot mdistDirectory
 
-    if saveConfig
-        then do
+    -- Do not clean a project if just running a script in it's directory
+    when (null extraArgs || isJust mdistDirectory) $ do
+        if saveConfig then do
             let buildRoot = distBuildRootDirectory distLayout
 
             buildRootExists <- doesDirectoryExist buildRoot
@@ -103,7 +115,24 @@ cleanAction CleanFlags{..} extraArgs _ = do
             info verbosity ("Deleting dist-newstyle (" ++ distRoot ++ ")")
             handleDoesNotExist () $ removeDirectoryRecursive distRoot
 
-    removeEnvFiles (distProjectRootDirectory distLayout)
+        removeEnvFiles (distProjectRootDirectory distLayout)
+
+    -- Clean specified script build caches and orphaned caches.
+    -- There is currently no good way to specify to only clean orphaned caches.
+    -- It would be better as part of an explicit gc step (see issue #3333)
+    toClean  <- Set.fromList <$> mapM canonicalizePath extraArgs
+    cacheDir <- getScriptCacheDirectoryRoot
+    existsCD <- doesDirectoryExist cacheDir
+    caches   <- if existsCD then listDirectory cacheDir else return []
+    paths    <- fmap concat . forM caches $ \cache -> do
+        let locFile = cacheDir </> cache </> "scriptlocation"
+        exists <- doesFileExist locFile
+        if exists then pure . (,) (cacheDir </> cache) <$> readFile locFile else return []
+    forM_ paths $ \(cache, script) -> do
+        exists <- doesFileExist script
+        when (not exists || script `Set.member` toClean) $ do
+            info verbosity ("Deleting cache (" ++ cache ++ ") for script (" ++ script ++ ")")
+            removeDirectoryRecursive cache
 
 removeEnvFiles :: FilePath -> IO ()
 removeEnvFiles dir =
