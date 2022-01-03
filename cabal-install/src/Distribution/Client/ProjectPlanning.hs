@@ -71,6 +71,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import           Distribution.Client.HashValue
+import           Distribution.Client.HttpUtils
 import           Distribution.Client.ProjectPlanning.Types as Ty
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
@@ -301,11 +302,13 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 -- packages within the project.
 --
 rebuildProjectConfig :: Verbosity
+                     -> HttpTransport
                      -> DistDirLayout
                      -> ProjectConfig
                      -> IO ( ProjectConfig
                            , [PackageSpecifier UnresolvedSourcePackage] )
 rebuildProjectConfig verbosity
+                     httpTransport
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
                        distDirectory,
@@ -360,7 +363,7 @@ rebuildProjectConfig verbosity
     --
     phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
-      readProjectConfig verbosity projectConfigConfigFile distDirLayout
+      readProjectConfig verbosity httpTransport projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc

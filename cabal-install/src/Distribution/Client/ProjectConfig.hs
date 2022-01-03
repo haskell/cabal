@@ -502,12 +502,13 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 -- file if any, plus other global config.
 --
 readProjectConfig :: Verbosity
+                  -> HttpTransport
                   -> Flag FilePath
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
-readProjectConfig verbosity configFileFlag distDirLayout = do
+readProjectConfig verbosity httpTransport configFileFlag distDirLayout = do
     global <- singletonProjectConfigSkeleton <$> readGlobalConfig                verbosity configFileFlag
-    local  <- readProjectLocalConfigOrDefault verbosity distDirLayout
+    local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
     freeze <- singletonProjectConfigSkeleton <$> readProjectLocalFreezeConfig    verbosity distDirLayout
     extra  <- singletonProjectConfigSkeleton <$> readProjectLocalExtraConfig     verbosity distDirLayout
     return (global <> local <> freeze <> extra)
@@ -517,13 +518,14 @@ readProjectConfig verbosity configFileFlag distDirLayout = do
 -- or returns the default project config for an implicitly defined project.
 --
 readProjectLocalConfigOrDefault :: Verbosity
+                                -> HttpTransport
                                 -> DistDirLayout
                                 -> Rebuild ProjectConfigSkeleton
-readProjectLocalConfigOrDefault verbosity distDirLayout = do
+readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
     then do
-      readProjectFileSkeleton verbosity distDirLayout "" "project file"
+      readProjectFileSkeleton verbosity httpTransport distDirLayout "" "project file"
     else do
       monitorFiles [monitorNonExistentFile projectFile]
       return (singletonProjectConfigSkeleton defaultImplicitProjectConfig)
@@ -563,8 +565,8 @@ readProjectLocalFreezeConfig verbosity distDirLayout =
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
 --
-readProjectFileSkeleton :: Verbosity -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
-readProjectFileSkeleton verbosity DistDirLayout{distProjectFile}
+readProjectFileSkeleton :: Verbosity -> HttpTransport -> DistDirLayout -> String -> String -> Rebuild ProjectConfigSkeleton
+readProjectFileSkeleton verbosity httpTransport DistDirLayout{distProjectFile, distDownloadSrcDirectory}
                          extensionName extensionDescription = do
     exists <- liftIO $ doesFileExist extensionFile
     if exists
@@ -577,7 +579,7 @@ readProjectFileSkeleton verbosity DistDirLayout{distProjectFile}
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-      =<< parseProjectSkeleton extensionFile
+      =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity extensionFile
       =<< BS.readFile extensionFile
 
 -- | Reads a named config file in the given project root dir, or returns empty.
