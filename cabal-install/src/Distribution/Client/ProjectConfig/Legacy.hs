@@ -50,13 +50,13 @@ import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Types.CondTree (CondTree (..), CondBranch (..), condIfThen, condIfThenElse, mapTreeConds)
 import Distribution.PackageDescription
-         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment (..) )
+         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment)
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
-         ( Flag(Flag), toFlag, fromFlagOrDefault
+         ( Flag(..), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
@@ -86,12 +86,14 @@ import Distribution.Deprecated.ReadP
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( Doc, ($+$) )
+import qualified Text.Parsec.Error as P
+import qualified Text.Parsec.Pos as P
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken
-         , simpleFieldParsec
+         , simpleFieldParsec, parseFail
          )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -99,18 +101,19 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (ParsecParser, zeroPos)
-import Distribution.System (Platform (..), OS, Arch)
+import Distribution.Parsec (ParsecParser)
+import Distribution.System (OS, Arch)
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString.Char8 as BS
 
-import Network.URI (URI (..))
+import Network.URI (URI (..), parseURI)
 
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
-import qualified Distribution.Fields.ParseResult as FPR
-import Distribution.Fields.Field (SectionArg (..))
+
+import Distribution.Client.HttpUtils
+import System.FilePath ((</>))
 
 
 
@@ -125,18 +128,11 @@ type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] ProjectConfi
 type ProjectConfigImport = String
 
 
-instance Semigroup (CondTree ConfVar [ProjectConfigImport] ProjectConfig) where
-  (CondNode a c bs) <> (CondNode a' c' bs') = CondNode (a <> a') (c <> c') (bs <> bs')
-
-instance Monoid (CondTree ConfVar [ProjectConfigImport] ProjectConfig) where
-   mappend = (<>)
-   mempty = CondNode mempty mempty mempty
-
 singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
 singletonProjectConfigSkeleton x = CondNode x mempty mempty
 
 instantiateProjectConfigSkeleton :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
-instantiateProjectConfigSkeleton os arch impl flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel -- TODO bail on flags
+instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
     where
         go :: CondTree
                FlagName
@@ -149,24 +145,21 @@ instantiateProjectConfigSkeleton os arch impl flags skel = go $ mapTreeConds (fs
         processBranch (CondBranch cnd t mf) = case cnd of
            (Lit True) ->  [go t]
            (Lit False) -> maybe ([]) ((:[]) . go) mf
-           _ -> []
-
-
--- TODO ensure parse doesn't have flags setting compiler inside conditionals
+           _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
 
 -- NOTE a nice refactor would be to use readFields directly to get a tree structure.
-parseProjectSkeleton :: FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
+parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWalkPCS False) . runInnerParsers <$> linesToNode (BS.lines bs)
  where
-  linesToNode :: [BS.ByteString] -> IO (CondTree ConfVar [ProjectConfigImport] [BS.ByteString])
+  linesToNode :: [BS.ByteString] -> IO (CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString])
   linesToNode ls = packResult . mconcat <$> go ls
 
-  packResult :: ([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree ConfVar [ProjectConfigImport] [BS.ByteString]
+  packResult :: ([CondBranch BS.ByteString [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString]
   packResult (branches, imps, ls) = CondNode ls imps branches
 
-  go :: [BS.ByteString] -> IO [([CondBranch ConfVar [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
+  go :: [BS.ByteString] -> IO [([CondBranch BS.ByteString [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
   go (l:ls)
-       | Just condition <- parseCond l =
+       | Just condition <- Var <$> detectCond l =
             let (clause, rest) = splitTillIndented ls
             in case rest of
                 (r:rs) | (BS.pack "else") `BS.isPrefixOf` r -> -- TODO handle elif
@@ -185,28 +178,58 @@ parseProjectSkeleton source bs = runInnerParsers <$> linesToNode (BS.lines bs)
 
   splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
 
-  parseCond :: BS.ByteString -> Maybe (Condition ConfVar)
-  parseCond l | (BS.pack "if(") `BS.isPrefixOf` l = case parseConditionConfVarFromClause l of
-                                                      Left err -> error (show err) -- TODO improve error reporting here
-                                                      Right x -> Just x
+  detectCond :: BS.ByteString -> Maybe BS.ByteString
+  detectCond l | (BS.pack "if(") `BS.isPrefixOf` l = Just l
 
               | otherwise = Nothing
   parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
                 | otherwise = Nothing
-  runInnerParsers :: CondTree ConfVar [ProjectConfigImport] [BS.ByteString] -> ParseResult ProjectConfigSkeleton
-  runInnerParsers = traverse (fmap (addProvenance . convertLegacyProjectConfig) . parseLegacyProjectConfig source . BS.unlines)
+  runInnerParsers :: CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString] -> ParseResult ProjectConfigSkeleton
+  runInnerParsers = (runConditionParsers =<<) . traverse (fmap (addProvenance . convertLegacyProjectConfig) . parseLegacyProjectConfig source . BS.unlines)
+
+  runConditionParsers :: (CondTree BS.ByteString [ProjectConfigImport] ProjectConfig) -> ParseResult ProjectConfigSkeleton
+  runConditionParsers (CondNode d c x) = CondNode d c <$> mapM runBranchConditionParser x
+
+  runBranchConditionParser :: CondBranch BS.ByteString [ProjectConfigImport] ProjectConfig -> ParseResult (CondBranch ConfVar [ProjectConfigImport] ProjectConfig)
+  runBranchConditionParser (CondBranch (Var b) t f) = do
+      c <- adaptParseError $ parseConditionConfVarFromClause b -- nb this loses the source line location, can't win 'em all, sigh. A full refactor of parsers is the "right" way to fix this.
+      CondBranch c <$> runConditionParsers t <*> traverse runConditionParsers f
+  runBranchConditionParser (CondBranch x _ _) = error $ "internal cabal invariant error in parsing branch conditions: " ++ show x
+
+  adaptParseError :: Either P.ParseError a -> ParseResult a
+  adaptParseError (Right x) = pure x
+  adaptParseError (Left e) = parseFail $ ParseUtils.NoParse (show e) (P.sourceLine $ P.errorPos e)
 
   addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
 
+  modifiesCompiler :: ProjectConfig -> Bool
+  modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
+     where
+       isSet f = f (projectConfigShared pc) == NoFlag
+
+  sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
+  sanityWalkPCS underConditional t@(CondNode d _c comps)
+           | underConditional && modifiesCompiler d = parseFail $ ParseUtils.NoParse "Cannot set compiler in a conditional clause of a cabal project file" 0
+           | otherwise = mapM_ sanityWalkBranch comps >> pure t
+
+  sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
+  sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
+
   fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
-  fetchImportConfig = BS.readFile -- todo, handle http
+  fetchImportConfig pci = case parseURI pci of
+    Just uri -> do
+       let fp = cacheDir </> show uri
+       _ <- downloadURI httpTransport verbosity uri fp
+       BS.readFile fp
+    Nothing -> BS.readFile pci
+
 
 {-
--- todo handlehttp
 -- todo add extra files to file change monitor
-
 -- TODO handle importing legacy freeze as well
 -- TODO handle merge semantics for constraints specially
+
+-- TODO somehow handle .local specially to avoid reconfig issues.
 
 -}
 

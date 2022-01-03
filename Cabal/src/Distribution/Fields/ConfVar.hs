@@ -17,13 +17,14 @@ import Distribution.Version
 import Prelude ()
 
 import qualified Text.Parsec       as P
+import qualified Text.Parsec.Pos   as P
 import qualified Text.Parsec.Error as P
 import qualified Data.ByteString.Char8          as B8
 
 parseConditionConfVarFromClause :: B8.ByteString -> Either P.ParseError (Condition ConfVar)
 parseConditionConfVarFromClause x = readFields x >>= \r -> case r of
                                        (Section _ xs _ : _ ) -> P.runParser (parser <* P.eof) () "<condition>" xs
-                                       _ -> error "guh"
+                                       _ -> Left $ P.newErrorMessage (P.Message "No fields in clause") (P.initialPos "<condition>")
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
