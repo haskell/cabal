@@ -109,7 +109,7 @@ the ``executable myfirstapp`` section to include ``haskell-say``:
 .. code-block:: cabal
 
    executable myfirstapp
-       import: warnings
+--       import: warnings
        main-is: Main.hs
        build-depends:
            base ^>=4.14.3.0,
