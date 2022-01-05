@@ -68,7 +68,7 @@ library
   if !impl(ghc >= 8.0)
     -- at least one of lib:Cabal's dependency (i.e. `parsec`)
     -- already depends on `fail` and `semigroups` transitively
-    build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.20
+    build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.21
 
   if !impl(ghc >= 7.10)
     build-depends: void >= 0.7.3 && < 0.8
