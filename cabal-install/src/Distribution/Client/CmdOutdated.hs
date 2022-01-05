@@ -29,9 +29,10 @@ import Distribution.Client.DistDirLayout
     ( defaultDistDirLayout
     , DistDirLayout(distProjectRootDirectory, distProjectFile) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig(projectConfigShared),
-      ProjectConfigShared(projectConfigConstraints), findProjectRoot,
-      readProjectLocalFreezeConfig )
+import Distribution.Client.ProjectConfig.Legacy
+    ( instantiateProjectConfigSkeleton )
+import Distribution.Client.ProjectPlanning
+    ( configureCompiler )
 import Distribution.Client.ProjectFlags
     ( projectFlagsOptions, ProjectFlags(..), defaultProjectFlags
     , removeIgnoreProjectOption )
@@ -40,8 +41,6 @@ import Distribution.Client.RebuildMonad
 import Distribution.Client.Sandbox
     ( loadConfigOrSandboxConfig )
 import Distribution.Client.Setup
-    ( withRepoContext, GlobalFlags, configCompilerAux'
-    , ConfigExFlags(configExConstraints) )
 import Distribution.Client.Targets
     ( userToPackageConstraint, UserConstraint )
 import Distribution.Client.Types.SourcePackageDb as SourcePackageDb
@@ -55,7 +54,7 @@ import Distribution.Utils.Generic
 import Distribution.Package
     ( PackageName, packageVersion )
 import Distribution.PackageDescription
-    ( allBuildDepends )
+    ( allBuildDepends, ignoreConditions )
 import Distribution.PackageDescription.Configuration
     ( finalizePD )
 import Distribution.Simple.Compiler
@@ -65,7 +64,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
     ( die', notice, debug, tryFindPackageDesc )
 import Distribution.System
-    ( Platform )
+    ( Platform (..) )
 import Distribution.Types.ComponentRequestedSpec
     ( ComponentRequestedSpec(..) )
 import Distribution.Types.Dependency
@@ -86,6 +85,10 @@ import Distribution.Simple.Command
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.ReadE
     ( parsecToReadE )
+import Distribution.Client.HttpUtils
+import Distribution.Utils.NubList
+         ( fromNubList )
+
 
 import qualified Data.Set as S
 import System.Directory
@@ -220,7 +223,6 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
   config <- loadConfigOrSandboxConfig verbosity globalFlags
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       configFlags  = savedConfigureFlags config
-  (comp, platform, _progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext -> do
     when (not newFreezeFile && isJust mprojectFile) $
       die' verbosity $
@@ -230,8 +232,14 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
     deps <- if freezeFile
             then depsFromFreezeFile verbosity
             else if newFreezeFile
-                then depsFromNewFreezeFile verbosity mprojectFile
-                else depsFromPkgDesc verbosity comp platform
+                then do
+                       httpTransport <- configureTransport verbosity
+                         (fromNubList . globalProgPathExtra $ globalFlags)
+                         (flagToMaybe . globalHttpTransport $ globalFlags)
+                       depsFromNewFreezeFile verbosity httpTransport mprojectFile
+                else do
+                  (comp, platform, _progdb) <- configCompilerAux' configFlags
+                  depsFromPkgDesc verbosity comp platform
     debug verbosity $ "Dependencies loaded: "
       ++ intercalate ", " (map prettyShow deps)
     let outdatedDeps = listOutdated deps sourcePkgDb
@@ -293,14 +301,16 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> Maybe FilePath -> IO [PackageVersionConstraint]
-depsFromNewFreezeFile verbosity mprojectFile = do
+depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Maybe FilePath -> IO [PackageVersionConstraint]
+depsFromNewFreezeFile verbosity httpTransport mprojectFile = do
   projectRoot <- either throwIO return =<<
                  findProjectRoot Nothing mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
-  projectConfig  <- runRebuild (distProjectRootDirectory distDirLayout) $
-                    readProjectLocalFreezeConfig verbosity distDirLayout
+  projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do
+                      pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
+                      (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst $ ignoreConditions pcs)
+                      pure $ instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty pcs
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
       deps    = userConstraintsToDependencies ucnstrs

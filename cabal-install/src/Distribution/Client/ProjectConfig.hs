@@ -507,10 +507,10 @@ readProjectConfig :: Verbosity
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
 readProjectConfig verbosity httpTransport configFileFlag distDirLayout = do
-    global <- singletonProjectConfigSkeleton <$> readGlobalConfig                verbosity configFileFlag
+    global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
     local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
-    freeze <- singletonProjectConfigSkeleton <$> readProjectLocalFreezeConfig    verbosity distDirLayout
-    extra  <- singletonProjectConfigSkeleton <$> readProjectLocalExtraConfig     verbosity distDirLayout
+    freeze <- readProjectLocalFreezeConfig    verbosity httpTransport distDirLayout
+    extra  <- readProjectLocalExtraConfig     verbosity httpTransport distDirLayout
     return (global <> local <> freeze <> extra)
 
 
@@ -547,20 +547,20 @@ readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
 -- or returns empty. This file gets written by @cabal configure@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalExtraConfig :: Verbosity -> DistDirLayout
-                            -> Rebuild ProjectConfig
-readProjectLocalExtraConfig verbosity distDirLayout =
-    readProjectFile verbosity distDirLayout "local"
+readProjectLocalExtraConfig :: Verbosity -> HttpTransport -> DistDirLayout
+                            -> Rebuild ProjectConfigSkeleton
+readProjectLocalExtraConfig verbosity httpTransport distDirLayout =
+    readProjectFileSkeleton verbosity httpTransport distDirLayout "local"
                              "project local configuration file"
 
 -- | Reads a @cabal.project.freeze@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal freeze@, or in
 -- principle can be edited manually or by other tools.
 --
-readProjectLocalFreezeConfig :: Verbosity -> DistDirLayout
-                             -> Rebuild ProjectConfig
-readProjectLocalFreezeConfig verbosity distDirLayout =
-    readProjectFile verbosity distDirLayout "freeze"
+readProjectLocalFreezeConfig :: Verbosity -> HttpTransport ->DistDirLayout
+                             -> Rebuild ProjectConfigSkeleton
+readProjectLocalFreezeConfig verbosity httpTransport distDirLayout =
+    readProjectFileSkeleton verbosity httpTransport distDirLayout "freeze"
                              "project freeze file"
 
 -- | Reads a named extended (with imports and conditionals) config file in the given project root dir, or returns empty.
@@ -571,7 +571,9 @@ readProjectFileSkeleton verbosity httpTransport DistDirLayout{distProjectFile, d
     exists <- liftIO $ doesFileExist extensionFile
     if exists
       then do monitorFiles [monitorFileHashed extensionFile]
-              liftIO readExtensionFile
+              pcs <- liftIO readExtensionFile
+              monitorFiles $ map monitorFileHashed (projectSkeletonImports pcs)
+              pure pcs
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
@@ -581,44 +583,6 @@ readProjectFileSkeleton verbosity httpTransport DistDirLayout{distProjectFile, d
           reportParseResult verbosity extensionDescription extensionFile
       =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity extensionFile
       =<< BS.readFile extensionFile
-
--- | Reads a named config file in the given project root dir, or returns empty.
---
-readProjectFile :: Verbosity -> DistDirLayout -> String -> String -> Rebuild ProjectConfig
-readProjectFile verbosity DistDirLayout{distProjectFile}
-                         extensionName extensionDescription = do
-    exists <- liftIO $ doesFileExist extensionFile
-    if exists
-      then do monitorFiles [monitorFileHashed extensionFile]
-              addProjectFileProvenance <$> liftIO readExtensionFile
-      else do monitorFiles [monitorNonExistentFile extensionFile]
-              return mempty
-  where
-    extensionFile :: FilePath
-    extensionFile = distProjectFile extensionName
-
-    readExtensionFile :: IO ProjectConfig
-    readExtensionFile =
-          reportParseResult verbosity extensionDescription extensionFile
-        . (parseProjectConfig extensionFile)
-      =<< BS.readFile extensionFile
-
-    addProjectFileProvenance :: ProjectConfig -> ProjectConfig
-    addProjectFileProvenance config =
-      config {
-        projectConfigProvenance = Set.insert (Explicit extensionFile) (projectConfigProvenance config)
-      }
-
-
--- | Parse the 'ProjectConfig' format.
---
--- For the moment this is implemented in terms of parsers for legacy
--- configuration types, plus a conversion.
---
-parseProjectConfig :: FilePath -> BS.ByteString -> OldParser.ParseResult ProjectConfig
-parseProjectConfig source content =
-    convertLegacyProjectConfig <$>
-      (parseLegacyProjectConfig source content)
 
 -- | Render the 'ProjectConfig' format.
 --

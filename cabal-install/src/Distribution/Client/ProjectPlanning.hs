@@ -40,6 +40,7 @@ module Distribution.Client.ProjectPlanning (
     -- * Utils required for building
     pkgHasEphemeralBuildTargets,
     elabBuildTargetWholeComponents,
+    configureCompiler,
 
     -- * Setup.hs CLI flags for building
     setupHsScriptOptions,

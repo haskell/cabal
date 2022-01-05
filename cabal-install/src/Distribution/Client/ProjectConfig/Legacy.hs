@@ -9,6 +9,7 @@ module Distribution.Client.ProjectConfig.Legacy (
     parseProjectSkeleton,
     instantiateProjectConfigSkeleton,
     singletonProjectConfigSkeleton,
+    projectSkeletonImports,
 
     -- * Project config in terms of legacy types
     LegacyProjectConfig,
@@ -43,14 +44,17 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
 
+import Distribution.Compat.Lens (view)
+
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
-import Distribution.Types.CondTree (CondTree (..), CondBranch (..), condIfThen, condIfThenElse, mapTreeConds)
+import Distribution.Types.CondTree
+         ( CondTree (..), CondBranch (..), condIfThen, condIfThenElse, mapTreeConds, traverseCondTreeC )
 import Distribution.PackageDescription
-         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment)
+         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
@@ -113,7 +117,8 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
-import System.FilePath ((</>))
+import System.FilePath ((</>), isPathSeparator)
+import System.Directory (createDirectoryIfMissing)
 
 
 
@@ -146,6 +151,9 @@ instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (f
            (Lit True) ->  [go t]
            (Lit False) -> maybe ([]) ((:[]) . go) mf
            _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
+
+projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
+projectSkeletonImports = view traverseCondTreeC
 
 -- NOTE a nice refactor would be to use readFields directly to get a tree structure.
 parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
@@ -192,24 +200,24 @@ parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWal
 
   runBranchConditionParser :: CondBranch BS.ByteString [ProjectConfigImport] ProjectConfig -> ParseResult (CondBranch ConfVar [ProjectConfigImport] ProjectConfig)
   runBranchConditionParser (CondBranch (Var b) t f) = do
-      c <- adaptParseError $ parseConditionConfVarFromClause b -- nb this loses the source line location, can't win 'em all, sigh. A full refactor of parsers is the "right" way to fix this.
+      c <- adaptParseError $ parseConditionConfVarFromClause b -- nb this loses the source line location, can't win 'em all, sigh. A full refactor of parsers is the "right" way to fix this. We could also pack bytestrings for conditionals with line locations
       CondBranch c <$> runConditionParsers t <*> traverse runConditionParsers f
   runBranchConditionParser (CondBranch x _ _) = error $ "internal cabal invariant error in parsing branch conditions: " ++ show x
 
   adaptParseError :: Either P.ParseError a -> ParseResult a
   adaptParseError (Right x) = pure x
-  adaptParseError (Left e) = parseFail $ ParseUtils.NoParse (show e) (P.sourceLine $ P.errorPos e)
+  adaptParseError (Left e) = parseFail $ ParseUtils.FromString (show e) (Just . P.sourceLine $ P.errorPos e)
 
   addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
 
   modifiesCompiler :: ProjectConfig -> Bool
   modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
      where
-       isSet f = f (projectConfigShared pc) == NoFlag
+       isSet f = f (projectConfigShared pc) /= NoFlag
 
   sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
   sanityWalkPCS underConditional t@(CondNode d _c comps)
-           | underConditional && modifiesCompiler d = parseFail $ ParseUtils.NoParse "Cannot set compiler in a conditional clause of a cabal project file" 0
+           | underConditional && modifiesCompiler d = parseFail $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
            | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
   sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
@@ -218,19 +226,16 @@ parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWal
   fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
   fetchImportConfig pci = case parseURI pci of
     Just uri -> do
-       let fp = cacheDir </> show uri
+       let fp = cacheDir </> map (\x -> if isPathSeparator x then 'X' else x) (show uri) -- TODO can we do better?
+       createDirectoryIfMissing True cacheDir
        _ <- downloadURI httpTransport verbosity uri fp
        BS.readFile fp
     Nothing -> BS.readFile pci
 
 
 {-
--- todo add extra files to file change monitor
--- TODO handle importing legacy freeze as well
+-- TODO elif
 -- TODO handle merge semantics for constraints specially
-
--- TODO somehow handle .local specially to avoid reconfig issues.
-
 -}
 
 ------------------------------------------------------------------

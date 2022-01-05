@@ -71,7 +71,7 @@ instance (NFData v, NFData c, NFData a) => NFData (CondTree v c a) where rnf = g
 instance (Semigroup a, Semigroup c) => Semigroup (CondTree v c a) where
   (CondNode a c bs) <> (CondNode a' c' bs') = CondNode (a <> a') (c <> c') (bs <> bs')
 
-instance (Monoid a, Monoid c) => Monoid (CondTree v c a) where
+instance (Semigroup a, Semigroup c, Monoid a, Monoid c) => Monoid (CondTree v c a) where
    mappend = (<>)
    mempty = CondNode mempty mempty mempty
 
