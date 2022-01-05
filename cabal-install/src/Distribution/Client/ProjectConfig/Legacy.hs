@@ -159,39 +159,55 @@ projectSkeletonImports = view traverseCondTreeC
 parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
 parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWalkPCS False) . runInnerParsers <$> linesToNode (BS.lines bs)
  where
+  -- converts lines to a full tree node, recursively looping "go" to pull out conditional and import structure, then packing the whole thing up
   linesToNode :: [BS.ByteString] -> IO (CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString])
-  linesToNode ls = packResult . mconcat <$> go ls
+  linesToNode xs = (\(branches, imps, ls) -> CondNode ls imps branches) . mconcat <$> go xs
 
-  packResult :: ([CondBranch BS.ByteString [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString]) -> CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString]
-  packResult (branches, imps, ls) = CondNode ls imps branches
-
+  -- given a list of lines, pulls out the conditional and import structure
   go :: [BS.ByteString] -> IO [([CondBranch BS.ByteString [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
   go (l:ls)
-       | Just condition <- Var <$> detectCond l =
-            let (clause, rest) = splitTillIndented ls
-            in case rest of
-                (r:rs) | (BS.pack "else") `BS.isPrefixOf` r -> -- TODO handle elif
-                     let (elseClause, lastRest) = splitTillIndented rs
-                     in do
-                        c1 <- linesToNode clause
-                        c2 <- linesToNode elseClause
-                        (([condIfThenElse condition c1 c2], [], []) :) <$> go lastRest
-                _ -> do
-                     c1 <- linesToNode clause
-                     (([condIfThen condition c1], [], []) :) <$>  go rest
+       | (BS.pack "if(") `BS.isPrefixOf` l =
+            let (clause, rest) = splitWhileIndented ls
+
+                -- unpacks the results of loop into nested if else clauses
+                constructNestedConds topCond topClause [] [] =
+                        do c1 <- linesToNode topClause
+                           pure $ condIfThen (Var topCond) c1
+                constructNestedConds topCond topClause ((elifCond, elifClause):elifs) elseClause =
+                        do c1 <- linesToNode topClause
+                           condIfThenElse (Var topCond) c1 . CondNode [] [] . (:[]) <$> constructNestedConds elifCond elifClause elifs elseClause
+                constructNestedConds topCond topClause [] elseClause =
+                        do c1 <- linesToNode topClause
+                           c2 <- linesToNode elseClause
+                           pure $ condIfThenElse (Var topCond) c1 c2
+
+                -- parse out the full list of if/else clauses
+                loop acc rss =
+                   case rss of
+                     (r:rs)
+                        | BS.pack "elif" `BS.isPrefixOf` r ->
+                            let (elseClause, lastRest) = splitWhileIndented rs
+                            in loop ((r, elseClause):acc) lastRest
+                        | BS.pack "else" `BS.isPrefixOf` r ->
+                            let (elseClause, lastRest) = splitWhileIndented rs
+                            in constructNestedConds l clause (reverse acc) elseClause
+                                  >>= (\c -> ((([c],[],[]) :) <$> go lastRest))
+                     _ -> constructNestedConds l clause (reverse acc) []
+                                  >>= (\c -> ((([c],[],[]) :) <$> go rss))
+            in loop [] rest
+
        | Just imp <- parseImport l = do x <- go . BS.lines =<< fetchImportConfig imp
                                         ((([], [imp], []) : x) ++) <$> go ls
+
        | otherwise = (([], [], [l]) :) <$> go ls
+
   go [] = pure []
 
-  splitTillIndented = span ((BS.pack " ") `BS.isPrefixOf`)
+  splitWhileIndented = span ((BS.pack " ") `BS.isPrefixOf`)
 
-  detectCond :: BS.ByteString -> Maybe BS.ByteString
-  detectCond l | (BS.pack "if(") `BS.isPrefixOf` l = Just l
-
-              | otherwise = Nothing
   parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
                 | otherwise = Nothing
+
   runInnerParsers :: CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString] -> ParseResult ProjectConfigSkeleton
   runInnerParsers = (runConditionParsers =<<) . traverse (fmap (addProvenance . convertLegacyProjectConfig) . parseLegacyProjectConfig source . BS.unlines)
 
@@ -231,12 +247,6 @@ parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWal
        _ <- downloadURI httpTransport verbosity uri fp
        BS.readFile fp
     Nothing -> BS.readFile pci
-
-
-{-
--- TODO elif
--- TODO handle merge semantics for constraints specially
--}
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
