@@ -1,0 +1,9 @@
+name:           some-exe
+version:        0.0.1.0
+license:        BSD3
+cabal-version:  >= 1.2
+build-type:     Simple
+
+Executable some-exe
+  main-is: Main.hs
+  build-depends: base

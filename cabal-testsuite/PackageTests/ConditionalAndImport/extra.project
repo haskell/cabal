@@ -1,0 +1,8 @@
+if(os(NoSuchOs) || False)
+  extra-packages: no-such-package
+elif(os(Whoops))
+  extra-packages: no-can-do
+elif(True)
+  extra-packages: some-exe
+else
+  extra-packages: nope

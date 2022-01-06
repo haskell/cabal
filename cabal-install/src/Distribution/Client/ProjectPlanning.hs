@@ -40,7 +40,6 @@ module Distribution.Client.ProjectPlanning (
     -- * Utils required for building
     pkgHasEphemeralBuildTargets,
     elabBuildTargetWholeComponents,
-    configureCompiler,
 
     -- * Setup.hs CLI flags for building
     setupHsScriptOptions,
@@ -534,53 +533,6 @@ rebuildInstallPlan verbosity
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
     phaseConfigureCompiler = configureCompiler verbosity distDirLayout
-{-
-    ProjectConfig {
-                             projectConfigShared = ProjectConfigShared {
-                               projectConfigHcFlavor,
-                               projectConfigHcPath,
-                               projectConfigHcPkg
-                             },
-                             projectConfigLocalPackages = PackageConfig {
-                               packageConfigProgramPaths,
-                               packageConfigProgramArgs,
-                               packageConfigProgramPathExtra
-                             }
-                           } = do
-        progsearchpath <- liftIO $ getSystemSearchPath
-        rerunIfChanged verbosity fileMonitorCompiler
-                       (hcFlavor, hcPath, hcPkg, progsearchpath,
-                        packageConfigProgramPaths,
-                        packageConfigProgramArgs,
-                        packageConfigProgramPathExtra) $ do
-
-          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          result@(_, _, progdb') <- liftIO $
-            Cabal.configCompilerEx
-              hcFlavor hcPath hcPkg
-              progdb verbosity
-
-        -- Note that we added the user-supplied program locations and args
-        -- for /all/ programs, not just those for the compiler prog and
-        -- compiler-related utils. In principle we don't know which programs
-        -- the compiler will configure (and it does vary between compilers).
-        -- We do know however that the compiler will only configure the
-        -- programs it cares about, and those are the ones we monitor here.
-          monitorFiles (programsMonitorFiles progdb')
-
-          return result
-      where
-        hcFlavor = flagToMaybe projectConfigHcFlavor
-        hcPath   = flagToMaybe projectConfigHcPath
-        hcPkg    = flagToMaybe projectConfigHcPkg
-        progdb   =
-            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
-          . modifyProgramSearchPath
-              (++ [ ProgramSearchPathDir dir
-                  | dir <- fromNubList packageConfigProgramPathExtra ])
-          $ defaultProgramDb
--}
 
     -- Configuring other programs.
     --

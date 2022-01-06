@@ -31,8 +31,6 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
     ( instantiateProjectConfigSkeleton )
-import Distribution.Client.ProjectPlanning
-    ( configureCompiler )
 import Distribution.Client.ProjectFlags
     ( projectFlagsOptions, ProjectFlags(..), defaultProjectFlags
     , removeIgnoreProjectOption )
@@ -54,7 +52,7 @@ import Distribution.Utils.Generic
 import Distribution.Package
     ( PackageName, packageVersion )
 import Distribution.PackageDescription
-    ( allBuildDepends, ignoreConditions )
+    ( allBuildDepends )
 import Distribution.PackageDescription.Configuration
     ( finalizePD )
 import Distribution.Simple.Compiler
@@ -93,6 +91,7 @@ import Distribution.Utils.NubList
 import qualified Data.Set as S
 import System.Directory
     ( getCurrentDirectory, doesFileExist )
+
 
 -------------------------------------------------------------------------------
 -- Command
@@ -229,6 +228,7 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
         "--project-file must only be used with --v2-freeze-file."
 
     sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoContext
+    (comp, platform, _progdb) <- configCompilerAux' configFlags
     deps <- if freezeFile
             then depsFromFreezeFile verbosity
             else if newFreezeFile
@@ -236,9 +236,8 @@ outdatedAction (ProjectFlags{flagProjectFileName}, OutdatedFlags{..}) _targetStr
                        httpTransport <- configureTransport verbosity
                          (fromNubList . globalProgPathExtra $ globalFlags)
                          (flagToMaybe . globalHttpTransport $ globalFlags)
-                       depsFromNewFreezeFile verbosity httpTransport mprojectFile
+                       depsFromNewFreezeFile verbosity httpTransport comp platform mprojectFile
                 else do
-                  (comp, platform, _progdb) <- configCompilerAux' configFlags
                   depsFromPkgDesc verbosity comp platform
     debug verbosity $ "Dependencies loaded: "
       ++ intercalate ", " (map prettyShow deps)
@@ -301,15 +300,14 @@ depsFromFreezeFile verbosity = do
   return deps
 
 -- | Read the list of dependencies from the new-style freeze file.
-depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Maybe FilePath -> IO [PackageVersionConstraint]
-depsFromNewFreezeFile verbosity httpTransport mprojectFile = do
+depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> IO [PackageVersionConstraint]
+depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectFile = do
   projectRoot <- either throwIO return =<<
                  findProjectRoot Nothing mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do
                       pcs <- readProjectLocalFreezeConfig verbosity httpTransport distDirLayout
-                      (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst $ ignoreConditions pcs)
                       pure $ instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty pcs
   let ucnstrs = map fst . projectConfigConstraints . projectConfigShared
                 $ projectConfig
