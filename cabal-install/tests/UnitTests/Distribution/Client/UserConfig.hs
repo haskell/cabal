@@ -35,7 +35,7 @@ tests = [ testCase "nullDiffOnCreate" nullDiffOnCreateTest
 nullDiffOnCreateTest :: Assertion
 nullDiffOnCreateTest = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent (Flag configFile)
+    _ <- createDefaultConfigFile silent [] configFile
     -- Now we read it in and compare it against the default.
     diff <- userConfigDiff silent (globalFlags configFile) []
     assertBool (unlines $ "Following diff should be empty:" : diff) $ null diff
@@ -44,7 +44,7 @@ nullDiffOnCreateTest = bracketTest $ \configFile -> do
 canDetectDifference :: Assertion
 canDetectDifference = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent (Flag configFile)
+    _ <- createDefaultConfigFile silent [] configFile
     appendFile configFile "verbose: 0\n"
     diff <- userConfigDiff silent (globalFlags configFile) []
     assertBool (unlines $ "Should detect a difference:" : diff) $
@@ -66,7 +66,7 @@ canUpdateConfig = bracketTest $ \configFile -> do
 doubleUpdateConfig :: Assertion
 doubleUpdateConfig = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent (Flag configFile)
+    _ <- createDefaultConfigFile silent [] configFile
     -- Update it twice.
     replicateM_ 2 $ userConfigUpdate silent (globalFlags configFile) []
     -- Load it again.

@@ -1,4 +1,5 @@
 library
+    import:           warnings
     exposed-modules:  MyLib
     build-depends:    base
     hs-source-dirs:   src

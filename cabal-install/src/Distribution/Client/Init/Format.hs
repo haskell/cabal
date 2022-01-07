@@ -20,6 +20,7 @@ module Distribution.Client.Init.Format
 , annNoComments
 , postProcessFieldLines
   -- * stanza generation
+, mkCommonStanza
 , mkLibStanza
 , mkExeStanza
 , mkTestStanza
@@ -63,21 +64,21 @@ fieldD
     -> WriteOpts
     -> PrettyField FieldAnnotation
 fieldD fieldName fieldContents fieldComments includeField opts
-    | fieldContents == empty =
-      -- If there is no content, optionally produce a commented out field.
-      fieldSEmptyContents fieldComments
-    | otherwise =
-        -- If the "--no-comments" or "--minimal" flag is set, strip comments.
-        let comments
-              | isMinimal = []
-              | hasNoComments = []
-              | otherwise = fieldComments
-
-        -- If the "--minimal" flag is set, strip comments.
-        in fieldSWithContents comments
+      -- If the "--no-comments" or "--minimal" flag is set, strip comments.
+    | hasNoComments || isMinimal = contents NoComment
+    | otherwise                  = contents $ commentPositionFor fieldName fieldComments
   where
+    commentPositionFor fn
+      | fn == "cabal-version" = CommentAfter
+      | otherwise = CommentBefore
+
     isMinimal = _optMinimal opts
     hasNoComments = _optNoComments opts
+
+    contents
+        -- If there is no content, optionally produce a commented out field.
+      | fieldContents == empty = fieldSEmptyContents
+      | otherwise              = fieldSWithContents
 
     fieldSEmptyContents cs
       | not includeField || isMinimal = PrettyEmpty
@@ -87,21 +88,25 @@ fieldD fieldName fieldContents fieldComments includeField opts
         empty
 
     fieldSWithContents cs =
-      PrettyField (withComments (map ("-- " ++) cs)) fieldName fieldContents
+      PrettyField (withComments cs) fieldName fieldContents
 
 
 -- | A field annotation instructing the pretty printer to comment out the field
 --   and any contents, with no comments.
-commentedOutWithComments :: [String] -> FieldAnnotation
-commentedOutWithComments = FieldAnnotation True . map ("-- " ++)
+commentedOutWithComments :: CommentPosition -> FieldAnnotation
+commentedOutWithComments (CommentBefore cs) = FieldAnnotation True . CommentBefore $ map ("-- " ++) cs
+commentedOutWithComments (CommentAfter  cs) = FieldAnnotation True . CommentAfter  $ map ("-- " ++) cs
+commentedOutWithComments NoComment = FieldAnnotation True NoComment
 
 -- | A field annotation with the specified comment lines.
-withComments :: [String] -> FieldAnnotation
-withComments = FieldAnnotation False
+withComments :: CommentPosition -> FieldAnnotation
+withComments (CommentBefore cs) = FieldAnnotation False . CommentBefore $ map ("-- " ++) cs
+withComments (CommentAfter  cs) = FieldAnnotation False . CommentAfter  $ map ("-- " ++) cs
+withComments NoComment = FieldAnnotation False NoComment
 
 -- | A field annotation with no comments.
 annNoComments :: FieldAnnotation
-annNoComments = FieldAnnotation False []
+annNoComments = FieldAnnotation False NoComment
 
 postProcessFieldLines :: FieldAnnotation -> [String] -> [String]
 postProcessFieldLines ann
@@ -111,10 +116,28 @@ postProcessFieldLines ann
 -- -------------------------------------------------------------------- --
 -- Stanzas
 
+-- The common stanzas are hardcoded for simplicity purposes,
+-- see https://github.com/haskell/cabal/pull/7558#discussion_r693173846
+mkCommonStanza :: WriteOpts -> PrettyField FieldAnnotation
+mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
+  NoCommonStanzas -> PrettyEmpty
+  _ -> PrettySection 
+    annNoComments
+    "common"
+    [text "warnings"]
+    [field "ghc-options" text "-Wall" [] False opts]
+
 mkLibStanza :: WriteOpts -> LibTarget -> PrettyField FieldAnnotation
 mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
   PrettySection annNoComments (toUTF8BS "library") []
-    [ field "exposed-modules" formatExposedModules (toList expMods)
+    [ case specHasCommonStanzas $ _optCabalSpec opts of
+        NoCommonStanzas -> PrettyEmpty
+        _ -> field "import" (hsep . map text) ["warnings"]
+          ["Import common warning flags."]
+          False 
+          opts
+
+    , field "exposed-modules" formatExposedModules (toList expMods)
       ["Modules exported by the library."]
       True
       opts
@@ -153,7 +176,14 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
 mkExeStanza :: WriteOpts -> ExeTarget -> PrettyField FieldAnnotation
 mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "executable") [exeName]
-      [ field "main-is" unsafeFromHs exeMain
+      [ case specHasCommonStanzas $ _optCabalSpec opts of
+          NoCommonStanzas -> PrettyEmpty
+          _ -> field "import" (hsep . map text) ["warnings"]
+            ["Import common warning flags."]
+            False 
+            opts
+      
+      , field "main-is" unsafeFromHs exeMain
          [".hs or .lhs file containing the Main module."]
          True
         opts
@@ -194,7 +224,14 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
 mkTestStanza :: WriteOpts -> TestTarget -> PrettyField FieldAnnotation
 mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
     PrettySection annNoComments (toUTF8BS "test-suite") [suiteName]
-       [ field "default-language" id lang
+       [ case specHasCommonStanzas $ _optCabalSpec opts of
+           NoCommonStanzas -> PrettyEmpty
+           _ -> field "import" (hsep . map text) ["warnings"]
+             ["Import common warning flags."]
+             False 
+             opts
+      
+       , field "default-language" id lang
          ["Base language which the package is written in."]
          True
          opts
@@ -244,6 +281,8 @@ mkPkgDescription opts pkgDesc =
       , "and can be different from the cabal-install (the tool) version and the"
       , "Cabal (the library) version you are using. As such, the Cabal (the library)"
       , "version used must be equal or greater than the version stated in this field."
+      , "Starting from the specification version 2.2, the cabal-version field must be"
+      , "the first thing in the cabal file."
       ]
       False
       opts

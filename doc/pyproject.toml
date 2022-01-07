@@ -1,0 +1,11 @@
+# https://pythonawesome.com/security-audit-python-project-dependencies-against-security-advisory-databases/
+[tool.skjold]
+sources       = ['github', 'gemnasium', 'pyup']
+report_only   = false
+         # ALT: true      # Report only, always exit with zero.
+report_format = 'cli'
+         # ALT: 'json'    # Output findings as `json`. Default is 'cli'.
+verbose       = true
+cache_dir     = '.skjold_cache'
+cache_expires = 43200     # Cache max. age. (43200 = 12hrs)
+ignore_file   = '.skjoldignore'

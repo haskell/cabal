@@ -311,7 +311,6 @@ resolveBuildTimeSettings verbosity
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
-    buildSettingOneShot       = fromFlag    projectConfigOneShot
     buildSettingNumJobs       = determineNumJobs projectConfigNumJobs
     buildSettingKeepGoing     = fromFlag    projectConfigKeepGoing
     buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
@@ -336,7 +335,6 @@ resolveBuildTimeSettings verbosity
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigKeepGoing             = toFlag False,
-      projectConfigOneShot               = toFlag False,
       projectConfigOfflineMode           = toFlag False,
       projectConfigKeepTempFiles         = toFlag False,
       projectConfigIgnoreExpiry          = toFlag False
@@ -380,10 +378,12 @@ resolveBuildTimeSettings verbosity
     -- If the user has specified --remote-build-reporting=detailed or
     -- --build-log, use more verbose logging.
     --
+    buildSettingLogVerbosity :: Verbosity
     buildSettingLogVerbosity
       | overrideVerbosity = modifyVerbosity (max verbose) verbosity
       | otherwise         = verbosity
 
+    overrideVerbosity :: Bool
     overrideVerbosity
       | buildSettingBuildReports == DetailedReports = True
       | isJust givenTemplate                        = True
@@ -419,6 +419,7 @@ findProjectRoot mstartdir mprojectFile = do
     homedir  <- getHomeDirectory
     probe startdir homedir
   where
+    projectFileName :: String
     projectFileName = fromMaybe "cabal.project" mprojectFile
 
     -- Search upwards. If we get to the users home dir or the filesystem root,
@@ -528,6 +529,7 @@ readProjectLocalConfigOrDefault verbosity distDirLayout = do
       return defaultImplicitProjectConfig
 
   where
+    projectFile :: FilePath
     projectFile = distProjectFile distDirLayout ""
 
     defaultImplicitProjectConfig :: ProjectConfig
@@ -575,13 +577,16 @@ readProjectFile verbosity DistDirLayout{distProjectFile}
       else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
+    extensionFile :: FilePath
     extensionFile = distProjectFile extensionName
 
+    readExtensionFile :: IO ProjectConfig
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
         . (parseProjectConfig extensionFile)
       =<< BS.readFile extensionFile
 
+    addProjectFileProvenance :: ProjectConfig -> ProjectConfig
     addProjectFileProvenance config =
       config {
         projectConfigProvenance =
@@ -811,6 +816,7 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
 
     return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
   where
+    findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]
     findPackageLocations required pkglocstr = do
       (problems, pkglocs) <-
         partitionEithers <$> traverse (findPackageLocation required) pkglocstr
@@ -1110,8 +1116,10 @@ fetchAndReadSourcePackageRemoteTarball verbosity
              . uncurry (readSourcePackageCabalFile verbosity)
            =<< extractTarballPackageCabalFile tarballFile
   where
+    tarballStem :: FilePath
     tarballStem = distDownloadSrcDirectory
               </> localFileNameForRemoteTarball tarballUri
+    tarballFile :: FilePath
     tarballFile = tarballStem <.> "tar.gz"
 
     monitor :: FileMonitor URI (PackageSpecifier (SourcePackage UnresolvedPkgLoc))
@@ -1184,7 +1192,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
             for_ (nonEmpty (srpCommand repo)) $ \(cmd :| args) -> liftIO $ do
                 exitCode <- rawSystemIOWithEnv verbosity cmd args (Just repoPath) Nothing Nothing Nothing Nothing
-                unless (exitCode /= ExitSuccess) $ exitWith exitCode
+                unless (exitCode == ExitSuccess) $ exitWith exitCode
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.

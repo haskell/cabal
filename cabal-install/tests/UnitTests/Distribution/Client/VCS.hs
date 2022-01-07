@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, KindSignatures, DataKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes, TypeApplications, ScopedTypeVariables #-}
 module UnitTests.Distribution.Client.VCS (tests) where
 
 import Distribution.Client.Compat.Prelude
@@ -74,57 +75,57 @@ tests mtimeChange =
 
   ]
 
-prop_framework_git :: BranchingRepoRecipe -> Property
+prop_framework_git :: BranchingRepoRecipe 'SubmodulesSupported -> Property
 prop_framework_git =
     ioProperty
   . prop_framework vcsGit vcsTestDriverGit
   . WithBranchingSupport
 
-prop_framework_darcs :: MTimeChange -> NonBranchingRepoRecipe -> Property
+prop_framework_darcs :: MTimeChange -> NonBranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_framework_darcs mtimeChange =
     ioProperty
   . prop_framework vcsDarcs (vcsTestDriverDarcs mtimeChange)
   . WithoutBranchingSupport
 
-prop_framework_pijul :: BranchingRepoRecipe -> Property
+prop_framework_pijul :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_framework_pijul =
     ioProperty
   . prop_framework vcsPijul vcsTestDriverPijul
   . WithBranchingSupport
 
-prop_framework_hg :: BranchingRepoRecipe -> Property
+prop_framework_hg :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_framework_hg =
     ioProperty
   . prop_framework vcsHg vcsTestDriverHg
   . WithBranchingSupport
 
-prop_cloneRepo_git :: BranchingRepoRecipe -> Property
+prop_cloneRepo_git :: BranchingRepoRecipe 'SubmodulesSupported -> Property
 prop_cloneRepo_git =
     ioProperty
   . prop_cloneRepo vcsGit vcsTestDriverGit
   . WithBranchingSupport
 
 prop_cloneRepo_darcs :: MTimeChange
-                     -> NonBranchingRepoRecipe -> Property
+                     -> NonBranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_cloneRepo_darcs mtimeChange =
     ioProperty
   . prop_cloneRepo vcsDarcs (vcsTestDriverDarcs mtimeChange)
   . WithoutBranchingSupport
 
-prop_cloneRepo_pijul :: BranchingRepoRecipe -> Property
+prop_cloneRepo_pijul :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_cloneRepo_pijul =
     ioProperty
   . prop_cloneRepo vcsPijul vcsTestDriverPijul
   . WithBranchingSupport
 
-prop_cloneRepo_hg :: BranchingRepoRecipe -> Property
+prop_cloneRepo_hg :: BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_cloneRepo_hg =
     ioProperty
   . prop_cloneRepo vcsHg vcsTestDriverHg
   . WithBranchingSupport
 
 prop_syncRepos_git :: RepoDirSet -> SyncTargetIterations -> PrngSeed
-                   -> BranchingRepoRecipe -> Property
+                   -> BranchingRepoRecipe 'SubmodulesSupported  -> Property
 prop_syncRepos_git destRepoDirs syncTargetSetIterations seed =
     ioProperty
   . prop_syncRepos vcsGit vcsTestDriverGit
@@ -133,7 +134,7 @@ prop_syncRepos_git destRepoDirs syncTargetSetIterations seed =
 
 prop_syncRepos_darcs :: MTimeChange
                      -> RepoDirSet -> SyncTargetIterations -> PrngSeed
-                     -> NonBranchingRepoRecipe -> Property
+                     -> NonBranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_syncRepos_darcs  mtimeChange destRepoDirs syncTargetSetIterations seed =
     ioProperty
   . prop_syncRepos vcsDarcs (vcsTestDriverDarcs mtimeChange)
@@ -141,7 +142,7 @@ prop_syncRepos_darcs  mtimeChange destRepoDirs syncTargetSetIterations seed =
   . WithoutBranchingSupport
 
 prop_syncRepos_pijul :: RepoDirSet -> SyncTargetIterations -> PrngSeed
-                   -> BranchingRepoRecipe -> Property
+                   -> BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_syncRepos_pijul destRepoDirs syncTargetSetIterations seed =
     ioProperty
   . prop_syncRepos vcsPijul vcsTestDriverPijul
@@ -149,7 +150,7 @@ prop_syncRepos_pijul destRepoDirs syncTargetSetIterations seed =
   . WithBranchingSupport
 
 prop_syncRepos_hg :: RepoDirSet -> SyncTargetIterations -> PrngSeed
-                   -> BranchingRepoRecipe -> Property
+                   -> BranchingRepoRecipe 'SubmodulesNotSupported -> Property
 prop_syncRepos_hg destRepoDirs syncTargetSetIterations seed =
     ioProperty
   . prop_syncRepos vcsHg vcsTestDriverHg
@@ -162,8 +163,8 @@ prop_syncRepos_hg destRepoDirs syncTargetSetIterations seed =
 
 testSetup :: VCS Program
           -> (Verbosity -> VCS ConfiguredProgram
-                        -> FilePath -> VCSTestDriver)
-          -> RepoRecipe
+                        -> FilePath -> FilePath -> VCSTestDriver)
+          -> RepoRecipe submodules
           -> (VCSTestDriver -> FilePath -> RepoState -> IO a)
           -> IO a
 testSetup vcs mkVCSTestDriver repoRecipe theTest = do
@@ -171,7 +172,8 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
     vcs' <- configureVCS verbosity vcs
     withTestDir verbosity "vcstest" $ \tmpdir -> do
       let srcRepoPath = tmpdir </> "src"
-          vcsDriver   = mkVCSTestDriver verbosity vcs' srcRepoPath
+          submodulesPath = tmpdir </> "submodules"
+          vcsDriver   = mkVCSTestDriver verbosity vcs' submodulesPath srcRepoPath
       repoState <- createRepo vcsDriver repoRecipe
 
       -- actual test
@@ -191,8 +193,8 @@ testSetup vcs mkVCSTestDriver repoRecipe theTest = do
 --
 prop_framework :: VCS Program
                -> (Verbosity -> VCS ConfiguredProgram
-                             -> FilePath -> VCSTestDriver)
-               -> RepoRecipe
+                             -> FilePath -> FilePath -> VCSTestDriver)
+               -> RepoRecipe submodules
                -> IO ()
 prop_framework vcs mkVCSTestDriver repoRecipe =
     testSetup vcs mkVCSTestDriver repoRecipe $ \vcsDriver tmpdir repoState ->
@@ -222,8 +224,8 @@ prop_framework vcs mkVCSTestDriver repoRecipe =
 
 prop_cloneRepo :: VCS Program
                -> (Verbosity -> VCS ConfiguredProgram
-                             -> FilePath -> VCSTestDriver)
-               -> RepoRecipe
+                             -> FilePath -> FilePath -> VCSTestDriver)
+               -> RepoRecipe submodules
                -> IO ()
 prop_cloneRepo vcs mkVCSTestDriver repoRecipe =
     testSetup vcs mkVCSTestDriver repoRecipe $ \vcsDriver tmpdir repoState ->
@@ -256,11 +258,11 @@ newtype PrngSeed             = PrngSeed Int             deriving Show
 
 prop_syncRepos :: VCS Program
                -> (Verbosity -> VCS ConfiguredProgram
-                             -> FilePath -> VCSTestDriver)
+                             -> FilePath -> FilePath -> VCSTestDriver)
                -> RepoDirSet
                -> SyncTargetIterations
                -> PrngSeed
-               -> RepoRecipe
+               -> RepoRecipe submodules
                -> IO ()
 prop_syncRepos vcs mkVCSTestDriver
                repoDirs syncTargetSetIterations seed repoRecipe =
@@ -374,49 +376,91 @@ instance Arbitrary PrngSeed where
 -- ways: to make a pure representation of repository state, and to execute
 -- VCS commands to make a repository on-disk.
 
-data FileUpdate    = FileUpdate FilePath String        deriving Show
-data Commit        = Commit [FileUpdate]               deriving Show
-data TaggedCommits = TaggedCommits TagName    [Commit] deriving Show
-data BranchCommits = BranchCommits BranchName [Commit] deriving Show
+data SubmodulesSupport = SubmodulesSupported | SubmodulesNotSupported
 
-type BranchName    = String
-type TagName       = String
+class KnownSubmodulesSupport (a :: SubmodulesSupport) where
+  submoduleSupport :: SubmodulesSupport
+
+instance KnownSubmodulesSupport 'SubmodulesSupported where
+  submoduleSupport = SubmodulesSupported
+
+instance KnownSubmodulesSupport 'SubmodulesNotSupported where
+  submoduleSupport = SubmodulesNotSupported
+
+data FileUpdate   = FileUpdate FilePath String
+                  deriving Show
+data SubmoduleAdd = SubmoduleAdd FilePath FilePath (Commit 'SubmodulesSupported)
+                  deriving Show
+
+newtype Commit (submodules :: SubmodulesSupport)
+  = Commit [Either FileUpdate SubmoduleAdd]
+  deriving Show
+
+data TaggedCommits (submodules :: SubmodulesSupport)
+  = TaggedCommits TagName    [Commit submodules]
+  deriving Show
+
+data BranchCommits (submodules :: SubmodulesSupport)
+  = BranchCommits BranchName [Commit submodules]
+  deriving Show
+
+type BranchName = String
+type TagName    = String
 
 -- | Instructions to make a repository without branches, for VCSs that do not
 -- support branches (e.g. darcs).
-newtype NonBranchingRepoRecipe = NonBranchingRepoRecipe [TaggedCommits]
- deriving Show
+newtype NonBranchingRepoRecipe submodules
+  = NonBranchingRepoRecipe [TaggedCommits submodules]
+  deriving Show
 
 -- | Instructions to make a repository with branches, for VCSs that do
 -- support branches (e.g. git).
-newtype BranchingRepoRecipe = BranchingRepoRecipe
-                                [Either TaggedCommits BranchCommits]
+newtype BranchingRepoRecipe submodules
+  = BranchingRepoRecipe [Either (TaggedCommits submodules) (BranchCommits submodules)]
  deriving Show
 
-data RepoRecipe = WithBranchingSupport       BranchingRepoRecipe
-                | WithoutBranchingSupport NonBranchingRepoRecipe
+data RepoRecipe submodules
+  = WithBranchingSupport       (BranchingRepoRecipe submodules)
+  | WithoutBranchingSupport (NonBranchingRepoRecipe submodules)
+  deriving Show
 
 -- ---------------------------------------------------------------------------
 -- Arbitrary instances for them
 
-instance Arbitrary FileUpdate where
-  arbitrary = FileUpdate <$> genFileName <*> genFileContent
-    where
-      genFileName    = (\c -> "file" </> [c]) <$> choose ('A', 'E')
-      genFileContent = vectorOf 10 (choose ('#', '~'))
+genFileName :: Gen FilePath
+genFileName = (\c -> "file" </> [c]) <$> choose ('A', 'E')
 
-instance Arbitrary Commit where
-  arbitrary = Commit <$> shortListOf1 5 arbitrary
+instance Arbitrary FileUpdate where
+  arbitrary = genOnlyFileUpdate
+    where
+      genOnlyFileUpdate   = FileUpdate <$> genFileName <*> genFileContent
+      genFileContent      = vectorOf 10 (choose ('#', '~'))
+
+instance Arbitrary SubmoduleAdd where
+  arbitrary = genOnlySubmoduleAdd
+    where
+      genOnlySubmoduleAdd = SubmoduleAdd <$> genFileName <*> genSubmoduleSrc <*> arbitrary
+      genSubmoduleSrc     = vectorOf 20 (choose ('a', 'z'))
+
+instance forall submodules.KnownSubmodulesSupport submodules => Arbitrary (Commit submodules) where
+  arbitrary = Commit <$> shortListOf1 5 fileUpdateOrSubmoduleAdd
+    where
+      fileUpdateOrSubmoduleAdd =
+        case submoduleSupport @submodules of
+          SubmodulesSupported -> frequency [ (10, Left <$> arbitrary)
+                                           , (1, Right <$> arbitrary)
+                                           ]
+          SubmodulesNotSupported -> Left <$> arbitrary
   shrink (Commit writes) = Commit <$> filter (not . null) (shrink writes)
 
-instance Arbitrary TaggedCommits where
+instance KnownSubmodulesSupport submodules => Arbitrary (TaggedCommits submodules) where
   arbitrary = TaggedCommits <$> genTagName <*>  shortListOf1 5 arbitrary
     where
       genTagName = ("tag_" ++) <$> shortListOf1 5 (choose ('A', 'Z'))
   shrink (TaggedCommits tag commits) =
     TaggedCommits tag <$> filter (not . null) (shrink commits)
 
-instance Arbitrary BranchCommits where
+instance KnownSubmodulesSupport submodules => Arbitrary (BranchCommits submodules) where
   arbitrary = BranchCommits <$> genBranchName <*> shortListOf1 5 arbitrary
     where
       genBranchName =
@@ -426,12 +470,12 @@ instance Arbitrary BranchCommits where
   shrink (BranchCommits branch commits) =
     BranchCommits branch <$> filter (not . null) (shrink commits)
 
-instance Arbitrary NonBranchingRepoRecipe where
+instance KnownSubmodulesSupport submodules => Arbitrary (NonBranchingRepoRecipe submodules) where
   arbitrary = NonBranchingRepoRecipe <$> shortListOf1 15 arbitrary
   shrink (NonBranchingRepoRecipe xs) =
     NonBranchingRepoRecipe <$> filter (not . null) (shrink xs)
 
-instance Arbitrary BranchingRepoRecipe where
+instance KnownSubmodulesSupport submodules => Arbitrary (BranchingRepoRecipe submodules) where
   arbitrary = BranchingRepoRecipe <$> shortListOf1 15 taggedOrBranch
     where
       taggedOrBranch = frequency [ (3, Left  <$> arbitrary)
@@ -481,7 +525,15 @@ initialRepoState =
 
 updateFile :: FilePath -> String -> RepoState -> RepoState
 updateFile filename content state@RepoState{currentWorking} =
-  state { currentWorking = Map.insert filename content currentWorking }
+  let removeSubmodule = Map.filterWithKey (\path _ -> not $ filename `isPrefixOf` path) currentWorking
+  in state { currentWorking = Map.insert filename content removeSubmodule }
+
+addSubmodule :: FilePath -> RepoState -> RepoState -> RepoState
+addSubmodule submodulePath submoduleState mainState =
+  let newFiles = Map.mapKeys (submodulePath </>) (currentWorking submoduleState)
+      removeSubmodule = Map.filterWithKey (\path _ -> not $ submodulePath `isPrefixOf` path ) (currentWorking mainState)
+      newWorking = Map.union removeSubmodule newFiles
+  in mainState { currentWorking = newWorking}
 
 addTagOrCommit :: TagOrCommitId -> RepoState -> RepoState
 addTagOrCommit commit state@RepoState{currentWorking, allTags} =
@@ -562,10 +614,10 @@ getDirectoryContentsRecursive ignore dir0 dir = do
 -- support VCSs like git that have commit ids, so that those commit ids can be
 -- included in the 'RepoState's 'allTags' set.
 --
-createRepo :: VCSTestDriver -> RepoRecipe -> IO RepoState
+createRepo :: VCSTestDriver -> RepoRecipe submodules -> IO RepoState
 createRepo vcsDriver@VCSTestDriver{vcsRepoRoot, vcsInit} recipe = do
-    createDirectory vcsRepoRoot
-    createDirectory (vcsRepoRoot </> "file")
+    createDirectoryIfMissing True vcsRepoRoot
+    createDirectoryIfMissing True (vcsRepoRoot </> "file")
     vcsInit
     execStateT createRepoAction initialRepoState
   where
@@ -576,17 +628,17 @@ createRepo vcsDriver@VCSTestDriver{vcsRepoRoot, vcsInit} recipe = do
 
 type CreateRepoAction a = VCSTestDriver -> a -> StateT RepoState IO ()
 
-execNonBranchingRepoRecipe :: CreateRepoAction NonBranchingRepoRecipe
+execNonBranchingRepoRecipe :: CreateRepoAction (NonBranchingRepoRecipe submodules)
 execNonBranchingRepoRecipe vcsDriver (NonBranchingRepoRecipe taggedCommits) =
     mapM_ (execTaggdCommits vcsDriver) taggedCommits
 
-execBranchingRepoRecipe :: CreateRepoAction BranchingRepoRecipe
+execBranchingRepoRecipe :: CreateRepoAction (BranchingRepoRecipe submodules)
 execBranchingRepoRecipe vcsDriver (BranchingRepoRecipe taggedCommits) =
     mapM_ (either (execTaggdCommits  vcsDriver)
                   (execBranchCommits vcsDriver))
           taggedCommits
 
-execBranchCommits :: CreateRepoAction BranchCommits
+execBranchCommits :: CreateRepoAction (BranchCommits submodules)
 execBranchCommits vcsDriver@VCSTestDriver{vcsSwitchBranch}
                   (BranchCommits branch commits) = do
     mapM_ (execCommit vcsDriver) commits
@@ -599,7 +651,7 @@ execBranchCommits vcsDriver@VCSTestDriver{vcsSwitchBranch}
     -- switch branch. In part this is because git cannot branch from an empty
     -- repo state, it complains that the master branch doesn't exist yet.
 
-execTaggdCommits :: CreateRepoAction TaggedCommits
+execTaggdCommits :: CreateRepoAction (TaggedCommits submodules)
 execTaggdCommits vcsDriver@VCSTestDriver{vcsTagState}
                  (TaggedCommits tagname commits) = do
     mapM_ (execCommit vcsDriver) commits
@@ -608,20 +660,30 @@ execTaggdCommits vcsDriver@VCSTestDriver{vcsTagState}
     liftIO $ vcsTagState state tagname
     State.modify (addTagOrCommit tagname)
 
-execCommit :: CreateRepoAction Commit
+execCommit :: CreateRepoAction (Commit submodules)
 execCommit vcsDriver@VCSTestDriver{..} (Commit fileUpdates) = do
-    mapM_ (execFileUpdate vcsDriver) fileUpdates
+    mapM_ (either (execFileUpdate vcsDriver) (execSubmoduleAdd vcsDriver)) fileUpdates
     state <- State.get -- existing state, not updated
     mcommit <- liftIO $ vcsCommitChanges state
     State.modify (maybe id addTagOrCommit mcommit)
 
 execFileUpdate :: CreateRepoAction FileUpdate
 execFileUpdate VCSTestDriver{..} (FileUpdate filename content) = do
+    isDir <- liftIO $ doesDirectoryExist (vcsRepoRoot </> filename)
+    liftIO . when isDir $ removeDirectoryRecursive (vcsRepoRoot </> filename)
     liftIO $ writeFile (vcsRepoRoot </> filename) content
     state <- State.get -- existing state, not updated
     liftIO $ vcsAddFile state filename
     State.modify (updateFile filename content)
 
+execSubmoduleAdd :: CreateRepoAction SubmoduleAdd
+execSubmoduleAdd vcsDriver (SubmoduleAdd submodulePath source submoduleCommit) = do
+    submoduleVcsDriver <- liftIO $ vcsSubmoduleDriver vcsDriver source
+    let submoduleRecipe = WithoutBranchingSupport $ NonBranchingRepoRecipe [TaggedCommits "submodule-tag" [submoduleCommit]]
+    submoduleState <- liftIO $ createRepo submoduleVcsDriver submoduleRecipe
+    mainState <- State.get -- existing state, not updated
+    liftIO $ vcsAddSubmodule vcsDriver mainState (vcsRepoRoot submoduleVcsDriver) submodulePath
+    State.modify $ addSubmodule submodulePath submoduleState
 
 -- ------------------------------------------------------------
 -- * VCSTestDriver for various VCSs
@@ -637,22 +699,24 @@ execFileUpdate VCSTestDriver{..} (FileUpdate filename content) = do
 -- The driver instance knows the particular repo directory.
 --
 data VCSTestDriver = VCSTestDriver {
-       vcsVCS           :: VCS ConfiguredProgram,
-       vcsRepoRoot      :: FilePath,
-       vcsIgnoreFiles   :: Set FilePath,
-       vcsInit          :: IO (),
-       vcsAddFile       :: RepoState -> FilePath -> IO (),
-       vcsCommitChanges :: RepoState -> IO (Maybe CommitId),
-       vcsTagState      :: RepoState -> TagName -> IO (),
-       vcsSwitchBranch  :: RepoState -> BranchName -> IO (),
-       vcsCheckoutTag   :: Either (TagName -> IO ())
-                                  (TagName -> FilePath -> IO ())
+       vcsVCS             :: VCS ConfiguredProgram,
+       vcsRepoRoot        :: FilePath,
+       vcsIgnoreFiles     :: Set FilePath,
+       vcsInit            :: IO (),
+       vcsAddFile         :: RepoState -> FilePath -> IO (),
+       vcsSubmoduleDriver :: FilePath -> IO VCSTestDriver,
+       vcsAddSubmodule    :: RepoState -> FilePath -> FilePath -> IO (),
+       vcsCommitChanges   :: RepoState -> IO (Maybe CommitId),
+       vcsTagState        :: RepoState -> TagName -> IO (),
+       vcsSwitchBranch    :: RepoState -> BranchName -> IO (),
+       vcsCheckoutTag     :: Either (TagName -> IO ())
+                                    (TagName -> FilePath -> IO ())
      }
 
 
 vcsTestDriverGit :: Verbosity -> VCS ConfiguredProgram
-                 -> FilePath -> VCSTestDriver
-vcsTestDriverGit verbosity vcs repoRoot =
+                 -> FilePath -> FilePath -> VCSTestDriver
+vcsTestDriverGit verbosity vcs submoduleDir repoRoot =
     VCSTestDriver {
       vcsVCS = vcs
 
@@ -678,13 +742,31 @@ vcsTestDriverGit verbosity vcs repoRoot =
     , vcsTagState = \_ tagname ->
         git ["tag", "--force", "--no-sign", tagname]
 
+    , vcsSubmoduleDriver =
+        pure . vcsTestDriverGit verbosity vcs submoduleDir . (submoduleDir </>)
+
+    , vcsAddSubmodule = \_ source dest -> do
+        destExists <- (||) <$> doesFileExist (repoRoot </> dest)
+                           <*> doesDirectoryExist (repoRoot </> dest)
+        when destExists $ git ["rm", "-f", dest]
+        -- If there is an old submodule git dir with the same name, remove it.
+        -- It most likely has a different URL and `git submodule add` will fai.
+        submoduleGitDirExists <- doesDirectoryExist $ submoduleGitDir dest
+        when submoduleGitDirExists $ removeDirectoryRecursive (submoduleGitDir dest)
+        git ["submodule", "add", source, dest]
+        git ["submodule", "update", "--init", "--recursive", "--force"]
+
     , vcsSwitchBranch = \RepoState{allBranches} branchname -> do
+        deinitAndRemoveCachedSubmodules
         unless (branchname `Map.member` allBranches) $
           git ["branch", branchname]
         git $ ["checkout", branchname] ++ verboseArg
+        updateSubmodulesAndCleanup
 
-    , vcsCheckoutTag = Left $ \tagname ->
+    , vcsCheckoutTag = Left $ \tagname -> do
+        deinitAndRemoveCachedSubmodules
         git $ ["checkout", "--detach", "--force", tagname] ++ verboseArg
+        updateSubmodulesAndCleanup
     }
   where
     gitInvocation args = (programInvocation (vcsProgram vcs) args) {
@@ -693,13 +775,24 @@ vcsTestDriverGit verbosity vcs repoRoot =
     git  = runProgramInvocation       verbosity . gitInvocation
     git' = getProgramInvocationOutput verbosity . gitInvocation
     verboseArg = [ "--quiet" | verbosity < Verbosity.normal ]
+    submoduleGitDir path = repoRoot </> ".git" </> "modules" </> path
+    deinitAndRemoveCachedSubmodules = do
+      git $ ["submodule", "deinit", "--force", "--all"] ++ verboseArg
+      let gitModulesDir = repoRoot </> ".git" </> "modules"
+      gitModulesExists <- doesDirectoryExist gitModulesDir
+      when gitModulesExists $ removeDirectoryRecursive gitModulesDir
+    updateSubmodulesAndCleanup = do
+      git $ ["submodule", "sync", "--recursive"] ++ verboseArg
+      git $ ["submodule", "update", "--init", "--recursive", "--force"] ++ verboseArg
+      git $ ["submodule", "foreach", "--recursive"] ++ verboseArg ++ ["git clean -ffxdq"]
+      git $ ["clean", "-ffxdq"] ++ verboseArg
 
 
 type MTimeChange = Int
 
 vcsTestDriverDarcs :: MTimeChange -> Verbosity -> VCS ConfiguredProgram
-                   -> FilePath -> VCSTestDriver
-vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
+                   -> FilePath -> FilePath -> VCSTestDriver
+vcsTestDriverDarcs mtimeChange verbosity vcs _ repoRoot =
     VCSTestDriver {
       vcsVCS = vcs
 
@@ -716,6 +809,12 @@ vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
           darcs ["add", filename]
         -- Darcs's file change tracking relies on mtime changes,
         -- so we have to be careful with doing stuff too quickly:
+
+    , vcsSubmoduleDriver = \_->
+        fail "vcsSubmoduleDriver: darcs does not support submodules"
+
+    , vcsAddSubmodule = \_ _ _ ->
+        fail "vcsAddSubmodule: darcs does not support submodules"
 
     , vcsCommitChanges = \_state -> do
         threadDelay mtimeChange
@@ -739,8 +838,8 @@ vcsTestDriverDarcs mtimeChange verbosity vcs repoRoot =
 
 
 vcsTestDriverPijul :: Verbosity -> VCS ConfiguredProgram
-                 -> FilePath -> VCSTestDriver
-vcsTestDriverPijul verbosity vcs repoRoot =
+                   -> FilePath -> FilePath -> VCSTestDriver
+vcsTestDriverPijul verbosity vcs _ repoRoot =
     VCSTestDriver {
       vcsVCS = vcs
 
@@ -753,6 +852,12 @@ vcsTestDriverPijul verbosity vcs repoRoot =
 
     , vcsAddFile = \_ filename ->
         pijul ["add", filename]
+
+    , vcsSubmoduleDriver = \_ ->
+        fail "vcsSubmoduleDriver: pijul does not support submodules"
+
+    , vcsAddSubmodule = \_ _ _ ->
+        fail "vcsAddSubmodule: pijul does not support submodules"
 
     , vcsCommitChanges = \_state -> do
         pijul $ ["record", "-a", "-m 'a patch'"
@@ -783,8 +888,8 @@ vcsTestDriverPijul verbosity vcs repoRoot =
     pijul' = getProgramInvocationOutput verbosity . gitInvocation
 
 vcsTestDriverHg :: Verbosity -> VCS ConfiguredProgram
-                 -> FilePath -> VCSTestDriver
-vcsTestDriverHg verbosity vcs repoRoot =
+                -> FilePath -> FilePath -> VCSTestDriver
+vcsTestDriverHg verbosity vcs _ repoRoot =
     VCSTestDriver {
       vcsVCS = vcs
 
@@ -797,6 +902,12 @@ vcsTestDriverHg verbosity vcs repoRoot =
 
     , vcsAddFile = \_ filename ->
         hg ["add", filename]
+
+    , vcsSubmoduleDriver = \_ ->
+        fail "vcsSubmoduleDriver: hg submodules not supported"
+
+    , vcsAddSubmodule = \_ _ _ ->
+        fail "vcsAddSubmodule: hg submodules not supported"
 
     , vcsCommitChanges = \_state -> do
         hg $ [ "--user='A <a@example.com>'"

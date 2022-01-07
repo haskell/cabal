@@ -149,19 +149,6 @@ createProject v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         Nothing Nothing testTarget
-  where
-    -- Add package name as dependency of test suite
-    --
-    addLibDepToTest _ Nothing = Nothing
-    addLibDepToTest n (Just t) = Just $ t
-      { _testDependencies = _testDependencies t ++ [mkPackageNameDep n]
-      }
-
-    -- Add package name as dependency of executable
-    --
-    addLibDepToExe n exe = exe
-      { _exeDependencies = _exeDependencies exe ++ [mkPackageNameDep n]
-      }
 
 -- -------------------------------------------------------------------- --
 -- Target and pkg description generation

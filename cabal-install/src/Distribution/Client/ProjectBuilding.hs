@@ -97,6 +97,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 
 import Control.Exception (Handler (..), SomeAsyncException, assert, catches, handle)
 import System.Directory  (canonicalizePath, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, removeFile, renameDirectory)
@@ -1016,9 +1017,18 @@ buildAndInstallUnpackedPackage verbosity
             -- https://github.com/haskell/cabal/issues/4130
             createDirectoryIfMissingVerbose verbosity True entryDir
 
-            LBS.writeFile
-              (entryDir </> "cabal-hash.txt")
-              (renderPackageHashInputs (packageHashInputs pkgshared pkg))
+            let hashFileName     = entryDir </> "cabal-hash.txt"
+                outPkgHashInputs = renderPackageHashInputs (packageHashInputs pkgshared pkg)
+
+            info verbosity $
+              "creating file with the inputs used to compute the package hash: " ++ hashFileName
+
+            LBS.writeFile hashFileName outPkgHashInputs
+
+            debug verbosity "Package hash inputs:"
+            traverse_
+              (debug verbosity . ("> " ++))
+              (lines $ LBS.Char8.unpack outPkgHashInputs)
 
             -- Ensure that there are no files in `tmpDir`, that are
             -- not in `entryDir`. While this breaks the

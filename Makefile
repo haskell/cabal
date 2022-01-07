@@ -64,7 +64,7 @@ $(TEMPLATE_PATHS) : templates/Paths_pkg.template.hs cabal-dev-scripts/src/GenPat
 
 buildinfo-fields-reference : phony
 	cabal build --builddir=dist-newstyle-bi --project-file=cabal.project.buildinfo buildinfo-reference-generator
-	$$(cabal list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
+	$$(cabal-plan list-bin --builddir=dist-newstyle-bi buildinfo-reference-generator) buildinfo-reference-generator/template.zinza | tee $@
 
 # analyse-imports
 analyse-imports : phony
@@ -119,22 +119,24 @@ hackage-roundtrip-tests :
 	$(CABALRUN) hackage-tests -- roundtrip +RTS -s -qg -I0 -A64M -N${THREADS} -RTS ${TEST}
 
 cabal-install-test:
+	@which cabal-plan
 	$(CABALBUILD) -j3 cabal-tests cabal
 	rm -rf .ghc.environment.*
-	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 ${TEST}
+	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 ${TEST}
 
 # hackage-benchmarks (solver)
 
 hackage-benchmarks-run:
 	$(CABALBUILD) -j3 hackage-benchmark cabal
 	rm -rf .ghc.environment.*
-	$$(cabal list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
+	$$(cabal-plan list-bin hackage-benchmark) --cabal1=cabal --cabal2=$$(cabal-plan list-bin cabal) --packages="hakyll servant-auth-server" --print-trials --concurrently
 
 
 # This doesn't run build, as you first need to test with cabal-install-test :)
 cabal-install-test-accept:
+	@which cabal-plan
 	rm -rf .ghc.environment.*
-	cd cabal-testsuite && `cabal list-bin cabal-tests` --with-cabal=`cabal list-bin cabal` --hide-successes -j3 --accept ${TEST}
+	cd cabal-testsuite && `cabal-plan list-bin cabal-tests` --with-cabal=`cabal-plan list-bin cabal` --hide-successes -j3 --accept ${TEST}
 
 # Docker validation
 
@@ -218,15 +220,15 @@ bootstrap-plans-linux: phony
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
 	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.4 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.4.plan.json
+	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.7 --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.7.plan.json
 
 bootstrap-jsons-linux: phony
 	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
 	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
 	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.6.5.json
 	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.4.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.8.4.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.4.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.4.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.7.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.7.json
 
 # documentation
 ##############################################################################
@@ -249,3 +251,12 @@ $(USERGUIDE_STAMP) : doc/*.rst
 .python-sphinx-virtualenv:
 	python3 -m venv .python-sphinx-virtualenv
 	(. ./.python-sphinx-virtualenv/bin/activate)
+
+# This goal is intended for manual invocation, always rebuilds.
+.PHONY: users-guide-requirements
+users-guide-requirements: doc/requirements.txt
+
+.PHONY: doc/requirements.txt
+doc/requirements.txt: .python-sphinx-virtualenv
+	. .python-sphinx-virtualenv/bin/activate \
+	  && make -C doc build-and-check-requirements

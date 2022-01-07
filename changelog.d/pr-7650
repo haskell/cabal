@@ -1,0 +1,8 @@
+synopsis: Make Paths_ modules work with non-standard preludes again
+pr: #7650
+issues: #5962
+significance: significant
+description: {
+
+- Generate Paths_ module with qualified Data.List.last import so that compatibility with non-standard preludes is not regressed compared to cabal 3.4.
+}

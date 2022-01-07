@@ -65,10 +65,10 @@ module Distribution.FieldGrammar.Parsec (
     fieldLinesToStream,
     )  where
 
-import Data.List                   (dropWhileEnd)
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
 import Distribution.Simple.Utils   (fromUTF8BS)
+import Distribution.Utils.String (trim)
 import Prelude ()
 
 import qualified Data.ByteString              as BS
@@ -271,8 +271,6 @@ instance FieldGrammar Parsec ParsecFieldGrammar where
             ]
         -- hack: recover the order of prefixed fields
         reorder = map snd . sortBy (comparing fst)
-        trim :: String -> String
-        trim = dropWhile isSpace . dropWhileEnd isSpace
 
     availableSince vs def (ParsecFG names prefixes parser) = ParsecFG names prefixes parser'
       where
@@ -390,9 +388,6 @@ fieldlinesToFreeText fls               = intercalate "\n" (map go fls)
         | otherwise = s
       where
         s = trim (fromUTF8BS bs)
-
-        trim :: String -> String
-        trim = dropWhile isSpace . dropWhileEnd isSpace
 
 fieldlinesToFreeText3 :: Position -> [FieldLine Position] -> String
 fieldlinesToFreeText3 _   []               = ""

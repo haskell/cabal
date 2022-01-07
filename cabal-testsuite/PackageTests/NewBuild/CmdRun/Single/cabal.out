@@ -15,5 +15,4 @@ Up to date
 # cabal v2-run
 Up to date
 # cabal v2-run
-cabal: Cannot run the package bar, it is not in this project (either directly or indirectly). If you want to add it to the project then edit the cabal.project file.
-
+Error: cabal: Cannot run the package bar, it is not in this project (either directly or indirectly). If you want to add it to the project then edit the cabal.project file.

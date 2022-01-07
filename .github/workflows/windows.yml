@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-haskell@v1.1.4
         with:
           ghc-version: '8.6.5'
-          cabal-version: '3.2.0.0'
+          cabal-version: '3.4.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")
@@ -37,9 +37,12 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      # We cannot ask for all dependencies, but we can for Cabal.
-      - name: cabal v2-build Cabal --only-dependencies
-        run: cabal v2-build Cabal --only-dependencies
+      # all dependencies of Cabal already there (due to GHC depending on Cabal)
+      - name: cabal v2-build Cabal
+        run: cabal v2-build Cabal
+      # We cannot ask for all dependencies, but we can for cabal-install.
+      - name: cabal v2-build cabal-install --only-dependencies
+        run: cabal v2-build cabal-install --only-dependencies
       - name: cabal v2-build
         run: cabal v2-build all
       - name: Cabal unit-tests
@@ -64,14 +67,16 @@ jobs:
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
         run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.6.5\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
-  test-windows-8_10_4:
-    name: test ghc-8.10.4
+
+#TODO: store the exe from above as artifact and re-use it here instead of building anew
+  test-windows-8_6_5-dogfood:
+    name: test ghc-8.6.5 dogfood
     runs-on: windows-latest
     steps:
       - uses: actions/setup-haskell@v1.1.4
         with:
-          ghc-version: '8.10.4'
-          cabal-version: '3.2.0.0'
+          ghc-version: '8.6.5'
+          cabal-version: '3.4.0.0'
       - name: Print versions
         run: |
           [Environment]::GetEnvironmentVariable("Path")
@@ -85,9 +90,55 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
       - uses: actions/checkout@v2
-      # We cannot ask for all dependencies, but we can for Cabal.
-      - name: cabal v2-build Cabal --only-dependencies
-        run: cabal v2-build Cabal --only-dependencies
+      # all dependencies of Cabal already there (due to GHC depending on Cabal)
+      - name: cabal v2-build Cabal
+        run: cabal v2-build Cabal
+      # We cannot ask for all dependencies, but we can for cabal-install.
+      - name: cabal v2-build cabal-install --only-dependencies
+        run: cabal v2-build cabal-install --only-dependencies
+      - name: cabal v2-build
+        run: cabal v2-build all
+      - name: wipe out cabal store
+        run: Remove-Item -Recurse -Force C:\SR
+      - name: eat its own dogfood by building own Cabal source with itself
+        run: |
+          cp $(cabal list-bin exe:cabal) ./cabal-exe-current
+          ./cabal-exe-current --version
+          ./cabal-exe-current v2-build Cabal
+        shell: bash
+      - name: eat its own dogfood by building all deps with itself
+        run: ./cabal-exe-current v2-build cabal-install --only-dependencies
+        shell: bash
+      - name: eat its own dogfood by building own source with itself
+        run: ./cabal-exe-current v2-build all
+        shell: bash
+  test-windows-8_10_4:
+    name: test ghc-8.10.4
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.10.4'
+          cabal-version: '3.4.0.0'
+      - name: Print versions
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v2
+      # all dependencies of Cabal already there (due to GHC depending on Cabal)
+      - name: cabal v2-build Cabal
+        run: cabal v2-build Cabal
+      # We cannot ask for all dependencies, but we can for cabal-install.
+      - name: cabal v2-build cabal-install --only-dependencies
+        run: cabal v2-build cabal-install --only-dependencies
       - name: cabal v2-build
         run: cabal v2-build all
       - name: Cabal unit-tests
@@ -112,3 +163,48 @@ jobs:
       - name: cabal-tests
         # Using only one job, -j1, to fail less.
         run: cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-8.10.4\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
+
+#TODO: store the exe from above as artifact and re-use it here instead of building anew
+  test-windows-8_10_4-dogfood:
+    name: test ghc-8.10.4 dogfood
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-haskell@v1.1.4
+        with:
+          ghc-version: '8.10.4'
+          cabal-version: '3.4.0.0'
+      - name: Print versions
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v2
+      # all dependencies of Cabal already there (due to GHC depending on Cabal)
+      - name: cabal v2-build Cabal
+        run: cabal v2-build Cabal
+      # We cannot ask for all dependencies, but we can for cabal-install.
+      - name: cabal v2-build cabal-install --only-dependencies
+        run: cabal v2-build cabal-install --only-dependencies
+      - name: cabal v2-build
+        run: cabal v2-build all
+      - name: wipe out cabal store
+        run: Remove-Item -Recurse -Force C:\SR
+      - name: eat its own dogfood by building own Cabal source with itself
+        run: |
+          cp $(cabal list-bin exe:cabal) ./cabal-exe-current
+          ./cabal-exe-current --version
+          ./cabal-exe-current v2-build Cabal
+        shell: bash
+      - name: eat its own dogfood by building all deps with itself
+        run: ./cabal-exe-current v2-build cabal-install --only-dependencies
+        shell: bash
+      - name: eat its own dogfood by building own source with itself
+        run: ./cabal-exe-current v2-build all
+        shell: bash

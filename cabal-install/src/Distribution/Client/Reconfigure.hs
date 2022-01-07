@@ -139,7 +139,8 @@ reconfigure
     -- verbosity should be used if reconfiguring.
     checkVerb :: Check (ConfigFlags, b)
     checkVerb = Check $ \_ (configFlags, configExFlags) -> do
-      let configFlags' = configFlags { configVerbosity = toFlag verbosity}
+      let configFlags' :: ConfigFlags
+          configFlags' = configFlags { configVerbosity = toFlag verbosity}
       return (mempty, (configFlags', configExFlags))
 
     -- Reconfiguration is required if @--build-dir@ changes.
@@ -148,14 +149,17 @@ reconfigure
       -- Always set the chosen @--build-dir@ before saving the flags,
       -- or bad things could happen.
       savedDist <- findSavedDistPref config (configDistPref configFlags)
-      let distChanged = dist /= savedDist
+      let distChanged :: Bool
+          distChanged = dist /= savedDist
       when distChanged $ info verbosity "build directory changed"
-      let configFlags' = configFlags { configDistPref = toFlag dist }
+      let configFlags' :: ConfigFlags
+          configFlags' = configFlags { configDistPref = toFlag dist }
       return (Any distChanged, (configFlags', configExFlags))
 
     checkOutdated :: Check (ConfigFlags, b)
     checkOutdated = Check $ \_ flags@(configFlags, _) -> do
-      let buildConfig = localBuildInfoFile dist
+      let buildConfig :: FilePath
+          buildConfig = localBuildInfoFile dist
 
       -- Has the package ever been configured? If not, reconfiguration is
       -- required.

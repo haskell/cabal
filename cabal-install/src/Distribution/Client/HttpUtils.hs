@@ -32,8 +32,11 @@ import qualified Control.Exception as Exception
 import Distribution.Simple.Utils
          ( die', info, warn, debug, notice
          , copyFileVerbose,  withTempFile, IOData (..) )
+import Distribution.Utils.String (trim)
 import Distribution.Client.Utils
-         ( withTempFileName, cabalInstallVersion )
+         ( withTempFileName )
+import Distribution.Client.Version
+         ( cabalInstallVersion )
 import Distribution.Client.Types
          ( unRepoName, RemoteRepo(..) )
 import Distribution.System
@@ -406,25 +409,26 @@ curlTransport prog =
 
     posthttp = noPostYet
 
-    addAuthConfig auth uri progInvocation = do
-      case uriAuthority uri of
-        Just (URIAuth u _ _) -> progInvocation
-          -- all `uriUserInfo` values have '@' as a suffix. drop it.
-          { progInvokeInput = Just $ IODataText $ unlines $
+    addAuthConfig explicitAuth uri progInvocation = do
+      -- attempt to derive a u/p pair from the uri authority if one exists
+      -- all `uriUserInfo` values have '@' as a suffix. drop it.
+      let uriDerivedAuth = case uriAuthority uri of
+                               (Just (URIAuth u _ _)) | not (null u) -> Just $ filter (/= '@') u
+                               _ -> Nothing
+      -- prefer passed in auth to auth derived from uri. If neither exist, then no auth
+      let mbAuthString = case (explicitAuth, uriDerivedAuth) of
+                          (Just (uname, passwd), _) -> Just (uname ++ ":" ++ passwd)
+                          (Nothing, Just a) -> Just a
+                          (Nothing, Nothing) -> Nothing
+      case mbAuthString of
+        Just up -> progInvocation
+          { progInvokeInput = Just . IODataText . unlines $
               [ "--digest"
-              , "--user " ++ filter (/= '@') u
+              , "--user " ++ up
               ]
           , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
           }
         Nothing -> progInvocation
-          { progInvokeInput = do
-              (uname, passwd) <- auth
-              return $ IODataText $ unlines
-                [ "--digest"
-                , "--user " ++ uname ++ ":" ++ passwd
-                ]
-          , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
-          }
 
     posthttpfile verbosity uri path auth = do
         let args = [ show uri
@@ -886,12 +890,6 @@ statusParseFail :: Verbosity -> URI -> String -> IO a
 statusParseFail verbosity uri r =
     die' verbosity $ "Failed to download " ++ show uri ++ " : "
        ++ "No Status Code could be parsed from response: " ++ r
-
--- Trim
-trim :: String -> String
-trim = f . f
-      where f = reverse . dropWhile isSpace
-
 
 ------------------------------------------------------------------------------
 -- Multipart stuff partially taken from cgi package.

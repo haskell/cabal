@@ -273,9 +273,16 @@ reifyTargetSelectors pkgs sels =
         ([], sels') -> Right sels'
         (errs, _)   -> Left errs
     where
-        flatten (SpecificSourcePackage pkg@SourcePackage{}) = pkg
-        flatten _ = error "The impossible happened: how do we not know about a local package?"
-        pkgs' = fmap flatten pkgs
+        -- there can be pkgs which are in extra-packages:
+        -- these are not SpecificSourcePackage
+        --
+        -- Why these packages are in localPkgs, it's confusing.
+        -- Anyhow, better to be lenient here.
+        --
+        flatten (SpecificSourcePackage pkg@SourcePackage{}) = Just pkg
+        flatten _                                           = Nothing
+
+        pkgs' = mapMaybe flatten pkgs
 
         getPkg pid = case find ((== pid) . packageId) pkgs' of
             Just pkg -> Right pkg

@@ -111,10 +111,10 @@ import Distribution.Client.Types.Credentials  (Password (..))
 import Distribution.Client.Init               (initCmd)
 import Distribution.Client.Manpage            (manpageCmd)
 import Distribution.Client.ManpageFlags       (ManpageFlags (..))
-import Distribution.Client.Utils              (determineNumJobs
-                                              ,relaxEncodingErrors
-                                              ,cabalInstallVersion
-                                              )
+import Distribution.Client.Utils
+         ( determineNumJobs, relaxEncodingErrors )
+import Distribution.Client.Version
+         ( cabalInstallVersion )
 
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
@@ -146,7 +146,7 @@ import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die', dieNoVerbosity, info, notice, topHandler
-         , findPackageDesc, tryFindPackageDesc )
+         , findPackageDesc, tryFindPackageDesc, createDirectoryIfMissingVerbose )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -160,7 +160,8 @@ import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>) )
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stderr, stdout )
-import System.Directory         (doesFileExist, getCurrentDirectory)
+import System.Directory         ( doesFileExist, getCurrentDirectory
+                                , withCurrentDirectory)
 import Data.Monoid              (Any(..))
 import Control.Exception        (try)
 
@@ -232,7 +233,7 @@ mainWorker args = do
       , regularCmd infoCommand infoAction
       , regularCmd fetchCommand fetchAction
       , regularCmd getCommand getAction
-      , hiddenCmd  unpackCommand unpackAction
+      , regularCmd unpackCommand unpackAction
       , regularCmd checkCommand checkAction
       , regularCmd uploadCommand uploadAction
       , regularCmd reportCommand reportAction
@@ -907,10 +908,19 @@ unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> Action
-initAction initFlags extraArgs globalFlags
-    | not (null extraArgs) =
-      die' verbosity $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
-    | otherwise = do
+initAction initFlags extraArgs globalFlags = do
+  -- it takes the first value within extraArgs (if there's one)
+  -- and uses it as the root directory for the new project
+  case extraArgs of
+    [] -> initAction'
+    [projectDir] -> do
+      createDirectoryIfMissingVerbose verbosity True projectDir
+      withCurrentDirectory projectDir initAction'
+    _ -> die' verbosity $
+      "'init' only takes a single, optional, extra " ++
+      "argument for the project root directory"
+  where
+    initAction' = do
       confFlags <- loadConfigOrSandboxConfig verbosity globalFlags
       -- override with `--with-compiler` from CLI if available
       let confFlags' = savedConfigureFlags confFlags `mappend` compFlags
@@ -922,7 +932,7 @@ initAction initFlags extraArgs globalFlags
       withRepoContext verbosity globalFlags' $ \repoContext ->
         initCmd verbosity (configPackageDB' confFlags')
           repoContext comp progdb initFlags'
-  where
+
     verbosity = fromFlag (initVerbosity initFlags)
     compFlags = mempty { configHcPath = initHcPath initFlags }
 

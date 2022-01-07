@@ -68,7 +68,7 @@ test-suite unit-tests
     , QuickCheck          >=2.14  && <2.15
     , rere                >=0.1   && <0.3
     , tagged
-    , tasty               >=1.2.3 && <1.4
+    , tasty               >=1.2.3 && <1.5
     , tasty-hunit
     , tasty-quickcheck
     , temporary
@@ -90,14 +90,14 @@ test-suite parser-tests
   main-is:          ParserTests.hs
   build-depends:
       base
-    , base-compat       >=0.11.0  && <0.12
+    , base-compat       >=0.11.0  && <0.13
     , bytestring
     , Cabal
     , Cabal-tree-diff
     , Diff              >=0.4     && <0.5
     , directory
     , filepath
-    , tasty             >=1.2.3   && <1.4
+    , tasty             >=1.2.3   && <1.5
     , tasty-golden      >=2.3.1.1 && <2.4
     , tasty-hunit
     , tasty-quickcheck
@@ -122,7 +122,7 @@ test-suite check-tests
     , Diff          >=0.4     && <0.5
     , directory
     , filepath
-    , tasty         >=1.2.3   && <1.4
+    , tasty         >=1.2.3   && <1.5
     , tasty-golden  >=2.3.1.1 && <2.4
 
   ghc-options:      -Wall
@@ -167,7 +167,7 @@ test-suite hackage-tests
     , filepath
 
   build-depends:
-      base-compat           >=0.11.0   && <0.12
+      base-compat           >=0.11.0   && <0.13
     , base-orphans          >=0.6      && <0.9
     , clock                 >=0.8      && <0.9
     , optparse-applicative  >=0.13.2.0 && <0.17
@@ -192,7 +192,7 @@ test-suite rpmvercmp
 
   build-depends:
       QuickCheck
-    , tasty             >=1.2.3 && <1.4
+    , tasty             >=1.2.3 && <1.5
     , tasty-hunit
     , tasty-quickcheck
 
@@ -211,7 +211,7 @@ test-suite no-thunks-test
       base
     , bytestring
     , Cabal
-    , tasty        >=1.2.3 && <1.4
+    , tasty        >=1.2.3 && <1.5
     , tasty-hunit
 
   -- this is test is buildable on old GHCs

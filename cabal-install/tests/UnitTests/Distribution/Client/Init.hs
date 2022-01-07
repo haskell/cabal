@@ -8,6 +8,7 @@ import qualified UnitTests.Distribution.Client.Init.Interactive    as Interactiv
 import qualified UnitTests.Distribution.Client.Init.NonInteractive as NonInteractive
 import qualified UnitTests.Distribution.Client.Init.Golden         as Golden
 import qualified UnitTests.Distribution.Client.Init.Simple         as Simple
+import qualified UnitTests.Distribution.Client.Init.FileCreators   as FileCreators
 
 import UnitTests.Distribution.Client.Init.Utils
 
@@ -40,6 +41,7 @@ tests = do
          , NonInteractive.tests v initFlags' comp pkgIx srcDb
          , Golden.tests v initFlags' pkgIx srcDb
          , Simple.tests v initFlags' pkgIx srcDb
+         , FileCreators.tests v initFlags' comp pkgIx srcDb
          ]
   where
     v :: Verbosity

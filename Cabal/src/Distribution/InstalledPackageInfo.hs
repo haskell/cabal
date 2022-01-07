@@ -47,6 +47,7 @@ import Distribution.Backpack
 import Distribution.CabalSpecVersion         (cabalSpecLatest)
 import Distribution.FieldGrammar
 import Distribution.FieldGrammar.FieldDescrs
+import Distribution.Fields.Pretty
 import Distribution.ModuleName
 import Distribution.Package                  hiding (installedUnitId)
 import Distribution.Types.ComponentName
@@ -122,7 +123,7 @@ showInstalledPackageInfo ipi =
 
 -- | The variant of 'showInstalledPackageInfo' which outputs @pkgroot@ field too.
 showFullInstalledPackageInfo :: InstalledPackageInfo -> String
-showFullInstalledPackageInfo = P.showFields (const []) . prettyFieldGrammar cabalSpecLatest ipiFieldGrammar
+showFullInstalledPackageInfo = P.showFields (const NoComment) . prettyFieldGrammar cabalSpecLatest ipiFieldGrammar
 
 -- |
 --

@@ -58,7 +58,7 @@ writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPacka
 
 -- | Writes a generic package description to a string
 showGenericPackageDescription :: GenericPackageDescription -> String
-showGenericPackageDescription gpd = showFields (const []) $ ppGenericPackageDescription v gpd
+showGenericPackageDescription gpd = showFields (const NoComment) $ ppGenericPackageDescription v gpd
   where
     v = specVersion $ packageDescription gpd
 
@@ -274,7 +274,7 @@ writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
 
 -- | @since 2.0.0.2
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo (mb_lib_bi, ex_bis) = showFields (const []) $
+showHookedBuildInfo (mb_lib_bi, ex_bis) = showFields (const NoComment) $
     maybe mempty (prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar) mb_lib_bi ++
     [ PrettySection () "executable:" [pretty name]
     $ prettyFieldGrammar cabalSpecLatest buildInfoFieldGrammar bi

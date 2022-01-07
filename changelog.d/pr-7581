@@ -1,0 +1,2 @@
+synopsis: Paths passed to GHC are now relative to the current working directory
+packages: Cabal
