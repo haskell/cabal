@@ -2559,6 +2559,8 @@ Since Cabal 2.2 conditional blocks support ``elif`` construct.
       else
            property-descriptions-or-conditionals
 
+.. _conditions:
+
 Conditions
 """"""""""
 

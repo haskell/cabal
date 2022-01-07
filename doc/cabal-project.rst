@@ -37,14 +37,15 @@ Conditionals and imports
 ------------------------
 
 As of ``cabal-install`` version 3.8, cabal supports conditional logic
-and imports in ``cabal.project`` files. Cabal supports
-:ref:`conditions` that case on operating system, architecture, and
-compiler x(i.e. there is no support for a notion of custom flags in
+and imports in ``cabal.project`` files. :ref:`conditions` in cabal
+projects not be nested, and may case on operating system, architecture, and
+compiler (i.e. there is no support for a notion of custom flags in
 project files). Imports may specify local filepaths or remote urls,
 and may reference either cabal.project files or v1-style cabal.config
 freeze files. As a usage example:
 
 ::
+
     if(os(darwin))
       optimization: False
     elif(os(freebsd))
