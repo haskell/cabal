@@ -94,14 +94,14 @@ fieldD fieldName fieldContents fieldComments includeField opts
 -- | A field annotation instructing the pretty printer to comment out the field
 --   and any contents, with no comments.
 commentedOutWithComments :: CommentPosition -> FieldAnnotation
-commentedOutWithComments (CommentBefore cs) = FieldAnnotation True . CommentBefore $ map ("-- " ++) cs
-commentedOutWithComments (CommentAfter  cs) = FieldAnnotation True . CommentAfter  $ map ("-- " ++) cs
+commentedOutWithComments (CommentBefore cs) = FieldAnnotation True . CommentBefore $ map commentNoTrailing cs
+commentedOutWithComments (CommentAfter  cs) = FieldAnnotation True . CommentAfter  $ map commentNoTrailing cs
 commentedOutWithComments NoComment = FieldAnnotation True NoComment
 
 -- | A field annotation with the specified comment lines.
 withComments :: CommentPosition -> FieldAnnotation
-withComments (CommentBefore cs) = FieldAnnotation False . CommentBefore $ map ("-- " ++) cs
-withComments (CommentAfter  cs) = FieldAnnotation False . CommentAfter  $ map ("-- " ++) cs
+withComments (CommentBefore cs) = FieldAnnotation False . CommentBefore $ map commentNoTrailing cs
+withComments (CommentAfter  cs) = FieldAnnotation False . CommentAfter  $ map commentNoTrailing cs
 withComments NoComment = FieldAnnotation False NoComment
 
 -- | A field annotation with no comments.
@@ -110,8 +110,8 @@ annNoComments = FieldAnnotation False NoComment
 
 postProcessFieldLines :: FieldAnnotation -> [String] -> [String]
 postProcessFieldLines ann
-    | annCommentedOut ann = fmap ("-- " ++)
-    | otherwise = id
+  | annCommentedOut ann = fmap commentNoTrailing
+  | otherwise = id
 
 -- -------------------------------------------------------------------- --
 -- Stanzas
@@ -387,7 +387,6 @@ mkPkgDescription opts pkgDesc =
 listFieldS :: [String] -> Doc
 listFieldS = text . intercalate ", "
 
-
 unsafeFromHs :: HsFilePath -> Doc
 unsafeFromHs = text . _hsFilePath
 
@@ -395,3 +394,7 @@ buildToolTag :: WriteOpts -> FieldName
 buildToolTag opts
   | _optCabalSpec opts < CabalSpecV3_0 = "build-tools"
   | otherwise = "build-tool-depends"
+
+commentNoTrailing :: String -> String
+commentNoTrailing "" = "--"
+commentNoTrailing c  = "-- " ++ c
