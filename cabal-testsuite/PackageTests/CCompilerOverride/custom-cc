@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if which cc >/dev/null 2>&1; then
+    cc -DNOERROR6 "${@}"
+elif which gcc >/dev/null 2>&1; then
+    gcc -DNOERROR6 "${@}"
+elif which clang >/dev/null 2>&1; then
+    clang -DNOERROR6 "${@}"
+else
+    echo "Cannot find C compiler" >&2
+    exit 1
+fi
+
