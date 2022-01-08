@@ -215,8 +215,6 @@
     ([#5431](https://github.com/haskell/cabal/pull/5431)).
   * Pass command line arguments to `hsc2hs` using response files when possible
     ([#3122](https://github.com/haskell/cabal/issues/3122)).
-  * `ghc-options` and `--with-gcc` are now passed to GHC when compiling
-    C and C++ sources ([#4439](https://github.com/haskell/cabal/issues/4439)).
 
 ----
 
