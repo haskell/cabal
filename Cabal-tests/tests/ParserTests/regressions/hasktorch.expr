@@ -10080,7 +10080,8 @@ GenericPackageDescription {
                 (PackageName "generic-lens")
                 (OrLaterVersion (mkVersion [0]))
                 mainLibSet],
-            mixins = []}},
+            mixins = []},
+          testCodeGenerators = []},
         condTreeConstraints = [
           Dependency
             (PackageName "QuickCheck")
