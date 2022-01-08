@@ -287,6 +287,7 @@ cabalGArgs global_args cmd args input = do
               , "check"
               , "get", "unpack"
               , "info"
+              , "init"
               ]
           = [ ]
 
