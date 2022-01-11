@@ -52,7 +52,7 @@ import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
 import Distribution.Types.CondTree
-         ( CondTree (..), CondBranch (..), condIfThen, condIfThenElse, mapTreeConds, traverseCondTreeC )
+         ( CondTree (..), CondBranch (..), mapTreeConds, traverseCondTreeC )
 import Distribution.PackageDescription
          ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment )
 import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
@@ -90,8 +90,6 @@ import Distribution.Deprecated.ReadP
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( Doc, ($+$) )
-import qualified Text.Parsec.Error as P
-import qualified Text.Parsec.Pos as P
 import qualified Distribution.Deprecated.ParseUtils as ParseUtils
 import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
@@ -155,98 +153,78 @@ instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (f
 projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
 projectSkeletonImports = view traverseCondTreeC
 
--- NOTE a nice refactor would be to use readFields directly to get a tree structure.
 parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity source bs = (>>= sanityWalkPCS False) . runInnerParsers <$> linesToNode (BS.lines bs)
- where
-  -- converts lines to a full tree node, recursively looping "go" to pull out conditional and import structure, then packing the whole thing up
-  linesToNode :: [BS.ByteString] -> IO (CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString])
-  linesToNode xs = (\(branches, imps, ls) -> CondNode ls imps branches) . mconcat <$> go xs
+parseProjectSkeleton cacheDir httpTransport verbosity source bs = (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
+  where
+    go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
+    go acc (x:xs) = case x of
+         (ParseUtils.F _l "import" importLoc) -> do
+            let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
+            res <- parseProjectSkeleton cacheDir httpTransport verbosity importLoc =<< fetchImportConfig importLoc
+            rest <- go [] xs
+            pure . fmap mconcat . sequence $ [fs, res, rest]
+         (ParseUtils.Section l "if" p xs') -> do
+                           subpcs <- go [] xs'
+                           let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
+                           (elseClauses, rest) <- parseElseClauses xs
+                           let condNode =  (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                                  -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
+                                  adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")") <*>
+                                  subpcs <*>
+                                  elseClauses
+                           pure . fmap mconcat . sequence $ [fs, condNode, rest]
+         _ -> go (x:acc) xs
+    go acc [] = pure . fmap singletonProjectConfigSkeleton . fieldsToConfig $ reverse acc
 
-  -- given a list of lines, pulls out the conditional and import structure
-  go :: [BS.ByteString] -> IO [([CondBranch BS.ByteString [ProjectConfigImport] [BS.ByteString]], [ProjectConfigImport], [BS.ByteString])]
-  go (l:ls)
-       | (BS.pack "if(") `BS.isPrefixOf` l =
-            let (clause, rest) = splitWhileIndented ls
+    parseElseClauses :: [ParseUtils.Field] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
+    parseElseClauses x = case x of
+         (ParseUtils.Section _l "else" _p xs':xs) -> do
+               subpcs <- go [] xs'
+               rest <- go [] xs
+               pure (Just <$> subpcs, rest)
+         (ParseUtils.Section l "elif" p xs':xs) -> do
+               subpcs <- go [] xs'
+               (elseClauses, rest) <- parseElseClauses xs
+               let condNode = (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                                  adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "else("<> p <> ")") <*>
+                                  subpcs <*>
+                                  elseClauses
+               pure (Just <$> condNode, rest)
+         _ -> (\r -> (pure Nothing,r)) <$> go [] x
 
-                -- unpacks the results of loop into nested if else clauses
-                constructNestedConds topCond topClause [] [] =
-                        do c1 <- linesToNode topClause
-                           pure $ condIfThen (Var topCond) c1
-                constructNestedConds topCond topClause ((elifCond, elifClause):elifs) elseClause =
-                        do c1 <- linesToNode topClause
-                           condIfThenElse (Var topCond) c1 . CondNode [] [] . (:[]) <$> constructNestedConds elifCond elifClause elifs elseClause
-                constructNestedConds topCond topClause [] elseClause =
-                        do c1 <- linesToNode topClause
-                           c2 <- linesToNode elseClause
-                           pure $ condIfThenElse (Var topCond) c1 c2
+    fieldsToConfig xs = fmap (addProvenance . convertLegacyProjectConfig) $ parseLegacyProjectConfigFields source xs
+    addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
 
-                -- parse out the full list of if/else clauses
-                loop acc rss =
-                   case rss of
-                     (r:rs)
-                        | BS.pack "elif" `BS.isPrefixOf` r ->
-                            let (elseClause, lastRest) = splitWhileIndented rs
-                            in loop ((r, elseClause):acc) lastRest
-                        | BS.pack "else" `BS.isPrefixOf` r ->
-                            let (elseClause, lastRest) = splitWhileIndented rs
-                            in constructNestedConds l clause (reverse acc) elseClause
-                                  >>= (\c -> ((([c],[],[]) :) <$> go lastRest))
-                     _ -> constructNestedConds l clause (reverse acc) []
-                                  >>= (\c -> ((([c],[],[]) :) <$> go rss))
-            in loop [] rest
+    adaptParseError _ (Right x) = pure x
+    adaptParseError l (Left e) = parseFail $ ParseUtils.FromString (show e) (Just l)
 
-       | Just imp <- parseImport l = do x <- go . BS.lines =<< fetchImportConfig imp
-                                        ((([], [imp], []) : x) ++) <$> go ls
+    liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
+    liftPR f (ParseOk ws x) = addWarnings <$> f x
+       where addWarnings (ParseOk ws' x') = ParseOk (ws' ++ ws) x'
+             addWarnings x' = x'
+    liftPR _ (ParseFailed e) = pure $ ParseFailed e
 
-       | otherwise = (([], [], [l]) :) <$> go ls
+    fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
+    fetchImportConfig pci = case parseURI pci of
+         Just uri -> do
+            let fp = cacheDir </> map (\x -> if isPathSeparator x then 'X' else x) (show uri) -- TODO can we do better?
+            createDirectoryIfMissing True cacheDir
+            _ <- downloadURI httpTransport verbosity uri fp
+            BS.readFile fp
+         Nothing -> BS.readFile pci
 
-  go [] = pure []
+    modifiesCompiler :: ProjectConfig -> Bool
+    modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
+      where
+         isSet f = f (projectConfigShared pc) /= NoFlag
 
-  splitWhileIndented = span ((BS.pack " ") `BS.isPrefixOf`)
-
-  parseImport l | (BS.pack "import ") `BS.isPrefixOf` l = Just . BS.unpack $ BS.drop (length "import ") l
-                | otherwise = Nothing
-
-  runInnerParsers :: CondTree BS.ByteString [ProjectConfigImport] [BS.ByteString] -> ParseResult ProjectConfigSkeleton
-  runInnerParsers = (runConditionParsers =<<) . traverse (fmap (addProvenance . convertLegacyProjectConfig) . parseLegacyProjectConfig source . BS.unlines)
-
-  runConditionParsers :: (CondTree BS.ByteString [ProjectConfigImport] ProjectConfig) -> ParseResult ProjectConfigSkeleton
-  runConditionParsers (CondNode d c x) = CondNode d c <$> mapM runBranchConditionParser x
-
-  runBranchConditionParser :: CondBranch BS.ByteString [ProjectConfigImport] ProjectConfig -> ParseResult (CondBranch ConfVar [ProjectConfigImport] ProjectConfig)
-  runBranchConditionParser (CondBranch (Var b) t f) = do
-      c <- adaptParseError $ parseConditionConfVarFromClause b -- nb this loses the source line location, can't win 'em all, sigh. A full refactor of parsers is the "right" way to fix this. We could also pack bytestrings for conditionals with line locations
-      CondBranch c <$> runConditionParsers t <*> traverse runConditionParsers f
-  runBranchConditionParser (CondBranch x _ _) = error $ "internal cabal invariant error in parsing branch conditions: " ++ show x
-
-  adaptParseError :: Either P.ParseError a -> ParseResult a
-  adaptParseError (Right x) = pure x
-  adaptParseError (Left e) = parseFail $ ParseUtils.FromString (show e) (Just . P.sourceLine $ P.errorPos e)
-
-  addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
-
-  modifiesCompiler :: ProjectConfig -> Bool
-  modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
-     where
-       isSet f = f (projectConfigShared pc) /= NoFlag
-
-  sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
-  sanityWalkPCS underConditional t@(CondNode d _c comps)
+    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
+    sanityWalkPCS underConditional t@(CondNode d _c comps)
            | underConditional && modifiesCompiler d = parseFail $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
            | otherwise = mapM_ sanityWalkBranch comps >> pure t
 
-  sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
-  sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
-
-  fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
-  fetchImportConfig pci = case parseURI pci of
-    Just uri -> do
-       let fp = cacheDir </> map (\x -> if isPathSeparator x then 'X' else x) (show uri) -- TODO can we do better?
-       createDirectoryIfMissing True cacheDir
-       _ <- downloadURI httpTransport verbosity uri fp
-       BS.readFile fp
-    Nothing -> BS.readFile pci
+    sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
+    sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -999,15 +977,17 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-
-parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig source =
-    parseConfig (legacyProjectConfigFieldDescrs constraintSrc)
+parseLegacyProjectConfigFields :: FilePath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFields source =
+    parseFieldsAndSections (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 mempty
   where
     constraintSrc = ConstraintSourceProjectConfig source
+
+parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields source =<< ParseUtils.readFields bs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
