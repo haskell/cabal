@@ -780,7 +780,7 @@ describe the package as a whole:
     A list of additional files or directories to be removed by
     :ref:`setup-clean`. These  would typically be additional files created by
     additional hooks, such as the scheme described in the section on
-    `system-dependent parameters`_
+    `system-dependent parameters`_.
 
 Library
 ^^^^^^^
@@ -2507,8 +2507,8 @@ Configuration Flags
 
     .. note::
 
-      This value may be `overridden in several
-      ways <installing-packages.html#controlling-flag-assignments>`__. The
+      This value may be :ref:`overridden in several
+      ways <controlling flag assignments>`. The
       rationale for having flags default to True is that users usually
       want new features as soon as they are available. Flags representing
       features that are not (yet) recommended for most users (such as
@@ -2621,8 +2621,7 @@ Resolution of Conditions and Flags
 """"""""""""""""""""""""""""""""""
 
 If a package descriptions specifies configuration flags the package user
-can `control these in several
-ways <installing-packages.html#controlling-flag-assignments>`__. If the
+can :ref:`control these in several ways <controlling flag assignments>`. If the
 user does not fix the value of a flag, Cabal will try to find a flag
 assignment in the following way.
 
@@ -3087,8 +3086,8 @@ Accessing data files from package code
 
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
-one can even move packages around after installation (see `prefix
-independence <setup-commands.html#prefix-independence>`__). To
+one can even move packages around after installation
+(see :ref:`prefix independence`). To
 enable packages to find these files in a portable way, Cabal generates a
 module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
@@ -3146,7 +3145,7 @@ exports the constant ``version ::``
 which is defined as the version of your package as specified in the
 ``version`` field.
 
-.. _system-dependent-parameters:
+.. _system-dependent parameters:
 
 System-dependent parameters
 ---------------------------
@@ -3417,8 +3416,8 @@ a few options:
 
 -  Finally, with the :pkg-field:`build-type` ``Custom``, you can also write your
    own setup script from scratch. It must conform to the interface
-   described in the section on `building and installing
-   packages <installing-packages.html>`__, and you may use the Cabal
+   described in the section on :doc:`building and installing
+   packages <installing-packages>`, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
 

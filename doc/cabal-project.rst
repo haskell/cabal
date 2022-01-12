@@ -322,9 +322,9 @@ The following settings control the behavior of the dependency solver:
         constraints: bar == 2.1,
                      bar +foo -baz
 
-    Valid constraints take the same form as for the `constraint
-    command line option
-    <installing-packages.html#cmdoption-setup-configure-constraint>`__.
+    Valid constraints take the same form as for the
+    :option:`runhaskell Setup.hs configure --constraint`
+    command line option.
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
@@ -721,8 +721,7 @@ feature was added.
     A list of extra arguments to pass to the external ``./configure``
     script, if one is used. This is only useful for packages which have
     the ``Configure`` build type. See also the section on
-    `system-dependent
-    parameters <developing-packages.html#system-dependent-parameters>`__.
+    :ref:`system-dependent parameters`.
 
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.

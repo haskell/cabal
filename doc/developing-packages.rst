@@ -2,7 +2,7 @@ Quickstart
 ==========
 
 .. TIP::
-    If this is your first time using `cabal` you should check out the `Getting Started guide <getting-started.html>`__.
+    If this is your first time using `cabal` you should check out the :doc:`Getting Started guide <getting-started>`.
 
 Starting from scratch, we're going to walk you through creating a simple
 Haskell application.
