@@ -231,21 +231,20 @@ writeFileSafe opts fileName content = do
     exists <- doesFileExist fileName
 
     let action
-          | doOverwrite = "Overwriting"
-          | exists = "Creating fresh"
-          | otherwise = "Creating"
+          | exists && doOverwrite = "Overwriting"
+          | not exists = "Creating fresh"
+          | otherwise = "Using existing"
 
     go exists
 
     message opts T.Log $ action ++ " file " ++ fileName ++ "..."
-    writeFile fileName content
   where
     doOverwrite = _optOverwrite opts
 
     go exists
-      | exists, doOverwrite = do
-        removeExistingFile fileName
-      | exists, not doOverwrite = do
+      | not exists = do
+        writeFile fileName content
+      | exists && doOverwrite = do
         newName <- findNewPath fileName
         message opts T.Log $ concat
           [ fileName
@@ -262,21 +261,20 @@ writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
     exists <- doesDirectoryExist dir
 
     let action
-          | doOverwrite = "Overwriting"
-          | exists = "Creating fresh"
-          | otherwise = "Creating"
+          | exists && doOverwrite = "Overwriting"
+          | not exists = "Creating fresh"
+          | otherwise = "Using existing"
 
     go dir exists
 
     message opts T.Log $ action ++ " directory ./" ++ dir ++ "..."
-    createDirectory dir
   where
     doOverwrite = _optOverwrite opts
 
     go dir exists
-      | exists, doOverwrite = do
-        removeDirectory dir
-      | exists, not doOverwrite = do
+      | not exists = do
+        createDirectory dir
+      | exists && doOverwrite = do
         newDir <- findNewPath dir
         message opts T.Log $ concat
           [ dir
