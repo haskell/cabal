@@ -102,8 +102,8 @@ which Haskell implementation to use and whether to build optimised code
 or build with the ability to profile code. It is not expected that users
 will have to modify any of the information in the ``.cabal`` file.
 
-For full details, see the section on `building and installing
-packages <installing-packages.html>`__.
+For full details, see the section on :doc:`building and installing
+packages <installing-packages>`.
 
 Note that ``cabal`` is not the only tool for working with Cabal
 packages. Due to the standardised format and a library for reading
@@ -125,7 +125,7 @@ the package depends on.
 
 For full details on what goes in the ``.cabal`` and ``Setup.hs`` files,
 and for all the other features provided by the build system, see the
-section on `developing packages <developing-packages.html>`__.
+section on :doc:`developing packages <developing-packages>`.
 
 Cabal featureset
 ----------------

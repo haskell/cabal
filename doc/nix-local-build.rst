@@ -5,7 +5,7 @@ Quickstart
 
 Suppose that you are in a directory containing a single Cabal package
 which you wish to build (if you haven't set up a package yet check
-out `developing packages <developing-packages.html>`__ for
+out :doc:`developing packages <developing-packages>` for
 instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
