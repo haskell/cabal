@@ -11,13 +11,7 @@ packages: Cabal-described
 packages: Cabal-tests/
 packages: cabal-benchmarks/
 
--- packages: vendor/cabal-doctest-1.0.8
-
 optional-packages: ./vendored/*/*.cabal
-
--- Remove after hackage-repo-tool release
--- allow-newer:
---  hackage-repo-tool:optparse-applicative
 
 allow-newer:
   hackage-security:Cabal
