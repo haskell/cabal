@@ -5,8 +5,6 @@ packages: Cabal-tree-diff
 packages: Cabal-described
 packages: Cabal-tests
 
-packages: vendor/cabal-doctest-1.0.8
-
 tests: True
 
 -- Uncomment to allow picking up extra local unpacked deps:
