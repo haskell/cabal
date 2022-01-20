@@ -25,7 +25,6 @@ import Prelude ()
 import qualified Data.List.NonEmpty as List1
 
 import Distribution.Client.Init.Utils   (trim)
-  -- TODO #7744: move 'trim' to a more canonical place
 import Distribution.Client.ManpageFlags
 import Distribution.Client.Setup        (globalCommand)
 import Distribution.Simple.Command
