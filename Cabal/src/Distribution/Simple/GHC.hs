@@ -103,6 +103,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Compiler
 import Distribution.Version
 import Distribution.System
+import Distribution.Types.PackageName.Magic
 import Distribution.Verbosity
 import Distribution.Pretty
 import Distribution.Utils.NubList
@@ -1190,11 +1191,12 @@ data BuildSources = BuildSources {
 
 -- | Locate and return the 'BuildSources' required to build and link.
 gbuildSources :: Verbosity
+              -> PackageId
               -> CabalSpecVersion
               -> FilePath
               -> GBuildMode
               -> IO BuildSources
-gbuildSources verbosity specVer tmpDir bm =
+gbuildSources verbosity pkgId specVer tmpDir bm =
     case bm of
       GBuildExe  exe  -> exeSources exe
       GReplExe   _ exe  -> exeSources exe
@@ -1207,7 +1209,8 @@ gbuildSources verbosity specVer tmpDir bm =
       let mainModName = fromMaybe ModuleName.main $ exeMainModuleName exe
           otherModNames = exeModules exe
 
-      if isHaskell main
+      -- Scripts have fakePackageId and are always Haskell but can have any extension.
+      if isHaskell main || pkgId == fakePackageId
         then
           if specVer < CabalSpecV2_0 && (mainModName `elem` otherModNames)
           then do
@@ -1263,11 +1266,12 @@ gbuildSources verbosity specVer tmpDir bm =
             inputSourceModules = foreignLibModules flib
         }
 
-    isHaskell :: FilePath -> Bool
-    isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
-
     isCxx :: FilePath -> Bool
     isCxx fp = elem (takeExtension fp) [".cpp", ".cxx", ".c++"]
+
+-- | FilePath has a Haskell extension: .hs or .lhs
+isHaskell :: FilePath -> Bool
+isHaskell fp = elem (takeExtension fp) [".hs", ".lhs"]
 
 replNoLoad :: Ord a => ReplOptions -> NubListR a -> NubListR a
 replNoLoad replFlags l
@@ -1314,7 +1318,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         | otherwise         = mempty
 
   rpaths <- getRPaths lbi clbi
-  buildSources <- gbuildSources verbosity (specVersion pkg_descr) tmpDir bm
+  buildSources <- gbuildSources verbosity (package pkg_descr) (specVersion pkg_descr) tmpDir bm
 
   let cSrcs               = cSourcesFiles buildSources
       cxxSrcs             = cxxSourceFiles buildSources
@@ -1331,7 +1335,12 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       baseOpts   = (componentGhcOptions verbosity lbi bnfo clbi tmpDir)
                     `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
-                      ghcOptInputFiles   = toNubListR inputFiles,
+                      ghcOptInputFiles   = toNubListR $ if package pkg_descr == fakePackageId
+                                                        then filter isHaskell inputFiles
+                                                        else inputFiles,
+                      ghcOptInputScripts = toNubListR $ if package pkg_descr == fakePackageId
+                                                        then filter (not . isHaskell) inputFiles
+                                                        else [],
                       ghcOptInputModules = toNubListR inputModules
                     }
       staticOpts = baseOpts `mappend` mempty {
