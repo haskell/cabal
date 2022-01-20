@@ -71,7 +71,6 @@ analyse-imports : phony
 	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # github actions
-github-actions : .github/workflows/artifacts.yml
 github-actions : .github/workflows/quick-jobs.yml
 github-actions : .github/workflows/bootstrap.yml
 github-actions : .github/workflows/linux.yml
