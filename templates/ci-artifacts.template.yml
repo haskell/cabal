@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-18.04
     container:
       # Older Ubuntu for older glibc
-      image: phadej/ghc:8.6.5-xenial
+      image: phadej/ghc:8.6.5-bionic
     steps:
       - name: Set PATH
         run: |
