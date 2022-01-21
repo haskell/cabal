@@ -972,7 +972,7 @@ manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
-    die' verbosity $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+    die' verbosity $ "'man' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   let cabalCmd = if takeExtension pname == ".exe"
                  then dropExtension pname

@@ -362,6 +362,7 @@ library
     GeneralizedNewtypeDeriving
     ImplicitParams
     KindSignatures
+    LambdaCase
     NondecreasingIndentation
     OverloadedStrings
     RankNTypes
