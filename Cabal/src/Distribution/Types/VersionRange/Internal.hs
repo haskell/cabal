@@ -9,7 +9,7 @@
 
 -- | The only purpose of this module is to prevent the export of
 -- 'VersionRange' constructors from
--- 'Distribution.Types.VersionRange'. To avoid creating orphan
+-- "Distribution.Types.VersionRange". To avoid creating orphan
 -- instances, a lot of related code had to be moved here too.
 
 module Distribution.Types.VersionRange.Internal
@@ -70,7 +70,7 @@ instance NFData VersionRange where rnf = genericRnf
 anyVersion :: VersionRange
 anyVersion = OrLaterVersion (mkVersion [0])
 
--- | The empty version range, that is a version range containing no versions.
+-- | The empty version range @-none@, that is a version range containing no versions.
 --
 -- This can be constructed using any unsatisfiable version range expression,
 -- for example @< 0@.
@@ -80,49 +80,49 @@ anyVersion = OrLaterVersion (mkVersion [0])
 noVersion :: VersionRange
 noVersion = EarlierVersion (mkVersion [0])
 
--- | The version range @== v@
+-- | The version range @== v@.
 --
 -- > withinRange v' (thisVersion v) = v' == v
 --
 thisVersion :: Version -> VersionRange
 thisVersion = ThisVersion
 
--- | The version range @< v || > v@
+-- | The version range @/= v@.
 --
 -- > withinRange v' (notThisVersion v) = v' /= v
 --
 notThisVersion :: Version -> VersionRange
 notThisVersion v = UnionVersionRanges (EarlierVersion v) (LaterVersion v)
 
--- | The version range @> v@
+-- | The version range @> v@.
 --
 -- > withinRange v' (laterVersion v) = v' > v
 --
 laterVersion :: Version -> VersionRange
 laterVersion = LaterVersion
 
--- | The version range @>= v@
+-- | The version range @>= v@.
 --
 -- > withinRange v' (orLaterVersion v) = v' >= v
 --
 orLaterVersion :: Version -> VersionRange
 orLaterVersion = OrLaterVersion
 
--- | The version range @< v@
+-- | The version range @< v@.
 --
 -- > withinRange v' (earlierVersion v) = v' < v
 --
 earlierVersion :: Version -> VersionRange
 earlierVersion = EarlierVersion
 
--- | The version range @<= v@
+-- | The version range @<= v@.
 --
 -- > withinRange v' (orEarlierVersion v) = v' <= v
 --
 orEarlierVersion :: Version -> VersionRange
 orEarlierVersion = OrEarlierVersion
 
--- | The version range @vr1 || vr2@
+-- | The version range @vr1 || vr2@.
 --
 -- >   withinRange v' (unionVersionRanges vr1 vr2)
 -- > = withinRange v' vr1 || withinRange v' vr2
@@ -130,7 +130,7 @@ orEarlierVersion = OrEarlierVersion
 unionVersionRanges :: VersionRange -> VersionRange -> VersionRange
 unionVersionRanges = UnionVersionRanges
 
--- | The version range @vr1 && vr2@
+-- | The version range @vr1 && vr2@.
 --
 -- >   withinRange v' (intersectVersionRanges vr1 vr2)
 -- > = withinRange v' vr1 && withinRange v' vr2
@@ -141,9 +141,9 @@ intersectVersionRanges = IntersectVersionRanges
 -- | The version range @== v.*@.
 --
 -- For example, for version @1.2@, the version range @== 1.2.*@ is the same as
--- @>= 1.2 && < 1.3@
+-- @>= 1.2 && < 1.3@.
 --
--- > withinRange v' (laterVersion v) = v' >= v && v' < upper v
+-- > withinRange v' (withinVersion v) = v' >= v && v' < upper v
 -- >   where
 -- >     upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
 --
@@ -179,7 +179,9 @@ data VersionRangeF a
   deriving ( Data, Eq, Generic, Read, Show, Typeable
            , Functor, Foldable, Traversable )
 
--- | @since 2.2
+-- | Generic destructor for 'VersionRange'.
+--
+-- @since 2.2
 projectVersionRange :: VersionRange -> VersionRangeF VersionRange
 projectVersionRange (ThisVersion v)              = ThisVersionF v
 projectVersionRange (LaterVersion v)             = LaterVersionF v
@@ -196,7 +198,9 @@ projectVersionRange (IntersectVersionRanges a b) = IntersectVersionRangesF a b
 cataVersionRange :: (VersionRangeF a -> a) -> VersionRange -> a
 cataVersionRange f = c where c = f . fmap c . projectVersionRange
 
--- | @since 2.2
+-- | Generic constructor for 'VersionRange'.
+--
+-- @since 2.2
 embedVersionRange :: VersionRangeF VersionRange -> VersionRange
 embedVersionRange (ThisVersionF v)              = ThisVersion v
 embedVersionRange (LaterVersionF v)             = LaterVersion v
@@ -213,7 +217,7 @@ embedVersionRange (IntersectVersionRangesF a b) = IntersectVersionRanges a b
 anaVersionRange :: (a -> VersionRangeF a) -> a -> VersionRange
 anaVersionRange g = a where a = embedVersionRange . fmap a . g
 
--- | Refold 'VersionRange'
+-- | Refold 'VersionRange'.
 --
 -- @since 2.2
 hyloVersionRange :: (VersionRangeF VersionRange -> VersionRange)
@@ -318,7 +322,7 @@ prettyVersionRange16 vr = prettyVersionRange vr
 instance Parsec VersionRange where
     parsec = askCabalSpecVersion >>= versionRangeParser versionDigitParser
 
--- | 'VersionRange' parser parametrised by version digit parser
+-- | 'VersionRange' parser parametrised by version digit parser.
 --
 -- - 'versionDigitParser' is used for all 'VersionRange'.
 -- - 'P.integral' is used for backward-compat @pkgconfig-depends@
@@ -506,7 +510,7 @@ versionRangeParser digitParser csv = expr
 -- Wildcard range utilities
 --
 
--- | Compute next greater major version to be used as upper bound
+-- | Compute next greater major version to be used as upper bound.
 --
 -- Example: @0.4.1@ produces the version @0.5@ which then can be used
 -- to construct a range @>= 0.4.1 && < 0.5@
@@ -518,7 +522,13 @@ majorUpperBound = alterVersion $ \numbers -> case numbers of
     [m1]      -> [m1,1] -- e.g. version '1'
     (m1:m2:_) -> [m1,m2+1]
 
--- | @since 2.2
+-- | Increment the last version number.
+--
+-- Example: For @1.2@ this returns @1.3@
+-- so that it can be used as upper bound when resolving @== 1.2.*@.
+-- For @0.4.1@ it returns @0.4.2@.
+--
+-- @since 2.2
 wildcardUpperBound :: Version -> Version
 wildcardUpperBound = alterVersion $
     \lowerBound -> case unsnoc lowerBound of
