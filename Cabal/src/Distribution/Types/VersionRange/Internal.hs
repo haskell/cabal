@@ -168,14 +168,14 @@ majorBoundVersion = MajorBoundVersion
 --
 -- @since 2.2
 data VersionRangeF a
-  = ThisVersionF            Version -- = version
-  | LaterVersionF           Version -- > version  (NB. not >=)
-  | OrLaterVersionF         Version -- >= version
-  | EarlierVersionF         Version -- < version
-  | OrEarlierVersionF       Version -- <= version
-  | MajorBoundVersionF      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
-  | UnionVersionRangesF     a a
-  | IntersectVersionRangesF a a
+  = ThisVersionF            Version -- ^ @== version@.
+  | LaterVersionF           Version -- ^ @>  version@.   NB: not @>=@
+  | OrLaterVersionF         Version -- ^ @>= version@.
+  | EarlierVersionF         Version -- ^ @<  version@.
+  | OrEarlierVersionF       Version -- ^ @<= version@.
+  | MajorBoundVersionF      Version -- ^ @^>= version@, same as @>= version && < MAJ(version)+1@.
+  | UnionVersionRangesF     a a     -- ^ @||@.
+  | IntersectVersionRangesF a a     -- ^ @&&@.
   deriving ( Data, Eq, Generic, Read, Show, Typeable
            , Functor, Foldable, Traversable )
 
