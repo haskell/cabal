@@ -11,12 +11,8 @@ module Distribution.Compat.Process (
 import System.Exit (ExitCode (..))
 import System.IO   (Handle)
 
-import           System.Process (CreateProcess, ProcessHandle)
+import           System.Process (CreateProcess, ProcessHandle, waitForProcess)
 import qualified System.Process as Process
-
-#if MIN_VERSION_process(1,2,0)
-import           System.Process (waitForProcess)
-#endif
 
 #if defined(mingw32_HOST_OS) && MIN_VERSION_process(1,6,9)
 import           System.IO.Unsafe (unsafePerformIO)
@@ -74,13 +70,8 @@ createProcess = Process.createProcess . enableProcessJobs
 -- See 'enableProcessJobs'.
 rawSystem :: String -> [String] -> IO ExitCode
 rawSystem cmd args = do
-#if MIN_VERSION_process(1,2,0)
   (_,_,_,p) <- createProcess (Process.proc cmd args) { Process.delegate_ctlc = True }
   waitForProcess p
-#else
-  -- With very old 'process', just do its rawSystem
-  Process.rawSystem cmd args
-#endif
 
 -- | 'System.Process.runInteractiveProcess' with process jobs enabled when
 -- appropriate. See 'enableProcessJobs'.
