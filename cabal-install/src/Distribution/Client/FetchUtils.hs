@@ -227,7 +227,10 @@ type AsyncFetchMap = Map UnresolvedPkgLoc
 --
 -- The body action is passed a map from those packages (identified by their
 -- location) to a completion var for that package. So the body action should
--- lookup the location and use 'asyncFetchPackage' to get the result.
+-- lookup the location and use 'waitAsyncFetchPackage' to get the result.
+--
+-- Synchronous exceptions raised by the download actions are delivered
+-- via 'waitAsyncFetchPackage'.
 --
 asyncFetchPackages :: Verbosity
                    -> RepoContext
