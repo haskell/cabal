@@ -275,6 +275,7 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.ArbitraryInstances
       UnitTests.Distribution.Client.BuildReport
       UnitTests.Distribution.Client.Configure
+      UnitTests.Distribution.Client.FetchUtils
       UnitTests.Distribution.Client.Get
       UnitTests.Distribution.Client.Glob
       UnitTests.Distribution.Client.GZipUtils

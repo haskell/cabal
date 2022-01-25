@@ -5,6 +5,7 @@ import Test.Tasty
 
 import qualified UnitTests.Distribution.Client.BuildReport
 import qualified UnitTests.Distribution.Client.Configure
+import qualified UnitTests.Distribution.Client.FetchUtils
 import qualified UnitTests.Distribution.Client.Get
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
@@ -33,6 +34,8 @@ main = do
         UnitTests.Distribution.Client.BuildReport.tests
     , testGroup "UnitTests.Distribution.Client.Configure"
         UnitTests.Distribution.Client.Configure.tests
+    , testGroup "UnitTests.Distribution.Client.FetchUtils"
+        UnitTests.Distribution.Client.FetchUtils.tests
     , testGroup "UnitTests.Distribution.Client.Get"
         UnitTests.Distribution.Client.Get.tests
     , testGroup "UnitTests.Distribution.Client.Glob"
