@@ -333,6 +333,9 @@ data GhcOptions = GhcOptions {
   -- | The main input files; could be .hs, .hi, .c, .o, depending on mode.
   ghcOptInputFiles    :: NubListR FilePath,
 
+  -- | Script files with irregular extensions that need -x hs.
+  ghcOptInputScripts  :: NubListR FilePath,
+
   -- | The names of input Haskell modules, mainly for @--make@ mode.
   ghcOptInputModules  :: NubListR ModuleName,
 
@@ -779,6 +782,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   -- Specify the input file(s) first, so that in ghci the `main-is` module is
   -- in scope instead of the first module defined in `other-modules`.
   , flags ghcOptInputFiles
+  , concat [ [ "-x", "hs", script] | script <- flags ghcOptInputScripts ]
   , [ prettyShow modu | modu <- flags ghcOptInputModules ]
 
   , concat [ [ "-o",    out] | out <- flag ghcOptOutputFile ]
