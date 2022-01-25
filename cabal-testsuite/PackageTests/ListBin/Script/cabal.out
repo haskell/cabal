@@ -2,4 +2,4 @@
 Resolving dependencies...
 Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
- - fake-package-0 (exe:script) (first run)
+ - fake-package-0 (exe:cabal-script-script.hs) (first run)

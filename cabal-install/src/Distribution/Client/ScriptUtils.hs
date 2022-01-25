@@ -42,7 +42,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
-    ( ParseResult, parseFatalFailure, readFields )
+    ( ParseResult, Field(..), SectionArg(..), parseFatalFailure, readFields )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
@@ -86,7 +86,7 @@ import Data.ByteString.Lazy ()
 import System.Directory
     ( canonicalizePath, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
-    ( (</>) )
+    ( (</>), takeFileName )
 import qualified Text.Parsec as P
 
 -- A note on multi-module script support #6787:
@@ -255,9 +255,16 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
 
   absScript <- canonicalizePath scriptPath
   let
+    -- Replace characters which aren't allowed in the executable component name with '_'
+    -- Prefix with "cabal-script-" to make it clear to end users that the name may be mangled
+    scriptExeName = "cabal-script-" ++ map censor (takeFileName scriptPath)
+    censor c = case readFields (fromString $ "executable " ++ [c]) of
+      Right [Section _ [SecArgName _ _] _] -> c
+      _                                    -> '_'
+
     sourcePackage = fakeProjectSourcePackage projectRoot
       & lSrcpkgDescription . L.condExecutables
-      .~ [("script", CondNode executable (targetBuildDepends $ buildInfo executable) [])]
+      .~ [(fromString scriptExeName, CondNode executable (targetBuildDepends $ buildInfo executable) [])]
     executable = scriptExecutable
       & L.modulePath .~ absScript
 
