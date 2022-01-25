@@ -52,7 +52,7 @@ import Distribution.Client.Utils
          ( ProgressPhase(..), progressMessage )
 
 import qualified Data.Map as Map
-import Control.Exception
+import qualified Control.Exception.Safe as Safe
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import System.Directory
@@ -250,9 +250,11 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
         fetchPackages =
           for_ asyncDownloadVars $ \(pkgloc, var) -> do
             -- Suppress marking here, because 'withAsync' means
-            -- that we get nondeterministic interleaving
-            result <- try $ fetchPackage (verboseUnmarkOutput verbosity)
-                                repoCtxt pkgloc
+            -- that we get nondeterministic interleaving.
+            -- It is essential that we don't catch async exceptions here,
+            -- specifically AsyncCancelled thrown at us from withAsync.
+            result <- Safe.try $
+              fetchPackage (verboseUnmarkOutput verbosity) repoCtxt pkgloc
             putMVar var result
 
     withAsync fetchPackages $ \_ ->
