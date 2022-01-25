@@ -9,7 +9,7 @@ import UnitTests.Distribution.Client.TreeDiffInstances ()
 
 import Data.TreeDiff.QuickCheck (ediffEq)
 import Test.QuickCheck          (Property, counterexample)
-import Test.Tasty               (TestTree, testGroup)
+import Test.Tasty               (TestTree)
 import Test.Tasty.QuickCheck    (testProperty)
 
 import Distribution.Client.BuildReports.Anonymous (BuildReport, parseBuildReport, showBuildReport)
@@ -18,8 +18,8 @@ import Distribution.Simple.Utils                  (toUTF8BS)
 -- instances
 import Test.QuickCheck.Instances.Cabal ()
 
-tests :: TestTree
-tests = testGroup "BuildReport"
+tests :: [TestTree]
+tests =
     [ testProperty "test" roundtrip
     ]
 

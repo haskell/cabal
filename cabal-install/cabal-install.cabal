@@ -275,10 +275,11 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.ArbitraryInstances
       UnitTests.Distribution.Client.BuildReport
       UnitTests.Distribution.Client.Configure
-      UnitTests.Distribution.Client.Targets
       UnitTests.Distribution.Client.Get
       UnitTests.Distribution.Client.Glob
       UnitTests.Distribution.Client.GZipUtils
+      UnitTests.Distribution.Client.IndexUtils
+      UnitTests.Distribution.Client.IndexUtils.Timestamp
       UnitTests.Distribution.Client.Init
       UnitTests.Distribution.Client.Init.Golden
       UnitTests.Distribution.Client.Init.Interactive
@@ -286,16 +287,15 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.Init.Simple
       UnitTests.Distribution.Client.Init.Utils
       UnitTests.Distribution.Client.Init.FileCreators
-      UnitTests.Distribution.Client.Store
-      UnitTests.Distribution.Client.Tar
-      UnitTests.Distribution.Client.TreeDiffInstances
-      UnitTests.Distribution.Client.UserConfig
+      UnitTests.Distribution.Client.InstallPlan
+      UnitTests.Distribution.Client.JobControl
       UnitTests.Distribution.Client.ProjectConfig
       UnitTests.Distribution.Client.ProjectPlanning
-      UnitTests.Distribution.Client.JobControl
-      UnitTests.Distribution.Client.IndexUtils
-      UnitTests.Distribution.Client.IndexUtils.Timestamp
-      UnitTests.Distribution.Client.InstallPlan
+      UnitTests.Distribution.Client.Store
+      UnitTests.Distribution.Client.Tar
+      UnitTests.Distribution.Client.Targets
+      UnitTests.Distribution.Client.TreeDiffInstances
+      UnitTests.Distribution.Client.UserConfig
       UnitTests.Distribution.Solver.Modular.Builder
       UnitTests.Distribution.Solver.Modular.RetryLog
       UnitTests.Distribution.Solver.Modular.Solver
