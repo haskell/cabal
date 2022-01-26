@@ -187,6 +187,8 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
     elif dep.source == PackageSource.LOCAL:
         if dep.package == 'Cabal':
             sdist_dir = Path('Cabal').resolve()
+        elif dep.package == 'Cabal-syntax':
+            sdist_dir = Path('Cabal-syntax').resolve()
         elif dep.package == 'cabal-install-solver':
             sdist_dir = Path('cabal-install-solver').resolve()
         elif dep.package == 'cabal-install':

@@ -13,8 +13,9 @@ library
   build-depends:
     , base
     , bytestring
-    , Cabal       ^>=3.7.0.0
-    , QuickCheck  ^>=2.13.2 || ^>=2.14
+    , Cabal         ^>=3.7.0.0
+    , Cabal-syntax  ^>=3.7.0.0
+    , QuickCheck    ^>=2.13.2 || ^>=2.14
 
   if !impl(ghc >= 8.0)
     build-depends: semigroups

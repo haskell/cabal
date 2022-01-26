@@ -23,7 +23,7 @@ lib-ghc-7.8 :
 
 # source generation: Lexer
 
-LEXER_HS:=Cabal/src/Distribution/Fields/Lexer.hs
+LEXER_HS:=Cabal-syntax/src/Distribution/Fields/Lexer.hs
 
 lexer : $(LEXER_HS)
 
@@ -34,8 +34,8 @@ $(LEXER_HS) : templates/Lexer.x
 
 # source generation: SPDX
 
-SPDX_LICENSE_HS:=Cabal/src/Distribution/SPDX/LicenseId.hs
-SPDX_EXCEPTION_HS:=Cabal/src/Distribution/SPDX/LicenseExceptionId.hs
+SPDX_LICENSE_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseId.hs
+SPDX_EXCEPTION_HS:=Cabal-syntax/src/Distribution/SPDX/LicenseExceptionId.hs
 
 spdx : $(SPDX_LICENSE_HS) $(SPDX_EXCEPTION_HS)
 
@@ -68,7 +68,7 @@ buildinfo-fields-reference : phony
 
 # analyse-imports
 analyse-imports : phony
-	find Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
+	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
 # github actions
 github-actions : .github/workflows/quick-jobs.yml
@@ -91,7 +91,7 @@ ghcid-cli :
 # doctests (relies on .ghc.environment files)
 
 doctest :
-	doctest --fast Cabal/src
+	doctest --fast Cabal-syntax/src Cabal/src
 
 # This is not run as part of validate.sh (we need hackage-security, which is tricky to get).
 doctest-cli :
@@ -208,7 +208,7 @@ weeder :
 # tags
 .PHONY : tags
 tags :
-	hasktags -b Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
+	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
 # boostrapping
 ##############################################################################

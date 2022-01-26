@@ -36,12 +36,12 @@ import Distribution.Fields.Pretty
 import Distribution.Compat.Lens
 import Distribution.PackageDescription
 import Distribution.Pretty
-import Distribution.Simple.Utils (writeFileAtomic, writeUTF8File)
 import Distribution.FieldGrammar                     (PrettyFieldGrammar', prettyFieldGrammar)
 import Distribution.PackageDescription.Configuration (transformAllBuildInfos)
 import Distribution.PackageDescription.FieldGrammar
        (benchmarkFieldGrammar, buildInfoFieldGrammar, executableFieldGrammar, flagFieldGrammar, foreignLibFieldGrammar, libraryFieldGrammar,
        packageDescriptionFieldGrammar, setupBInfoFieldGrammar, sourceRepoFieldGrammar, testSuiteFieldGrammar)
+import Distribution.Utils.Generic                    (writeFileAtomic, writeUTF8File)
 
 import qualified Distribution.PackageDescription.FieldGrammar as FG
 import qualified Distribution.Types.BuildInfo.Lens                 as L

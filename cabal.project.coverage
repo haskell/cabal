@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-testsuite/
+packages: Cabal-syntax/ Cabal/ cabal-testsuite/
 packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
@@ -40,6 +40,11 @@ constraints: these
 -- multiproject settings in order to generate coverage for
 -- the `cabal-install` library
 --
+package Cabal-syntax
+  ghc-options: -fno-ignore-asserts
+  coverage: False
+  library-coverage: False
+
 package Cabal
   ghc-options: -fno-ignore-asserts
   coverage: False

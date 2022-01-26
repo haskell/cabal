@@ -16,7 +16,6 @@
 
 module Distribution.PackageDescription.Parsec (
     -- * Package descriptions
-    readGenericPackageDescription,
     parseGenericPackageDescription,
     parseGenericPackageDescriptionMaybe,
 
@@ -28,7 +27,6 @@ module Distribution.PackageDescription.Parsec (
     scanSpecVersion,
 
     -- ** Supplementary build information
-    readHookedBuildInfo,
     parseHookedBuildInfo,
     ) where
 
@@ -55,9 +53,7 @@ import Distribution.Parsec.FieldLineStream           (fieldLineStreamFromBS)
 import Distribution.Parsec.Position                  (Position (..), zeroPos)
 import Distribution.Parsec.Warning                   (PWarnType (..))
 import Distribution.Pretty                           (prettyShow)
-import Distribution.Simple.Utils                     (fromUTF8BS, toUTF8BS)
-import Distribution.Utils.Generic                    (breakMaybe, unfoldrM, validateUTF8)
-import Distribution.Verbosity                        (Verbosity)
+import Distribution.Utils.Generic                    (breakMaybe, fromUTF8BS, toUTF8BS, unfoldrM, validateUTF8)
 import Distribution.Version                          (Version, mkVersion, versionNumbers)
 
 import qualified Data.ByteString                                   as BS
@@ -73,14 +69,6 @@ import qualified Distribution.Types.GenericPackageDescription.Lens as L
 import qualified Distribution.Types.PackageDescription.Lens        as L
 import qualified Distribution.Types.SetupBuildInfo.Lens            as L
 import qualified Text.Parsec                                       as P
-
--- ---------------------------------------------------------------
--- Parsing
--- ---------------------------------------------------------------
-
--- | Parse the given package file.
-readGenericPackageDescription :: Verbosity -> FilePath -> IO GenericPackageDescription
-readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 
 ------------------------------------------------------------------------------
 -- | Parses the given file into a 'GenericPackageDescription'.
@@ -873,9 +861,6 @@ libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 -------------------------------------------------------------------------------
 -- Suplementary build information
 -------------------------------------------------------------------------------
-
-readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
-readHookedBuildInfo = readAndParseFile parseHookedBuildInfo
 
 parseHookedBuildInfo :: BS.ByteString -> ParseResult HookedBuildInfo
 parseHookedBuildInfo bs = case readFields' bs of

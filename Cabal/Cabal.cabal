@@ -29,14 +29,12 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal
 
-flag bundled-binary-generic
-  default: False
-
 library
   default-language: Haskell2010
   hs-source-dirs: src
 
   build-depends:
+    Cabal-syntax >= 3.7    && < 3.8,
     array      >= 0.4.0.1  && < 0.6,
     base       >= 4.6      && < 5,
     bytestring >= 0.10.0.0 && < 0.12,
@@ -47,11 +45,6 @@ library
     pretty     >= 1.1.1    && < 1.2,
     process    >= 1.1.0.2  && < 1.7,
     time       >= 1.4.0.1  && < 1.13
-
-  if flag(bundled-binary-generic)
-    build-depends: binary >= 0.5.1.1 && < 0.7
-  else
-    build-depends: binary >= 0.7 && < 0.9
 
   if os(windows)
     build-depends: Win32 >= 2.3.0.0 && < 2.13
@@ -78,7 +71,6 @@ library
     build-depends:  tagged >=0.8.6 && <0.9, bytestring-builder >= 0.10.8 && <0.11
 
   exposed-modules:
-    Distribution.Backpack
     Distribution.Backpack.Configure
     Distribution.Backpack.ComponentsGraph
     Distribution.Backpack.ConfiguredComponent
@@ -88,46 +80,21 @@ library
     Distribution.Backpack.ModSubst
     Distribution.Backpack.ModuleShape
     Distribution.Backpack.PreModuleShape
-    Distribution.CabalSpecVersion
     Distribution.Utils.IOData
-    Distribution.Utils.Path
     Distribution.Utils.LogProgress
     Distribution.Utils.MapAccum
-    Distribution.Utils.MD5
-    Distribution.Utils.String
-    Distribution.Utils.Structured
     Distribution.Compat.CreatePipe
     Distribution.Compat.Directory
     Distribution.Compat.Environment
-    Distribution.Compat.Exception
     Distribution.Compat.FilePath
-    Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
-    Distribution.Compat.Newtype
-    Distribution.Compat.NonEmptySet
     Distribution.Compat.ResponseFile
     Distribution.Compat.Prelude.Internal
     Distribution.Compat.Process
-    Distribution.Compat.Semigroup
     Distribution.Compat.Stack
     Distribution.Compat.Time
-    Distribution.Compat.Typeable
-    Distribution.Compat.DList
-    Distribution.Compiler
-    Distribution.InstalledPackageInfo
-    Distribution.Types.AbiDependency
-    Distribution.Types.ExposedModule
-    Distribution.Types.InstalledPackageInfo
-    Distribution.Types.InstalledPackageInfo.FieldGrammar
-    Distribution.License
     Distribution.Make
-    Distribution.ModuleName
-    Distribution.Package
-    Distribution.PackageDescription
     Distribution.PackageDescription.Check
-    Distribution.PackageDescription.Configuration
-    Distribution.PackageDescription.PrettyPrint
-    Distribution.PackageDescription.Utils
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench
@@ -152,6 +119,7 @@ library
     Distribution.Simple.InstallDirs
     Distribution.Simple.InstallDirs.Internal
     Distribution.Simple.LocalBuildInfo
+    Distribution.Simple.PackageDescription
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
     Distribution.Simple.PreProcess.Unlit
@@ -181,90 +149,20 @@ library
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
-    Distribution.SPDX
-    Distribution.SPDX.License
-    Distribution.SPDX.LicenseId
-    Distribution.SPDX.LicenseExceptionId
-    Distribution.SPDX.LicenseExpression
-    Distribution.SPDX.LicenseListVersion
-    Distribution.SPDX.LicenseReference
-    Distribution.System
     Distribution.TestSuite
-    Distribution.Text
-    Distribution.Pretty
-    Distribution.Types.AbiHash
     Distribution.Types.AnnotatedId
-    Distribution.Types.Benchmark
-    Distribution.Types.BenchmarkInterface
-    Distribution.Types.BenchmarkType
-    Distribution.Types.BuildInfo
-    Distribution.Types.BuildType
     Distribution.Types.ComponentInclude
-    Distribution.Types.ConfVar
-    Distribution.Types.Dependency
     Distribution.Types.DumpBuildInfo
-    Distribution.Types.ExeDependency
-    Distribution.Types.LegacyExeDependency
-    Distribution.Types.PkgconfigDependency
-    Distribution.Types.DependencyMap
-    Distribution.Types.ComponentId
-    Distribution.Types.MungedPackageId
-    Distribution.Types.PackageId
-    Distribution.Types.UnitId
-    Distribution.Types.Executable
-    Distribution.Types.ExecutableScope
-    Distribution.Types.Library
-    Distribution.Types.LibraryVisibility
-    Distribution.Types.Flag
-    Distribution.Types.ForeignLib
-    Distribution.Types.ForeignLibType
-    Distribution.Types.ForeignLibOption
-    Distribution.Types.Module
-    Distribution.Types.ModuleReexport
-    Distribution.Types.ModuleRenaming
-    Distribution.Types.ComponentName
-    Distribution.Types.LibraryName
-    Distribution.Types.MungedPackageName
-    Distribution.Types.PackageName
     Distribution.Types.PackageName.Magic
-    Distribution.Types.PkgconfigName
-    Distribution.Types.PkgconfigVersion
-    Distribution.Types.PkgconfigVersionRange
-    Distribution.Types.UnqualComponentName
-    Distribution.Types.IncludeRenaming
-    Distribution.Types.Mixin
-    Distribution.Types.SetupBuildInfo
-    Distribution.Types.TestSuite
-    Distribution.Types.TestSuiteInterface
-    Distribution.Types.TestType
-    Distribution.Types.GenericPackageDescription
-    Distribution.Types.Condition
-    Distribution.Types.CondTree
-    Distribution.Types.HookedBuildInfo
-    Distribution.Types.PackageDescription
-    Distribution.Types.SourceRepo
-    Distribution.Types.Component
     Distribution.Types.ComponentLocalBuildInfo
     Distribution.Types.LocalBuildInfo
-    Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
-    Distribution.Types.Version
-    Distribution.Types.VersionRange
-    Distribution.Types.VersionRange.Internal
-    Distribution.Types.VersionInterval
-    Distribution.Types.VersionInterval.Legacy
     Distribution.Types.GivenComponent
-    Distribution.Types.PackageVersionConstraint
-    Distribution.Utils.Generic
     Distribution.Utils.Json
     Distribution.Utils.NubList
-    Distribution.Utils.ShortText
     Distribution.Utils.Progress
     Distribution.Verbosity
     Distribution.Verbosity.Internal
-    Distribution.Version
-    Language.Haskell.Extension
-    Distribution.Compat.Binary
 
   -- Parsec parser-related modules
   build-depends:
@@ -274,48 +172,6 @@ library
     mtl           >= 2.1      && < 2.3,
     text         (>= 1.2.3.0  && < 1.3) || (>= 2.0 && < 2.1),
     parsec        >= 3.1.13.0 && < 3.2
-  exposed-modules:
-    Distribution.Compat.Parsing
-    Distribution.Compat.CharParsing
-    Distribution.FieldGrammar
-    Distribution.FieldGrammar.Class
-    Distribution.FieldGrammar.FieldDescrs
-    Distribution.FieldGrammar.Newtypes
-    Distribution.FieldGrammar.Parsec
-    Distribution.FieldGrammar.Pretty
-    Distribution.PackageDescription.FieldGrammar
-    Distribution.PackageDescription.Parsec
-    Distribution.PackageDescription.Quirks
-    Distribution.Parsec
-    Distribution.Parsec.Error
-    Distribution.Parsec.Position
-    Distribution.Parsec.Warning
-    Distribution.Parsec.FieldLineStream
-    Distribution.Fields
-    Distribution.Fields.ConfVar
-    Distribution.Fields.Field
-    Distribution.Fields.Lexer
-    Distribution.Fields.LexerMonad
-    Distribution.Fields.ParseResult
-    Distribution.Fields.Parser
-    Distribution.Fields.Pretty
-
-  -- Lens functionality
-  exposed-modules:
-    Distribution.Compat.Lens
-    Distribution.Types.Lens
-    Distribution.Types.Benchmark.Lens
-    Distribution.Types.BuildInfo.Lens
-    Distribution.Types.Executable.Lens
-    Distribution.Types.ForeignLib.Lens
-    Distribution.Types.GenericPackageDescription.Lens
-    Distribution.Types.InstalledPackageInfo.Lens
-    Distribution.Types.Library.Lens
-    Distribution.Types.PackageDescription.Lens
-    Distribution.Types.PackageId.Lens
-    Distribution.Types.SetupBuildInfo.Lens
-    Distribution.Types.SourceRepo.Lens
-    Distribution.Types.TestSuite.Lens
 
   other-modules:
     Distribution.Backpack.PreExistingComponent
@@ -325,12 +181,9 @@ library
     Distribution.Backpack.UnifyM
     Distribution.Backpack.Id
     Distribution.Utils.UnionFind
-    Distribution.Utils.Base62
     Distribution.Compat.Async
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
-    Distribution.Compat.MonadFail
-    Distribution.Compat.Prelude
     Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
@@ -341,11 +194,6 @@ library
     Distribution.Simple.GHC.ImplInfo
     Distribution.ZinzaPrelude
     Paths_Cabal
-
-  if flag(bundled-binary-generic)
-    other-modules:
-      Distribution.Compat.Binary.Class
-      Distribution.Compat.Binary.Generic
 
   other-extensions:
     BangPatterns

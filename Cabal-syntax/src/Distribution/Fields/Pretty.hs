@@ -26,8 +26,8 @@ import Distribution.Compat.Prelude
 import Distribution.Pretty         (showToken)
 import Prelude ()
 
-import Distribution.Fields.Field (FieldName)
-import Distribution.Simple.Utils (fromUTF8BS)
+import Distribution.Fields.Field   (FieldName)
+import Distribution.Utils.Generic  (fromUTF8BS)
 
 import qualified Distribution.Fields.Parser as P
 

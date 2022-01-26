@@ -51,13 +51,13 @@ import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Utils
 import           Distribution.Parsec
 import           Distribution.Pretty
-import           Distribution.Simple.Utils
 import           Distribution.System
 import           Distribution.Types.Component
 import Distribution.Utils.Path
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Types.DependencyMap
 import           Distribution.Types.PackageVersionConstraint
+import           Distribution.Utils.Generic
 import           Distribution.Version
 
 import qualified Data.Map.Lazy as Map

@@ -1,5 +1,6 @@
 resolver: lts-11.6
 packages:
+- Cabal-syntax/
 - Cabal/
 - cabal-install/
 - cabal-testsuite/
