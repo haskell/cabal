@@ -13,6 +13,8 @@ module Distribution.Fields.Field (
     FieldLine (..),
     fieldLineAnn,
     fieldLineBS,
+    CommentLine (..),
+    commentLineAnn,
     SectionArg (..),
     sectionArgAnn,
     -- * Name
@@ -42,12 +44,14 @@ import           Prelude ()
 -- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
     = Field   !(Name ann) [FieldLine ann]
+    | Comment !ann !(CommentLine ann)
     | Section !(Name ann) [SectionArg ann] [Field ann]
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | Section of field name
 fieldName :: Field ann -> Name ann
 fieldName (Field n _ )    = n
+fieldName (Comment ann _) = Name ann (fromString "comment")
 fieldName (Section n _ _) = n
 
 fieldAnn :: Field ann -> ann
@@ -59,6 +63,7 @@ fieldAnn = nameAnn . fieldName
 --
 fieldUniverse :: Field ann -> [Field ann]
 fieldUniverse f@(Section _ _ fs) = f : concatMap fieldUniverse fs
+fieldUniverse (Comment _ _)      = []
 fieldUniverse f@(Field _ _)      = [f]
 
 -- | A line of text representing the value of a field from a Cabal file.
@@ -66,15 +71,24 @@ fieldUniverse f@(Field _ _)      = [f]
 --
 -- /Invariant:/ 'ByteString' has no newlines.
 data FieldLine ann  = FieldLine  !ann !ByteString
+                    | CommentLineInField !ann !(CommentLine ann)
   deriving (Eq, Show, Functor, Foldable, Traversable)
 
 -- | @since 3.0.0.0
 fieldLineAnn :: FieldLine ann -> ann
 fieldLineAnn (FieldLine ann _) = ann
+fieldLineAnn (CommentLineInField ann _) = ann
 
 -- | @since 3.0.0.0
 fieldLineBS :: FieldLine ann -> ByteString
 fieldLineBS (FieldLine _ bs) = bs
+fieldLineBS (CommentLineInField _ (CommentLine _ bs)) = bs
+
+data CommentLine ann  = CommentLine !ann !ByteString
+  deriving (Eq, Show, Functor, Foldable, Traversable)
+
+commentLineAnn :: CommentLine ann -> ann
+commentLineAnn (CommentLine ann _) = ann
 
 -- | Section arguments, e.g. name of the library
 data SectionArg ann
@@ -139,3 +153,4 @@ fieldLinesToString =
     intercalate "\n" . map toStr
   where
     toStr (FieldLine _ bs) = fromUTF8BS bs
+    toStr (CommentLineInField _ (CommentLine _ bs)) = fromUTF8BS bs

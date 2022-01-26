@@ -14,6 +14,7 @@ module Distribution.Fields.Parser (
     Field(..),
     Name(..),
     FieldLine(..),
+    CommentLine(..),
     SectionArg(..),
     -- * Grammar and parsing
     -- $grammar
@@ -88,6 +89,7 @@ describeToken :: Token -> String
 describeToken t = case t of
   TokSym   s      -> "symbol "   ++ show s
   TokStr   s      -> "string "   ++ show s
+  TokComment s    -> "comment "   ++ show s
   TokOther s      -> "operator " ++ show s
   Indent _        -> "new line"
   TokFieldLine _  -> "field content"
@@ -103,6 +105,8 @@ tokSym', tokStr, tokOther :: Parser (SectionArg Position)
 tokIndent :: Parser Int
 tokColon, tokOpenBrace, tokCloseBrace :: Parser ()
 tokFieldLine :: Parser (FieldLine Position)
+tokFieldLineComment :: Parser (FieldLine Position)
+tokComment :: Parser (CommentLine Position)
 
 tokSym        = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (mkName pos x);  _ -> Nothing
 tokSym'       = getTokenWithPos $ \t -> case t of L pos (TokSym   x) -> Just (SecArgName pos x);  _ -> Nothing
@@ -113,6 +117,8 @@ tokColon      = getToken $ \t -> case t of Colon      -> Just (); _ -> Nothing
 tokOpenBrace  = getToken $ \t -> case t of OpenBrace  -> Just (); _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
+tokFieldLineComment = getTokenWithPos $ \t -> case t of L pos (TokComment s) -> Just (CommentLineInField pos (CommentLine pos s)); _ -> Nothing
+tokComment    = getTokenWithPos $ \t -> case t of L pos (TokComment s) -> Just (CommentLine pos s); _ -> Nothing
 
 colon, openBrace, closeBrace :: Parser ()
 
@@ -128,6 +134,12 @@ closeBrace   = tokCloseBrace <?> "\"}\""
 
 fieldContent :: Parser (FieldLine Position)
 fieldContent = tokFieldLine <?> "field contents"
+
+fieldCommentLine :: Parser (FieldLine Position)
+fieldCommentLine = tokFieldLineComment <?> "comment in a field line"
+
+commentLine :: Parser (CommentLine Position)
+commentLine = tokComment <?> "comment"
 
 newtype IndentLevel = IndentLevel Int
 
@@ -226,7 +238,10 @@ elements ilevel = many (element ilevel)
 --           |      name elementInNonLayoutContext
 element :: IndentLevel -> Parser (Field Position)
 element ilevel =
-      (do ilevel' <- indentOfAtLeast ilevel
+      (do comment <- commentLine
+          return $ Comment (commentLineAnn comment) comment
+      )
+  <|> (do ilevel' <- indentOfAtLeast ilevel
           name    <- fieldSecName
           elementInLayoutContext (incIndentLevel ilevel') name)
   <|> (do name    <- fieldSecName
@@ -275,7 +290,9 @@ fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
           return (Field name ls)
     fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
           l  <- optionMaybe fieldContent
-          ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
+          ls <- many $
+                (do _ <- indentOfAtLeast ilevel; fieldContent)
+            <|> (do fieldCommentLine)
           return $ case l of
               Nothing -> Field name ls
               Just l' -> Field name (l' : ls)

@@ -93,7 +93,8 @@ tokens :-
 <bol_section, bol_field_layout, bol_field_braces> {
   @nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
+  $spacetab* "--" $comment*  { \pos len inp -> return $! L pos (TokComment (B.take len inp)) }
+                                -- TODO: check the lack of @nl works here
                                 -- including counting line numbers
 }
 
@@ -110,7 +111,7 @@ tokens :-
 <in_section> {
   $spacetab+   ; --TODO: don't allow tab as leading space
 
-  "--" $comment* ;
+  "--" $comment*  { \pos len inp -> return $! L pos (TokComment (B.take len inp)) }
 
   @name        { toki TokSym }
   @string      { \pos len inp -> return $! L pos (TokStr (B.take (len - 2) (B.tail inp))) }
@@ -132,6 +133,7 @@ tokens :-
 
 <in_field_layout> {
   $spacetab+;
+  "--" $comment*  { \pos len inp -> return $! L pos (TokComment (B.take len inp)) }
   $field_layout' $field_layout*  { toki TokFieldLine }
   @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
 }
@@ -153,6 +155,7 @@ tokens :-
 -- | Tokens of outer cabal file structure. Field values are treated opaquely.
 data Token = TokSym   !ByteString       -- ^ Haskell-like identifier, number or operator
            | TokStr   !ByteString       -- ^ String in quotes
+           | TokComment !ByteString     -- ^ Comment
            | TokOther !ByteString       -- ^ Operators and parens
            | Indent   !Int              -- ^ Indentation token
            | TokFieldLine !ByteString   -- ^ Lines after @:@
