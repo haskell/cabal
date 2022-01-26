@@ -47,6 +47,8 @@ import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
          ( PackageName, PackageId, UnitId )
+import Distribution.Types.EnableComponentType
+         ( EnableComponentType(..) )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
 import Distribution.Version
@@ -265,8 +267,8 @@ data PackageConfig
        packageConfigSplitObjs           :: Flag Bool,
        packageConfigStripExes           :: Flag Bool,
        packageConfigStripLibs           :: Flag Bool,
-       packageConfigTests               :: Flag Bool,
-       packageConfigBenchmarks          :: Flag Bool,
+       packageConfigTests               :: Flag EnableComponentType,
+       packageConfigBenchmarks          :: Flag EnableComponentType,
        packageConfigCoverage            :: Flag Bool,
        packageConfigRelocatable         :: Flag Bool,
        packageConfigDebugInfo           :: Flag DebugInfoLevel,

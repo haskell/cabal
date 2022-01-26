@@ -121,6 +121,7 @@ import Distribution.Verbosity
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Client.ProjectFlags (ProjectFlags (..))
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Types.EnableComponentType
 
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
@@ -143,7 +144,7 @@ import qualified Data.Map as M
 import qualified Data.ByteString as BS
 
 --
--- * Configuration saved in the config file
+-- * Configuration saved in the @~/.cabal/config@ file
 --
 
 data SavedConfig = SavedConfig
@@ -883,8 +884,14 @@ commentSavedConfig = do
       removeRootKeys :: RemoteRepo -> RemoteRepo
       removeRootKeys r = r { remoteRepoRootKeys = [] }
 
--- | All config file fields.
+-- | The parser and pretty-printer for the 'SavedConfig' fields are mostly
+-- derived from the command-line options for the various commands (@cabal
+-- configure@, @cabal install@, etc.). When the format in the configuration
+-- file differs from the format in the command-line option, we define a
+-- separate 'FieldDescr' here.
 --
+-- Fields which are valid in both a 'ProjectConfig' and a 'SavedConfig' also
+-- need a separate 'FieldDescr' in 'legacyProjectConfigFieldDescrs'.
 configFieldDescriptions :: ConstraintSource -> [FieldDescr SavedConfig]
 configFieldDescriptions src =
 
@@ -957,6 +964,12 @@ configFieldDescriptions src =
                caseWarning = PWarning $
                  "The '" ++ name
                  ++ "' field is case sensitive, use 'True' or 'False'.")
+       ,liftField configTests (\v flags -> flags { configTests = v }) $
+        let name = "tests" in
+        FieldDescr name prettyPrintEnableStanza (parseEnableStanza name)
+       ,liftField configBenchmarks (\v flags -> flags { configBenchmarks = v }) $
+        let name = "benchmarks" in
+        FieldDescr name prettyPrintEnableStanza (parseEnableStanza name)
        ]
 
   ++ toSavedConfig liftConfigExFlag
@@ -1027,6 +1040,19 @@ configFieldDescriptions src =
 
     toRelaxDeps True  = RelaxDepsAll
     toRelaxDeps False = mempty
+
+    prettyPrintEnableStanza NoFlag                    = Disp.text "EnableWhenPossible"
+    prettyPrintEnableStanza (Flag EnableWhenPossible) = Disp.text "EnableWhenPossible"
+    prettyPrintEnableStanza (Flag DisableAll)         = Disp.text "DisableAll"
+    prettyPrintEnableStanza (Flag EnableAll)          = Disp.text "EnableAll"
+
+    parseEnableStanza name line str _ = case () of
+      _ |  str == "EnableWhenPossible" -> ParseOk [] (Flag EnableWhenPossible)
+        |  str == "DisableAll"         -> ParseOk [] (Flag DisableAll)
+        |  str == "False"              -> ParseOk [] (Flag DisableAll)
+        |  str == "EnableAll"          -> ParseOk [] (Flag EnableAll)
+        |  str == "True"               -> ParseOk [] (Flag EnableAll)
+        | otherwise                    -> ParseFailed (NoParse name line)
 
 
 -- TODO: next step, make the deprecated fields elicit a warning.

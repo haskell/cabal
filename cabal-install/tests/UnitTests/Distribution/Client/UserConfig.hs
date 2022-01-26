@@ -22,6 +22,7 @@ import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
 import Distribution.Client.Utils (removeExistingFile)
 import Distribution.Simple.Setup (Flag (..), ConfigFlags (..), fromFlag)
 import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.Types.EnableComponentType (EnableComponentType(..))
 import Distribution.Verbosity (silent)
 
 tests :: [TestTree]
@@ -59,7 +60,7 @@ canUpdateConfig = bracketTest $ \configFile -> do
     userConfigUpdate silent (globalFlags configFile) []
     -- Load it again.
     updated <- loadConfig silent (Flag configFile)
-    assertBool ("Field 'tests' should be True") $
+    assertEqual ("Field 'tests' should be EnableAll") EnableAll $
         fromFlag (configTests $ savedConfigureFlags updated)
 
 

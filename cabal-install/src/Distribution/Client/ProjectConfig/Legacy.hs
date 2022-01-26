@@ -49,7 +49,7 @@ import Distribution.Simple.Compiler
          ( OptimisationLevel(..), DebugInfoLevel(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
-         ( Flag(Flag), toFlag, fromFlagOrDefault
+         ( Flag(NoFlag, Flag), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
@@ -84,7 +84,7 @@ import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken
-         , simpleFieldParsec
+         , simpleField, simpleFieldParsec
          )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -92,6 +92,7 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
+import Distribution.Types.EnableComponentType
 import Distribution.Parsec (ParsecParser)
 
 import qualified Data.Map as Map
@@ -103,14 +104,8 @@ import Network.URI (URI (..))
 -- Representing the project config file in terms of legacy types
 --
 
--- | We already have parsers\/pretty-printers for almost all the fields in the
--- project config file, but they're in terms of the types used for the command
--- line flags for Setup.hs or cabal commands. We don't want to redefine them
--- all, at least not yet so for the moment we use the parsers at the old types
--- and use conversion functions.
---
--- Ultimately if\/when this project-based approach becomes the default then we
--- can redefine the parsers directly for the new types.
+-- | Used when parsing and pretty-printing 'ProjectConfig', as it was easier to
+-- write two way conversions than to implement a new parser and pretty-printer.
 --
 data LegacyProjectConfig = LegacyProjectConfig {
        legacyPackages          :: [String],
@@ -171,8 +166,8 @@ instance Semigroup LegacySharedConfig where
 -- line into a 'ProjectConfig' value that can combined with configuration from
 -- other sources.
 --
--- At the moment this uses the legacy command line flag types. See
--- 'LegacyProjectConfig' for an explanation.
+-- TODO: why is this in the Legacy module? There's nothing "legacy" about these
+-- "convertLegacy*" functions as far as I can tell.
 --
 commandLineFlagsToProjectConfig :: GlobalFlags
                                 -> NixStyleFlags a
@@ -272,8 +267,7 @@ convertLegacyGlobalConfig
 
 
 -- | Convert the project config from the legacy types to the 'ProjectConfig'
--- and associated types. See 'LegacyProjectConfig' for an explanation of the
--- approach.
+-- and associated types.
 --
 convertLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
 convertLegacyProjectConfig
@@ -875,6 +869,14 @@ showLegacyProjectConfig config =
     constraintSrc = ConstraintSourceProjectConfig "unused"
 
 
+-- | The parser and pretty-printer for the 'LegacyProjectConfig' (and thus
+-- 'ProjectConfig') fields are mostly derived from the command-line options for
+-- the various commands (@cabal configure@, @cabal install@, etc.). When the
+-- format in the configuration file differs from the format in the command-line
+-- option, we define a separate 'FieldDescr' here.
+--
+-- Fields which are valid in both a 'ProjectConfig' and a 'SavedConfig' also
+-- need a separate 'FieldDescr' in 'configFieldDescriptions'.
 legacyProjectConfigFieldDescrs :: ConstraintSource -> [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs constraintSrc =
 
@@ -1078,6 +1080,14 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           configConfigureArgs
           (\v conf -> conf { configConfigureArgs = v })
+      , simpleField "tests"
+          prettyPrintEnableStanza parseEnableStanza
+          configTests
+          (\v conf -> conf { configTests = v })
+      , simpleField "benchmarks"
+          prettyPrintEnableStanza parseEnableStanza
+          configBenchmarks
+          (\v conf -> conf { configBenchmarks = v })
       , simpleFieldParsec "flags"
           dispFlagAssignment parsecFlagAssignment
           configConfigurationsFlags
@@ -1093,7 +1103,6 @@ legacyPackageConfigFieldDescrs =
       , "profiling-detail", "library-profiling-detail"
       , "library-for-ghci", "split-objs", "split-sections"
       , "executable-stripping", "library-stripping"
-      , "tests", "benchmarks"
       , "coverage", "library-coverage"
       , "relocatable"
         -- not "extra-include-dirs", "extra-lib-dirs", "extra-framework-dirs"
@@ -1253,6 +1262,17 @@ legacyPackageConfigFieldDescrs =
 
     prefixTest name | "test-" `isPrefixOf` name = name
                     | otherwise = "test-" ++ name
+
+    prettyPrintEnableStanza v = case v of
+      NoFlag                   -> Disp.text "EnableWhenPossible"
+      Flag EnableWhenPossible  -> Disp.text "EnableWhenPossible"
+      Flag EnableAll           -> Disp.text "EnableAll"
+      Flag DisableAll          -> Disp.text "DisableAll"
+
+    parseEnableStanza
+        = (Flag EnableWhenPossible <$ Parse.string "EnableWhenPossible")
+      <|> (Flag EnableAll  <$ (Parse.string "EnableAll"  <|> Parse.string "True"))
+      <|> (Flag DisableAll <$ (Parse.string "DisableAll" <|> Parse.string "False"))
 
 
 legacyPackageConfigFGSectionDescrs

@@ -80,6 +80,7 @@ import Distribution.Types.PackageVersionConstraint
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.GivenComponent
+import Distribution.Types.EnableComponentType
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
@@ -401,12 +402,15 @@ configure (pkg_descr0, pbi) cfg = do
                                 -- nomenclature; it's just a request; a
                                 -- @buildable: False@ might make it
                                 -- not possible to enable.
-                                { testsRequested = fromFlag (configTests cfg)
+                                { testsRequested =
+                                  fromFlag (configTests cfg) == EnableAll
                                 , benchmarksRequested =
-                                  fromFlag (configBenchmarks cfg) }
+                                  fromFlag (configBenchmarks cfg) == EnableAll
+                                }
     -- Some sanity checks related to enabling components.
     when (isJust mb_cname
-          && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
+          && ( fromFlag (configTests cfg) == EnableAll
+            || fromFlag (configBenchmarks cfg) == EnableAll)) $
         die' verbosity $
               "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."

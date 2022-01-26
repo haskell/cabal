@@ -255,6 +255,7 @@ library
     Distribution.Types.VersionInterval.Legacy
     Distribution.Types.GivenComponent
     Distribution.Types.PackageVersionConstraint
+    Distribution.Types.EnableComponentType
     Distribution.Utils.Generic
     Distribution.Utils.Json
     Distribution.Utils.NubList
