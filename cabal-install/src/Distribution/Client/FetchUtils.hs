@@ -252,13 +252,15 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
             -- Suppress marking here, because 'withAsync' means
             -- that we get nondeterministic interleaving.
             -- It is essential that we don't catch async exceptions here,
-            -- specifically AsyncCancelled thrown at us from withAsync.
+            -- specifically 'AsyncCancelled' thrown at us from 'concurrently'.
             result <- Safe.try $
               fetchPackage (verboseUnmarkOutput verbosity) repoCtxt pkgloc
             putMVar var result
 
-    withAsync fetchPackages $ \_ ->
-      body (Map.fromList asyncDownloadVars)
+    (_, res) <- concurrently
+        fetchPackages
+        (body $ Map.fromList asyncDownloadVars)
+    pure res
 
 
 -- | Expect to find a download in progress in the given 'AsyncFetchMap'
