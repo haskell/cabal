@@ -67,7 +67,7 @@ module Distribution.FieldGrammar.Parsec (
 
 import Distribution.Compat.Newtype
 import Distribution.Compat.Prelude
-import Distribution.Simple.Utils   (fromUTF8BS)
+import Distribution.Utils.Generic  (fromUTF8BS)
 import Distribution.Utils.String (trim)
 import Prelude ()
 

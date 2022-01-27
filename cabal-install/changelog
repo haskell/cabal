@@ -6,6 +6,9 @@
 3.6.0.0 Emily Pillmore <emilypi@cohomolo.gy> August 2021
 	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.6.0.0.md
 
+3.4.1.0 Emily Pillmore <emilypi@cohomolo.gy> October 2021
+	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.4.1.0.md
+
 3.4.0.0 Oleg Grenrus <oleg.grenrus@iki.fi> February 2021
 	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.4.0.0.md
 

@@ -75,14 +75,14 @@ import Distribution.Verbosity
 import Distribution.Version
     ( Version, VersionInterval (..), VersionRange, LowerBound(..)
     , UpperBound(..) , asVersionIntervals, majorBoundVersion )
-import Distribution.PackageDescription.Parsec
-    ( readGenericPackageDescription )
 import Distribution.Types.PackageVersionConstraint
     ( PackageVersionConstraint (..), simplifyPackageVersionConstraint )
 import Distribution.Simple.Flag
     ( Flag(..), flagToMaybe, fromFlagOrDefault, toFlag )
 import Distribution.Simple.Command
     ( ShowOrParseArgs, OptionField, CommandUI(..), optArg, option, reqArg, liftOptionL )
+import Distribution.Simple.PackageDescription
+    ( readGenericPackageDescription )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.ReadE
     ( parsecToReadE )

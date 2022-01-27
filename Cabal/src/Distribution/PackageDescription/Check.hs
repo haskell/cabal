@@ -52,6 +52,7 @@ import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.PackageName.Magic
 import Distribution.Utils.Generic                    (isAscii)
 import Distribution.Verbosity
 import Distribution.Version
@@ -284,8 +285,9 @@ checkExecutable pkg exe =
     check (null (modulePath exe)) $
       PackageBuildImpossible $
         "No 'main-is' field found for executable " ++ prettyShow (exeName exe)
-
-  , check (not (null (modulePath exe))
+  -- This check does not apply to scripts.
+  , check (package pkg /= fakePackageId
+       && not (null (modulePath exe))
        && (not $ fileExtensionSupportedLanguage $ modulePath exe)) $
       PackageBuildImpossible $
            "The 'main-is' field must specify a '.hs' or '.lhs' file "

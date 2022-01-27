@@ -188,7 +188,7 @@ required (directly or indirectly) by an executable must be listed again.
 
 The trivial setup script used in these examples uses the *simple build
 infrastructure* provided by the Cabal library (see
-`Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__).
+`Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__).
 The simplicity lies in its interface rather that its implementation. It
 automatically handles preprocessing with standard preprocessors, and
 builds packages for all the Haskell implementations.
@@ -412,7 +412,7 @@ describe the package as a whole:
 
     The type of build used by this package. Build types are the
     constructors of the
-    `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
+    `BuildType <https://hackage.haskell.org/package/Cabal/docs/Distribution-PackageDescription.html#t:BuildType>`__
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
@@ -1794,7 +1794,7 @@ system-dependent values for these fields.
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
     names are the constructors of the
-    `Extension <../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension>`__
+    `Extension <https://hackage.haskell.org/package/Cabal/docs/Language-Haskell-Extension.html#t:Extension>`__
     type. For example, ``CPP`` specifies that Haskell source files are
     to be preprocessed with a C preprocessor.
 
@@ -3364,7 +3364,7 @@ a few options:
        posthaddock args flags desc info = ....
 
    See ``UserHooks`` in
-   `Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__
+   `Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__
    for the details, but note that this interface is experimental, and
    likely to change in future releases.
 
@@ -3376,7 +3376,7 @@ a few options:
 -  You could delegate all the work to ``make``, though this is unlikely
    to be very portable. Cabal supports this with the :pkg-field:`build-type`
    ``Make`` and a trivial setup library
-   `Distribution.Make <../release/cabal-latest/doc/API/Cabal/Distribution-Make.html>`__,
+   `Distribution.Make <https://hackage.haskell.org/package/Cabal/docs/Distribution-Make.html>`__,
    which simply parses the command line arguments and invokes ``make``.
    Here ``Setup.hs`` should look like this:
 

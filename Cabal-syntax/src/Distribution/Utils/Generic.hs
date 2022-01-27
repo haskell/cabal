@@ -7,7 +7,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.Utils
+-- Module      :  Distribution.Utils.Generic
 -- Copyright   :  Isaac Jones, Simon Marlow 2003-2004
 -- License     :  BSD3
 --                portions Copyright (c) 2007, Galois Inc.

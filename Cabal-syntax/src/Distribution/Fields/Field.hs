@@ -31,7 +31,7 @@ import qualified Data.ByteString.Char8       as B
 import qualified Data.Char                   as Char
 import           Distribution.Compat.Prelude
 import           Distribution.Pretty         (showTokenStr)
-import           Distribution.Simple.Utils   (fromUTF8BS)
+import           Distribution.Utils.Generic  (fromUTF8BS)
 import           Prelude ()
 
 

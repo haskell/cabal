@@ -211,7 +211,7 @@ build products like executables.
 Caching
 -------
 
-Nix-style local builds sport a robust caching system which helps to reduce
+Nix-style local builds support a robust caching system which helps to reduce
 the time it takes to execute a rebuild cycle. While the details of how
 ``cabal-install`` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for

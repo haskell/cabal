@@ -40,7 +40,7 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
-{% if or job.xenial job.old %}
+{% if or job.xenial (or job.old (not (libOnly job.flags))) %}
       - name: apt-get update
         run: apt-get update
 {% endif %}
@@ -51,6 +51,10 @@ jobs:
 {% if job.old %}
       - name: Install extra compilers
         run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
+{% endif %}
+{% if not (libOnly job.flags) %}
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
 {% endif %}
       - name: Update Hackage index
         run: cabal v2-update

@@ -21,7 +21,8 @@ main = do
             run <- parseAndCompileTemplateIO src
             -- this shouldn't fail (run-time errors are due bugs in zinza)
             w <- run Z
-                { zJobs =
+                { zJobs = -- version xenial flags                       old   needs     steps
+                          -------------------------------------------------------------------
                     [ GhcJob "9.0.1"  False "--lib-only"                False ["8.8.4"] libSteps
                     , GhcJob "8.10.4" False ""                          False ["8.8.4"] defSteps
                     , GhcJob "8.8.4"  False "--solver-benchmarks"       False []        defSteps
@@ -49,8 +50,8 @@ main = do
                     ]
                 , zMangleVersion = map mangleChar
                 , zOr            = (||)
-                , zNotNull       = not . null
-                , zFalse         = False
+                , zNot           = not
+                , zLibOnly       = (== "--lib-only")
                 }
 
             -- check that YAML is syntactically valid
@@ -94,8 +95,8 @@ data Z = Z
     , zWinJobs       :: [WinGhcJob]
     , zMangleVersion :: String -> String
     , zOr            :: Bool -> Bool -> Bool
-    , zNotNull       :: [String] -> Bool
-    , zFalse         :: Bool
+    , zNot           :: Bool -> Bool
+    , zLibOnly       :: String -> Bool
     }
   deriving (Generic)
 

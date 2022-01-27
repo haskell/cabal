@@ -42,7 +42,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
-    ( ParseResult, parseFatalFailure, parseString, readFields )
+    ( ParseResult, parseFatalFailure, readFields )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
@@ -51,6 +51,8 @@ import Distribution.Parsec
     ( Position(..) )
 import Distribution.Simple.Flag
     ( fromFlagOrDefault )
+import Distribution.Simple.PackageDescription
+    ( parseString )
 import Distribution.Simple.Setup
     ( Flag(..) )
 import Distribution.Simple.Utils
@@ -164,19 +166,27 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
   = withTemporaryTempDirectory $ \mkTmpDir -> do
     (tc, ctx) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with (without mkTmpDir)
 
-    -- In the case where a selector is both a valid target and script, assume it is a target,
-    -- because you can disambiguate the script with "./script"
-    (tc', ctx', sels) <- readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
-      Left err@(TargetSelectorNoTargetsInProject:_)
-        | [] <- targetStrings
-        , AcceptNoTargets <- noTargets -> return (tc, ctx, defaultTarget)
-        | (script:_) <- targetStrings  -> scriptOrError script err
-      Left err@(TargetSelectorNoSuch t _:_)
-        | TargetString1 script <- t    -> scriptOrError script err
-      Left err@(TargetSelectorExpected t _ _:_)
-        | TargetString1 script <- t    -> scriptOrError script err
-      Left err                         -> reportTargetSelectorProblems verbosity err
-      Right sels                       -> return (tc, ctx, sels)
+    (tc', ctx', sels) <- case targetStrings of
+      -- Only script targets may contain spaces and or end with ':'.
+      -- Trying to readTargetSelectors such a target leads to a parse error.
+      [target] | any (\c -> isSpace c) target || ":" `isSuffixOf` target -> do
+          scriptOrError target [TargetSelectorNoScript $ TargetString1 target]
+      _                                                   -> do
+        -- In the case where a selector is both a valid target and script, assume it is a target,
+        -- because you can disambiguate the script with "./script"
+        readTargetSelectors (localPackages ctx) kind targetStrings >>= \case
+          Left err@(TargetSelectorNoTargetsInProject:_)
+            | [] <- targetStrings
+            , AcceptNoTargets <- noTargets -> return (tc, ctx, defaultTarget)
+            | (script:_) <- targetStrings  -> scriptOrError script err
+          Left err@(TargetSelectorNoSuch t _:_)
+            | TargetString1 script <- t    -> scriptOrError script err
+          Left err@(TargetSelectorExpected t _ _:_)
+            | TargetString1 script <- t    -> scriptOrError script err
+          Left err@(MatchingInternalError _ _ _:_) -- Handle ':' in middle of script name.
+            | [script] <- targetStrings    -> scriptOrError script err
+          Left err                         -> reportTargetSelectorProblems verbosity err
+          Right sels                       -> return (tc, ctx, sels)
 
     act tc' ctx' sels
   where

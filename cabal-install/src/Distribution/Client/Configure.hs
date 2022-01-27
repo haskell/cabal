@@ -59,6 +59,8 @@ import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+import Distribution.Simple.PackageDescription
+         ( readGenericPackageDescription )
 import Distribution.Simple.PackageIndex as PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Package
@@ -68,8 +70,6 @@ import Distribution.Types.GivenComponent
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint(..), thisPackageVersionConstraint )
 import qualified Distribution.PackageDescription as PkgDesc
-import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version

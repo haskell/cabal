@@ -3,6 +3,11 @@ import Test.Cabal.Prelude
 main = cabalTest $
   withSourceCopyDir "app" $ do
     cwd <- fmap testSourceCopyDir getTestEnv
-    cabal "init" ["-n", "--exe", "--application-dir=app", "--main-is=Main.hs", "--", cwd]
+
+    buildOut <- withDirectory cwd $ do
+      cabal "init" ["-n", "--exe", "--application-dir=app", "--main-is=Main.hs"]
+      setup "configure" []
+      setup' "build" ["app"]
 
     assertFileDoesContain (cwd </> "app/Main.hs") "This should remain as is!"
+    assertOutputContains "Linking" buildOut

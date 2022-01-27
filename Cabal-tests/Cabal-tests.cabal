@@ -57,6 +57,7 @@ test-suite unit-tests
     , bytestring
     , Cabal
     , Cabal-described
+    , Cabal-syntax
     , Cabal-QuickCheck
     , containers
     , deepseq
@@ -92,7 +93,7 @@ test-suite parser-tests
       base
     , base-compat       >=0.11.0  && <0.13
     , bytestring
-    , Cabal
+    , Cabal-syntax
     , Cabal-tree-diff
     , Diff              >=0.4     && <0.5
     , directory
@@ -119,6 +120,7 @@ test-suite check-tests
       base
     , bytestring
     , Cabal
+    , Cabal-syntax
     , Diff          >=0.4     && <0.5
     , directory
     , filepath
@@ -142,6 +144,7 @@ test-suite custom-setup-tests
   build-depends:
       base
     , Cabal
+    , Cabal-syntax
     , directory
     , filepath
     , process
@@ -160,6 +163,7 @@ test-suite hackage-tests
       base
     , bytestring
     , Cabal
+    , Cabal-syntax
     , Cabal-tree-diff
     , containers
     , deepseq
@@ -188,7 +192,7 @@ test-suite rpmvercmp
   build-depends:
       base
     , bytestring
-    , Cabal
+    , Cabal-syntax
 
   build-depends:
       QuickCheck
@@ -210,7 +214,7 @@ test-suite no-thunks-test
   build-depends:
       base
     , bytestring
-    , Cabal
+    , Cabal-syntax
     , tasty        >=1.2.3 && <1.5
     , tasty-hunit
 

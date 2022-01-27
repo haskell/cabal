@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-testsuite/
+packages: Cabal/ cabal-testsuite/ Cabal-syntax/
 packages: cabal-install/
 packages: cabal-install-solver/
 packages: solver-benchmarks/
