@@ -482,7 +482,7 @@ checkFields pkg =
     --TODO: recommend not using the stability field
     --TODO: recommend specifying a source repo
 
-  , check (ShortText.length (synopsis pkg) >= 80) $
+  , check (ShortText.length (synopsis pkg) > 80) $
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
 
