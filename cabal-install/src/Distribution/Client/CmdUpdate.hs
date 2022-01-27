@@ -47,7 +47,6 @@ import Distribution.Simple.Utils
          ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, warn )
 import Distribution.Verbosity
          ( normal, lessVerbose )
-import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.IndexUtils.IndexState
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache, Index(..), writeIndexTimestamp
@@ -203,7 +202,8 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
               then Just `fmap` getCurrentTime
               else return Nothing
       updated <- Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
-
+      -- this resolves indexState (which could be HEAD) into a timestamp
+      new_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
       let rname = remoteRepoName (repoRemote repo)
 
       -- Update cabal's internal index as well so that it's not out of sync
@@ -214,20 +214,20 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
           setModificationTime (indexBaseName repo <.> "tar") now `catchIO`
              (\e -> warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e)
           noticeNoWrap verbosity $
-            "Package list of " ++ prettyShow rname ++
-            " is up to date at index-state " ++ prettyShow (IndexStateTime current_ts)
+            "Package list of " ++ prettyShow rname ++ " is up to date."
 
         Sec.HasUpdates -> do
           updateRepoIndexCache verbosity index
-          new_ts <- currentIndexTimestamp (lessVerbose verbosity) repoCtxt repo
           noticeNoWrap verbosity $
-            "Updated package list of " ++ prettyShow rname ++
-            " to the index-state " ++ prettyShow (IndexStateTime new_ts)
+            "Package list of " ++ prettyShow rname ++ " has been updated."
 
-          -- TODO: This will print multiple times if there are multiple
-          -- repositories: main problem is we don't have a way of updating
-          -- a specific repo.  Once we implement that, update this.
-          when (current_ts /= nullTimestamp) $
-            noticeNoWrap verbosity $
-              "To revert to previous state run:\n" ++
-              "    cabal v2-update '" ++ prettyShow (UpdateRequest rname (IndexStateTime current_ts)) ++ "'\n"
+      noticeNoWrap verbosity $
+        "The index-state is set to " ++ prettyShow (IndexStateTime new_ts) ++ "."
+
+      -- TODO: This will print multiple times if there are multiple
+      -- repositories: main problem is we don't have a way of updating
+      -- a specific repo.  Once we implement that, update this.
+      when (new_ts /= current_ts) $
+        noticeNoWrap verbosity $
+          "To revert to previous state run:\n" ++
+          "    cabal v2-update '" ++ prettyShow (UpdateRequest rname (IndexStateTime current_ts)) ++ "'\n"
