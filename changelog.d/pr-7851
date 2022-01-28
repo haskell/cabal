@@ -1,7 +1,7 @@
 synopsis:  Better support for scripts
 packages: cabal-install
-prs: #7851
-issues: #7842 #6354 #6149.
+prs: #7851 #7925
+issues: #7842 #7073 #6354 #6149
 
 description: {
 
@@ -11,5 +11,6 @@ description: {
 - `cabal repl script` added. It will open a repl for script using the cache if available.
 - `cabal clean script` added. It will clean the cache for script.
 - `cabal clean` will now remove script caches for which there is no marching script.
+- `cabal list-bin` now works with scripts
 
 }
