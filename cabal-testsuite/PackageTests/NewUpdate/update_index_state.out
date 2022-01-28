@@ -1,0 +1,18 @@
+# cabal update
+Downloading the latest package list from hackage.haskell.org
+Package list of hackage.haskell.org has been updated.
+The index-state is set to 2022-01-28T02:36:41Z.
+To revert to previous state run:
+    cabal v2-update 'hackage.haskell.org,'
+# cabal update
+Downloading the latest package list from hackage.haskell.org
+Package list of hackage.haskell.org is up to date.
+The index-state is set to 2016-09-24T17:47:48Z.
+To revert to previous state run:
+    cabal v2-update 'hackage.haskell.org,2022-01-28T02:36:41Z'
+# cabal update
+Downloading the latest package list from hackage.haskell.org
+Package list of hackage.haskell.org is up to date.
+The index-state is set to 2022-01-28T02:36:41Z.
+To revert to previous state run:
+    cabal v2-update 'hackage.haskell.org,2016-09-24T17:47:48Z'
