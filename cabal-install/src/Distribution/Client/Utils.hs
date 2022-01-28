@@ -49,7 +49,9 @@ import Data.List
          ( groupBy )
 import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
-         ( finally, bracket )
+         ( finally )
+import qualified Control.Exception.Safe as Safe
+         ( bracket )
 import System.Directory
          ( canonicalizePath, doesFileExist, findExecutable, getCurrentDirectory
          , removeFile, setCurrentDirectory, getDirectoryContents, doesDirectoryExist )
@@ -118,7 +120,7 @@ withTempFileName :: FilePath
                  -> String
                  -> (FilePath -> IO a) -> IO a
 withTempFileName tmpDir template action =
-  Exception.bracket
+  Safe.bracket
     (openTempFile tmpDir template)
     (\(name, _) -> removeExistingFile name)
     (\(name, h) -> hClose h >> action name)
