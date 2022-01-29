@@ -13,7 +13,6 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Time
 
-import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.Time
 import qualified UnitTests.Distribution.Compat.Graph
 import qualified UnitTests.Distribution.Simple.Command
@@ -44,9 +43,7 @@ tests mtimeChangeCalibrated =
                     else mtimeChangeCalibrated
   in
   testGroup "Unit Tests"
-    [ testGroup "Distribution.Compat.CreatePipe"
-        UnitTests.Distribution.Compat.CreatePipe.tests
-    , testGroup "Distribution.Compat.Time"
+    [ testGroup "Distribution.Compat.Time"
         (UnitTests.Distribution.Compat.Time.tests mtimeChange)
     , testGroup "Distribution.Compat.Graph"
         UnitTests.Distribution.Compat.Graph.tests

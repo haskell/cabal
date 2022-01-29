@@ -26,7 +26,6 @@ test-suite unit-tests
     Test.Laws
     Test.QuickCheck.Utils
     UnitTests.Distribution.CabalSpecVersion
-    UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Described

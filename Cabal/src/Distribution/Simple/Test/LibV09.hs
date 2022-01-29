@@ -13,7 +13,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Types.UnqualComponentName
 
-import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
 import Distribution.ModuleName
@@ -42,7 +41,7 @@ import System.Directory
     , setCurrentDirectory )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hPutStr )
-import System.Process (StdStream(..), waitForProcess)
+import System.Process (StdStream(..), createPipe, waitForProcess)
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
