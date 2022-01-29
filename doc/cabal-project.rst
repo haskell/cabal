@@ -32,7 +32,7 @@ options):
 
 4. ``cabal.project.local`` (the output of ``cabal v2-configure``)
 
-A call to ``cabal build`` will consider ``cabal.project*`` from parent 
+Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
 directories when there is none in the current directory.
 
 Specifying the local packages
