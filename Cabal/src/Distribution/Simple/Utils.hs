@@ -172,11 +172,6 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
-
-        -- * Deprecated functions
-        findFile,
-        findModuleFile,
-        findModuleFiles,
   ) where
 
 import Prelude ()
@@ -998,12 +993,6 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 -- Finding files
 
 
-{-# DEPRECATED findFile "Use findFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findFile :: [FilePath]    -- ^search locations
-         -> FilePath      -- ^File Name
-         -> IO FilePath
-findFile = findFileEx normal
-
 -- | Find a file by looking in a search path. The file path must match exactly.
 --
 -- @since 3.4.0.0
@@ -1106,13 +1095,6 @@ findAllFiles :: (a -> FilePath) -> [a] -> IO [a]
 findAllFiles file = filterM (doesFileExist . file)
 
 
-{-# DEPRECATED findModuleFiles "Use findModuleFilesEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
-                -> [String]     -- ^ search suffixes
-                -> [ModuleName] -- ^ modules
-                -> IO [(FilePath, FilePath)]
-findModuleFiles = findModuleFilesEx normal
-
 -- | Finds the files corresponding to a list of Haskell module names.
 --
 -- As 'findModuleFile' but for a list of module names.
@@ -1124,13 +1106,6 @@ findModuleFilesEx :: Verbosity
                   -> IO [(FilePath, FilePath)]
 findModuleFilesEx verbosity searchPath extensions moduleNames =
   traverse (findModuleFileEx verbosity searchPath extensions) moduleNames
-
-{-# DEPRECATED findModuleFile "Use findModuleFileEx instead. This symbol will be removed in Cabal 3.2 (est. December 2019)" #-}
-findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
-               -> [String]    -- ^ search suffixes
-               -> ModuleName  -- ^ module
-               -> IO (FilePath, FilePath)
-findModuleFile = findModuleFileEx normal
 
 -- | Find the file corresponding to a Haskell module name.
 --
