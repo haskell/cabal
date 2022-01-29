@@ -1,0 +1,7 @@
+synopsis: Create Cabal-syntax for .cabal files
+prs: #7620
+issues: #7559
+
+description {
+- Extract `Cabal-syntax` from `Cabal` to provide the syntax and parsing code for `.cabal` files
+}

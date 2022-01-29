@@ -1,3 +1,4 @@
+packages: Cabal-syntax/
 packages: Cabal/
 packages: cabal-install-solver/
 packages: cabal-install/

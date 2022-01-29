@@ -84,7 +84,9 @@ import Distribution.Simple.Utils
          ( die', lowercase )
 
 import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription, parseGenericPackageDescriptionMaybe )
+         ( parseGenericPackageDescriptionMaybe )
+import Distribution.Simple.PackageDescription
+         ( readGenericPackageDescription )
 
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS

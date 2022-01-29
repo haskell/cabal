@@ -25,6 +25,7 @@ import Prelude hiding (break, putStrLn, getLine, putStr)
 
 import Distribution.Client.Compat.Prelude hiding (break, empty, getLine, putStr, putStrLn)
 import Distribution.Client.Init.Types
+import qualified System.IO
 
 
 -- | Create a prompt with optional default value that returns a
@@ -149,6 +150,7 @@ promptDefault
     -> m t
 promptDefault parse pprint msg def = do
   putStr $ mkDefPrompt msg (pprint <$> def)
+  hFlush System.IO.stdout
   input <- getLine
   case def of
     DefaultPrompt d | null input  -> return d

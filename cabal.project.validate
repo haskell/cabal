@@ -1,3 +1,4 @@
+packages: Cabal-syntax/
 packages: Cabal/
 packages: cabal-testsuite/
 packages: cabal-install/
@@ -20,6 +21,8 @@ constraints: these -assoc
 
 write-ghc-environment-files: never
 
+package Cabal-syntax
+  ghc-options: -Werror -fno-ignore-asserts
 package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite

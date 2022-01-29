@@ -1,0 +1,26 @@
+name: p
+version: 0.1
+build-type: Simple
+cabal-version: >= 1.10
+
+executable p1
+  main-is:  P1.hs
+  build-depends: base
+
+benchmark p2
+  type: exitcode-stdio-1.0
+  main-is:  P2.hs
+  build-depends: base
+
+test-suite p3
+  type: exitcode-stdio-1.0
+  main-is:  P3.hs
+  build-depends: base
+
+library p4
+  exposed-modules: P4
+  build-depends: base
+
+foreign-library libp
+  type: native-shared
+  other-modules: FLib

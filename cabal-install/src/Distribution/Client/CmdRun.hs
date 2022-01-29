@@ -42,24 +42,15 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
          ( showComponentName )
-import Distribution.CabalSpecVersion (CabalSpecVersion (..), cabalSpecLatest)
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, warn, die', info, notice
-         , createTempDirectory, handleDoesNotExist )
-import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), ProjectConfigShared(..)
-         , withProjectOrGlobalConfig )
-import Distribution.Client.ProjectFlags
-         ( flagIgnoreProject )
+         ( wrapText, die', info, notice )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
 import Distribution.Client.ProjectPlanning.Types
          ( dataDirsEnvironmentForPlan )
-import Distribution.Client.TargetSelector
-         ( TargetSelectorProblem(..), TargetString(..) )
 import Distribution.Client.InstallPlan
          ( toList, foldPlanPackage )
 import Distribution.Types.UnqualComponentName
@@ -69,45 +60,14 @@ import Distribution.Simple.Program.Run
            emptyProgramInvocation )
 import Distribution.Types.UnitId
          ( UnitId )
+import Distribution.Client.ScriptUtils
+         ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
 
-import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..) )
-import Distribution.FieldGrammar
-         ( takeFields, parseFieldGrammar )
-import Distribution.PackageDescription.FieldGrammar
-         ( executableFieldGrammar )
-import Distribution.PackageDescription.PrettyPrint
-         ( writeGenericPackageDescription )
-import Distribution.Parsec
-         ( Position(..) )
-import Distribution.Fields
-         ( ParseResult, parseString, parseFatalFailure, readFields )
-import qualified Distribution.SPDX.License as SPDX
-import Distribution.Solver.Types.SourcePackage as SP
-         ( SourcePackage(..) )
-import Distribution.Types.BuildInfo
-         ( BuildInfo(..) )
-import Distribution.Types.CondTree
-         ( CondTree(..) )
-import Distribution.Types.Executable
-         ( Executable(..) )
-import Distribution.Types.GenericPackageDescription as GPD
-         ( GenericPackageDescription(..), emptyGenericPackageDescription )
-import Distribution.Types.PackageDescription
-         ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.PackageName.Magic
-         ( fakePackageId )
-import Language.Haskell.Extension
-         ( Language(..) )
-
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as Set
-import qualified Text.Parsec as P
 import System.Directory
-         ( getTemporaryDirectory, removeDirectoryRecursive, doesFileExist )
+         ( doesFileExist )
 import System.FilePath
-         ( (</>), isValid, isPathSeparator, takeExtension )
-
+         ( (</>), isValid, isPathSeparator )
 
 runCommand :: CommandUI (NixStyleFlags ())
 runCommand = CommandUI
@@ -121,8 +81,9 @@ runCommand = CommandUI
 
       ++ "Any executable-like component in any package in the project can be "
       ++ "specified. A package can be specified if contains just one "
-      ++ "executable-like. The default is to use the package in the current "
-      ++ "directory if it contains just one executable-like.\n\n"
+      ++ "executable-like, preferring a single executable. The default is to "
+      ++ "use the package in the current directory if it contains just one "
+      ++ "executable-like.\n\n"
 
       ++ "Extra arguments can be passed to the program, but use '--' to "
       ++ "separate arguments for the program from arguments for " ++ pname
@@ -157,44 +118,17 @@ runCommand = CommandUI
 -- "Distribution.Client.ProjectOrchestration"
 --
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
-runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
-    globalTmp <- getTemporaryDirectory
-    tmpDir <- createTempDirectory globalTmp "cabal-repl."
-
-    let
-      with =
-        establishProjectBaseContext verbosity cliConfig OtherCommand
-      without globalConfig = do
-        distDirLayout <- establishDummyDistDirLayout verbosity (globalConfig <> cliConfig) tmpDir
-        establishDummyProjectBaseContext verbosity (globalConfig <> cliConfig) distDirLayout [] OtherCommand
-
-    baseCtx <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
-
-    let
-      scriptOrError script err = do
-        exists <- doesFileExist script
-        let pol | takeExtension script == ".lhs" = LiterateHaskell
-                | otherwise                      = PlainHaskell
-        if exists
-          then BS.readFile script >>= handleScriptCase verbosity pol baseCtx tmpDir
-          else reportTargetSelectorProblems verbosity err
-
-    (baseCtx', targetSelectors) <-
-      readTargetSelectors (localPackages baseCtx) (Just ExeKind) (take 1 targetStrings)
-        >>= \case
-          Left err@(TargetSelectorNoTargetsInProject:_)
-            | (script:_) <- targetStrings -> scriptOrError script err
-          Left err@(TargetSelectorNoSuch t _:_)
-            | TargetString1 script <- t   -> scriptOrError script err
-          Left err@(TargetSelectorExpected t _ _:_)
-            | TargetString1 script <- t   -> scriptOrError script err
-          Left err   -> reportTargetSelectorProblems verbosity err
-          Right sels -> return (baseCtx, sels)
+runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
+  = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags $ \targetCtx ctx targetSelectors -> do
+    baseCtx <- case targetCtx of
+      ProjectContext             -> return ctx
+      GlobalContext              -> return ctx
+      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
 
     buildCtx <-
-      runProjectPreBuildPhase verbosity baseCtx' $ \elaboratedPlan -> do
+      runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
 
-            when (buildSettingOnlyDeps (buildSettings baseCtx')) $
+            when (buildSettingOnlyDeps (buildSettings baseCtx)) $
               die' verbosity $
                   "The run command does not support '--only-dependencies'. "
                ++ "You may wish to use 'build --only-dependencies' and then "
@@ -236,10 +170,10 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                        ++ "phase has been reached. This is a bug.")
         $ targetsMap buildCtx
 
-    printPlan verbosity baseCtx' buildCtx
+    printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx
-    runProjectPostBuildPhase verbosity baseCtx' buildCtx buildOutcomes
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
+    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
 
 
     let elaboratedPlan = elaboratedPlanToExecute buildCtx
@@ -282,8 +216,7 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                                   pkg
                                   exeName
                </> exeName
-    let args = drop 1 targetStrings
-        dryRun = buildSettingDryRun (buildSettings baseCtx)
+    let dryRun = buildSettingDryRun (buildSettings baseCtx)
               || buildSettingOnlyDownload (buildSettings baseCtx)
 
     if dryRun
@@ -298,13 +231,9 @@ runAction flags@NixStyleFlags {..} targetStrings globalFlags = do
                                  (distDirLayout baseCtx)
                                  elaboratedPlan
            }
-
-    handleDoesNotExist () (removeDirectoryRecursive tmpDir)
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = flagIgnoreProject projectFlags
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
+    (targetStr, args) = splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
 -- invoked as a script interpreter, i.e. via
@@ -331,120 +260,6 @@ validScript script
 handleShebang :: FilePath -> [String] -> IO ()
 handleShebang script args =
   runAction (commandDefaultFlags runCommand) (script:args) defaultGlobalFlags
-
-parseScriptBlock :: BS.ByteString -> ParseResult Executable
-parseScriptBlock str =
-    case readFields str of
-        Right fs -> do
-            let (fields, _) = takeFields fs
-            parseFieldGrammar cabalSpecLatest fields (executableFieldGrammar "script")
-        Left perr -> parseFatalFailure pos (show perr) where
-            ppos = P.errorPos perr
-            pos  = Position (P.sourceLine ppos) (P.sourceColumn ppos)
-
-readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
-readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
-
-readScriptBlockFromScript :: Verbosity -> PlainOrLiterate -> BS.ByteString -> IO (Executable, BS.ByteString)
-readScriptBlockFromScript verbosity pol str = do
-    str' <- case extractScriptBlock pol str of
-              Left e -> die' verbosity $ "Failed extracting script block: " ++ e
-              Right x -> return x
-    when (BS.all isSpace str') $ warn verbosity "Empty script block"
-    (\x -> (x, noShebang)) <$> readScriptBlock verbosity str'
-  where
-    noShebang = BS.unlines . filter (not . BS.isPrefixOf "#!") . BS.lines $ str
-
--- | Extract the first encountered script metadata block started end
--- terminated by the tokens
---
--- * @{- cabal:@
---
--- * @-}@
---
--- appearing alone on lines (while tolerating trailing whitespace).
--- These tokens are not part of the 'Right' result.
---
--- In case of missing or unterminated blocks a 'Left'-error is
--- returned.
-extractScriptBlock :: PlainOrLiterate -> BS.ByteString -> Either String BS.ByteString
-extractScriptBlock _pol str = goPre (BS.lines str)
-  where
-    isStartMarker = (== startMarker) . stripTrailSpace
-    isEndMarker   = (== endMarker) . stripTrailSpace
-
-    stripTrailSpace = fst . BS.spanEnd isSpace
-
-    -- before start marker
-    goPre ls = case dropWhile (not . isStartMarker) ls of
-                 [] -> Left $ "`" ++ BS.unpack startMarker ++ "` start marker not found"
-                 (_:ls') -> goBody [] ls'
-
-    goBody _ [] = Left $ "`" ++ BS.unpack endMarker ++ "` end marker not found"
-    goBody acc (l:ls)
-      | isEndMarker l = Right $! BS.unlines $ reverse acc
-      | otherwise     = goBody (l:acc) ls
-
-    startMarker, endMarker :: BS.ByteString
-    startMarker = fromString "{- cabal:"
-    endMarker   = fromString "-}"
-
-data PlainOrLiterate
-    = PlainHaskell
-    | LiterateHaskell
-
-handleScriptCase
-  :: Verbosity
-  -> PlainOrLiterate
-  -> ProjectBaseContext
-  -> FilePath
-  -> BS.ByteString
-  -> IO (ProjectBaseContext, [TargetSelector])
-handleScriptCase verbosity pol baseCtx tmpDir scriptContents = do
-  (executable, contents') <- readScriptBlockFromScript verbosity pol scriptContents
-
-  -- We need to create a dummy package that lives in our dummy project.
-  let
-    mainName = case pol of
-      PlainHaskell    -> "Main.hs"
-      LiterateHaskell -> "Main.lhs"
-
-    sourcePackage = SourcePackage
-      { srcpkgPackageId      = pkgId
-      , srcpkgDescription    = genericPackageDescription
-      , srcpkgSource         = LocalUnpackedPackage tmpDir
-      , srcpkgDescrOverride  = Nothing
-      }
-    genericPackageDescription  = emptyGenericPackageDescription
-      { GPD.packageDescription = packageDescription
-      , condExecutables        = [("script", CondNode executable' targetBuildDepends [])]
-      }
-    executable' = executable
-      { modulePath = mainName
-      , buildInfo = binfo
-        { defaultLanguage =
-          case defaultLanguage of
-            just@(Just _) -> just
-            Nothing       -> Just Haskell2010
-        }
-      }
-    binfo@BuildInfo{..} = buildInfo executable
-    packageDescription = emptyPackageDescription
-      { package = pkgId
-      , specVersion = CabalSpecV2_2
-      , licenseRaw = Left SPDX.NONE
-      }
-    pkgId = fakePackageId
-
-  writeGenericPackageDescription (tmpDir </> "fake-package.cabal") genericPackageDescription
-  BS.writeFile (tmpDir </> mainName) contents'
-
-  let
-    baseCtx' = baseCtx
-      { localPackages = localPackages baseCtx ++ [SpecificSourcePackage sourcePackage] }
-    targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-
-  return (baseCtx', targetSelectors)
 
 singleExeOrElse :: IO (UnitId, UnqualComponentName) -> TargetsMap -> IO (UnitId, UnqualComponentName)
 singleExeOrElse action targetsMap =
@@ -480,17 +295,21 @@ selectPackageTargets :: TargetSelector
                      -> [AvailableTarget k] -> Either RunTargetProblem [k]
 selectPackageTargets targetSelector targets
 
-    -- If there is exactly one buildable executable then we select that
+  -- If there is a single executable component, select that. See #7403
   | [target] <- targetsExesBuildable
   = Right [target]
 
-    -- but fail if there are multiple buildable executables.
-  | not (null targetsExesBuildable)
-  = Left (matchesMultipleProblem targetSelector targetsExesBuildable')
+  -- Otherwise, if there is a single executable-like component left, select that.
+  | [target] <- targetsExeLikesBuildable
+  = Right [target]
+
+  -- but fail if there are multiple buildable executables.
+  | not (null targetsExeLikesBuildable)
+  = Left (matchesMultipleProblem targetSelector targetsExeLikesBuildable')
 
     -- If there are executables but none are buildable then we report those
-  | not (null targetsExes)
-  = Left (TargetProblemNoneEnabled targetSelector targetsExes)
+  | not (null targetsExeLikes')
+  = Left (TargetProblemNoneEnabled targetSelector targetsExeLikes')
 
     -- If there are no executables but some other targets then we report that
   | not (null targets)
@@ -500,14 +319,19 @@ selectPackageTargets targetSelector targets
   | otherwise
   = Left (TargetProblemNoTargets targetSelector)
   where
-    -- Targets that can be executed
-    targetsExecutableLike =
-      concatMap (\kind -> filterTargetsKind kind targets)
-                [ExeKind, TestKind, BenchKind]
-    (targetsExesBuildable,
-     targetsExesBuildable') = selectBuildableTargets' targetsExecutableLike
+    -- Targets that are precisely executables
+    targetsExes = filterTargetsKind ExeKind targets
+    targetsExesBuildable = selectBuildableTargets targetsExes
 
-    targetsExes             = forgetTargetsDetail targetsExecutableLike
+    -- Any target that could be executed
+    targetsExeLikes = targetsExes
+                   ++ filterTargetsKind TestKind targets
+                   ++ filterTargetsKind BenchKind targets
+
+    (targetsExeLikesBuildable,
+     targetsExeLikesBuildable') = selectBuildableTargets' targetsExeLikes
+
+    targetsExeLikes'             = forgetTargetsDetail targetsExeLikes
 
 
 -- | For a 'TargetComponent' 'TargetSelector', check if the component can be

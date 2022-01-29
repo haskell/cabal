@@ -86,6 +86,7 @@ import Distribution.Client.Setup
 import Distribution.PackageDescription.Parsec
          ( parseGenericPackageDescription, parseGenericPackageDescriptionMaybe )
 import qualified Distribution.PackageDescription.Parsec as PackageDesc.Parse
+import qualified Distribution.Simple.PackageDescription as PackageDesc.Parse
 
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex

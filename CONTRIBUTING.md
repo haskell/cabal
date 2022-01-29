@@ -130,10 +130,6 @@ Conventions
 
 * If you do something tricky or non-obvious, add a comment.
 
-* If your commit only touches comments, you can use `[ci skip]`
-  anywhere in the body of the commit message to avoid needlessly
-  triggering the build bots.
-
 * For local imports (Cabal module importing Cabal module), import lists
   are NOT required (although you may use them at your discretion.)  For
   third-party and standard library imports, please use either qualified imports
@@ -240,15 +236,17 @@ There are a few main venues of communication:
 * For more organizational concerns, the [mailing
   list](http://www.haskell.org/mailman/listinfo/cabal-devel) is used.
 
-* Many developers idle on `#hackage` on `irc.freenode.net` ([archives](http://ircbrowse.net/browse/hackage)).  `#ghc` ([archives](http://ircbrowse.net/browse/ghc)) is also a decently good bet.
+* Many developers idle on `#hackage` on [`irc.libera.chat`](https://libera.chat). The `#ghc` channel is also a decently good bet.
+  * You can join the channel using a web client, even anonymously: https://web.libera.chat/#hackage
+  * Alternatively you can join it using [matrix](https://matrix.org/): https://matrix.to/#/#hackage:libera.chat
 
 Releases
 --------
 
 Notes for how to make a release are at the
 wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
-Currently, @23Skidoo, @rthomas, @tibbe and @dcoutts have access to
-`haskell.org/cabal`, and @davean is the point of contact for getting
+Currently, [@emilypi](https://github.com/emilypi), [@fgaz](https://github.com/fgaz) and [@Mikolaj](https://github.com/Mikolaj) have access to
+`haskell.org/cabal`, and [@Mikolaj](https://github.com/Mikolaj) is the point of contact for getting
 permissions.
 
 API Documentation

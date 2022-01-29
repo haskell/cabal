@@ -30,8 +30,10 @@ import Distribution.Simple.Command
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
-         ( wrapText, die' )
+         ( wrapText, die', notice )
 import Distribution.Simple.Flag (Flag(..))
+
+import qualified System.Exit (exitSuccess)
 
 newtype ClientHaddockFlags = ClientHaddockFlags { openInBrowser :: Flag Bool }
 
@@ -185,5 +187,12 @@ selectComponentTarget :: SubComponentTarget
 selectComponentTarget = selectComponentTargetBasic
 
 reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
-reportBuildDocumentationTargetProblems verbosity problems =
-  reportTargetProblems verbosity "build documentation for" problems
+reportBuildDocumentationTargetProblems verbosity problems = 
+  case problems of
+    [TargetProblemNoneEnabled _ _] -> do
+      notice verbosity $
+          "No documentation was generated as this package does not contain a library. "
+       ++ "Perhaps you want to use the --haddock-executables, --haddock-tests, --haddock-benchmarks or "
+       ++ "--haddock-internal flags."
+      System.Exit.exitSuccess
+    _ -> reportTargetProblems verbosity "build documentation for" problems

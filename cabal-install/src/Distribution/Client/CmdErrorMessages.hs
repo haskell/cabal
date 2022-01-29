@@ -330,10 +330,13 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
               [ "the " ++ showComponentName availableTargetComponentName
               | AvailableTarget {availableTargetComponentName} <- targets' ]
          ++ plural (listPlural targets') " is " " are "
-         ++ "not available because the solver did not find a plan that "
-         ++ "included the " ++ renderOptionalStanza Plural stanza
-         ++ ". Force the solver to enable this for all packages by adding the "
-         ++ "line 'tests: True' to the 'cabal.project.local' file."
+         ++ "not available because the solver picked a plan that does not "
+         ++ "include the " ++ renderOptionalStanza Plural stanza
+         ++ ", perhaps because no such plan exists. To see the error message "
+         ++ "explaining the problems with such plans, force the solver to "
+         ++ "include the " ++ renderOptionalStanza Plural stanza ++ " for all "
+         ++ "packages, by adding the line 'tests: True' to the "
+         ++ "'cabal.project.local' file."
         (TargetNotBuildable, _) ->
             renderListCommaAnd
               [ "the " ++ showComponentName availableTargetComponentName

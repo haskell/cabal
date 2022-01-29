@@ -1192,7 +1192,7 @@ syncAndReadSourcePackagesRemoteRepos verbosity
         for_ repoGroupWithPaths $ \(repo, _, repoPath) ->
             for_ (nonEmpty (srpCommand repo)) $ \(cmd :| args) -> liftIO $ do
                 exitCode <- rawSystemIOWithEnv verbosity cmd args (Just repoPath) Nothing Nothing Nothing Nothing
-                unless (exitCode /= ExitSuccess) $ exitWith exitCode
+                unless (exitCode == ExitSuccess) $ exitWith exitCode
 
         -- But for reading we go through each 'SourceRepo' including its subdir
         -- value and have to know which path each one ended up in.

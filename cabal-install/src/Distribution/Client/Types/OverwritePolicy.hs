@@ -10,6 +10,7 @@ import qualified Text.PrettyPrint                as PP
 data OverwritePolicy
     = NeverOverwrite
     | AlwaysOverwrite
+    | PromptOverwrite
   deriving (Show, Eq, Generic, Bounded, Enum)
 
 instance Binary OverwritePolicy
@@ -21,8 +22,10 @@ instance Parsec OverwritePolicy where
         case name of
             "always" -> pure AlwaysOverwrite
             "never"  -> pure NeverOverwrite
+            "prompt" -> pure PromptOverwrite
             _        -> P.unexpected $ "OverwritePolicy: " ++ name
 
 instance Pretty OverwritePolicy where
     pretty NeverOverwrite  = PP.text "never"
     pretty AlwaysOverwrite = PP.text "always"
+    pretty PromptOverwrite = PP.text "prompt"

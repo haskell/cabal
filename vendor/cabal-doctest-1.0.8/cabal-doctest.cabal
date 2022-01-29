@@ -33,8 +33,9 @@ library
   other-modules:
   other-extensions:
   build-depends:
-      base       >=4.3  && <4.16
-    , Cabal      >=1.10 && <3.8
+      base          >=4.3  && <4.16
+    , Cabal         >=1.10 && <3.8
+    , Cabal-syntax  >=1.10 && <3.8
     , directory
     , filepath
 

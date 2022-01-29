@@ -223,7 +223,7 @@ retrieveDependencies v flags mods' pkgIx = do
       modDeps = map (\(mn, ds) -> (mn, ds, M.lookup ds modMap)) mods
       -- modDeps = map (id &&& flip M.lookup modMap) mods
 
-  message v "\nGuessing dependencies..."
+  message v Log "Guessing dependencies..."
   nub . catMaybes <$> traverse (chooseDep v flags) modDeps
 
 -- Given a module and a list of installed packages providing it,
@@ -254,7 +254,7 @@ chooseDep v flags (importer, m, mipi) = case mipi of
 
         -- Otherwise, choose the latest version and issue a warning.
         pids -> do
-          message v ("\nWarning: multiple versions of " ++ prettyShow (P.pkgName . NE.head $ pids) ++ " provide " ++ prettyShow m ++ ", choosing the latest.")
+          message v Warning ("multiple versions of " ++ prettyShow (P.pkgName . NE.head $ pids) ++ " provide " ++ prettyShow m ++ ", choosing the latest.")
           return $ P.Dependency
               (P.pkgName . NE.head $ pids)
               (pvpize desugar . maximum . fmap P.pkgVersion $ pids)
@@ -263,12 +263,12 @@ chooseDep v flags (importer, m, mipi) = case mipi of
       -- if multiple packages are found, we refuse to choose between
       -- different packages and make the user do it
       grps     -> do
-        message v ("\nWarning: multiple packages found providing " ++ prettyShow m ++ ": " ++ intercalate ", " (fmap (prettyShow . P.pkgName . NE.head) grps))
-        message v "You will need to pick one and manually add it to the build-depends field."
+        message v Warning ("multiple packages found providing " ++ prettyShow m ++ ": " ++ intercalate ", " (fmap (prettyShow . P.pkgName . NE.head) grps))
+        message v Warning "You will need to pick one and manually add it to the build-depends field."
         return Nothing
 
   _ -> do
-    message v ("\nWarning: no package found providing " ++ prettyShow m ++ " in " ++ prettyShow importer ++ ".")
+    message v Warning ("no package found providing " ++ prettyShow m ++ " in " ++ prettyShow importer ++ ".")
     return Nothing
 
   where
@@ -293,7 +293,7 @@ mkPackageNameDep pkg = mkDependency pkg anyVersion (NES.singleton LMainLibName)
 fixupDocFiles :: Interactive m => Verbosity -> PkgDescription -> m PkgDescription
 fixupDocFiles v pkgDesc
   | _pkgCabalVersion pkgDesc < CabalSpecV1_18 = do
-    message v $ concat
+    message v Warning $ concat
       [ "Cabal spec versions < 1.18 do not support extra-doc-files. "
       , "Doc files will be treated as extra-src-files."
       ]

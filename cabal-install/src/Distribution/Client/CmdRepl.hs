@@ -1,8 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: repl
 --
@@ -23,6 +23,8 @@ import Distribution.Client.Compat.Prelude
 import Distribution.Compat.Lens
 import qualified Distribution.Types.Lens as L
 
+import Distribution.Client.DistDirLayout
+         ( DistDirLayout(..) )
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.CmdErrorMessages
@@ -36,21 +38,20 @@ import Distribution.Client.TargetProblem
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.ProjectBuilding
          ( rebuildTargetsDryRun, improveInstallPlanWithUpToDatePackages )
-import Distribution.Client.ProjectConfig
-         ( ProjectConfig(..), withProjectOrGlobalConfig
-         , projectConfigConfigFile )
-import Distribution.Client.ProjectFlags
-         ( flagIgnoreProject )
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning
        ( ElaboratedSharedConfig(..), ElaboratedInstallPlan )
 import Distribution.Client.ProjectPlanning.Types
        ( elabOrderExeDependencies )
+import Distribution.Client.ScriptUtils
+         ( AcceptNoTargets(..), withContextAndSelectors, TargetContext(..)
+         , updateContextAndWriteProjectFile, updateContextAndWriteProjectFile'
+         , fakeProjectSourcePackage, lSrcpkgDescription )
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..) )
 import qualified Distribution.Client.Setup as Client
 import Distribution.Client.Types
-         ( PackageLocation(..), PackageSpecifier(..), UnresolvedSourcePackage )
+         ( PackageSpecifier(..), UnresolvedSourcePackage )
 import Distribution.Simple.Setup
          ( fromFlagOrDefault, ReplOptions(..), replOptions
          , Flag(..), toFlag, falseArg )
@@ -60,15 +61,13 @@ import Distribution.Simple.Command
 import Distribution.Compiler
          ( CompilerFlavor(GHC) )
 import Distribution.Simple.Compiler
-         ( compilerCompatVersion )
+         ( Compiler, compilerCompatVersion )
 import Distribution.Package
          ( Package(..), packageName, UnitId, installedUnitId )
-import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
          ( parsecCommaList )
 import Distribution.ReadE
          ( ReadE, parsecToReadE )
-import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage
          ( SourcePackage(..) )
 import Distribution.Types.BuildInfo
@@ -79,16 +78,10 @@ import Distribution.Types.CondTree
          ( CondTree(..), traverseCondTreeC )
 import Distribution.Types.Dependency
          ( Dependency(..), mainLibSet )
-import Distribution.Types.GenericPackageDescription
-         ( emptyGenericPackageDescription )
-import Distribution.Types.PackageDescription
-         ( PackageDescription(..), emptyPackageDescription )
-import Distribution.Types.PackageName.Magic
-         ( fakePackageId )
 import Distribution.Types.Library
          ( Library(..), emptyLibrary )
 import Distribution.Types.Version
-         ( mkVersion )
+         ( Version, mkVersion )
 import Distribution.Types.VersionRange
          ( anyVersion )
 import Distribution.Utils.Generic
@@ -96,18 +89,16 @@ import Distribution.Utils.Generic
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( wrapText, die', debugNoWrap, createTempDirectory, handleDoesNotExist )
+         ( wrapText, die', debugNoWrap )
 import Language.Haskell.Extension
          ( Language(..) )
-import Distribution.CabalSpecVersion
-         ( CabalSpecVersion (..) )
 
 import Data.List
          ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import System.Directory
-         ( getCurrentDirectory, getTemporaryDirectory, removeDirectoryRecursive )
+         ( doesFileExist, getCurrentDirectory )
 import System.FilePath
          ( (</>) )
 
@@ -195,18 +186,41 @@ replCommand = Client.installCommand {
 -- "Distribution.Client.ProjectOrchestration"
 --
 replAction :: NixStyleFlags (ReplOptions, EnvFlags) -> [String] -> GlobalFlags -> IO ()
-replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetStrings globalFlags = do
-    let
-      with                 = withProject    cliConfig                   verbosity targetStrings
-      without globalConfig = withoutProject (globalConfig <> cliConfig) verbosity targetStrings
-
-    (baseCtx, targetSelectors, finalizer, replType) <-
-      withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag with without
-
-    when (buildSettingOnlyDeps (buildSettings baseCtx)) $
+replAction flags@NixStyleFlags { extraFlags = (replOpts, envFlags), ..} targetStrings globalFlags
+  = withContextAndSelectors AcceptNoTargets (Just LibKind) flags targetStrings globalFlags $ \targetCtx ctx targetSelectors -> do
+    when (buildSettingOnlyDeps (buildSettings ctx)) $
       die' verbosity $ "The repl command does not support '--only-dependencies'. "
           ++ "You may wish to use 'build --only-dependencies' and then "
           ++ "use 'repl'."
+
+    let projectRoot = distProjectRootDirectory $ distDirLayout ctx
+
+    baseCtx <- case targetCtx of
+      ProjectContext -> return ctx
+      GlobalContext  -> do
+        unless (null targetStrings) $
+          die' verbosity $ "'repl' takes no arguments or a script argument outside a project: " ++ unwords targetStrings
+
+        let
+          sourcePackage = fakeProjectSourcePackage projectRoot
+            & lSrcpkgDescription . L.condLibrary
+            .~ Just (CondNode library [baseDep] [])
+          library = emptyLibrary { libBuildInfo = lBuildInfo }
+          lBuildInfo = emptyBuildInfo
+            { targetBuildDepends = [baseDep]
+            , defaultLanguage = Just Haskell2010
+            }
+          baseDep = Dependency "base" anyVersion mainLibSet
+
+        updateContextAndWriteProjectFile' ctx sourcePackage
+      ScriptContext scriptPath scriptExecutable -> do
+        unless (length targetStrings == 1) $
+          die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+        existsScriptPath <- doesFileExist scriptPath
+        unless existsScriptPath $
+          die' verbosity $ "'repl' takes a single argument which should be a script: " ++ unwords targetStrings
+
+        updateContextAndWriteProjectFile ctx scriptPath scriptExecutable
 
     (originalComponent, baseCtx') <- if null (envPackages envFlags)
       then return (Nothing, baseCtx)
@@ -235,7 +249,7 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
     -- In addition, to avoid a *third* trip through the solver, we are
     -- replicating the second half of 'runProjectPreBuildPhase' by hand
     -- here.
-    (buildCtx, replFlags'') <- withInstallPlan verbosity baseCtx' $
+    (buildCtx, compiler, replOpts') <- withInstallPlan verbosity baseCtx' $
       \elaboratedPlan elaboratedShared' -> do
         let ProjectBaseContext{..} = baseCtx'
 
@@ -267,36 +281,23 @@ replAction flags@NixStyleFlags { extraFlags = (replFlags, envFlags), ..} targetS
 
           ElaboratedSharedConfig { pkgConfigCompiler = compiler } = elaboratedShared'
 
-          -- First version of GHC where GHCi supported the flag we need.
-          -- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
-          minGhciScriptVersion = mkVersion [7, 6]
-
-          replFlags' = case originalComponent of
+          replFlags = case originalComponent of
             Just oci -> generateReplFlags includeTransitive elaboratedPlan' oci
             Nothing  -> []
-          replFlags'' = case replType of
-            GlobalRepl scriptPath
-              | Just version <- compilerCompatVersion GHC compiler
-              , version >= minGhciScriptVersion -> ("-ghci-script" ++ scriptPath) : replFlags'
-            _                                   -> replFlags'
 
-        return (buildCtx, replFlags'')
+        return (buildCtx, compiler, replOpts & lReplOptionsFlags %~ (++ replFlags))
 
-    let buildCtx' = buildCtx
-          { elaboratedShared = (elaboratedShared buildCtx)
-            { pkgConfigReplOptions = replFlags
-              { replOptionsFlags = (replOptionsFlags replFlags) ++ replFlags''
-          } } }
+    replOpts'' <- case targetCtx of
+      ProjectContext -> return replOpts'
+      _              -> usingGhciScript compiler projectRoot replOpts'
+
+    let buildCtx' = buildCtx & lElaboratedShared . lPkgConfigReplOptions .~ replOpts''
     printPlan verbosity baseCtx' buildCtx'
 
     buildOutcomes <- runProjectBuildPhase verbosity baseCtx' buildCtx'
     runProjectPostBuildPhase verbosity baseCtx' buildCtx' buildOutcomes
-    finalizer
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    ignoreProject = flagIgnoreProject projectFlags
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared cliConfig)
 
     validatedTargets elaboratedPlan targetSelectors = do
       -- Interpret the targets on the command line as repl targets
@@ -323,78 +324,6 @@ data OriginalComponentInfo = OriginalComponentInfo
   , ociOriginalDeps :: [UnitId]
   }
   deriving (Show)
-
--- | Tracks what type of GHCi instance we're creating.
-data ReplType = ProjectRepl
-              | GlobalRepl FilePath -- ^ The 'FilePath' argument is path to a GHCi
-                                    --   script responsible for changing to the
-                                    --   correct directory. Only works on GHC geq
-                                    --   7.6, though. 🙁
-              deriving (Show, Eq)
-
-withProject :: ProjectConfig -> Verbosity -> [String]
-            -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
-withProject cliConfig verbosity targetStrings = do
-  baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
-
-  targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-                 =<< readTargetSelectors (localPackages baseCtx) (Just LibKind) targetStrings
-
-  return (baseCtx, targetSelectors, return (), ProjectRepl)
-
-withoutProject :: ProjectConfig -> Verbosity -> [String]
-               -> IO (ProjectBaseContext, [TargetSelector], IO (), ReplType)
-withoutProject config verbosity extraArgs = do
-  unless (null extraArgs) $
-    die' verbosity $ "'repl' doesn't take any extra arguments when outside a project: " ++ unwords extraArgs
-
-  globalTmp <- getTemporaryDirectory
-  tempDir <- createTempDirectory globalTmp "cabal-repl."
-
-  -- We need to create a dummy package that lives in our dummy project.
-  let
-    sourcePackage = SourcePackage
-      { srcpkgPackageId     = pkgId
-      , srcpkgDescription   = genericPackageDescription
-      , srcpkgSource        = LocalUnpackedPackage tempDir
-      , srcpkgDescrOverride = Nothing
-      }
-    genericPackageDescription = emptyGenericPackageDescription
-      & L.packageDescription .~ packageDescription
-      & L.condLibrary        .~ Just (CondNode library [baseDep] [])
-    packageDescription = emptyPackageDescription
-      { package = pkgId
-      , specVersion = CabalSpecV2_2
-      , licenseRaw = Left SPDX.NONE
-      }
-    library = emptyLibrary { libBuildInfo = buildInfo }
-    buildInfo = emptyBuildInfo
-      { targetBuildDepends = [baseDep]
-      , defaultLanguage = Just Haskell2010
-      }
-    baseDep = Dependency "base" anyVersion mainLibSet
-    pkgId = fakePackageId
-
-  writeGenericPackageDescription (tempDir </> "fake-package.cabal") genericPackageDescription
-
-  let ghciScriptPath = tempDir </> "setcwd.ghci"
-  cwd <- getCurrentDirectory
-  writeFile ghciScriptPath (":cd " ++ cwd)
-
-  distDirLayout <- establishDummyDistDirLayout verbosity config tempDir
-  baseCtx <-
-    establishDummyProjectBaseContext
-      verbosity
-      config
-      distDirLayout
-      [SpecificSourcePackage sourcePackage]
-      OtherCommand
-
-  let
-    targetSelectors = [TargetPackage TargetExplicitNamed [pkgId] Nothing]
-    finalizer = handleDoesNotExist () (removeDirectoryRecursive tempDir)
-
-  return (baseCtx, targetSelectors, finalizer, GlobalRepl ghciScriptPath)
 
 addDepsToProjectTarget :: [Dependency]
                        -> PackageId
@@ -431,6 +360,28 @@ generateReplFlags includeTransitive elaboratedPlan OriginalComponentInfo{..} = f
     trans' = trans \\ ociOriginalDeps
     flags  = fmap (("-package-id " ++) . prettyShow) . (\\ exeDeps)
       $ if includeTransitive then trans' else deps'
+
+-- | Add repl options to ensure the repl actually starts in the current working directory.
+--
+-- In a global or script context, when we are using a fake package, @cabal repl@
+-- starts in the fake package directory instead of the directory it was called from,
+-- so we need to tell ghci to change back to the correct directory.
+--
+-- The @-ghci-script@ flag is path to the ghci script responsible for changing to the
+-- correct directory. Only works on GHC >= 7.6, though. 🙁
+usingGhciScript :: Compiler -> FilePath -> ReplOptions -> IO ReplOptions
+usingGhciScript compiler projectRoot replOpts
+  | compilerCompatVersion GHC compiler >= Just minGhciScriptVersion = do
+      let ghciScriptPath = projectRoot </> "setcwd.ghci"
+      cwd <- getCurrentDirectory
+      writeFile ghciScriptPath (":cd " ++ cwd)
+      return $ replOpts & lReplOptionsFlags %~ (("-ghci-script" ++ ghciScriptPath) :)
+  | otherwise = return replOpts
+
+-- | First version of GHC where GHCi supported the flag we need.
+-- https://downloads.haskell.org/~ghc/7.6.1/docs/html/users_guide/release-7-6-1.html
+minGhciScriptVersion :: Version
+minGhciScriptVersion = mkVersion [7, 6]
 
 -- | This defines what a 'TargetSelector' means for the @repl@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,
@@ -579,3 +530,16 @@ explanationSingleComponentLimitation =
     "The reason for this limitation is that current versions of ghci do not "
  ++ "support loading multiple components as source. Load just one component "
  ++ "and when you make changes to a dependent component then quit and reload."
+
+-- Lenses
+lElaboratedShared :: Lens' ProjectBuildContext ElaboratedSharedConfig
+lElaboratedShared f s = fmap (\x -> s { elaboratedShared = x }) (f (elaboratedShared s))
+{-# inline lElaboratedShared #-}
+
+lPkgConfigReplOptions :: Lens' ElaboratedSharedConfig ReplOptions
+lPkgConfigReplOptions f s = fmap (\x -> s { pkgConfigReplOptions = x }) (f (pkgConfigReplOptions s))
+{-# inline lPkgConfigReplOptions #-}
+
+lReplOptionsFlags :: Lens' ReplOptions [String]
+lReplOptionsFlags f s = fmap (\x -> s { replOptionsFlags = x }) (f (replOptionsFlags s))
+{-# inline lReplOptionsFlags #-}

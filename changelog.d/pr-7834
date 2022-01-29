@@ -1,0 +1,12 @@
+synopsis: Improve error message when no test/benchmark is found
+packages: cabal-install
+prs: #7834
+issues: #5079 #5255
+
+description: {
+
+When `cabal test` and the error message recommends setting `tests: True`, the next `cabal test` run is likely to fail with a solver error. The user might incorrectly conclude that setting `tests: True` made the problem worse, because the failure now occurs earlier (at solving time rather than at testing time).
+
+By including the fact that a plan failure is expected in the error message, hopefully users will be more confident that setting `tests: True` was the right move, so they will be able to focus on the true cause of the problem: the fact that no plan including the tests exists.
+
+}

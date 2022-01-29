@@ -1,0 +1,4 @@
+synopsis: cabal init now takes an optional argument and treats it as root directory for the new package
+packages: cabal-install
+prs: #7873
+issues: #7871

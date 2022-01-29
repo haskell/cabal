@@ -1,8 +1,146 @@
 cabal-install Commands
 ======================
 
-We now give an in-depth description of all the commands, describing the
-arguments and flags they accept.
+We now give an in-depth description of all the commands, first describing the
+arguments and flags that are common to some or all of them.
+
+
+.. option:: --default-user-config=file
+
+    Allows a "default" ``cabal.config`` freeze file to be passed in
+    manually. This file will only be used if one does not exist in the
+    project directory already. Typically, this can be set from the
+    global cabal ``config`` file so as to provide a default set of
+    partial constraints to be used by projects, providing a way for
+    users to peg themselves to stable package collections.
+
+
+.. option:: --allow-newer[=pkgs], --allow-older[=pkgs]
+
+    Selectively relax upper or lower bounds in dependencies without
+    editing the package description respectively.
+
+    The following description focuses on upper bounds and the
+    :option:`--allow-newer` flag, but applies analogously to
+    :option:`--allow-older` and lower bounds. :option:`--allow-newer`
+    and :option:`--allow-older` can be used at the same time.
+
+    If you want to install a package A that depends on B >= 1.0 && <
+    2.0, but you have the version 2.0 of B installed, you can compile A
+    against B 2.0 by using ``cabal install --allow-newer=B A``. This
+    works for the whole package index: if A also depends on C that in
+    turn depends on B < 2.0, C's dependency on B will be also relaxed.
+
+    Example:
+
+    ::
+
+        $ cd foo
+        $ cabal configure
+        Resolving dependencies...
+        cabal: Could not resolve dependencies:
+        [...]
+        $ cabal configure --allow-newer
+        Resolving dependencies...
+        Configuring foo...
+
+    Additional examples:
+
+    ::
+
+        # Relax upper bounds in all dependencies.
+        $ cabal install --allow-newer foo
+
+        # Relax upper bounds only in dependencies on bar, baz and quux.
+        $ cabal install --allow-newer=bar,baz,quux foo
+
+        # Relax the upper bound on bar and force bar==2.1.
+        $ cabal install --allow-newer=bar --constraint="bar==2.1" foo
+
+    It's also possible to limit the scope of :option:`--allow-newer` to single
+    packages with the ``--allow-newer=scope:dep`` syntax. This means
+    that the dependency on ``dep`` will be relaxed only for the package
+    ``scope``.
+
+    Example:
+
+    ::
+
+        # Relax upper bound in foo's dependency on base; also relax upper bound in
+        # every package's dependency on lens.
+        $ cabal install --allow-newer=foo:base,lens
+
+        # Relax upper bounds in foo's dependency on base and bar's dependency
+        # on time; also relax the upper bound in the dependency on lens specified by
+        # any package.
+        $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
+
+    Finally, one can enable :option:`--allow-newer` permanently by setting
+    ``allow-newer: True`` in the ``~/.cabal/config`` file. Enabling
+    'allow-newer' selectively is also supported in the config file
+    (``allow-newer: foo, bar, baz:base``).
+
+.. option:: --preference=preference
+
+    Specify a soft constraint on versions of a package. The solver will
+    attempt to satisfy these preferences on a "best-effort" basis.
+
+.. option:: --enable-build-info
+
+    Generate accurate build information for build components.
+
+    Information contains meta information, such as component type, compiler type, and
+    Cabal library version used during the build, but also fine grained information,
+    such as dependencies, what modules are part of the component, etc...
+
+    On build, a file ``build-info.json`` (in the ``json`` format) will be written to
+    the root of the build directory.
+
+    .. note::
+        The format and fields of the generated build information is currently
+        experimental. In the future we might add or remove fields, depending
+        on the needs of other tooling.
+
+    .. code-block:: json
+
+        {
+            "cabal-lib-version": "<cabal lib version>",
+            "compiler": {
+                "flavour": "<compiler name>",
+                "compiler-id": "<compiler id>",
+                "path": "<absolute path of the compiler>"
+            },
+            "components": [
+                {
+                "type": "<component type, e.g. lib | bench | exe | flib | test>",
+                "name": "<component name>",
+                "unit-id": "<unitid>",
+                "compiler-args": [
+                    "<compiler args necessary for compilation>"
+                ],
+                "modules": [
+                    "<modules in this component>"
+                ],
+                "src-files": [
+                    "<source files relative to hs-src-dirs>"
+                ],
+                "hs-src-dirs": [
+                    "<source directories of this component>"
+                ],
+                "src-dir": "<root directory of this component>",
+                "cabal-file": "<cabal file location>"
+                }
+            ]
+        }
+
+    .. jsonschema:: ./json-schemas/build-info.schema.json
+
+.. option:: --disable-build-info
+
+    (default) Do not generate detailed build information for built components.
+
+    Already generated `build-info.json` files will be removed since they would be stale otherwise.
+
 
 cabal v2-configure
 -------------------
@@ -51,6 +189,7 @@ is in place, which moves the old configuration to a ``cabal.project.local~``
 file, this feature can also be disabled by using the ``--disable-backup``
 flag.
 
+
 cabal v2-update
 ----------------
 
@@ -97,6 +236,10 @@ A cabal command target can take any of the following forms:
 -  A filepath target: ``[package:][ctype:]filepath``, which specifies that the
    component of which the given filepath is a part of will be built.
 
+-  A script target: ``path/to/script``, which specifies the path to a script
+   file. This is supported by ``build``, ``repl``, ``run``, and ``clean``.
+   Script targets are not part of a package.
+
 cabal v2-build
 ---------------
 
@@ -123,6 +266,7 @@ Some example targets:
                                        # "app/Main.hs"
     $ cabal v2-build Lib               # build the library component to
                                        # which the module "Lib" belongs
+    $ cabal v2-build path/to/script    # build the script as an executable
 
 Beyond a list of targets, ``cabal v2-build`` accepts all the flags that
 ``cabal v2-configure`` takes. Most of these flags are only taken into
@@ -130,6 +274,9 @@ consideration when building local packages; however, some flags may
 cause extra store packages to be built (for example,
 ``--enable-profiling`` will automatically make sure profiling libraries
 for all transitive dependencies are built and installed.)
+
+When building a script, the executable is cached under the cabal directory.
+See ``cabal v2-run`` for more information on scripts.
 
 In addition ``cabal v2-build`` accepts these flags:
 
@@ -184,6 +331,16 @@ cannot be excluded for technical reasons).
 
     $ cabal v2-repl --build-depends vector --no-transitive-deps
 
+``v2-repl`` can open scripts by passing the path to the script as the target.
+
+::
+
+    $ cabal v2-repl path/to/script
+
+The configuration information for the script is cached under the cabal directory
+and can be pre-built with ``cabal v2-build path/to/script``.
+See ``cabal v2-run`` for more information on scripts.
+
 cabal v2-run
 -------------
 
@@ -193,6 +350,19 @@ long as it can uniquely identify an executable within the project.
 Tests and benchmarks are also treated as executables.
 
 See `the v2-build section <#cabal-v2-build>`__ for the target syntax.
+
+When ``TARGET`` is one of the following:
+
+- A component target: execute the specified executable, benchmark or test suite
+
+- A package target:
+   1. If the package has exactly one executable component, it will be selected.
+   2. If the package has multiple executable components, an error is raised.
+   3. If the package has exactly one test or benchmark component, it will be selected.
+   4. Otherwise an issue is raised
+
+- Empty target: Same as package target, implicitly using the package from the current
+  working directory.
 
 Except in the case of the empty target, the strings after it will be
 passed to the executable as arguments.
@@ -225,8 +395,16 @@ interpreter, or through this command:
 
 ::
 
-    $ cabal v2-run script.hs
-    $ cabal v2-run script.hs -- --arg1 # args are passed like this
+    $ cabal v2-run path/to/script
+    $ cabal v2-run path/to/script -- --arg1 # args are passed like this
+
+The executable is cached under the cabal directory, and can be pre-built with
+``cabal v2-build path/to/script`` and the cache can be removed with
+``cabal v2-clean path/to/script``.
+
+A note on targets: Whenever a command takes a script target and it matches the
+name of another target, the other target is preferred. To load the script
+instead pass it as an explicit path: ./script
 
 cabal v2-freeze
 ----------------
@@ -390,6 +568,12 @@ By default, it removes the entire folder, but it can also spare the configuratio
 and caches if the ``--save-config`` option is given, in which case it only removes
 the build artefacts (``.hi``, ``.o`` along with any other temporary files generated
 by the compiler, along with the build output).
+
+``cabal v2-clean [FLAGS] path/to/script`` cleans up the temporary files and build
+artifacts for the script, which are stored under the .cabal/script-builds directory.
+
+In addition when clean is invoked it will remove all script build artifacts for
+which the corresponding script no longer exists.
 
 cabal v2-sdist
 ---------------
