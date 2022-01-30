@@ -42,7 +42,7 @@ import Distribution.Client.Types
 import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
-    ( ParseResult, Field(..), SectionArg(..), parseFatalFailure, readFields )
+    ( ParseResult, parseFatalFailure, readFields )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
@@ -83,6 +83,7 @@ import Control.Exception
     ( bracket )
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Lazy ()
+import qualified Data.Set as S
 import System.Directory
     ( canonicalizePath, doesFileExist, getTemporaryDirectory, removeDirectoryRecursive )
 import System.FilePath
@@ -258,9 +259,8 @@ updateContextAndWriteProjectFile ctx scriptPath scriptExecutable = do
     -- Replace characters which aren't allowed in the executable component name with '_'
     -- Prefix with "cabal-script-" to make it clear to end users that the name may be mangled
     scriptExeName = "cabal-script-" ++ map censor (takeFileName scriptPath)
-    censor c = case readFields (fromString $ "executable " ++ [c]) of
-      Right [Section _ [SecArgName _ _] _] -> c
-      _                                    -> '_'
+    censor c | c `S.member` ccNamecore = c
+             | otherwise               = '_'
 
     sourcePackage = fakeProjectSourcePackage projectRoot
       & lSrcpkgDescription . L.condExecutables
@@ -361,3 +361,13 @@ lSrcpkgDescription f s = fmap (\x -> s { srcpkgDescription = x }) (f (srcpkgDesc
 lLocalPackages :: Lens' ProjectBaseContext [PackageSpecifier UnresolvedSourcePackage]
 lLocalPackages f s = fmap (\x -> s { localPackages = x }) (f (localPackages s))
 {-# inline lLocalPackages #-}
+
+-- Character classes
+-- Transcribed from "templates/Lexer.x"
+ccSpace, ccCtrlchar, ccPrintable, ccSymbol', ccParen, ccNamecore :: Set Char
+ccSpace     = S.fromList " "
+ccCtrlchar  = S.fromList $ [chr 0x0 .. chr 0x1f] ++ [chr 0x7f]
+ccPrintable = S.fromList [chr 0x0 .. chr 0xff] S.\\ ccCtrlchar
+ccSymbol'   = S.fromList ",=<>+*&|!$%^@#?/\\~"
+ccParen     = S.fromList "()[]"
+ccNamecore  = ccPrintable S.\\ S.unions [ccSpace, S.fromList ":\"{}", ccParen, ccSymbol']
