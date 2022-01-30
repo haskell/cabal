@@ -55,6 +55,7 @@ import Distribution.Simple.Setup
          , TestFlags(..), testOptions', defaultTestFlags
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
          , programDbPaths', splitArgs, DumpBuildInfo (NoDumpBuildInfo, DumpBuildInfo)
+         , readPackageDb, showPackageDb
          )
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
@@ -92,7 +93,7 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (ParsecParser)
+import Distribution.Parsec (ParsecParser, parsecToken)
 
 import qualified Data.Map as Map
 import qualified Data.ByteString as BS
@@ -352,11 +353,11 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg
+      configHcPkg               = projectConfigHcPkg,
     --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
-    --configPackageDBs          = projectConfigPackageDBs,
+      configPackageDBs          = projectConfigPackageDBs
     } = configFlags
 
     ConfigExFlags {
@@ -593,7 +594,8 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
-      configDistPref      = projectConfigDistDir
+      configDistPref      = projectConfigDistDir,
+      configPackageDBs    = projectConfigPackageDBs
     }
 
     configExFlags = ConfigExFlags {
@@ -696,7 +698,7 @@ convertToLegacyAllPackageConfig
       configCabalFilePath       = mempty,
       configVerbosity           = mempty,
       configUserInstall         = mempty, --projectConfigUserInstall,
-      configPackageDBs          = mempty, --projectConfigPackageDBs,
+      configPackageDBs          = mempty,
       configGHCiLib             = mempty,
       configSplitSections       = mempty,
       configSplitObjs           = mempty,
@@ -976,6 +978,11 @@ legacySharedConfigFieldDescrs constraintSrc = concat
   , liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
+  . addFields
+      [ commaNewLineListFieldParsec "package-dbs"
+        (Disp.text . showPackageDb) (fmap readPackageDb parsecToken)
+        configPackageDBs (\v conf -> conf { configPackageDBs = v })
+      ]
   . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   $ configureOptions ParseArgs

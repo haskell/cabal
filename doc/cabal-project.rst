@@ -271,6 +271,56 @@ package, and thus apply globally:
 
     Specifies the name of the directory of the global package store.
 
+.. cfg-field:: package-dbs: package DB stack (comma separated)
+               --package-db=[clear, global, user, PATH]
+    :synopsis: PackageDB stack manipulation
+    :since: 3.7
+
+    There are three package databases involved with most builds:
+
+    global
+        Compiler installation of rts, base, etc.
+    store
+        Nix-style local build cache
+    in-place
+        Project-specific build directory
+    
+    By default, the package stack you will have with v2 commands is:
+
+    ::
+
+        -- [global, store]
+
+    So all remote packages required by your project will be
+    registered in the store package db (because it is last).
+
+    When cabal starts building your local projects, it appends the in-place db
+    to the end:
+
+    ::
+
+        -- [global, store, in-place]
+        
+    So your local packages get put in ``dist-newstyle`` instead of the store.
+
+    This flag manipulates the default prefix: ``[global, store]`` and accepts
+    paths, the special value ``global`` referring to the global package db, and
+    ``clear`` which removes all prior entries. For example,
+
+    ::
+
+        -- [global, store, foo]
+        package-dbs: foo
+
+        -- [foo]
+        package-dbs: clear, foo
+
+        -- [bar, baz]
+        package-dbs: clear, foo, clear, bar, baz
+
+    The command line variant of this flag is ``--package-db=DB`` which can be
+    specified multiple times.
+
 Phase control
 -------------
 

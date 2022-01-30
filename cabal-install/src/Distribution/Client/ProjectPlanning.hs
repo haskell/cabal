@@ -594,7 +594,9 @@ rebuildInstallPlan verbosity
               Right plan -> return (plan, pkgConfigDB, tis, ar)
       where
         corePackageDbs :: [PackageDB]
-        corePackageDbs = [GlobalPackageDB]
+        corePackageDbs = applyPackageDbFlags [GlobalPackageDB]
+                                             (projectConfigPackageDBs projectConfigShared)
+
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
                            projectConfigShared
                            projectConfigBuildOnly
@@ -984,6 +986,12 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     return $! hashesFromRepoMetadata
            <> hashesFromTarballFiles
 
+-- | Append the given package databases to an existing PackageDBStack.
+-- A @Nothing@ entry will clear everything before it.
+applyPackageDbFlags :: PackageDBStack -> [Maybe PackageDB] -> PackageDBStack
+applyPackageDbFlags dbs' []            = dbs'
+applyPackageDbFlags _    (Nothing:dbs) = applyPackageDbFlags []             dbs
+applyPackageDbFlags dbs' (Just db:dbs) = applyPackageDbFlags (dbs' ++ [db]) dbs
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -1844,6 +1852,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabLocalToProject  = isLocalToProject pkg
         elabBuildStyle      = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
+        elabPackageDbs             = projectConfigPackageDBs sharedPackageConfig
         elabBuildPackageDBStack    = buildAndRegisterDbs
         elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -1859,7 +1868,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         buildAndRegisterDbs
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
-          | otherwise                  = storePackageDbs
+          | otherwise                  = corePackageDbs
 
         elabPkgDescriptionOverride = descOverride
 
@@ -1972,10 +1981,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                = mempty
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
-    inplacePackageDbs = storePackageDbs
+    inplacePackageDbs = corePackageDbs
                      ++ [ distPackageDB (compilerId compiler) ]
 
-    storePackageDbs   = storePackageDBStack (compilerId compiler)
+    corePackageDbs = applyPackageDbFlags (storePackageDBStack (compilerId compiler))
+                                         (projectConfigPackageDBs sharedPackageConfig)
 
     -- For this local build policy, every package that lives in a local source
     -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -3873,6 +3883,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
       pkgHashProgPrefix          = elabProgPrefix,
       pkgHashProgSuffix          = elabProgSuffix,
+      pkgHashPackageDbs          = elabPackageDbs,
 
       pkgHashDocumentation       = elabBuildHaddocks,
       pkgHashHaddockHoogle       = elabHaddockHoogle,

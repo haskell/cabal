@@ -38,7 +38,7 @@ module Distribution.Simple.Setup (
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
   configPrograms,
-  configAbsolutePaths, readPackageDbList, showPackageDbList,
+  configAbsolutePaths, readPackageDb, readPackageDbList, showPackageDb, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockTarget(..),
@@ -751,18 +751,28 @@ configureOptions showOrParseArgs =
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
 
 readPackageDbList :: String -> [Maybe PackageDB]
-readPackageDbList "clear"  = [Nothing]
-readPackageDbList "global" = [Just GlobalPackageDB]
-readPackageDbList "user"   = [Just UserPackageDB]
-readPackageDbList other    = [Just (SpecificPackageDB other)]
+readPackageDbList str = [readPackageDb str]
+
+-- | Parse a PackageDB stack entry
+--
+-- @since 3.7.0.0
+readPackageDb :: String -> Maybe PackageDB
+readPackageDb "clear"  = Nothing
+readPackageDb "global" = Just GlobalPackageDB
+readPackageDb "user"   = Just UserPackageDB
+readPackageDb other    = Just (SpecificPackageDB other)
 
 showPackageDbList :: [Maybe PackageDB] -> [String]
 showPackageDbList = map showPackageDb
-  where
-    showPackageDb Nothing                       = "clear"
-    showPackageDb (Just GlobalPackageDB)        = "global"
-    showPackageDb (Just UserPackageDB)          = "user"
-    showPackageDb (Just (SpecificPackageDB db)) = db
+
+-- | Show a PackageDB stack entry
+--
+-- @since 3.7.0.0
+showPackageDb :: Maybe PackageDB -> String
+showPackageDb Nothing                       = "clear"
+showPackageDb (Just GlobalPackageDB)        = "global"
+showPackageDb (Just UserPackageDB)          = "user"
+showPackageDb (Just (SpecificPackageDB db)) = db
 
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
