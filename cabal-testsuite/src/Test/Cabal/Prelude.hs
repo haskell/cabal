@@ -575,6 +575,8 @@ withRemoteRepo repoDir m = do
 
     -- we rely on the presence of python3 for a simple http server
     skipUnless "no python3" =<< isAvailableProgram python3Program
+    -- we rely on hackage-repo-tool to set up the secure repository
+    skipUnless "no hackage-repo-tool" =<< isAvailableProgram hackageRepoToolProgram
 
     env <- getTestEnv
 
