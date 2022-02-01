@@ -1257,7 +1257,8 @@ the :pkg-field:`test-module` field.
  local lib components that the given test stanza dependens on, and
  following a double dash, all options cabal would pass to ghc for a
  build. They are expected to output a newline-seperated list of
- generated modules which have been written to the targetdir. This can
+ generated modules which have been written to the targetdir
+ (excepting, if written, the main module). This can
  be used for driving doctests and other discover-style tests generated
  from source code.
 
