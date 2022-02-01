@@ -1817,9 +1817,9 @@ replOptions _ =
     replOptionsNoLoad (\p flags -> flags { replOptionsNoLoad = p })
     trueArg
   , option [] ["repl-options"]
-    "use this option for the repl"
+    "Use the option(s) for the repl"
     replOptionsFlags (\p flags -> flags { replOptionsFlags = p })
-    (reqArg "FLAG" (succeedReadE (:[])) id)
+    (reqArg "FLAG" (succeedReadE words) id)
   ]
 
 -- ------------------------------------------------------------
