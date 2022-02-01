@@ -1,5 +1,5 @@
-synopsis: Improve error message when no test/benchmark is found
-packages: cabal-install
+synopsis: Add code-generators field to test-suite stanza
+packages: Cabal
 prs: #7688
 issues: #4500
 
