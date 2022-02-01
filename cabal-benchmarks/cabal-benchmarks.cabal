@@ -30,5 +30,5 @@ test-suite cabal-benchmarks
   build-depends:
       base
     , bytestring
-    , Cabal
+    , Cabal-syntax
     , criterion   >=1.5.6.2 && <1.6

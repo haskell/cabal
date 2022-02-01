@@ -43,14 +43,14 @@ import Distribution.PackageDescription
          , PackageDescription(..), specVersion, buildType
          , BuildType(..) )
 import Distribution.Types.ModuleRenaming (defaultRenaming)
-import Distribution.PackageDescription.Parsec
-         ( readGenericPackageDescription )
 import Distribution.Simple.Configure
          ( configCompilerEx )
 import Distribution.Compiler
          ( buildCompilerId, CompilerFlavor(GHC, GHCJS) )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), compilerFlavor, PackageDB(..), PackageDBStack )
+import Distribution.Simple.PackageDescription
+         ( readGenericPackageDescription )
 import Distribution.Simple.PreProcess
          ( runSimplePreProcessor, ppUnlit )
 import Distribution.Simple.Build.Macros

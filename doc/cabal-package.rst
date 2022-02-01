@@ -188,7 +188,7 @@ required (directly or indirectly) by an executable must be listed again.
 
 The trivial setup script used in these examples uses the *simple build
 infrastructure* provided by the Cabal library (see
-`Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__).
+`Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__).
 The simplicity lies in its interface rather that its implementation. It
 automatically handles preprocessing with standard preprocessors, and
 builds packages for all the Haskell implementations.
@@ -412,7 +412,7 @@ describe the package as a whole:
 
     The type of build used by this package. Build types are the
     constructors of the
-    `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
+    `BuildType <https://hackage.haskell.org/package/Cabal/docs/Distribution-PackageDescription.html#t:BuildType>`__
     type. This field is optional and when missing, its default value
     is inferred according to the following rules:
 
@@ -780,7 +780,7 @@ describe the package as a whole:
     A list of additional files or directories to be removed by
     :ref:`setup-clean`. These  would typically be additional files created by
     additional hooks, such as the scheme described in the section on
-    `system-dependent parameters`_
+    `system-dependent parameters`_.
 
 Library
 ^^^^^^^
@@ -1794,7 +1794,7 @@ system-dependent values for these fields.
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
     names are the constructors of the
-    `Extension <../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension>`__
+    `Extension <https://hackage.haskell.org/package/Cabal/docs/Language-Haskell-Extension.html#t:Extension>`__
     type. For example, ``CPP`` specifies that Haskell source files are
     to be preprocessed with a C preprocessor.
 
@@ -2507,8 +2507,8 @@ Configuration Flags
 
     .. note::
 
-      This value may be `overridden in several
-      ways <installing-packages.html#controlling-flag-assignments>`__. The
+      This value may be :ref:`overridden in several
+      ways <controlling flag assignments>`. The
       rationale for having flags default to True is that users usually
       want new features as soon as they are available. Flags representing
       features that are not (yet) recommended for most users (such as
@@ -2623,8 +2623,7 @@ Resolution of Conditions and Flags
 """"""""""""""""""""""""""""""""""
 
 If a package descriptions specifies configuration flags the package user
-can `control these in several
-ways <installing-packages.html#controlling-flag-assignments>`__. If the
+can :ref:`control these in several ways <controlling flag assignments>`. If the
 user does not fix the value of a flag, Cabal will try to find a flag
 assignment in the following way.
 
@@ -3089,8 +3088,8 @@ Accessing data files from package code
 
 The placement on the target system of files listed in
 the :pkg-field:`data-files` field varies between systems, and in some cases
-one can even move packages around after installation (see `prefix
-independence <setup-commands.html#prefix-independence>`__). To
+one can even move packages around after installation
+(see :ref:`prefix independence`). To
 enable packages to find these files in a portable way, Cabal generates a
 module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
@@ -3148,7 +3147,7 @@ exports the constant ``version ::``
 which is defined as the version of your package as specified in the
 ``version`` field.
 
-.. _system-dependent-parameters:
+.. _system-dependent parameters:
 
 System-dependent parameters
 ---------------------------
@@ -3367,7 +3366,7 @@ a few options:
        posthaddock args flags desc info = ....
 
    See ``UserHooks`` in
-   `Distribution.Simple <../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html>`__
+   `Distribution.Simple <https://hackage.haskell.org/package/Cabal/docs/Distribution-Simple.html>`__
    for the details, but note that this interface is experimental, and
    likely to change in future releases.
 
@@ -3379,7 +3378,7 @@ a few options:
 -  You could delegate all the work to ``make``, though this is unlikely
    to be very portable. Cabal supports this with the :pkg-field:`build-type`
    ``Make`` and a trivial setup library
-   `Distribution.Make <../release/cabal-latest/doc/API/Cabal/Distribution-Make.html>`__,
+   `Distribution.Make <https://hackage.haskell.org/package/Cabal/docs/Distribution-Make.html>`__,
    which simply parses the command line arguments and invokes ``make``.
    Here ``Setup.hs`` should look like this:
 
@@ -3419,8 +3418,8 @@ a few options:
 
 -  Finally, with the :pkg-field:`build-type` ``Custom``, you can also write your
    own setup script from scratch. It must conform to the interface
-   described in the section on `building and installing
-   packages <installing-packages.html>`__, and you may use the Cabal
+   described in the section on :doc:`building and installing
+   packages <installing-packages>`, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
 

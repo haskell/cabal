@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-testsuite/
+packages: Cabal-syntax/ Cabal/ cabal-testsuite/
 
 packages: Cabal-QuickCheck/
 packages: Cabal-tree-diff
@@ -21,6 +21,8 @@ program-options
   -- ghc-options: -fno-ignore-asserts
   --
   -- as a workaround we specify it for each package individually:
+package Cabal-syntax
+  ghc-options: -fno-ignore-asserts
 package Cabal
   ghc-options: -fno-ignore-asserts
 package cabal-testsuite

@@ -5,7 +5,7 @@ Quickstart
 
 Suppose that you are in a directory containing a single Cabal package
 which you wish to build (if you haven't set up a package yet check
-out `developing packages <developing-packages.html>`__ for
+out :doc:`developing packages <developing-packages>` for
 instructions). You can configure and build it using Nix-style
 local builds with this command (configuring is not necessary):
 
@@ -77,7 +77,7 @@ example, to build a test suite named ``package-tests``, use the command:
 
 Targets can be qualified with package names. So to request
 ``package-tests`` *from* the ``Cabal`` package, use
-``Cabal:package-tests``.
+``Cabal-tests:package-tests``.
 
 Unlike sandboxes, there is no need to setup a sandbox or ``add-source``
 projects; just check in ``cabal.project`` to your repository and
@@ -211,7 +211,7 @@ build products like executables.
 Caching
 -------
 
-Nix-style local builds sport a robust caching system which helps to reduce
+Nix-style local builds support a robust caching system which helps to reduce
 the time it takes to execute a rebuild cycle. While the details of how
 ``cabal-install`` does caching are an implementation detail and may
 change in the future, knowing what gets cached is helpful for

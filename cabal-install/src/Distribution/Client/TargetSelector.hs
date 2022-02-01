@@ -595,6 +595,7 @@ data TargetSelectorProblem
    | TargetSelectorNoCurrentPackage TargetString
    | TargetSelectorNoTargetsInCwd
    | TargetSelectorNoTargetsInProject
+   | TargetSelectorNoScript TargetString
   deriving (Show, Eq)
 
 -- | Qualification levels.
@@ -814,6 +815,14 @@ reportTargetSelectorProblems verbosity problems = do
          ++ "file in the root directory of your project. This file lists the "
          ++ "packages in your project and all other build configuration. "
          ++ "See the Cabal user guide for full details."
+
+    case [ t | TargetSelectorNoScript t <- problems ] of
+      []  -> return ()
+      target:_ ->
+        die' verbosity $
+            "The script '" ++ showTargetString target ++ "' does not exist, "
+         ++ "and only script targets may contain whitespace characters or end "
+         ++ "with ':'"
 
     fail "reportTargetSelectorProblems: internal error"
 

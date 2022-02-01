@@ -172,7 +172,11 @@ parseFields fieldDescrs =
       case Map.lookup name fieldMap of
         Just (FieldDescr _ _ set) -> set line value accum
         Nothing -> do
-          warning $ "Unrecognized field " ++ name ++ " on line " ++ show line
+          -- the 'world-file' field was removed in 3.8, however
+          -- it was automatically added to many config files
+          -- before that, so its warning is silently ignored
+          unless (name == "world-file") $
+            warning $ "Unrecognized field " ++ name ++ " on line " ++ show line
           return accum
 
     setField accum f = do

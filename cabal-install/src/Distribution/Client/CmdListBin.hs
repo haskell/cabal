@@ -22,14 +22,13 @@ import Prelude ()
 import Distribution.Client.CmdErrorMessages
        (plural, renderListCommaAnd, renderTargetProblem, renderTargetProblemNoTargets,
        renderTargetSelector, showTargetSelector, targetSelectorFilter, targetSelectorPluralPkgs)
-import Distribution.Client.DistDirLayout         (DistDirLayout (..), ProjectRoot (..))
+import Distribution.Client.DistDirLayout         (DistDirLayout (..))
 import Distribution.Client.NixStyleOptions
        (NixStyleFlags (..), defaultNixStyleFlags, nixStyleOptions)
-import Distribution.Client.ProjectConfig
-       (ProjectConfig, projectConfigConfigFile, projectConfigShared, withProjectOrGlobalConfig)
-import Distribution.Client.ProjectFlags          (ProjectFlags (..))
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.ScriptUtils
+       (AcceptNoTargets(..), TargetContext(..), updateContextAndWriteProjectFile, withContextAndSelectors)
 import Distribution.Client.Setup                 (GlobalFlags (..))
 import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
@@ -41,7 +40,6 @@ import Distribution.Types.ComponentName          (showComponentName)
 import Distribution.Types.UnitId                 (UnitId)
 import Distribution.Types.UnqualComponentName    (UnqualComponentName)
 import Distribution.Verbosity                    (silent, verboseStderr)
-import System.Directory                          (getCurrentDirectory)
 import System.FilePath                           ((<.>), (</>))
 
 import qualified Data.Map                                as Map
@@ -73,19 +71,18 @@ listbinCommand = CommandUI
 
 listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 listbinAction flags@NixStyleFlags{..} args globalFlags = do
-    -- fail early if multiple target selectors specified
-    target <- case args of
-        []  -> die' verbosity "One target is required, none provided"
-        [x] -> return x
-        _   -> die' verbosity "One target is required, given multiple"
+  -- fail early if multiple target selectors specified
+  target <- case args of
+      []  -> die' verbosity "One target is required, none provided"
+      [x] -> return x
+      _   -> die' verbosity "One target is required, given multiple"
 
-    -- configure
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
-    let localPkgs = localPackages baseCtx
-
-    -- elaborate target selectors
-    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-        =<< readTargetSelectors localPkgs (Just ExeKind) [target]
+  -- configure and elaborate target selectors
+  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags $ \targetCtx ctx targetSelectors -> do
+    baseCtx <- case targetCtx of
+      ProjectContext             -> return ctx
+      GlobalContext              -> return ctx
+      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -131,7 +128,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         Nothing  -> die' verbosity "No or multiple targets given..."
         Just gpp -> return $ IP.foldPlanPackage
             (const []) -- IPI don't have executables
-            (elaboratedPackage distDirLayout (elaboratedShared buildCtx))
+            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx))
             gpp
 
     case binfiles of
@@ -140,20 +137,6 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
   where
     defaultVerbosity = verboseStderr silent
     verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
-    ignoreProject = flagIgnoreProject projectFlags
-    prjConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
-
-    withProject :: IO (ProjectBaseContext, DistDirLayout)
-    withProject = do
-        baseCtx <- establishProjectBaseContext verbosity prjConfig OtherCommand
-        return (baseCtx, distDirLayout baseCtx)
-
-    withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
-    withoutProject config = do
-        cwd <- getCurrentDirectory
-        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
-        return (baseCtx, distDirLayout baseCtx)
 
     -- this is copied from
     elaboratedPackage

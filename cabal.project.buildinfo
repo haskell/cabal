@@ -1,3 +1,4 @@
+packages: Cabal-syntax/
 packages: Cabal/
 packages: Cabal-described
 packages: buildinfo-reference-generator/

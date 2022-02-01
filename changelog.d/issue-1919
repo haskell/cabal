@@ -1,0 +1,4 @@
+synopsis: Fix haddock command via Setup.hs for internal libraries
+packages: Cabal
+issues: #1919
+prs: #7827

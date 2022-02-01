@@ -61,7 +61,7 @@ little bit when we add an external dependency to our package.
 Running the application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-When we ran ``cabal init myfirstapp -n`` above, it generated a package with a single 
+When we ran ``cabal init myfirstapp -n`` above, it generated a package with a single
 executable named same as the package (in this case ``myfirstapp``) that prints
 ``"Hello, Haskell!"`` to the terminal. To run the executable enter the project's
 directory and run it, by inputting the following commands:
@@ -116,7 +116,7 @@ the ``executable myfirstapp`` section to include ``haskell-say``:
            haskell-say ^>=1.0.0.0
        hs-source-dirs: app
        default-language: Haskell2010
-       
+
 
 .. NOTE::
    ``^>=1.0.0.0`` means use version 1.0.0.0 of the library or any more recent
@@ -173,4 +173,4 @@ What Next?
 Now that you know how to set up a simple Haskell package using Cabal, check out
 some of the resources on the Haskell website's `documentation page
 <https://www.haskell.org/documentation/>`__ or read more about packages and
-Cabal on the `introduction <intro.html>`__ page.
+Cabal on the :doc:`introduction <intro>` page.

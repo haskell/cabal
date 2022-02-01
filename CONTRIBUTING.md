@@ -22,7 +22,7 @@ Here are some other useful variations on the commands:
 
 ~~~~
 cabal v2-build Cabal # build library only
-cabal v2-build Cabal:unit-tests # build Cabal's unit test suite
+cabal v2-build Cabal-tests:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
 ~~~~
 
@@ -91,7 +91,7 @@ run without it).
 
 There are also other test suites:
 
-* `Cabal:unit-tests` are small, quick-running unit tests
+* `Cabal-tests:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
   on some utility functions in the Cabal library you should run this
   test suite.
