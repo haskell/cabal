@@ -12,6 +12,7 @@ library
   build-depends:
     , base
     , Cabal             ^>=3.7.0.0
+    , Cabal-syntax      ^>=3.7.0.0
     , containers
     , pretty
     , QuickCheck

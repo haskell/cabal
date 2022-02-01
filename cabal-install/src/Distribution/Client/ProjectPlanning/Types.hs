@@ -234,6 +234,7 @@ data ElaboratedConfiguredPackage
        -- warn if ALL local packages don't have any tests.)
        elabStanzasRequested :: OptionalStanzaMap (Maybe Bool),
 
+       elabPackageDbs             :: [Maybe PackageDB],
        elabSetupPackageDBStack    :: PackageDBStack,
        elabBuildPackageDBStack    :: PackageDBStack,
        elabRegisterPackageDBStack :: PackageDBStack,

@@ -301,7 +301,10 @@ componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                   NormalDebugInfo  -> ["-g"]
                                   MaximalDebugInfo -> ["-g3"]) ++
                                   ccOptions bi,
-      ghcOptObjDir         = toFlag odir
+      ghcOptCcProgram      = maybeToFlag $ programPath <$>
+                                 lookupProgram gccProgram (withPrograms lbi),
+      ghcOptObjDir         = toFlag odir,
+      ghcOptExtra          = hcOptions GHC bi
     }
 
 
@@ -337,7 +340,10 @@ componentCxxGhcOptions verbosity _implInfo lbi bi clbi odir filename =
                                   NormalDebugInfo  -> ["-g"]
                                   MaximalDebugInfo -> ["-g3"]) ++
                                   cxxOptions bi,
-      ghcOptObjDir         = toFlag odir
+      ghcOptCcProgram      = maybeToFlag $ programPath <$>
+                                 lookupProgram gccProgram (withPrograms lbi),
+      ghcOptObjDir         = toFlag odir,
+      ghcOptExtra          = hcOptions GHC bi
     }
 
 

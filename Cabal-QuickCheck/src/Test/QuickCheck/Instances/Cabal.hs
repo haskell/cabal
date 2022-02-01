@@ -483,7 +483,7 @@ instance Arbitrary TestShowDetails where
 instance Arbitrary PackageDB where
     arbitrary = oneof [ pure GlobalPackageDB
                       , pure UserPackageDB
-                      , SpecificPackageDB <$> arbitraryShortToken
+                      , SpecificPackageDB <$> arbitraryShortPath
                       ]
 
 -------------------------------------------------------------------------------
@@ -503,8 +503,14 @@ shortListOf1 bound gen = sized $ \n -> do
     vectorOf k gen
 
 arbitraryShortToken :: Gen String
-arbitraryShortToken =
-    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` "{}[]" ]
+arbitraryShortToken = arbitraryShortStringWithout "{}[]"
+
+arbitraryShortPath :: Gen String
+arbitraryShortPath = arbitraryShortStringWithout "{}[],"
+
+arbitraryShortStringWithout :: String -> Gen String
+arbitraryShortStringWithout excludeChars =
+    shortListOf1 5 $ elements [c | c <- ['#' ..  '~' ], c `notElem` excludeChars ]
 
 -- |
 intSqrt :: Int -> Int

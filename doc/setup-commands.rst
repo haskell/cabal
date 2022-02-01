@@ -108,7 +108,7 @@ the values supplied via these options are recorded in a private file
 read by later stages.
 
 If a user-supplied ``configure`` script is run (see the section on
-:ref:`system-dependent-parameters` or
+:ref:`system-dependent parameters` or
 on :ref:`more-complex-packages`), it is
 passed the :option:`--with-hc-pkg`, :option:`--prefix`, :option:`--bindir`,
 :option:`--libdir`, :option:`--dynlibdir`, :option:`--datadir`, :option:`--libexecdir` and
@@ -376,8 +376,7 @@ used when specifying installation paths. The defaults are also specified
 in terms of these variables. A number of the variables are actually for
 other paths, like ``$prefix``. This allows paths to be specified
 relative to each other rather than as absolute paths, which is important
-for building relocatable packages (see `prefix
-independence <#prefix-independence>`__).
+for building relocatable packages (see :ref:`prefix independence`).
 
 $prefix
     The path variable that stands for the root of the installation. For
@@ -479,14 +478,16 @@ For the simple build system, the following defaults apply:
       - (empty)
       - (empty)
 
-Prefix-independence
+.. _prefix independence:
+
+Prefix independence
 """""""""""""""""""
 
 On Windows it is possible to obtain the pathname of the running program.
 This means that we can construct an installable executable package that
 is independent of its absolute install location. The executable can find
 its auxiliary files by finding its own path and knowing the location of
-the other files relative to ``$bindir``. Prefix-independence is
+the other files relative to ``$bindir``. Prefix independence is
 particularly useful: it means the user can choose the install location
 (i.e. the value of ``$prefix``) at install-time, rather than having to
 bake the path into the binary when it is built.
@@ -496,16 +497,17 @@ all of ``$bindir``, ``$libdir``, ``$dynlibdir``, ``$datadir`` and ``$libexecdir`
 with ``$prefix``. If this is not the case then the compiled executable
 will have baked-in all absolute paths.
 
-The application need do nothing special to achieve prefix-independence.
+The application need do nothing special to achieve prefix independence.
 If it finds any files using ``getDataFileName`` and the :ref:`other functions
-provided for the
-purpose <accessing-data-files>`,
+provided for the purpose <accessing-data-files>`,
 the files will be accessed relative to the location of the current
 executable.
 
-A library cannot (currently) be prefix-independent, because it will be
+A library cannot (currently) be prefix independent, because it will be
 linked into an executable whose file system location bears no relation
 to the library package.
+
+.. _controlling flag assignments:
 
 Controlling Flag Assignments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -817,7 +819,7 @@ Miscellaneous options
 .. option:: --configure-option=str
 
     An extra option to an external ``configure`` script, if one is used
-    (see the section on :ref:`system-dependent-parameters`).
+    (see the section on :ref:`system-dependent parameters`).
     There can be several of these options.
 
 .. option:: --extra-include-dirs[=dir]

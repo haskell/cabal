@@ -79,6 +79,10 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: apt-get update
+        run: apt-get update
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170
@@ -124,6 +128,10 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: apt-get update
+        run: apt-get update
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170
@@ -170,6 +178,10 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: apt-get update
+        run: apt-get update
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170
@@ -216,6 +228,10 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: apt-get update
+        run: apt-get update
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170
@@ -262,6 +278,10 @@ jobs:
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: apt-get update
+        run: apt-get update
+      - name: Install `nroff` for `cabal man`
+        run: apt-get install -y groff-base
       - name: Update Hackage index
         run: cabal v2-update
       # https://github.com/actions/checkout/issues/170

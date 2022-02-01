@@ -119,7 +119,6 @@ import Distribution.Client.Version
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), buildable )
-import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
 
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
@@ -138,6 +137,7 @@ import Distribution.Simple.Configure
          , getPersistBuildConfig, interpretPackageDbFlags
          , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.PackageDescription ( readGenericPackageDescription )
 import Distribution.Simple.Program (defaultProgramDb
                                    ,configureAllKnownPrograms
                                    ,simpleProgramInvocation
@@ -972,7 +972,7 @@ manpageAction :: [CommandSpec action] -> ManpageFlags -> [String] -> Action
 manpageAction commands flags extraArgs _ = do
   let verbosity = fromFlag (manpageVerbosity flags)
   unless (null extraArgs) $
-    die' verbosity $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+    die' verbosity $ "'man' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   let cabalCmd = if takeExtension pname == ".exe"
                  then dropExtension pname

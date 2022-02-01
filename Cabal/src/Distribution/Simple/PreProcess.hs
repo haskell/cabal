@@ -51,6 +51,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.ResponseFile
 import Distribution.Simple.Test.LibV09
 import Distribution.System
+import Distribution.Types.PackageName.Magic
 import Distribution.Pretty
 import Distribution.Version
 import Distribution.Verbosity
@@ -171,60 +172,63 @@ preprocessComponent :: PackageDescription
                     -> Verbosity
                     -> [PPSuffixHandler]
                     -> IO ()
-preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = do
- -- NB: never report instantiation here; we'll report it properly when
- -- building.
- setupMessage' verbosity "Preprocessing" (packageId pd)
-    (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
- case comp of
-  (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = map getSymbolicPath (hsSourceDirs bi) ++
-             [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
-    let hndlrs = localHandlers bi
-    mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
-    for_ (map ModuleName.toFilePath mods) $
-      pre dirs (componentBuildDir lbi clbi) hndlrs
-  (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
-    let nm' = unUnqualComponentName nm
-    let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
-                                     ,autogenPackageModulesDir lbi]
-    let hndlrs = localHandlers bi
-    mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
-    for_ (map ModuleName.toFilePath mods) $
-      pre dirs flibDir hndlrs
-  (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
-    let nm' = unUnqualComponentName nm
-    let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
-        dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
-                                    ,autogenPackageModulesDir lbi]
-    let hndlrs = localHandlers bi
-    mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
-    for_ (map ModuleName.toFilePath mods) $
-      pre dirs exeDir hndlrs
-    pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
-      dropExtensions (modulePath exe)
-  CTest test@TestSuite{ testName = nm } -> do
-    let nm' = unUnqualComponentName nm
-    case testInterface test of
-      TestSuiteExeV10 _ f ->
-          preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      TestSuiteLibV09 _ _ -> do
-          let testDir = buildDir lbi </> stubName test
-                  </> stubName test ++ "-tmp"
-          writeSimpleTestStub test testDir
-          preProcessTest test (stubFilePath test) testDir
-      TestSuiteUnsupported tt ->
-          die' verbosity $ "No support for preprocessing test "
-                        ++ "suite type " ++ prettyShow tt
-  CBench bm@Benchmark{ benchmarkName = nm } -> do
-    let nm' = unUnqualComponentName nm
-    case benchmarkInterface bm of
-      BenchmarkExeV10 _ f ->
-          preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
-      BenchmarkUnsupported tt ->
-          die' verbosity $ "No support for preprocessing benchmark "
-                        ++ "type " ++ prettyShow tt
+preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers =
+  -- Skip preprocessing for scripts since they should be regular Haskell files,
+  -- but may have no or unknown extensions.
+  when (package pd /= fakePackageId) $ do
+   -- NB: never report instantiation here; we'll report it properly when
+   -- building.
+   setupMessage' verbosity "Preprocessing" (packageId pd)
+      (componentLocalName clbi) (Nothing :: Maybe [(ModuleName, Module)])
+   case comp of
+    (CLib lib@Library{ libBuildInfo = bi }) -> do
+      let dirs = map getSymbolicPath (hsSourceDirs bi) ++
+               [ autogenComponentModulesDir lbi clbi ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (allLibModules lib clbi)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs (componentBuildDir lbi clbi) hndlrs
+    (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
+      let nm' = unUnqualComponentName nm
+      let flibDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+          dirs    = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
+                                       ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (foreignLibModules flib)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs flibDir hndlrs
+    (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
+      let nm' = unUnqualComponentName nm
+      let exeDir = buildDir lbi </> nm' </> nm' ++ "-tmp"
+          dirs   = map getSymbolicPath (hsSourceDirs bi) ++ [autogenComponentModulesDir lbi clbi
+                                      ,autogenPackageModulesDir lbi]
+      let hndlrs = localHandlers bi
+      mods <- orderingFromHandlers verbosity dirs hndlrs (otherModules bi)
+      for_ (map ModuleName.toFilePath mods) $
+        pre dirs exeDir hndlrs
+      pre (map getSymbolicPath (hsSourceDirs bi)) exeDir (localHandlers bi) $
+        dropExtensions (modulePath exe)
+    CTest test@TestSuite{ testName = nm } -> do
+      let nm' = unUnqualComponentName nm
+      case testInterface test of
+        TestSuiteExeV10 _ f ->
+            preProcessTest test f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+        TestSuiteLibV09 _ _ -> do
+            let testDir = buildDir lbi </> stubName test
+                    </> stubName test ++ "-tmp"
+            writeSimpleTestStub test testDir
+            preProcessTest test (stubFilePath test) testDir
+        TestSuiteUnsupported tt ->
+            die' verbosity $ "No support for preprocessing test "
+                          ++ "suite type " ++ prettyShow tt
+    CBench bm@Benchmark{ benchmarkName = nm } -> do
+      let nm' = unUnqualComponentName nm
+      case benchmarkInterface bm of
+        BenchmarkExeV10 _ f ->
+            preProcessBench bm f $ buildDir lbi </> nm' </> nm' ++ "-tmp"
+        BenchmarkUnsupported tt ->
+            die' verbosity $ "No support for preprocessing benchmark "
+                          ++ "type " ++ prettyShow tt
   where
     orderingFromHandlers v d hndlrs mods =
       foldM (\acc (_,pp) -> ppOrdering pp v d acc) mods hndlrs

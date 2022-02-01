@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -42,6 +43,7 @@ module Distribution.Simple.Utils (
 
         -- * exceptions
         handleDoesNotExist,
+        ignoreSigPipe,
 
         -- * running programs
         rawSystemExit,
@@ -777,13 +779,7 @@ rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $ do
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.env = (Just env)
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
                                            , Process.delegate_ctlc = True
-#endif
-#endif
                                            }
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
@@ -856,13 +852,7 @@ createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallS
                                   , Process.std_in        = inp
                                   , Process.std_out       = out
                                   , Process.std_err       = err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
                                   , Process.delegate_ctlc = True
-#endif
-#endif
                                   }
     return (inp', out', err', ph)
 
@@ -944,11 +934,13 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
         Just ioe -> throwIO (ioeSetFileName ioe ("output of " ++ path))
         Nothing  -> throwIO exc
 
-    ignoreSigPipe :: IO () -> IO ()
-    ignoreSigPipe = Exception.handle $ \e -> case e of
-        GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
-            | Errno ioe == ePIPE -> return ()
-        _ -> throwIO e
+-- | Ignore SIGPIPE in a subcomputation.
+--
+ignoreSigPipe :: IO () -> IO ()
+ignoreSigPipe = Exception.handle $ \case
+    GHC.IOError { GHC.ioe_type  = GHC.ResourceVanished, GHC.ioe_errno = Just ioe }
+        | Errno ioe == ePIPE -> return ()
+    e -> throwIO e
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we

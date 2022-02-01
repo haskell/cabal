@@ -1,0 +1,4 @@
+synopsis: silence warning about world-file field being unrecognised for flat config files
+packages: cabal-install
+prs: #7903
+issues: #7894

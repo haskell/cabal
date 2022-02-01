@@ -5,7 +5,6 @@ module Test.Cabal.Run (
     Result(..)
 ) where
 
-import qualified Distribution.Compat.CreatePipe as Compat
 import Distribution.Simple.Program.Run
 import Distribution.Verbosity
 
@@ -46,7 +45,7 @@ run _verbosity mb_cwd env_overrides path0 args input = do
 
     mb_env <- getEffectiveEnvironment env_overrides
     putStrLn $ "+ " ++ showCommandForUser path args
-    (readh, writeh) <- Compat.createPipe
+    (readh, writeh) <- createPipe
     hSetBuffering readh LineBuffering
     hSetBuffering writeh LineBuffering
     let drain = do
