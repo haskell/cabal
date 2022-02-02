@@ -210,7 +210,7 @@ weeder :
 tags :
 	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
-# boostrapping
+# bootstrapping
 ##############################################################################
 
 bootstrap-plans-linux: phony

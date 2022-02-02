@@ -7,7 +7,7 @@ please rather run `cabal v2-install`.
 The typical usage is porting to a new linux architecture,
 then the `linux-ghcvec.json` file is available in `bootstrap/` folder:
 
-On a (linux) system you are boostrapping, run
+On a (linux) system you are bootstrapping, run
 
     ./bootstrap/bootstrap.py -d ./bootstrap/linux-ghcver.json -w /path/to-ghc
     
