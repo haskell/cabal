@@ -255,6 +255,15 @@
             "version": "0.1.2.0"
         },
         {
+            "cabal_sha256": "8bc9cd9991863a238b3531dfc663f262016adbbd814f30b1c63a6ce914ff7906",
+            "revision": 0,
+            "src_sha256": "69637f794146a8e7bfbc2db2bd0501c274ec99504b597728e203187790064895",
+            "flags": [],
+            "package": "safe-exceptions",
+            "source": "hackage",
+            "version": "0.1.7.2"
+        },
+        {
             "cabal_sha256": "b83dec34a53520de84c6dd3dc7aae45d22409b46eb471c478b98108215a370f0",
             "revision": 1,
             "src_sha256": "484df85be0e76c4fed9376451e48e1d0c6e97952ce79735b72d54297e7e0a725",
