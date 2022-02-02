@@ -581,7 +581,7 @@ readProjectFileSkeleton verbosity httpTransport DistDirLayout{distProjectFile, d
 
     readExtensionFile =
           reportParseResult verbosity extensionDescription extensionFile
-      =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity extensionFile
+      =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] extensionFile
       =<< BS.readFile extensionFile
 
 -- | Render the 'ProjectConfig' format.

@@ -154,16 +154,19 @@ instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (f
 projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
 projectSkeletonImports = view traverseCondTreeC
 
-parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
-parseProjectSkeleton cacheDir httpTransport verbosity source bs = (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
+parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> [ProjectConfigImport] -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
   where
     go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
     go acc (x:xs) = case x of
-         (ParseUtils.F _l "import" importLoc) -> do
-            let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
-            res <- parseProjectSkeleton cacheDir httpTransport verbosity importLoc =<< fetchImportConfig importLoc
-            rest <- go [] xs
-            pure . fmap mconcat . sequence $ [fs, res, rest]
+         (ParseUtils.F l "import" importLoc) ->
+            if importLoc `elem` seenImports
+              then pure . parseFail $ ParseUtils.FromString ("cyclical import of " ++ importLoc) (Just l)
+              else do
+                let fs = fmap (\x -> CondNode x [importLoc] mempty) $ fieldsToConfig (reverse acc)
+                res <- parseProjectSkeleton cacheDir httpTransport verbosity (importLoc : seenImports) importLoc =<< fetchImportConfig importLoc
+                rest <- go [] xs
+                pure . fmap mconcat . sequence $ [fs, res, rest]
          (ParseUtils.Section l "if" p xs') -> do
                            subpcs <- go [] xs'
                            let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)

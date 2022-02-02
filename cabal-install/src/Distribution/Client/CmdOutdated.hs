@@ -87,11 +87,9 @@ import Distribution.Client.HttpUtils
 import Distribution.Utils.NubList
          ( fromNubList )
 
-
 import qualified Data.Set as S
 import System.Directory
     ( getCurrentDirectory, doesFileExist )
-
 
 -------------------------------------------------------------------------------
 -- Command
