@@ -11,7 +11,7 @@ On a (linux) system you are bootstrapping, run
 
     ./bootstrap/bootstrap.py -d ./bootstrap/linux-ghcver.json -w /path/to-ghc
     
-From the top directory of the source checkout.
+from the top directory of the source checkout.
 
 To generate the `platform-ghcver` files for other platforms, do:
 
