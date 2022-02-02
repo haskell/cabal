@@ -163,7 +163,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (s
             if importLoc `elem` seenImports
               then pure . parseFail $ ParseUtils.FromString ("cyclical import of " ++ importLoc) (Just l)
               else do
-                let fs = fmap (\x -> CondNode x [importLoc] mempty) $ fieldsToConfig (reverse acc)
+                let fs = fmap (\z -> CondNode z [importLoc] mempty) $ fieldsToConfig (reverse acc)
                 res <- parseProjectSkeleton cacheDir httpTransport verbosity (importLoc : seenImports) importLoc =<< fetchImportConfig importLoc
                 rest <- go [] xs
                 pure . fmap mconcat . sequence $ [fs, res, rest]
