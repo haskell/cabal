@@ -23,7 +23,7 @@ jobs:
     needs: validate-{{ mangleVersion needs }}
 {% endfor %}
     container:
-      image: phadej/ghc:{{job.version}}-{% if job.xenial %}xenial{% else %}bionic{% endif %}
+      image: haskell:{{job.version}}
     steps:
       - name: System info
         run: |

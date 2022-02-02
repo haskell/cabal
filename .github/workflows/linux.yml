@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:9.2.1-bionic
+      image: haskell:9.2.1
     steps:
       - name: System info
         run: |
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:9.0.2-bionic
+      image: haskell:9.0.2
     steps:
       - name: System info
         run: |
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.10.7-bionic
+      image: haskell:8.10.7
     steps:
       - name: System info
         run: |
@@ -169,7 +169,7 @@ jobs:
     name: validate.sh ghc-8.8.4
     runs-on: ubuntu-18.04
     container:
-      image: phadej/ghc:8.8.4-bionic
+      image: haskell:8.8.4
     steps:
       - name: System info
         run: |
@@ -219,7 +219,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.6.5-bionic
+      image: haskell:8.6.5
     steps:
       - name: System info
         run: |
@@ -269,7 +269,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.4.4-bionic
+      image: haskell:8.4.4
     steps:
       - name: System info
         run: |
@@ -319,7 +319,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.2.2-bionic
+      image: haskell:8.2.2
     steps:
       - name: System info
         run: |
@@ -369,7 +369,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.0.2-bionic
+      image: haskell:8.0.2
     steps:
       - name: System info
         run: |
@@ -411,7 +411,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:7.10.3-bionic
+      image: haskell:7.10.3
     steps:
       - name: System info
         run: |
@@ -453,7 +453,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:7.8.4-bionic
+      image: haskell:7.8.4
     steps:
       - name: System info
         run: |
@@ -495,7 +495,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:7.6.3-xenial
+      image: haskell:7.6.3
     steps:
       - name: System info
         run: |
@@ -541,7 +541,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: validate-8_8_4
     container:
-      image: phadej/ghc:8.8.4-xenial
+      image: haskell:8.8.4
     steps:
       - name: System info
         run: |
