@@ -36,12 +36,8 @@ import Foreign
 
 import System.Posix.Types
          ( FileMode )
-import System.Posix.Internals
-         ( withFilePath
-         , c_chmod
-         , c_stat, sizeof_stat, st_mode )
-import Foreign.C
-         ( throwErrnoPathIfMinus1_ )
+import System.Posix.Files
+         ( getFileStatus, fileMode, setFileMode )
 
 #else /* else mingw32_HOST_OS */
 
@@ -81,13 +77,9 @@ setFileOrdinary   path = addFileMode path 0o644 -- file perms -rw-r--r--
 setFileExecutable path = addFileMode path 0o755 -- file perms -rwxr-xr-x
 
 addFileMode :: FilePath -> FileMode -> IO ()
-addFileMode name m =
-  withFilePath name $ \s -> allocaBytes sizeof_stat $ \ptr_stat -> do
-    throwErrnoPathIfMinus1_ "addFileMode: stat" name $
-         c_stat s ptr_stat
-    o <- st_mode ptr_stat
-    throwErrnoPathIfMinus1_ "addFileMode: chmod" name $
-         c_chmod s (m .|. o)
+addFileMode name m = do
+  o <- fileMode <$> getFileStatus name
+  setFileMode name (m .|. o)
 #else
 setFileOrdinary   _ = return ()
 setFileExecutable _ = return ()
