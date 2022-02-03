@@ -359,12 +359,10 @@ mkPkgDescription opts pkgDesc =
       []
       False
       opts
-    , if cabalSpec < CabalSpecV2_2
-      then PrettyEmpty
-      else field "build-type" text "Simple"
-           []
-           False
-           opts
+    , field "build-type" text "Simple"
+      []
+      False
+      opts
     , case _pkgExtraDocFiles pkgDesc of
         Nothing -> PrettyEmpty
         Just fs ->
