@@ -164,9 +164,11 @@ genPkgDescription
     => InitFlags
     -> SourcePackageDb
     -> m PkgDescription
-genPkgDescription flags srcDb = PkgDescription
-    <$> cabalVersionPrompt flags
-    <*> packageNamePrompt srcDb flags
+genPkgDescription flags' srcDb = do
+  csv <- cabalVersionPrompt flags'
+  let flags = flags' { cabalVersion = Flag csv }
+  PkgDescription csv
+    <$> packageNamePrompt srcDb flags
     <*> versionPrompt flags
     <*> licensePrompt flags
     <*> authorPrompt flags
