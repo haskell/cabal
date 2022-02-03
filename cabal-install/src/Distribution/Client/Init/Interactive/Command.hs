@@ -100,37 +100,38 @@ createProject v pkgIx srcDb initFlags = do
       mkOpts cs = WriteOpts
         doOverwrite isMinimal cs
         v pkgDir pkgType pkgName
+      initFlags' = initFlags { cabalVersion = Flag cabalSpec }
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
-      exeTarget <- genExeTarget initFlags pkgIx
-      comments <- noCommentsPrompt initFlags
+      exeTarget <- genExeTarget initFlags' pkgIx
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
 
       exeTarget <- addLibDepToExe pkgName <$>
-        genExeTarget initFlags pkgIx
+        genExeTarget initFlags' pkgIx
 
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
@@ -141,10 +142,10 @@ createProject v pkgIx srcDb initFlags = do
       -- are *not* passed, the user will be prompted for a package type (which
       -- includes TestSuite in the list). It prevents that the user end up with a
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
-      let initFlags' = initFlags { initializeTestSuite = Flag True }
-      testTarget <- genTestTarget initFlags' pkgIx
+      let initFlags'' = initFlags' { initializeTestSuite = Flag True }
+      testTarget <- genTestTarget initFlags'' pkgIx
 
-      comments <- noCommentsPrompt initFlags'
+      comments <- noCommentsPrompt initFlags''
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
