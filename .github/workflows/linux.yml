@@ -14,8 +14,9 @@ jobs:
     strategy:
       matrix:
         ghc:
-          - "9.0.1"
-          - "8.10.4"
+          - "9.2.1"
+          - "9.0.2"
+          - "8.10.7"
           - "8.8.4"
           - "8.6.5"
           - "8.4.4"
@@ -62,7 +63,7 @@ jobs:
           git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 
       - name: Set flag --lib-only
-        if: contains(matrix.ghc, ["9.0.1", "8.0.2", "7.10.3", "7.8.4", "7.6.3"])
+        if: contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4", "7.6.3"])
         run: echo "flags=--lib-only" >> $github_env
 
       - name: Set flag --solver-benchmark
@@ -95,11 +96,11 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s lib-suite
 
       - name: Validate cli-tests
-        if: contains(matrix.ghc, ["8.10.4", "8.8.4", "8.6.5", "8.4.4", "8.2.2"])
+        if: contains(matrix.ghc, ["8.10.7", "8.8.4", "8.6.5", "8.4.4", "8.2.2"])
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-tests
 
       - name: Validate cli-suite
-        if: contains(matrix.ghc, ["8.10.4", "8.8.4", "8.6.5", "8.4.4", "8.2.2"])
+        if: contains(matrix.ghc, ["8.10.7", "8.8.4", "8.6.5", "8.4.4", "8.2.2"])
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-suite
 
   validate_old:
