@@ -5,11 +5,13 @@ main = cabalTest $
     cwd <- fmap testSourceCopyDir getTestEnv
 
     buildOut <- withDirectory cwd $ do
-      cabal "init" ["-n", "--exe", "--application-dir=app", "--main-is=Main.hs"]
+      cabalWithStdin "init" ["-i"]
+        "2\n5\n\n\n2\n\n\n\n\n\n\n\n\n\n"
       setup "configure" []
       setup' "build" ["app"]
 
+    assertFileDoesContain (cwd </> "app.cabal")   "3.0"
+    assertFileDoesContain (cwd </> "app.cabal")   "BSD-3-Clause"
     assertFileDoesContain (cwd </> "app.cabal")   "Simple"
-    assertFileDoesContain (cwd </> "app.cabal")   "base ^>="
     assertFileDoesContain (cwd </> "app/Main.hs") "This should remain as is!"
     assertOutputContains "Linking" buildOut
