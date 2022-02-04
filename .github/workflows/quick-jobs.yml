@@ -1,10 +1,5 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Quick jobs
+
 on:
   push:
     branches:

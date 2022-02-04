@@ -70,16 +70,6 @@ buildinfo-fields-reference : phony
 analyse-imports : phony
 	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
-# github actions
-github-actions : .github/workflows/quick-jobs.yml
-github-actions : .github/workflows/bootstrap.yml
-github-actions : .github/workflows/linux.yml
-github-actions : .github/workflows/macos.yml
-github-actions : .github/workflows/windows.yml
-
-.github/workflows/%.yml : templates/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
-
 # ghcid
 
 ghcid-lib :
