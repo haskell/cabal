@@ -96,11 +96,13 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s lib-suite
 
       - name: Validate cli-tests
-        if: !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
+        if: |
+          !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-tests
 
       - name: Validate cli-suite
-        if: !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
+        if: |
+          !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-suite
 
   validate_old:
