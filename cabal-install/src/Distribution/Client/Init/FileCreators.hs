@@ -23,8 +23,8 @@ module Distribution.Client.Init.FileCreators
 , prepareTestTarget
 ) where
 
-import Prelude hiding (writeFile)
-import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile)
+import Prelude hiding (writeFile, readFile)
+import Distribution.Client.Compat.Prelude hiding (head, empty, writeFile, readFile)
 
 import qualified Data.Set as Set (member)
 
@@ -67,12 +67,18 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
       exeStanza <- prepareExeTarget opts exeTarget
       testStanza <- prepareTestTarget opts testTarget
 
-      writeCabalFile opts $ pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
+      (reusedCabal, cabalContents) <- writeCabalFile opts $
+        pkgFields ++ [commonStanza, libStanza, exeStanza, testStanza]
 
       when (null $ _pkgSynopsis pkgDesc) $
-        message opts T.Warning "no synopsis given. You should edit the .cabal file and add one."
+        message opts T.Warning "No synopsis given. You should edit the .cabal file and add one."
 
       message opts T.Info "You may want to edit the .cabal file and add a Description field."
+
+      when reusedCabal $ do
+        existingCabal <- readFile $ unPackageName (_optPkgName opts) ++ ".cabal"
+        when (existingCabal /= cabalContents) $
+          message opts T.Warning "A .cabal file was found and not updated, if updating is desired please use the '--overwrite' option."
   where
     pkgName = unPackageName $ _optPkgName opts
 
@@ -87,7 +93,7 @@ prepareLibTarget opts (Just libTarget) = do
     void $ writeDirectoriesSafe opts $ filter (/= ".") srcDirs
     -- avoid writing when conflicting exposed paths may
     -- exist.
-    when (expMods == (myLibModule :| [])) $ do
+    when (expMods == (myLibModule :| [])) . void $
       writeFileSafe opts libPath myLibHs
 
     return $ mkLibStanza opts libTarget
@@ -144,15 +150,16 @@ writeCabalFile
     => WriteOpts
     -> [PrettyField FieldAnnotation]
       -- ^ .cabal fields
-    -> m ()
-writeCabalFile opts fields =
-    writeFileSafe opts cabalFileName cabalContents
-  where
-    cabalContents = showFields'
-      annCommentLines
-      postProcessFieldLines
-      4 fields
+    -> m (Bool, String)
+writeCabalFile opts fields = do
+    let cabalContents = showFields'
+          annCommentLines
+          postProcessFieldLines
+          4 fields
 
+    reusedCabal <- writeFileSafe opts cabalFileName cabalContents
+    return (reusedCabal, cabalContents)
+  where
     cabalFileName = pkgName ++ ".cabal"
     pkgName = unPackageName $ _optPkgName opts
 
@@ -169,9 +176,8 @@ writeLicense :: Interactive m => WriteOpts -> PkgDescription -> m ()
 writeLicense writeOpts pkgDesc = do
   year <- show <$> getCurrentYear
   case licenseFile year (_pkgAuthor pkgDesc) of
-    Just licenseText -> do
-      message writeOpts T.Log "Creating LICENSE..."
-      writeFileSafe writeOpts "LICENSE" licenseText
+    Just licenseText ->
+      void $ writeFileSafe writeOpts "LICENSE" licenseText
     Nothing -> message writeOpts T.Warning "unknown license type, you must put a copy in LICENSE yourself."
   where
     getLid (Left (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing))) = Just lid
@@ -214,12 +220,18 @@ writeChangeLog opts pkgDesc
     , "* First version. Released on an unsuspecting world."
     ]
 
-  go = do
-    message opts T.Log ("Creating " ++ defaultChangelog ++"...")
-    writeFileSafe opts defaultChangelog changeLog
+  go =
+    void $ writeFileSafe opts defaultChangelog changeLog
 
 -- -------------------------------------------------------------------- --
 -- Utilities
+
+data WriteAction = Overwrite | Fresh | Existing deriving Eq
+
+instance Show WriteAction where
+  show Overwrite = "Overwriting"
+  show Fresh     = "Creating fresh"
+  show Existing  = "Using existing"
 
 -- | Possibly generate a message to stdout, taking into account the
 --   --quiet flag.
@@ -228,18 +240,19 @@ message opts = T.message (_optVerbosity opts)
 
 -- | Write a file \"safely\" if it doesn't exist, backing up any existing version when
 --   the overwrite flag is set.
-writeFileSafe :: Interactive m => WriteOpts -> FilePath -> String -> m ()
+writeFileSafe :: Interactive m => WriteOpts -> FilePath -> String -> m Bool
 writeFileSafe opts fileName content = do
     exists <- doesFileExist fileName
 
     let action
-          | exists && doOverwrite = "Overwriting"
-          | not exists = "Creating fresh"
-          | otherwise = "Using existing"
+          | exists && doOverwrite = Overwrite
+          | not exists = Fresh
+          | otherwise = Existing
 
     go exists
 
-    message opts T.Log $ action ++ " file " ++ fileName ++ "..."
+    message opts T.Log $ show action ++ " file " ++ fileName ++ "..."
+    return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
 
@@ -258,18 +271,19 @@ writeFileSafe opts fileName content = do
         removeExistingFile fileName
       | otherwise = return ()
 
-writeDirectoriesSafe :: Interactive m => WriteOpts -> [String] -> m ()
-writeDirectoriesSafe opts dirs = for_ dirs $ \dir -> do
+writeDirectoriesSafe :: Interactive m => WriteOpts -> [String] -> m Bool
+writeDirectoriesSafe opts dirs = fmap or $ for dirs $ \dir -> do
     exists <- doesDirectoryExist dir
 
     let action
-          | exists && doOverwrite = "Overwriting"
-          | not exists = "Creating fresh"
-          | otherwise = "Using existing"
+          | exists && doOverwrite = Overwrite
+          | not exists = Fresh
+          | otherwise = Existing
 
     go dir exists
 
-    message opts T.Log $ action ++ " directory ./" ++ dir ++ "..."
+    message opts T.Log $ show action ++ " directory ./" ++ dir ++ "..."
+    return $ action == Existing
   where
     doOverwrite = _optOverwrite opts
 
