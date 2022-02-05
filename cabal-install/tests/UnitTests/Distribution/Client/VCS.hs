@@ -47,7 +47,7 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 -- checks that the working state is as expected (given the pure representation).
 --
 tests :: MTimeChange -> [TestTree]
-tests mtimeChange =
+tests mtimeChange = map (localOption $ QuickCheckTests 10)
   [ testGroup "git"
     [ testProperty "check VCS test framework"    prop_framework_git
     , testProperty "cloneSourceRepo"             prop_cloneRepo_git
