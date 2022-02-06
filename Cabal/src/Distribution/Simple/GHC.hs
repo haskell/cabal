@@ -1069,22 +1069,20 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
       whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
         whenGHCiLib $ do
-          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-          Ld.combineObjectFiles
+          combineObjectFiles
             verbosity
             lbi
-            ldProg
+            ghcProg
             ghciLibFilePath
             staticObjectFiles
 
       whenProfLib $ do
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
         whenGHCiLib $ do
-          (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-          Ld.combineObjectFiles
+          combineObjectFiles
             verbosity
             lbi
-            ldProg
+            ghcProg
             ghciProfLibFilePath
             profObjectFiles
 
@@ -1093,6 +1091,39 @@ buildOrReplLib mReplFlags verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenStaticLib False $
         runGhcProg ghcStaticLinkArgs
+
+-- | Join a set of object files together using, if possible, GHC's
+-- @--merge-objs@ mode or otherwise @ld@.
+combineObjectFiles
+  :: Verbosity
+  -> LocalBuildInfo
+  -> ConfiguredProgram
+  -- ^ GHC
+  -> FilePath
+  -> [FilePath]
+  -> IO ()
+combineObjectFiles verbosity lbi ghcProg target files
+  | compilerSupportsMergeObjs =
+      runGHC verbosity ghcProg (compiler lbi) (hostPlatform lbi) opts
+  where
+    -- GHC>=9.4 supports the -merge-objs mode which handles the
+    -- object merging for us.
+    compilerSupportsMergeObjs
+      | Just ghc_ver <- compilerCompatVersion GHC (compiler lbi) =
+          ghc_ver >= mkVersion [9, 3]
+      | otherwise =
+          False
+
+    opts =
+      mempty
+        { ghcOptMode = toFlag GhcModeMergeObjs
+        , ghcOptInputFiles = toNubListR files
+        , ghcOptOutputFile = toFlag target
+        }
+combineObjectFiles verbosity lbi _ target files =
+  do
+    (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+    Ld.combineObjectFiles verbosity lbi ldProg target files
 
 -- | Start a REPL without loading any source files.
 startInterpreter
