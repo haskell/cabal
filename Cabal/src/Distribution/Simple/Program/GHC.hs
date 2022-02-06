@@ -542,6 +542,7 @@ data GhcMode = GhcModeCompile     -- ^ @ghc -c@
              | GhcModeMake        -- ^ @ghc --make@
              | GhcModeInteractive -- ^ @ghci@ \/ @ghc --interactive@
              | GhcModeAbiHash     -- ^ @ghc --abi-hash@
+             | GhcModeMergeObjs   -- ^ @ghc --merge-objs@
 --             | GhcModeDepAnalysis -- ^ @ghc -M@
 --             | GhcModeEvaluate    -- ^ @ghc -e@
  deriving (Show, Eq)
@@ -589,6 +590,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
        Just GhcModeMake        -> ["--make"]
        Just GhcModeInteractive -> ["--interactive"]
        Just GhcModeAbiHash     -> ["--abi-hash"]
+       Just GhcModeMergeObjs   -> ["--merge-objs"]
 --     Just GhcModeDepAnalysis -> ["-M"]
 --     Just GhcModeEvaluate    -> ["-e", expr]
 
