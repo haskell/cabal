@@ -18,11 +18,11 @@ import Text.EditDistance ( defaultEditCosts, levenshteinDistance )
 
 showUnsupportedExtension :: Extension -> String
 showUnsupportedExtension (UnknownExtension extStr) = formatMessage cutoffRange "extension" extStr (mostSimilarElement extStr allKnownExtensions)
-showUnsupportedExtension extension = prettyShow extension ++ "which is not supported"
+showUnsupportedExtension extension = unwords [prettyShow extension, "which is not supported"]
 
 showUnsupportedLanguage :: Language -> String
 showUnsupportedLanguage (UnknownLanguage langStr) = formatMessage cutoffRange "language" langStr (mostSimilarElement langStr (show <$> knownLanguages))
-showUnsupportedLanguage knownLanguage = prettyShow knownLanguage ++ "which is not supported"
+showUnsupportedLanguage knownLanguage = unwords [prettyShow knownLanguage, "which is not supported"]
 
 allKnownExtensions :: [String]
 allKnownExtensions = enabledExtensions ++ disabledExtensions
