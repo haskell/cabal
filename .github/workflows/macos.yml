@@ -33,12 +33,6 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
 
-      - name: Install cabal-plan
-        run: |
-          cd $(mktemp -d)
-          # aeson +fast, so we don't wait for -O2
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
-
       - uses: actions/checkout@v2
 
       - name: Validate print-config
