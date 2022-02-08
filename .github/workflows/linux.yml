@@ -66,11 +66,6 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
 
-      - name: Install `nroff` for `cabal man`
-        run: |
-          apt-get update
-          apt-get install -y groff-base
-
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
 
