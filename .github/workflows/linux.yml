@@ -11,30 +11,44 @@ on:
 
 jobs:
   validate:
+    name: Validate ${{ matrix.ghc }}
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        ghc:
-          - "9.2.1"
-          - "9.0.2"
-          - "8.10.7"
-          - "8.8.4"
-          - "8.6.5"
-          - "8.4.4"
-          - "8.2.2"
-          - "8.0.2"
-          - "7.10.3"
-          - "7.8.4"
-
-    name: validate ${{ matrix.ghc }}
-    runs-on: ubuntu-18.04
-
-    container:
-      image: haskell:${{ matrix.ghc }}
+        include:
+          - ghc: "9.2.1"
+            flags: ""
+            cli: true
+          - ghc: "9.0.2"
+            flags: ""
+            cli: true
+          - ghc: "8.10.7"
+            flags: ""
+            cli: true
+          - ghc: "8.8.4"
+            flags: "--solver-benchmarks"
+            cli: true
+          - ghc: "8.6.5"
+            flags: "--complete-hackage-tests"
+            cli: true
+          - ghc: "8.4.4"
+            flags: ""
+            cli: true
+          - ghc: "8.2.2"
+            flags: ""
+            cli: true
+          - ghc: "8.0.2"
+            flags: "--lib-only"
+            cli: false
 
     steps:
-      - name: System info
-        run: |
-          uname -a
+      - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: latest
 
       - name: Set PATH
         run: |
@@ -52,58 +66,33 @@ jobs:
       - name: Update Hackage index
         run: cabal v2-update
 
-      # TODO revisit this
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-
-      - name: Set flag --lib-only
-        if: contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4", "7.6.3"])
-        run: echo "flags=--lib-only" >> $github_env
-
-      - name: Set flag --solver-benchmark
-        if: matrix.ghc == "8.8.4"
-        run: echo "flags=--solver-benchmark" >> $github_env
-
-      - name: Set flag --complete-hackage-tests
-        if: matrix.ghc == "8.6.5"
-        run: echo "flags=--complete-hackage-tests" >> $github_env
-
       - name: Install `nroff` for `cabal man`
-        if: contains(matrix.ghc, ["8.8.4", "8.6.5"])
         run: |
           apt-get update
           apt-get install -y groff-base
 
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s print-config
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
 
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-tool-versions
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s build
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
 
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-tests
 
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-suite
 
       - name: Validate cli-tests
-        if: |
-          !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-tests
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-tests
 
       - name: Validate cli-suite
-        if: |
-          !contains(matrix.ghc, ["8.0.2", "7.10.3", "7.8.4"])
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.flags }} -s cli-suite
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
 
   validate_old:
     strategy:
