@@ -30,9 +30,6 @@ jobs:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest
 
-      - name: Update Hackage index
-        run: cabal v2-update
-
       - uses: actions/checkout@v2
 
       - name: Validate print-config

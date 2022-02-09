@@ -34,8 +34,6 @@ jobs:
         with:
           path: C:\SR
           key: windows-store-meta
-      - name: Update Hackage index
-        run: cabal v2-update
       - uses: actions/checkout@v2
       # all dependencies of Cabal already there (due to GHC depending on Cabal)
       - name: cabal v2-build Cabal
