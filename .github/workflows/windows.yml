@@ -68,6 +68,11 @@ jobs:
 
   # TODO: store the exe from above as artifact and re-use it here instead of building anew
   test-windows-dogfood:
+    strategy:
+      matrix:
+        ghc:
+          - "8.6.5"
+          - "8.10.4"
     name: test ghc-${{ matrix.ghc }} dogfood
     runs-on: windows-latest
     steps:
