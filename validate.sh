@@ -6,7 +6,6 @@
 
 HC=ghc-8.2.2
 CABAL=cabal
-CABALPLAN=cabal-plan
 JOBS=4
 LIBTESTS=true
 CLITESTS=true
@@ -44,7 +43,6 @@ Available options:
       --(no-)run-cli-suite          Run cabal-testsuite with client
   -w, --with-compiler HC            With compiler
       --with-cabal CABAL            With cabal-install
-      --with-cabal-plan CABALPLAN   With cabal-plan
       --extra-hc HC                 Extra compiler to run test-suite with
       --(no-)doctest                Run doctest on library
       --(no-)solver-benchmarks      Build and trial run solver-benchmarks
@@ -190,11 +188,6 @@ while [ $# -gt 0 ]; do
             shift
             shift
             ;;
-        --with-cabal-plan)
-            CABALPLAN=$2
-            shift
-            shift
-            ;;
         --extra-hc)
             EXTRAHCS="$EXTRAHCS $2"
             shift
@@ -319,7 +312,6 @@ cat <<EOF
 compiler:            $HC
 runhaskell           $RUNHASKELL
 cabal-install:       $CABAL
-cabal-plan:          $CABALPLAN
 jobs:                $JOBS
 Cabal tests:         $LIBTESTS
 cabal-install tests: $CLITESTS
