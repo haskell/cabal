@@ -50,8 +50,8 @@ jobs:
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s print-config
 
-      - name: Validate print-tool-version
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s print-tool-version
+      - name: Validate print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s print-tool-versions
 
       - name: Validate build
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s build
