@@ -193,7 +193,7 @@ multiple binary paths but knows which build products a package has.
 
     $ cabal list-bin cabal-install
     cabal: The list-bin command is for finding a single binary at once. The target
-    'cabal-install' refers to the package cabal-install-3.7.0.0 which includes the
+    'cabal-install' refers to the package cabal-install which includes the
     executable 'cabal', the test suite 'unit-tests', the test suite
     'memory-usage-tests', the test suite 'long-tests' and the test suite
     'integration-tests2'.
@@ -226,10 +226,9 @@ We can also scope to test suite targets as they produce binaries.
 
     $ cabal list-bin cabal-install:tests
     cabal: The list-bin command is for finding a single binary at once. The target
-    'cabal-install:tests' refers to the test suites in the package
-    cabal-install-3.7.0.0 which includes the test suite 'unit-tests', the test
-    suite 'memory-usage-tests', the test suite 'long-tests' and the test suite
-    'integration-tests2'.
+    'cabal-install:tests' refers to the test suites in the package cabal-install
+    which includes the test suite 'unit-tests', the test suite 'memory-usage-tests',
+    the test suite 'long-tests' and the test suite 'integration-tests2'.
 
     $ cabal list-bin cabal-install:unit-tests
     /.../dist-newstyle/.../unit-tests/unit-tests
