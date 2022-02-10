@@ -14,10 +14,10 @@ jobs:
     name: Validate ${{ matrix.ghc }}
 
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       matrix:
+        ghc: []
         include:
           - ghc: "9.2.1"
             flags: ""
