@@ -211,17 +211,11 @@ For a scope that results in only one item we'll get a path.
     $ cabal list-bin cabal-install:cabal
     /.../dist-newstyle/build/.../cabal/cabal
 
-We can't scope to ``all:exes`` and ``all`` is not the same as giving no scope.
-
-::
-
-    $ cabal list-bin cabal-install:all:exes
-    cabal: Unknown target 'cabal-install:all:exes'.
-    The package cabal-install has no component 'all'.
-
-    $ cabal list-bin cabal-install:all
-    cabal: Unknown target 'cabal-install:all'.
-    The package cabal-install has no component 'all'.
+.. warning::
+    
+    ``list-bin`` won't accept any ``all`` scope such as ``all:exes`` or
+    ``all:tests`` and will complain that it has no component 'all' if this is
+    tried.
 
 We can also scope to test suite targets as they produce binaries.
 
