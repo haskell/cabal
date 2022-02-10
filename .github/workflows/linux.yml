@@ -11,7 +11,7 @@ on:
 
 jobs:
   validate:
-    name: Validate ${{ matrix.ghc }}
+    name: Validate ghc-${{ matrix.ghc }}
 
     runs-on: ubuntu-latest
 
