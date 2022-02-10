@@ -2144,15 +2144,21 @@ checkDuplicateModules pkg =
     checkTest  = checkDups "test suite" testModules
     checkBench = checkDups "benchmark"  benchmarkModules
     checkDups s getModules t =
-               let libMap = foldCondTree Map.empty
-                                         (\(_,v) -> Map.fromListWith (+) . map (\x -> (x,(1::Int))) $ getModules v )
-                                         (Map.unionWith (+)) -- if a module may occur in nonexclusive branches count it twice
-                                         (Map.unionWith max) -- a module occurs the max of times it might appear in exclusive branches
+               let sumPair (x,x') (y,y') = (x + x' :: Int, y + y' :: Int)
+                   mergePair (x, x') (y, y') = (x + x', max y y')
+                   maxPair (x, x') (y, y') = (max x x', max y y')
+                   libMap = foldCondTree Map.empty
+                                         (\(_,v) -> Map.fromListWith sumPair . map (\x -> (x,(1, 1))) $ getModules v )
+                                         (Map.unionWith mergePair) -- if a module may occur in nonexclusive branches count it twice strictly and once loosely.
+                                         (Map.unionWith maxPair) -- a module occurs the max of times it might appear in exclusive branches
                                          t
-                   dupLibs = Map.keys $ Map.filter (>1) libMap
-               in if null dupLibs
-                    then []
-                    else [PackageBuildImpossible $ "Duplicate modules in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibs)]
+                   dupLibsStrict = Map.keys $ Map.filter ((>1) . fst) libMap
+                   dupLibsLax = Map.keys $ Map.filter ((>1) . snd) libMap
+               in if not (null dupLibsLax)
+                      then [PackageBuildImpossible $ "Duplicate modules in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibsLax)]
+                      else if not (null dupLibsStrict)
+                           then [PackageDistSuspicious $ "Potential duplicate modules (subject to conditionals) in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibsStrict)]
+                           else []
 
 -- ------------------------------------------------------------
 -- * Utils
