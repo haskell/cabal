@@ -24,7 +24,9 @@ jobs:
           - "8.8.4"
           - "8.6.5"
           - "8.2.2"
-          - "8.0.2"
+          # - "8.0.2" disabled because no-cli suite
+          # TODO merge with linux.yml and use the same logic for both
+          # platforms
 
     steps:
 
