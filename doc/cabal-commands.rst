@@ -186,8 +186,11 @@ cabal list-bin
 --------------
 
 ``cabal list-bin`` will either; (a) display the path for a single exe or (b)
-complain that the target doesn't resolve to a single binary. It won't list
-multiple binary paths but knows which build products a package has.
+complain that the target doesn't resolve to a single binary. In the latter case,
+it will name the binary products contained in the package. These products can 
+be used to narrow the search and get an actual path to a particular executable.
+
+Example showing a failure to resolve to a single executable.
 
 ::
 
