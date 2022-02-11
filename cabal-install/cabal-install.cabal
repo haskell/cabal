@@ -96,7 +96,6 @@ library
         Distribution.Client.CmdUpdate
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process

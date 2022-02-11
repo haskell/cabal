@@ -1,0 +1,10 @@
+synopsis:  Remove Distribution.Client.Compat.FilePerms
+packages: cabal-install
+prs: #7948
+
+description: {
+
+- Remove the module Distribution.Client.Compat.FilePerms, since it's
+  both dead code and duplicates code from Distribution.Compat.CopyFile.
+
+}
