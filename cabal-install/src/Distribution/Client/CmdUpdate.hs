@@ -13,6 +13,7 @@ module Distribution.Client.CmdUpdate (
   ) where
 
 import Prelude ()
+import Control.Exception
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.NixStyleOptions
@@ -209,7 +210,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       case updated of
         Sec.NoUpdates  -> do
           now <- getCurrentTime
-          setModificationTime (indexBaseName repo <.> "tar") now
+          _ <- try $ setModificationTime (indexBaseName repo <.> "tar") now :: IO (Either SomeException ())
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++
             " is up to date at index-state " ++ prettyShow (IndexStateTime current_ts)
