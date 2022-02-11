@@ -326,7 +326,7 @@ rebuildProjectConfig verbosity
       $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
           projectConfig <- phaseReadProjectConfig
-          localPackages <- phaseReadLocalPackages projectConfig
+          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
     info verbosity
