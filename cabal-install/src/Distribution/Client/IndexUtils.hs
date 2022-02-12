@@ -366,7 +366,7 @@ readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
     when (isRepoRemote repo) $ warnIfIndexIsOld =<< getIndexFileAge repo
     -- note that if this step fails due to a bad repocache, the the procedure can still succeed by reading from the existing cache, which is updated regardless.
-    _ <- try $ updateRepoIndexCache verbosity (RepoIndex repoCtxt repo) :: IO (Either SomeException ())
+    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo) `catch` (\(e :: SomeException) -> warn verbosity $ "unable to update the repo index cache -- " ++ displayException e)
     readPackageIndexCacheFile verbosity mkAvailablePackage
                               (RepoIndex repoCtxt repo)
                               idxState

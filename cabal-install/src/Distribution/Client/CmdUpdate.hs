@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE NamedFieldPuns  #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections   #-}
 {-# LANGUAGE ViewPatterns    #-}
 
@@ -43,7 +44,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Flag
          ( fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap )
+         ( die', notice, wrapText, writeFileAtomic, noticeNoWrap, warn )
 import Distribution.Verbosity
          ( normal, lessVerbose )
 import Distribution.Client.IndexUtils.Timestamp
@@ -210,7 +211,7 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       case updated of
         Sec.NoUpdates  -> do
           now <- getCurrentTime
-          _ <- try $ setModificationTime (indexBaseName repo <.> "tar") now :: IO (Either SomeException ())
+          setModificationTime (indexBaseName repo <.> "tar") now `catch` (\(e :: SomeException) -> warn verbosity $ "Could not set modification time of index tarball -- " ++ show e)
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++
             " is up to date at index-state " ++ prettyShow (IndexStateTime current_ts)
