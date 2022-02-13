@@ -14,35 +14,43 @@ jobs:
     name: Validate ghc-${{ matrix.ghc }}
 
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       matrix:
         include:
           - ghc: "9.2.1"
-            flags: ""
             cli: true
             experimental: true
+            flags: ""
           - ghc: "9.0.2"
-            flags: ""
-            cli: true
-          - ghc: "8.10.7"
-            flags: ""
-            cli: true
-          - ghc: "8.8.4"
-            flags: "--solver-benchmarks"
-            cli: true
-          - ghc: "8.6.5"
-            flags: "--complete-hackage-tests"
-            cli: true
-          - ghc: "8.4.4"
-            flags: ""
-            cli: true
-          - ghc: "8.2.2"
-            flags: ""
-            cli: true
-          - ghc: "8.0.2"
-            flags: "--lib-only"
             cli: false
+            experimental: false
+            flags: ""
+          - ghc: "8.10.7"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.8.4"
+            cli: true
+            experimental: false
+            flags: "--solver-benchmarks"
+          - ghc: "8.6.5"
+            cli: true
+            experimental: false
+            flags: "--complete-hackage-tests"
+          - ghc: "8.4.4"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.2.2"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.0.2"
+            cli: false
+            experimental: false
+            flags: "--lib-only"
 
     steps:
 

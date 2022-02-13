@@ -14,25 +14,50 @@ jobs:
     name: Validate ghc-${{ matrix.ghc }}
 
     runs-on: macos-latest
+    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       matrix:
-        ghc:
-          - "9.2.1"
-          - "9.0.2"
-          - "8.10.7"
-          - "8.8.4"
-          - "8.6.5"
-          - "8.2.2"
-          # - "8.0.2" disabled because no-cli suite
-          # TODO merge with linux.yml and use the same logic for both
-          # platforms
+        include:
+          - ghc: "9.2.1"
+            cli: true
+            experimental: true
+            flags: ""
+          - ghc: "9.0.2"
+            cli: false
+            experimental: false
+            flags: ""
+          - ghc: "8.10.7"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.8.4"
+            cli: true
+            experimental: false
+            flags: "--solver-benchmarks"
+          - ghc: "8.6.5"
+            cli: true
+            experimental: false
+            flags: "--complete-hackage-tests"
+          - ghc: "8.4.4"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.2.2"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.0.2"
+            cli: false
+            experimental: false
+            flags: "--lib-only"
 
     steps:
 
       - uses: actions/checkout@v2
 
       - uses: haskell/actions/setup@v1
+        id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
           cabal-version: latest # default, keeping for visibility
@@ -50,23 +75,25 @@ jobs:
             ${{ runner.os }}-${{ matrix.ghc }}-
 
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s print-config
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
 
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-tool-versions
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s build
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
 
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-tests
 
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-suite
 
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s cli-tests
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-tests
 
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v -s cli-suite
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
 
