@@ -41,7 +41,7 @@ import Distribution.Simple.Utils
 benchCommand :: CommandUI (NixStyleFlags ())
 benchCommand = CommandUI {
   commandName         = "v2-bench",
-  commandSynopsis     = "Run benchmarks",
+  commandSynopsis     = "Run benchmarks.",
   commandUsage        = usageAlternatives "v2-bench" [ "[TARGETS] [FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Runs the specified benchmarks, first ensuring they are up to "
