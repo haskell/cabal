@@ -40,7 +40,7 @@ newtype ClientHaddockFlags = ClientHaddockFlags { openInBrowser :: Flag Bool }
 haddockCommand :: CommandUI (NixStyleFlags ClientHaddockFlags)
 haddockCommand = CommandUI {
   commandName         = "v2-haddock",
-  commandSynopsis     = "Build Haddock documentation",
+  commandSynopsis     = "Build Haddock documentation.",
   commandUsage        = usageAlternatives "v2-haddock" [ "[FLAGS] TARGET" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Build Haddock documentation for the specified packages within the "
