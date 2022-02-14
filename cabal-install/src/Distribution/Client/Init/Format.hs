@@ -40,6 +40,7 @@ import Distribution.Utils.Path
 import Distribution.Package (unPackageName)
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.CabalSpecVersion
+import Distribution.FieldGrammar.Newtypes (SpecLicense(SpecLicense))
 
 
 -- | Construct a 'PrettyField' from a field that can be automatically
@@ -329,15 +330,15 @@ mkPkgDescription opts pkgDesc =
       False
       opts
 
-    , (if _pkgCabalVersion pkgDesc < CabalSpecV2_2
-        then field "license" pretty (licenseFromSPDX $ _pkgLicense pkgDesc)
-        else field "license" pretty (_pkgLicense pkgDesc))
+    , field "license" pretty (_pkgLicense pkgDesc)
       ["The license under which the package is released."]
       True
       opts
 
     , case _pkgLicense pkgDesc of
-        SPDX.NONE -> PrettyEmpty
+        SpecLicense (Left  SPDX.NONE)          -> PrettyEmpty
+        SpecLicense (Right AllRightsReserved)  -> PrettyEmpty
+        SpecLicense (Right UnspecifiedLicense) -> PrettyEmpty
         _ -> field "license-file" text "LICENSE"
              ["The file containing the license text."]
              False

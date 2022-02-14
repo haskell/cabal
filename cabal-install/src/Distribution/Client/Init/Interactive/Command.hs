@@ -53,12 +53,15 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.FieldGrammar.Newtypes (SpecLicense(..))
+import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 
 import Language.Haskell.Extension (Language(..))
+import Distribution.License (knownLicenses)
+import Distribution.Parsec (simpleParsec')
 
 
 -- | Main driver for interactive prompt code.
@@ -321,15 +324,16 @@ versionPrompt flags = getVersion flags go
           go
         Just v -> return v
 
-licensePrompt :: Interactive m => InitFlags -> m SPDX.License
+licensePrompt :: Interactive m => InitFlags -> m SpecLicense
 licensePrompt flags = getLicense flags $ do
+    let csv = fromFlagOrDefault defaultCabalVersion (cabalVersion flags)
     l <- promptList "Please choose a license"
-      licenses
+      (licenses csv)
       MandatoryPrompt
       Nothing
       True
 
-    case simpleParsec l of
+    case simpleParsec' csv l of
       Nothing -> do
         putStrLn ( "The license must be a valid SPDX expression:"
                 ++ "\n - On the SPDX License List: https://spdx.org/licenses/"
@@ -339,7 +343,9 @@ licensePrompt flags = getLicense flags $ do
         licensePrompt flags
       Just l' -> return l'
   where
-    licenses = SPDX.licenseId <$> defaultLicenseIds
+    licenses csv = if csv >= CabalSpecV2_2
+      then SPDX.licenseId <$> defaultLicenseIds
+      else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
 authorPrompt flags = getAuthor flags $

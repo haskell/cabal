@@ -356,6 +356,7 @@ instance Pretty SpecVersion where
 
 -- | SPDX License expression or legacy license
 newtype SpecLicense = SpecLicense { getSpecLicense :: Either SPDX.License License }
+    deriving (Show, Eq)
 
 instance Newtype (Either SPDX.License License) SpecLicense
 

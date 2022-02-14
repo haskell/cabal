@@ -40,6 +40,8 @@ import Distribution.Client.Init.Format
 import Distribution.CabalSpecVersion (showCabalSpecVersion)
 
 import System.FilePath ((</>), (<.>))
+import Distribution.FieldGrammar.Newtypes
+import Distribution.License (licenseToSPDX)
 
 -- -------------------------------------------------------------------- --
 --  File generation
@@ -172,11 +174,11 @@ writeLicense writeOpts pkgDesc = do
       writeFileSafe writeOpts "LICENSE" licenseText
     Nothing -> message writeOpts T.Warning "unknown license type, you must put a copy in LICENSE yourself."
   where
-    getLid (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing)) =
-      Just lid
+    getLid (Left (SPDX.License (SPDX.ELicense (SPDX.ELicenseId lid) Nothing))) = Just lid
+    getLid (Right l) = getLid . Left $ licenseToSPDX l
     getLid _ = Nothing
 
-    licenseFile year auth = case getLid $ _pkgLicense pkgDesc of
+    licenseFile year auth = case getLid . getSpecLicense $ _pkgLicense pkgDesc of
       Just SPDX.BSD_2_Clause -> Just $ bsd2 auth year
       Just SPDX.BSD_3_Clause -> Just $ bsd3 auth year
       Just SPDX.Apache_2_0 -> Just apache20
