@@ -81,6 +81,11 @@ jobs:
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
+      # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+      - name: Install Autotools
+        run: |
+          brew install automake
+
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
 
