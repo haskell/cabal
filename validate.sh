@@ -6,6 +6,7 @@
 
 HC=ghc-8.2.2
 CABAL=cabal
+CABALPLAN=cabal-plan
 JOBS=4
 LIBTESTS=true
 CLITESTS=true
@@ -43,6 +44,7 @@ Available options:
       --(no-)run-cli-suite          Run cabal-testsuite with client
   -w, --with-compiler HC            With compiler
       --with-cabal CABAL            With cabal-install
+      --with-cabal-plan CABALPLAN   With cabal-plan
       --extra-hc HC                 Extra compiler to run test-suite with
       --(no-)doctest                Run doctest on library
       --(no-)solver-benchmarks      Build and trial run solver-benchmarks
@@ -188,6 +190,11 @@ while [ $# -gt 0 ]; do
             shift
             shift
             ;;
+        --with-cabal-plan)
+            CABALPLAN=$2
+            shift
+            shift
+            ;;
         --extra-hc)
             EXTRAHCS="$EXTRAHCS $2"
             shift
@@ -300,7 +307,7 @@ BUILDDIR=dist-newstyle-validate-$BASEHC
 CABAL_TESTSUITE_BDIR="$(pwd)/$BUILDDIR/build/$ARCH/$BASEHC/cabal-testsuite-3"
 
 CABALNEWBUILD="${CABAL} v2-build $JOBS -w $HC --builddir=$BUILDDIR --project-file=$PROJECTFILE"
-CABALLISTBIN="${CABAL} list-bin --builddir=$BUILDDIR"
+CABALPLANLISTBIN="${CABALPLAN} list-bin --builddir=$BUILDDIR"
 
 # header
 #######################################################################
@@ -312,6 +319,7 @@ cat <<EOF
 compiler:            $HC
 runhaskell           $RUNHASKELL
 cabal-install:       $CABAL
+cabal-plan:          $CABALPLAN
 jobs:                $JOBS
 Cabal tests:         $LIBTESTS
 cabal-install tests: $CLITESTS
@@ -331,6 +339,7 @@ print_header print-tool-versions
 
 timed $HC --version
 timed $CABAL --version
+timed $CABALPLAN --version
 
 for EXTRAHC in $EXTRAHCS; do
     timed $EXTRAHC --version
@@ -368,22 +377,22 @@ timed doctest -package-env=doctest-Cabal --fast Cabal/Distribution Cabal/Languag
 step_lib_tests() {
 print_header "Cabal: tests"
 
-CMD="$($CABALLISTBIN Cabal-tests:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:unit-tests) $TESTSUITEJOBS --hide-successes --with-ghc=$HC"
 (cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALLISTBIN Cabal-tests:test:check-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:check-tests) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALLISTBIN Cabal-tests:test:parser-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:parser-tests) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:rpmvercmp) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
-CMD="$($CABALLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-successes"
 (cd Cabal-tests && timed $CMD) || exit 1
 
-CMD=$($CABALLISTBIN Cabal-tests:test:hackage-tests)
+CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
 (cd Cabal-tests && timed $CMD read-fields) || exit 1
 
 if $HACKAGETESTSALL; then
@@ -401,14 +410,14 @@ fi
 step_lib_suite() {
 print_header "Cabal: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$HC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 
 step_lib_suite_extras() {
 for EXTRAHC in $EXTRAHCS; do
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$EXTRAHC --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR $TESTSUITEJOBS --with-ghc=$EXTRAHC --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 
 done
@@ -421,19 +430,19 @@ step_cli_tests() {
 print_header "cabal-install: tests"
 
 # this are sorted in asc time used, quicker tests first.
-CMD="$($CABALLISTBIN cabal-install:test:long-tests) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:long-tests) $TESTSUITEJOBS --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This doesn't work in parallel either
-CMD="$($CABALLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # Only single job, otherwise we fail with "Heap exhausted"
-CMD="$($CABALLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This test-suite doesn't like concurrency
-CMD="$($CABALLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
+CMD="$($CABALPLANLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes --with-ghc=$HC"
 (cd cabal-install && timed $CMD) || exit 1
 }
 
@@ -443,7 +452,7 @@ CMD="$($CABALLISTBIN cabal-install:test:integration-tests2) -j1 --hide-successes
 step_cli_suite() {
 print_header "cabal-install: cabal-testsuite"
 
-CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUITE_BDIR --with-cabal=$($CABALPLANLISTBIN cabal-install:exe:cabal) $TESTSUITEJOBS --hide-successes"
 (cd cabal-testsuite && timed $CMD) || exit 1
 }
 
@@ -453,7 +462,7 @@ CMD="$($CABALLISTBIN cabal-testsuite:exe:cabal-tests) --builddir=$CABAL_TESTSUIT
 step_solver_benchmarks_tests() {
 print_header "solver-benchmarks: test"
 
-CMD="$($CABALLISTBIN solver-benchmarks:test:unit-tests)"
+CMD="$($CABALPLANLISTBIN solver-benchmarks:test:unit-tests)"
 (cd Cabal && timed $CMD) || exit 1
 }
 
@@ -461,7 +470,7 @@ step_solver_benchmarks_run() {
 print_header "solver-benchmarks: run"
 
 SOLVEPKG=Chart-diagrams
-CMD="$($CABALLISTBIN solver-benchmarks:exe:hackage-benchmark) --cabal1=$CABAL --cabal2=$($CABALLISTBIN cabal-install:exe:cabal) --trials=5 --packages=$SOLVEPKG --print-trials"
+CMD="$($CABALPLANLISTBIN solver-benchmarks:exe:hackage-benchmark) --cabal1=$CABAL --cabal2=$($CABALPLANLISTBIN cabal-install:exe:cabal) --trials=5 --packages=$SOLVEPKG --print-trials"
 (cd Cabal && timed $CMD) || exit 1
 }
 

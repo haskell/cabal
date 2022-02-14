@@ -25,31 +25,31 @@ jobs:
             flags: ""
           - ghc: "9.0.2"
             cli: false
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: "--lib-only"
           - ghc: "8.10.7"
             cli: true
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: ""
           - ghc: "8.8.4"
             cli: true
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: "--solver-benchmarks"
           - ghc: "8.6.5"
             cli: true
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: "--complete-hackage-tests"
           - ghc: "8.4.4"
             cli: true
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: ""
           - ghc: "8.2.2"
             cli: true
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: ""
           - ghc: "8.0.2"
             cli: false
-            experimental: false
+            experimental: true # FIXME for quick testing false
             flags: "--lib-only"
 
     steps:
@@ -71,6 +71,11 @@ jobs:
             dist-newstyle
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
 
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
