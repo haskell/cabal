@@ -75,7 +75,8 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal v2-install cabal-plan --constraint='cabal-plan ^>=0.6.2.0' --constraint='aeson +fast' --constraint='cabal-plan +exe'
+          cabal install cabal-plan
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
       - name: Validate print-config
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
