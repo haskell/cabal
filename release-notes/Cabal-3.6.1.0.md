@@ -52,6 +52,7 @@ Cabal 3.6.1.0 Changelog
 
 - lazily decode cache files for checking invalidation [#7516](https://github.com/haskell/cabal/pull/7516) [#7466](https://github.com/haskell/cabal/issues/7466)
   - This yields a significant 15% speedup on rebuilding build plans for projects with lots of individual cabal packages.
+  - It exports the [Tag data type](https://github.com/haskell/cabal/blob/899dd34bc48bbaa43da9a4b2fc354c24fd814d05/Cabal/src/Distribution/Utils/Structured.hs#L67), needed by cabal-install >= 3.6.0.0
 
 - defer build-tools-depends choices as well as setup choices [#7561](https://github.com/haskell/cabal/pull/7561) [#7472](https://github.com/haskell/cabal/issues/7472)
   - extends the existing solver pass that defers solving setup depends until top-level goals are solved to also defer build-tool-depends goals until top level goals are solved.
