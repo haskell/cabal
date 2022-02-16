@@ -21,35 +21,38 @@ jobs:
         include:
           - ghc: "9.2.1"
             cli: true
-            experimental: true
+            experimental: true # work to be done
             flags: ""
           - ghc: "9.0.2"
             cli: false
-            experimental: true # FIXME for quick testing false
+            experimental: true # failure to be investigated, see #7952
+          - ghc: "9.0.1"
+            cli: false
+            experimental: false
             flags: "--lib-only"
           - ghc: "8.10.7"
             cli: true
-            experimental: true # FIXME for quick testing false
+            experimental: true # failure to be investigated, see #7952
             flags: ""
           - ghc: "8.8.4"
             cli: true
-            experimental: true # FIXME for quick testing false
+            experimental: false
             flags: "--solver-benchmarks"
           - ghc: "8.6.5"
             cli: true
-            experimental: true # FIXME for quick testing false
+            experimental: false
             flags: "--complete-hackage-tests"
           - ghc: "8.4.4"
             cli: true
-            experimental: true # FIXME for quick testing false
+            experimental: false
             flags: ""
           - ghc: "8.2.2"
             cli: true
-            experimental: true # FIXME for quick testing false
+            experimental: false
             flags: ""
           - ghc: "8.0.2"
             cli: false
-            experimental: true # FIXME for quick testing false
+            experimental: true # failure to be investigated, see #7952
             flags: "--lib-only"
 
     steps:
