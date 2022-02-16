@@ -1,8 +1,48 @@
 cabal-install Commands
 ======================
 
-We now give an in-depth description of all the commands, first describing the
-arguments and flags that are common to some or all of them.
+``cabal help`` groups commands into global, package, new-style project and
+legacy sections. We talk in detail about some of the new-style project commands,
+``help`` and ``list-bin`` but there are other commands.
+
+::
+
+    $ cabal help
+    Command line interface to the Haskell Cabal infrastructure.
+
+    See http://www.haskell.org/cabal/ for more information.
+
+    Usage: cabal [GLOBAL FLAGS] [COMMAND [FLAGS]]
+
+    Commands:
+    [global]
+    help              Help about commands.
+
+    [package]
+    list-bin          list path to a single executable.
+
+    [new-style projects (forwards-compatible aliases)]
+    v2-build          Compile targets within the project.
+    v2-configure      Add extra project configuration
+    v2-repl           Open an interactive session for the given component.
+    v2-run            Run an executable.
+    v2-test           Run test-suites
+    v2-bench          Run benchmarks
+    v2-freeze         Freeze dependencies.
+    v2-haddock        Build Haddock documentation
+    v2-exec           Give a command access to the store.
+    v2-update         Updates list of known packages.
+    v2-install        Install packages.
+    v2-clean          Clean the package store and remove temporary files.
+    v2-sdist          Generate a source distribution file (.tar.gz).
+
+    [legacy command aliases]
+    No legacy commands are described.
+
+Common Arguments and Flags
+--------------------------
+
+Arguments and flags common to some or all commands are:
 
 
 .. option:: --default-user-config=file
@@ -141,6 +181,49 @@ arguments and flags that are common to some or all of them.
 
     Already generated `build-info.json` files will be removed since they would be stale otherwise.
 
+
+cabal list-bin
+--------------
+
+``cabal list-bin`` will either (a) display the path for a single executable or (b)
+complain that the target doesn't resolve to a single binary. In the latter case,
+it will name the binary products contained in the package. These products can 
+be used to narrow the search and get an actual path to a particular executable.
+
+Example showing a failure to resolve to a single executable.
+
+::
+
+    $ cabal list-bin cabal-install
+    cabal: The list-bin command is for finding a single binary at once. The
+    target 'cabal-install' refers to the package cabal-install-#.#.#.# which
+    includes the executable 'cabal', the test suite 'unit-tests', the test suite
+    'memory-usage-tests', the test suite 'long-tests' and the test suite
+    'integration-tests2'.
+
+For a scope that results in only one item we'll get a path.
+
+::
+
+    $ cabal list-bin cabal-install:exes
+    /.../dist-newstyle/build/.../cabal/cabal
+
+    $ cabal list-bin cabal-install:cabal
+    /.../dist-newstyle/build/.../cabal/cabal
+
+We can also scope to test suite targets as they produce binaries.
+
+::
+
+    $ cabal list-bin cabal-install:tests
+    cabal: The list-bin command is for finding a single binary at once. The
+    target 'cabal-install:tests' refers to the test suites in the package
+    cabal-install-#.#.#.# which includes the test suite 'unit-tests', the test
+    suite 'memory-usage-tests', the test suite 'long-tests' and the test suite
+    'integration-tests2'.
+
+    $ cabal list-bin cabal-install:unit-tests
+    /.../dist-newstyle/.../unit-tests/unit-tests
 
 cabal v2-configure
 -------------------
