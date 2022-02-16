@@ -1,0 +1,9 @@
+synopsis: Use Win32 >= 2.8 to get Win32.sYNCHRONIZE
+packages: cabal-install
+issues: #7835
+prs: #7982
+description: {
+
+  #7982 also completes a changelog entry for Cabal-3.6.1.0, noting it is required for cabal-install >= 3.6
+
+}
