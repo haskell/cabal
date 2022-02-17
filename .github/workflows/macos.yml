@@ -25,14 +25,14 @@ jobs:
             flags: ""
           - ghc: "9.0.2"
             cli: false
-            experimental: true # failure to be investigated, see #7952
+            experimental: true # see #7987
           - ghc: "9.0.1"
             cli: false
-            experimental: false
+            experimental: true # see #7988
             flags: "--lib-only"
           - ghc: "8.10.7"
             cli: true
-            experimental: true # failure to be investigated, see #7952
+            experimental: true # see #7952 and #7988
             flags: ""
           - ghc: "8.8.4"
             cli: true
@@ -52,7 +52,7 @@ jobs:
             flags: ""
           - ghc: "8.0.2"
             cli: false
-            experimental: true # failure to be investigated, see #7952
+            experimental: true # see #7988 and #7989
             flags: "--lib-only"
 
     steps:

@@ -25,7 +25,7 @@ jobs:
             flags: ""
           - ghc: "9.0.2"
             cli: false
-            experimental: true # failure to be investigated, see #7952
+            experimental: true # see #7987
             flags: "--lib-only"
           - ghc: "9.0.1"
             cli: false
