@@ -2,6 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | cabal-install CLI command: run
 --
@@ -43,7 +44,7 @@ import Distribution.Simple.Command
 import Distribution.Types.ComponentName
          ( showComponentName )
 import Distribution.Verbosity
-         ( normal )
+         ( normal, silent )
 import Distribution.Simple.Utils
          ( wrapText, die', info, notice )
 import Distribution.Client.ProjectPlanning
@@ -120,10 +121,12 @@ runCommand = CommandUI
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
   = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags $ \targetCtx ctx targetSelectors -> do
-    baseCtx <- case targetCtx of
-      ProjectContext             -> return ctx
-      GlobalContext              -> return ctx
-      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
+    (baseCtx, defaultVerbosity) <- case targetCtx of
+      ProjectContext             -> return (ctx, normal)
+      GlobalContext              -> return (ctx, normal)
+      ScriptContext path exemeta -> (, silent) <$> updateContextAndWriteProjectFile ctx path exemeta
+
+    let verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -232,7 +235,6 @@ runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
                                  elaboratedPlan
            }
   where
-    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     (targetStr, args) = splitAt 1 targetAndArgs
 
 -- | Used by the main CLI parser as heuristic to decide whether @cabal@ was
