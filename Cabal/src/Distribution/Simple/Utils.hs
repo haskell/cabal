@@ -946,7 +946,6 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
                             , Process.std_in  = Process.CreatePipe
                             , Process.std_out = Process.CreatePipe
                             , Process.std_err = Process.CreatePipe
-                            , Process.delegate_ctlc = False -- !!!
                             }
 
   (exitcode, (mberr1, mberr2)) <- rawSystemProcAction verbosity cp $ \mb_in mb_out mb_err -> do
