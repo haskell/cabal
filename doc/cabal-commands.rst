@@ -489,6 +489,21 @@ A note on targets: Whenever a command takes a script target and it matches the
 name of another target, the other target is preferred. To load the script
 instead pass it as an explicit path: ./script
 
+By default, scripts are run at silent verbosity (``--verbose=0``). To show the
+build output for a script either use the command
+
+::
+
+    $ cabal v2-run --verbose=n path/to/script
+
+or the interpreter line
+
+::
+
+    #!/usr/bin/env -S cabal v2-run --verbose=n
+
+For more information see :cfg-field:`verbose`
+
 cabal v2-freeze
 ----------------
 
