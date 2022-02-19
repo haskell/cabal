@@ -30,7 +30,8 @@ import Distribution.Client.HashValue
 import Distribution.Client.NixStyleOptions
     ( NixStyleFlags (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig(..), ProjectConfigShared(..), withProjectOrGlobalConfig )
+    ( ProjectConfig(..), ProjectConfigShared(..)
+    , parseProjectConfig, reportParseResult, withProjectOrGlobalConfig )
 import Distribution.Client.ProjectFlags
     ( flagIgnoreProject )
 import Distribution.Client.Setup
@@ -46,7 +47,7 @@ import Distribution.Fields
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
-    ( showGenericPackageDescription, writeGenericPackageDescription )
+    ( showGenericPackageDescription )
 import Distribution.Parsec
     ( Position(..) )
 import Distribution.Simple.Flag
@@ -56,7 +57,7 @@ import Distribution.Simple.PackageDescription
 import Distribution.Simple.Setup
     ( Flag(..) )
 import Distribution.Simple.Utils
-    ( createDirectoryIfMissingVerbose, createTempDirectory, die', handleDoesNotExist, readUTF8File, warn )
+    ( createDirectoryIfMissingVerbose, createTempDirectory, die', handleDoesNotExist, readUTF8File, warn, writeUTF8File )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
     ( SourcePackage(..) )
@@ -214,10 +215,13 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
         let projectRoot = distProjectRootDirectory $ distDirLayout ctx
         writeFile (projectRoot </> "scriptlocation") =<< canonicalizePath script
 
-        executable <- readScriptBlockFromScript verbosity =<< BS.readFile script
+        scriptContents <- BS.readFile script
+        executable     <- readExecutableBlockFromScript verbosity scriptContents
+        projectCfg     <- readProjectBlockFromScript verbosity (takeFileName script) scriptContents
 
         let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
-        return (ScriptContext script executable', ctx, defaultTarget)
+            ctx'        = ctx & lProjectConfig %~ (<> projectCfg)
+        return (ScriptContext script executable', ctx', defaultTarget)
       else reportTargetSelectorProblems verbosity err
 
 withTemporaryTempDirectory :: (IO FilePath -> IO a) -> IO a
@@ -236,17 +240,18 @@ withTemporaryTempDirectory act = newEmptyMVar >>= \m -> bracket (getMkTmp m) (rm
 -- | Add the 'SourcePackage' to the context and use it to write a .cabal file.
 updateContextAndWriteProjectFile' :: ProjectBaseContext -> SourcePackage (PackageLocation (Maybe FilePath)) -> IO ProjectBaseContext
 updateContextAndWriteProjectFile' ctx srcPkg = do
-  let projectRoot = distProjectRootDirectory $ distDirLayout ctx
-      projectFile = projectRoot </> fakePackageCabalFileName
-      writeProjectFile = writeGenericPackageDescription (projectRoot </> fakePackageCabalFileName) (srcpkgDescription srcPkg)
-  projectFileExists <- doesFileExist projectFile
+  let projectRoot      = distProjectRootDirectory $ distDirLayout ctx
+      packageFile      = projectRoot </> fakePackageCabalFileName
+      contents         = showGenericPackageDescription (srcpkgDescription srcPkg)
+      writePackageFile = writeUTF8File packageFile contents
   -- TODO This is here to prevent reconfiguration of cached repl packages.
   -- It's worth investigating why it's needed in the first place.
-  if projectFileExists then do
-    contents <- force <$> readUTF8File projectFile
-    when (contents /= showGenericPackageDescription (srcpkgDescription srcPkg))
-      writeProjectFile
-  else writeProjectFile
+  packageFileExists <- doesFileExist packageFile
+  if packageFileExists then do
+    cached <- force <$> readUTF8File packageFile
+    when (cached /= contents)
+      writePackageFile
+  else writePackageFile
   return (ctx & lLocalPackages %~ (++ [SpecificSourcePackage srcPkg]))
 
 -- | Add add the executable metadata to the context and write a .cabal file.
@@ -283,26 +288,41 @@ parseScriptBlock str =
 readScriptBlock :: Verbosity -> BS.ByteString -> IO Executable
 readScriptBlock verbosity = parseString parseScriptBlock verbosity "script block"
 
--- | Extract the first encountered script metadata block started end
--- terminated by the bellow tokens or die.
+-- | Extract the first encountered executable metadata block started and
+-- terminated by the below tokens or die.
 --
 -- * @{- cabal:@
 --
 -- * @-}@
 --
 -- Return the metadata.
-readScriptBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
-readScriptBlockFromScript verbosity str = do
-    str' <- case extractScriptBlock str of
+readExecutableBlockFromScript :: Verbosity -> BS.ByteString -> IO Executable
+readExecutableBlockFromScript verbosity str = do
+    str' <- case extractScriptBlock "cabal" str of
               Left e -> die' verbosity $ "Failed extracting script block: " ++ e
               Right x -> return x
     when (BS.all isSpace str') $ warn verbosity "Empty script block"
     readScriptBlock verbosity str'
 
+-- | Extract the first encountered project metadata block started and
+-- terminated by the below tokens.
+--
+-- * @{- project:@
+--
+-- * @-}@
+--
+-- Return the metadata.
+readProjectBlockFromScript :: Verbosity -> String -> BS.ByteString -> IO ProjectConfig
+readProjectBlockFromScript verbosity scriptName str = do
+    case extractScriptBlock "project" str of
+        Left  _ -> return mempty
+        Right x -> reportParseResult verbosity "script" scriptName
+                 $ parseProjectConfig scriptName x
+
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens
 --
--- * @{- cabal:@
+-- * @{- <header>:@
 --
 -- * @-}@
 --
@@ -311,8 +331,8 @@ readScriptBlockFromScript verbosity str = do
 --
 -- In case of missing or unterminated blocks a 'Left'-error is
 -- returned.
-extractScriptBlock :: BS.ByteString -> Either String BS.ByteString
-extractScriptBlock str = goPre (BS.lines str)
+extractScriptBlock :: BS.ByteString -> BS.ByteString -> Either String BS.ByteString
+extractScriptBlock header str = goPre (BS.lines str)
   where
     isStartMarker = (== startMarker) . stripTrailSpace
     isEndMarker   = (== endMarker) . stripTrailSpace
@@ -330,8 +350,8 @@ extractScriptBlock str = goPre (BS.lines str)
       | otherwise     = goBody (l:acc) ls
 
     startMarker, endMarker :: BS.ByteString
-    startMarker = fromString "{- cabal:"
-    endMarker   = fromString "-}"
+    startMarker = "{- " <> header <> ":"
+    endMarker   = "-}"
 
 -- | The base for making a 'SourcePackage' for a fake project.
 -- It needs a 'Distribution.Types.Library.Library' or 'Executable' depending on the command.
@@ -361,6 +381,10 @@ lSrcpkgDescription f s = fmap (\x -> s { srcpkgDescription = x }) (f (srcpkgDesc
 lLocalPackages :: Lens' ProjectBaseContext [PackageSpecifier UnresolvedSourcePackage]
 lLocalPackages f s = fmap (\x -> s { localPackages = x }) (f (localPackages s))
 {-# inline lLocalPackages #-}
+
+lProjectConfig :: Lens' ProjectBaseContext ProjectConfig
+lProjectConfig f s = fmap (\x -> s { projectConfig = x }) (f (projectConfig s))
+{-# inline lProjectConfig #-}
 
 -- Character classes
 -- Transcribed from "templates/Lexer.x"
