@@ -1,10 +1,5 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Linux
+
 on:
   push:
     branches:
@@ -15,520 +10,101 @@ on:
       - created
 
 jobs:
-  validate-9_0_1:
-    name: validate.sh ghc-9.0.1
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:9.0.1-bionic
+  validate:
+    name: Validate ghc-${{ matrix.ghc }}
+
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      matrix:
+        include:
+          - ghc: "9.2.1"
+            cli: true
+            experimental: true # work to be done
+            flags: ""
+          - ghc: "9.0.2"
+            cli: false
+            experimental: true # see #7987
+            flags: "--lib-only"
+          - ghc: "9.0.1"
+            cli: false
+            experimental: false
+            flags: "--lib-only"
+          - ghc: "8.10.7"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.8.4"
+            cli: true
+            experimental: false
+            flags: "--solver-benchmarks"
+          - ghc: "8.6.5"
+            cli: true
+            experimental: false
+            flags: "--complete-hackage-tests"
+          - ghc: "8.4.4"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.2.2"
+            cli: true
+            experimental: false
+            flags: ""
+          - ghc: "8.0.2"
+            cli: false
+            experimental: false
+            flags: "--lib-only"
+
     steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: latest # default, keeping for visibility
+
+      #  See the following link for a breakdown of the following step
+      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ${{ steps.setup-haskell.outputs.cabal-store }}
+            dist-newstyle
+          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+
+      # The '+exe' constraint below is important, otherwise cabal-install
+      # might decide to build the library but not the executable which is
+      # what we need.
       - name: Install cabal-plan
         run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-9.0.1 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-9.0.1 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-9.0.1 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-9.0.1 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-9.0.1 -v --lib-only -s lib-suite
-  validate-8_10_4:
-    name: validate.sh ghc-8.10.4
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.10.4-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install `nroff` for `cabal man`
-        run: apt-get install -y groff-base
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
+
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s print-config
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-config
+
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s print-tool-versions
+
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s build
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
+
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s lib-tests
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-tests
+
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s lib-suite
+
       - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s cli-tests
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-tests
+
       - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.10.4 -v  -s cli-suite
-  validate-8_8_4:
-    name: validate.sh ghc-8.8.4
-    runs-on: ubuntu-18.04
-    container:
-      image: phadej/ghc:8.8.4-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install `nroff` for `cabal man`
-        run: apt-get install -y groff-base
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s lib-suite
-      - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s cli-tests
-      - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --solver-benchmarks -s cli-suite
-  validate-8_6_5:
-    name: validate.sh ghc-8.6.5
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.6.5-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install `nroff` for `cabal man`
-        run: apt-get install -y groff-base
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s lib-suite
-      - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s cli-tests
-      - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.6.5 -v --complete-hackage-tests -s cli-suite
-  validate-8_4_4:
-    name: validate.sh ghc-8.4.4
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.4.4-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install `nroff` for `cabal man`
-        run: apt-get install -y groff-base
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s lib-suite
-      - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s cli-tests
-      - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.4.4 -v  -s cli-suite
-  validate-8_2_2:
-    name: validate.sh ghc-8.2.2
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.2.2-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install `nroff` for `cabal man`
-        run: apt-get install -y groff-base
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s lib-suite
-      - name: Validate cli-tests
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s cli-tests
-      - name: Validate cli-suite
-        run: sh validate.sh -j 2 -w ghc-8.2.2 -v  -s cli-suite
-  validate-8_0_2:
-    name: validate.sh ghc-8.0.2
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.0.2-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.0.2 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.0.2 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.0.2 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.0.2 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.0.2 -v --lib-only -s lib-suite
-  validate-7_10_3:
-    name: validate.sh ghc-7.10.3
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:7.10.3-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-7.10.3 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-7.10.3 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-7.10.3 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-7.10.3 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-7.10.3 -v --lib-only -s lib-suite
-  validate-7_8_4:
-    name: validate.sh ghc-7.8.4
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:7.8.4-bionic
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-7.8.4 -v --lib-only -s lib-suite
-  validate-7_6_3:
-    name: validate.sh ghc-7.6.3
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:7.6.3-xenial
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install dynamic libraries
-        run: apt-get install -y ghc-7.6.3-dyn
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-7.6.3 -v --lib-only -s lib-suite
-  validate-8_8_4-old:
-    name: validate.sh old GHCs
-    runs-on: ubuntu-18.04
-    needs: validate-8_8_4
-    container:
-      image: phadej/ghc:8.8.4-xenial
-    steps:
-      - name: System info
-        run: |
-          uname -a
-      - name: Set PATH
-        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
-        run: |
-          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-      - name: Install cabal-plan
-        run: |
-          mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
-          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
-          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
-          rm -f cabal-plan.xz
-          chmod a+x $HOME/.cabal/bin/cabal-plan
-      - name: apt-get update
-        run: apt-get update
-      - name: Install dynamic libraries
-        run: apt-get install -y ghc-8.8.4-dyn
-      - name: Install extra compilers
-        run: apt-get install -y ghc-7.0.4-dyn ghc-7.2.2-dyn ghc-7.4.2-dyn
-      - name: Update Hackage index
-        run: cabal v2-update
-      # https://github.com/actions/checkout/issues/170
-      # - uses: actions/checkout@v2
-      - name: Checkout
-        run: |
-          echo $GITHUB_REF $GITHUB_SHA
-          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
-          git fetch origin $GITHUB_SHA:temporary-ci-branch
-          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
-      - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s print-config
-      - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s print-tool-versions
-      - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s build
-      - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s lib-tests
-      - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s lib-suite
-      - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.0.4/bin/ghc-7.0.4
-      - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.2.2/bin/ghc-7.2.2
-      - name: Validate lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2
-        run: sh validate.sh -j 2 -w ghc-8.8.4 -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/7.4.2/bin/ghc-7.4.2
+        if: matrix.cli == true
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
+
