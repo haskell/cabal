@@ -1,0 +1,9 @@
+cabal-version: 2.2
+name:          SelectedComponent
+version:       1.0.0
+
+executable testexe
+
+executable setup
+
+custom-setup
