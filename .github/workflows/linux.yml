@@ -11,7 +11,7 @@ on:
 
 jobs:
   validate:
-    name: Validate ghc-${{ matrix.ghc }}
+    name: Validate linux ghc-${{ matrix.ghc }}
 
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
@@ -108,3 +108,19 @@ jobs:
         if: matrix.cli == true
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
 
+  validate-old-ghcs:
+    name: Validate old ghcs
+    runs-on: ubuntu-latest
+    needs: validate
+
+    strategy:
+      matrix:
+        ghc: ["8.8.4"]
+        extra-ghc: ["7.10.3", "7.8.4", "7.6.3", "7.4.2", "7.2.2", "7.0.4"]
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v --lib-only -s lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}
