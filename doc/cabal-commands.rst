@@ -465,13 +465,20 @@ a script that looks like:
 
     #!/usr/bin/env cabal
     {- cabal:
-    build-depends: base ^>= 4.11
-                , shelly ^>= 1.8.1
+    build-depends: base ^>= 4.14
+                , shelly ^>= 1.10
+    -}
+    {- project:
+    with-compiler: ghc-8.10.7
     -}
 
     main :: IO ()
     main = do
         ...
+
+Where there cabal metadata block is mandatory and contains fields from a
+package executable block, and the project metadata block is optional and
+contains fields that would be in the cabal.project file in a regular project.
 
 It can either be executed like any other script, using ``cabal`` as an
 interpreter, or through this command:
