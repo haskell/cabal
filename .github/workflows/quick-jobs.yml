@@ -1,10 +1,5 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Quick jobs
+
 on:
   push:
     branches:
@@ -43,7 +38,6 @@ jobs:
           make -B lexer
           make -B spdx
           make -B templates
-          make -B github-actions
       - name: Check that diff is clean
         run: |
           git status > /dev/null

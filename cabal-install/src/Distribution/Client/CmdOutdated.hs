@@ -98,7 +98,7 @@ import System.Directory
 outdatedCommand :: CommandUI (ProjectFlags, OutdatedFlags)
 outdatedCommand = CommandUI
   { commandName = "outdated"
-  , commandSynopsis = "Check for outdated dependencies"
+  , commandSynopsis = "Check for outdated dependencies."
   , commandDescription  = Just $ \_ -> wrapText $
       "Checks for outdated dependencies in the package description file "
       ++ "or freeze file"

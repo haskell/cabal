@@ -510,7 +510,7 @@ mkTargetAllPackages = TargetAllPackages Nothing
 
 instance IsString PackageIdentifier where
     fromString pkgidstr = pkgid
-      where pkgid = fromMaybe (error $"fromString @PackageIdentifier " ++ show pkgidstr) $ simpleParse pkgidstr
+      where pkgid = fromMaybe (error $ "fromString @PackageIdentifier " ++ show pkgidstr) $ simpleParse pkgidstr
 
 
 testTargetSelectorNoCurrentPackage :: Assertion
@@ -1615,8 +1615,8 @@ type PlanDetails = (ProjDetails,
 planProject :: FilePath -> ProjectConfig -> IO PlanDetails
 planProject testdir cliConfig = do
 
-    projDetails@
-      (distDirLayout,
+    projDetails@(
+       distDirLayout,
        cabalDirLayout,
        projectConfig,
        localPackages,

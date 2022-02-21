@@ -1,7 +1,7 @@
 synopsis:  Better support for scripts
 packages: cabal-install
-prs: #7851 #7925 #7938
-issues: #7842 #7073 #6354 #6149
+prs: #7851 #7925 #7938 #7990
+issues: #7842 #7073 #6354 #6149 #5508
 
 description: {
 
@@ -14,5 +14,6 @@ description: {
 - `cabal list-bin` now works with scripts
 - The name of the generated script executable has been changed from "script" to
   "cabal-script-<your-sanitized-script-name>" for easier process management.
+- Reduce the default verbosity of scripts, so that the build output doesn't interfere with the script output.
 
 }

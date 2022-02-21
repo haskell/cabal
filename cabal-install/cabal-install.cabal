@@ -46,7 +46,7 @@ common warnings
       ghc-options: -Wunused-packages
 
 common base-dep
-    build-depends: base >=4.10 && <4.16
+    build-depends: base >=4.10 && <4.17
 
 common cabal-dep
     build-depends: Cabal ^>=3.7
@@ -96,7 +96,6 @@ library
         Distribution.Client.CmdUpdate
         Distribution.Client.Compat.Directory
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
@@ -239,7 +238,7 @@ library
 
     if os(windows)
       -- newer directory for symlinks
-      build-depends: Win32 >= 2 && < 3, directory >=1.3.1.0
+      build-depends: Win32 >= 2.8 && < 3, directory >=1.3.1.0
     else
       build-depends: unix >= 2.5 && < 2.9
 
@@ -319,7 +318,7 @@ Test-Suite unit-tests
           directory,
           filepath,
           mtl,
-          network-uri >= 2.6.2.0 && <2.6.4.0,
+          network-uri >= 2.6.2.0 && <2.7,
           random,
           tar,
           time,
@@ -406,7 +405,7 @@ test-suite long-tests
         filepath,
         hashable,
         mtl,
-        network-uri >= 2.6.2.0 && <2.6.4.0,
+        network-uri >= 2.6.2.0 && <2.7,
         random,
         tagged,
         tasty >= 1.2.3 && <1.5,

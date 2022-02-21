@@ -2297,10 +2297,10 @@ system-dependent values for these fields.
 
     .. Note::
 
-       The current version of Cabal suffers from an infelicity in how the
-       entries of :pkg-field:`mixins` are parsed: an entry will fail to parse
-       if the provided renaming clause has whitespace after the opening
-       parenthesis. This will be fixed in future versions of Cabal.
+       Cabal files with :pkg-field:`cabal-version` < 3.0 suffer from an
+       infelicity in how the entries of :pkg-field:`mixins` are parsed: an
+       entry will fail to parse if the provided renaming clause has whitespace
+       after the opening parenthesis. 
 
        See issues :issue:`5150`, :issue:`4864`, and :issue:`5293`.
 

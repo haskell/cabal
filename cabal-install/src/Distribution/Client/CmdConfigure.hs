@@ -45,7 +45,7 @@ import Distribution.Types.CondTree
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
   commandName         = "v2-configure",
-  commandSynopsis     = "Add extra project configuration",
+  commandSynopsis     = "Add extra project configuration.",
   commandUsage        = usageAlternatives "v2-configure" [ "[FLAGS]" ],
   commandDescription  = Just $ \_ -> wrapText $
         "Adjust how the project is built by setting additional package flags "

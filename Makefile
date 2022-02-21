@@ -70,16 +70,6 @@ buildinfo-fields-reference : phony
 analyse-imports : phony
 	find Cabal-syntax/src Cabal/src cabal-install/src -type f -name '*.hs' | xargs cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta analyse-imports --
 
-# github actions
-github-actions : .github/workflows/quick-jobs.yml
-github-actions : .github/workflows/bootstrap.yml
-github-actions : .github/workflows/linux.yml
-github-actions : .github/workflows/macos.yml
-github-actions : .github/workflows/windows.yml
-
-.github/workflows/%.yml : templates/ci-%.template.yml cabal-dev-scripts/src/GenValidate.hs
-	cabal v2-run --builddir=dist-newstyle-meta --project-file=cabal.project.meta gen-validate -- $< $@
-
 # ghcid
 
 ghcid-lib :
@@ -210,24 +200,15 @@ weeder :
 tags :
 	hasktags -b Cabal-syntax/src Cabal/src Cabal-described/src cabal-install/src cabal-testsuite/src
 
-# boostrapping
+# bootstrapping
 ##############################################################################
 
-bootstrap-plans-linux: phony
-	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.6.5  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.6.5.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.8.4  --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.8.4.plan.json
-	cabal v2-build --project=cabal.project.release --with-compiler ghc-8.10.7 --dry-run cabal-install:exe:cabal
-	cp dist-newstyle/cache/plan.json bootstrap/linux-8.10.7.plan.json
+bootstrap-json-%: phony
+	cabal v2-build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
+	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
+	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-$*.plan.json  | python3 -m json.tool | tee bootstrap/linux-$*.json
 
-bootstrap-jsons-linux: phony
-	@if [ $$(uname) != "Linux" ]; then echo "Not Linux"; false; fi
-	cabal v2-build               --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.6.5.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.6.5.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.8.4.plan.json  | python3 -m json.tool | tee bootstrap/linux-8.8.4.json
-	cabal v2-run -vnormal+stderr --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-8.10.7.plan.json | python3 -m json.tool | tee bootstrap/linux-8.10.7.json
+bootstrap-jsons: bootstrap-json-8.6.5 bootstrap-json-8.8.4 bootstrap-json-8.10.7
 
 # documentation
 ##############################################################################
