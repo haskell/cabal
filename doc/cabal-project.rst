@@ -592,12 +592,12 @@ The following settings control the behavior of the dependency solver:
       -- Force my-repository to be the first repository considered
       active-repositories: :rest, my-repository
 
-    The special repository reference "none" disables all repositories, effectively
+    The special repository reference :none disables all repositories, effectively
     putting cabal in "offline" mode:
 
     ::
 
-      active-repositories: none
+      active-repositories: :none
 
 
 .. cfg-field:: reject-unconstrained-dependencies: all, none
