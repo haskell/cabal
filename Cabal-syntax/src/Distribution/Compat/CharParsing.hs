@@ -41,6 +41,7 @@ module Distribution.Compat.CharParsing
   , signedIntegral
   , munch1
   , munch
+  , skipSpaces
   , skipSpaces1
   , module Distribution.Compat.Parsing
   ) where
@@ -334,7 +335,7 @@ integral = toNumber <$> some d <?> "integral"
 
 -- | Accepts negative (starting with @-@) and positive (without sign) integral
 -- numbers.
--- 
+--
 -- @since 3.4.0.0
 signedIntegral :: (CharParsing m, Integral a) => m a
 signedIntegral = negate <$ char '-' <*> integral <|> integral
@@ -355,3 +356,7 @@ munch = many . satisfy
 skipSpaces1 :: CharParsing m => m ()
 skipSpaces1 = skipSome space
 {-# INLINE skipSpaces1 #-}
+
+skipSpaces :: CharParsing m => m ()
+skipSpaces = skipMany space
+{-# INLINE skipSpaces #-}

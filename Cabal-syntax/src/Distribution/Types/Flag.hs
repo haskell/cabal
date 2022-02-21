@@ -111,7 +111,7 @@ instance Parsec FlagName where
     -- cabal check will do that.
     parsec = mkFlagName . lowercase <$> parsec'
       where
-        parsec' = (:) <$> lead <*> rest
+        parsec' = (<* P.skipSpaces) $ (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
         rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
 
