@@ -128,10 +128,10 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: apt-get update
-        run: apt-get update
+        run: sudo apt-get update
 
       - name: Install extra compiler
-        run: apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
+        run: sudo apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
       - uses: haskell/actions/setup@v1
         id: setup-haskell
