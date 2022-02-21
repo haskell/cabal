@@ -16,7 +16,7 @@ on:
 
 jobs:
   validate:
-    name: Validate linux ghc-${{ matrix.ghc }}
+    name: Validate ubuntu-latest ghc-${{ matrix.ghc }}
 
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}

@@ -16,7 +16,7 @@ on:
 
 jobs:
   validate:
-    name: Validate macos ghc-${{ matrix.ghc }}
+    name: Validate macos-lastest ghc-${{ matrix.ghc }}
 
     runs-on: macos-latest
     continue-on-error: ${{ matrix.experimental }}
