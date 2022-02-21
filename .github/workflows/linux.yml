@@ -116,7 +116,7 @@ jobs:
   validate-old-ghcs:
     name: Validate old ghcs
     runs-on: ubuntu-18.04
-    needs: validate_linux_ghc-${{ matrix.ghc }}
+    needs: validate
 
     strategy:
       matrix:
