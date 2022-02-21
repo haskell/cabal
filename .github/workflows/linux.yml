@@ -127,11 +127,11 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - uses: haskell/actions/setup@v1
-        id: setup-haskell-extra
-        with:
-          ghc-version: ${{ matrix.extra-ghc }}-dyn
-          cabal-version: latest # default, keeping for visibility
+      - name: apt-get update
+        run: apt-get update
+
+      - name: Install extra compiler
+        run: apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
       - uses: haskell/actions/setup@v1
         id: setup-haskell
@@ -159,4 +159,4 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v --lib-only -s lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}
