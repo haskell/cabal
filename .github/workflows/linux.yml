@@ -117,6 +117,8 @@ jobs:
     name: Validate old ghcs
     runs-on: ubuntu-18.04
     needs: validate
+    container:
+      image: phadej/ghc:8.8.4-xenial
 
     strategy:
       matrix:
@@ -132,7 +134,6 @@ jobs:
 
       - name: Install extra compiler
         run: |
-          sudo apt-add-repository -y "ppa:hvr/ghc"
           sudo apt-get update
           sudo apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
@@ -140,7 +141,6 @@ jobs:
         id: setup-haskell
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # default, keeping for visibility
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
