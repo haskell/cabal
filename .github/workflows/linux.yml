@@ -122,5 +122,23 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.extra-ghc }}
+          cabal-version: latest # default, keeping for visibility
+
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: latest # default, keeping for visibility
+
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v --lib-only -s lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}
