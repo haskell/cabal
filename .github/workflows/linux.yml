@@ -131,7 +131,10 @@ jobs:
         run: sudo apt-get update
 
       - name: Install extra compiler
-        run: sudo apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
+        run: |
+          sudo apt-add-repository -y "ppa:hvr/ghc"
+          sudo apt-get update
+          sudo apt-get install -y ghc-${{ matrix.extra-ghc }}-dyn
 
       - uses: haskell/actions/setup@v1
         id: setup-haskell
