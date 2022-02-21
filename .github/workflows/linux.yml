@@ -130,7 +130,7 @@ jobs:
       - uses: haskell/actions/setup@v1
         id: setup-haskell-extra
         with:
-          ghc-version: ${{ matrix.extra-ghc }}
+          ghc-version: ${{ matrix.extra-ghc }}-dyn
           cabal-version: latest # default, keeping for visibility
 
       - uses: haskell/actions/setup@v1
