@@ -248,17 +248,17 @@ mainWorker args = do
       , regularCmd CmdListBin.listbinCommand     CmdListBin.listbinAction
 
       ] ++ concat
-      [ newCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
-      , newCmd  CmdUpdate.updateCommand       CmdUpdate.updateAction
-      , newCmd  CmdBuild.buildCommand         CmdBuild.buildAction
-      , newCmd  CmdRepl.replCommand           CmdRepl.replAction
-      , newCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
-      , newCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
-      , newCmd  CmdInstall.installCommand     CmdInstall.installAction
-      , newCmd  CmdRun.runCommand             CmdRun.runAction
-      , newCmd  CmdTest.testCommand           CmdTest.testAction
-      , newCmd  CmdBench.benchCommand         CmdBench.benchAction
-      , newCmd  CmdExec.execCommand           CmdExec.execAction
+      [ newCmdWithVerbosity  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , newCmdWithVerbosity  CmdUpdate.updateCommand       CmdUpdate.updateAction
+      , newCmdWithVerbosity  CmdBuild.buildCommand         CmdBuild.buildAction
+      , newCmdWithVerbosity  CmdRepl.replCommand           CmdRepl.replAction
+      , newCmdWithVerbosity  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
+      , newCmdWithVerbosity  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , newCmdWithVerbosity  CmdInstall.installCommand     CmdInstall.installAction
+      , newCmdWithVerbosity  CmdRun.runCommand             CmdRun.runAction
+      , newCmdWithVerbosity  CmdTest.testCommand           CmdTest.testAction
+      , newCmdWithVerbosity  CmdBench.benchCommand         CmdBench.benchAction
+      , newCmdWithVerbosity  CmdExec.execCommand           CmdExec.execAction
       , newCmd  CmdClean.cleanCommand         CmdClean.cleanAction
       , newCmd  CmdSdist.sdistCommand         CmdSdist.sdistAction
 

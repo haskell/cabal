@@ -2,11 +2,20 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ViewPatterns #-}
-module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd, newCmd ) where
+module Distribution.Client.CmdLegacy ( legacyCmd, legacyWrapperCmd, newCmd, newCmdWithVerbosity ) where
 
 import Prelude ()
 import Distribution.Client.Compat.Prelude
 
+
+import Distribution.Client.NixStyleOptions
+    ( NixStyleFlags(..) )
+import Distribution.Client.ProjectConfig
+    ( ProjectConfig(..), ProjectConfigBuildOnly(..), ProjectConfigShared(..), withProjectOrGlobalConfig )
+import Distribution.Client.ProjectOrchestration
+    ( CurrentCommand(..), ProjectBaseContext(..), commandLineFlagsToProjectConfig, establishProjectBaseContext )
+import Distribution.Client.ProjectFlags
+    ( flagIgnoreProject )
 import Distribution.Client.Sandbox
     ( loadConfigOrSandboxConfig, findSavedDistPref )
 import qualified Distribution.Client.Setup as Client
@@ -17,7 +26,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Utils
     ( wrapText )
 import Distribution.Verbosity
-    ( normal )
+    ( normal, silent )
 
 import Control.Exception
     ( try )
@@ -142,3 +151,20 @@ newCmd origUi@CommandUI{..} action = [cmd defaultUi, cmd newUi, cmd origUi]
             , commandDescription = (defaultMsg .) <$> commandDescription
             , commandNotes = (defaultMsg .) <$> commandNotes
             }
+
+-- | Create a CommandSpec for a new-style command with the config verbosity.
+newCmdWithVerbosity :: CommandUI (NixStyleFlags a) -> (NixStyleFlags a -> [String] -> Client.GlobalFlags -> IO action) -> [CommandSpec (Client.GlobalFlags -> IO action)]
+newCmdWithVerbosity cmd action = newCmd cmd $ \flags args globals -> do
+  let flagVerbosity    = Client.configVerbosity . configFlags $ flags
+      ignoreProject    = flagIgnoreProject . projectFlags $ flags
+      cliConfig        = commandLineFlagsToProjectConfig globals flags mempty
+      globalConfigFlag = projectConfigConfigFile . projectConfigShared $ cliConfig
+      with = do
+        ctx <- establishProjectBaseContext silent cliConfig OtherCommand
+        let projectVerbosity = projectConfigVerbosity . projectConfigBuildOnly . projectConfig $ ctx
+        return flags{ configFlags = (configFlags flags){ Client.configVerbosity = projectVerbosity <> flagVerbosity } }
+      without globalConfig = do
+        let globalVerbosity = projectConfigVerbosity . projectConfigBuildOnly $ globalConfig
+        return flags{ configFlags = (configFlags flags){ Client.configVerbosity = globalVerbosity <> flagVerbosity } }
+  flags' <- withProjectOrGlobalConfig silent ignoreProject globalConfigFlag with without
+  action flags' args globals
