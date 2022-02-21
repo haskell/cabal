@@ -111,7 +111,7 @@ instance Parsec FlagName where
     -- cabal check will do that.
     parsec = mkFlagName . lowercase <$> parsec'
       where
-        parsec' = (<* P.skipSpaces) $ (:) <$> lead <*> rest
+        parsec' = (:) <$> lead <*> rest
         lead = P.satisfy (\c ->  isAlphaNum c || c == '_')
         rest = P.munch (\c -> isAlphaNum c ||  c == '_' || c == '-')
 
@@ -272,16 +272,17 @@ dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignm
 
 -- | Parses a flag assignment.
 parsecFlagAssignment :: CabalParsing m => m FlagAssignment
-parsecFlagAssignment = mkFlagAssignment <$>
-                       P.sepBy (onFlag <|> offFlag) P.skipSpaces1
+parsecFlagAssignment = mkFlagAssignment <$> many (onFlag <|> offFlag)
   where
     onFlag = do
         _ <- P.char '+'
         f <- parsec
+        _ <- P.skipSpaces
         return (f, True)
     offFlag = do
         _ <- P.char '-'
         f <- parsec
+        _ <- P.skipSpaces
         return (f, False)
 
 -- | Parse a non-empty flag assignment
@@ -290,16 +291,17 @@ parsecFlagAssignment = mkFlagAssignment <$>
 --
 -- @since 3.4.0.0
 parsecFlagAssignmentNonEmpty :: CabalParsing m => m FlagAssignment
-parsecFlagAssignmentNonEmpty = mkFlagAssignment . toList <$>
-    P.sepByNonEmpty (onFlag <|> offFlag) P.skipSpaces1
+parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> some (onFlag <|> offFlag)
   where
     onFlag = do
         _ <- P.char '+'
         f <- parsec
+        _ <- P.skipSpaces
         return (f, True)
     offFlag = do
         _ <- P.char '-'
         f <- parsec
+        _ <- P.skipSpaces
         return (f, False)
 
 -- | Show flag assignment.
