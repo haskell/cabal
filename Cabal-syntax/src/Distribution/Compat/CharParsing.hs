@@ -41,7 +41,6 @@ module Distribution.Compat.CharParsing
   , signedIntegral
   , munch1
   , munch
-  , skipSpaces
   , skipSpaces1
   , module Distribution.Compat.Parsing
   ) where
@@ -356,7 +355,3 @@ munch = many . satisfy
 skipSpaces1 :: CharParsing m => m ()
 skipSpaces1 = skipSome space
 {-# INLINE skipSpaces1 #-}
-
-skipSpaces :: CharParsing m => m ()
-skipSpaces = skipMany space
-{-# INLINE skipSpaces #-}

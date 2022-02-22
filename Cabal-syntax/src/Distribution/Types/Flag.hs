@@ -261,6 +261,17 @@ instance Pretty FlagAssignment where
 -- >>> simpleParsec "+foo -bar baz" :: Maybe FlagAssignment
 -- Nothing
 --
+-- Issue #7279 was fixed in Cabal-3.8
+--
+-- >>> explicitEitherParsec (parsecCommaList parsec) "+foo , -bar" :: Either String [FlagAssignment]
+-- Right [fromList [(FlagName "foo",(1,True))],fromList [(FlagName "bar",(1,False))]]
+--
+-- >>> explicitEitherParsec (parsecCommaList parsecFlagAssignmentNonEmpty) "+foo , -bar" :: Either String [FlagAssignment]
+-- Right [fromList [(FlagName "foo",(1,True))],fromList [(FlagName "bar",(1,False))]]
+--
+-- >>> simpleParsec "+foo+foo" :: Maybe FlagAssignment
+-- Nothing
+--
 -- @since 3.4.0.0
 --
 instance Parsec FlagAssignment where
@@ -270,20 +281,26 @@ instance Parsec FlagAssignment where
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map (Disp.text . showFlagValue) . unFlagAssignment
 
+
+
 -- | Parses a flag assignment.
 parsecFlagAssignment :: CabalParsing m => m FlagAssignment
-parsecFlagAssignment = mkFlagAssignment <$> many (onFlag <|> offFlag)
+parsecFlagAssignment = mkFlagAssignment <$> sepByEnding (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
         _ <- P.char '+'
         f <- parsec
-        _ <- P.skipSpaces
         return (f, True)
     offFlag = do
         _ <- P.char '-'
         f <- parsec
-        _ <- P.skipSpaces
         return (f, False)
+
+    sepByEnding :: CabalParsing m => m a -> m b -> m [a]
+    sepByEnding p sep = afterSeparator where
+        element        = (:) <$> p <*> afterElement
+        afterElement   = sep *> afterSeparator <|> pure []
+        afterSeparator = element <|> pure []
 
 -- | Parse a non-empty flag assignment
 --
@@ -291,18 +308,22 @@ parsecFlagAssignment = mkFlagAssignment <$> many (onFlag <|> offFlag)
 --
 -- @since 3.4.0.0
 parsecFlagAssignmentNonEmpty :: CabalParsing m => m FlagAssignment
-parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> some (onFlag <|> offFlag)
+parsecFlagAssignmentNonEmpty = mkFlagAssignment <$> sepByEnding1 (onFlag <|> offFlag) P.skipSpaces1
   where
     onFlag = do
         _ <- P.char '+'
         f <- parsec
-        _ <- P.skipSpaces
         return (f, True)
     offFlag = do
         _ <- P.char '-'
         f <- parsec
-        _ <- P.skipSpaces
         return (f, False)
+
+    sepByEnding1 :: CabalParsing m => m a -> m b -> m [a]
+    sepByEnding1 p sep = element where
+        element        = (:) <$> p <*> afterElement
+        afterElement   = sep *> afterSeparator <|> pure []
+        afterSeparator = element <|> pure []
 
 -- | Show flag assignment.
 --
