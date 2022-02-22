@@ -777,8 +777,7 @@ rawSystemExit verbosity path args = withFrozenCallStack $
 --
 rawSystemExitCode :: Verbosity -> FilePath -> [String] -> IO ExitCode
 rawSystemExitCode verbosity path args = withFrozenCallStack $
-  rawSystemProc verbosity $
-    (proc path args) { Process.delegate_ctlc = True }
+  rawSystemProc verbosity $ proc path args
 
 -- | Execute the given command with the given arguments, returning
 -- the command's exit code.
@@ -834,7 +833,6 @@ rawSystemExitWithEnv :: Verbosity
 rawSystemExitWithEnv verbosity path args env = withFrozenCallStack $
   maybeExit $ rawSystemProc verbosity $
     (proc path args) { Process.env = Just env
-                     , Process.delegate_ctlc = True
                      }
 
 -- | Execute the given command with the given arguments, returning
@@ -884,7 +882,6 @@ rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = w
                             , Process.std_in        = mbToStd inp
                             , Process.std_out       = mbToStd out
                             , Process.std_err       = mbToStd err
-                            , Process.delegate_ctlc = True
                             }
   rawSystemProcAction verbosity cp (\_ _ _ -> action)
   where
@@ -909,7 +906,6 @@ createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallS
                             , Process.std_in        = inp
                             , Process.std_out       = out
                             , Process.std_err       = err
-                            , Process.delegate_ctlc = True
                             }
   logCommand verbosity cp
   Process.createProcess cp
@@ -950,6 +946,7 @@ rawSystemStdInOut verbosity path args mcwd menv input _ = withFrozenCallStack $ 
                             , Process.std_in  = Process.CreatePipe
                             , Process.std_out = Process.CreatePipe
                             , Process.std_err = Process.CreatePipe
+                            , Process.delegate_ctlc = False -- !!!
                             }
 
   (exitcode, (mberr1, mberr2)) <- rawSystemProcAction verbosity cp $ \mb_in mb_out mb_err -> do

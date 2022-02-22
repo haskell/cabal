@@ -64,7 +64,7 @@ enableProcessJobs cp = cp
 -- | 'System.Process.proc' with process jobs enabled when appropriate,
 -- and defaulting 'delegate_ctlc' to 'True'.
 proc :: FilePath -> [String] -> CreateProcess
-proc path args = enableProcessJobs (Process.proc path args)
+proc path args = enableProcessJobs (Process.proc path args) { Process.delegate_ctlc = True }
 
 -- | 'System.Process.createProcess' with process jobs enabled when appropriate.
 -- See 'enableProcessJobs'.
@@ -76,7 +76,7 @@ createProcess = Process.createProcess . enableProcessJobs
 -- See 'enableProcessJobs'.
 rawSystem :: FilePath -> [String] -> IO ExitCode
 rawSystem path args = do
-  (_,_,_,p) <- Process.createProcess (proc path args) { Process.delegate_ctlc = True }
+  (_,_,_,p) <- Process.createProcess (proc path args)
   Process.waitForProcess p
 
 -- | 'System.Process.runInteractiveProcess' with process jobs enabled when
