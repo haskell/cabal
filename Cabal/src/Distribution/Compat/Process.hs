@@ -4,16 +4,9 @@ module Distribution.Compat.Process (
     proc,
     -- * Additions
     enableProcessJobs,
-    -- * Deprecated
-    createProcess,
-    runInteractiveProcess,
-    rawSystem,
     ) where
 
-import System.Exit (ExitCode (..))
-import System.IO   (Handle)
-
-import           System.Process (CreateProcess, ProcessHandle)
+import           System.Process (CreateProcess)
 import qualified System.Process as Process
 
 #if defined(mingw32_HOST_OS) && MIN_VERSION_process(1,6,9)
@@ -66,39 +59,3 @@ enableProcessJobs cp = cp
 -- and defaulting 'delegate_ctlc' to 'True'.
 proc :: FilePath -> [String] -> CreateProcess
 proc path args = enableProcessJobs (Process.proc path args) { Process.delegate_ctlc = True }
-
--- | 'System.Process.createProcess' with process jobs enabled when appropriate.
--- See 'enableProcessJobs'.
-{-# DEPRECATED createProcess "use proc with System.Process.createProcess instead" #-}
-createProcess :: CreateProcess
-              -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
-createProcess = Process.createProcess . enableProcessJobs
-
--- | 'System.Process.rawSystem' with process jobs enabled when appropriate.
--- See 'enableProcessJobs'.
-{-# DEPRECATED rawSystem "use one of the functions exported by Distribution.Simple.Utils instead" #-}
-rawSystem :: FilePath -> [String] -> IO ExitCode
-rawSystem path args = do
-  (_,_,_,p) <- Process.createProcess (proc path args)
-  Process.waitForProcess p
-
--- | 'System.Process.runInteractiveProcess' with process jobs enabled when
--- appropriate. See 'enableProcessJobs'.
-{-# DEPRECATED runInteractiveProcess "use one of the functions exported by Distribution.Simple.Utils instead" #-}
-runInteractiveProcess
-  :: FilePath                   -- ^ Filename of the executable (see 'RawCommand' for details)
-  -> [String]                   -- ^ Arguments to pass to the executable
-  -> Maybe FilePath             -- ^ Optional path to the working directory
-  -> Maybe [(String,String)]    -- ^ Optional environment (otherwise inherit)
-  -> IO (Handle,Handle,Handle,ProcessHandle)
-runInteractiveProcess path args mb_cwd mb_env = do
-  (mb_in, mb_out, mb_err, p) <-
-      Process.createProcess (proc path args)
-              { Process.std_in  = Process.CreatePipe,
-                Process.std_out = Process.CreatePipe,
-                Process.std_err = Process.CreatePipe,
-                Process.env     = mb_env,
-                Process.cwd     = mb_cwd }
-  return (fromJust mb_in, fromJust mb_out, fromJust mb_err, p)
-  where
-    fromJust = maybe (error "runInteractiveProcess: fromJust") id

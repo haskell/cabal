@@ -38,7 +38,6 @@ module Distribution.Simple.Utils (
         debug, debugNoWrap,
         chattyTry,
         annotateIO,
-        logCommand,
         withOutputMarker,
 
         -- * exceptions
@@ -174,10 +173,6 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
-
-        -- * Deprecated
-        printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
-        createProcessWithEnv,
   ) where
 
 import Prelude ()
@@ -241,7 +236,6 @@ import Foreign.C.Error (Errno (..), ePIPE)
 import Data.Time.Clock.POSIX (getPOSIXTime, POSIXTime)
 import Numeric (showFFloat)
 import Distribution.Compat.Process (proc)
-import System.Process (ProcessHandle)
 import qualified System.Process as Process
 import qualified GHC.IO.Exception as GHC
 
@@ -738,21 +732,6 @@ maybeExit cmd = do
   exitcode <- cmd
   unless (exitcode == ExitSuccess) $ exitWith exitcode
 
-{-# DEPRECATED printRawCommandAndArgs "use logCommand" #-}
-printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
-printRawCommandAndArgs verbosity path args = withFrozenCallStack $ do
-    logCommand verbosity (proc path args)
-
-{-# DEPRECATED printRawCommandAndArgsAndEnv "use logCommand" #-}
-printRawCommandAndArgsAndEnv :: Verbosity
-                             -> FilePath
-                             -> [String]
-                             -> Maybe FilePath
-                             -> Maybe [(String, String)]
-                             -> IO ()
-printRawCommandAndArgsAndEnv verbosity path args mcwd menv = withFrozenCallStack $ do
-    logCommand verbosity (proc path args) { Process.cwd = mcwd, Process.env = menv }
-
 -- | Log a command execution (that's typically about to happen)
 -- at info level, and log working directory and environment overrides
 -- at debug level if specified.
@@ -892,29 +871,6 @@ rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = w
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
-
-{-# DEPRECATED createProcessWithEnv "use System.Process.createProcess with Distribution.Compat.Process.proc instead" #-}
-createProcessWithEnv ::
-     Verbosity
-  -> FilePath
-  -> [String]
-  -> Maybe FilePath           -- ^ New working dir or inherit
-  -> Maybe [(String, String)] -- ^ New environment or inherit
-  -> Process.StdStream  -- ^ stdin
-  -> Process.StdStream  -- ^ stdout
-  -> Process.StdStream  -- ^ stderr
-  -> IO (Maybe Handle, Maybe Handle, Maybe Handle,ProcessHandle)
-  -- ^ Any handles created for stdin, stdout, or stderr
-  -- with 'CreateProcess', and a handle to the process.
-createProcessWithEnv verbosity path args mcwd menv inp out err = withFrozenCallStack $ do
-  let cp = (proc path args) { Process.cwd           = mcwd
-                            , Process.env           = menv
-                            , Process.std_in        = inp
-                            , Process.std_out       = out
-                            , Process.std_err       = err
-                            }
-  logCommand verbosity cp
-  Process.createProcess cp
 
 -- | Execute the given command with the given arguments, returning
 -- the command's output. Exits if the command exits with error.
