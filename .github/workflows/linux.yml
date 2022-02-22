@@ -127,7 +127,16 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v2
+      # We can't use actions/checkout with the docker container, see:
+      # https://github.com/actions/checkout/issues/170
+      # https://github.com/actions/checkout/issues/295
+      # - uses: actions/checkout@v2
+      - name: Checkout
+        run: |
+          echo $GITHUB_REF $GITHUB_SHA
+          git clone --depth 1 https://github.com/$GITHUB_REPOSITORY.git .
+          git fetch origin $GITHUB_SHA:temporary-ci-branch
+          git checkout $GITHUB_SHA || (git fetch && git checkout $GITHUB_SHA)
 
       - name: Install extra compiler
         run: |
