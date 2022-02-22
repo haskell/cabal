@@ -38,7 +38,7 @@ module Distribution.Simple.Utils (
         debug, debugNoWrap,
         chattyTry,
         annotateIO,
-        printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
+        logCommand,
         withOutputMarker,
 
         -- * exceptions
@@ -55,7 +55,6 @@ module Distribution.Simple.Utils (
         rawSystemStdInOut,
         rawSystemIOWithEnv,
         rawSystemIOWithEnvAndAction,
-        createProcessWithEnv,
         fromCreatePipe,
         maybeExit,
         xargs,
@@ -175,6 +174,10 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
+
+        -- * Deprecated
+        printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
+        createProcessWithEnv,
   ) where
 
 import Prelude ()
@@ -735,10 +738,12 @@ maybeExit cmd = do
   exitcode <- cmd
   unless (exitcode == ExitSuccess) $ exitWith exitcode
 
+{-# DEPRECATED printRawCommandAndArgs "use logCommand" #-}
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args = withFrozenCallStack $ do
     logCommand verbosity (proc path args)
 
+{-# DEPRECATED printRawCommandAndArgsAndEnv "use logCommand" #-}
 printRawCommandAndArgsAndEnv :: Verbosity
                              -> FilePath
                              -> [String]
@@ -888,6 +893,7 @@ rawSystemIOWithEnvAndAction verbosity path args mcwd menv action inp out err = w
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
 
+{-# DEPRECATED createProcessWithEnv "use System.Process.createProcess with Distribution.Compat.Process.proc instead" #-}
 createProcessWithEnv ::
      Verbosity
   -> FilePath

@@ -1,12 +1,13 @@
 {-# LANGUAGE CPP #-}
 module Distribution.Compat.Process (
     -- * Redefined functions
-    createProcess,
     proc,
-    runInteractiveProcess,
-    rawSystem,
     -- * Additions
     enableProcessJobs,
+    -- * Deprecated
+    createProcess,
+    runInteractiveProcess,
+    rawSystem,
     ) where
 
 import System.Exit (ExitCode (..))
@@ -68,12 +69,14 @@ proc path args = enableProcessJobs (Process.proc path args) { Process.delegate_c
 
 -- | 'System.Process.createProcess' with process jobs enabled when appropriate.
 -- See 'enableProcessJobs'.
+{-# DEPRECATED createProcess "use proc with System.Process.createProcess instead" #-}
 createProcess :: CreateProcess
               -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
 createProcess = Process.createProcess . enableProcessJobs
 
 -- | 'System.Process.rawSystem' with process jobs enabled when appropriate.
 -- See 'enableProcessJobs'.
+{-# DEPRECATED rawSystem "use one of the functions exported by Distribution.Simple.Utils instead" #-}
 rawSystem :: FilePath -> [String] -> IO ExitCode
 rawSystem path args = do
   (_,_,_,p) <- Process.createProcess (proc path args)
@@ -81,6 +84,7 @@ rawSystem path args = do
 
 -- | 'System.Process.runInteractiveProcess' with process jobs enabled when
 -- appropriate. See 'enableProcessJobs'.
+{-# DEPRECATED runInteractiveProcess "use one of the functions exported by Distribution.Simple.Utils instead" #-}
 runInteractiveProcess
   :: FilePath                   -- ^ Filename of the executable (see 'RawCommand' for details)
   -> [String]                   -- ^ Arguments to pass to the executable
