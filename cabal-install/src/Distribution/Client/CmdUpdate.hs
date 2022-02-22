@@ -211,7 +211,8 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       case updated of
         Sec.NoUpdates  -> do
           now <- getCurrentTime
-          setModificationTime (indexBaseName repo <.> "tar") now `catch` (\(e :: SomeException) -> warn verbosity $ "Could not set modification time of index tarball -- " ++ show e)
+          setModificationTime (indexBaseName repo <.> "tar") now `catchIO`
+             (\e -> warn verbosity $ "Could not set modification time of index tarball -- " ++ displayException e)
           noticeNoWrap verbosity $
             "Package list of " ++ prettyShow rname ++
             " is up to date at index-state " ++ prettyShow (IndexStateTime current_ts)
