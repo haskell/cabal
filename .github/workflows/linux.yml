@@ -114,7 +114,7 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
 
   validate-old-ghcs:
-    name: Validate old ghcs
+    name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-18.04
     needs: validate
     container:
