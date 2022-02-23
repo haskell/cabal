@@ -52,7 +52,7 @@ import Distribution.Client.Utils
          ( ProgressPhase(..), progressMessage )
 
 import qualified Data.Map as Map
-import Control.Exception
+import qualified Control.Exception.Safe as Safe
 import Control.Concurrent.Async
 import Control.Concurrent.MVar
 import System.Directory
@@ -227,7 +227,10 @@ type AsyncFetchMap = Map UnresolvedPkgLoc
 --
 -- The body action is passed a map from those packages (identified by their
 -- location) to a completion var for that package. So the body action should
--- lookup the location and use 'asyncFetchPackage' to get the result.
+-- lookup the location and use 'waitAsyncFetchPackage' to get the result.
+--
+-- Synchronous exceptions raised by the download actions are delivered
+-- via 'waitAsyncFetchPackage'.
 --
 asyncFetchPackages :: Verbosity
                    -> RepoContext
@@ -247,13 +250,17 @@ asyncFetchPackages verbosity repoCtxt pkglocs body = do
         fetchPackages =
           for_ asyncDownloadVars $ \(pkgloc, var) -> do
             -- Suppress marking here, because 'withAsync' means
-            -- that we get nondeterministic interleaving
-            result <- try $ fetchPackage (verboseUnmarkOutput verbosity)
-                                repoCtxt pkgloc
+            -- that we get nondeterministic interleaving.
+            -- It is essential that we don't catch async exceptions here,
+            -- specifically 'AsyncCancelled' thrown at us from 'concurrently'.
+            result <- Safe.try $
+              fetchPackage (verboseUnmarkOutput verbosity) repoCtxt pkgloc
             putMVar var result
 
-    withAsync fetchPackages $ \_ ->
-      body (Map.fromList asyncDownloadVars)
+    (_, res) <- concurrently
+        fetchPackages
+        (body $ Map.fromList asyncDownloadVars)
+    pure res
 
 
 -- | Expect to find a download in progress in the given 'AsyncFetchMap'
