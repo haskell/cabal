@@ -122,18 +122,21 @@ bfs plan unit0 = do
             -- nub and sort
             reverse $ Set.toList $ Set.fromList $ concat t
 
-    for uids $ \uid -> do
-        unit <- lookupUnit units uid
+    units <- for uids $ \uid -> do
+        unit <- lookupUnit (P.pjUnits plan) uid
         case Map.toList (P.uComps unit) of
             [(_, compinfo)] -> checkExeDeps uid (P.pjUnits plan) (P.ciExeDeps compinfo)
             _               -> die $ "Unit with multiple components " ++ show uid
         return unit
 
+    -- Remove non-exe copies of cabal-install. Otherwise, cabal-install
+    -- may appear as cabal-install:lib before dependencies of
+    -- cabal-install:exe:cabal, and the bootstrap build tries to build
+    -- all of cabal-install before those dependencies.
+    return $ filter (\u -> P.uId u == P.uId unit0 || P.uPId u /= P.uPId unit0) units
   where
     am :: Map.Map P.UnitId (Set.Set P.UnitId)
-    am = fmap (foldMap P.ciLibDeps . P.uComps) units
-
-    units = P.pjUnits plan
+    am = fmap (foldMap P.ciLibDeps . P.uComps) (P.pjUnits plan)
 
 checkExeDeps :: P.UnitId -> Map.Map P.UnitId P.Unit -> Set.Set P.UnitId -> IO ()
 checkExeDeps pkgUid units = traverse_ check . Set.toList where
