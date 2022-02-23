@@ -1734,10 +1734,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 elaboratedSharedConfig
                 elab)  -- recursive use of elab
 
-          | otherwise
-          = error $ "elaborateInstallPlan: non-inplace package "
-                 ++ " is missing a source hash: " ++ prettyShow pkgid
-
         -- Need to filter out internal dependencies, because they don't
         -- correspond to anything real anymore.
         isExt confid = confSrcId confid /= pkgid
@@ -3495,7 +3491,6 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                               = Map.toList $
                                 Map.insertWith (++) "ghc" ["-hide-all-packages"]
                                                elabProgramArgs
-        | otherwise           = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- we use configProgramPaths instead
