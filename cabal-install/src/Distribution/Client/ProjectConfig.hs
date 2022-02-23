@@ -651,7 +651,17 @@ reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
 --
 data ProjectPackageLocation =
      ProjectPackageLocalCabalFile FilePath
-   | ProjectPackageLocalDirectory FilePath FilePath -- dir and .cabal file
+   | ProjectPackageLocalDirectory FilePath FilePath
+     -- ^ In @'ProjectPackageLocalDirectory' directory cabalFile@, @directory@
+     -- is expected to be a filepath relative to the root of the
+     -- project. Similarly, @cabalFile@ is also relative to the root of
+     -- of the project.
+     --
+     -- Consequentially, the following should hold:
+     --
+     -- > takeDirectory cabalFile == directory
+     -- > directory </> takeFileName cabalFile == cabalFile
+     --
    | ProjectPackageLocalTarball   FilePath
    | ProjectPackageRemoteTarball  URI
    | ProjectPackageRemoteRepo     SourceRepoList
@@ -1041,7 +1051,10 @@ readSourcePackageLocalDirectory
 readSourcePackageLocalDirectory verbosity dir cabalFile = do
     monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
-    let location = LocalUnpackedPackage (root </> dir) (Just cabalFile)
+    -- cabalFile is not required to be just the filename, but might be
+    -- relative to the project root.
+    let cabalFileName = takeFileName cabalFile
+    let location = LocalUnpackedPackage (root </> dir) (Just cabalFileName)
     liftIO $ fmap (mkSpecificSourcePackage location)
            . readSourcePackageCabalFile verbosity cabalFile
          =<< BS.readFile (root </> cabalFile)
