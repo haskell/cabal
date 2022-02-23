@@ -643,16 +643,13 @@ an external dependency) should be built with ``-fno-state-hack``::
     package bytestring
         ghc-options: -fno-state-hack
 
-``ghc-options`` is not specifically described in this documentation,
-but is one of many fields for configuring programs.  They take the form
-``progname-options`` and ``progname-location``, and
-can only be set inside package stanzas.  (TODO: They are not supported
-at top-level, see :issue:`3579`.)
+``ghc-options`` is not specifically described in this documentation, but is one
+of many fields for configuring programs.  They take the form
+``progname-options`` and ``progname-location``, and can be set for all local
+packages in a ``program-options`` stanza or under a package stanza.
 
-At the moment, there is no way to specify an option to apply to all
-external packages or all inplace packages. Additionally, it is only
-possible to specify these options on the command line for all local
-packages (there is no per-package command line interface.)
+On the command line, these options are applied to all local packages.
+There is no per-package command line interface.
 
 Some flags were added by more recent versions of the Cabal library. This
 means that they are NOT supported by packages which use Custom setup

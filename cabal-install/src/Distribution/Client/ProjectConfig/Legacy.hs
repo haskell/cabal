@@ -198,7 +198,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         -- split the package config (from command line arguments) into
         -- those applied to all packages and those to local only.
         --
-        -- for now we will just copy over the ProgramPaths/Args/Extra into
+        -- for now we will just copy over the ProgramPaths/Extra into
         -- the AllPackages.  The LocalPackages do not inherit them from
         -- AllPackages, and as such need to retain them.
         --
@@ -215,7 +215,6 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         splitConfig :: PackageConfig -> (PackageConfig, PackageConfig)
         splitConfig pc = (pc
                          , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
-                                  , packageConfigProgramArgs  = packageConfigProgramArgs  pc
                                   , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
                                   , packageConfigDocumentation = packageConfigDocumentation pc })
 
