@@ -226,7 +226,6 @@ startServer chan senv = do
                         std_out = CreatePipe,
                         std_err = CreatePipe
                     }
-    -- printRawCommandAndArgsAndEnv (runnerVerbosity senv) (programPath prog) ghc_args Nothing
     when (verbosity >= verbose) $
         writeChan chan (ServerLogMsg AllServers (showCommandForUser (programPath prog) ghc_args))
     (Just hin, Just hout, Just herr, proch) <- createProcess proc_spec
