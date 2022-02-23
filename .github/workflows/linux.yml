@@ -117,17 +117,25 @@ jobs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
     runs-on: ubuntu-18.04
     needs: validate
+    # This job needs an older ubuntu (16.04) cause the needed
+    # old ghcs using the `-dyn` flavour are not installable
+    # from ppa/hvr in newer ones
+    # see https://github.com/haskell/cabal/issues/8011
     container:
       image: phadej/ghc:8.8.4-xenial
 
     strategy:
       matrix:
+        # Newer ghc versions than 8.8.4 has to be installed with ghcup cause
+        # they are not available in ppa/hvr. The ghcup installation
+        # needs `sudo` which is not available in the xenial container
         ghc: ["8.8.4"]
         extra-ghc: ["7.10.3", "7.8.4", "7.6.3", "7.4.2", "7.2.2", "7.0.4"]
 
     steps:
 
-      # We can't use actions/checkout with the docker container, see:
+      # We can't use actions/checkout with the xenial docker container
+      # cause it does not work with the git version included in it, see:
       # https://github.com/actions/checkout/issues/170
       # https://github.com/actions/checkout/issues/295
       # - uses: actions/checkout@v2
@@ -148,8 +156,9 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
 
-      #  See the following link for a breakdown of the following step
-      #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
+      # TODO: ideally those jobs should reuse the cabal artifact generated in the
+      # previous step. Until that we use the cache generated in the previous step
+      # to make the build faster. This job only needs it in read mode.
       - uses: actions/cache@v2
         with:
           path: |
