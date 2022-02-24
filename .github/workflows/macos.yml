@@ -1,5 +1,10 @@
 name: MacOS
 
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.head_ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -11,7 +16,7 @@ on:
 
 jobs:
   validate:
-    name: Validate ghc-${{ matrix.ghc }}
+    name: Validate macos-latest ghc-${{ matrix.ghc }}
 
     runs-on: macos-latest
     continue-on-error: ${{ matrix.experimental }}
@@ -111,4 +116,3 @@ jobs:
       - name: Validate cli-suite
         if: matrix.cli == true
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s cli-suite
-
