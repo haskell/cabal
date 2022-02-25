@@ -26,7 +26,8 @@ import qualified Distribution.Types.BuildInfo.Lens as L
 data TestSuite = TestSuite {
         testName      :: UnqualComponentName,
         testInterface :: TestSuiteInterface,
-        testBuildInfo :: BuildInfo
+        testBuildInfo :: BuildInfo,
+        testCodeGenerators :: [String]
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -42,7 +43,8 @@ instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,
         testInterface = mempty,
-        testBuildInfo = mempty
+        testBuildInfo = mempty,
+        testCodeGenerators = mempty
     }
     mappend = (<>)
 
@@ -50,7 +52,8 @@ instance Semigroup TestSuite where
     a <> b = TestSuite {
         testName      = combine' testName,
         testInterface = combine  testInterface,
-        testBuildInfo = combine  testBuildInfo
+        testBuildInfo = combine  testBuildInfo,
+        testCodeGenerators = combine testCodeGenerators
     }
         where combine  field = field a `mappend` field b
               combine' field = case ( unUnqualComponentName $ field a
