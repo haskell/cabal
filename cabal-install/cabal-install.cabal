@@ -336,7 +336,7 @@ executable cabal
     build-depends:
         async      >= 2.0      && < 2.3,
         array      >= 0.4      && < 0.6,
-        base       >= 4.8      && < 4.15,
+        base       >= 4.8      && < 4.16,
         base16-bytestring >= 0.1.1 && < 1.1.0.0,
         binary     >= 0.7.3    && < 0.9,
         bytestring >= 0.10.6.0 && < 0.11,
