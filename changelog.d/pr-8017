@@ -1,0 +1,10 @@
+synopsis:  Refactor clean and sdist option parsing
+packages: cabal-install
+prs: #8017
+
+description: {
+
+- Reorder options for clean and sdist to be consistent with other commands.
+- Add --ignore-project flag to clean.
+
+}

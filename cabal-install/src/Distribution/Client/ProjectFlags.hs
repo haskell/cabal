@@ -10,11 +10,11 @@ module Distribution.Client.ProjectFlags (
 import Distribution.Client.Compat.Prelude
 import Prelude ()
 
+import Distribution.Client.Setup   (yesNoOpt)
 import Distribution.ReadE          (succeedReadE)
 import Distribution.Simple.Command
-    ( MkOptDescr, OptionField(optionName), ShowOrParseArgs (..), boolOpt', option
-    , reqArg )
-import Distribution.Simple.Setup   (Flag (..), flagToList, flagToMaybe, toFlag, trueArg)
+    ( OptionField(optionName), ShowOrParseArgs (..), option, reqArg )
+import Distribution.Simple.Setup   (Flag (..), flagToList, toFlag)
 
 data ProjectFlags = ProjectFlags
     { flagProjectFileName :: Flag FilePath
@@ -63,7 +63,3 @@ instance Monoid ProjectFlags where
 
 instance Semigroup ProjectFlags where
     (<>) = gmappend
-
-yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
-yesNoOpt ShowArgs sf lf = trueArg sf lf
-yesNoOpt _        sf lf = boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf

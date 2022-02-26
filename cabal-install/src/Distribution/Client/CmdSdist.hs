@@ -16,12 +16,12 @@ import Distribution.Client.CmdErrorMessages
 import Distribution.Client.ProjectOrchestration
     ( ProjectBaseContext(..), CurrentCommand(..), establishProjectBaseContext, establishProjectBaseContextWithRoot)
 import Distribution.Client.NixStyleOptions
-         ( NixStyleFlags (..), defaultNixStyleFlags )
+    ( NixStyleFlags(..), defaultNixStyleFlags )
 import Distribution.Client.TargetSelector
     ( TargetSelector(..), ComponentKind
     , readTargetSelectors, reportTargetSelectorProblems )
 import Distribution.Client.Setup
-    ( GlobalFlags(..) )
+    ( ConfigFlags(..), GlobalFlags(..), liftOptions )
 import Distribution.Solver.Types.SourcePackage
     ( SourcePackage(..) )
 import Distribution.Client.Types
@@ -31,10 +31,8 @@ import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
     ( ProjectConfig, withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
 import Distribution.Client.ProjectFlags
-     ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
+    ( ProjectFlags(..), projectFlagsOptions )
 
-import Distribution.Compat.Lens
-    ( _1, _2 )
 import Distribution.Package
     ( Package(packageId) )
 import Distribution.PackageDescription.Configuration
@@ -42,12 +40,12 @@ import Distribution.PackageDescription.Configuration
 import Distribution.ReadE
     ( succeedReadE )
 import Distribution.Simple.Command
-    ( CommandUI(..), OptionField, option, reqArg, liftOptionL, ShowOrParseArgs )
+    ( CommandUI(..), OptionField, option, reqArg, ShowOrParseArgs )
 import Distribution.Simple.PreProcess
     ( knownSuffixHandlers )
 import Distribution.Simple.Setup
     ( Flag(..), toFlag, fromFlagOrDefault, flagToList, flagToMaybe
-    , optionVerbosity, optionDistPref, trueArg, configVerbosity, configDistPref
+    , optionVerbosity, optionDistPref, trueArg
     )
 import Distribution.Simple.SrcDist
     ( listPackageSourcesWithDie )
@@ -75,7 +73,7 @@ import System.FilePath
 -- Command
 -------------------------------------------------------------------------------
 
-sdistCommand :: CommandUI (ProjectFlags, SdistFlags)
+sdistCommand :: CommandUI (NixStyleFlags SdistFlags)
 sdistCommand = CommandUI
     { commandName = "v2-sdist"
     , commandSynopsis = "Generate a source distribution file (.tar.gz)."
@@ -84,10 +82,8 @@ sdistCommand = CommandUI
     , commandDescription  = Just $ \_ -> wrapText
         "Generates tarballs of project packages suitable for upload to Hackage."
     , commandNotes = Nothing
-    , commandDefaultFlags = (defaultProjectFlags, defaultSdistFlags)
-    , commandOptions = \showOrParseArgs ->
-        map (liftOptionL _1) (projectFlagsOptions showOrParseArgs) ++
-        map (liftOptionL _2) (sdistOptions showOrParseArgs)
+    , commandDefaultFlags = defaultNixStyleFlags defaultSdistFlags
+    , commandOptions = sdistOptions
     }
 
 -------------------------------------------------------------------------------
@@ -95,40 +91,45 @@ sdistCommand = CommandUI
 -------------------------------------------------------------------------------
 
 data SdistFlags = SdistFlags
-    { sdistVerbosity     :: Flag Verbosity
-    , sdistDistDir       :: Flag FilePath
-    , sdistListSources   :: Flag Bool
+    { sdistListSources   :: Flag Bool
     , sdistNulSeparated  :: Flag Bool
     , sdistOutputPath    :: Flag FilePath
     }
 
 defaultSdistFlags :: SdistFlags
 defaultSdistFlags = SdistFlags
-    { sdistVerbosity     = toFlag normal
-    , sdistDistDir       = mempty
-    , sdistListSources   = toFlag False
+    { sdistListSources   = toFlag False
     , sdistNulSeparated  = toFlag False
     , sdistOutputPath    = mempty
     }
 
-sdistOptions :: ShowOrParseArgs -> [OptionField SdistFlags]
+sdistOptions :: ShowOrParseArgs -> [OptionField (NixStyleFlags SdistFlags)]
 sdistOptions showOrParseArgs =
     [ optionVerbosity
-        sdistVerbosity (\v flags -> flags { sdistVerbosity = v })
+        (configVerbosity . configFlags)
+        (\v flags -> flags { configFlags = (configFlags flags) { configVerbosity = v } })
     , optionDistPref
-        sdistDistDir (\dd flags -> flags { sdistDistDir = dd })
+        (configDistPref . configFlags)
+        (\dd flags -> flags { configFlags = (configFlags flags) { configDistPref = dd } })
         showOrParseArgs
-    , option ['l'] ["list-only"]
+    ] ++ liftOptions projectFlags
+           (\x flags -> flags { projectFlags = x })
+           (projectFlagsOptions showOrParseArgs)
+      ++
+    [ option ['l'] ["list-only"]
         "Just list the sources, do not make a tarball"
-        sdistListSources (\v flags -> flags { sdistListSources = v })
+        (sdistListSources . extraFlags)
+        (\v flags -> flags { extraFlags = (extraFlags flags) { sdistListSources = v } })
         trueArg
     , option [] ["null-sep"]
         "Separate the source files with NUL bytes rather than newlines."
-        sdistNulSeparated (\v flags -> flags { sdistNulSeparated = v })
+        (sdistNulSeparated . extraFlags)
+        (\v flags -> flags { extraFlags = (extraFlags flags) { sdistNulSeparated = v } })
         trueArg
     , option ['o'] ["output-directory", "outputdir"]
         "Choose the output directory of this command. '-' sends all output to stdout"
-        sdistOutputPath (\o flags -> flags { sdistOutputPath = o })
+        (sdistOutputPath . extraFlags)
+        (\o flags -> flags { extraFlags = (extraFlags flags) { sdistOutputPath = o } })
         (reqArg "PATH" (succeedReadE Flag) flagToList)
     ]
 
@@ -136,8 +137,8 @@ sdistOptions showOrParseArgs =
 -- Action
 -------------------------------------------------------------------------------
 
-sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
-sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
+sdistAction :: NixStyleFlags SdistFlags -> [String] -> GlobalFlags -> IO ()
+sdistAction flags@NixStyleFlags{..} targetStrings globalFlags = do
     (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
@@ -183,22 +184,14 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
             | otherwise ->
                 traverse_ (\pkg -> packageToSdist verbosity (distProjectRootDirectory distDirLayout) format (outputPath pkg) pkg) pkgs
   where
-    verbosity      = fromFlagOrDefault normal sdistVerbosity
-    listSources    = fromFlagOrDefault False sdistListSources
-    nulSeparated   = fromFlagOrDefault False sdistNulSeparated
-    mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = flagIgnoreProject
+    verbosity      = fromFlagOrDefault normal $ configVerbosity configFlags
+    listSources    = fromFlagOrDefault False  $ sdistListSources extraFlags
+    nulSeparated   = fromFlagOrDefault False  $ sdistNulSeparated extraFlags
+    mOutputPath    = flagToMaybe $ sdistOutputPath extraFlags
+    ignoreProject  = flagIgnoreProject projectFlags
 
     prjConfig :: ProjectConfig
-    prjConfig = commandLineFlagsToProjectConfig
-        globalFlags
-        (defaultNixStyleFlags ())
-          { configFlags = (configFlags $ defaultNixStyleFlags ())
-            { configVerbosity = sdistVerbosity
-            , configDistPref = sdistDistDir
-            }
-          }
-        mempty
+    prjConfig = commandLineFlagsToProjectConfig globalFlags flags mempty
 
     globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
 
