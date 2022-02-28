@@ -36,7 +36,6 @@ import Distribution.Simple.Configure
 import Distribution.Version
 import Distribution.Package
 import Distribution.Parsec (eitherParsec)
-import Distribution.Pretty (prettyShow)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
@@ -765,7 +764,7 @@ getScriptCacheDirectory script = do
 
 hasSharedLibraries  :: TestM Bool
 hasSharedLibraries = do
-    shared_libs_were_removed <- ghcVersionIs (>= mkVersion [7,8])
+    shared_libs_were_removed <- isGhcVersion ">= 7.8"
     return (not (buildOS == Windows && shared_libs_were_removed))
 
 hasProfiledLibraries :: TestM Bool
@@ -789,13 +788,20 @@ hasCabalShared = do
   env <- getTestEnv
   return (testHaveCabalShared env)
 
-ghcVersionIs :: WithCallStack ((Version -> Bool) -> TestM Bool)
-ghcVersionIs f = do
+isGhcVersion :: WithCallStack (String -> TestM Bool)
+isGhcVersion range = do
     ghc_program <- requireProgramM ghcProgram
-    case programVersion ghc_program of
-        Nothing -> error $ "ghcVersionIs: no ghc version for "
+    v <- case programVersion ghc_program of
+        Nothing -> error $ "isGhcVersion: no ghc version for "
                         ++ show (programLocation ghc_program)
-        Just v -> return (f v)
+        Just v -> return v
+    vr <- case eitherParsec range of
+        Left err -> fail err
+        Right vr -> return vr
+    return (v `withinRange` vr)
+
+skipUnlessGhcVersion :: String -> TestM ()
+skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion range
 
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
@@ -808,12 +814,6 @@ isLinux = return (buildOS == Linux)
 
 skipIfWindows :: TestM ()
 skipIfWindows = skipIf "Windows" =<< isWindows
-
-skipUnlessGhcVersion :: String -> TestM ()
-skipUnlessGhcVersion str =
-    case eitherParsec str of
-        Right vr -> skipUnless ("needs ghc" ++ prettyShow vr) =<< ghcVersionIs (`withinRange` vr)
-        Left err -> fail err
 
 getOpenFilesLimit :: TestM (Maybe Integer)
 #ifdef mingw32_HOST_OS
@@ -855,7 +855,7 @@ hasCabalForGhc = do
 -- You'll want to exclude them in that case.
 --
 hasNewBuildCompatBootCabal :: TestM Bool
-hasNewBuildCompatBootCabal = ghcVersionIs (>= mkVersion [7,9])
+hasNewBuildCompatBootCabal = isGhcVersion ">= 7.9"
 
 ------------------------------------------------------------------------
 -- * Broken tests
@@ -959,7 +959,7 @@ getIPID pn = do
 delay :: TestM ()
 delay = do
     env <- getTestEnv
-    is_old_ghc <- ghcVersionIs (< mkVersion [7,7])
+    is_old_ghc <- isGhcVersion "< 7.7"
     -- For old versions of GHC, we only had second-level precision,
     -- so we need to sleep a full second.  Newer versions use
     -- millisecond level precision, so we only have to wait
