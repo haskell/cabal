@@ -803,6 +803,9 @@ isGhcVersion range = do
 skipUnlessGhcVersion :: String -> TestM ()
 skipUnlessGhcVersion range = skipUnless ("needs ghc " ++ range) =<< isGhcVersion range
 
+skipIfGhcVersion :: String -> TestM ()
+skipIfGhcVersion range = skipUnless ("incompatible with ghc " ++ range) =<< isGhcVersion range
+
 isWindows :: TestM Bool
 isWindows = return (buildOS == Windows)
 
