@@ -135,6 +135,9 @@ tests config =
 
   , testGroup "Regression tests" $
     [ testCase "issue #3324" (testRegressionIssue3324 config)
+    , testCase "program options scope all" (testProgramOptionsAll config)
+    , testCase "program options scope local" (testProgramOptionsLocal config)
+    , testCase "program options scope specific" (testProgramOptionsSpecific config)
     ]
   ]
 
@@ -1540,6 +1543,96 @@ testRegressionIssue3324 config = when (buildOS /= Windows) $ do
   where
     testdir = "regression/3324"
 
+-- | Test global program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsAll :: ProjectConfig -> Assertion
+testProgramOptionsAll config0 = do
+    -- P is a tarball package, Q is a local dir package that depends on it.
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into global config
+    config = config0 {
+      projectConfigAllPackages = (projectConfigAllPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test local program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsLocal :: ProjectConfig -> Assertion
+testProgramOptionsLocal config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let localPackages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs localPackages "q")
+    assertEqual "p"
+                Nothing
+                (getProgArgs localPackages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into local config
+    config = config0 {
+      projectConfigLocalPackages = (projectConfigLocalPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test package specific program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsSpecific :: ProjectConfig -> Assertion
+testProgramOptionsSpecific config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Nothing)
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into package "p" config
+    config = config0 {
+        projectConfigSpecificPackage = MapMappend (Map.fromList [(mkPackageName "p", configArgs)])
+    }
+    configArgs = mempty {
+        packageConfigProgramArgs = programArgs
+    }
+
+filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
+filterConfiguredPackages [] = []
+filterConfiguredPackages (InstallPlan.PreExisting _    : pkgs) = filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Installed   elab : pkgs) = elab : filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Configured  elab : pkgs) = elab : filterConfiguredPackages pkgs
+
+getProgArgs :: [ElaboratedConfiguredPackage] -> String -> Maybe [String]
+getProgArgs [] _ = Nothing
+getProgArgs (elab : pkgs) name
+    | pkgName (elabPkgSourceId elab) == mkPackageName name
+        = Map.lookup "ghc" (elabProgramArgs elab)
+    | otherwise
+        = getProgArgs pkgs name
 
 ---------------------------------
 -- Test utils to plan and build
