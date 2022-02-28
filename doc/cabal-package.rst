@@ -87,10 +87,11 @@ computer architecture and user-specified configuration flags.
     version:  1.0
 
     library
-      build-depends:   base >= 4 && < 5
-      exposed-modules: Foo
-      extensions:      ForeignFunctionInterface
-      ghc-options:     -Wall
+      default-language: Haskell2010
+      build-depends:    base >= 4 && < 5
+      exposed-modules:  Foo
+      extensions:       ForeignFunctionInterface
+      ghc-options:      -Wall
       if os(windows)
         build-depends: Win32 >= 2.1 && < 2.6
 
@@ -101,15 +102,15 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
 
 ::
 
+    cabal-version:  3.0
     name:           HUnit
     version:        1.1.1
     synopsis:       A unit testing framework for Haskell
     homepage:       http://hunit.sourceforge.net/
     category:       Testing
     author:         Dean Herington
-    license:        BSD3
+    license:        BSD-3-Clause
     license-file:   LICENSE
-    cabal-version:  1.12
     build-type:     Simple
 
     library
@@ -117,6 +118,7 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
       exposed-modules:    Test.HUnit.Base, Test.HUnit.Lang,
                           Test.HUnit.Terminal, Test.HUnit.Text, Test.HUnit
       default-extensions: CPP
+      default-language:   Haskell2010
 
 and the following ``Setup.hs``:
 
@@ -130,25 +132,27 @@ Example: A package containing executable programs
 
 ::
 
+    cabal-version:  3.0
     name:           TestPackage
     version:        0.0
     synopsis:       Small package with two programs
     author:         Angela Author
-    license:        BSD3
+    license:        BSD-3-Clause
     build-type:     Simple
-    cabal-version:  >= 1.8
 
     executable program1
-      build-depends:  HUnit >= 1.1.1 && < 1.2
-      main-is:        main.hs
-      hs-source-dirs: prog1
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      main-is:          main.hs
+      hs-source-dirs:   prog1
+      default-language: Haskell2010
 
     executable program2
       -- A different main.hs because of hs-source-dirs.
-      main-is:        main.hs
-      build-depends:  HUnit >= 1.1.1 && < 1.2
-      hs-source-dirs: prog2
-      other-modules:  Utils
+      main-is:          main.hs
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      hs-source-dirs:   prog2
+      other-modules:    Utils
+      default-language: Haskell2010
 
 with ``Setup.hs`` the same as above.
 
@@ -157,31 +161,34 @@ Example: A package containing a library and executable programs
 
 ::
 
+    cabal-version:   3.0
     name:            TestPackage
     version:         0.0
     synopsis:        Package with library and two programs
-    license:         BSD3
+    license:         BSD-3-Clause
     author:          Angela Author
     build-type:      Simple
-    cabal-version:   >= 1.8
 
     library
-      build-depends:   HUnit >= 1.1.1 && < 1.2
-      hs-source-dirs:  lib
-      exposed-modules: A, B, C
+      build-depends:    HUnit >= 1.1.1 && < 1.2
+      hs-source-dirs:   lib
+      exposed-modules:  A, B, C
+      default-language: Haskell2010
 
     executable program1
-      main-is:         main.hs
-      hs-source-dirs:  prog1
-      other-modules:   D, E
+      main-is:          main.hs
+      hs-source-dirs:   prog1
+      other-modules:    D, E
+      default-language: Haskell2010
 
     executable program2
       -- A different main.hs because of hs-source-dirs.
-      main-is:         main.hs
+      main-is:          main.hs
       -- No bound on internal libraries.
-      build-depends:   TestPackage
-      hs-source-dirs:  prog2
-      other-modules:   Utils
+      build-depends:    TestPackage
+      hs-source-dirs:   prog2
+      other-modules:    Utils
+      default-language: Haskell2010
 
 with ``Setup.hs`` the same as above. Note that any library modules
 required (directly or indirectly) by an executable must be listed again.
@@ -900,24 +907,28 @@ look something like this:
     name:           foo
     version:        0.1.0.0
     license:        BSD3
+    license-file:   LICENSE
     build-type:     Simple
 
     library foo-internal
-        exposed-modules: Foo.Internal
+        exposed-modules:  Foo.Internal
         -- NOTE: no explicit constraints on base needed
         --       as they're inherited from the 'library' stanza
-        build-depends: base
+        build-depends:    base
+        default-language: Haskell2010
 
     library
-        exposed-modules: Foo.Public
-        build-depends: foo-internal, base >= 4.3 && < 5
+        exposed-modules:  Foo.Public
+        build-depends:    foo-internal, base >= 4.3 && < 5
+        default-language: Haskell2010
 
     test-suite test-foo
-        type:       exitcode-stdio-1.0
-        main-is:    test-foo.hs
+        type:             exitcode-stdio-1.0
+        main-is:          test-foo.hs
         -- NOTE: no constraints on 'foo-internal' as same-package
         --       dependencies implicitly refer to the same package instance
-        build-depends: foo-internal, base
+        build-depends:    foo-internal, base
+        default-language: Haskell2010
 
 Internal libraries are also useful for packages that define multiple
 executables, but do not define a publicly accessible library. Internal
@@ -935,9 +946,10 @@ a real-world use case:
 
 ::
 
-    cabal-version: 2.2
+    cabal-version: 3.0
     name: haddock-library
     version: 1.6.0
+    license: BSD-3-Clause
 
     library
       build-depends:
@@ -953,6 +965,8 @@ a real-world use case:
 
       exposed-modules:
         Documentation.Haddock
+
+      default-language: Haskell2010
 
     library attoparsec
       build-depends:
@@ -972,6 +986,8 @@ a real-world use case:
         Data.Attoparsec.Internal
 
       ghc-options: -funbox-strict-fields -Wall -fwarn-tabs -O2
+
+      default-language: Haskell2010
 
 
 Opening an interpreter session
@@ -1245,24 +1261,6 @@ the :pkg-field:`test-module` field.
 
     The module exporting the ``tests`` symbol.
 
-.. pkg-field:: code-generators
-
-    An optional list of preprocessors which can generate new modules
-    for use in the test-suite.
-
- A list of executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
- preprocessors. These executables are invoked as so: ``exe-name
- TARGETDIR [SOURCEDIRS] -- [GHCOPTIONS]``. The arguments are, in order a target dir for
- output, a sequence of all source directories with source files of
- local lib components that the given test stanza dependens on, and
- following a double dash, all options cabal would pass to ghc for a
- build. They are expected to output a newline-seperated list of
- generated modules which have been written to the targetdir
- (excepting, if written, the main module). This can
- be used for driving doctests and other discover-style tests generated
- from source code.
-
-
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -1272,16 +1270,17 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 .. code-block:: cabal
     :caption: foo.cabal
 
+    Cabal-Version:  3.0
     Name:           foo
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Test-Suite test-foo
-        type:       exitcode-stdio-1.0
-        main-is:    test-foo.hs
-        build-depends: base >= 4 && < 5
+        type:             exitcode-stdio-1.0
+        main-is:          test-foo.hs
+        build-depends:    base >= 4 && < 5
+        default-language: Haskell2010
 
 .. code-block:: haskell
     :caption: test-foo.hs
@@ -1306,16 +1305,17 @@ be provided by the library that provides the testing facility.
 .. code-block:: cabal
     :caption: bar.cabal
 
+    Cabal-Version:  3.0
     Name:           bar
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Test-Suite test-bar
-        type:       detailed-0.9
-        test-module: Bar
-        build-depends: base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        type:             detailed-0.9
+        test-module:      Bar
+        build-depends:    base >= 4 && < 5, Cabal >= 1.9.2 && < 2
+        default-language: Haskell2010
 
 
 .. code-block:: haskell
@@ -1407,16 +1407,17 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
     :caption: foo.cabal
     :name: foo-bench.cabal
 
+    Cabal-Version:  3.0
     Name:           foo
     Version:        1.0
-    License:        BSD3
-    Cabal-Version:  >= 1.9.2
+    License:        BSD-3-Clause
     Build-Type:     Simple
 
     Benchmark bench-foo
-        type:       exitcode-stdio-1.0
-        main-is:    bench-foo.hs
-        build-depends: base >= 4 && < 5, time >= 1.1 && < 1.7
+        type:             exitcode-stdio-1.0
+        main-is:          bench-foo.hs
+        build-depends:    base >= 4 && < 5, time >= 1.1 && < 1.7
+        default-language: Haskell2010
 
 .. code-block:: haskell
     :caption: bench-foo.hs
@@ -2385,10 +2386,10 @@ Example: A package containing a library and executable programs
 
 ::
 
+    Cabal-Version: 3.0
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.8
-    License: BSD3
+    License: BSD-3-Clause
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
@@ -2410,9 +2411,10 @@ Example: A package containing a library and executable programs
       -- assign automatically while searching for a solution
 
     Library
-      Build-Depends:   base >= 4.2 && < 4.9
-      Exposed-Modules: Testing.Test1
-      Extensions:      CPP
+      Build-Depends:      base >= 4.2 && < 4.9
+      Exposed-Modules:    Testing.Test1
+      Default-Extensions: CPP
+      Default-Language:   Haskell2010
 
       GHC-Options: -Wall
       if flag(Debug)
@@ -2435,9 +2437,10 @@ Example: A package containing a library and executable programs
             Build-Depends: old-time >= 1.0 && < 1.2
 
     Executable test1
-      Main-is: T1.hs
-      Other-Modules: Testing.Test1
-      Build-Depends: base >= 4.2 && < 4.9
+      Main-is:          T1.hs
+      Other-Modules:    Testing.Test1
+      Build-Depends:    base >= 4.2 && < 4.9
+      Default-Language: Haskell2010
 
       if flag(debug)
         CC-Options: "-DDEBUG"
@@ -2462,10 +2465,10 @@ Example: Using explicit braces rather than indentation for layout
 
 ::
 
+    Cabal-Version: 3.0
     Name: Test1
     Version: 0.0.1
-    Cabal-Version: >= 1.8
-    License: BSD3
+    License: BSD-3-Clause
     Author:  Jane Doe
     Synopsis: Test package to test configurations
     Category: Example
@@ -2478,9 +2481,10 @@ Example: Using explicit braces rather than indentation for layout
     }
 
     Library {
-      Build-Depends:   base >= 4.2 && < 4.9
-      Exposed-Modules: Testing.Test1
-      Extensions:      CPP
+      Build-Depends:       base >= 4.2 && < 4.9
+      Exposed-Modules:     Testing.Test1
+      Default-Extensions:  CPP
+      Default-language:    Haskell2010
       if flag(debug) {
         CPP-Options: -DDEBUG
         if !os(windows) {
@@ -2737,14 +2741,16 @@ Starting with Cabal-2.2 it's possible to use common build info stanzas.
         build-depends: tasty ^>= 0.12.0.1
 
       library
-        import: deps
-        exposed-modules: Foo
+        import:           deps
+        exposed-modules:  Foo
+        default-language: Haskell2010
 
       test-suite tests
-        import: deps, test-deps
-        type: exitcode-stdio-1.0
-        main-is: Tests.hs
-        build-depends: foo
+        import:           deps, test-deps
+        type:             exitcode-stdio-1.0
+        main-is:          Tests.hs
+        build-depends:    foo
+        default-language: Haskell2010
 
 -  You can use `build information`_ fields in common stanzas.
 
