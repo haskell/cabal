@@ -51,7 +51,6 @@ import Distribution.Simple.CCompiler
 import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
-import Distribution.Types.BuildInfo.Lens            (buildToolDepends)
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.PackageName.Magic
 import Distribution.Utils.Generic                    (isAscii)
