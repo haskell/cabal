@@ -2,8 +2,7 @@ cabal-install Commands
 ======================
 
 ``cabal help`` groups commands into global, package, new-style project and
-legacy sections. We talk in detail about some global and package commands,
-``help`` and ``list-bin`` but there are other commands.
+legacy sections. We talk in detail about some global and package commands.
 
 ::
 
