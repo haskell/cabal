@@ -51,6 +51,7 @@ import Distribution.Simple.CCompiler
 import Distribution.Simple.Glob
 import Distribution.Simple.Utils                     hiding (findPackageDesc, notice)
 import Distribution.System
+import Distribution.Types.BuildInfo.Lens            (buildToolDepends)
 import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.PackageName.Magic
 import Distribution.Utils.Generic                    (isAscii)
@@ -1190,6 +1191,12 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "To use multiple 'library' sections or a named library section "
         ++ "the package needs to specify at least 'cabal-version: 2.0'."
+
+  , checkVersion CabalSpecV2_0
+    (not (null buildToolDepends)) $
+      PackageBuildWarning $
+        "To use the 'build-tool-depends' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 2.0'"
 
     -- check use of reexported-modules sections
   , checkVersion CabalSpecV1_22
