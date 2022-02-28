@@ -55,6 +55,7 @@ import Distribution.Simple.Setup
          , TestFlags(..), testOptions', defaultTestFlags
          , BenchmarkFlags(..), benchmarkOptions', defaultBenchmarkFlags
          , programDbPaths', splitArgs, DumpBuildInfo (NoDumpBuildInfo, DumpBuildInfo)
+         , readPackageDb, showPackageDb
          )
 import Distribution.Client.NixStyleOptions (NixStyleFlags (..))
 import Distribution.Client.ProjectFlags (ProjectFlags (..), projectFlagsOptions, defaultProjectFlags)
@@ -92,7 +93,7 @@ import Distribution.Simple.Command
          , OptionField, option, reqArg' )
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
-import Distribution.Parsec (ParsecParser)
+import Distribution.Parsec (ParsecParser, parsecToken)
 
 import qualified Data.Map as Map
 import qualified Data.ByteString as BS
@@ -197,7 +198,7 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         -- split the package config (from command line arguments) into
         -- those applied to all packages and those to local only.
         --
-        -- for now we will just copy over the ProgramPaths/Args/Extra into
+        -- for now we will just copy over the ProgramPaths/Extra into
         -- the AllPackages.  The LocalPackages do not inherit them from
         -- AllPackages, and as such need to retain them.
         --
@@ -214,7 +215,6 @@ commandLineFlagsToProjectConfig globalFlags NixStyleFlags {..} clientInstallFlag
         splitConfig :: PackageConfig -> (PackageConfig, PackageConfig)
         splitConfig pc = (pc
                          , mempty { packageConfigProgramPaths = packageConfigProgramPaths pc
-                                  , packageConfigProgramArgs  = packageConfigProgramArgs  pc
                                   , packageConfigProgramPathExtra = packageConfigProgramPathExtra pc
                                   , packageConfigDocumentation = packageConfigDocumentation pc })
 
@@ -352,11 +352,11 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
       configDistPref            = projectConfigDistDir,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg
+      configHcPkg               = projectConfigHcPkg,
     --configProgramPathExtra    = projectConfigProgPathExtra DELETE ME
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
-    --configPackageDBs          = projectConfigPackageDBs,
+      configPackageDBs          = projectConfigPackageDBs
     } = configFlags
 
     ConfigExFlags {
@@ -593,7 +593,8 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
-      configDistPref      = projectConfigDistDir
+      configDistPref      = projectConfigDistDir,
+      configPackageDBs    = projectConfigPackageDBs
     }
 
     configExFlags = ConfigExFlags {
@@ -696,7 +697,7 @@ convertToLegacyAllPackageConfig
       configCabalFilePath       = mempty,
       configVerbosity           = mempty,
       configUserInstall         = mempty, --projectConfigUserInstall,
-      configPackageDBs          = mempty, --projectConfigPackageDBs,
+      configPackageDBs          = mempty,
       configGHCiLib             = mempty,
       configSplitSections       = mempty,
       configSplitObjs           = mempty,
@@ -976,6 +977,11 @@ legacySharedConfigFieldDescrs constraintSrc = concat
   , liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
+  . addFields
+      [ commaNewLineListFieldParsec "package-dbs"
+        (Disp.text . showPackageDb) (fmap readPackageDb parsecToken)
+        configPackageDBs (\v conf -> conf { configPackageDBs = v })
+      ]
   . filterFields ["verbose", "builddir" ]
   . commandOptionsToFields
   $ configureOptions ParseArgs

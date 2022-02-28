@@ -119,7 +119,6 @@ import Distribution.Client.Version
 import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), buildable )
-import Distribution.PackageDescription.Parsec ( readGenericPackageDescription )
 
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
@@ -138,6 +137,7 @@ import Distribution.Simple.Configure
          , getPersistBuildConfig, interpretPackageDbFlags
          , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.PackageDescription ( readGenericPackageDescription )
 import Distribution.Simple.Program (defaultProgramDb
                                    ,configureAllKnownPrograms
                                    ,simpleProgramInvocation

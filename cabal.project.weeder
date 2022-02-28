@@ -4,6 +4,7 @@
 --     cabal install -w ghc-8.8.3 weeder
 --
 
+packages: Cabal-syntax/
 packages: Cabal/
 packages: cabal-install/
 tests: False

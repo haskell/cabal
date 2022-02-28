@@ -1,0 +1,3 @@
+synopsis: Remove deprecated file finding functions
+packages: Cabal
+prs: #7955

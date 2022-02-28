@@ -1,10 +1,10 @@
-# This file is auto-generated
-#
-# To regenerate it run
-#
-#     make github-actions
-#
 name: Quick jobs
+
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -43,7 +43,6 @@ jobs:
           make -B lexer
           make -B spdx
           make -B templates
-          make -B github-actions
       - name: Check that diff is clean
         run: |
           git status > /dev/null

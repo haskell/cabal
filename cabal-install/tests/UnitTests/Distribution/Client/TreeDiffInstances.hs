@@ -20,6 +20,8 @@ import Distribution.Client.Types
 import Distribution.Client.Types.OverwritePolicy         (OverwritePolicy)
 import Distribution.Client.Types.SourceRepo              (SourceRepositoryPackage)
 
+import Distribution.Simple.Compiler                      (PackageDB)
+
 import Data.TreeDiff.Class
 import Data.TreeDiff.Instances.Cabal ()
 import Network.URI
@@ -50,6 +52,7 @@ instance ToExpr OptionalStanza
 instance ToExpr Outcome
 instance ToExpr OverwritePolicy
 instance ToExpr PackageConfig
+instance ToExpr PackageDB
 instance ToExpr PackageProperty
 instance ToExpr PreSolver
 instance ToExpr ProjectConfig

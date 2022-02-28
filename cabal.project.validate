@@ -1,3 +1,4 @@
+packages: Cabal-syntax/
 packages: Cabal/
 packages: cabal-testsuite/
 packages: cabal-install/
@@ -10,8 +11,6 @@ packages: Cabal-described
 packages: Cabal-tests
 packages: cabal-benchmarks
 
-packages: vendor/cabal-doctest-1.0.8
-
 tests: True
 
 -- avoiding extra dependencies
@@ -20,6 +19,8 @@ constraints: these -assoc
 
 write-ghc-environment-files: never
 
+package Cabal-syntax
+  ghc-options: -Werror -fno-ignore-asserts
 package Cabal
   ghc-options: -Werror -fno-ignore-asserts
 package cabal-testsuite

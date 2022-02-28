@@ -46,7 +46,7 @@ import qualified System.Exit (exitSuccess)
 testCommand :: CommandUI (NixStyleFlags ())
 testCommand = CommandUI
   { commandName         = "v2-test"
-  , commandSynopsis     = "Run test-suites"
+  , commandSynopsis     = "Run test-suites."
   , commandUsage        = usageAlternatives "v2-test" [ "[TARGETS] [FLAGS]" ]
   , commandDescription  = Just $ \_ -> wrapText $
         "Runs the specified test-suites, first ensuring they are up to "

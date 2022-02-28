@@ -22,14 +22,13 @@ import Prelude ()
 import Distribution.Client.CmdErrorMessages
        (plural, renderListCommaAnd, renderTargetProblem, renderTargetProblemNoTargets,
        renderTargetSelector, showTargetSelector, targetSelectorFilter, targetSelectorPluralPkgs)
-import Distribution.Client.DistDirLayout         (DistDirLayout (..), ProjectRoot (..))
+import Distribution.Client.DistDirLayout         (DistDirLayout (..))
 import Distribution.Client.NixStyleOptions
        (NixStyleFlags (..), defaultNixStyleFlags, nixStyleOptions)
-import Distribution.Client.ProjectConfig
-       (ProjectConfig, projectConfigConfigFile, projectConfigShared, withProjectOrGlobalConfig)
-import Distribution.Client.ProjectFlags          (ProjectFlags (..))
 import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectPlanning.Types
+import Distribution.Client.ScriptUtils
+       (AcceptNoTargets(..), TargetContext(..), updateContextAndWriteProjectFile, withContextAndSelectors)
 import Distribution.Client.Setup                 (GlobalFlags (..))
 import Distribution.Client.TargetProblem         (TargetProblem (..))
 import Distribution.Simple.BuildPaths            (dllExtension, exeExtension)
@@ -41,7 +40,6 @@ import Distribution.Types.ComponentName          (showComponentName)
 import Distribution.Types.UnitId                 (UnitId)
 import Distribution.Types.UnqualComponentName    (UnqualComponentName)
 import Distribution.Verbosity                    (silent, verboseStderr)
-import System.Directory                          (getCurrentDirectory)
 import System.FilePath                           ((<.>), (</>))
 
 import qualified Data.Map                                as Map
@@ -57,11 +55,11 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 listbinCommand :: CommandUI (NixStyleFlags ())
 listbinCommand = CommandUI
     { commandName = "list-bin"
-    , commandSynopsis = "list path to a single executable."
+    , commandSynopsis = "List the path to a single executable."
     , commandUsage = \pname ->
         "Usage: " ++ pname ++ " list-bin [FLAGS] TARGET\n"
     , commandDescription  = Just $ \_ -> wrapText
-        "List path to a build product."
+        "List the path to a build product."
     , commandNotes = Nothing
     , commandDefaultFlags = defaultNixStyleFlags ()
     , commandOptions      = nixStyleOptions (const [])
@@ -73,19 +71,18 @@ listbinCommand = CommandUI
 
 listbinAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 listbinAction flags@NixStyleFlags{..} args globalFlags = do
-    -- fail early if multiple target selectors specified
-    target <- case args of
-        []  -> die' verbosity "One target is required, none provided"
-        [x] -> return x
-        _   -> die' verbosity "One target is required, given multiple"
+  -- fail early if multiple target selectors specified
+  target <- case args of
+      []  -> die' verbosity "One target is required, none provided"
+      [x] -> return x
+      _   -> die' verbosity "One target is required, given multiple"
 
-    -- configure
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
-    let localPkgs = localPackages baseCtx
-
-    -- elaborate target selectors
-    targetSelectors <- either (reportTargetSelectorProblems verbosity) return
-        =<< readTargetSelectors localPkgs (Just ExeKind) [target]
+  -- configure and elaborate target selectors
+  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags $ \targetCtx ctx targetSelectors -> do
+    baseCtx <- case targetCtx of
+      ProjectContext             -> return ctx
+      GlobalContext              -> return ctx
+      ScriptContext path exemeta -> updateContextAndWriteProjectFile ctx path exemeta
 
     buildCtx <-
       runProjectPreBuildPhase verbosity baseCtx $ \elaboratedPlan -> do
@@ -118,7 +115,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
                                     elaboratedPlan
             return (elaboratedPlan', targets)
 
-    (selectedUnitId, _selectedComponent) <-
+    (selectedUnitId, selectedComponent) <-
       -- Slight duplication with 'runProjectPreBuildPhase'.
       singleComponentOrElse
         (die' verbosity $ "No or multiple targets given, but the run "
@@ -131,37 +128,25 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         Nothing  -> die' verbosity "No or multiple targets given..."
         Just gpp -> return $ IP.foldPlanPackage
             (const []) -- IPI don't have executables
-            (elaboratedPackage distDirLayout (elaboratedShared buildCtx))
+            (elaboratedPackage (distDirLayout baseCtx) (elaboratedShared buildCtx) selectedComponent)
             gpp
 
     case binfiles of
+        []     -> die' verbosity "No target found"
         [exe] -> putStrLn exe
-        _     -> die' verbosity "No or multiple targets given"
+        _ -> die' verbosity "Multiple targets found"
   where
     defaultVerbosity = verboseStderr silent
     verbosity = fromFlagOrDefault defaultVerbosity (configVerbosity configFlags)
-    ignoreProject = flagIgnoreProject projectFlags
-    prjConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
-    globalConfigFlag = projectConfigConfigFile (projectConfigShared prjConfig)
-
-    withProject :: IO (ProjectBaseContext, DistDirLayout)
-    withProject = do
-        baseCtx <- establishProjectBaseContext verbosity prjConfig OtherCommand
-        return (baseCtx, distDirLayout baseCtx)
-
-    withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
-    withoutProject config = do
-        cwd <- getCurrentDirectory
-        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
-        return (baseCtx, distDirLayout baseCtx)
 
     -- this is copied from
     elaboratedPackage
         :: DistDirLayout
         -> ElaboratedSharedConfig
+        -> UnqualComponentName
         -> ElaboratedConfiguredPackage
         -> [FilePath]
-    elaboratedPackage distDirLayout elaboratedSharedConfig elab = case elabPkgOrComp elab of
+    elaboratedPackage distDirLayout elaboratedSharedConfig selectedComponent elab = case elabPkgOrComp elab of
         ElabPackage pkg ->
             [ bin
             | (c, _) <- CD.toList $ CD.zip (pkgLibDependencies pkg)
@@ -173,11 +158,15 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
         dist_dir = distBuildDirectory distDirLayout (elabDistDirParams elaboratedSharedConfig elab)
 
         bin_file c = case c of
-            CD.ComponentExe s   -> [bin_file' s]
-            CD.ComponentTest s  -> [bin_file' s]
-            CD.ComponentBench s -> [bin_file' s]
-            CD.ComponentFLib s  -> [flib_file' s]
-            _                -> []
+            CD.ComponentExe s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentTest s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentBench s
+               | s == selectedComponent -> [bin_file' s]
+            CD.ComponentFLib s
+               | s == selectedComponent -> [flib_file' s]
+            _ -> []
 
         plat :: Platform
         plat = pkgConfigPlatform elaboratedSharedConfig

@@ -1,0 +1,5 @@
+# cabal list-bin
+Resolving dependencies...
+Build profile: -w ghc-<GHCVER> -O1
+In order, the following will be built:
+ - SelectedComponent-1.0.0 (exe:testexe) (first run)

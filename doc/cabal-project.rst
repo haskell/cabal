@@ -32,6 +32,8 @@ options):
 
 4. ``cabal.project.local`` (the output of ``cabal v2-configure``)
 
+Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
+directories when there is none in the current directory.
 
 Specifying the local packages
 -----------------------------
@@ -268,6 +270,56 @@ package, and thus apply globally:
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.
+
+.. cfg-field:: package-dbs: package DB stack (comma separated)
+               --package-db=[clear, global, user, PATH]
+    :synopsis: PackageDB stack manipulation
+    :since: 3.7
+
+    There are three package databases involved with most builds:
+
+    global
+        Compiler installation of rts, base, etc.
+    store
+        Nix-style local build cache
+    in-place
+        Project-specific build directory
+    
+    By default, the package stack you will have with v2 commands is:
+
+    ::
+
+        -- [global, store]
+
+    So all remote packages required by your project will be
+    registered in the store package db (because it is last).
+
+    When cabal starts building your local projects, it appends the in-place db
+    to the end:
+
+    ::
+
+        -- [global, store, in-place]
+        
+    So your local packages get put in ``dist-newstyle`` instead of the store.
+
+    This flag manipulates the default prefix: ``[global, store]`` and accepts
+    paths, the special value ``global`` referring to the global package db, and
+    ``clear`` which removes all prior entries. For example,
+
+    ::
+
+        -- [global, store, foo]
+        package-dbs: foo
+
+        -- [foo]
+        package-dbs: clear, foo
+
+        -- [bar, baz]
+        package-dbs: clear, foo, clear, bar, baz
+
+    The command line variant of this flag is ``--package-db=DB`` which can be
+    specified multiple times.
 
 Phase control
 -------------
@@ -540,12 +592,12 @@ The following settings control the behavior of the dependency solver:
       -- Force my-repository to be the first repository considered
       active-repositories: :rest, my-repository
 
-    The special repository reference "none" disables all repositories, effectively
+    The special repository reference :none disables all repositories, effectively
     putting cabal in "offline" mode:
 
     ::
 
-      active-repositories: none
+      active-repositories: :none
 
 
 .. cfg-field:: reject-unconstrained-dependencies: all, none
@@ -591,16 +643,13 @@ an external dependency) should be built with ``-fno-state-hack``::
     package bytestring
         ghc-options: -fno-state-hack
 
-``ghc-options`` is not specifically described in this documentation,
-but is one of many fields for configuring programs.  They take the form
-``progname-options`` and ``progname-location``, and
-can only be set inside package stanzas.  (TODO: They are not supported
-at top-level, see :issue:`3579`.)
+``ghc-options`` is not specifically described in this documentation, but is one
+of many fields for configuring programs.  They take the form
+``progname-options`` and ``progname-location``, and can be set for all local
+packages in a ``program-options`` stanza or under a package stanza.
 
-At the moment, there is no way to specify an option to apply to all
-external packages or all inplace packages. Additionally, it is only
-possible to specify these options on the command line for all local
-packages (there is no per-package command line interface.)
+On the command line, these options are applied to all local packages.
+There is no per-package command line interface.
 
 Some flags were added by more recent versions of the Cabal library. This
 means that they are NOT supported by packages which use Custom setup

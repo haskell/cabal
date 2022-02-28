@@ -24,6 +24,7 @@ import Test.Cabal.Plan
 
 import Distribution.Compat.Time (calibrateMtimeChangeDelay)
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
+import Distribution.Simple.PackageDescription (readGenericPackageDescription)
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program
@@ -39,7 +40,6 @@ import Distribution.Pretty (prettyShow)
 import Distribution.Types.UnqualComponentName
 import Distribution.Types.LocalBuildInfo
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Parsec
 import Distribution.Verbosity (normal)
 
 import Distribution.Compat.Stack

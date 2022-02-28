@@ -9,7 +9,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Types.UnqualComponentName
-import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
@@ -32,6 +31,7 @@ import System.Directory
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( stdout, stderr )
+import System.Process ( createPipe )
 
 import qualified Data.ByteString.Lazy as LBS
 

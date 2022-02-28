@@ -476,7 +476,6 @@ rebuildInstallPlan verbosity
                              },
                              projectConfigLocalPackages = PackageConfig {
                                packageConfigProgramPaths,
-                               packageConfigProgramArgs,
                                packageConfigProgramPathExtra
                              }
                            } = do
@@ -484,7 +483,6 @@ rebuildInstallPlan verbosity
         rerunIfChanged verbosity fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg, progsearchpath,
                         packageConfigProgramPaths,
-                        packageConfigProgramArgs,
                         packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
@@ -508,7 +506,6 @@ rebuildInstallPlan verbosity
         hcPkg    = flagToMaybe projectConfigHcPkg
         progdb   =
             userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
           . modifyProgramSearchPath
               (++ [ ProgramSearchPathDir dir
                   | dir <- fromNubList packageConfigProgramPathExtra ])
@@ -594,7 +591,9 @@ rebuildInstallPlan verbosity
               Right plan -> return (plan, pkgConfigDB, tis, ar)
       where
         corePackageDbs :: [PackageDB]
-        corePackageDbs = [GlobalPackageDB]
+        corePackageDbs = applyPackageDbFlags [GlobalPackageDB]
+                                             (projectConfigPackageDBs projectConfigShared)
+
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
                            projectConfigShared
                            projectConfigBuildOnly
@@ -984,6 +983,12 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     return $! hashesFromRepoMetadata
            <> hashesFromTarballFiles
 
+-- | Append the given package databases to an existing PackageDBStack.
+-- A @Nothing@ entry will clear everything before it.
+applyPackageDbFlags :: PackageDBStack -> [Maybe PackageDB] -> PackageDBStack
+applyPackageDbFlags dbs' []            = dbs'
+applyPackageDbFlags _    (Nothing:dbs) = applyPackageDbFlags []             dbs
+applyPackageDbFlags dbs' (Just db:dbs) = applyPackageDbFlags (dbs' ++ [db]) dbs
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -1726,10 +1731,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 elaboratedSharedConfig
                 elab)  -- recursive use of elab
 
-          | otherwise
-          = error $ "elaborateInstallPlan: non-inplace package "
-                 ++ " is missing a source hash: " ++ prettyShow pkgid
-
         -- Need to filter out internal dependencies, because they don't
         -- correspond to anything real anymore.
         isExt confid = confSrcId confid /= pkgid
@@ -1844,6 +1845,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabLocalToProject  = isLocalToProject pkg
         elabBuildStyle      = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
+        elabPackageDbs             = projectConfigPackageDBs sharedPackageConfig
         elabBuildPackageDBStack    = buildAndRegisterDbs
         elabRegisterPackageDBStack = buildAndRegisterDbs
 
@@ -1859,7 +1861,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         buildAndRegisterDbs
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
-          | otherwise                  = storePackageDbs
+          | otherwise                  = corePackageDbs
 
         elabPkgDescriptionOverride = descOverride
 
@@ -1972,10 +1974,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                = mempty
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
-    inplacePackageDbs = storePackageDbs
+    inplacePackageDbs = corePackageDbs
                      ++ [ distPackageDB (compilerId compiler) ]
 
-    storePackageDbs   = storePackageDBStack (compilerId compiler)
+    corePackageDbs = applyPackageDbFlags (storePackageDBStack (compilerId compiler))
+                                         (projectConfigPackageDBs sharedPackageConfig)
 
     -- For this local build policy, every package that lives in a local source
     -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -3485,7 +3488,6 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                               = Map.toList $
                                 Map.insertWith (++) "ghc" ["-hide-all-packages"]
                                                elabProgramArgs
-        | otherwise           = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- we use configProgramPaths instead
@@ -3873,6 +3875,7 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,
       pkgHashProgPrefix          = elabProgPrefix,
       pkgHashProgSuffix          = elabProgSuffix,
+      pkgHashPackageDbs          = elabPackageDbs,
 
       pkgHashDocumentation       = elabBuildHaddocks,
       pkgHashHaddockHoogle       = elabHaddockHoogle,
