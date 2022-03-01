@@ -290,7 +290,9 @@ JOBS="-j$JOBS"
 # assume compiler is GHC
 RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-if [ "$(uname)" = "Linux" ]; then
+if [ "$OSTYPE" = "msys" -o "$OSTYPE" = "cygwin" ]; then
+    ARCH="x86_64-windows"
+elif [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"
 else
     ARCH="x86_64-osx"
