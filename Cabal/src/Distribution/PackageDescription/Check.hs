@@ -1191,8 +1191,9 @@ checkCabalVersion pkg =
            "To use multiple 'library' sections or a named library section "
         ++ "the package needs to specify at least 'cabal-version: 2.0'."
 
+  -- check use of build-tool-depends
   , checkVersion CabalSpecV2_0
-    (not (null L.buildToolDepends)) $
+    (not (null $ L.buildToolDepends $ allBuildInfo pkg)) $
       PackageBuildWarning $
         "To use the 'build-tool-depends' field the package needs to specify "
         ++ "at least 'cabal-version: >= 2.0'"
