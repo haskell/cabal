@@ -36,7 +36,7 @@ Usage: ./validate.sh [options]
 
 Available options:
   -j, --jobs JOBS                   cabal v2-build -j argument (default:  $JOBS)
-      --libonly                     Test onlt Cabal-the-library
+      --libonly                     Test only Cabal-the-library
       --cli                         Test both Cabal-the-library and cabal-install
       --(no-)run-lib-tests          Run library tests
       --(no-)run-cli-tests          Run client tests
