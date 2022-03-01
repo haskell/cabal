@@ -94,6 +94,12 @@ jobs:
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
+      # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
+      - name: Install Autotools
+        if: runner.os == 'macOS'
+        run: |
+          brew install automake
+
       - name: Set validate inputs
         id: validate-inputs
         run: |
