@@ -61,6 +61,9 @@ jobs:
             ghc: "8.0.2"
             cli: "false"
             experimental: "true" # see #7988 and #7989
+          - os: "windows-latest"
+            ghc: "8.0.2"
+            cli: "false"
 
     steps:
 
