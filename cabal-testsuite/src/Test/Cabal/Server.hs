@@ -254,7 +254,8 @@ initServer s0 = do
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of
                   OpenHandle x   -> fmap show (Win32.getProcessId x)
-                  ClosedHandle  _ -> return (serverProcessId s0)
+                  -- TODO: handle OpenExtHandle?
+                  _              -> return (serverProcessId s0)
 #else
     pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
               case ph of

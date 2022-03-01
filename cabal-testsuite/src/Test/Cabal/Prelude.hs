@@ -62,10 +62,11 @@ import System.Exit (ExitCode (..))
 import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normalise, splitPath, joinPath, splitFileName, (<.>), dropTrailingPathSeparator)
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
-import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, removeFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
+import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
+import System.Directory    ( removeFile )
 import System.Posix.Files  ( createSymbolicLink )
 import System.Posix.Resource
 #endif
