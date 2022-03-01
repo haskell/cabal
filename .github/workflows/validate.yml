@@ -116,6 +116,7 @@ jobs:
           echo ::set-output name=flags::$FLAGS
 
       - name: Validate print-config
+
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s print-config
 
       - name: Validate print-tool-versions
@@ -125,7 +126,11 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s build
 
       - name: Validate lib-tests
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s lib-tests
+        env:
+          # `rawSystemStdInOut reports text decoding errors`
+          # test does not find ghc without the full path in windows
+          GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
+        run: sh validate.sh -j 2 -w $GHCPATH -v ${{ steps.validate-inputs.outputs.flags }} -s lib-tests
 
       - name: Validate lib-suite
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s lib-suite
