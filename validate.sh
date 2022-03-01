@@ -290,7 +290,7 @@ JOBS="-j$JOBS"
 # assume compiler is GHC
 RUNHASKELL=$(echo $HC | sed -E 's/ghc(-[0-9.]*)$/runghc\1/')
 
-if [ "$OSTYPE" = "msys" -o "$OSTYPE" = "cygwin" ]; then
+if [ "$OSTYPE" = "msys" ]; then
     ARCH="x86_64-windows"
 elif [ "$(uname)" = "Linux" ]; then
     ARCH="x86_64-linux"
@@ -395,7 +395,10 @@ CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-
 (cd Cabal-tests && timed $CMD) || exit 1
 
 CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
-(cd Cabal-tests && timed $CMD read-fields) || exit 1
+# hackage-tests is not buildable in windows so $CMD will be empty here
+if [ "$OSTYPE" != "msys" ]; then
+  (cd Cabal-tests && timed $CMD read-fields) || exit 1
+fi
 
 if $HACKAGETESTSALL; then
   (cd Cabal-tests && timed $CMD parsec)    || exit 1
