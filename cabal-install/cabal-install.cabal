@@ -331,7 +331,9 @@ Test-Suite unit-tests
 
 
 -- Tests to run with a limited stack and heap size
---
+-- The test suite name must be keep short cause a longer one
+-- could make the build generate paths which exceeds the windows
+-- max path limit (still a problem for some ghc versions)
 Test-Suite mem-use-tests
   import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
   type: exitcode-stdio-1.0
