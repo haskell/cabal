@@ -332,7 +332,7 @@ Test-Suite unit-tests
 
 -- Tests to run with a limited stack and heap size
 --
-Test-Suite memory-usage-tests
+Test-Suite mem-use-tests
   import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs

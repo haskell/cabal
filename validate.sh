@@ -443,7 +443,7 @@ CMD="$($CABALPLANLISTBIN cabal-install:test:unit-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # Only single job, otherwise we fail with "Heap exhausted"
-CMD="$($CABALPLANLISTBIN cabal-install:test:memory-usage-tests) -j1 --hide-successes"
+CMD="$($CABALPLANLISTBIN cabal-install:test:mem-use-tests) -j1 --hide-successes"
 (cd cabal-install && timed $CMD) || exit 1
 
 # This test-suite doesn't like concurrency
