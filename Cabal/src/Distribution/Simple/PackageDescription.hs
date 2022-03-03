@@ -76,7 +76,7 @@ parseString parser verbosity name bs = do
             traverse_ (warn verbosity . showPError name) errors
             die' verbosity $ "Failed parsing \"" ++ name ++ "\"."
 
--- Collapse duplicate experimental feature warnings into single warning, with
+-- | Collapse duplicate experimental feature warnings into single warning, with
 -- a count of further sites
 flattenDups :: Verbosity -> [PWarning] -> [PWarning]
 flattenDups verbosity ws
