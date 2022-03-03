@@ -15,6 +15,34 @@ on:
       - created
 
 jobs:
+  validate-9_2_1:
+    name: validate.sh ghc-9.2.1
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: 9.2.1
+          cabal-version: latest # default, keeping for visibility
+
+      - name: Install cabal-plan
+        run: |
+          cd $(mktemp -d)
+          cabal install cabal-plan --constraint='cabal-plan +exe'
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+
+      - name: Validate print-config
+        run: sh validate.sh -j 2 -w ghc-9.2.1 -v --lib-only -s print-config
+      - name: Validate print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-9.2.1 -v --lib-only -s print-tool-versions
+      - name: Validate build
+        run: sh validate.sh -j 2 -w ghc-9.2.1 -v --lib-only -s build
+      - name: Validate lib-tests
+        run: sh validate.sh -j 2 -w ghc-9.2.1 -v --lib-only -s lib-tests
+      - name: Validate lib-suite
+        run: sh validate.sh -j 2 -w ghc-9.2.1 -v --lib-only -s lib-suite
   validate-9_0_1:
     name: validate.sh ghc-9.0.1
     runs-on: ubuntu-18.04
