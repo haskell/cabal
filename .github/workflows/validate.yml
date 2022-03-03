@@ -113,17 +113,17 @@ jobs:
           if [[ ${{ matrix.ghc }} == 8.6.5 ]]; then
             FLAGS="$FLAGS --complete-hackage-tests"
           fi
-          echo ::set-output name=flags::$FLAGS
+          echo "FLAGS=$FLAGS" >> $GITHUB_ENV
 
       - name: Validate print-config
 
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s print-config
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-config
 
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s print-tool-versions
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-tool-versions
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s build
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
 
       - name: Validate lib-tests
         env:
@@ -207,4 +207,7 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v --lib-only -s lib-suite-extras --extra-hc /opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}
+        env:
+          FLAGS: "--lib-only -s lib-suite-extras"
+          EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS --extra-hc $EXTRA_GHC
