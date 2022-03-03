@@ -697,19 +697,19 @@ testGlobAbsolutePath mtimeChange =
     threadDelay mtimeChange
     removeFile root "dir/good-a"
     reason <- expectMonitorChanged root monitor ()
-    reason @?= MonitoredFileChanged (root' </> "dir/good-a")
+    reason @?= MonitoredFileChanged (root' </> "dir" </> "good-a")
     -- absolute glob, adding a file
     updateMonitor root monitor [monitorFileGlobStr (root' </> "dir/good-*")] () ()
     threadDelay mtimeChange
     touchFile root ("dir/good-a")
     reason2 <- expectMonitorChanged root monitor ()
-    reason2 @?= MonitoredFileChanged (root' </> "dir/good-a")
+    reason2 @?= MonitoredFileChanged (root' </> "dir" </> "good-a")
     -- absolute glob, changing a file
     updateMonitor root monitor [monitorFileGlobStr (root' </> "dir/good-*")] () ()
     threadDelay mtimeChange
     touchFileContent root "dir/good-b"
     reason3 <- expectMonitorChanged root monitor ()
-    reason3 @?= MonitoredFileChanged (root' </> "dir/good-b")
+    reason3 @?= MonitoredFileChanged (root' </> "dir" </> "good-b")
 
 
 ------------------
