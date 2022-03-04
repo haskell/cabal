@@ -440,13 +440,15 @@ See `the build section <#cabal-build>`__ for the target syntax.
 
 When ``TARGET`` is one of the following:
 
-- A component target: execute the specified executable, benchmark or test suite
+- A component target: execute the specified executable, benchmark or test suite.
 
 - A package target:
    1. If the package has exactly one executable component, it will be selected.
    2. If the package has multiple executable components, an error is raised.
    3. If the package has exactly one test or benchmark component, it will be selected.
-   4. Otherwise an issue is raised
+   4. Otherwise an issue is raised.
+
+- The path to a script: execute the script at the path.
 
 - Empty target: Same as package target, implicitly using the package from the current
   working directory.
@@ -462,28 +464,38 @@ have to separate them with ``--``.
 
     $ cabal run target -- -a -bcd --argument
 
-``run`` also supports running script files that use a certain format. With
-a script that looks like:
+``run`` supports running script files that use a certain format.
+Scripts look like:
 
 ::
 
     #!/usr/bin/env cabal
     {- cabal:
-    build-depends: base ^>= 4.11
-                , shelly ^>= 1.8.1
+    build-depends: base ^>= 4.14
+                , shelly ^>= 1.10
+    -}
+    {- project:
+    with-compiler: ghc-8.10.7
     -}
 
     main :: IO ()
     main = do
         ...
 
-It can either be executed like any other script, using ``cabal`` as an
-interpreter, or through this command:
+Where there cabal metadata block is mandatory and contains fields from a
+package executable block, and the project metadata block is optional and
+contains fields that would be in the cabal.project file in a regular project.
+
+Only some fields are supported in the metadata blocks, and these fields are
+currently not validated. See
+`#8024 <https://github.com/haskell/cabal/issues/8024>`__ for details.
+
+A script can either be executed directly using `cabal` as an interpreter or
+with the command:
 
 ::
 
     $ cabal run path/to/script
-    $ cabal run path/to/script -- --arg1 # args are passed like this
 
 The executable is cached under the cabal directory, and can be pre-built with
 ``cabal build path/to/script`` and the cache can be removed with
