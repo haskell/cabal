@@ -135,7 +135,7 @@ and stderr.
 **How do I skip running a test in some environments?**  Use the
 `skipIf` and `skipUnless` combinators.  Useful parameters to test
 these with include `hasSharedLibraries`, `hasProfiledLibraries`,
-`hasCabalShared`, `ghcVersionIs`, `isWindows`, `isLinux`, `isOSX`
+`hasCabalShared`, `isGhcVersion`, `isWindows`, `isLinux`, `isOSX`
 and `hasCabalForGhc`.
 
 **I programatically modified a file in my test suite, but Cabal/GHC

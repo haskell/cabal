@@ -9,7 +9,7 @@ import qualified Distribution.Verbosity as Verbosity
 import Test.Cabal.Prelude
 
 main = cabalTest $ do
-    skipIf "osx" =<< isOSX -- TODO: re-enable this once the macOS Travis
+    skipIf "osx" =<< isOSX -- TODO: re-enable this once the macOS CI
                            -- issues are resolved, see discussion in #4902.
 
     hasShared   <- hasSharedLibraries
