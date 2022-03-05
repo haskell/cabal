@@ -7,6 +7,7 @@ import Distribution.Client.VCS
 import Distribution.Client.RebuildMonad
          ( execRebuild )
 import Distribution.Simple.Program
+import Distribution.System ( buildOS, OS (Windows) )
 import Distribution.Verbosity as Verbosity
 import Distribution.Client.Types.SourceRepo (SourceRepositoryPackage (..), SourceRepoProxy)
 
@@ -27,6 +28,7 @@ import System.Random
 
 import Test.Tasty
 import Test.Tasty.QuickCheck
+import Test.Tasty.ExpectedFailure
 import UnitTests.Distribution.Client.ArbitraryInstances
 import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 
@@ -48,32 +50,39 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 --
 tests :: MTimeChange -> [TestTree]
 tests mtimeChange = map (localOption $ QuickCheckTests 10)
-  [ testGroup "git"
+  [ knownBrokenIn buildOS "See issue #XXXX" $
+    testGroup "git"
     [ testProperty "check VCS test framework"    prop_framework_git
     , testProperty "cloneSourceRepo"             prop_cloneRepo_git
     , testProperty "syncSourceRepos"             prop_syncRepos_git
     ]
 
-    -- for the moment they're not yet working
-  , testGroup "darcs" $ const []
+    --
+  , ignoreTestBecause "for the moment they're not yet working" $
+    testGroup "darcs"
     [ testProperty "check VCS test framework"    $ prop_framework_darcs mtimeChange
     , testProperty "cloneSourceRepo"             $ prop_cloneRepo_darcs mtimeChange
     , testProperty "syncSourceRepos"             $ prop_syncRepos_darcs mtimeChange
     ]
 
-  , testGroup "pijul" $ const []
+  , ignoreTestBecause "for the moment they're not yet working" $
+    testGroup "pijul"
     [ testProperty "check VCS test framework"    prop_framework_pijul
     , testProperty "cloneSourceRepo"             prop_cloneRepo_pijul
     , testProperty "syncSourceRepos"             prop_syncRepos_pijul
     ]
 
-  , testGroup "mercurial" $ const []
+  , ignoreTestBecause "for the moment they're not yet working" $
+    testGroup "mercurial"
     [ testProperty "check VCS test framework"    prop_framework_hg
     , testProperty "cloneSourceRepo"             prop_cloneRepo_hg
     , testProperty "syncSourceRepos"             prop_syncRepos_hg
     ]
 
   ]
+
+  where knownBrokenIn Windows msg = expectFailBecause msg
+        knownBrokenIn _ _         = id
 
 prop_framework_git :: BranchingRepoRecipe 'SubmodulesSupported -> Property
 prop_framework_git =

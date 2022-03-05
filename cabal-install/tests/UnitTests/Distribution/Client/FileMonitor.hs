@@ -14,6 +14,7 @@ import qualified Prelude as IO (writeFile)
 
 import Distribution.Compat.Binary
 import Distribution.Simple.Utils (withTempDirectory)
+import Distribution.System (buildOS, OS (Windows))
 import Distribution.Verbosity (silent)
 
 import Distribution.Client.FileMonitor
@@ -22,6 +23,7 @@ import Distribution.Utils.Structured (structureHash, Structured)
 import GHC.Fingerprint (Fingerprint (..))
 
 import Test.Tasty
+import Test.Tasty.ExpectedFailure
 import Test.Tasty.HUnit
 
 
@@ -60,8 +62,9 @@ tests mtimeChange =
     , testCase "add non-match"       $ testGlobAddNonMatch mtimeChange
     , testCase "remove non-match"    $ testGlobRemoveNonMatch mtimeChange
 
-    , testCase "add non-match"       $ testGlobAddNonMatchSubdir mtimeChange
-    , testCase "remove non-match"    $ testGlobRemoveNonMatchSubdir mtimeChange
+    , knownBrokenIn buildOS "See issue #XXXX" $
+      testCase "add non-match subdir"    $ testGlobAddNonMatchSubdir mtimeChange
+    , testCase "remove non-match subdir" $ testGlobRemoveNonMatchSubdir mtimeChange
 
     , testCase "invariant sorted 1"  $ testInvariantMonitorStateGlobFiles
                                          mtimeChange
@@ -69,7 +72,8 @@ tests mtimeChange =
                                          mtimeChange
 
     , testCase "match dirs"          $ testGlobMatchDir mtimeChange
-    , testCase "match dirs only"     $ testGlobMatchDirOnly mtimeChange
+    , knownBrokenIn buildOS "See issue #XXXX" $
+      testCase "match dirs only"     $ testGlobMatchDirOnly mtimeChange
     , testCase "change file type"    $ testGlobChangeFileType mtimeChange
     , testCase "absolute paths"      $ testGlobAbsolutePath mtimeChange
     ]
@@ -79,6 +83,9 @@ tests mtimeChange =
   , testCase "value & file changed"  $ testValueAndFileChanged mtimeChange
   , testCase "value updated"         testValueUpdated
   ]
+
+  where knownBrokenIn Windows msg = expectFailBecause msg
+        knownBrokenIn _ _         = id
 
 -- Check the file system behaves the way we expect it to
 
