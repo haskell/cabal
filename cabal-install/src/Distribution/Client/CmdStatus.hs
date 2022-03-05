@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.CmdStatus
@@ -17,8 +18,7 @@ module Distribution.Client.CmdStatus (
   statusCommand, statusAction,
   ) where
 
-import Control.Monad
-         ( mapM )
+import Control.Monad.Except hiding (mfilter)
 import qualified Data.Map as Map
 
 import Prelude ()
@@ -91,8 +91,12 @@ statusCommand = CommandUI
 -- Flags
 -------------------------------------------------------------------------------
 
+-- | Output format of project metadata.
 data StatusOutputFormat
   = JSON
+  -- ^ Output of project metadata shall be in JSON.
+  --
+  -- @since 3.7.0.0
   deriving (Eq, Ord, Show, Read)
 
 data StatusFlags = StatusFlags
@@ -156,7 +160,7 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
   when (NoFlag == statusOutputFormat statusFlags) $ do
     die' verbosity "The status command requires the flag '--output-format'."
   when (not $ null cliTargetStrings) $
-    die' verbosity "The status command takes not target arguments directly. Use appropriate flags to pass in target information."
+    die' verbosity "The status command doesn't take target arguments directly. Use appropriate flags to pass in target information."
 
   baseCtx <- establishProjectBaseContext verbosity cliConfig OtherCommand
   (_, elaboratedPlan, elabSharedConfig, _, _) <-
@@ -170,7 +174,10 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
     then pure Nothing
     else do
       let compiler = pkgConfigCompiler elabSharedConfig
-      compilerProg <- requireCompilerProg verbosity compiler
+      compilerProg <- runExceptT (requireCompilerProg compiler)
+        >>= \case
+          Right c -> pure c
+          Left errMsg -> die' verbosity errMsg
       let progDb = pkgConfigCompilerProgs elabSharedConfig
       (configuredCompilerProg, _) <- requireProgram verbosity compilerProg progDb
       pure $ Just $ mkCompilerInfo configuredCompilerProg compiler
@@ -206,7 +213,10 @@ statusAction flags@NixStyleFlags { extraFlags = statusFlags, ..} cliTargetString
         , siTargetResolving = resolvedTargets
         }
 
-  serialisedStatusInformation <- serialise verbosity (statusOutputFormat statusFlags) si
+  serialisedStatusInformation <- runExceptT (serialise (statusOutputFormat statusFlags) si)
+    >>= \case
+      Right s -> pure s
+      Left errMsg -> die' verbosity errMsg
 
   -- Final output
   putStrLn $ withOutputMarker verbosity serialisedStatusInformation
@@ -241,12 +251,12 @@ data ResolvedTarget = ResolvedTarget
   }
   deriving (Show, Read, Eq, Ord)
 
-serialise :: Verbosity -> Flag StatusOutputFormat -> StatusInformation -> IO String
-serialise verbosity NoFlag      _  =
-  die' verbosity $ "Could not serialise Status information. "
-                ++ "The flag '--output-format' is required."
+serialise :: MonadError String m => Flag StatusOutputFormat -> StatusInformation -> m String
+serialise NoFlag      _  =
+  throwError $ "Could not serialise Status information. "
+            ++ "The flag '--output-format' is required."
 
-serialise _         (Flag JSON) si = pure $ Json.encodeToString $ Json.object $
+serialise (Flag JSON) si = pure $ Json.encodeToString $ Json.object $
   [ "cabal-version" .= jdisplay (siCabalVersion si)
   ]
   ++ prettyCompilerInfo (siCompiler si)
@@ -271,17 +281,16 @@ serialise _         (Flag JSON) si = pure $ Json.encodeToString $ Json.object $
           , "unit-id" .= maybe Json.Null jdisplay (rtUnitId rt)
           ]
 
-
 -- ----------------------------------------------------------------------------
 -- Helpers for determining and serialising compiler information
 -- ----------------------------------------------------------------------------
 
-requireCompilerProg :: Verbosity -> Compiler -> IO Program
-requireCompilerProg verbosity compiler =
+requireCompilerProg ::  MonadError String m => Compiler -> m Program
+requireCompilerProg compiler =
   case compilerFlavor compiler of
     GHC -> pure ghcProgram
     GHCJS -> pure ghcjsProgram
-    flavour -> die' verbosity $
+    flavour -> throwError $
       "status: Unsupported compiler flavour: "
       <> prettyShow flavour
 
@@ -297,13 +306,19 @@ mkBuildInfoJson :: ElaboratedInstallPlan -> TargetsMap -> Map TargetSelector Str
 mkBuildInfoJson elaboratedPlan targetsMap tsMap unresolvableTargetStrings =
   [ ResolvedTarget str (Just uid)
   | uid <- Map.keys subsetInstallPlan
+  -- for all unit-ids that have been requested, look at all their TargetSelector's
   , (_, tss) <- targetsMap Map.! uid
+  -- Now, for each TargetSelector, lookup the original target string users have given.
+  -- We have to remove duplicates, because certain target strings are represented as
+  -- multiple TargetSelector's.
   , str <- ordNub $ map tsToOriginalTarget $ toList tss
   ]
   ++ map mkUnresolvedTarget unresolvableTargetStrings
   where
+    -- Only look at unit-ids we care about because the user has requested them
     subsetInstallPlan = Map.restrictKeys (InstallPlan.toMap elaboratedPlan) (Map.keysSet targetsMap)
 
+    -- Easier lookup for the reverse table
     tsToOriginalTarget ts = tsMap Map.! ts
 
     mkUnresolvedTarget :: String -> ResolvedTarget
@@ -370,8 +385,8 @@ readTargetSelector pkgs mfilter targetStr =
   readTargetSelectors pkgs mfilter [targetStr] >>= \case
     Left [problem] -> pure $ Left problem
     Right [ts] -> pure $ Right ts
-    _ -> error $ "CmdStatus.readTargetSelector: invariant broken, more than "
-              ++ "one target passed *somehow*."
+    _ -> fail $ "CmdStatus.readTargetSelector: invariant broken, more than "
+             ++ "one target passed *somehow*."
 
 -- ----------------------------------------------------------------------------
 -- JSON serialisation helpers
