@@ -54,6 +54,9 @@ jobs:
           - os: "macos-latest"
             ghc: "8.10.7"
             experimental: "true" # see #7952 and #7988
+          - os: "windows-latest"
+            ghc: "8.8.4"
+            cli: "false"  # lot of segfaults caused by ghc bugs
           - os: "ubuntu-latest"
             ghc: "8.0.2"
             cli: "false"
@@ -139,9 +142,18 @@ jobs:
         if: matrix.cli != 'false'
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s cli-tests
 
+      # Lot of tests of the cli suite in windows fails due
+      # to the max path issue using the msys2 shell (cause paths are longer)
+      # We have to run the suite in powershell directly.
+      - name: Validate cli-suite for windows and old ghcs
+        if: matrix.cli != 'false' && (runner.os == 'Windows' && (matrix.ghc == '8.4.4' || matrix.ghc == '8.6.5'))
+        shell: powershell
+        run: |
+          cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-${{ matrix.ghc }}\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
+
       - name: Validate cli-suite
-        if: matrix.cli != 'false'
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s cli-suite
+        if: matrix.cli != 'false' && !(runner.os == 'Windows' && (matrix.ghc == '8.4.4' || matrix.ghc == '8.6.5'))
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s cli-suite
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
