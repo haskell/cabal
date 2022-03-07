@@ -319,7 +319,7 @@ print_header print-config
 
 cat <<EOF
 compiler:            $HC
-runhaskell           $RUNHASKELL
+runhaskell:          $RUNHASKELL
 cabal-install:       $CABAL
 cabal-plan:          $CABALPLAN
 jobs:                $JOBS
@@ -331,7 +331,7 @@ dependencies only:   $DEPSONLY
 doctest:             $DOCTEST
 benchmarks:          $BENCHMARKS
 verbose:             $VERBOSE
-extra complers:      $EXTRAHCS
+extra compilers:     $EXTRAHCS
 
 EOF
 }
