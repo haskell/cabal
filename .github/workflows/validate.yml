@@ -114,7 +114,19 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-tool-versions
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
+        run: |
+          sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
+          if [[ "${{ matrix.cli }}" != "false" ]]; then
+            CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-val-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
+            echo "CABAL_EXEC=$CABAL_EXEC" >> $GITHUB_ENV
+          fi
+
+      - name: Upload cabal-install executable to workflow artifacts
+        if: matrix.cli != 'false'
+        uses: actions/upload-artifact@v2
+        with:
+          name: cabal-${{ runner.os }}-${{ matrix.ghc }}
+          path: ${{ env.CABAL_EXEC }}
 
       - name: Validate lib-tests
         env:
