@@ -251,7 +251,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
-        ghc: [ env.GHC_FOR_RELEASE ]
+        ghc: ["8.10.7"]
 
     steps:
       - uses: actions/checkout@v2
@@ -289,7 +289,7 @@ jobs:
     name: Validate post job
     runs-on: ubuntu-18.04
     # IMPORTANT! Any job added to the workflow should be added here too
-    needs: [validate, validate-old-ghcs]
+    needs: [validate, validate-old-ghcs, dogfooding]
 
     steps:
       - run: |
