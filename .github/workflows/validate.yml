@@ -1,5 +1,7 @@
 name: Validate
 
+# We use bash as default even in windows
+# to try keep the workflow as uniform as possible
 defaults:
   run:
     shell: bash
@@ -21,10 +23,7 @@ on:
 jobs:
   validate:
     name: Validate ${{ matrix.os }} ghc-${{ matrix.ghc }}
-
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental == 'true' }}
-
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
@@ -34,31 +33,22 @@ jobs:
           - os: "windows-latest"
             ghc: "8.8.4"
         include:
-          - os: "ubuntu-latest"
-            ghc: "9.2.1"
-          - os: "macos-latest"
-            ghc: "9.2.1"
-          - os: "ubuntu-latest"
-            ghc: "9.0.2"
-            cli: "false"
-          - os: "macos-latest"
-            ghc: "9.0.2"
-            cli: "false"
+          # We only run the cli test suite for the last minor version
           - os: "macos-latest"
             ghc: "9.0.1"
             cli: "false"
           - os: "ubuntu-latest"
             ghc: "9.0.1"
             cli: "false"
-          - os: "macos-latest"
-            ghc: "8.10.7"
+          - os: "windows-latest"
+            ghc: "9.0.1"
+            cli: "false"
           - os: "ubuntu-latest"
             ghc: "8.0.2"
             cli: "false"
           - os: "macos-latest"
             ghc: "8.0.2"
             cli: "false"
-            experimental: "true" # see #7988 and #7989
           - os: "windows-latest"
             ghc: "8.0.2"
             cli: "false"
@@ -144,7 +134,7 @@ jobs:
       # to the max path issue using the msys2 shell (cause paths are longer)
       # We have to run the suite in powershell directly to avoid it.
       # Newer ghcs don't suffer the issue so we could remove this step
-      # when we remove support for older ones
+      # when we remove support for those older ghcs
       - name: Validate cli-suite for windows and old ghcs
         if: matrix.cli != 'false' && (runner.os == 'Windows' && (matrix.ghc == '8.4.4' || matrix.ghc == '8.6.5'))
         shell: powershell
@@ -222,4 +212,4 @@ jobs:
         env:
           FLAGS: "--lib-only -s lib-suite-extras"
           EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS --extra-hc $EXTRA_GHC
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.FLAGS }} --extra-hc ${{ env.EXTRA_GHC }}
