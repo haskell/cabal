@@ -213,3 +213,19 @@ jobs:
           FLAGS: "--lib-only -s lib-suite-extras"
           EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.FLAGS }} --extra-hc ${{ env.EXTRA_GHC }}
+
+  # We use this job as a resume of the workflow
+  # It will fail if any of the previous jobs does it
+  # This way we can use it exclusively in branch protection rules
+  # and abstract away the concrete jobs of the workflow, including their names
+  validate-post-job:
+    name: Validate post job
+    runs-on: ubuntu-18.04
+    # IMPORTANT! Any job added to the workflow should be added here too
+    needs: [validate, validate-old-ghcs]
+
+    steps:
+      - run: |
+          echo "jobs info: ${{ toJSON(needs) }}"
+      - if: contains(needs.*.result, 'failure')
+        run: exit 1
