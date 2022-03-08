@@ -20,10 +20,13 @@ on:
     types:
       - created
 
-# We choose a stable ghc version across all os's
-# which will be used to do the next release
 env:
+  # We choose a stable ghc version across all os's
+  # which will be used to do the next release
   GHC_FOR_RELEASE: '8.10.7'
+  # Ideally the three ghcs should be the used for the release
+  GHC_FOR_SOLVER_BENCHMARKS: '8.8.4'
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.6.5'
 
 jobs:
   validate:
@@ -100,10 +103,10 @@ jobs:
           if [[ "${{ matrix.cli }}" == "false" ]]; then
             FLAGS="$FLAGS --lib-only"
           fi
-          if [[ ${{ matrix.ghc }} == 8.8.4 ]]; then
+          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_SOLVER_BENCHMARKS }} ]]; then
             FLAGS="$FLAGS --solver-benchmarks"
           fi
-          if [[ ${{ matrix.ghc }} == 8.6.5 ]]; then
+          if [[ ${{ matrix.ghc }} == ${{ env.GHC_FOR_COMPLETE_HACKAGE_TESTS }} ]]; then
             FLAGS="$FLAGS --complete-hackage-tests"
           fi
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
@@ -121,16 +124,18 @@ jobs:
       - name: Validate build
         run: |
           sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
-          if [[ "${{ matrix.cli }}" != "false" && ${{ matrix.ghc }} == ${{ env.GHC_FOR_RELEASE }} ]]; then
-            CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-val-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
-            # We have to tar the executable to preserve executable permission
-            # see https://github.com/actions/upload-artifact/issues/38
-            if [[ ${{ runner.os }} == 'Windows' ]]; then
-              CABAL_EXEC=$(cygpath $CABAL_EXEC)
-            fi
-            tar -cvf cabal-head.tar -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
-            echo "CABAL_EXEC_TAR=cabal-head.tar" >> $GITHUB_ENV
+
+      - name: Tar cabal head executable
+        if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
+        run: |
+          CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-val-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
+          # We have to tar the executable to preserve executable permissions
+          # see https://github.com/actions/upload-artifact/issues/38
+          if [[ ${{ runner.os }} == 'Windows' ]]; then
+            CABAL_EXEC=$(cygpath $CABAL_EXEC)
           fi
+          tar -cvf cabal-head.tar -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
+          echo "CABAL_EXEC_TAR=cabal-head.tar" >> $GITHUB_ENV
 
       # We upload the cabal executable built with the ghc used in the release for:
       # - Reuse it in the dogfooding job (although we could use the cached build dir)
@@ -240,7 +245,7 @@ jobs:
           EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.FLAGS }} --extra-hc ${{ env.EXTRA_GHC }}
 
-  # The previous job uses a released version of cabal to build cabal HEAD itself
+  # The previous jobs use a released version of cabal to build cabal HEAD itself
   # This one uses the cabal HEAD generated executable in the previous step
   # to build itself again, as sanity check
   dogfooding:
@@ -263,8 +268,6 @@ jobs:
           cabal-version: latest # default, we are not using it in this job
 
       - name: Download cabal executable from workflow artifacts
-        # We only store the artifact built with the ghc used for the release
-        if: matrix.ghc == env.GHC_FOR_RELEASE
         uses: actions/download-artifact@v2
         with:
           name: cabal-${{ runner.os }}-${{ matrix.ghc }}
