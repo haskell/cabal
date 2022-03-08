@@ -20,6 +20,11 @@ on:
     types:
       - created
 
+# We choose a stable ghc version across all os's
+# which will be used to do the next release
+env:
+  GHC_FOR_RELEASE: '8.10.7'
+
 jobs:
   validate:
     name: Validate ${{ matrix.os }} ghc-${{ matrix.ghc }}
@@ -116,17 +121,26 @@ jobs:
       - name: Validate build
         run: |
           sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
-          if [[ "${{ matrix.cli }}" != "false" ]]; then
+          if [[ "${{ matrix.cli }}" != "false" && ${{ matrix.ghc }} == ${{ env.GHC_FOR_RELEASE }} ]]; then
             CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-val-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
-            echo "CABAL_EXEC=$CABAL_EXEC" >> $GITHUB_ENV
+            # We have to tar the executable to preserve executable permission
+            # see https://github.com/actions/upload-artifact/issues/38
+            if [[ ${{ runner.os }} == 'Windows' ]]; then
+              CABAL_EXEC=$(cygpath $CABAL_EXEC)
+            fi
+            tar -cvf cabal-head.tar -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
+            echo "CABAL_EXEC_TAR=cabal-head.tar" >> $GITHUB_ENV
           fi
 
+      # We upload the cabal executable built with the ghc used in the release for:
+      # - Reuse it in the dogfooding job (although we could use the cached build dir)
+      # - Make it available in the workflow to make easier testing it locally
       - name: Upload cabal-install executable to workflow artifacts
-        if: matrix.cli != 'false'
+        if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
         uses: actions/upload-artifact@v2
         with:
           name: cabal-${{ runner.os }}-${{ matrix.ghc }}
-          path: ${{ env.CABAL_EXEC }}
+          path: ${{ env.CABAL_EXEC_TAR }}
 
       - name: Validate lib-tests
         env:
@@ -200,9 +214,9 @@ jobs:
         with:
           ghc-version: ${{ matrix.ghc }}
 
-      # TODO: ideally those jobs should reuse the cabal artifact generated in the
-      # previous step. Until that we use the cache generated in the previous step
-      # to make the build faster. This job only needs it in read mode.
+      # As we are reusing the cached build dir from the previous step
+      # the generated artifacts are available here,
+      # including the cabal executable and the test suite
       - uses: actions/cache@v2
         with:
           path: |
@@ -225,6 +239,47 @@ jobs:
           FLAGS: "--lib-only -s lib-suite-extras"
           EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.FLAGS }} --extra-hc ${{ env.EXTRA_GHC }}
+
+  # The previous job uses a released version of cabal to build cabal HEAD itself
+  # This one uses the cabal HEAD generated executable in the previous step
+  # to build itself again, as sanity check
+  dogfooding:
+    name: Dogfooding ${{ matrix.os }} ghc-${{ matrix.ghc }}
+    runs-on: ${{ matrix.os }}
+    needs: validate
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        # We only use one ghc version the used one for the next release (defined at top of the workflow)
+        ghc: [ env.GHC_FOR_RELEASE ]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: haskell/actions/setup@v1
+        id: setup-haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: latest # default, we are not using it in this job
+
+      - name: Download cabal executable from workflow artifacts
+        # We only store the artifact built with the ghc used for the release
+        if: matrix.ghc == env.GHC_FOR_RELEASE
+        uses: actions/download-artifact@v2
+        with:
+          name: cabal-${{ runner.os }}-${{ matrix.ghc }}
+          path: cabal-head
+
+      - name: Untar the cabal executable
+        run: tar -xf ./cabal-head/cabal-head.tar -C ./cabal-head
+
+      - name: print-config using cabal HEAD
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} --with-cabal ./cabal-head/cabal -v -s print-config
+
+      # We dont use cache to force a build with a fresh store dir and build dir
+      # This way we check cabal can build all its dependencies
+      - name: Build using cabal HEAD
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} --with-cabal ./cabal-head/cabal -v -s build
 
   # We use this job as a resume of the workflow
   # It will fail if any of the previous jobs does it
