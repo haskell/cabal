@@ -37,7 +37,7 @@ legacy sections. We talk in detail about some global and package commands.
     list-bin          List path to a single executable.
 
     [new-style projects (forwards-compatible aliases)]
-    Since cabal-install-3.0.0.0 all v2 prefixed commands are alias for the default, unprefixed ones.
+    Since cabal-install-3.0.0.0, all 'v2-' prefixed names of commands are just aliases for the simple unprefixed names.
     So v2-build is an alias for build, v2-install for install and so on.
 
     [legacy command aliases]
