@@ -1,0 +1,4 @@
+synopsis: Allow trailing whitespace after flags in cabal.project
+packages: Cabal-syntax
+issues: #7279
+prs: #8006
