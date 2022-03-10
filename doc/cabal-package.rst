@@ -2984,7 +2984,7 @@ The availability of the
 ``MIN_VERSION_package_(A,B,C)`` CPP macros
 inside ``Setup.hs`` scripts depends on the condition that either
 
-- a ``custom-setup`` section has been declared (or ``cabal v2-build`` is being
+- a ``custom-setup`` section has been declared (or ``cabal build`` is being
   used which injects an implicit hard-coded ``custom-setup`` stanza if it's missing), or
 - GHC 8.0 or later is used (which natively injects package version CPP macros)
 
