@@ -230,7 +230,7 @@ We can also scope to test suite targets as they produce binaries.
     /.../dist-newstyle/.../unit-tests/unit-tests
 
 cabal configure
--------------------
+---------------
 
 ``cabal configure`` takes a set of arguments and writes a
 ``cabal.project.local`` file based on the flags passed to this command.
@@ -278,7 +278,7 @@ flag.
 
 
 cabal update
-----------------
+------------
 
 ``cabal update`` updates the state of the package index. If the
 project contains multiple remote package repositories it will update
@@ -328,7 +328,7 @@ A cabal command target can take any of the following forms:
    Script targets are not part of a package.
 
 cabal build
----------------
+-----------
 
 ``cabal build`` takes a set of targets and builds them. It
 automatically handles building and installing any dependencies of these
@@ -372,7 +372,7 @@ In addition ``cabal build`` accepts these flags:
 
 
 cabal repl
---------------
+----------
 
 ``cabal repl TARGET`` loads all of the modules of the target into
 GHCi as interpreted bytecode. In addition to ``cabal build``'s flags,
@@ -429,7 +429,7 @@ and can be pre-built with ``cabal build path/to/script``.
 See ``cabal run`` for more information on scripts.
 
 cabal run
--------------
+---------
 
 ``cabal run [TARGET [ARGS]]`` runs the executable specified by the
 target, which can be a component, a package or can be left blank, as
@@ -521,7 +521,7 @@ or the interpreter line
 For more information see :cfg-field:`verbose`
 
 cabal freeze
-----------------
+------------
 
 ``cabal freeze`` writes out a **freeze file** which records all of
 the versions and flags that are picked by the solver under the
@@ -551,21 +551,21 @@ recommended: users often need to build against different versions of
 libraries than what you developed against.
 
 cabal bench
----------------
+-----------
 
 ``cabal bench [TARGETS] [OPTIONS]`` runs the specified benchmarks
 (all the benchmarks in the current package by default), first ensuring
 they are up to date.
 
 cabal test
---------------
+----------
 
 ``cabal test [TARGETS] [OPTIONS]`` runs the specified test suites
 (all the test suites in the current package by default), first ensuring
 they are up to date.
 
 cabal haddock
------------------
+-------------
 
 ``cabal haddock [FLAGS] [TARGET]`` builds Haddock documentation for
 the specified packages within the project.
@@ -575,14 +575,14 @@ If a target is not a library :cfg-field:`haddock-benchmarks`,
 :cfg-field:`haddock-tests` will be implied as necessary.
 
 cabal exec
----------------
+----------
 
 ``cabal exec [FLAGS] [--] COMMAND [--] [ARGS]`` runs the specified command
 using the project's environment. That is, passing the right flags to compiler
 invocations and bringing the project's executables into scope.
 
 cabal install
------------------
+-------------
 
 ``cabal install [FLAGS] [TARGETS]`` builds the specified target packages and
 symlinks/copies their executables in ``installdir`` (usually ``~/.cabal/bin``).
@@ -673,7 +673,7 @@ You can learn more about how to use these environments in `this section of the
 GHC manual <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/packages.html#package-environments>`_.
 
 cabal clean
----------------
+-----------
 
 ``cabal clean [FLAGS]`` cleans up the temporary files and build artifacts
 stored in the ``dist-newstyle`` folder.
@@ -690,7 +690,7 @@ In addition when clean is invoked it will remove all script build artifacts for
 which the corresponding script no longer exists.
 
 cabal sdist
----------------
+-----------
 
 ``cabal sdist [FLAGS] [TARGETS]`` takes the crucial files needed to build ``TARGETS``
 and puts them into an archive format ready for upload to Hackage. These archives are stable
