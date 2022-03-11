@@ -1,0 +1,4 @@
+synopsis: Use 'ghc --merge-objs' whenever available, instead of internal cabal hacks, to join object files
+packages: Cabal
+issues: #7828
+prs: #7960
