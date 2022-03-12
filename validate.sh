@@ -397,16 +397,16 @@ CMD="$($CABALPLANLISTBIN Cabal-tests:test:no-thunks-test) $TESTSUITEJOBS --hide-
 CMD=$($CABALPLANLISTBIN Cabal-tests:test:hackage-tests)
 # hackage-tests is not buildable in windows so $CMD will be empty here
 if [ "$OSTYPE" != "msys" ]; then
-  (cd Cabal-tests && timed $CMD read-fields) || exit 1
+    (cd Cabal-tests && timed $CMD read-fields) || exit 1
+    if $HACKAGETESTSALL; then
+        (cd Cabal-tests && timed $CMD parsec)    || exit 1
+        (cd Cabal-tests && timed $CMD roundtrip) || exit 1
+    else
+        (cd Cabal-tests && timed $CMD parsec d)    || exit 1
+        (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
+    fi
 fi
 
-if $HACKAGETESTSALL; then
-  (cd Cabal-tests && timed $CMD parsec)    || exit 1
-  (cd Cabal-tests && timed $CMD roundtrip) || exit 1
-else
-  (cd Cabal-tests && timed $CMD parsec d)    || exit 1
-  (cd Cabal-tests && timed $CMD roundtrip k) || exit 1
-fi
 }
 
 # Cabal cabal-testsuite
