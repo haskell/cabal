@@ -75,9 +75,10 @@ jobs:
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
       - uses: actions/cache@v2
         with:
+          # validate.sh uses a special build dir
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
-            dist-newstyle
+            dist-*
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
@@ -112,10 +113,6 @@ jobs:
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
 
       - name: Validate print-config
-<<<<<<< HEAD
-
-=======
->>>>>>> 5b443654e (Fix validate workflow)
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-config
 
       - name: Validate print-tool-versions
@@ -152,28 +149,17 @@ jobs:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
           GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
-        run: sh validate.sh -j 2 -w $GHCPATH -v ${{ steps.validate-inputs.outputs.flags }} -s lib-tests
+        run: sh validate.sh -j 2 -w $GHCPATH -v $FLAGS -s lib-tests
 
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s lib-suite
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s lib-suite
 
       - name: Validate cli-tests
         if: matrix.cli != 'false'
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ steps.validate-inputs.outputs.flags }} -s cli-tests
-
-      # Lot of tests of the cli suite in windows fails due
-      # to the max path issue using the msys2 shell (cause paths are longer)
-      # We have to run the suite in powershell directly to avoid it.
-      # Newer ghcs don't suffer the issue so we could remove this step
-      # when we remove support for those older ghcs
-      - name: Validate cli-suite for windows and old ghcs
-        if: matrix.cli != 'false' && (runner.os == 'Windows' && (matrix.ghc == '8.4.4' || matrix.ghc == '8.6.5'))
-        shell: powershell
-        run: |
-          cabal v2-run cabal-testsuite:cabal-tests -- -j1 --with-cabal=dist-newstyle\build\x86_64-windows\ghc-${{ matrix.ghc }}\cabal-install-3.7.0.0\x\cabal\build\cabal\cabal.exe
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s cli-tests
 
       - name: Validate cli-suite
-        if: matrix.cli != 'false' && !(runner.os == 'Windows' && (matrix.ghc == '8.4.4' || matrix.ghc == '8.6.5'))
+        if: matrix.cli != 'false'
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s cli-suite
 
   validate-old-ghcs:
