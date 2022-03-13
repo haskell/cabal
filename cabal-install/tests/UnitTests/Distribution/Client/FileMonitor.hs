@@ -62,7 +62,7 @@ tests mtimeChange =
     , testCase "add non-match"       $ testGlobAddNonMatch mtimeChange
     , testCase "remove non-match"    $ testGlobRemoveNonMatch mtimeChange
 
-    , knownBrokenIn buildOS "See issue #XXXX" $
+    , knownBrokenInWindows "See issue #3126" $
       testCase "add non-match subdir"    $ testGlobAddNonMatchSubdir mtimeChange
     , testCase "remove non-match subdir" $ testGlobRemoveNonMatchSubdir mtimeChange
 
@@ -72,7 +72,7 @@ tests mtimeChange =
                                          mtimeChange
 
     , testCase "match dirs"          $ testGlobMatchDir mtimeChange
-    , knownBrokenIn buildOS "See issue #XXXX" $
+    , knownBrokenInWindows "See issue #3126" $
       testCase "match dirs only"     $ testGlobMatchDirOnly mtimeChange
     , testCase "change file type"    $ testGlobChangeFileType mtimeChange
     , testCase "absolute paths"      $ testGlobAbsolutePath mtimeChange
@@ -84,8 +84,9 @@ tests mtimeChange =
   , testCase "value updated"         testValueUpdated
   ]
 
-  where knownBrokenIn Windows msg = expectFailBecause msg
-        knownBrokenIn _ _         = id
+  where knownBrokenInWindows msg =  case buildOS of
+          Windows -> expectFailBecause msg
+          _       -> id
 
 -- Check the file system behaves the way we expect it to
 

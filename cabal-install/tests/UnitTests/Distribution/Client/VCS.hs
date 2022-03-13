@@ -50,7 +50,7 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 --
 tests :: MTimeChange -> [TestTree]
 tests mtimeChange = map (localOption $ QuickCheckTests 10)
-  [ knownBrokenIn buildOS "See issue #XXXX" $
+  [ knownBrokenInWindows "See issue #XXXX" $
     testGroup "git"
     [ testProperty "check VCS test framework"    prop_framework_git
     , testProperty "cloneSourceRepo"             prop_cloneRepo_git
@@ -81,8 +81,9 @@ tests mtimeChange = map (localOption $ QuickCheckTests 10)
 
   ]
 
-  where knownBrokenIn Windows msg = expectFailBecause msg
-        knownBrokenIn _ _         = id
+  where knownBrokenInWindows msg =  case buildOS of
+          Windows -> expectFailBecause msg
+          _       -> id
 
 prop_framework_git :: BranchingRepoRecipe 'SubmodulesSupported -> Property
 prop_framework_git =
