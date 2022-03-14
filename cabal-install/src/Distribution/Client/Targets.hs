@@ -558,7 +558,7 @@ data MaybeAmbiguous a = None | Unambiguous a | Ambiguous [a]
 -- the result is 'Ambiguous'.
 --
 -- Note: Before cabal 2.2, when only a single package matched
---       case-insensitively it would be considered 'Unambigious'.
+--       case-insensitively it would be considered 'Unambiguous'.
 --
 disambiguatePackageName :: PackageNameEnv
                         -> PackageName

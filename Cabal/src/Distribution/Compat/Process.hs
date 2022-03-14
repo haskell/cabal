@@ -39,7 +39,7 @@ isWindows8OrLater = unsafePerformIO $ do
 -- On Windows 7 or before the jobs are disabled due to the fact that
 -- processes on these systems can only have one job. This prevents
 -- spawned process from assigning jobs to its own children. Suppose
--- processs A spawns process B. The B process has a job assigned (call
+-- process A spawns process B. The B process has a job assigned (call
 -- it J1) and when it tries to spawn a new process C the C
 -- automatically inherits the job. But at it also tries to assign a
 -- new job J2 to C since it doesn’t have access J1. This fails on

@@ -418,7 +418,7 @@ extend extSupported langSupported pkgPresent newactives ppa = foldM extendSingle
 --
 -- TODO: The new constraint is implemented as a dependency from foo to foo's
 -- main library. That isn't correct, because foo might only be needed as a build
--- tool dependency. The implemention may need to change when we support
+-- tool dependency. The implementation may need to change when we support
 -- component-based dependency solving.
 extendWithPackageChoice :: PI QPN -> PPreAssignment -> Either Conflict PPreAssignment
 extendWithPackageChoice (PI qpn i) ppa =

@@ -156,7 +156,7 @@ hashedInstalledPackageIdVeryShort pkghashinputs@PackageHashInputs{pkgHashPkgId} 
   where
     PackageIdentifier name version = pkgHashPkgId
 
--- | All the information that contribues to a package's hash, and thus its
+-- | All the information that contributes to a package's hash, and thus its
 -- 'InstalledPackageId'.
 --
 data PackageHashInputs = PackageHashInputs {

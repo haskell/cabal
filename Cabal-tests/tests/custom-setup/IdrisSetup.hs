@@ -91,7 +91,7 @@ lookupEnv v = lookup v `fmap` getEnvironment
 -- -----------------------------------------------------------------------------
 -- Idris Command Path
 
--- make on mingw32 exepects unix style separators
+-- make on mingw32 expects unix style separators
 #ifdef mingw32_HOST_OS
 (<//>) = (Px.</>)
 idrisCmd local = Px.joinPath $ splitDirectories $ ".." <//> ".." <//> buildDir local <//> "idris" <//> "idris"
