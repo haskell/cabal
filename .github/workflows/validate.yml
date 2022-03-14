@@ -32,6 +32,8 @@ jobs:
   validate:
     name: Validate ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
+    outputs:
+      GHC_FOR_RELEASE: ${{ format('["{0}"]', env.GHC_FOR_RELEASE) }}
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
@@ -98,7 +100,6 @@ jobs:
           brew install automake
 
       - name: Set validate inputs
-        id: validate-inputs
         run: |
           FLAGS=""
           if [[ "${{ matrix.cli }}" == "false" ]]; then
@@ -242,7 +243,9 @@ jobs:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         # We only use one ghc version the used one for the next release (defined at top of the workflow)
-        ghc: ["8.10.7"]
+        # We need to build an array dynamically to inject the appropiate env var in a previous job,
+        # see https://docs.github.com/en/actions/learn-github-actions/expressions#fromjson
+        ghc: ${{ fromJSON (needs.validate.outputs.GHC_FOR_RELEASE) }}
 
     steps:
       - uses: actions/checkout@v2
