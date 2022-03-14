@@ -25,8 +25,8 @@ env:
   # which will be used to do the next release
   GHC_FOR_RELEASE: '8.10.7'
   # Ideally the three ghcs should be the used for the release
-  GHC_FOR_SOLVER_BENCHMARKS: '8.8.4'
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.6.5'
+  GHC_FOR_SOLVER_BENCHMARKS: '8.10.7'
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.10.7'
 
 jobs:
   validate:
