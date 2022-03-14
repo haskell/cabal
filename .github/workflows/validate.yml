@@ -151,7 +151,7 @@ jobs:
 
       - name: Validate cli-suite
         if: matrix.cli != 'false'
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s cli-suite
+        run: sh validate.sh -j 2 -w ghc -v $FLAGS -s cli-suite
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
