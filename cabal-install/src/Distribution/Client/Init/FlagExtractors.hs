@@ -5,6 +5,7 @@ module Distribution.Client.Init.FlagExtractors
 , getSimpleProject
 , getMinimal
 , getCabalVersion
+, getCabalVersionNoPrompt
 , getPackageName
 , getVersion
 , getLicense
@@ -48,8 +49,8 @@ import Distribution.Version (Version)
 import Distribution.ModuleName (ModuleName)
 import Distribution.Types.Dependency (Dependency(..))
 import Distribution.Types.PackageName (PackageName)
-import qualified Distribution.SPDX as SPDX
 import Distribution.Client.Init.Defaults
+import Distribution.FieldGrammar.Newtypes (SpecLicense)
 import Distribution.Client.Init.Types
 import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault, flagToMaybe)
 import Distribution.Simple.Flag (flagElim)
@@ -84,6 +85,9 @@ getMinimal = return . fromFlagOrDefault False . minimal
 getCabalVersion :: Interactive m => InitFlags -> m CabalSpecVersion -> m CabalSpecVersion
 getCabalVersion flags = fromFlagOrPrompt (cabalVersion flags)
 
+getCabalVersionNoPrompt :: InitFlags -> CabalSpecVersion
+getCabalVersionNoPrompt = fromFlagOrDefault defaultCabalVersion . cabalVersion
+
 -- | Get the package name: use the package directory (supplied, or the current
 --   directory by default) as a guess. It looks at the SourcePackageDb to avoid
 --   using an existing package name.
@@ -98,7 +102,7 @@ getVersion flags = fromFlagOrPrompt (version flags)
 -- | Choose a license for the package.
 -- The license can come from Initflags (license field), if it is not present
 -- then prompt the user from a predefined list of licenses.
-getLicense :: Interactive m => InitFlags -> m SPDX.License -> m SPDX.License
+getLicense :: Interactive m => InitFlags -> m SpecLicense -> m SpecLicense
 getLicense flags = fromFlagOrPrompt (license flags)
 
 -- | The author's name. Prompt, or try to guess from an existing

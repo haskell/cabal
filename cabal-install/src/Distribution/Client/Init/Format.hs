@@ -31,14 +31,16 @@ module Distribution.Client.Init.Format
 import Distribution.Pretty
 import Distribution.Fields
 import Distribution.Client.Init.Types
+import Distribution.License
 import Text.PrettyPrint
 import Distribution.Solver.Compat.Prelude hiding (empty)
 import Distribution.PackageDescription.FieldGrammar
-import Distribution.Simple.Utils
+import Distribution.Simple.Utils hiding (cabalVersion)
 import Distribution.Utils.Path
 import Distribution.Package (unPackageName)
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.CabalSpecVersion
+import Distribution.FieldGrammar.Newtypes (SpecLicense(SpecLicense))
 
 
 -- | Construct a 'PrettyField' from a field that can be automatically
@@ -328,13 +330,15 @@ mkPkgDescription opts pkgDesc =
       False
       opts
 
-    , field  "license" pretty (_pkgLicense pkgDesc)
+    , field "license" pretty (_pkgLicense pkgDesc)
       ["The license under which the package is released."]
       True
       opts
 
     , case _pkgLicense pkgDesc of
-        SPDX.NONE -> PrettyEmpty
+        SpecLicense (Left  SPDX.NONE)          -> PrettyEmpty
+        SpecLicense (Right AllRightsReserved)  -> PrettyEmpty
+        SpecLicense (Right UnspecifiedLicense) -> PrettyEmpty
         _ -> field "license-file" text "LICENSE"
              ["The file containing the license text."]
              False
@@ -359,12 +363,10 @@ mkPkgDescription opts pkgDesc =
       []
       False
       opts
-    , if cabalSpec < CabalSpecV2_2
-      then PrettyEmpty
-      else field "build-type" text "Simple"
-           []
-           False
-           opts
+    , field "build-type" text "Simple"
+      []
+      False
+      opts
     , case _pkgExtraDocFiles pkgDesc of
         Nothing -> PrettyEmpty
         Just fs ->

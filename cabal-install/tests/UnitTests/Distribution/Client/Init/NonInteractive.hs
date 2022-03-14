@@ -23,6 +23,7 @@ import Distribution.Simple.Flag
 import Data.List (foldl')
 import qualified Data.Set as Set
 import Distribution.Client.Init.Utils (mkPackageNameDep, mkStringyDep)
+import Distribution.FieldGrammar.Newtypes
 
 tests
     :: Verbosity
@@ -83,7 +84,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -168,7 +169,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -346,7 +347,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -490,7 +491,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -633,7 +634,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -744,7 +745,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -836,7 +837,7 @@ driverFunctionTest pkgIx srcDb comp = testGroup "createProject"
             _pkgCabalVersion  desc @?= CabalSpecV3_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [0,1,0,0]
-            _pkgLicense       desc @?= SPDX.NONE
+            _pkgLicense       desc @?= (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= ""
@@ -1224,7 +1225,7 @@ nonInteractiveTests pkgIx srcDb comp = testGroup "Check top level getter functio
       , testSimple "Check minimalHeuristics output" minimalHeuristics False [""]
       , testSimple "Check overwriteHeuristics output" overwriteHeuristics False [""]
       , testSimple "Check initializeTestSuiteHeuristics output" initializeTestSuiteHeuristics False [""]
-      , testSimple "Check licenseHeuristics output" licenseHeuristics SPDX.NONE [""]
+      , testSimple "Check licenseHeuristics output" licenseHeuristics (SpecLicense $ Left SPDX.NONE) [""]
       ]
     , testGroup "Bool heuristics tests"
       [ testBool "Check noCommentsHeuristics output" noCommentsHeuristics False ""
