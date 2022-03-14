@@ -27,6 +27,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Simple.Setup
 import Distribution.CabalSpecVersion
 import qualified Data.Set as Set
+import Distribution.FieldGrammar.Newtypes
 
 
 -- -------------------------------------------------------------------- --
@@ -84,7 +85,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_2
             _pkgName          desc @?= mkPackageName "QuxPackage"
             _pkgVersion       desc @?= mkVersion [4,2,6]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -188,7 +189,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -283,7 +284,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -364,7 +365,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -445,7 +446,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -526,7 +527,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -605,7 +606,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV1_10
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -678,7 +679,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
             _pkgCabalVersion  desc @?= CabalSpecV2_4
             _pkgName          desc @?= mkPackageName "test-package"
             _pkgVersion       desc @?= mkVersion [3,1,2,3]
-            _pkgLicense       desc @?! SPDX.NONE
+            _pkgLicense       desc @?! (SpecLicense . Left $ SPDX.NONE)
             _pkgAuthor        desc @?= "Foobar"
             _pkgEmail         desc @?= "foobar@qux.com"
             _pkgHomePage      desc @?= "qux.com"
@@ -847,24 +848,24 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
       ]
     , testGroup "Check licensePrompt output" $ let other = show (1 + P.length defaultLicenseIds) in
         [ testNumberedPrompt "License indices" licensePrompt $
-            fmap (\l -> SPDX.License $ SPDX.ELicense (SPDX.ELicenseId l) Nothing) defaultLicenseIds
+            fmap (\l -> SpecLicense . Left . SPDX.License $ SPDX.ELicense (SPDX.ELicenseId l) Nothing) defaultLicenseIds
         , testSimplePrompt "Other license 1"
-            licensePrompt (mkLicense SPDX.CC_BY_NC_ND_4_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.CC_BY_NC_ND_4_0)
             [ other
             , "CC-BY-NC-ND-4.0"
             ]
         , testSimplePrompt "Other license 2"
-            licensePrompt (mkLicense SPDX.D_FSL_1_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.D_FSL_1_0)
             [ other
             , "D-FSL-1.0"
             ]
         , testSimplePrompt "Other license 3"
-            licensePrompt (mkLicense SPDX.NPOSL_3_0)
+            licensePrompt (SpecLicense . Left $ mkLicense SPDX.NPOSL_3_0)
             [ other
             , "NPOSL-3.0"
             ]
         , testSimplePrompt "Invalid license"
-            licensePrompt SPDX.NONE
+            licensePrompt (SpecLicense $ Left SPDX.NONE)
             [ other
             , "yay"
             , other

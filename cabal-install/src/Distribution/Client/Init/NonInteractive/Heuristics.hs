@@ -33,9 +33,9 @@ import Distribution.Simple.Setup (fromFlagOrDefault)
 
 import qualified Data.List as L
 import Distribution.Client.Init.Defaults
+import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
-import qualified Distribution.SPDX as SPDX
 import System.FilePath
 import Distribution.CabalSpecVersion
 import Language.Haskell.Extension
@@ -43,6 +43,7 @@ import Distribution.Version
 import Distribution.Types.PackageName (PackageName, mkPackageName)
 import Distribution.Simple.Compiler
 import qualified Data.Set as Set
+import Distribution.FieldGrammar.Newtypes
 
 
 
@@ -103,8 +104,8 @@ guessPackageName = fmap (mkPackageName . repair . fromMaybe "" . safeLast . spli
 -- | Try to guess the license from an already existing @LICENSE@ file in
 --   the package directory, comparing the file contents with the ones
 --   listed in @Licenses.hs@, for now it only returns a default value.
-guessLicense :: Interactive m => InitFlags -> m SPDX.License
-guessLicense _ = return SPDX.NONE
+guessLicense :: Interactive m => InitFlags -> m SpecLicense
+guessLicense flags = return . defaultLicense $ getCabalVersionNoPrompt flags
 
 guessExtraDocFiles :: Interactive m => InitFlags -> m (Maybe (Set FilePath))
 guessExtraDocFiles flags = do

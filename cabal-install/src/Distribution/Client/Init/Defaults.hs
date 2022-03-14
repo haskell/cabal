@@ -48,7 +48,8 @@ import qualified Distribution.SPDX.LicenseId as SPDX
 import Distribution.Simple.Flag (toFlag)
 import Distribution.Verbosity (normal)
 import Distribution.Types.Version
-import Distribution.Simple
+import Distribution.FieldGrammar.Newtypes
+import Distribution.Simple (Language(..), License(..))
 
 
 -- -------------------------------------------------------------------- --
@@ -75,8 +76,10 @@ defaultPackageType = Executable
 defaultChangelog :: FilePath
 defaultChangelog = "CHANGELOG.md"
 
-defaultLicense :: SPDX.License
-defaultLicense = SPDX.NONE
+defaultLicense :: CabalSpecVersion -> SpecLicense
+defaultLicense csv
+  | csv < CabalSpecV2_2 = SpecLicense $ Right AllRightsReserved
+  | otherwise           = SpecLicense $ Left  SPDX.NONE
 
 defaultMainIs :: HsFilePath
 defaultMainIs = toHsFilePath "Main.hs"

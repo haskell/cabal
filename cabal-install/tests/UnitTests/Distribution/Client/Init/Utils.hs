@@ -23,6 +23,7 @@ import Distribution.Types.Dependency
 import Distribution.Types.VersionRange
 import Distribution.Simple.Compiler
 import Distribution.Pretty
+import Distribution.FieldGrammar.Newtypes
 
 
 -- -------------------------------------------------------------------- --
@@ -34,7 +35,7 @@ dummyFlags = emptyFlags
   , packageName         = Flag (mkPackageName "QuxPackage")
   , version             = Flag (mkVersion [4,2,6])
   , cabalVersion        = Flag CabalSpecV2_2
-  , license             = Flag $ SPDX.License $ SPDX.ELicense (SPDX.ELicenseId SPDX.MIT) Nothing
+  , license             = Flag $ SpecLicense $ Left $ SPDX.License $ SPDX.ELicense (SPDX.ELicenseId SPDX.MIT) Nothing
   , author              = Flag "Foobar"
   , email               = Flag "foobar@qux.com"
   , homepage            = Flag "qux.com"

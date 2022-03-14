@@ -25,6 +25,7 @@ import qualified Data.List.NonEmpty as NEL
 import Distribution.Types.Dependency
 import Distribution.Client.Init.Utils (mkPackageNameDep, getBaseDep)
 import qualified Data.Set as Set
+import Distribution.Client.Init.FlagExtractors (getCabalVersionNoPrompt)
 
 tests
     :: Verbosity
@@ -140,7 +141,7 @@ simplePkgDesc pkgName = PkgDescription
     defaultCabalVersion
     pkgName
     defaultVersion
-    defaultLicense
+    (defaultLicense $ getCabalVersionNoPrompt dummyFlags)
     "" "" "" "" ""
     mempty
     (Just $ Set.singleton defaultChangelog)

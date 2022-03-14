@@ -53,12 +53,15 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.FieldGrammar.Newtypes (SpecLicense(..))
+import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Types (SourcePackageDb(..))
 import Distribution.Solver.Types.PackageIndex (elemByPackageName)
 
 import Language.Haskell.Extension (Language(..))
+import Distribution.License (knownLicenses)
+import Distribution.Parsec (simpleParsec')
 
 
 -- | Main driver for interactive prompt code.
@@ -100,37 +103,38 @@ createProject v pkgIx srcDb initFlags = do
       mkOpts cs = WriteOpts
         doOverwrite isMinimal cs
         v pkgDir pkgType pkgName
+      initFlags' = initFlags { cabalVersion = Flag cabalSpec }
 
   case pkgType of
     Library -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
         (Just libTarget) Nothing testTarget
 
     Executable -> do
-      exeTarget <- genExeTarget initFlags pkgIx
-      comments <- noCommentsPrompt initFlags
+      exeTarget <- genExeTarget initFlags' pkgIx
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc Nothing
         (Just exeTarget) Nothing
 
     LibraryAndExecutable -> do
-      libTarget <- genLibTarget initFlags pkgIx
+      libTarget <- genLibTarget initFlags' pkgIx
 
       exeTarget <- addLibDepToExe pkgName <$>
-        genExeTarget initFlags pkgIx
+        genExeTarget initFlags' pkgIx
 
       testTarget <- addLibDepToTest pkgName <$>
-        genTestTarget initFlags pkgIx
+        genTestTarget initFlags' pkgIx
 
-      comments <- noCommentsPrompt initFlags
+      comments <- noCommentsPrompt initFlags'
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
@@ -141,10 +145,10 @@ createProject v pkgIx srcDb initFlags = do
       -- are *not* passed, the user will be prompted for a package type (which
       -- includes TestSuite in the list). It prevents that the user end up with a
       -- TestSuite target with initializeTestSuite set to NoFlag, thus avoiding the prompt.
-      let initFlags' = initFlags { initializeTestSuite = Flag True }
-      testTarget <- genTestTarget initFlags' pkgIx
+      let initFlags'' = initFlags' { initializeTestSuite = Flag True }
+      testTarget <- genTestTarget initFlags'' pkgIx
 
-      comments <- noCommentsPrompt initFlags'
+      comments <- noCommentsPrompt initFlags''
 
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc
@@ -163,9 +167,11 @@ genPkgDescription
     => InitFlags
     -> SourcePackageDb
     -> m PkgDescription
-genPkgDescription flags srcDb = PkgDescription
-    <$> cabalVersionPrompt flags
-    <*> packageNamePrompt srcDb flags
+genPkgDescription flags' srcDb = do
+  csv <- cabalVersionPrompt flags'
+  let flags = flags' { cabalVersion = Flag csv }
+  PkgDescription csv
+    <$> packageNamePrompt srcDb flags
     <*> versionPrompt flags
     <*> licensePrompt flags
     <*> authorPrompt flags
@@ -318,15 +324,16 @@ versionPrompt flags = getVersion flags go
           go
         Just v -> return v
 
-licensePrompt :: Interactive m => InitFlags -> m SPDX.License
+licensePrompt :: Interactive m => InitFlags -> m SpecLicense
 licensePrompt flags = getLicense flags $ do
+    let csv = fromFlagOrDefault defaultCabalVersion (cabalVersion flags)
     l <- promptList "Please choose a license"
-      licenses
+      (licenses csv)
       MandatoryPrompt
       Nothing
       True
 
-    case simpleParsec l of
+    case simpleParsec' csv l of
       Nothing -> do
         putStrLn ( "The license must be a valid SPDX expression:"
                 ++ "\n - On the SPDX License List: https://spdx.org/licenses/"
@@ -336,7 +343,9 @@ licensePrompt flags = getLicense flags $ do
         licensePrompt flags
       Just l' -> return l'
   where
-    licenses = SPDX.licenseId <$> defaultLicenseIds
+    licenses csv = if csv >= CabalSpecV2_2
+      then SPDX.licenseId <$> defaultLicenseIds
+      else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
 authorPrompt flags = getAuthor flags $
