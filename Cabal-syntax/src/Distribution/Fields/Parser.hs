@@ -211,8 +211,8 @@ cabalStyleFile = do es <- elements zeroIndentLevel
                     eof
                     return es
 
--- Elements that live at the top level or inside a section, ie fields
--- and sectionscontent
+-- Elements that live at the top level or inside a section, i.e. fields
+-- and sections content
 --
 -- elements ::= element*
 elements :: IndentLevel -> Parser [Field Position]

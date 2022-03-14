@@ -165,7 +165,7 @@ compilerInfo c = CompilerInfo (compilerId c)
 -- |Some compilers have a notion of a database of available packages.
 -- For some there is just one global db of packages, other compilers
 -- support a per-user or an arbitrary db specified at some location in
--- the file system. This can be used to build isloated environments of
+-- the file system. This can be used to build isolated environments of
 -- packages, for example to build a collection of related packages
 -- without installing them globally.
 --

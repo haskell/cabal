@@ -180,7 +180,7 @@ installCommand = CommandUI
 --   Exes are installed in the store like a normal dependency, then they are
 --   symlinked/copied in the directory specified by --installdir.
 --   To do this we need a dummy projectBaseContext containing the targets as
---   estra packages and using a temporary dist directory.
+--   extra packages and using a temporary dist directory.
 -- * libraries
 --   Libraries install through a similar process, but using GHC environment
 --   files instead of symlinks. This means that 'v2-install'ing libraries
