@@ -126,7 +126,7 @@ jobs:
       - name: Tar cabal head executable
         if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
         run: |
-          CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-val-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
+          CABAL_EXEC=$(cabal-plan list-bin --builddir=dist-newstyle-validate-ghc-${{ matrix.ghc }} cabal-install:exe:cabal)
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
           if [[ ${{ runner.os }} == 'Windows' ]]; then
