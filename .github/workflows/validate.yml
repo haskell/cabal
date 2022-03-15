@@ -151,6 +151,9 @@ jobs:
 
       - name: Validate cli-suite
         if: matrix.cli != 'false'
+        # We have to use `-w ghc` intead `-w ghc-${{ matrix.ghc }}` here to
+        # workaround the max path limit in windows for ghc <= 8.6.5
+        # See https://github.com/haskell/cabal/issues/6271#issuecomment-1065102255
         run: sh validate.sh -j 2 -w ghc -v $FLAGS -s cli-suite
 
   validate-old-ghcs:
