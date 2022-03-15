@@ -4,7 +4,13 @@
 # default config
 #######################################################################
 
-HC=ghc-8.2.2
+# We use the default ghc in PATH as default
+# Use the ghc-x.y.z trigger several errors in windows:
+# * It triggers the max path length issue:
+#   See https://github.com/haskell/cabal/issues/6271#issuecomment-1065102255
+# * It triggers a `createProcess: does not exist` error in units tests
+#   See https://github.com/haskell/cabal/issues/8049
+HC=ghc
 CABAL=cabal
 CABALPLAN=cabal-plan
 JOBS=4
