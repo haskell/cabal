@@ -110,8 +110,7 @@ jobs:
         run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-tool-versions
 
       - name: Validate build
-        run: |
-          sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
+        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
 
       - name: Tar cabal head executable
         if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
