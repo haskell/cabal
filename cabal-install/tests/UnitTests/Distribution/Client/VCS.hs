@@ -50,7 +50,7 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 --
 tests :: MTimeChange -> [TestTree]
 tests mtimeChange = map (localOption $ QuickCheckTests 10)
-  [ knownBrokenInWindows "See issue #XXXX" $
+  [ knownBrokenInWindows "See issue #8048" $
     testGroup "git"
     [ testProperty "check VCS test framework"    prop_framework_git
     , testProperty "cloneSourceRepo"             prop_cloneRepo_git
