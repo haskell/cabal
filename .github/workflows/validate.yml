@@ -27,6 +27,7 @@ env:
   # Ideally the three ghcs should be the used for the release
   GHC_FOR_SOLVER_BENCHMARKS: '8.10.7'
   GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.10.7'
+  COMMON_FLAGS: '-j 2 -v'
 
 jobs:
   validate:
@@ -91,7 +92,7 @@ jobs:
 
       - name: Set validate inputs
         run: |
-          FLAGS=""
+          FLAGS="${{ env.COMMON_FLAGS }}"
           if [[ "${{ matrix.cli }}" == "false" ]]; then
             FLAGS="$FLAGS --lib-only"
           fi
@@ -104,13 +105,13 @@ jobs:
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
 
       - name: Validate print-config
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-config
+        run: sh validate.sh $FLAGS -s print-config
 
       - name: Validate print-tool-versions
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s print-tool-versions
+        run: sh validate.sh $FLAGS -s print-tool-versions
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s build
+        run: sh validate.sh $FLAGS -s build
 
       - name: Tar cabal head executable
         if: matrix.cli != 'false' && matrix.ghc == env.GHC_FOR_RELEASE
@@ -139,21 +140,18 @@ jobs:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
           GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
-        run: sh validate.sh -j 2 -w $GHCPATH -v $FLAGS -s lib-tests
+        run: sh validate.sh $FLAGS -s lib-tests
 
       - name: Validate lib-suite
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s lib-suite
+        run: sh validate.sh $FLAGS -s lib-suite
 
       - name: Validate cli-tests
         if: matrix.cli != 'false'
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v $FLAGS -s cli-tests
+        run: sh validate.sh $FLAGS -s cli-tests
 
       - name: Validate cli-suite
         if: matrix.cli != 'false'
-        # We have to use `-w ghc` intead `-w ghc-${{ matrix.ghc }}` here to
-        # workaround the max path limit in windows for ghc <= 8.6.5
-        # See https://github.com/haskell/cabal/issues/6271#issuecomment-1065102255
-        run: sh validate.sh -j 2 -w ghc -v $FLAGS -s cli-suite
+        run: sh validate.sh $FLAGS -s cli-suite
 
   validate-old-ghcs:
     name: Validate old ghcs ${{ matrix.extra-ghc }}
@@ -216,13 +214,12 @@ jobs:
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
       - name: Validate build
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ matrix.flags }} -s build
+        run: sh validate.sh ${{ env.COMMON_FLAGS }} -s build
 
       - name: "Validate lib-suite-extras --extra-hc ghc-${{ matrix.extra-ghc }}"
         env:
-          FLAGS: "--lib-only -s lib-suite-extras"
           EXTRA_GHC: "/opt/ghc/${{ matrix.extra-ghc }}/bin/ghc-${{ matrix.extra-ghc }}"
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} -v ${{ env.FLAGS }} --extra-hc ${{ env.EXTRA_GHC }}
+        run: sh validate.sh ${{ env.COMMON_FLAGS }} --lib-only -s lib-suite-extras --extra-hc ${{ env.EXTRA_GHC }}
 
   # The previous jobs use a released version of cabal to build cabal HEAD itself
   # This one uses the cabal HEAD generated executable in the previous step
@@ -258,12 +255,12 @@ jobs:
         run: tar -xf ./cabal-head/cabal-head.tar -C ./cabal-head
 
       - name: print-config using cabal HEAD
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} --with-cabal ./cabal-head/cabal -v -s print-config
+        run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s print-config
 
       # We dont use cache to force a build with a fresh store dir and build dir
       # This way we check cabal can build all its dependencies
       - name: Build using cabal HEAD
-        run: sh validate.sh -j 2 -w ghc-${{ matrix.ghc }} --with-cabal ./cabal-head/cabal -v -s build
+        run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s build
 
   # We use this job as a resume of the workflow
   # It will fail if any of the previous jobs does it
