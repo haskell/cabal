@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail
+set -Eeuxo pipefail
 
 source "$CI_PROJECT_DIR/.gitlab/common.sh"
-
 
 export GHCUP_INSTALL_BASE_PREFIX="$CI_PROJECT_DIR/toolchain"
 export CABAL_DIR="$CI_PROJECT_DIR/cabal"
@@ -28,7 +27,23 @@ export BOOTSTRAP_HASKELL_CABAL_VERSION=$CABAL_INSTALL_VERSION
 export BOOTSTRAP_HASKELL_VERBOSE=1
 export BOOTSTRAP_HASKELL_ADJUST_CABAL_CONFIG=yes
 
-curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+# for some reason the subshell doesn't pick up the arm64 environment on darwin
+# and starts installing x86_64 GHC
+case "$(uname -s)" in
+	"Darwin"|"darwin")
+		case "$(/usr/bin/arch)" in
+			aarch64|arm64|armv8l)
+				curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | arch -arm64 /bin/bash
+				;;
+			*)
+				curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+				;;
+		esac
+		;;
+	*)
+		curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | sh
+		;;
+esac
 
 # https://github.com/haskell/cabal/issues/7313#issuecomment-811851884
 if [ "$(getconf LONG_BIT)" == "32" ] ; then
