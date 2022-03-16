@@ -9,6 +9,7 @@ workflow:
   rules:
     - if: $CI_COMMIT_TAG
       when: always
+    # Triggered if you start it from the gitlab web ui
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: always
     - when: never
