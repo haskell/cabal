@@ -1,4 +1,4 @@
-resolver: lts-18.17
+resolver: lts-18.28 # ghc-8.10.7
 
 packages:
 - Cabal-syntax/
@@ -14,7 +14,7 @@ packages:
 - solver-benchmarks/
 
 extra-deps:
-- rere-0.2@sha256:ec1d87554c03755d89f3401c5e5c27827e61dde835c54cbdaf509136ce8f6f2b,4079
+- rere-0.2@rev:1
 
 allow-newer: true
 
