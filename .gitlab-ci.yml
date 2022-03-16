@@ -1,6 +1,8 @@
 stages:
   - build
 
+# Used for ci setup in the gitlab mirror of the project:
+# https://gitlab.haskell.org/haskell/haskell-language-server/-/pipelines
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
   DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
@@ -128,6 +130,8 @@ build-aarch64-darwin:
     - rm -Rf /private/tmp/.brew_tmp
   variables:
     MACOSX_DEPLOYMENT_TARGET: "10.7"
+    TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
+    TARBALL_EXT: tar.xz
     ADD_CABAL_ARGS: ""
   artifacts:
     expire_in: 2 week
