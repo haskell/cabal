@@ -1,3 +1,6 @@
+stages:
+  - build
+
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
   DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
@@ -15,6 +18,7 @@ workflow:
     - when: never
 
 .build:
+  stage: build
   script:
     - bash .gitlab/ci.sh
   artifacts:
