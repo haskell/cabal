@@ -24,7 +24,7 @@ env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
   GHC_FOR_RELEASE: '8.10.7'
-  # Ideally the three ghcs should be the used for the release
+  # Ideally we should use the version about to be released for hackage tests and benchmarks
   GHC_FOR_SOLVER_BENCHMARKS: '8.10.7'
   GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.10.7'
   COMMON_FLAGS: '-j 2 -v'
@@ -262,7 +262,7 @@ jobs:
       - name: Build using cabal HEAD
         run: sh validate.sh ${{ env.COMMON_FLAGS }} --with-cabal ./cabal-head/cabal -s build
 
-  # We use this job as a resume of the workflow
+  # We use this job as a summary of the workflow
   # It will fail if any of the previous jobs does it
   # This way we can use it exclusively in branch protection rules
   # and abstract away the concrete jobs of the workflow, including their names
