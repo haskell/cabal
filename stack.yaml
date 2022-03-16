@@ -14,8 +14,12 @@ packages:
 - solver-benchmarks/
 
 extra-deps:
+# Not included in stackage
 - rere-0.2@rev:1
 
+# We require the released version of Cabal and Cabal-syntax for cabal-testsuite
+# but ususally we have a development, newer version set in the local package
+# Also needed for hackage-security and Win32
 allow-newer: true
 
 nix:
