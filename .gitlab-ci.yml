@@ -1,6 +1,11 @@
+stages:
+  - build
+
+# Used for ci setup in the gitlab mirror of the project:
+# https://gitlab.haskell.org/haskell/haskell-language-server/-/pipelines
 variables:
   # Commit of ghc/ci-images repository from which to pull Docker images
-  DOCKER_REV: "853f348f9caf38b08740b280296fbd34e09abb3a"
+  DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
 
   GHC_VERSION: 8.10.7
   CABAL_INSTALL_VERSION: 3.6.2.0
@@ -9,11 +14,13 @@ workflow:
   rules:
     - if: $CI_COMMIT_TAG
       when: always
+    # Triggered if you start it from the gitlab web ui
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: always
     - when: never
 
 .build:
+  stage: build
   script:
     - bash .gitlab/ci.sh
   artifacts:
@@ -84,15 +91,6 @@ build-i386-linux-alpine:
     # temp, because 3.6.2.0 is broken
     CABAL_INSTALL_VERSION: 3.4.0.0
 
-build-x86_64-freebsd13:
-  extends: .build
-  tags:
-    - x86_64-freebsd13
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd13
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections"
-
 build-x86_64-freebsd12:
   extends: .build
   tags:
@@ -112,25 +110,24 @@ build-x86_64-darwin:
     ADD_CABAL_ARGS: ""
 
 build-aarch64-darwin:
+  stage: build
   tags:
     - aarch64-darwin-m1
+  before_script:
+    - export HOMEBREW_CHANGE_ARCH_TO_ARM=1
+    - arch -arm64 /bin/bash ./.gitlab/brew.sh llvm autoconf automake coreutils make tree
+  # C_INCLUDE_PATH: https://gitlab.haskell.org/ghc/ghc/-/issues/20592
   script: |
-    set -Eeuo pipefail
-    function runInNixShell() {
-      time nix-shell $CI_PROJECT_DIR/.gitlab/shell.nix \
-        -I nixpkgs=https://github.com/angerman/nixpkgs/archive/75f7281738b.tar.gz \
-        --argstr system "aarch64-darwin" \
-        --pure \
-        --keep CI_PROJECT_DIR \
-        --keep MACOSX_DEPLOYMENT_TARGET \
-        --keep GHC_VERSION \
-        --keep CABAL_INSTALL_VERSION \
-        --keep TARBALL_ARCHIVE_SUFFIX \
-        --keep TARBALL_EXT \
-        --keep ADD_CABAL_ARGS \
-        --run "$1" 2>&1
-    }
-    runInNixShell "./.gitlab/ci.sh" 2>&1
+    export PATH="$CI_PROJECT_DIR/.brew/opt/llvm/bin:$CI_PROJECT_DIR/.brew/bin:$CI_PROJECT_DIR/.brew/sbin:$PATH"
+    export CC=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang
+    export CXX=$CI_PROJECT_DIR/.brew/opt/llvm/bin/clang++
+    export LD=ld
+    export AR=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ar
+    export RANLIB=$CI_PROJECT_DIR/.brew/opt/llvm/bin/llvm-ranlib
+    export C_INCLUDE_PATH="`xcrun --show-sdk-path`/usr/include/ffi"
+    arch -arm64 /bin/bash ./.gitlab/ci.sh
+  after_script:
+    - rm -Rf /private/tmp/.brew_tmp
   variables:
     MACOSX_DEPLOYMENT_TARGET: "10.7"
     TARBALL_ARCHIVE_SUFFIX: aarch64-darwin
@@ -144,14 +141,8 @@ build-aarch64-darwin:
 build-x86_64-windows:
   extends: .build
   script:
-    - Set-ExecutionPolicy Bypass -Scope Process -Force;[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Invoke-WebRequest https://www.haskell.org/ghcup/sh/bootstrap-haskell.ps1 -UseBasicParsing))) -ArgumentList $false, $true, $true, $false, $false, $false, $false, "$CI_PROJECT_DIR"
-    - ./ghcup/msys64/usr/bin/bash '-lc' 'pacman --noconfirm -S zip'
     - $env:CHERE_INVOKING = "yes"
-    - ./ghcup/msys64/usr/bin/bash '-lc' "TARBALL_ARCHIVE_SUFFIX=$env:TARBALL_ARCHIVE_SUFFIX TARBALL_EXT=$env:TARBALL_EXT ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
-  after_script:
-    - "[Environment]::SetEnvironmentVariable('GHCUP_INSTALL_BASE_PREFIX', $null, [System.EnvironmentVariableTarget]::User)"
-    - "[Environment]::SetEnvironmentVariable('GHCUP_MSYS2', $null, [System.EnvironmentVariableTarget]::User)"
-    - "[Environment]::SetEnvironmentVariable('CABAL_DIR', $null, [System.EnvironmentVariableTarget]::User)"
+    - bash '-lc' "ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
   tags:
     - new-x86_64-windows
   variables:
