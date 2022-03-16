@@ -141,14 +141,8 @@ build-aarch64-darwin:
 build-x86_64-windows:
   extends: .build
   script:
-    - Set-ExecutionPolicy Bypass -Scope Process -Force;[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;Invoke-Command -ScriptBlock ([ScriptBlock]::Create((Invoke-WebRequest https://www.haskell.org/ghcup/sh/bootstrap-haskell.ps1 -UseBasicParsing))) -ArgumentList $false, $true, $true, $false, $false, $false, $false, "$CI_PROJECT_DIR"
-    - ./ghcup/msys64/usr/bin/bash '-lc' 'pacman --noconfirm -S zip'
     - $env:CHERE_INVOKING = "yes"
-    - ./ghcup/msys64/usr/bin/bash '-lc' "TARBALL_ARCHIVE_SUFFIX=$env:TARBALL_ARCHIVE_SUFFIX TARBALL_EXT=$env:TARBALL_EXT ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
-  after_script:
-    - "[Environment]::SetEnvironmentVariable('GHCUP_INSTALL_BASE_PREFIX', $null, [System.EnvironmentVariableTarget]::User)"
-    - "[Environment]::SetEnvironmentVariable('GHCUP_MSYS2', $null, [System.EnvironmentVariableTarget]::User)"
-    - "[Environment]::SetEnvironmentVariable('CABAL_DIR', $null, [System.EnvironmentVariableTarget]::User)"
+    - bash '-lc' "ADD_CABAL_ARGS=$env:ADD_CABAL_ARGS GHC_VERSION=$env:GHC_VERSION CABAL_INSTALL_VERSION=$CABAL_INSTALL_VERSION .gitlab/ci.sh"
   tags:
     - new-x86_64-windows
   variables:
