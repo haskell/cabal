@@ -89,15 +89,6 @@ build-i386-linux-alpine:
     # temp, because 3.6.2.0 is broken
     CABAL_INSTALL_VERSION: 3.4.0.0
 
-build-x86_64-freebsd13:
-  extends: .build
-  tags:
-    - x86_64-freebsd13
-  variables:
-    TARBALL_ARCHIVE_SUFFIX: x86_64-freebsd13
-    TARBALL_EXT: tar.xz
-    ADD_CABAL_ARGS: "--enable-split-sections"
-
 build-x86_64-freebsd12:
   extends: .build
   tags:
