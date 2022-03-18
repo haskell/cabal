@@ -499,38 +499,62 @@ flag.
 cabal freeze
 ^^^^^^^^^^^^
 
-If a package is built in several different environments, such as a
-development environment, a staging environment and a production
-environment, it may be necessary or desirable to ensure that the same
-dependency versions are selected in each environment. This can be done
-with the ``freeze`` command:
+.. code-block:: console
 
-``cabal freeze`` writes out a **freeze file** which records all of
-the versions and flags that are picked by the solver under the
-current index and flags.  Default name of this file is
-``cabal.project.freeze`` but in combination with a
-``--project-file=my.project`` flag (see :ref:`project-file
-<cmdoption-project-file>`)
-the name will be ``my.project.freeze``.
-A freeze file has the same syntax as ``cabal.project`` and looks
-something like this:
+    $ cabal freeze
 
-.. highlight:: cabal
+generates ``cabal.project.freeze`` file, which describes the exact dependency tree as it was resolved at that moment by Cabal.
+This means it captures an exact version of every dependency, including dependencies of dependencies, recursively all the way.
 
-::
+Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into consideration the version constraints in it,
+this means that by producing ``cabal.project.freeze`` you are guaranteed that every future ``cabal`` call will use the exact same set of dependencies,
+regardless of any updates (even patches) that might get published for these dependencies in the meantime.
+Therefore, we have effectively "frozen" the dependencies in place.
 
-    constraints: HTTP ==4000.3.3,
-                 HTTP +warp-tests -warn-as-error -network23 +network-uri -mtl1 -conduit10,
-                 QuickCheck ==2.9.1,
-                 QuickCheck +templatehaskell,
-                 -- etc...
+``cabal.project.freeze`` is intended to be committed to the version control.
 
+Do you need this?
+=================
 
-For end-user executables, it is recommended that you distribute the
-``cabal.project.freeze`` file in your source repository so that all
-users see a consistent set of dependencies. For libraries, this is not
-recommended: users often need to build against different versions of
-libraries than what you developed against.
+Why would you want this? Don't we want to get minor updates of our dependencies, or at least patches, as soon as we can?
+Well, although they shouldn't, it is possible that any kind of update introduces new bugs, performance issues, or some other kind of unexpected behaviour.
+This is where ``cabal.project.freeze`` comes in, as it ensures that dependencies don't unexpectedly change.
+You can still update your dependencies, but you have to do it on purpose, by modifying or by deleting and regenerating ``cabal.project.freeze`` file,
+and in the meantime you are guaranteed no surprises will happen.
+
+This consistency can be valuable as it ensures that all teammates, deployments, and continuous integration are installing the exactly same dependencies.
+So if you are running and testing the code on your local machine, you are guaranteed that your teammate and your continuos integration will be running the exact same code,
+and that at the end that exact same code will get deployed.
+
+Usual use-case for using ``cabal freeze`` is when developing end-user code, for example an executable that you will distribute.
+On the other hand, if you are developing a library, you will not want to distribute it together with the ``cabal.project.freeze`` file, as it would make it very hard for cabal to resolve dependencies for users of the library.
+
+Common workflow
+===============
+
+Common workflow for using ``cabal freeze``, if you changed any dependencies in ``<yourproject>.cabal`` file or want to update their versions, is to delete ``cabal.project.freeze`` file (if it already exists) and run ``cabal freeze`` to generate fresh version of ``cabal.project.freeze``.
+You might in some cases want to skip deletion of ``cabal.project.freeze``, but keep in mind that in that case ``cabal freeze`` will use existing ``cabal.project.freeze`` when resolving dependencies, therefore not updating any existing dependencies, only adding new ones.
+If not sure, best to delete ``cabal.project.freeze`` first and then run ``cabal freeze``.
+Finally, you will always want to committ the new ``cabal.project.freeze`` to the version control.
+
+Ensuring everything is frozen
+=============================
+
+Since ``cabal`` reads both ``<yourproject>.cabal`` and ``cabal.project.freeze`` files and combines version constraints from them, you can get into a state where not all dependencies are frozen, i.e. if you add a dependency to ``<yourproject>.cabal`` but forget to regenerate ``cabal.project.freeze`` after it -> now this new dependency will not be frozen and might get updated unexpectedly.
+
+To check if you are in such state, you can just run ``cabal freeze`` and check if ``cabal.project.freeze`` changed its contents -> if so, somebody forgot to regenerate ``cabal.project.freeze`` previously.
+
+To automate this check, you can make it a part of your continuous integration, or a part of your pre-commit hook.
+
+Example of how this can be done via bash script:
+
+.. code-block:: bash
+
+    [[ -f cabal.project.freeze ]] || exit 1
+    OLD_FREEZE_SUM=$(md5sum cabal.project.freeze)
+    cabal freeze || exit 1
+    NEW_FREEZE_SUM=$(md5sum cabal.project.freeze)
+    exit [[ "$NEW_FREEZE_SUM" == "$OLD_FREEZE_SUM" ]]
 
 .. _cabal-gen-bounds:
 
