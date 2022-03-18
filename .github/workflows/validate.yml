@@ -120,7 +120,14 @@ jobs:
           # We have to tar the executable to preserve executable permissions
           # see https://github.com/actions/upload-artifact/issues/38
           if [[ ${{ runner.os }} == 'Windows' ]]; then
+            # `cabal-plan` gives us a windows path but tar needs the posix one
             CABAL_EXEC=$(cygpath $CABAL_EXEC)
+          fi
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+             # Workaround to avoid bsdtar corrupts the executable
+             # so executing it after untar throws `cannot execute binary file`
+             # see https://github.com/actions/virtual-environments/issues/2619#issuecomment-788397841
+             sudo /usr/sbin/purge
           fi
           tar -cvf cabal-head.tar -C $(dirname "$CABAL_EXEC") $(basename "$CABAL_EXEC")
           echo "CABAL_EXEC_TAR=cabal-head.tar" >> $GITHUB_ENV
