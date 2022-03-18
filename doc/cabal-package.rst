@@ -1029,12 +1029,12 @@ This means it captures an exact version of every dependency, including dependenc
 Since ``cabal`` reads ``cabal.project.freeze`` when present, and takes into consideration the version constraints in it,
 this means that by producing ``cabal.project.freeze`` you are guaranteed that every future ``cabal`` call will use the exact same set of dependencies,
 regardless of any updates (even patches) that might get published for these dependencies in the meantime.
-Therefore, we have effectively "frozen" the dependencies in place.
+Therefore, we have effectively "frozen" the dependencies in place, making our build consistent and reproducible.
 
 ``cabal.project.freeze`` is intended to be committed to the version control.
 
 Do you need this?
-=================
+"""""""""""""""""
 
 Why would you want this? Don't we want to get minor updates of our dependencies, or at least patches, as soon as we can?
 Well, although they shouldn't, it is possible that any kind of update introduces new bugs, performance issues, or some other kind of unexpected behaviour.
@@ -1047,22 +1047,24 @@ So if you are running and testing the code on your local machine, you are guaran
 and that at the end that exact same code will get deployed.
 
 Usual use-case for using ``cabal freeze`` is when developing end-user code, for example an executable that you will distribute.
-On the other hand, if you are developing a library, you will not want to distribute it together with the ``cabal.project.freeze`` file, as it would make it very hard for cabal to resolve dependencies for users of the library.
+On the other hand, if you are developing a library, you will not want to distribute it together with the ``cabal.project.freeze`` file, as it would make it very hard for cabal to resolve dependencies for users of the library, since they would be too strict.
 
 Common workflow
-===============
+"""""""""""""""
 
 Common workflow for using ``cabal freeze``, if you changed any dependencies in ``<yourproject>.cabal`` file or want to update their versions, is to delete ``cabal.project.freeze`` file (if it already exists) and run ``cabal freeze`` to generate fresh version of ``cabal.project.freeze``.
+
 You might in some cases want to skip deletion of ``cabal.project.freeze``, but keep in mind that in that case ``cabal freeze`` will use existing ``cabal.project.freeze`` when resolving dependencies, therefore not updating any existing dependencies, only adding new ones.
 If not sure, best to delete ``cabal.project.freeze`` first and then run ``cabal freeze``.
-Finally, you will always want to committ the new ``cabal.project.freeze`` to the version control.
+
+Finally, you will always want to commit the new ``cabal.project.freeze`` to the version control.
 
 Ensuring everything is frozen
-=============================
+"""""""""""""""""""""""""""""
 
 Since ``cabal`` reads both ``<yourproject>.cabal`` and ``cabal.project.freeze`` files and combines version constraints from them, you can get into a state where not all dependencies are frozen, i.e. if you add a dependency to ``<yourproject>.cabal`` but forget to regenerate ``cabal.project.freeze`` after it -> now this new dependency will not be frozen and might get updated unexpectedly.
 
-To check if you are in such state, you can just run ``cabal freeze`` and check if ``cabal.project.freeze`` changed its contents -> if so, somebody forgot to regenerate ``cabal.project.freeze`` previously.
+To check if you are in such state, you can just run ``cabal freeze`` and check if ``cabal.project.freeze`` changed its contents -> if so, somebody forgot to regenerate ``cabal.project.freeze`` previously. This will also fix the problem at the same time.
 
 To automate this check, you can make it a part of your continuous integration, or a part of your pre-commit hook.
 
