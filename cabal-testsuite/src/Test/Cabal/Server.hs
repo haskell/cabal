@@ -250,18 +250,17 @@ startServer chan senv = do
 initServer :: Server -> IO Server
 initServer s0 = do
     -- NB: withProcessHandle reads an MVar and is interruptible
+
+    pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
+              case ph of
 #if mingw32_HOST_OS
-    pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
-              case ph of
                   OpenHandle x   -> fmap show (Win32.getProcessId x)
-                  ClosedHandle  _ -> return (serverProcessId s0)
 #else
-    pid <- withProcessHandle (serverProcessHandle s0) $ \ph ->
-              case ph of
                   OpenHandle x   -> return (show x)
+#endif
                   -- TODO: handle OpenExtHandle?
                   _              -> return (serverProcessId s0)
-#endif
+
     let s = s0 { serverProcessId = pid }
     -- We will read/write a line at a time, including for
     -- output; our demarcation tokens are an entire line.
