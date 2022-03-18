@@ -267,8 +267,9 @@ writeFileSafe opts fileName content = do
           , newName
           ]
 
-        copyFile fileName newName
-        removeExistingFile fileName
+        copyFile fileName newName   -- backups the old file
+        removeExistingFile fileName -- removes the original old file
+        writeFile fileName content  -- writes the new file
       | otherwise = return ()
 
 writeDirectoriesSafe :: Interactive m => WriteOpts -> [String] -> m Bool
@@ -298,7 +299,8 @@ writeDirectoriesSafe opts dirs = fmap or $ for dirs $ \dir -> do
           , newDir
           ]
 
-        renameDirectory dir newDir
+        renameDirectory dir newDir -- backups the old directory
+        createDirectory dir        -- creates the new directory
       | otherwise = return ()
 
 findNewPath :: Interactive m => FilePath -> m FilePath
