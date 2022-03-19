@@ -789,9 +789,10 @@ rawSystemProcAction :: Verbosity -> Process.CreateProcess
                     -> IO (ExitCode, a)
 rawSystemProcAction verbosity cp action = withFrozenCallStack $ do
   logCommand verbosity cp
-  (mStdin, mStdout, mStderr, p) <- Process.createProcess cp
-  a <- action mStdin mStdout mStderr
-  exitcode <- Process.waitForProcess p
+  (exitcode, a) <- Process.withCreateProcess cp $ \mStdin mStdout mStderr p -> do
+    a <- action mStdin mStdout mStderr
+    exitcode <- Process.waitForProcess p
+    return (exitcode, a)
   unless (exitcode == ExitSuccess) $ do
     let cmd = case Process.cmdspec cp of
           Process.ShellCommand sh -> sh
