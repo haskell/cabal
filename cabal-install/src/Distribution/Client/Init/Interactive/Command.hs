@@ -94,7 +94,7 @@ createProject v pkgIx srcDb initFlags = do
 
   pkgType <- packageTypePrompt initFlags
   isMinimal <- getMinimal initFlags
-  doOverwrite <- getOverwrite initFlags
+  doOverwrite <- overwritePrompt initFlags
   pkgDir <- getPackageDir initFlags
   pkgDesc <- fixupDocFiles v =<< genPkgDescription initFlags srcDb
 
@@ -250,6 +250,13 @@ genTestTarget flags pkgs = initializeTestSuitePrompt flags >>= go
 
 -- -------------------------------------------------------------------- --
 -- Prompts
+
+overwritePrompt :: Interactive m => InitFlags -> m Bool
+overwritePrompt flags = do
+  isOverwrite <- getOverwrite flags
+  promptYesNo
+    "Do you wish to overwrite existing files (backups will be created) (y/n)"
+    (DefaultPrompt isOverwrite)
 
 cabalVersionPrompt :: Interactive m => InitFlags -> m CabalSpecVersion
 cabalVersionPrompt flags = getCabalVersion flags $ do
