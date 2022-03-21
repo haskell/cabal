@@ -63,7 +63,7 @@ import Data.TreeDiff.Pretty          (ansiWlEditExprCompact)
 parseIndex :: (Monoid a, NFData a) => (FilePath -> Bool)
            -> (FilePath -> B.ByteString -> IO a) -> IO a
 parseIndex predicate action = do
-    cabalDir   <- getAppUserDataDirectory "cabal"
+    cabalDir   <- getCabalDir
     configPath <- getCabalConfigPath cabalDir
     cfg        <- B.readFile configPath
     cfgFields  <- either (fail . show) pure $ Parsec.readFields cfg
@@ -74,6 +74,11 @@ parseIndex predicate action = do
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' predicate action . tarName) repos
   where
+    getCabalDir = do
+        mx <- lookupEnv "CABAL_DIR"
+        case mx of
+            Just x  -> return x
+            Nothing -> getAppUserDataDirectory "cabal"
     getCabalConfigPath cabalDir = do
         mx <- lookupEnv "CABAL_CONFIG"
         case mx of
