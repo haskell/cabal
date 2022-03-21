@@ -155,8 +155,6 @@ test-suite hackage-tests
   type:               exitcode-stdio-1.0
   main-is:            HackageTests.hs
 
-  if os(windows)
-    buildable: False
 
   hs-source-dirs:     tests
   build-depends:
