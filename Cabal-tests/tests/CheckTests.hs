@@ -49,6 +49,8 @@ checkTests = testGroup "regressions"
     , checkTest "issue-6288-e.cabal"
     , checkTest "issue-6288-f.cabal"
     , checkTest "denormalised-paths.cabal"
+    , checkTest "issue-7776-a.cabal"
+    , checkTest "issue-7776-b.cabal"
     ]
 
 checkTest :: FilePath -> TestTree
