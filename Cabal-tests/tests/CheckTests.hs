@@ -52,6 +52,7 @@ checkTests = testGroup "regressions"
     , checkTest "denormalised-paths.cabal"
     , regression7776 $ checkTest "issue-7776-a.cabal"
     , regression7776 $ checkTest "issue-7776-b.cabal"
+    , checkTest "issue-7776-c.cabal"
     ]
     where regression7776 = expectFailBecause "Regression described in #7776, will be fixed by #7966"
 
