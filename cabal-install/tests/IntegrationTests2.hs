@@ -49,6 +49,7 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Client.Setup (globalCommand)
 import Distribution.Simple.Compiler
 import Distribution.System
 import Distribution.Version
@@ -71,6 +72,9 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
+import Distribution.Client.GlobalFlags (GlobalFlags)
+import Distribution.Simple.Command
+import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
@@ -92,7 +96,8 @@ tests config =
     -- * normal success
     -- * dry-run tests with changes
   [ testGroup "Discovery and planning" $
-    [ testCase "find root"      testFindProjectRoot
+    [ testCase "test nix flags" testNixFlags
+    , testCase "find root"      testFindProjectRoot
     , testCase "find root fail" testExceptionFindProjectRoot
     , testCase "no package"    (testExceptionInFindingPackage config)
     , testCase "no package2"   (testExceptionInFindingPackage2 config)
@@ -141,6 +146,33 @@ tests config =
     ]
   ]
 
+
+testNixFlags :: Assertion
+testNixFlags = do
+  let argsFn = commandOptions . globalCommand $ []
+  let defaultFlags = commandDefaultFlags . globalCommand $ []
+  let args = argsFn ShowArgs
+  let mNixFlag = find (\(OptionField name _) -> name == "nix") args
+  True @=? isJust mNixFlag -- Found the nix flag (--enable-nix, --disable-nix)
+  let nixFlags = optionDescr . fromJust $ mNixFlag
+  let enableNixFlag = findNixFlags defaultFlags True nixFlags
+  let disableNixFlag = findNixFlags defaultFlags False nixFlags
+  True @=? isJust enableNixFlag
+  True @=? isJust disableNixFlag
+
+  where
+    findNixFlags :: GlobalFlags -> Bool -> [OptDescr GlobalFlags] -> Maybe (OptDescr GlobalFlags)
+    findNixFlags _ _ [] = Nothing
+    findNixFlags gf b [opt@(BoolOpt _ _ _ _ fn)]
+      | fn gf == Just b = Just opt
+      | otherwise = Nothing
+    findNixFlags gf b (opt@(BoolOpt _ _ _ _ fn):xs)
+      | fn gf == Just b = Just opt
+      | otherwise = findNixFlags gf b xs
+    findNixFlags gf b (opt@(ChoiceOpt [(_, _, _, fn)]):xs)
+      | fn gf == b = Just opt 
+      | otherwise = findNixFlags gf b xs
+    findNixFlags _ _ (_:_) = Nothing
 
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
