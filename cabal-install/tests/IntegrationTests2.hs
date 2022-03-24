@@ -51,6 +51,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
 import Distribution.Simple.Compiler
+import Distribution.Simple.Command
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
@@ -72,8 +73,8 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
-import Distribution.Client.GlobalFlags (GlobalFlags)
-import Distribution.Simple.Command
+import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
+import Distribution.Simple.Flag (Flag (Flag, NoFlag))
 import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
@@ -96,8 +97,7 @@ tests config =
     -- * normal success
     -- * dry-run tests with changes
   [ testGroup "Discovery and planning" $
-    [ testCase "test nix flags" testNixFlags
-    , testCase "find root"      testFindProjectRoot
+    [ testCase "find root"      testFindProjectRoot
     , testCase "find root fail" testExceptionFindProjectRoot
     , testCase "no package"    (testExceptionInFindingPackage config)
     , testCase "no package2"   (testExceptionInFindingPackage2 config)
@@ -144,39 +144,11 @@ tests config =
     , testCase "program options scope local" (testProgramOptionsLocal config)
     , testCase "program options scope specific" (testProgramOptionsSpecific config)
     ]
+  , testGroup "Flag tests" $
+    [
+      testCase "Test Nix Flag" testNixFlags
+    ]
   ]
-
-
-testNixFlags :: Assertion
-testNixFlags = do
-  let argsFn = commandOptions . globalCommand $ []
-  let args = argsFn ShowArgs
-
-  let defaultFlags = commandDefaultFlags . globalCommand $ []
-  let mNixFlag = find (\(OptionField name _) -> name == "nix") args
-  True @=? isJust mNixFlag -- Found the nix flag (--enable-nix, --disable-nix)
-  let nixFlags = optionDescr . fromJust $ mNixFlag
-  let enableNixFlag = findNixFlags defaultFlags True nixFlags
-  let disableNixFlag = findNixFlags defaultFlags False nixFlags
-  True @=? isJust enableNixFlag
-  True @=? isJust disableNixFlag
-
-  where
-    findNixFlags :: GlobalFlags -> Bool -> [OptDescr GlobalFlags] -> Maybe (OptDescr GlobalFlags)
-    findNixFlags _ _ [] = Nothing
-    findNixFlags gf b [opt@(BoolOpt _ _ _ _ fn)]
-      | fn gf == Just b = Just opt
-      | otherwise = Nothing
-    findNixFlags gf b [opt@(ChoiceOpt [(_, _, _, fn)])]
-      | fn gf == b = Just opt
-      | otherwise = Nothing
-    findNixFlags gf b (opt@(BoolOpt _ _ _ _ fn):xs)
-      | fn gf == Just b = Just opt
-      | otherwise = findNixFlags gf b xs
-    findNixFlags gf b (opt@(ChoiceOpt [(_, _, _, fn)]):xs)
-      | fn gf == b = Just opt 
-      | otherwise = findNixFlags gf b xs
-    findNixFlags _ _ (_:_) = Nothing
 
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
@@ -1963,3 +1935,25 @@ tryFewTimes action = go (3 :: Int) where
         hPutStrLn stderr $ "Trying " ++ show n ++ " after " ++ show e
         threadDelay 10000
         go (n - 1)
+
+testNixFlags :: Assertion
+testNixFlags = do
+  let gc = globalCommand []
+  -- changing from the v1 to v2 build command does not change whether the "--enable-nix" flag
+  -- sets the globalNix param of the GlobalFlags type to True even though the v2 command doesn't use it
+  let nixEnabledFlags = getFlags gc . commandParseArgs gc True $ ["--enable-nix", "build"]
+  let nixDisabledFlags = getFlags gc . commandParseArgs gc True $ ["--disable-nix", "build"]
+  let nixDefaultFlags = getFlags gc . commandParseArgs gc True $ ["build"]
+  True @=? isJust nixDefaultFlags
+  True @=? isJust nixEnabledFlags
+  True @=? isJust nixDisabledFlags
+  Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
+  Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
+  Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
+  where
+    fromFlag :: Flag Bool -> Maybe Bool
+    fromFlag (Flag x) = Just x
+    fromFlag NoFlag = Nothing
+    getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
+    getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
+    getFlags _ _ = Nothing
