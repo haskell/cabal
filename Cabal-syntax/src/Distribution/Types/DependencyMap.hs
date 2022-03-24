@@ -19,7 +19,7 @@ import qualified Data.Map.Lazy as Map
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
 newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName (VersionRange, NonEmptySet LibraryName) }
-  deriving (Show, Read)
+  deriving (Show, Read, Eq)
 
 instance Monoid DependencyMap where
     mempty = DependencyMap Map.empty
