@@ -113,4 +113,5 @@ executable setup
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
   setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.* || ==3.2.* || ==3.4.* || ==3.6.*,
+                 Cabal-syntax == 3.6.*,
                  base, filepath, directory
