@@ -150,8 +150,9 @@ tests config =
 testNixFlags :: Assertion
 testNixFlags = do
   let argsFn = commandOptions . globalCommand $ []
-  let defaultFlags = commandDefaultFlags . globalCommand $ []
   let args = argsFn ShowArgs
+
+  let defaultFlags = commandDefaultFlags . globalCommand $ []
   let mNixFlag = find (\(OptionField name _) -> name == "nix") args
   True @=? isJust mNixFlag -- Found the nix flag (--enable-nix, --disable-nix)
   let nixFlags = optionDescr . fromJust $ mNixFlag
@@ -165,6 +166,9 @@ testNixFlags = do
     findNixFlags _ _ [] = Nothing
     findNixFlags gf b [opt@(BoolOpt _ _ _ _ fn)]
       | fn gf == Just b = Just opt
+      | otherwise = Nothing
+    findNixFlags gf b [opt@(ChoiceOpt [(_, _, _, fn)])]
+      | fn gf == b = Just opt
       | otherwise = Nothing
     findNixFlags gf b (opt@(BoolOpt _ _ _ _ fn):xs)
       | fn gf == Just b = Just opt
