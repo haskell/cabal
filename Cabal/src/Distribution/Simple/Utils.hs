@@ -29,6 +29,7 @@ module Distribution.Simple.Utils (
         -- * logging and errors
         dieNoVerbosity,
         die', dieWithLocation',
+        dieAll,
         dieNoWrap,
         topHandler, topHandlerWith,
         warn,
@@ -214,6 +215,7 @@ import Data.Typeable
     ( cast )
 import qualified Data.ByteString.Lazy as BS
 
+import Control.Monad (forM_)
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
     , doesDirectoryExist, doesFileExist, removeFile
@@ -338,6 +340,17 @@ die' verbosity msg = withFrozenCallStack $ do
           =<< pure . wrapTextVerbosity verbosity
           =<< pure . addErrorPrefix
           =<< prefixWithProgName msg
+
+-- | Properly die with a given stderr msg, an optional stdout msg and a specific error code.
+dieAll :: Verbosity -> String -> Maybe String -> Int -> IO a
+dieAll verbosity stderrMsg stdoutMsg exitCode = withFrozenCallStack $ do
+     void $ hPutStrLn stderr
+          =<< annotateErrorString verbosity
+          =<< pure . wrapTextVerbosity verbosity
+          =<< pure . addErrorPrefix
+          =<< prefixWithProgName stderrMsg
+     forM_ stdoutMsg $ hPutStrLn stdout
+     exitWith (ExitFailure exitCode)
 
 dieNoWrap :: Verbosity -> String -> IO a
 dieNoWrap verbosity msg = withFrozenCallStack $ do
