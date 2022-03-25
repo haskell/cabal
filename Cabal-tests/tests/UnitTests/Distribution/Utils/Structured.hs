@@ -27,9 +27,15 @@ tests = testGroup "Distribution.Utils.Structured"
     -- The difference is in encoding of newtypes
 #if MIN_VERSION_base(4,7,0)
     , testCase "GenericPackageDescription" $
+<<<<<<< HEAD
       md5Check (Proxy :: Proxy GenericPackageDescription) 0x9b7d0415b1d2522d72ac9e9739c97574
     , testCase "LocalBuildInfo" $
       md5Check (Proxy :: Proxy LocalBuildInfo) 0x0ca1dc5da4c4695a9da40e080bf4f536
+=======
+      md5Check (Proxy :: Proxy GenericPackageDescription) 0x3713da01e295903b046123a7cba0fb14
+    , testCase "LocalBuildInfo" $
+      md5Check (Proxy :: Proxy LocalBuildInfo) 0xd4d0449f6db57c79b68b6e412b5f4f55
+>>>>>>> 1b7faea9d (Add support for the 64-bit S390X architecture)
 #endif
     ]
 
