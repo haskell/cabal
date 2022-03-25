@@ -1,0 +1,26 @@
+cabal-version: 3.4
+name:          issue
+version:       7776
+build-type:    Simple
+synopsis:      duplicate-module check
+category:      Test
+description:
+    With duplicate modules guarded by exclusive conditions, it should be buildable but should show a warning.
+    It *could* be smart enough to don't show the warning but we have to teach it about
+license:       BSD-3-Clause
+license-file:  LICENSE
+maintainer:    Cabal Contributors
+
+-- Example taken from ghc-source-gen
+library
+    exposed-modules:  Foo
+    if impl(ghc<8.10)
+        other-modules:
+            GHC.Hs.Type
+        hs-source-dirs:
+            compat
+    if impl(ghc>=8.10) && impl(ghc<9.0)
+        other-modules:
+            GHC.Hs.Type
+        hs-source-dirs:
+            compat-8.10

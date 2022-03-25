@@ -1,0 +1,27 @@
+cabal-version: 3.4
+name:          issue
+version:       7776
+build-type:    Simple
+synopsis:      duplicate-module check
+category:      Test
+description:   With duplicate modules, even with overlapping conditions, it should be buildable but should show a warning.
+license:       BSD-3-Clause
+license-file:  LICENSE
+maintainer:    Cabal Contributors
+
+-- Example taken from hashable-1.3.0
+library
+    exposed-modules:  Foo
+    -- the base lower bound makes the package not buildable with ghc < 6.8
+    -- but cabal is not smart enough to know it :-P
+    build-depends: base >= 4.5 && < 4.15
+
+benchmark benchmarks
+    main-is: Benchmarks.hs
+    other-modules:
+        Data.Hashable.RandomSource
+    type: exitcode-stdio-1.0
+    if impl(ghc >= 6.8)
+        Ghc-options: -fwarn-tabs
+    else
+        other-modules: Data.Hashable.RandomSource

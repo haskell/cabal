@@ -357,10 +357,14 @@ globalCommand commands = CommandUI {
          globalHttpTransport (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
 
-      ,option [] ["nix"]
-         "Nix integration: run commands through nix-shell if a 'shell.nix' file exists"
-         globalNix (\v flags -> flags { globalNix = v })
-         (boolOpt [] [])
+      ,multiOption "nix"
+        globalNix (\v flags -> flags { globalNix = v })
+        [
+          noArg (Flag True) [] ["enable-nix"] 
+          "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",
+          noArg (Flag False) [] ["disable-nix"] 
+          "Disable Nix integration"
+        ]
 
       ,option [] ["store-dir", "storedir"]
          "The location of the build store"

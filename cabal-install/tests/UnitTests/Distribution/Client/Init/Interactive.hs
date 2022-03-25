@@ -72,7 +72,7 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               , dependencies = Flag []
               }
 
-        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["3", "quxTest/Main.hs"]) of
+        case (_runPrompt $ createProject silent pkgIx srcDb dummyFlags') (fromList ["n", "3", "quxTest/Main.hs"]) of
           Right (ProjectSettings opts desc (Just lib) (Just exe) (Just test), _) -> do
             _optOverwrite  opts @?= False
             _optMinimal    opts @?= False
@@ -130,6 +130,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "3"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -232,6 +234,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [  "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -319,6 +323,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [  "4"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -393,6 +399,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "3"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -481,6 +489,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -554,6 +564,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "1"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
@@ -633,6 +645,8 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
         let inputs = fromList
               -- package type
               [ "2"
+              -- overwrite
+              , "n"
               -- package dir
               , "test-package"
               -- package description
