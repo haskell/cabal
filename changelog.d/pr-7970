@@ -1,0 +1,9 @@
+synopsis: Avoid malformed range requests
+packages: cabal-install
+prs: #7970
+issues: #5952
+description: {
+
+- Don't send malformed range requests. Should make fetching from head.hackage and other "unstable" overlays more reliable.
+
+}
