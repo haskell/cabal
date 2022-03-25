@@ -26,7 +26,7 @@ import Distribution.Types.PackageId      (PackageId)
 --
 -- The package management layer does however deal with installed packages, as
 -- whole packages not just as libraries. So we do still need a type for
--- installed package ids. At the moment however we track instaled packages via
+-- installed package ids. At the moment however we track installed packages via
 -- their primary library, which is a unit id. In future this may change
 -- slightly and we may distinguish these two types and have an explicit
 -- conversion when we register units with the compiler.

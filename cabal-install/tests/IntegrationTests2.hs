@@ -50,7 +50,9 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
+import Distribution.Client.Setup (globalCommand)
 import Distribution.Simple.Compiler
+import Distribution.Simple.Command
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
@@ -72,6 +74,9 @@ import Test.Tasty.Options
 import Data.Tagged (Tagged(..))
 
 import qualified Data.ByteString as BS
+import Distribution.Client.GlobalFlags (GlobalFlags, globalNix)
+import Distribution.Simple.Flag (Flag (Flag, NoFlag))
+import Data.Maybe (fromJust)
 
 #if !MIN_VERSION_directory(1,2,7)
 removePathForcibly :: FilePath -> IO ()
@@ -136,9 +141,15 @@ tests config =
 
   , testGroup "Regression tests" $
     [ testCase "issue #3324" (testRegressionIssue3324 config)
+    , testCase "program options scope all" (testProgramOptionsAll config)
+    , testCase "program options scope local" (testProgramOptionsLocal config)
+    , testCase "program options scope specific" (testProgramOptionsSpecific config)
+    ]
+  , testGroup "Flag tests" $
+    [
+      testCase "Test Nix Flag" testNixFlags
     ]
   ]
-
 
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
@@ -1541,6 +1552,96 @@ testRegressionIssue3324 config = when (buildOS /= Windows) $ do
   where
     testdir = "regression/3324"
 
+-- | Test global program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsAll :: ProjectConfig -> Assertion
+testProgramOptionsAll config0 = do
+    -- P is a tarball package, Q is a local dir package that depends on it.
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into global config
+    config = config0 {
+      projectConfigAllPackages = (projectConfigAllPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test local program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsLocal :: ProjectConfig -> Assertion
+testProgramOptionsLocal config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let localPackages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Just [ghcFlag])
+                (getProgArgs localPackages "q")
+    assertEqual "p"
+                Nothing
+                (getProgArgs localPackages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into local config
+    config = config0 {
+      projectConfigLocalPackages = (projectConfigLocalPackages config0) {
+        packageConfigProgramArgs = programArgs
+      }
+    }
+
+-- | Test package specific program options are propagated correctly
+-- from ProjectConfig to ElaboratedInstallPlan
+testProgramOptionsSpecific :: ProjectConfig -> Assertion
+testProgramOptionsSpecific config0 = do
+    (_, elaboratedPlan, _) <- planProject testdir config
+    let packages = filterConfiguredPackages $ InstallPlan.toList elaboratedPlan
+
+    assertEqual "q"
+                (Nothing)
+                (getProgArgs packages "q")
+    assertEqual "p"
+                (Just [ghcFlag])
+                (getProgArgs packages "p")
+  where
+    testdir = "regression/program-options"
+    programArgs = MapMappend (Map.fromList [("ghc", [ghcFlag])])
+    ghcFlag = "-fno-full-laziness"
+
+    -- Insert flag into package "p" config
+    config = config0 {
+        projectConfigSpecificPackage = MapMappend (Map.fromList [(mkPackageName "p", configArgs)])
+    }
+    configArgs = mempty {
+        packageConfigProgramArgs = programArgs
+    }
+
+filterConfiguredPackages :: [ElaboratedPlanPackage] -> [ElaboratedConfiguredPackage]
+filterConfiguredPackages [] = []
+filterConfiguredPackages (InstallPlan.PreExisting _    : pkgs) = filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Installed   elab : pkgs) = elab : filterConfiguredPackages pkgs
+filterConfiguredPackages (InstallPlan.Configured  elab : pkgs) = elab : filterConfiguredPackages pkgs
+
+getProgArgs :: [ElaboratedConfiguredPackage] -> String -> Maybe [String]
+getProgArgs [] _ = Nothing
+getProgArgs (elab : pkgs) name
+    | pkgName (elabPkgSourceId elab) == mkPackageName name
+        = Map.lookup "ghc" (elabProgramArgs elab)
+    | otherwise
+        = getProgArgs pkgs name
 
 ---------------------------------
 -- Test utils to plan and build
@@ -1838,3 +1939,25 @@ tryFewTimes action = go (3 :: Int) where
         hPutStrLn stderr $ "Trying " ++ show n ++ " after " ++ show e
         threadDelay 10000
         go (n - 1)
+
+testNixFlags :: Assertion
+testNixFlags = do
+  let gc = globalCommand []
+  -- changing from the v1 to v2 build command does not change whether the "--enable-nix" flag
+  -- sets the globalNix param of the GlobalFlags type to True even though the v2 command doesn't use it
+  let nixEnabledFlags = getFlags gc . commandParseArgs gc True $ ["--enable-nix", "build"]
+  let nixDisabledFlags = getFlags gc . commandParseArgs gc True $ ["--disable-nix", "build"]
+  let nixDefaultFlags = getFlags gc . commandParseArgs gc True $ ["build"]
+  True @=? isJust nixDefaultFlags
+  True @=? isJust nixEnabledFlags
+  True @=? isJust nixDisabledFlags
+  Just True @=? (fromFlag . globalNix . fromJust $ nixEnabledFlags)
+  Just False @=? (fromFlag . globalNix . fromJust $ nixDisabledFlags)
+  Nothing @=? (fromFlag . globalNix . fromJust $ nixDefaultFlags)
+  where
+    fromFlag :: Flag Bool -> Maybe Bool
+    fromFlag (Flag x) = Just x
+    fromFlag NoFlag = Nothing
+    getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
+    getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
+    getFlags _ _ = Nothing

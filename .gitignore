@@ -65,6 +65,10 @@ progress.txt
 # test files
 register.sh
 
+# windows test artifacts
+cabal-testsuite/**/*.exe
+cabal-testsuite/**/*.bat
+
 # python artifacts from documentation builds
 *.pyc
 .python-sphinx-virtualenv/

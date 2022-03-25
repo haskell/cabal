@@ -98,7 +98,6 @@ library
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.Orphans
         Distribution.Client.Compat.Prelude
-        Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
         Distribution.Client.Config
         Distribution.Client.Configure
@@ -166,6 +165,7 @@ library
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
+        Distribution.Client.Signal
         Distribution.Client.SolverInstallPlan
         Distribution.Client.SourceFiles
         Distribution.Client.SrcDist
@@ -206,11 +206,10 @@ library
         bytestring >= 0.10.6.0 && < 0.12,
         containers >= 0.5.6.2  && < 0.7,
         cryptohash-sha256 >= 0.11 && < 0.12,
-        deepseq    >= 1.4.1.1  && < 1.5,
         directory  >= 1.2.2.0  && < 1.4,
         echo       >= 0.1.3    && < 0.2,
         edit-distance >= 0.2.2 && < 0.3,
-        exceptions,
+        exceptions >= 0.10.4   && < 0.11,
         filepath   >= 1.4.0.0  && < 1.5,
         hashable   >= 1.0      && < 1.4,
         HTTP       >= 4000.1.5 && < 4000.4,
@@ -222,13 +221,13 @@ library
         stm        >= 2.0      && < 2.6,
         tar        >= 0.5.0.3  && < 0.6,
         time       >= 1.5.0.1  && < 1.11,
-        transformers >= 0.4.2.0 && < 0.6,
         zlib       >= 0.5.3    && < 0.7,
         hackage-security >= 0.6.2.0 && < 0.7,
         text       >= 1.2.3    && < 1.3,
         parsec     >= 3.1.13.0 && < 3.2,
         regex-base  >= 0.94.0.0 && <0.95,
-        regex-posix >= 0.96.0.0 && <0.97
+        regex-posix >= 0.96.0.0 && <0.97,
+        safe-exceptions >= 0.1.7.0 && < 0.2
 
     if flag(native-dns)
       if os(windows)
@@ -265,7 +264,7 @@ executable cabal
 
 -- Small, fast running tests.
 --
-Test-Suite unit-tests
+test-suite unit-tests
     import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
     default-language: Haskell2010
     ghc-options: -rtsopts -threaded
@@ -277,10 +276,12 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.ArbitraryInstances
       UnitTests.Distribution.Client.BuildReport
       UnitTests.Distribution.Client.Configure
-      UnitTests.Distribution.Client.Targets
+      UnitTests.Distribution.Client.FetchUtils
       UnitTests.Distribution.Client.Get
       UnitTests.Distribution.Client.Glob
       UnitTests.Distribution.Client.GZipUtils
+      UnitTests.Distribution.Client.IndexUtils
+      UnitTests.Distribution.Client.IndexUtils.Timestamp
       UnitTests.Distribution.Client.Init
       UnitTests.Distribution.Client.Init.Golden
       UnitTests.Distribution.Client.Init.Interactive
@@ -288,16 +289,15 @@ Test-Suite unit-tests
       UnitTests.Distribution.Client.Init.Simple
       UnitTests.Distribution.Client.Init.Utils
       UnitTests.Distribution.Client.Init.FileCreators
-      UnitTests.Distribution.Client.Store
-      UnitTests.Distribution.Client.Tar
-      UnitTests.Distribution.Client.TreeDiffInstances
-      UnitTests.Distribution.Client.UserConfig
+      UnitTests.Distribution.Client.InstallPlan
+      UnitTests.Distribution.Client.JobControl
       UnitTests.Distribution.Client.ProjectConfig
       UnitTests.Distribution.Client.ProjectPlanning
-      UnitTests.Distribution.Client.JobControl
-      UnitTests.Distribution.Client.IndexUtils
-      UnitTests.Distribution.Client.IndexUtils.Timestamp
-      UnitTests.Distribution.Client.InstallPlan
+      UnitTests.Distribution.Client.Store
+      UnitTests.Distribution.Client.Tar
+      UnitTests.Distribution.Client.Targets
+      UnitTests.Distribution.Client.TreeDiffInstances
+      UnitTests.Distribution.Client.UserConfig
       UnitTests.Distribution.Solver.Modular.Builder
       UnitTests.Distribution.Solver.Modular.RetryLog
       UnitTests.Distribution.Solver.Modular.Solver
@@ -332,15 +332,17 @@ Test-Suite unit-tests
 
 
 -- Tests to run with a limited stack and heap size
---
-Test-Suite memory-usage-tests
+-- The test suite name must be keep short cause a longer one
+-- could make the build generating paths which exceeds the windows
+-- max path limit (still a problem for some ghc versions)
+test-suite mem-use-tests
   import: warnings, base-dep, cabal-dep, cabal-syntax-dep, cabal-install-solver-dep
   type: exitcode-stdio-1.0
   main-is: MemoryUsageTests.hs
   hs-source-dirs: tests
   default-language: Haskell2010
 
-  ghc-options: -threaded -rtsopts "-with-rtsopts=-M8M -K1K"
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-M16M -K1K"
 
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
@@ -400,7 +402,6 @@ test-suite long-tests
         Cabal-described,
         cabal-install,
         containers,
-        deepseq >= 1.2,
         directory,
         filepath,
         hashable,
@@ -409,6 +410,7 @@ test-suite long-tests
         random,
         tagged,
         tasty >= 1.2.3 && <1.5,
+        tasty-expected-failure,
         tasty-hunit >= 0.10,
         tasty-quickcheck,
         QuickCheck >= 2.14 && <2.15,

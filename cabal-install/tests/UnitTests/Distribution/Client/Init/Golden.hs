@@ -348,20 +348,20 @@ pkgArgs = fromList
     ]
 
 testProjArgs :: String -> NonEmpty String
-testProjArgs comments = fromList ["4", "foo-package"]
+testProjArgs comments = fromList ["4", "n", "foo-package"]
   <> pkgArgs
   <> fromList (NEL.drop 1 testArgs)
   <> fromList [comments]
 
 libProjArgs :: String -> NonEmpty String
-libProjArgs comments = fromList ["1", "foo-package"]
+libProjArgs comments = fromList ["1", "n", "foo-package"]
   <> pkgArgs
   <> libArgs
   <> testArgs
   <> fromList [comments]
 
 fullProjArgs :: String -> NonEmpty String
-fullProjArgs comments = fromList ["3", "foo-package"]
+fullProjArgs comments = fromList ["3", "n", "foo-package"]
   <> pkgArgs
   <> libArgs
   <> exeArgs

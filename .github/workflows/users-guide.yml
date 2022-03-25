@@ -2,6 +2,11 @@
 
 name: Users guide
 
+# See: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency.
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -37,10 +42,6 @@ defaults:
 
 jobs:
   build:
-    if: |
-      !contains(github.event.head_commit.message, '[skip ci]')
-      && !contains(github.event.head_commit.message, '[ci skip]')
-
     runs-on: ubuntu-latest
     strategy:
       matrix:

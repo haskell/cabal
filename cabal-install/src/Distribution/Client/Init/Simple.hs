@@ -98,7 +98,7 @@ genSimplePkgDesc flags = mkPkgDesc <$> currentDirPkgName
       (fromFlagOrDefault defaultCabalVersion (cabalVersion flags))
       pkgName
       (fromFlagOrDefault defaultVersion (version flags))
-      (fromFlagOrDefault defaultLicense (license flags))
+      (fromFlagOrDefault (defaultLicense $ getCabalVersionNoPrompt flags) (license flags))
       (fromFlagOrDefault "" (author flags))
       (fromFlagOrDefault "" (email flags))
       (fromFlagOrDefault "" (homepage flags))

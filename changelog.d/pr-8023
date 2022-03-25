@@ -1,0 +1,11 @@
+synopsis: Flatten duplicate warnings about experimental features
+packages: Cabal
+prs: #8023
+issues:
+description: {
+
+- Make builds that use experimental Cabal language features less noisy. At -v1
+  (normal) we show just first instance of use of experimental cabal language
+features, along with count of further occurences in the same file.
+
+}

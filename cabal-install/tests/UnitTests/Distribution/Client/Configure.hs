@@ -6,6 +6,7 @@ import Distribution.Client.CmdConfigure
 import Test.Tasty
 import Test.Tasty.HUnit
 import Control.Monad
+import qualified Data.Map as Map
 import System.Directory
 import System.FilePath
 import Distribution.Verbosity
@@ -94,6 +95,27 @@ configureTests = testGroup "Configure tests"
 
         doesFileExist backup >>=
           assertBool ("No file found, expected: " ++ backup)
+
+    , testCase "Local program options" $ do
+        let ghcFlags = ["-fno-full-laziness"]
+            flags = (defaultNixStyleFlags ())
+              { configFlags = mempty
+                  { configVerbosity = Flag silent
+                  , configProgramArgs = [("ghc", ghcFlags)]
+                  }
+              , projectFlags = mempty
+                  { flagProjectFileName = Flag projectFile }
+              }
+        (_, ProjectConfig {..}) <- configureAction' flags [] defaultGlobalFlags
+
+
+        assertEqual "global"
+                    Nothing
+                    (Map.lookup "ghc" (getMapMappend (packageConfigProgramArgs projectConfigAllPackages)))
+
+        assertEqual "local"
+                    (Just ghcFlags)
+                    (Map.lookup "ghc" (getMapMappend (packageConfigProgramArgs projectConfigLocalPackages)))
     ]
 
 projectFile :: FilePath

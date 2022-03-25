@@ -334,7 +334,7 @@ rebuildProjectConfig verbosity
           -- have to create the cache directory before configuring the compiler
           (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst $ PD.ignoreConditions projectConfigSkeleton)
           let projectConfig = instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty projectConfigSkeleton
-          localPackages <- phaseReadLocalPackages projectConfig
+          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
     info verbosity
@@ -532,7 +532,48 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler = configureCompiler verbosity distDirLayout
+    phaseConfigureCompiler ProjectConfig {
+                             projectConfigShared = ProjectConfigShared {
+                               projectConfigHcFlavor,
+                               projectConfigHcPath,
+                               projectConfigHcPkg
+                             },
+                             projectConfigLocalPackages = PackageConfig {
+                               packageConfigProgramPaths,
+                               packageConfigProgramPathExtra
+                             }
+                           } = do
+        progsearchpath <- liftIO $ getSystemSearchPath
+        rerunIfChanged verbosity fileMonitorCompiler
+                       (hcFlavor, hcPath, hcPkg, progsearchpath,
+                        packageConfigProgramPaths,
+                        packageConfigProgramPathExtra) $ do
+
+          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+          result@(_, _, progdb') <- liftIO $
+            Cabal.configCompilerEx
+              hcFlavor hcPath hcPkg
+              progdb verbosity
+
+        -- Note that we added the user-supplied program locations and args
+        -- for /all/ programs, not just those for the compiler prog and
+        -- compiler-related utils. In principle we don't know which programs
+        -- the compiler will configure (and it does vary between compilers).
+        -- We do know however that the compiler will only configure the
+        -- programs it cares about, and those are the ones we monitor here.
+          monitorFiles (programsMonitorFiles progdb')
+
+          return result
+      where
+        hcFlavor = flagToMaybe projectConfigHcFlavor
+        hcPath   = flagToMaybe projectConfigHcPath
+        hcPkg    = flagToMaybe projectConfigHcPkg
+        progdb   =
+            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          . modifyProgramSearchPath
+              (++ [ ProgramSearchPathDir dir
+                  | dir <- fromNubList packageConfigProgramPathExtra ])
+          $ defaultProgramDb
 
     -- Configuring other programs.
     --
@@ -1752,10 +1793,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               (packageHashInputs
                 elaboratedSharedConfig
                 elab)  -- recursive use of elab
-
-          | otherwise
-          = error $ "elaborateInstallPlan: non-inplace package "
-                 ++ " is missing a source hash: " ++ prettyShow pkgid
 
         -- Need to filter out internal dependencies, because they don't
         -- correspond to anything real anymore.
@@ -3514,7 +3551,6 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                               = Map.toList $
                                 Map.insertWith (++) "ghc" ["-hide-all-packages"]
                                                elabProgramArgs
-        | otherwise           = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- we use configProgramPaths instead
