@@ -722,6 +722,7 @@ platformDefines lbi =
       SH          -> []
       IA64        -> ["ia64"]
       S390        -> ["s390"]
+      S390X       -> ["s390x"]
       Alpha       -> ["alpha"]
       Hppa        -> ["hppa"]
       Rs6000      -> ["rs6000"]
