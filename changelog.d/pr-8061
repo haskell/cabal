@@ -1,0 +1,4 @@
+synopsis: Derive Eq for DependencyMap
+packages: Cabal-syntax
+prs: #8061
+issues: #7849
