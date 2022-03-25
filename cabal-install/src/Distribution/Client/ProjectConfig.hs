@@ -29,7 +29,6 @@ module Distribution.Client.ProjectConfig (
     readGlobalConfig,
     readProjectLocalExtraConfig,
     readProjectLocalFreezeConfig,
-    parseProjectConfig,
     reportParseResult,
     showProjectConfig,
     withProjectOrGlobalConfig,
