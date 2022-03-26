@@ -36,7 +36,8 @@ module Distribution.PackageDescription.Check (
 import Distribution.Compat.Prelude
 import Prelude ()
 
-import Data.List                                     (group)
+import Data.Either                                   (rights)
+import Data.List                                     ((\\), group)
 import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
@@ -59,7 +60,7 @@ import Distribution.Version
 import Distribution.Utils.Path
 import Language.Haskell.Extension
 import System.FilePath
-       (splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
+       (normalise, splitDirectories, splitExtension, splitPath, takeExtension, takeFileName, (<.>), (</>))
 
 import qualified Data.ByteString.Lazy      as BS
 import qualified Data.Map                  as Map
@@ -1752,11 +1753,13 @@ checkPackageContent ops pkg = do
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
   vcsLocation     <- checkMissingVcsInfo  ops pkg
+  unlistedFiles   <- checkDesirableExtraSrcFilesAreIncluded ops pkg
 
   return $ licenseErrors
         ++ catMaybes [cabalBomError, cabalNameError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
+        ++ unlistedFiles
 
 checkCabalFileBOM :: Monad m => CheckPackageContentOps m
                   -> m (Maybe PackageCheck)
@@ -1920,6 +1923,34 @@ repoTypeDirname GnuArch   = [".arch-params"]
 repoTypeDirname Bazaar    = [".bzr"]
 repoTypeDirname Monotone  = ["_MTN"]
 repoTypeDirname Pijul     = [".pijul"]
+
+checkDesirableExtraSrcFilesAreIncluded :: Monad m => CheckPackageContentOps m
+                                       -> PackageDescription
+                                       -> m [PackageCheck]
+checkDesirableExtraSrcFilesAreIncluded ops pkg = do
+  let dir = "."
+  rootContents <- getDirectoryContents ops dir
+  desirable <- filterM (doesFileExist ops)
+    [file | file <- rootContents, isDesirableExtraSrcFile file]
+
+  let included = map normalise $ extraSrcFiles pkg
+  let globs = rights $ map (parseFileGlob (specVersion pkg)) included
+  let unlisted = filter (\fp ->
+                          not $ any (\g -> isJust $ fileGlobMatches g fp) globs
+                        ) (desirable \\ included)
+
+  return [ PackageDistSuspiciousWarn $
+             "Please consider including " ++ f ++
+             " in the extra-source-files section of the .cabal file " ++
+             "if it contains useful information for users of the package."
+         | f <- unlisted ]
+
+isDesirableExtraSrcFile :: FilePath -> Bool
+isDesirableExtraSrcFile fp =
+  map toLower basename `elem` desirable
+    where
+      (basename, _ext) = splitExtension fp
+      desirable = ["readme", "changelog"]
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
