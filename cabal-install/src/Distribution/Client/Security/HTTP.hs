@@ -119,11 +119,16 @@ mkRangeHeader from to = HTTP.Header HTTP.HdrRange rangeHeader
     rangeHeader = "bytes=" ++ show from ++ "-" ++ show (to - 1)
 
 mkReqHeaders :: [HC.HttpRequestHeader] -> Maybe (Int, Int) -> [HTTP.Header]
-mkReqHeaders reqHeaders mRange = concat [
+mkReqHeaders reqHeaders mRange' = concat [
       tr [] reqHeaders
     , [mkRangeHeader fr to | Just (fr, to) <- [mRange]]
     ]
   where
+    -- guard against malformed range headers.
+    mRange = case mRange' of
+        Just (fr, to) | fr >= to -> Nothing
+        _ -> mRange'
+
     tr :: [(HTTP.HeaderName, [String])] -> [HC.HttpRequestHeader] -> [HTTP.Header]
     tr acc [] =
       concatMap finalize acc
