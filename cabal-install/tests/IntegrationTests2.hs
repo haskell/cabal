@@ -550,7 +550,7 @@ testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
     (_, _, _, localPackages, _) <- configureProject testdir config
     Left errs <- readTargetSelectors localPackages Nothing []
-    errs @?= [TargetSelectorNoTargetsInCwd]
+    errs @?= [TargetSelectorNoTargetsInCwd True]
     cleanProject testdir
   where
     testdir = "targets/complex"
