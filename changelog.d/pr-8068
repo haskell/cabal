@@ -1,0 +1,4 @@
+synopsis: Add check for readme,changelog not in extra-source-files
+packages: Cabal
+prs: #8068
+issues: #3964
