@@ -1,255 +1,278 @@
-GenericPackageDescription
-  {condBenchmarks = [],
-   condExecutables = [_×_
-                        (UnqualComponentName "flag-test-exe")
-                        CondNode
-                          {condTreeComponents = [],
-                           condTreeConstraints = [Dependency
-                                                    (PackageName "base")
-                                                    (IntersectVersionRanges
-                                                       (OrLaterVersion (mkVersion [4, 8]))
-                                                       (EarlierVersion (mkVersion [5])))
-                                                    mainLibSet],
-                           condTreeData = Executable
-                                            {buildInfo = BuildInfo
-                                                           {asmOptions = [],
-                                                            asmSources = [],
-                                                            autogenIncludes = [],
-                                                            autogenModules = [],
-                                                            buildToolDepends = [],
-                                                            buildTools = [],
-                                                            buildable = True,
-                                                            cSources = [],
-                                                            ccOptions = [],
-                                                            cmmOptions = [],
-                                                            cmmSources = [],
-                                                            cppOptions = [],
-                                                            customFieldsBI = [],
-                                                            cxxOptions = [],
-                                                            cxxSources = [],
-                                                            defaultExtensions = [],
-                                                            defaultLanguage = Just Haskell2010,
-                                                            extraBundledLibs = [],
-                                                            extraDynLibFlavours = [],
-                                                            extraFrameworkDirs = [],
-                                                            extraGHCiLibs = [],
-                                                            extraLibDirs = [],
-                                                            extraLibDirsStatic = [],
-                                                            extraLibFlavours = [],
-                                                            extraLibs = [],
-                                                            extraLibsStatic = [],
-                                                            frameworks = [],
-                                                            hsSourceDirs = [],
-                                                            hsc2hsOptions = [],
-                                                            includeDirs = [],
-                                                            includes = [],
-                                                            installIncludes = [],
-                                                            jsSources = [],
-                                                            ldOptions = [],
-                                                            mixins = [],
-                                                            oldExtensions = [],
-                                                            options = PerCompilerFlavor [] [],
-                                                            otherExtensions = [],
-                                                            otherLanguages = [],
-                                                            otherModules = [],
-                                                            pkgconfigDepends = [],
-                                                            profOptions = PerCompilerFlavor [] [],
-                                                            sharedOptions = PerCompilerFlavor [] [],
-                                                            staticOptions = PerCompilerFlavor [] [],
-                                                            targetBuildDepends = [Dependency
-                                                                                    (PackageName
-                                                                                       "base")
-                                                                                    (IntersectVersionRanges
-                                                                                       (OrLaterVersion
-                                                                                          (mkVersion
-                                                                                             [4,
-                                                                                              8]))
-                                                                                       (EarlierVersion
-                                                                                          (mkVersion
-                                                                                             [5])))
-                                                                                    mainLibSet],
-                                                            virtualModules = []},
-                                             exeName = UnqualComponentName "flag-test-exe",
-                                             exeScope = ExecutablePublic,
-                                             modulePath = "FirstMain.hs"}}],
-   condForeignLibs = [],
-   condLibrary = Nothing,
-   condSubLibraries = [],
-   condTestSuites = [_×_
-                       (UnqualComponentName "flag-cabal-test")
-                       CondNode
-                         {condTreeComponents = [CondBranch
-                                                  {condBranchCondition = `Var (OS Windows)`,
-                                                   condBranchIfFalse = Nothing,
-                                                   condBranchIfTrue = CondNode
-                                                                        {condTreeComponents = [],
-                                                                         condTreeConstraints = [],
-                                                                         condTreeData = TestSuite
-                                                                                          {testBuildInfo = BuildInfo
-                                                                                                             {asmOptions = [],
-                                                                                                              asmSources = [],
-                                                                                                              autogenIncludes = [],
-                                                                                                              autogenModules = [],
-                                                                                                              buildToolDepends = [],
-                                                                                                              buildTools = [],
-                                                                                                              buildable = True,
-                                                                                                              cSources = [],
-                                                                                                              ccOptions = [],
-                                                                                                              cmmOptions = [],
-                                                                                                              cmmSources = [],
-                                                                                                              cppOptions = [],
-                                                                                                              customFieldsBI = [],
-                                                                                                              cxxOptions = [],
-                                                                                                              cxxSources = [],
-                                                                                                              defaultExtensions = [],
-                                                                                                              defaultLanguage = Nothing,
-                                                                                                              extraBundledLibs = [],
-                                                                                                              extraDynLibFlavours = [],
-                                                                                                              extraFrameworkDirs = [],
-                                                                                                              extraGHCiLibs = [],
-                                                                                                              extraLibDirs = [],
-                                                                                                              extraLibDirsStatic = [],
-                                                                                                              extraLibFlavours = [],
-                                                                                                              extraLibs = [],
-                                                                                                              extraLibsStatic = [],
-                                                                                                              frameworks = [],
-                                                                                                              hsSourceDirs = [],
-                                                                                                              hsc2hsOptions = [],
-                                                                                                              includeDirs = [],
-                                                                                                              includes = [],
-                                                                                                              installIncludes = [],
-                                                                                                              jsSources = [],
-                                                                                                              ldOptions = [],
-                                                                                                              mixins = [],
-                                                                                                              oldExtensions = [],
-                                                                                                              options = PerCompilerFlavor
-                                                                                                                          []
-                                                                                                                          [],
-                                                                                                              otherExtensions = [],
-                                                                                                              otherLanguages = [],
-                                                                                                              otherModules = [],
-                                                                                                              pkgconfigDepends = [],
-                                                                                                              profOptions = PerCompilerFlavor
-                                                                                                                              []
-                                                                                                                              [],
-                                                                                                              sharedOptions = PerCompilerFlavor
-                                                                                                                                []
-                                                                                                                                [],
-                                                                                                              staticOptions = PerCompilerFlavor
-                                                                                                                                []
-                                                                                                                                [],
-                                                                                                              targetBuildDepends = [],
-                                                                                                              virtualModules = []},
-                                                                                           testInterface = TestSuiteUnsupported
-                                                                                                             (TestTypeUnknown
-                                                                                                                ""
-                                                                                                                (mkVersion
-                                                                                                                   [])),
-                                                                                           testName = UnqualComponentName
-                                                                                                        ""}}}],
-                          condTreeConstraints = [Dependency
-                                                   (PackageName "base")
-                                                   (IntersectVersionRanges
-                                                      (OrLaterVersion (mkVersion [4, 8]))
-                                                      (EarlierVersion (mkVersion [5])))
-                                                   mainLibSet],
-                          condTreeData = TestSuite
-                                           {testBuildInfo = BuildInfo
-                                                              {asmOptions = [],
-                                                               asmSources = [],
-                                                               autogenIncludes = [],
-                                                               autogenModules = [],
-                                                               buildToolDepends = [],
-                                                               buildTools = [],
-                                                               buildable = True,
-                                                               cSources = [],
-                                                               ccOptions = [],
-                                                               cmmOptions = [],
-                                                               cmmSources = [],
-                                                               cppOptions = [],
-                                                               customFieldsBI = [],
-                                                               cxxOptions = [],
-                                                               cxxSources = [],
-                                                               defaultExtensions = [],
-                                                               defaultLanguage = Just Haskell2010,
-                                                               extraBundledLibs = [],
-                                                               extraDynLibFlavours = [],
-                                                               extraFrameworkDirs = [],
-                                                               extraGHCiLibs = [],
-                                                               extraLibDirs = [],
-                                                               extraLibDirsStatic = [],
-                                                               extraLibFlavours = [],
-                                                               extraLibs = [],
-                                                               extraLibsStatic = [],
-                                                               frameworks = [],
-                                                               hsSourceDirs = [],
-                                                               hsc2hsOptions = [],
-                                                               includeDirs = [],
-                                                               includes = [],
-                                                               installIncludes = [],
-                                                               jsSources = [],
-                                                               ldOptions = [],
-                                                               mixins = [],
-                                                               oldExtensions = [],
-                                                               options = PerCompilerFlavor [] [],
-                                                               otherExtensions = [],
-                                                               otherLanguages = [],
-                                                               otherModules = [],
-                                                               pkgconfigDepends = [],
-                                                               profOptions = PerCompilerFlavor
-                                                                               [] [],
-                                                               sharedOptions = PerCompilerFlavor
-                                                                                 [] [],
-                                                               staticOptions = PerCompilerFlavor
-                                                                                 [] [],
-                                                               targetBuildDepends = [Dependency
-                                                                                       (PackageName
-                                                                                          "base")
-                                                                                       (IntersectVersionRanges
-                                                                                          (OrLaterVersion
-                                                                                             (mkVersion
-                                                                                                [4,
-                                                                                                 8]))
-                                                                                          (EarlierVersion
-                                                                                             (mkVersion
-                                                                                                [5])))
-                                                                                       mainLibSet],
-                                                               virtualModules = []},
-                                            testInterface = TestSuiteExeV10
-                                                              (mkVersion [1, 0]) "SecondMain.hs",
-                                            testName = UnqualComponentName ""}}],
-   genPackageFlags = [],
-   gpdScannedVersion = Nothing,
-   packageDescription = PackageDescription
-                          {author = "",
-                           benchmarks = [],
-                           bugReports = "",
-                           buildTypeRaw = Just Simple,
-                           category = "Test",
-                           copyright = "",
-                           customFieldsPD = [],
-                           dataDir = ".",
-                           dataFiles = [],
-                           description = "no type in all branches.",
-                           executables = [],
-                           extraDocFiles = [],
-                           extraSrcFiles = [],
-                           extraTmpFiles = [],
-                           foreignLibs = [],
-                           homepage = "",
-                           library = Nothing,
-                           licenseFiles = [],
-                           licenseRaw = Right BSD3,
-                           maintainer = "",
-                           package = PackageIdentifier
-                                       {pkgName = PackageName "issue",
-                                        pkgVersion = mkVersion [5055]},
-                           pkgUrl = "",
-                           setupBuildInfo = Nothing,
-                           sourceRepos = [],
-                           specVersion = CabalSpecV2_0,
-                           stability = "",
-                           subLibraries = [],
-                           synopsis = "no type in all branches",
-                           testSuites = [],
-                           testedWith = []}}
+GenericPackageDescription {
+  packageDescription =
+  PackageDescription {
+    specVersion = CabalSpecV2_0,
+    package = PackageIdentifier {
+      pkgName = PackageName "issue",
+      pkgVersion = mkVersion [5055]},
+    licenseRaw = Right BSD3,
+    licenseFiles = [],
+    copyright = "",
+    maintainer = "",
+    author = "",
+    stability = "",
+    testedWith = [],
+    homepage = "",
+    pkgUrl = "",
+    bugReports = "",
+    sourceRepos = [],
+    synopsis =
+    "no type in all branches",
+    description =
+    "no type in all branches.",
+    category = "Test",
+    customFieldsPD = [],
+    buildTypeRaw = Just Simple,
+    setupBuildInfo = Nothing,
+    library = Nothing,
+    subLibraries = [],
+    executables = [],
+    foreignLibs = [],
+    testSuites = [],
+    benchmarks = [],
+    dataFiles = [],
+    dataDir = ".",
+    extraSrcFiles = [],
+    extraTmpFiles = [],
+    extraDocFiles = []},
+  gpdScannedVersion = Nothing,
+  genPackageFlags = [],
+  condLibrary = Nothing,
+  condSubLibraries = [],
+  condForeignLibs = [],
+  condExecutables = [
+    _×_
+      (UnqualComponentName
+        "flag-test-exe")
+      CondNode {
+        condTreeData = Executable {
+          exeName = UnqualComponentName
+            "flag-test-exe",
+          modulePath = "FirstMain.hs",
+          exeScope = ExecutablePublic,
+          buildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [],
+            otherModules = [],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Just
+              Haskell2010,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              []
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [4, 8]))
+                  (EarlierVersion
+                    (mkVersion [5])))
+                mainLibSet],
+            mixins = []}},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 8]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet],
+        condTreeComponents = []}],
+  condTestSuites = [
+    _×_
+      (UnqualComponentName
+        "flag-cabal-test")
+      CondNode {
+        condTreeData = TestSuite {
+          testName = UnqualComponentName
+            "",
+          testInterface = TestSuiteExeV10
+            (mkVersion [1, 0])
+            "SecondMain.hs",
+          testBuildInfo = BuildInfo {
+            buildable = True,
+            buildTools = [],
+            buildToolDepends = [],
+            cppOptions = [],
+            asmOptions = [],
+            cmmOptions = [],
+            ccOptions = [],
+            cxxOptions = [],
+            ldOptions = [],
+            hsc2hsOptions = [],
+            pkgconfigDepends = [],
+            frameworks = [],
+            extraFrameworkDirs = [],
+            asmSources = [],
+            cmmSources = [],
+            cSources = [],
+            cxxSources = [],
+            jsSources = [],
+            hsSourceDirs = [],
+            otherModules = [],
+            virtualModules = [],
+            autogenModules = [],
+            defaultLanguage = Just
+              Haskell2010,
+            otherLanguages = [],
+            defaultExtensions = [],
+            otherExtensions = [],
+            oldExtensions = [],
+            extraLibs = [],
+            extraLibsStatic = [],
+            extraGHCiLibs = [],
+            extraBundledLibs = [],
+            extraLibFlavours = [],
+            extraDynLibFlavours = [],
+            extraLibDirs = [],
+            extraLibDirsStatic = [],
+            includeDirs = [],
+            includes = [],
+            autogenIncludes = [],
+            installIncludes = [],
+            options = PerCompilerFlavor
+              []
+              [],
+            profOptions = PerCompilerFlavor
+              []
+              [],
+            sharedOptions =
+            PerCompilerFlavor [] [],
+            staticOptions =
+            PerCompilerFlavor [] [],
+            customFieldsBI = [],
+            targetBuildDepends = [
+              Dependency
+                (PackageName "base")
+                (IntersectVersionRanges
+                  (OrLaterVersion
+                    (mkVersion [4, 8]))
+                  (EarlierVersion
+                    (mkVersion [5])))
+                mainLibSet],
+            mixins = []},
+          testCodeGenerators = []},
+        condTreeConstraints = [
+          Dependency
+            (PackageName "base")
+            (IntersectVersionRanges
+              (OrLaterVersion
+                (mkVersion [4, 8]))
+              (EarlierVersion
+                (mkVersion [5])))
+            mainLibSet],
+        condTreeComponents = [
+          CondBranch {
+            condBranchCondition =
+            `Var (OS Windows)`,
+            condBranchIfTrue = CondNode {
+              condTreeData = TestSuite {
+                testName = UnqualComponentName
+                  "",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
+                testBuildInfo = BuildInfo {
+                  buildable = True,
+                  buildTools = [],
+                  buildToolDepends = [],
+                  cppOptions = [],
+                  asmOptions = [],
+                  cmmOptions = [],
+                  ccOptions = [],
+                  cxxOptions = [],
+                  ldOptions = [],
+                  hsc2hsOptions = [],
+                  pkgconfigDepends = [],
+                  frameworks = [],
+                  extraFrameworkDirs = [],
+                  asmSources = [],
+                  cmmSources = [],
+                  cSources = [],
+                  cxxSources = [],
+                  jsSources = [],
+                  hsSourceDirs = [],
+                  otherModules = [],
+                  virtualModules = [],
+                  autogenModules = [],
+                  defaultLanguage = Nothing,
+                  otherLanguages = [],
+                  defaultExtensions = [],
+                  otherExtensions = [],
+                  oldExtensions = [],
+                  extraLibs = [],
+                  extraLibsStatic = [],
+                  extraGHCiLibs = [],
+                  extraBundledLibs = [],
+                  extraLibFlavours = [],
+                  extraDynLibFlavours = [],
+                  extraLibDirs = [],
+                  extraLibDirsStatic = [],
+                  includeDirs = [],
+                  includes = [],
+                  autogenIncludes = [],
+                  installIncludes = [],
+                  options = PerCompilerFlavor
+                    []
+                    [],
+                  profOptions = PerCompilerFlavor
+                    []
+                    [],
+                  sharedOptions =
+                  PerCompilerFlavor [] [],
+                  staticOptions =
+                  PerCompilerFlavor [] [],
+                  customFieldsBI = [],
+                  targetBuildDepends = [],
+                  mixins = []},
+                testCodeGenerators = []},
+              condTreeConstraints = [],
+              condTreeComponents = []},
+            condBranchIfFalse = Nothing}]}],
+  condBenchmarks = []}

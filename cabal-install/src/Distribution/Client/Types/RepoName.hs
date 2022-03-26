@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Client.Types.RepoName (
     RepoName (..),
-    unRepoName,
 ) where
 
 import Distribution.Client.Compat.Prelude
@@ -17,11 +16,8 @@ import qualified Text.PrettyPrint                as Disp
 --
 -- May be used as path segment.
 --
-newtype RepoName = RepoName String
+newtype RepoName = RepoName { unRepoName :: String }
   deriving (Show, Eq, Ord, Generic)
-
-unRepoName :: RepoName -> String
-unRepoName (RepoName n) = n
 
 instance Binary RepoName
 instance Structured RepoName

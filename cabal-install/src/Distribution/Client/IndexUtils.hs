@@ -247,7 +247,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
             " as explicitly requested (via command line / project configuration)"
           return idxState
         Nothing -> do
-          mb_idxState' <- readIndexTimestamp (RepoIndex repoCtxt r)
+          mb_idxState' <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
           case mb_idxState' of
             Nothing -> do
               info verbosity "Using most recent state (could not read timestamp file)"
@@ -365,7 +365,9 @@ readRepoIndex :: Verbosity -> RepoContext -> Repo -> RepoIndexState
 readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
     when (isRepoRemote repo) $ warnIfIndexIsOld =<< getIndexFileAge repo
-    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
+    -- note that if this step fails due to a bad repocache, the the procedure can still succeed by reading from the existing cache, which is updated regardless.
+    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo) `catchIO`
+       (\e -> warn verbosity $ "unable to update the repo index cache -- " ++ displayException e)
     readPackageIndexCacheFile verbosity mkAvailablePackage
                               (RepoIndex repoCtxt repo)
                               idxState
@@ -1054,7 +1056,7 @@ writeIndexTimestamp index st
 -- timestamp you would use to revert to this version
 currentIndexTimestamp :: Verbosity -> RepoContext -> Repo -> IO Timestamp
 currentIndexTimestamp verbosity repoCtxt r = do
-    mb_is <- readIndexTimestamp (RepoIndex repoCtxt r)
+    mb_is <- readIndexTimestamp verbosity (RepoIndex repoCtxt r)
     case mb_is of
       Just (IndexStateTime ts) -> return ts
       _ -> do
@@ -1062,13 +1064,15 @@ currentIndexTimestamp verbosity repoCtxt r = do
         return (isiHeadTime isi)
 
 -- | Read the 'IndexState' from the filesystem
-readIndexTimestamp :: Index -> IO (Maybe RepoIndexState)
-readIndexTimestamp index
+readIndexTimestamp :: Verbosity -> Index -> IO (Maybe RepoIndexState)
+readIndexTimestamp verbosity index
   = fmap simpleParsec (readFile (timestampFile index))
         `catchIO` \e ->
             if isDoesNotExistError e
                 then return Nothing
-                else ioError e
+                else do
+                   warn verbosity $ "Warning: could not read current index timestamp: " ++ displayException e
+                   return Nothing
 
 -- | Optimise sharing of equal values inside 'Cache'
 --

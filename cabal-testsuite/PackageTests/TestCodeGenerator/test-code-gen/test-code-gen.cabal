@@ -1,0 +1,15 @@
+cabal-version:      3.0
+name:               test-code-gen
+version:            0.1.0.0
+license:            BSD-3-Clause
+license-file:       LICENSE
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+
+executable test-code-gen
+    main-is:          Main.hs
+    build-depends:    base, filepath
+    hs-source-dirs:   app
+    default-language: Haskell2010
+

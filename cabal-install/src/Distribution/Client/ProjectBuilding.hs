@@ -919,8 +919,8 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
 -- | This is a bit of a hacky workaround. A number of packages ship
 -- pre-processed .hs files in a dist directory inside the tarball. We don't
 -- use the standard 'dist' location so unless we move this dist dir to the
--- right place then we'll miss the shipped pre-procssed files. This hacky
--- approach to shipped pre-procssed files ought to be replaced by a proper
+-- right place then we'll miss the shipped pre-processed files. This hacky
+-- approach to shipped pre-processed files ought to be replaced by a proper
 -- system, though we'll still need to keep this hack for older packages.
 --
 moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout

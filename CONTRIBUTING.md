@@ -8,9 +8,9 @@ The current recommended way of developing Cabal is to use the
 that you have a sufficiently recent cabal-install (see above),
 it is sufficient to run:
 
-~~~~
+```
 cabal v2-build cabal
-~~~~
+```
 
 To build a local, development copy of cabal-install.  The location
 of your build products will vary depending on which version of
@@ -20,11 +20,11 @@ to find the binary (or just run `find -type f -executable -name cabal`).
 
 Here are some other useful variations on the commands:
 
-~~~~
+```
 cabal v2-build Cabal # build library only
 cabal v2-build Cabal-tests:unit-tests # build Cabal's unit test suite
 cabal v2-build cabal-tests # etc...
-~~~~
+```
 
 Running tests
 -------------

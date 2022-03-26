@@ -13,8 +13,8 @@ import Test.Tasty.QuickCheck
 import Data.Monoid
 #endif
 
-tests :: TestTree
-tests = testGroup "Distribution.Solver.Types.OptionalStanza"
+tests :: [TestTree]
+tests =
     [ testProperty "fromList . toList = id" $ \xs ->
         optStanzaSetFromList (optStanzaSetToList xs) === xs
     , testProperty "member x (insert x xs) = True" $ \x xs ->

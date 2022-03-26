@@ -64,7 +64,6 @@ import Distribution.Types.Dependency as P
 import Distribution.Verbosity (silent)
 import Distribution.Version
 import qualified Distribution.Package as P
-import Distribution.SPDX.License (License)
 import Distribution.ModuleName
 import Distribution.CabalSpecVersion
 import Distribution.Client.Utils as P
@@ -73,9 +72,10 @@ import Language.Haskell.Extension ( Language(..), Extension )
 import qualified System.IO
 
 import qualified System.Directory as P
-import qualified System.Process as P
+import qualified System.Process as Process
 import qualified Distribution.Compat.Environment as P
 import System.FilePath
+import Distribution.FieldGrammar.Newtypes (SpecLicense)
 
 
 -- -------------------------------------------------------------------- --
@@ -96,7 +96,7 @@ data InitFlags =
     , packageName :: Flag P.PackageName
     , version :: Flag Version
     , cabalVersion :: Flag CabalSpecVersion
-    , license :: Flag License
+    , license :: Flag SpecLicense
     , author :: Flag String
     , email :: Flag String
     , homepage :: Flag String
@@ -139,7 +139,7 @@ data PkgDescription = PkgDescription
     { _pkgCabalVersion :: CabalSpecVersion
     , _pkgName :: P.PackageName
     , _pkgVersion :: Version
-    , _pkgLicense :: License
+    , _pkgLicense :: SpecLicense
     , _pkgAuthor :: String
     , _pkgEmail :: String
     , _pkgHomePage :: String
@@ -342,7 +342,7 @@ instance Interactive IO where
     doesDirectoryExist = P.doesDirectoryExist
     doesFileExist = P.doesFileExist
     canonicalizePathNoThrow = P.canonicalizePathNoThrow
-    readProcessWithExitCode = P.readProcessWithExitCode
+    readProcessWithExitCode = Process.readProcessWithExitCode
     getEnvironment = P.getEnvironment
     getCurrentYear = P.getCurrentYear
     listFilesInside = P.listFilesInside

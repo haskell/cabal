@@ -100,7 +100,7 @@ preferByKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
 preferByKeys p = sortByKeys $ flip (comparing p)
 
 -- | Will partition the list according to the predicate. If
--- there is any element that satisfies the precidate, then only
+-- there is any element that satisfies the predicate, then only
 -- the elements satisfying the predicate are returned.
 -- Otherwise, the rest is returned.
 --

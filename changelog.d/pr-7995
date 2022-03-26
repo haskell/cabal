@@ -1,0 +1,12 @@
+synopsis: Cleanup subprocess helpers, remove obsolete functions
+packages: Cabal
+prs: #7995
+
+description: {
+
+- Distribution.Compat.Process: Remove createProcess, runInteractiveProcess
+  and rawSystem.
+- Distribution.Simple.Utils: Remove printRawCommandAndArgs,
+  printRawCommandAndArgsAndEnv and createProcessWithEnv.
+
+}

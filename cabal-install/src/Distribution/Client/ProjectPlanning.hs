@@ -326,7 +326,7 @@ rebuildProjectConfig verbosity
       $ do
           liftIO $ info verbosity "Project settings changed, reconfiguring..."
           projectConfig <- phaseReadProjectConfig
-          localPackages <- phaseReadLocalPackages projectConfig
+          localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
 
     info verbosity
@@ -476,7 +476,6 @@ rebuildInstallPlan verbosity
                              },
                              projectConfigLocalPackages = PackageConfig {
                                packageConfigProgramPaths,
-                               packageConfigProgramArgs,
                                packageConfigProgramPathExtra
                              }
                            } = do
@@ -484,7 +483,6 @@ rebuildInstallPlan verbosity
         rerunIfChanged verbosity fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg, progsearchpath,
                         packageConfigProgramPaths,
-                        packageConfigProgramArgs,
                         packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
@@ -508,7 +506,6 @@ rebuildInstallPlan verbosity
         hcPkg    = flagToMaybe projectConfigHcPkg
         progdb   =
             userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
           . modifyProgramSearchPath
               (++ [ ProgramSearchPathDir dir
                   | dir <- fromNubList packageConfigProgramPathExtra ])
@@ -1733,10 +1730,6 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
               (packageHashInputs
                 elaboratedSharedConfig
                 elab)  -- recursive use of elab
-
-          | otherwise
-          = error $ "elaborateInstallPlan: non-inplace package "
-                 ++ " is missing a source hash: " ++ prettyShow pkgid
 
         -- Need to filter out internal dependencies, because they don't
         -- correspond to anything real anymore.
@@ -3495,7 +3488,6 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                               = Map.toList $
                                 Map.insertWith (++) "ghc" ["-hide-all-packages"]
                                                elabProgramArgs
-        | otherwise           = Map.toList elabProgramArgs
     configProgramPathExtra    = toNubList elabProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- we use configProgramPaths instead

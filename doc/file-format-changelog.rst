@@ -22,6 +22,17 @@ relative to the respective preceding *published* version.
 ``cabal-version: 3.x``
 ----------------------
 
+* Added field ``code-generators`` to :pkg-section:`test-suite` stanzas. This
+  enumerates executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
+  preprocessors. These executables are invoked with a target dir for
+  output, a sequence of all source directories with source files of
+  local lib components that the given test stanza dependens on, and
+  following a double dash, all options cabal would pass to ghc for a
+  build. They are expected to output a newline-seperated list of
+  generated modules which have been written to the targetdir. This can
+  be used for driving doctests and other discover-style tests generated
+  from source code.
+
 * Added fields :pkg-field:`extra-libraries-static` and
   :pkg-field:`extra-lib-dirs-static` to allow Haskell libraries to remember
   linker flags needed for fully static linking of system libraries into

@@ -566,7 +566,7 @@ instance FromBuildInfo ForeignLib where fromBuildInfo' n bi = set L.foreignLibNa
 instance FromBuildInfo Executable where fromBuildInfo' n bi = set L.exeName        n $ set L.buildInfo bi emptyExecutable
 
 instance FromBuildInfo TestSuiteStanza where
-    fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi
+    fromBuildInfo' _ bi = TestSuiteStanza Nothing Nothing Nothing bi []
 
 instance FromBuildInfo BenchmarkStanza where
     fromBuildInfo' _ bi = BenchmarkStanza Nothing Nothing Nothing bi
@@ -671,7 +671,7 @@ onAllBranches p = go mempty
 -- Post parsing checks
 -------------------------------------------------------------------------------
 
--- | Check that we 
+-- | Check that we
 --
 -- * don't use undefined flags (very bad)
 -- * define flags which are unused (just bad)
