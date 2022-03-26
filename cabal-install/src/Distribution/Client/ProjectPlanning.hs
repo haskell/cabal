@@ -405,7 +405,6 @@ configureCompiler verbosity
                              },
                              projectConfigLocalPackages = PackageConfig {
                                packageConfigProgramPaths,
-                               packageConfigProgramArgs,
                                packageConfigProgramPathExtra
                              }
                            } = do
@@ -415,7 +414,6 @@ configureCompiler verbosity
         rerunIfChanged verbosity fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg, progsearchpath,
                         packageConfigProgramPaths,
-                        packageConfigProgramArgs,
                         packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
@@ -439,7 +437,6 @@ configureCompiler verbosity
         hcPkg    = flagToMaybe projectConfigHcPkg
         progdb   =
             userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
-          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
           . modifyProgramSearchPath
               (++ [ ProgramSearchPathDir dir
                   | dir <- fromNubList packageConfigProgramPathExtra ])
