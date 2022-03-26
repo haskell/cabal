@@ -19,7 +19,7 @@ relative to the respective preceding *published* version.
     versions of the ``Cabal`` library denote unreleased development
     branches which have no stability guarantee.
 
-``cabal-version: 3.x``
+``cabal-version: 3.8``
 ----------------------
 
 * Added field ``code-generators`` to :pkg-section:`test-suite` stanzas. This
@@ -44,6 +44,11 @@ relative to the respective preceding *published* version.
   :pkg-field:`extra-libraries`.
   When :pkg-field:`extra-lib-dirs-static` is not given, it defaults to
   :pkg-field:`extra-lib-dirs`.
+
+* Wildcard matching has been slightly expanded. Matches are now
+  allowed of the form ``foo/**/literalFile``. Prior, double-star
+  wildcards required the trailing filename itself be a wildcard.
+
 
 ``cabal-version: 3.6``
 ----------------------

@@ -96,7 +96,8 @@ explainGlobSyntaxError filepath NoExtensionOnStar =
   ++ "'. If a wildcard '*' is used it must be with an file extension."
 explainGlobSyntaxError filepath LiteralFileNameGlobStar =
      "invalid file glob '" ++ filepath
-  ++ "'. If a wildcard '**' is used as a parent directory, the"
+  ++ "'. Prior to 'cabal-version: 3.8'"
+  ++ " if a wildcard '**' is used as a parent directory, the"
   ++ " file's base name must be a wildcard '*'."
 explainGlobSyntaxError _ EmptyGlob =
      "invalid file glob. A glob cannot be the empty string."
