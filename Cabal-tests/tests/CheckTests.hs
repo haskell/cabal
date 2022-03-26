@@ -50,11 +50,10 @@ checkTests = testGroup "regressions"
     , checkTest "issue-6288-e.cabal"
     , checkTest "issue-6288-f.cabal"
     , checkTest "denormalised-paths.cabal"
-    , regression7776 $ checkTest "issue-7776-a.cabal"
-    , regression7776 $ checkTest "issue-7776-b.cabal"
+    , checkTest "issue-7776-a.cabal"
+    , checkTest "issue-7776-b.cabal"
     , checkTest "issue-7776-c.cabal"
     ]
-    where regression7776 = expectFailBecause "Regression described in #7776, will be fixed by #7966"
 
 checkTest :: FilePath -> TestTree
 checkTest fp = cabalGoldenTest fp correct $ do
