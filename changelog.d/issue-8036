@@ -1,0 +1,4 @@
+synopsis: Make enable/disable nix flags easier to read
+packages: cabal-install
+issues: #8036
+prs: #8054

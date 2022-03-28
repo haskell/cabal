@@ -467,8 +467,9 @@ resolveTargetSelectors :: KnownTargets
 resolveTargetSelectors (KnownTargets{knownPackagesAll = []}) [] _ =
     ([TargetSelectorNoTargetsInProject], [])
 
-resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] _ =
-    ([TargetSelectorNoTargetsInCwd], [])
+-- if the component kind filter is just exes, we don't want to suggest "all" as a target.
+resolveTargetSelectors (KnownTargets{knownPackagesPrimary = []}) [] ckf =
+    ([TargetSelectorNoTargetsInCwd (ckf /= Just ExeKind) ], [])
 
 resolveTargetSelectors (KnownTargets{knownPackagesPrimary}) [] _ =
     ([], [TargetPackage TargetImplicitCwd pkgids Nothing])
@@ -593,7 +594,8 @@ data TargetSelectorProblem
    | TargetSelectorUnrecognised String
      -- ^ Syntax error when trying to parse a target string.
    | TargetSelectorNoCurrentPackage TargetString
-   | TargetSelectorNoTargetsInCwd
+   | TargetSelectorNoTargetsInCwd Bool
+     -- ^ bool that flags when it is acceptable to suggest "all" as a target
    | TargetSelectorNoTargetsInProject
    | TargetSelectorNoScript TargetString
   deriving (Show, Eq)
@@ -794,13 +796,21 @@ reportTargetSelectorProblems verbosity problems = do
         --TODO: report a different error if there is a .cabal file but it's
         -- not a member of the project
 
-    case [ () | TargetSelectorNoTargetsInCwd <- problems ] of
+    case [ () | TargetSelectorNoTargetsInCwd True <- problems ] of
       []  -> return ()
       _:_ ->
         die' verbosity $
             "No targets given and there is no package in the current "
          ++ "directory. Use the target 'all' for all packages in the "
          ++ "project or specify packages or components by name or location. "
+         ++ "See 'cabal build --help' for more details on target options."
+
+    case [ () | TargetSelectorNoTargetsInCwd False <- problems ] of
+      []  -> return ()
+      _:_ ->
+        die' verbosity $
+            "No targets given and there is no package in the current "
+         ++ "directory. Specify packages or components by name or location. "
          ++ "See 'cabal build --help' for more details on target options."
 
     case [ () | TargetSelectorNoTargetsInProject <- problems ] of
@@ -1777,16 +1787,16 @@ getKnownTargets dirActions@DirActions{..} pkgs = do
     mPkgDir :: KnownPackage -> Maybe FilePath
     mPkgDir KnownPackage { pinfoDirectory = Just (dir,_) } = Just dir
     mPkgDir _ = Nothing
-    
+
     selectPrimaryPackage :: FilePath
                          -> [KnownPackage]
                          -> m ([KnownPackage], [KnownPackage])
-    selectPrimaryPackage _ [] = return ([] , []) 
+    selectPrimaryPackage _ [] = return ([] , [])
     selectPrimaryPackage cwd (pkg : packages) = do
       (ppinfo, opinfo) <- selectPrimaryPackage cwd packages
       isPkgDirCwd <- maybe (pure False) (compareFilePath dirActions cwd) (mPkgDir pkg)
       return (if isPkgDirCwd then (pkg : ppinfo, opinfo) else (ppinfo, pkg : opinfo))
-       
+
     allComponentsIn ps =
       [ c | KnownPackage{pinfoComponents} <- ps, c <- pinfoComponents ]
 

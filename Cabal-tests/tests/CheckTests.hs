@@ -3,6 +3,7 @@ module Main
     ) where
 
 import Test.Tasty
+import Test.Tasty.ExpectedFailure
 import Test.Tasty.Golden.Advanced (goldenTest)
 
 import Data.Algorithm.Diff                    (PolyDiff (..), getGroupedDiff)
@@ -51,6 +52,9 @@ checkTests = testGroup "regressions"
     , checkTest "issue-6288-e.cabal"
     , checkTest "issue-6288-f.cabal"
     , checkTest "denormalised-paths.cabal"
+    , checkTest "issue-7776-a.cabal"
+    , checkTest "issue-7776-b.cabal"
+    , checkTest "issue-7776-c.cabal"
     ]
 
 checkTest :: FilePath -> TestTree

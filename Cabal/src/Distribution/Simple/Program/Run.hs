@@ -124,12 +124,10 @@ runProgramInvocation verbosity
   } = do
     pathOverride <- getExtraPathEnv envOverrides extraPath
     menv <- getEffectiveEnvironment (envOverrides ++ pathOverride)
-    exitCode <- rawSystemIOWithEnv verbosity
+    maybeExit $ rawSystemIOWithEnv verbosity
                                    path args
                                    mcwd menv
                                    Nothing Nothing Nothing
-    when (exitCode /= ExitSuccess) $
-      exitWith exitCode
 
 runProgramInvocation verbosity
   ProgramInvocation {
