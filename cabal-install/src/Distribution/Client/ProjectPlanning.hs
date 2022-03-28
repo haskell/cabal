@@ -333,7 +333,7 @@ rebuildProjectConfig verbosity
           liftIO $ createDirectoryIfMissingVerbose verbosity True distProjectCacheDirectory
           projectConfigSkeleton <- phaseReadProjectConfig
           -- have to create the cache directory before configuring the compiler
-          (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout (fst $ PD.ignoreConditions projectConfigSkeleton)
+          (compiler, Platform arch os, _) <- configureCompiler verbosity distDirLayout ((fst $ PD.ignoreConditions projectConfigSkeleton) <> cliConfig)
           let projectConfig = instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty projectConfigSkeleton
           localPackages <- phaseReadLocalPackages (projectConfig <> cliConfig)
           return (projectConfig, localPackages)
