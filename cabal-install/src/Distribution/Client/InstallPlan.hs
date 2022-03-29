@@ -708,7 +708,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     -- The failed set is upwards closed, i.e. equal to its own rev dep closure
     assert (failedSet == reverseClosure failedSet) $
 
-    -- All immediate reverse deps of packges that are currently processing
+    -- All immediate reverse deps of packages that are currently processing
     -- are not currently being processed (ie not in the processing set).
     assert (and [ rdeppkgid `Set.notMember` processingSet
                 | pkgid     <- Set.toList processingSet

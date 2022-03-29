@@ -1086,7 +1086,7 @@ hashConsCache cache0
     -- If/when we redo the binary serialisation via e.g. CBOR and we
     -- are able to use incremental decoding, we may want to move the
     -- hash-consing into the incremental deserialisation, or
-    -- alterantively even do something like
+    -- alternatively even do something like
     -- http://cbor.schmorp.de/value-sharing
     --
     go _ _ [] = []

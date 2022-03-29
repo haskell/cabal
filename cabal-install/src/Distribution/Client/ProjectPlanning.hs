@@ -1405,7 +1405,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             -- invocation of the same `./configure` script.
             -- See https://github.com/haskell/cabal/issues/4548
             --
-            -- Moreoever, at this point in time, only non-Custom setup scripts
+            -- Moreover, at this point in time, only non-Custom setup scripts
             -- are supported.  Implementing per-component builds with
             -- Custom would require us to create a new 'ElabSetup'
             -- type, and teach all of the code paths how to handle it.
@@ -3483,7 +3483,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
           -- So for now, let's pass the rather harmless and idempotent
           -- `-hide-all-packages` flag to all invocations (which has
           -- the benefit that every GHC invocation starts with a
-          -- conistently well-defined clean slate) until we find a
+          -- consistently well-defined clean slate) until we find a
           -- better way.
                               = Map.toList $
                                 Map.insertWith (++) "ghc" ["-hide-all-packages"]

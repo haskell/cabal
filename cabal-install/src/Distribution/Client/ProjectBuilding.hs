@@ -599,7 +599,7 @@ rebuildTargets verbosity
     createDirectoryIfMissingVerbose verbosity True distTempDirectory
     traverse_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
-    -- Before traversing the install plan, pre-emptively find all packages that
+    -- Before traversing the install plan, preemptively find all packages that
     -- will need to be downloaded and start downloading them.
     asyncDownloadPackages verbosity withRepoCtx
                           installPlan pkgsBuildStatus $ \downloadMap ->
