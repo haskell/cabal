@@ -1193,7 +1193,7 @@ checkCabalVersion pkg =
 
   -- check use of build-tool-depends
   , checkVersion CabalSpecV2_0
-    (not (null (buildToolDepends pkg))) $
+    (not (null (buildToolDepends $ allBuildInfo pkg))) $
       PackageBuildWarning $
         "To use the 'build-tool-depends' field the package needs to specify "
         ++ "at least 'cabal-version: >= 2.0'"
