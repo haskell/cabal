@@ -116,7 +116,7 @@ import Network.URI (URI (..), parseURI)
 import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
 
 import Distribution.Client.HttpUtils
-import System.FilePath ((</>), isPathSeparator)
+import System.FilePath ((</>), isPathSeparator, makeValid)
 import System.Directory (createDirectoryIfMissing)
 
 
@@ -168,15 +168,15 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (s
                 rest <- go [] xs
                 pure . fmap mconcat . sequence $ [fs, res, rest]
          (ParseUtils.Section l "if" p xs') -> do
-                           subpcs <- go [] xs'
-                           let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
-                           (elseClauses, rest) <- parseElseClauses xs
-                           let condNode =  (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
-                                  -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
-                                  adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")") <*>
-                                  subpcs <*>
-                                  elseClauses
-                           pure . fmap mconcat . sequence $ [fs, condNode, rest]
+                subpcs <- go [] xs'
+                let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
+                (elseClauses, rest) <- parseElseClauses xs
+                let condNode =  (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                      -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
+                      adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")") <*>
+                      subpcs <*>
+                      elseClauses
+                pure . fmap mconcat . sequence $ [fs, condNode, rest]
          _ -> go (x:acc) xs
     go acc [] = pure . fmap singletonProjectConfigSkeleton . fieldsToConfig $ reverse acc
 
@@ -211,7 +211,7 @@ parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (s
     fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
     fetchImportConfig pci = case parseURI pci of
          Just uri -> do
-            let fp = cacheDir </> map (\x -> if isPathSeparator x then 'X' else x) (show uri) -- TODO can we do better?
+            let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
             createDirectoryIfMissing True cacheDir
             _ <- downloadURI httpTransport verbosity uri fp
             BS.readFile fp

@@ -625,12 +625,12 @@ readGlobalConfig verbosity configFileFlag = do
     monitorFiles [monitorFileHashed configFile]
     return (convertLegacyGlobalConfig config)
 
-reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult a -> IO a
+reportParseResult :: Verbosity -> String -> FilePath -> OldParser.ParseResult ProjectConfigSkeleton -> IO ProjectConfigSkeleton
 reportParseResult verbosity _filetype filename (OldParser.ParseOk warnings x) = do
-    unless (null warnings) $
-      let msg = unlines (map (OldParser.showPWarning filename) warnings)
+   unless (null warnings) $
+      let msg = unlines (map (OldParser.showPWarning (intercalate ", " $ filename : projectSkeletonImports x)) warnings)
        in warn verbosity msg
-    return x
+   return x
 reportParseResult verbosity filetype filename (OldParser.ParseFailed err) =
     let (line, msg) = OldParser.locatedErrorMsg err
      in die' verbosity $ "Error parsing " ++ filetype ++ " " ++ filename
