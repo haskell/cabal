@@ -35,6 +35,32 @@ options):
 Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
 directories when there is none in the current directory.
 
+Conditionals and imports
+------------------------
+
+As of ``cabal-install`` version 3.8, cabal supports conditional logic
+and imports in ``cabal.project`` files. :ref:`conditions` in cabal
+may case on operating system, architecture, and
+compiler (i.e. there is no support for a notion of custom flags in
+project files). Imports may specify local filepaths or remote urls,
+and may reference either cabal.project files or v1-style cabal.config
+freeze files. As a usage example:
+
+::
+
+    if(os(darwin))
+      optimization: False
+    elif(os(freebsd))
+      packages: freebsd/*.cabal
+    else
+      optimization: True
+
+    import: https://some.remote.source/subdir/cabal.config
+
+    import: relativepath/extra-project.project
+
+    import: /absolutepath/some-project.project
+
 Specifying the local packages
 -----------------------------
 

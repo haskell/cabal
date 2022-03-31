@@ -30,12 +30,17 @@ import Distribution.Verbosity
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
-         ( wrapText, notice )
+         ( wrapText, notice, die' )
 
 import Distribution.Client.DistDirLayout
          ( DistDirLayout(..) )
 import Distribution.Client.RebuildMonad (runRebuild)
 import Distribution.Client.ProjectConfig.Types
+import Distribution.Client.HttpUtils
+import Distribution.Utils.NubList
+         ( fromNubList )
+import Distribution.Types.CondTree
+         ( CondTree (..) )
 
 configureCommand :: CommandUI (NixStyleFlags ())
 configureCommand = CommandUI {
@@ -126,8 +131,12 @@ configureAction' flags@NixStyleFlags {..} _extraArgs globalFlags = do
          -- If the flag @configAppend@ is set to true, append and do not overwrite
         if exists && appends
           then do
-            conf <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
-              readProjectLocalExtraConfig v (distDirLayout baseCtx)
+            httpTransport <- configureTransport v
+                     (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
+                     (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+            (CondNode conf imps bs)  <- runRebuild (distProjectRootDirectory . distDirLayout $ baseCtx) $
+              readProjectLocalExtraConfig v httpTransport (distDirLayout baseCtx)
+            when (not (null imps && null bs)) $ die' v "local project file has conditional and/or import logic, unable to perform and automatic in-place update"
             return (baseCtx, conf <> cliConfig)
           else
             return (baseCtx, cliConfig)

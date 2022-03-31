@@ -1,8 +1,15 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric, ConstraintKinds, FlexibleInstances #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
 module Distribution.Client.ProjectConfig.Legacy (
+
+   -- Project config skeletons
+    ProjectConfigSkeleton,
+    parseProjectSkeleton,
+    instantiateProjectConfigSkeleton,
+    singletonProjectConfigSkeleton,
+    projectSkeletonImports,
 
     -- * Project config in terms of legacy types
     LegacyProjectConfig,
@@ -17,13 +24,12 @@ module Distribution.Client.ProjectConfig.Legacy (
 
     -- * Internals, just for tests
     parsePackageLocationTokenQ,
-    renderPackageLocationToken,
+    renderPackageLocationToken
   ) where
 
-import Prelude ()
 import Distribution.Client.Compat.Prelude
 
-import Distribution.Types.Flag (parsecFlagAssignment)
+import Distribution.Types.Flag (parsecFlagAssignment, FlagName)
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types.RepoName (RepoName (..), unRepoName)
@@ -38,18 +44,23 @@ import Distribution.Client.CmdInstall.ClientInstallFlags
          ( ClientInstallFlags(..), defaultClientInstallFlags
          , clientInstallOptions )
 
+import Distribution.Compat.Lens (view)
+
 import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.FieldGrammar
 import Distribution.Package
 import Distribution.Types.SourceRepo (RepoType)
+import Distribution.Types.CondTree
+         ( CondTree (..), CondBranch (..), mapTreeConds, traverseCondTreeC )
 import Distribution.PackageDescription
-         ( dispFlagAssignment )
+         ( dispFlagAssignment, Condition (..), ConfVar (..), FlagAssignment )
+import Distribution.PackageDescription.Configuration (simplifyWithSysParams)
 import Distribution.Simple.Compiler
-         ( OptimisationLevel(..), DebugInfoLevel(..) )
+         ( OptimisationLevel(..), DebugInfoLevel(..), CompilerInfo(..) )
 import Distribution.Simple.InstallDirs ( CopyDest (NoCopyDest) )
 import Distribution.Simple.Setup
-         ( Flag(Flag), toFlag, fromFlagOrDefault
+         ( Flag(..), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , TestFlags(..), testOptions', defaultTestFlags
@@ -85,7 +96,7 @@ import Distribution.Deprecated.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..)
          , commaNewLineListFieldParsec, newLineListField, parseTokenQ
          , parseHaskellString, showToken
-         , simpleFieldParsec
+         , simpleFieldParsec, parseFail
          )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
@@ -94,11 +105,130 @@ import Distribution.Simple.Command
 import Distribution.Types.PackageVersionConstraint
          ( PackageVersionConstraint )
 import Distribution.Parsec (ParsecParser, parsecToken)
+import Distribution.System (OS, Arch)
 
 import qualified Data.Map as Map
-import qualified Data.ByteString as BS
+import qualified Data.Set as Set
+import qualified Data.ByteString.Char8 as BS
 
-import Network.URI (URI (..))
+import Network.URI (URI (..), parseURI)
+
+import Distribution.Fields.ConfVar (parseConditionConfVarFromClause)
+
+import Distribution.Client.HttpUtils
+import System.FilePath ((</>), isPathSeparator, makeValid)
+import System.Directory (createDirectoryIfMissing)
+
+
+
+
+------------------------------------------------------------------
+-- Handle extended project config files with conditionals and imports.
+--
+
+-- | ProjectConfigSkeleton is a tree of conditional blocks and imports wrapping a config. It can be finalized by providing the conditional resolution info
+-- and then resolving and downloading the imports
+type ProjectConfigSkeleton = CondTree ConfVar [ProjectConfigImport] ProjectConfig
+type ProjectConfigImport = String
+
+
+singletonProjectConfigSkeleton :: ProjectConfig -> ProjectConfigSkeleton
+singletonProjectConfigSkeleton x = CondNode x mempty mempty
+
+instantiateProjectConfigSkeleton :: OS -> Arch -> CompilerInfo -> FlagAssignment -> ProjectConfigSkeleton -> ProjectConfig
+instantiateProjectConfigSkeleton os arch impl _flags skel = go $ mapTreeConds (fst . simplifyWithSysParams os arch impl) skel
+    where
+        go :: CondTree
+               FlagName
+               [ProjectConfigImport]
+               ProjectConfig
+             -> ProjectConfig
+        go (CondNode l _imps ts) =
+           let branches = concatMap processBranch ts
+           in l <> mconcat branches
+        processBranch (CondBranch cnd t mf) = case cnd of
+           (Lit True) ->  [go t]
+           (Lit False) -> maybe ([]) ((:[]) . go) mf
+           _ -> error $ "unable to process condition: " ++ show cnd -- TODO it would be nice if there were a pretty printer
+
+projectSkeletonImports :: ProjectConfigSkeleton -> [ProjectConfigImport]
+projectSkeletonImports = view traverseCondTreeC
+
+parseProjectSkeleton :: FilePath -> HttpTransport -> Verbosity -> [ProjectConfigImport] -> FilePath -> BS.ByteString -> IO (ParseResult ProjectConfigSkeleton)
+parseProjectSkeleton cacheDir httpTransport verbosity seenImports source bs = (sanityWalkPCS False =<<) <$> liftPR (go []) (ParseUtils.readFields bs)
+  where
+    go :: [ParseUtils.Field] -> [ParseUtils.Field] -> IO (ParseResult ProjectConfigSkeleton)
+    go acc (x:xs) = case x of
+         (ParseUtils.F l "import" importLoc) ->
+            if importLoc `elem` seenImports
+              then pure . parseFail $ ParseUtils.FromString ("cyclical import of " ++ importLoc) (Just l)
+              else do
+                let fs = fmap (\z -> CondNode z [importLoc] mempty) $ fieldsToConfig (reverse acc)
+                res <- parseProjectSkeleton cacheDir httpTransport verbosity (importLoc : seenImports) importLoc =<< fetchImportConfig importLoc
+                rest <- go [] xs
+                pure . fmap mconcat . sequence $ [fs, res, rest]
+         (ParseUtils.Section l "if" p xs') -> do
+                subpcs <- go [] xs'
+                let fs = fmap singletonProjectConfigSkeleton $ fieldsToConfig (reverse acc)
+                (elseClauses, rest) <- parseElseClauses xs
+                let condNode =  (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                      -- we rewrap as as a section so the readFields lexer of the conditional parser doesn't get confused
+                      adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "if(" <> p <> ")") <*>
+                      subpcs <*>
+                      elseClauses
+                pure . fmap mconcat . sequence $ [fs, condNode, rest]
+         _ -> go (x:acc) xs
+    go acc [] = pure . fmap singletonProjectConfigSkeleton . fieldsToConfig $ reverse acc
+
+    parseElseClauses :: [ParseUtils.Field] -> IO (ParseResult (Maybe ProjectConfigSkeleton), ParseResult ProjectConfigSkeleton)
+    parseElseClauses x = case x of
+         (ParseUtils.Section _l "else" _p xs':xs) -> do
+               subpcs <- go [] xs'
+               rest <- go [] xs
+               pure (Just <$> subpcs, rest)
+         (ParseUtils.Section l "elif" p xs':xs) -> do
+               subpcs <- go [] xs'
+               (elseClauses, rest) <- parseElseClauses xs
+               let condNode = (\c pcs e -> CondNode mempty mempty [CondBranch c pcs e]) <$>
+                                  adaptParseError l (parseConditionConfVarFromClause . BS.pack $ "else("<> p <> ")") <*>
+                                  subpcs <*>
+                                  elseClauses
+               pure (Just <$> condNode, rest)
+         _ -> (\r -> (pure Nothing,r)) <$> go [] x
+
+    fieldsToConfig xs = fmap (addProvenance . convertLegacyProjectConfig) $ parseLegacyProjectConfigFields source xs
+    addProvenance x = x {projectConfigProvenance = Set.singleton (Explicit source)}
+
+    adaptParseError _ (Right x) = pure x
+    adaptParseError l (Left e) = parseFail $ ParseUtils.FromString (show e) (Just l)
+
+    liftPR :: (a -> IO (ParseResult b)) -> ParseResult a -> IO (ParseResult b)
+    liftPR f (ParseOk ws x) = addWarnings <$> f x
+       where addWarnings (ParseOk ws' x') = ParseOk (ws' ++ ws) x'
+             addWarnings x' = x'
+    liftPR _ (ParseFailed e) = pure $ ParseFailed e
+
+    fetchImportConfig :: ProjectConfigImport -> IO BS.ByteString
+    fetchImportConfig pci = case parseURI pci of
+         Just uri -> do
+            let fp = cacheDir </> map (\x -> if isPathSeparator x then '_' else x) (makeValid $ show uri)
+            createDirectoryIfMissing True cacheDir
+            _ <- downloadURI httpTransport verbosity uri fp
+            BS.readFile fp
+         Nothing -> BS.readFile pci
+
+    modifiesCompiler :: ProjectConfig -> Bool
+    modifiesCompiler pc = isSet projectConfigHcFlavor || isSet projectConfigHcPath || isSet projectConfigHcPkg
+      where
+         isSet f = f (projectConfigShared pc) /= NoFlag
+
+    sanityWalkPCS :: Bool -> ProjectConfigSkeleton -> ParseResult ProjectConfigSkeleton
+    sanityWalkPCS underConditional t@(CondNode d _c comps)
+           | underConditional && modifiesCompiler d = parseFail $ ParseUtils.FromString "Cannot set compiler in a conditional clause of a cabal project file" Nothing
+           | otherwise = mapM_ sanityWalkBranch comps >> pure t
+
+    sanityWalkBranch:: CondBranch ConfVar [ProjectConfigImport] ProjectConfig -> ParseResult ()
+    sanityWalkBranch (CondBranch _c t f) = traverse (sanityWalkPCS True) f >> sanityWalkPCS True t >> pure ()
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -851,14 +981,17 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
 -- Parsing and showing the project config file
 --
 
-parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
-parseLegacyProjectConfig source =
-    parseConfig (legacyProjectConfigFieldDescrs constraintSrc)
+parseLegacyProjectConfigFields :: FilePath -> [ParseUtils.Field] -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfigFields source =
+    parseFieldsAndSections (legacyProjectConfigFieldDescrs constraintSrc)
                 legacyPackageConfigSectionDescrs
                 legacyPackageConfigFGSectionDescrs
                 mempty
   where
     constraintSrc = ConstraintSourceProjectConfig source
+
+parseLegacyProjectConfig :: FilePath -> BS.ByteString -> ParseResult LegacyProjectConfig
+parseLegacyProjectConfig source bs = parseLegacyProjectConfigFields source =<< ParseUtils.readFields bs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =

@@ -68,6 +68,13 @@ instance (Binary v, Binary c, Binary a) => Binary (CondTree v c a)
 instance (Structured v, Structured c, Structured a) => Structured (CondTree v c a)
 instance (NFData v, NFData c, NFData a) => NFData (CondTree v c a) where rnf = genericRnf
 
+instance (Semigroup a, Semigroup c) => Semigroup (CondTree v c a) where
+  (CondNode a c bs) <> (CondNode a' c' bs') = CondNode (a <> a') (c <> c') (bs <> bs')
+
+instance (Semigroup a, Semigroup c, Monoid a, Monoid c) => Monoid (CondTree v c a) where
+   mappend = (<>)
+   mempty = CondNode mempty mempty mempty
+
 -- | A 'CondBranch' represents a conditional branch, e.g., @if
 -- flag(foo)@ on some syntax @a@.  It also has an optional false
 -- branch.

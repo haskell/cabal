@@ -27,13 +27,21 @@ import Distribution.Client.DistDirLayout
     ( DistDirLayout(..) )
 import Distribution.Client.HashValue
     ( hashValue, showHashValue )
+import Distribution.Client.HttpUtils
+         ( HttpTransport, configureTransport )
 import Distribution.Client.NixStyleOptions
     ( NixStyleFlags (..) )
 import Distribution.Client.ProjectConfig
     ( ProjectConfig(..), ProjectConfigShared(..)
-    , parseProjectConfig, reportParseResult, withProjectOrGlobalConfig )
+    , reportParseResult, withProjectOrGlobalConfig
+    , projectConfigHttpTransport )
+import Distribution.Client.ProjectConfig.Legacy
+    ( ProjectConfigSkeleton
+    , parseProjectSkeleton, instantiateProjectConfigSkeleton )
 import Distribution.Client.ProjectFlags
     ( flagIgnoreProject )
+import Distribution.Client.RebuildMonad
+    ( runRebuild )
 import Distribution.Client.Setup
     ( ConfigFlags(..), GlobalFlags(..) )
 import Distribution.Client.TargetSelector
@@ -44,6 +52,8 @@ import Distribution.FieldGrammar
     ( parseFieldGrammar, takeFields )
 import Distribution.Fields
     ( ParseResult, parseFatalFailure, readFields )
+import Distribution.PackageDescription
+    ( ignoreConditions )
 import Distribution.PackageDescription.FieldGrammar
     ( executableFieldGrammar )
 import Distribution.PackageDescription.PrettyPrint
@@ -51,16 +61,20 @@ import Distribution.PackageDescription.PrettyPrint
 import Distribution.Parsec
     ( Position(..) )
 import Distribution.Simple.Flag
-    ( fromFlagOrDefault )
+    ( fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.PackageDescription
     ( parseString )
 import Distribution.Simple.Setup
     ( Flag(..) )
+import Distribution.Simple.Compiler
+    ( compilerInfo )
 import Distribution.Simple.Utils
     ( createDirectoryIfMissingVerbose, createTempDirectory, die', handleDoesNotExist, readUTF8File, warn, writeUTF8File )
 import qualified Distribution.SPDX.License as SPDX
 import Distribution.Solver.Types.SourcePackage as SP
     ( SourcePackage(..) )
+import Distribution.System
+    ( Platform(..) )
 import Distribution.Types.BuildInfo
     ( BuildInfo(..) )
 import Distribution.Types.CondTree
@@ -73,6 +87,10 @@ import Distribution.Types.PackageDescription
     ( PackageDescription(..), emptyPackageDescription )
 import Distribution.Types.PackageName.Magic
     ( fakePackageCabalFileName, fakePackageId )
+import Distribution.Utils.NubList
+    ( fromNubList )
+import Distribution.Client.ProjectPlanning
+    ( configureCompiler )
 import Distribution.Verbosity
     ( normal )
 import Language.Haskell.Extension
@@ -217,7 +235,17 @@ withContextAndSelectors noTargets kind flags@NixStyleFlags {..} targetStrings gl
 
         scriptContents <- BS.readFile script
         executable     <- readExecutableBlockFromScript verbosity scriptContents
-        projectCfg     <- readProjectBlockFromScript verbosity (takeFileName script) scriptContents
+
+
+        httpTransport <- configureTransport verbosity
+                     (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
+                     (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+
+        projectCfgSkeleton <- readProjectBlockFromScript verbosity httpTransport (distDirLayout ctx) (takeFileName script) scriptContents
+
+        (compiler, Platform arch os, _) <- runRebuild (distProjectRootDirectory . distDirLayout $ ctx) $ configureCompiler verbosity (distDirLayout ctx) ((fst $ ignoreConditions projectCfgSkeleton) <> projectConfig ctx)
+
+        let projectCfg = instantiateProjectConfigSkeleton os arch (compilerInfo compiler) mempty projectCfgSkeleton :: ProjectConfig
 
         let executable' = executable & L.buildInfo . L.defaultLanguage %~ maybe (Just Haskell2010) Just
             ctx'        = ctx & lProjectConfig %~ (<> projectCfg)
@@ -312,12 +340,12 @@ readExecutableBlockFromScript verbosity str = do
 -- * @-}@
 --
 -- Return the metadata.
-readProjectBlockFromScript :: Verbosity -> String -> BS.ByteString -> IO ProjectConfig
-readProjectBlockFromScript verbosity scriptName str = do
+readProjectBlockFromScript :: Verbosity -> HttpTransport -> DistDirLayout -> String -> BS.ByteString -> IO ProjectConfigSkeleton
+readProjectBlockFromScript verbosity httpTransport DistDirLayout{distDownloadSrcDirectory} scriptName str = do
     case extractScriptBlock "project" str of
         Left  _ -> return mempty
-        Right x -> reportParseResult verbosity "script" scriptName
-                 $ parseProjectConfig scriptName x
+        Right x ->    reportParseResult verbosity "script" scriptName
+                  =<< parseProjectSkeleton distDownloadSrcDirectory httpTransport verbosity [] scriptName x
 
 -- | Extract the first encountered script metadata block started end
 -- terminated by the tokens

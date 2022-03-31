@@ -16,6 +16,7 @@ import Prelude ()
 import Distribution.Client.DistDirLayout
 import Distribution.Client.ProjectConfig
 import Distribution.Client.Config (getCabalDir)
+import Distribution.Client.HttpUtils
 import Distribution.Client.TargetSelector hiding (DirActions(..))
 import qualified Distribution.Client.TargetSelector as TS (DirActions(..))
 import Distribution.Client.ProjectPlanning
@@ -1690,8 +1691,11 @@ configureProject testdir cliConfig = do
     -- ended in an exception (as we leave the files to help with debugging).
     cleanProject testdir
 
+    httpTransport <- configureTransport verbosity [] Nothing
+
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
+                           httpTransport
                            distDirLayout
                            cliConfig
 
