@@ -83,7 +83,7 @@ data OptHelp = OptHelp {
 -- second argument.
 usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
-          -> String                    -- nicely formatted decription of options
+          -> String                    -- nicely formatted description of options
 usageInfo header optDescr = unlines (header : table)
   where
     options = flip map optDescr $ \(Option sos los ad d) ->

@@ -151,8 +151,8 @@ buildOS = classifyOS Permissive System.Info.os
 -- ------------------------------------------------------------
 
 -- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc,
--- Arm, AArch64, Mips, SH, IA64, S39, Alpha, Hppa, Rs6000, M68k,
--- Vax, and JavaScript.
+-- Arm, AArch64, Mips, SH, IA64, S390, S390X, Alpha, Hppa, Rs6000,
+-- M68k, Vax, and JavaScript.
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
@@ -164,7 +164,7 @@ buildOS = classifyOS Permissive System.Info.os
 --
 data Arch = I386  | X86_64  | PPC  | PPC64 | Sparc
           | Arm   | AArch64 | Mips | SH
-          | IA64  | S390
+          | IA64  | S390    | S390X
           | Alpha | Hppa    | Rs6000
           | M68k  | Vax
           | JavaScript
@@ -178,7 +178,7 @@ instance NFData Arch where rnf = genericRnf
 knownArches :: [Arch]
 knownArches = [I386, X86_64, PPC, PPC64, Sparc
               ,Arm, AArch64, Mips, SH
-              ,IA64, S390
+              ,IA64, S390, S390X
               ,Alpha, Hppa, Rs6000
               ,M68k, Vax
               ,JavaScript]

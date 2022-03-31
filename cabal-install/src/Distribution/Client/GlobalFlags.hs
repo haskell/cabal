@@ -112,7 +112,7 @@ data RepoContext = RepoContext {
     --
     -- NOTE: It is important that we don't eagerly initialize the transport.
     -- Initializing the transport is not free, and especially in contexts where
-    -- we don't know a-priori whether or not we need the transport (for instance
+    -- we don't know a priori whether or not we need the transport (for instance
     -- when using cabal in "nix mode") incurring the overhead of transport
     -- initialization on _every_ invocation (eg @cabal build@) is undesirable.
   , repoContextGetTransport :: IO HttpTransport
