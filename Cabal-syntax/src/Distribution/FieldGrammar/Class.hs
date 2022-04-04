@@ -3,11 +3,7 @@
 {-# LANGUAGE FunctionalDependencies  #-}
 {-# LANGUAGE RankNTypes              #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE UndecidableSuperClasses #-}
-#else
-{-# LANGUAGE UndecidableInstances #-}
-#endif
 module Distribution.FieldGrammar.Class (
     FieldGrammar (..),
     uniqueField,

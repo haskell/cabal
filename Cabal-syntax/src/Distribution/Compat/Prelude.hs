@@ -6,12 +6,8 @@
 
 #ifdef MIN_VERSION_base
 #define MINVER_base_411 MIN_VERSION_base(4,11,0)
-#define MINVER_base_48 MIN_VERSION_base(4,8,0)
-#define MINVER_base_47 MIN_VERSION_base(4,7,0)
 #else
 #define MINVER_base_411 (__GLASGOW_HASKELL__ >= 804)
-#define MINVER_base_48 (__GLASGOW_HASKELL__ >= 710)
-#define MINVER_base_47 (__GLASGOW_HASKELL__ >= 708)
 #endif
 
 -- | This module does two things:
@@ -24,12 +20,6 @@ module Distribution.Compat.Prelude (
     --
     -- Prelude is re-exported, following is hidden:
     module BasePrelude,
-
-#if !MINVER_base_48
-    -- * base 4.8 shim
-    Applicative(..), (<$), (<$>),
-    Monoid(..),
-#endif
 
     -- * Common type-classes
     Semigroup (..),
@@ -106,9 +96,6 @@ module Distribution.Compat.Prelude (
     -- * Control.Exception
     catch, throwIO, evaluate,
     Exception (..), IOException, SomeException (..),
-#if !MINVER_base_48
-    displayException,
-#endif
     tryIO, catchIO, catchExit,
 
     -- * Control.DeepSeq
@@ -143,40 +130,39 @@ module Distribution.Compat.Prelude (
 
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-  ( mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
-  -- partial functions
-  , read
-  , foldr1, foldl1
+    ( mapM, mapM_, sequence, null, length, foldr, any, all, head, tail, last, init
+    -- partial functions
+    , read
+    , foldr1, foldl1
 #if MINVER_base_411
-  -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
-  -- Hide this so we instead rely on Distribution.Compat.Semigroup.
-  , Semigroup(..)
+    -- As of base 4.11.0.0 Prelude exports part of Semigroup(..).
+    -- Hide this so we instead rely on Distribution.Compat.Semigroup.
+    , Semigroup(..)
 #endif
-#if MINVER_base_48
-  , Word
-  -- We hide them, as we import only some members
-  , Traversable, traverse, sequenceA
-  , Foldable, foldMap
-#endif
-  )
+    , Word
+    -- We hide them, as we import only some members
+    , Traversable, traverse, sequenceA
+    , Foldable, foldMap
+    )
 
 -- AMP
-#if !MINVER_base_48
-import Control.Applicative           (Applicative (..), (<$), (<$>))
-import Data.Foldable                 (toList)
-import Distribution.Compat.Semigroup (Monoid (..))
-#else
-import Data.Foldable (Foldable (toList), length, null)
-#endif
-
-import Data.Foldable    (Foldable (foldMap, foldr), all, any, find, foldl', for_, traverse_)
+import Data.Foldable
+    ( Foldable(toList),
+      length,
+      null,
+      Foldable(foldMap, foldr),
+      all,
+      any,
+      find,
+      foldl',
+      for_,
+      traverse_ )
 import Data.Traversable (Traversable (sequenceA, traverse), for)
 
 import qualified Data.Foldable
 
 -- Extra exports
-import Control.Applicative           (Alternative (..))
-import Control.Applicative           (Const (..))
+import Control.Applicative           (Alternative (..), Const(..))
 import Control.Arrow                 (first)
 import Control.DeepSeq               (NFData (..), deepseq, force)
 import Control.Exception             (Exception (..), IOException, SomeException (..), catch, evaluate, throwIO)
@@ -215,21 +201,6 @@ import qualified Debug.Trace
 -- | New name for 'Text.PrettyPrint.<>'
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc
 (<<>>) = (Disp.<>)
-
-#if !MINVER_base_48
--- | Test whether the structure is empty. The default implementation is
--- optimized for structures that are similar to cons-lists, because there
--- is no general way to do better.
-null :: Foldable t => t a -> Bool
-null = foldr (\_ _ -> False) True
-
--- | Returns the size/length of a finite structure as an 'Int'.  The
--- default implementation is optimized for structures that are similar to
--- cons-lists, because there is no general way to do better.
-length :: Foldable t => t a -> Int
-length = foldl' (\c _ -> c+1) 0
-#endif
-
 
 -- | "GHC.Generics"-based 'rnf' implementation
 --

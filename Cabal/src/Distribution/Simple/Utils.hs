@@ -193,14 +193,8 @@ import Distribution.Compat.Stack
 import Distribution.Verbosity
 import Distribution.Types.PackageId
 
-#if __GLASGOW_HASKELL__ < 711
-#ifdef VERSION_base
-#define BOOTSTRAPPED_CABAL 1
-#endif
-#else
 #ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
-#endif
 #endif
 
 #ifdef BOOTSTRAPPED_CABAL
@@ -442,12 +436,7 @@ topHandlerWith cont prog = do
 
 -- | BC wrapper around 'Exception.displayException'.
 displaySomeException :: Exception.Exception e => e -> String
-displaySomeException se =
-#if __GLASGOW_HASKELL__ < 710
-    show se
-#else
-    Exception.displayException se
-#endif
+displaySomeException se = Exception.displayException se
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
