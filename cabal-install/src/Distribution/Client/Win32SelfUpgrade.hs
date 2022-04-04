@@ -140,7 +140,7 @@ deleteOldExeFile verbosity oldPID tmpPath = do
      ++ show oldPID ++ " at path " ++ tmpPath
 
   log $ "getting handle of parent process " ++ show oldPID
-  oldPHANDLE <- Win32.openProcess Win32.SYNCHRONIZE False (fromIntegral oldPID)
+  oldPHANDLE <- Win32.openProcess Win32.sYNCHRONIZE False (fromIntegral oldPID)
 
   log $ "synchronising with parent"
   event <- openEvent syncEventName
