@@ -1,15 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 
-#ifndef MIN_VERSION_binary
-#define MIN_VERSION_binary(x, y, z) 0
-#endif
-
 module Distribution.Compat.Binary
        ( decodeOrFailIO
        , decodeFileOrFail'
-       , Binary(..)
-       , decode, encode, encodeFile
+       , module Data.Binary
        ) where
 
 import Control.Exception (ErrorCall (..), catch, evaluate)
