@@ -77,7 +77,7 @@ which version of the cabal specification to use, our package's name
     Generating Main.hs...
     Generating proglet.cabal...
 
-Use the ``ls`` command to see the creaed files:
+Use the ``ls`` command to see the created files:
 
 ::
 
