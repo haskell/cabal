@@ -185,7 +185,8 @@ bootstrap-json-%: phony
 	cabal v2-build --project=cabal.project.release --with-compiler=ghc-$* --dry-run cabal-install:exe:cabal
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
-	cabal v2-run -v0 --builddir=dist-newstyle-bootstrap --project=cabal.project.bootstrap cabal-bootstrap-gen -- bootstrap/linux-$*.plan.json  | python3 -m json.tool | tee bootstrap/linux-$*.json
+	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
+		| python3 -m json.tool | tee linux-$*.json
 
 bootstrap-jsons: bootstrap-json-8.6.5 bootstrap-json-8.8.4 bootstrap-json-8.10.7
 
