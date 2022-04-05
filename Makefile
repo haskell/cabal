@@ -186,7 +186,7 @@ bootstrap-json-%: phony
 	cp dist-newstyle/cache/plan.json bootstrap/linux-$*.plan.json
 	@# -v0 to avoid build output on stdout
 	cd bootstrap && cabal v2-run -v0 cabal-bootstrap-gen -- linux-$*.plan.json \
-		| python3 -m json.tool | tee linux-$*.json
+		| python3 -m json.tool > linux-$*.json
 
 bootstrap-jsons: bootstrap-json-8.6.5 bootstrap-json-8.8.4 bootstrap-json-8.10.7
 
