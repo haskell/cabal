@@ -104,6 +104,32 @@ for each package using :cfg-field:`profiling-detail`::
 Alternately, you can call ``cabal v2-build --enable-profiling`` to
 temporarily build with profiling.
 
+How can I have a reproducible set of versions for my dependencies?
+------------------------------------------------------------------
+
+You can use ``cabal freeze`` to save the solver results to a file.
+
+Since Cabal 3.8, an alternative approach is to use a :ref:`remote project
+configuration file<conditionals and imports>`: to specify a set of versions for
+packages.
+
+One provider of such package sets is Stackage_, and its package sets are called
+snapshots. The Stackage snapshots contain a set of packages from Hackage that
+have all been verified to build with a given version of GHC.
+
+For example, the snapshot named lts-19.2 contains versioned packages which all
+compile on GHC 9.0.2. You can conveniently review the `versions of packages in
+lts-19.2`_. Using the following ``cabal.project`` file, Cabal will use the
+versions of packages that the this snapshot specifies:
+
+::
+
+    packages: .
+    import https://www.stackage.org/lts-19.2/cabal.config
+
+.. _Stackage: https://stackage.org/
+.. _versions of packages in lts-19.2: https://www.stackage.org/lts-19.2
+
 How it works
 ============
 
