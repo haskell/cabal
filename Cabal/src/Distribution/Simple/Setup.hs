@@ -383,8 +383,8 @@ defaultConfigFlags progDb = emptyConfigFlags {
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
 #if defined(mingw32_HOST_OS)
-    -- See #1589.
-    configGHCiLib      = Flag True,
+    -- See #8062 and GHC #21019.
+    configGHCiLib      = Flag False,
 #else
     configGHCiLib      = NoFlag,
 #endif
