@@ -214,8 +214,14 @@ instance A.ToJSON SrcType where
 -- Utilities
 -------------------------------------------------------------------------------
 
+-- | Log some debug information to stderr.
+--
+-- Disabled by default to keep the output tidy, replace by
+-- the version with 'hPutStrLn' when debugging.
+--
 info :: String -> IO ()
-info msg = hPutStrLn stderr $ "INFO: " ++ msg
+info _msg = return ()
+-- info msg = hPutStrLn stderr $ "INFO: " ++ msg
 
 die :: String -> IO a
 die msg = do
