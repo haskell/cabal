@@ -11,25 +11,13 @@ import Prelude ()
 import qualified Prelude
 import Distribution.Compat.Prelude
 
-#ifndef mingw32_HOST_OS
-#if __GLASGOW_HASKELL__ < 708
-import Foreign.C.Error (throwErrnoIf_)
-#endif
-#endif
-
 import qualified System.Environment as System
-import System.Environment (lookupEnv)
-#if __GLASGOW_HASKELL__ >= 708
-import System.Environment (unsetEnv)
-#endif
+import System.Environment (lookupEnv, unsetEnv)
 
 import Distribution.Compat.Stack
 
 #ifdef mingw32_HOST_OS
 import Foreign.C
-#if __GLASGOW_HASKELL__ < 708
-import Foreign.Ptr (nullPtr)
-#endif
 import GHC.Windows
 #else
 import Foreign.C.Types
@@ -95,40 +83,3 @@ setEnv_ key value = do
 foreign import ccall unsafe "setenv"
    c_setenv :: CString -> CString -> CInt -> Prelude.IO CInt
 #endif /* mingw32_HOST_OS */
-
-#if __GLASGOW_HASKELL__ < 708
-
--- | @unsetEnv name@ removes the specified environment variable from the
--- environment of the current process.
---
--- Throws `Control.Exception.IOException` if @name@ is the empty string or
--- contains an equals sign.
---
--- @since 4.7.0.0
-unsetEnv :: String -> IO ()
-#ifdef mingw32_HOST_OS
-unsetEnv key = withCWString key $ \k -> do
-  success <- c_SetEnvironmentVariable k nullPtr
-  unless success $ do
-    -- We consider unsetting an environment variable that does not exist not as
-    -- an error, hence we ignore eRROR_ENVVAR_NOT_FOUND.
-    err <- c_GetLastError
-    unless (err == eRROR_ENVVAR_NOT_FOUND) $ do
-      throwGetLastError "unsetEnv"
-
-eRROR_ENVVAR_NOT_FOUND :: DWORD
-eRROR_ENVVAR_NOT_FOUND = 203
-
-foreign import WINDOWS_CCONV unsafe "windows.h GetLastError"
-    c_GetLastError:: IO DWORD
-#else
-unsetEnv key = withFilePath key (throwErrnoIf_ (/= 0) "unsetEnv" . c_unsetenv)
-#if __GLASGOW_HASKELL__ > 706
-foreign import ccall unsafe "__hsbase_unsetenv" c_unsetenv :: CString -> Prelude.IO CInt
-#else
--- HACK: We hope very hard that !UNSETENV_RETURNS_VOID
-foreign import ccall unsafe "unsetenv" c_unsetenv :: CString -> Prelude.IO CInt
-#endif
-#endif
-
-#endif

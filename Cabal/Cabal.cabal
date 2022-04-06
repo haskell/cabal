@@ -52,23 +52,10 @@ library
     build-depends: unix  >= 2.6.0.0 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs -fwarn-incomplete-uni-patterns -fwarn-incomplete-record-updates
-  if impl(ghc >= 8.0)
-    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+  ghc-options: -Wcompat -Wnoncanonical-monad-instances
 
-    if impl(ghc <8.8)
-      ghc-options: -Wnoncanonical-monadfail-instances
-
-  if !impl(ghc >= 8.0)
-    -- at least one of lib:Cabal's dependency (i.e. `parsec`)
-    -- already depends on `fail` and `semigroups` transitively
-    build-depends: fail == 4.9.*, semigroups >= 0.18.3 && < 0.21
-
-  if !impl(ghc >= 7.10)
-    build-depends: void >= 0.7.3 && < 0.8
-
-  if !impl(ghc >= 7.8)
-    -- semigroups depends on tagged.
-    build-depends:  tagged >=0.8.6 && <0.9, bytestring-builder >= 0.10.8 && <0.11
+  if impl(ghc <8.8)
+    ghc-options: -Wnoncanonical-monadfail-instances
 
   exposed-modules:
     Distribution.Backpack.Configure
@@ -213,6 +200,7 @@ library
     LambdaCase
     NondecreasingIndentation
     OverloadedStrings
+    PatternSynonyms
     RankNTypes
     RecordWildCards
     ScopedTypeVariables
@@ -222,6 +210,3 @@ library
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
-
-  if impl(ghc >= 7.11)
-    other-extensions: PatternSynonyms
