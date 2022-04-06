@@ -62,6 +62,7 @@ module Distribution.Simple.Compiler (
         profilingSupported,
         backpackSupported,
         arResponseFilesSupported,
+        arDashLSupported,
         libraryDynDirSupported,
         libraryVisibilitySupported,
 
@@ -364,6 +365,12 @@ libraryDynDirSupported comp = case compilerFlavor comp of
 -- arguments (i.e. @file-style arguments).
 arResponseFilesSupported :: Compiler -> Bool
 arResponseFilesSupported = ghcSupported "ar supports at file"
+
+-- | Does this compiler's "ar" command support llvm-ar's -L flag,
+-- which compels the archiver to add an input archive's members
+-- rather than adding the archive itself.
+arDashLSupported :: Compiler -> Bool
+arDashLSupported = ghcSupported "ar supports -L"
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool
