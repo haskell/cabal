@@ -127,6 +127,10 @@ versions of packages that the this snapshot specifies:
     packages: .
     import https://www.stackage.org/lts-19.2/cabal.config
 
+Please note that project files do not get bundled in Cabal package tarballs,
+made using e.g. ``cabal sdist``. Project files are intended for use in local
+development environments.
+
 .. _Stackage: https://stackage.org/
 .. _versions of packages in lts-19.2: https://www.stackage.org/lts-19.2
 
