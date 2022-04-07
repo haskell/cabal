@@ -35,6 +35,8 @@ options):
 Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
 directories when there is none in the current directory.
 
+.. _conditionals and imports:
+
 Conditionals and imports
 ------------------------
 
