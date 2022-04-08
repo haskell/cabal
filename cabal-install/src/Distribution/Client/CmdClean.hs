@@ -95,7 +95,7 @@ cleanAction CleanFlags{..} extraArgs _ = do
         die' verbosity $ "'clean' extra arguments should be script files: "
                          ++ unwords notScripts
 
-    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    projectRoot <- either throwIO return =<< findProjectRoot mprojectFile
 
     let distLayout = defaultDistDirLayout projectRoot mdistDirectory
 

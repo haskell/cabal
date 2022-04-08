@@ -402,10 +402,9 @@ resolveBuildTimeSettings verbosity
 -- parent directories. If no project file is found then the current dir is the
 -- project root (and the project will use an implicit config).
 --
-findProjectRoot :: Maybe FilePath -- ^ starting directory, or current directory
-                -> Maybe FilePath -- ^ @cabal.project@ file name override
+findProjectRoot :: Maybe FilePath -- ^ @cabal.project@ file name override
                 -> IO (Either BadProjectRoot ProjectRoot)
-findProjectRoot _ (Just projectFile) = do
+findProjectRoot (Just projectFile) = do
     exists <- doesFileExist projectFile
     if exists
       then do projectFile' <- canonicalizePath projectFile
@@ -414,8 +413,8 @@ findProjectRoot _ (Just projectFile) = do
               return (Right projectRoot)
       else return (Left (BadProjectRootExplicitFile projectFile))
 
-findProjectRoot mstartdir Nothing = do
-    startdir <- maybe getCurrentDirectory canonicalizePath mstartdir
+findProjectRoot Nothing = do
+    startdir <- getCurrentDirectory
     homedir  <- getHomeDirectory
     probe startdir homedir
   where

@@ -208,7 +208,7 @@ establishProjectBaseContext
     -> CurrentCommand
     -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig currentCommand = do
-    projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
+    projectRoot <- either throwIO return =<< findProjectRoot mprojectFile
     establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
   where
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile

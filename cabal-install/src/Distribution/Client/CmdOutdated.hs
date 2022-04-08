@@ -301,7 +301,7 @@ depsFromFreezeFile verbosity = do
 depsFromNewFreezeFile :: Verbosity -> HttpTransport -> Compiler -> Platform -> Maybe FilePath -> IO [PackageVersionConstraint]
 depsFromNewFreezeFile verbosity httpTransport compiler (Platform arch os) mprojectFile = do
   projectRoot <- either throwIO return =<<
-                 findProjectRoot Nothing mprojectFile
+                 findProjectRoot mprojectFile
   let distDirLayout = defaultDistDirLayout projectRoot
                       {- TODO: Support dist dir override -} Nothing
   projectConfig <- runRebuild (distProjectRootDirectory distDirLayout) $ do

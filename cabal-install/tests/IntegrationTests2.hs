@@ -153,8 +153,10 @@ tests config =
 
 testFindProjectRoot :: Assertion
 testFindProjectRoot = do
-    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testdir)
-                                                              (Just testfile)
+    cwd <- getCurrentDirectory
+    setCurrentDirectory testdir
+    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testfile)
+    setCurrentDirectory cwd
     file @?= testfile
   where
     testdir  = basedir </> "exception" </> "no-pkg2"
@@ -163,8 +165,10 @@ testFindProjectRoot = do
 
 testExceptionFindProjectRoot :: Assertion
 testExceptionFindProjectRoot = do
-    Right (ProjectRootExplicit dir _) <- findProjectRoot (Just testdir) Nothing
     cwd <- getCurrentDirectory
+    setCurrentDirectory testdir
+    Right (ProjectRootExplicit dir _) <- findProjectRoot Nothing
+    setCurrentDirectory cwd
     dir @?= cwd </> testdir
   where
     testdir = basedir </> "exception" </> "no-pkg2"
