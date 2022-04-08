@@ -3,5 +3,8 @@ prs: #7620
 issues: #7559
 
 description {
-- Extract `Cabal-syntax` from `Cabal` to provide the syntax and parsing code for `.cabal` files
+- Extract `Cabal-syntax` from `Cabal` to provide the syntax and parsing code
+  for `.cabal` files. `Cabal` currently reexports all of the modules which were
+  moved to `Cabal-syntax` although these exports may be deprecated in the
+  future.
 }
