@@ -1,0 +1,11 @@
+synopsis: Set project root as the directory where project file is located.
+packages: cabal-install
+prs: #7749
+issues: #7695
+
+descriptions: {
+
+Fixes a bug where project root is not resolved to the directory where cabal.project
+files are present when a relative file location is passed to --project-file.
+
+}
