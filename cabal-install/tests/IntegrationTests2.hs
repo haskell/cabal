@@ -99,6 +99,8 @@ tests config =
     -- * dry-run tests with changes
   [ testGroup "Discovery and planning" $
     [ testCase "find root"      testFindProjectRoot
+    , testCase "find root for relative project explicit file" testExplicitRelativeFindProjectRoot
+    , testCase "find root for project file not in current dir." testResolveFindProjectRoot
     , testCase "find root fail" testExceptionFindProjectRoot
     , testCase "no package"    (testExceptionInFindingPackage config)
     , testCase "no package2"   (testExceptionInFindingPackage2 config)
@@ -162,6 +164,29 @@ testFindProjectRoot = do
     testdir  = basedir </> "exception" </> "no-pkg2"
     testfile = "bklNI8O1OpOUuDu3F4Ij4nv3oAqN"
 
+testExplicitRelativeFindProjectRoot :: Assertion
+testExplicitRelativeFindProjectRoot = do
+    cwd <- getCurrentDirectory
+    setCurrentDirectory testdir
+    Left (BadProjectRootExplicitFile file) <- findProjectRoot (Just testfile)
+    setCurrentDirectory cwd
+    file @?= testfile
+  where
+    testdir  = basedir </> "regression" </> "7695" </> "foo" </> "bar"
+    testfile = "../cabal.project"
+
+testResolveFindProjectRoot :: Assertion
+testResolveFindProjectRoot = do
+    cwd <- getCurrentDirectory
+    setCurrentDirectory testdir
+    Right (ProjectRootExplicit dir file) <- findProjectRoot Nothing
+    setCurrentDirectory cwd
+    dir @?= cwd </> rootdir
+    file @?= testfile
+  where
+    testdir  = basedir </> "regression" </> "7695" </> "foo" </> "bar"
+    rootdir  = basedir </> "regression" </> "7695"
+    testfile = "cabal.project"
 
 testExceptionFindProjectRoot :: Assertion
 testExceptionFindProjectRoot = do
