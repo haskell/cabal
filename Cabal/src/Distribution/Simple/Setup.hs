@@ -2526,8 +2526,8 @@ configureProg verbosity programDb prog = do
 -- | Helper function to split a string into a list of arguments.
 -- It's supposed to handle quoted things sensibly, eg:
 --
--- >>> splitArgs "--foo=\"C:/Program Files/Bar/" --baz"
--- ["--foo=C:/Program Files/Bar", "--baz"]
+-- >>> splitArgs "--foo=\"C:/Program Files/Bar/\" --baz"
+-- ["--foo=C:/Program Files/Bar/", "--baz"]
 --
 -- >>> splitArgs "\"-DMSGSTR=\\\"foo bar\\\"\" --baz"
 -- ["-DMSGSTR=\"foo bar\"","--baz"]
