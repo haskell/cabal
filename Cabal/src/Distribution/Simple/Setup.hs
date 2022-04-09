@@ -2526,11 +2526,11 @@ configureProg verbosity programDb prog = do
 -- | Helper function to split a string into a list of arguments.
 -- It's supposed to handle quoted things sensibly, eg:
 --
--- > splitArgs "--foo=\"C:/Program Files/Bar/" --baz"
--- >   = ["--foo=C:/Program Files/Bar", "--baz"]
+-- >>> splitArgs "--foo=\"C:/Program Files/Bar/" --baz"
+-- ["--foo=C:/Program Files/Bar", "--baz"]
 --
--- > splitArgs "\"-DMSGSTR=\\\"foo bar\\\"\" --baz"
--- >   = ["-DMSGSTR=\"foo bar\"","--baz"]
+-- >>> splitArgs "\"-DMSGSTR=\\\"foo bar\\\"\" --baz"
+-- ["-DMSGSTR=\"foo bar\"","--baz"]
 --
 splitArgs :: String -> [String]
 splitArgs  = space []
@@ -2540,7 +2540,13 @@ splitArgs  = space []
     space w ( c :s)
         | isSpace c = word w (space [] s)
     space w ('"':s) = string w s
+    space w ('\'':s) = singlyQuotedString w s
     space w s       = nonstring w s
+
+    singlyQuotedString :: String -> String -> [String]
+    singlyQuotedString w [] = word w []
+    singlyQuotedString w ('\'':s) = space w s
+    singlyQuotedString w (c:s) = singlyQuotedString (c:w) s
 
     string :: String -> String -> [String]
     string w []      = word w []
@@ -2550,6 +2556,7 @@ splitArgs  = space []
 
     nonstring :: String -> String -> [String]
     nonstring w  []      = word w []
+    nonstring w  ('\'':s) = singlyQuotedString w s
     nonstring w  ('"':s) = string w s
     nonstring w  ( c :s) = space (c:w) s
 
