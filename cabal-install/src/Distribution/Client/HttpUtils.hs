@@ -495,7 +495,7 @@ wgetTransport prog =
 
         -- wget doesn't support range requests.
         -- so, we not only ignore range request headers,
-        -- but we also dispay a warning message when we see them.
+        -- but we also display a warning message when we see them.
         let hasRangeHeader =  any isRangeHeader reqHeaders
             warningMsg     =  "the 'wget' transport currently doesn't support"
                            ++ " range requests, which wastes network bandwidth."

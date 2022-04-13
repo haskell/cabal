@@ -212,7 +212,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     -- dependency on R. We do not do this for the base qualifier however.
     --
     -- The inherited qualifier is only used for regular dependencies; for setup
-    -- and base deppendencies we override the existing qualifier. See #3160 for
+    -- and base dependencies we override the existing qualifier. See #3160 for
     -- a detailed discussion.
     inheritedQ :: Qualifier
     inheritedQ = case q of

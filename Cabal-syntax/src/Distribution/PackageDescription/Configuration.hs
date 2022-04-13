@@ -32,6 +32,7 @@ module Distribution.PackageDescription.Configuration (
     transformAllBuildInfos,
     transformAllBuildDepends,
     transformAllBuildDependsN,
+    simplifyWithSysParams
   ) where
 
 import Distribution.Compat.Prelude

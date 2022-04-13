@@ -24,7 +24,7 @@ import Distribution.Compat.Prelude
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Distribution.Compat.CopyFile (filesEqual)
-import Distribution.Simple.Compiler (arResponseFilesSupported)
+import Distribution.Simple.Compiler (arResponseFilesSupported, arDashLSupported)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
          ( ProgramInvocation, arProgram, requireProgram )
@@ -68,17 +68,25 @@ createArLibArchive verbosity lbi targetPath files = do
   --     do that. We have duplicates because of modules like "A.M" and "B.M"
   --     both make an object file "M.o" and ar does not consider the directory.
   --
+  --  -- llvm-ar, which GHC >=9.4 uses on Windows, supports a "L" modifier
+  --     in "q" mode which compels the archiver to add the members of an input
+  --     archive to the output, rather than the archive itself. This is
+  --     necessary as GHC may produce .o files that are actually archives. See
+  --     https://gitlab.haskell.org/ghc/ghc/-/issues/21068.
+  --
   -- Our solution is to use "ar r" in the simple case when one call is enough.
   -- When we need to call ar multiple times we use "ar q" and for the last
   -- call on OSX we use "ar qs" so that it'll make the index.
 
   let simpleArgs  = case hostOS of
              OSX -> ["-r", "-s"]
+             _ | dashLSupported -> ["-qL"]
              _   -> ["-r"]
 
       initialArgs = ["-q"]
       finalArgs   = case hostOS of
              OSX -> ["-q", "-s"]
+             _ | dashLSupported -> ["-qL"]
              _   -> ["-q"]
 
       extraArgs   = verbosityOpts verbosity ++ [tmpPath]
@@ -90,8 +98,10 @@ createArLibArchive verbosity lbi targetPath files = do
 
       oldVersionManualOverride =
         fromFlagOrDefault False $ configUseResponseFiles $ configFlags lbi
-      responseArgumentsNotSupported   =
+      responseArgumentsNotSupported =
         not (arResponseFilesSupported (compiler lbi))
+      dashLSupported =
+        arDashLSupported (compiler lbi)
 
       invokeWithResponesFile :: FilePath -> ProgramInvocation
       invokeWithResponesFile atFile =

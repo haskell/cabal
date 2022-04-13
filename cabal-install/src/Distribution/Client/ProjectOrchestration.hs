@@ -139,6 +139,7 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeLocal )
 
 import           Distribution.Client.Config (getCabalDir)
+import           Distribution.Client.HttpUtils
 import           Distribution.Client.Setup hiding (packageName)
 import           Distribution.Compiler
                    ( CompilerFlavor(GHC) )
@@ -170,7 +171,8 @@ import           Distribution.Version
 import           Distribution.Simple.Compiler
                    ( compilerCompatVersion, showCompilerId, compilerId, compilerInfo
                    , OptimisationLevel(..))
-
+import           Distribution.Utils.NubList
+                   ( fromNubList )
 import           Distribution.System
                    ( Platform(Platform) )
 
@@ -210,7 +212,7 @@ establishProjectBaseContext verbosity cliConfig currentCommand = do
     establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
   where
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
-    ProjectConfigShared { projectConfigProjectFile } = projectConfigShared cliConfig
+    ProjectConfigShared { projectConfigProjectFile} = projectConfigShared cliConfig
 
 -- | Like 'establishProjectBaseContext' but doesn't search for project root.
 establishProjectBaseContextWithRoot
@@ -224,8 +226,13 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
 
     let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
 
+    httpTransport <- configureTransport verbosity
+                     (fromNubList . projectConfigProgPathExtra $ projectConfigShared cliConfig)
+                     (flagToMaybe . projectConfigHttpTransport $ projectConfigBuildOnly cliConfig)
+
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
+                           httpTransport
                            distDirLayout
                            cliConfig
 

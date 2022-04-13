@@ -78,12 +78,6 @@ test-suite unit-tests
   ghc-options:      -Wall
   default-language: Haskell2010
 
-  if !impl(ghc >=7.10)
-    build-depends: void
-
-  if !impl(ghc >=8.0)
-    build-depends: semigroups
-
 test-suite parser-tests
   type:             exitcode-stdio-1.0
   hs-source-dirs:   tests
@@ -101,15 +95,10 @@ test-suite parser-tests
     , tasty-golden      >=2.3.1.1 && <2.4
     , tasty-hunit
     , tasty-quickcheck
+    , tree-diff         >=0.1     && <0.3
 
   ghc-options:      -Wall
   default-language: Haskell2010
-
-  if !impl(ghc >=8.0)
-    build-depends: semigroups
-
-  if impl(ghc >=7.8)
-    build-depends: tree-diff >=0.1 && <0.3
 
 test-suite check-tests
   type:             exitcode-stdio-1.0
@@ -129,9 +118,6 @@ test-suite check-tests
 
   ghc-options:      -Wall
   default-language: Haskell2010
-
-  if !impl(ghc >=8.0)
-    build-depends: semigroups
 
 test-suite custom-setup-tests
   type:             exitcode-stdio-1.0
@@ -175,9 +161,7 @@ test-suite hackage-tests
     , optparse-applicative  >=0.13.2.0 && <0.17
     , stm                   >=2.4.5.0  && <2.6
     , tar                   >=0.5.0.3  && <0.6
-
-  if impl(ghc >=7.8)
-    build-depends: tree-diff >=0.1 && <0.3
+    , tree-diff             >=0.1      && <0.3
 
   ghc-options:        -Wall -rtsopts -threaded
   default-extensions: CPP

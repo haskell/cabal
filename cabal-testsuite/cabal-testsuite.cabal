@@ -76,9 +76,6 @@ library
     , text                  ^>= 1.2.3.1
     , transformers          ^>= 0.3.0.0 || ^>= 0.4.2.0 || ^>= 0.5.2.0
 
-  if !impl(ghc >= 8.0)
-    build-depends:  semigroups
-
   if !os(windows)
     build-depends:
       , unix                ^>= 2.6.0.0 || ^>= 2.7.0.0

@@ -369,4 +369,3 @@ parseConfig fieldDescrs sectionDescrs fgSectionDescrs empty str =
 --
 showConfig :: [FieldDescr a] -> [SectionDescr a] -> [FGSectionDescr FG.PrettyFieldGrammar a] -> a -> Disp.Doc
 showConfig = ppFieldsAndSections
-

@@ -2584,6 +2584,8 @@ Since Cabal 2.2 conditional blocks support ``elif`` construct.
       else
            property-descriptions-or-conditionals
 
+.. _conditions:
+
 Conditions
 """"""""""
 
@@ -2909,7 +2911,7 @@ The ``get`` command supports the following options:
     Where to place the package source, defaults to (a subdirectory of)
     the current directory.
 ``-s --source-repository`` *[head\|this\|...]*
-    Fork the package's source repository using the appropriate version
+    Clone the package's source repository using the appropriate version
     control system. The optional argument allows to choose a specific
     repository kind.
 ``--index-state`` *[HEAD\|@<unix-timestamp>\|<iso8601-utc-timestamp>]*

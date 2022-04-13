@@ -1,0 +1,16 @@
+synopsis: Support GHC 9.4's `clang`-based Windows toolchain
+packages: Cabal
+prs: #8062
+
+description {
+
+- As the `lld` linker used by GHC 9.4 and later on Windows does not support
+  object merging, it is now an error to enable `--enable-library-for-ghci` on
+  Windows with such compilers. Note that this flag is merely enables an
+  optimisation and can safely be disabled if you encounter this error.
+
+- `Cabal` will now use `llvm-ar`'s `L` modifier if available when building
+  static archives. This enables static library merging which is the behavior
+  required by GHC 9.4 and later on Windows.
+
+}

@@ -6,12 +6,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
-#if __GLASGOW_HASKELL__ >= 711
 {-# LANGUAGE PatternSynonyms     #-}
-#endif
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE TypeInType          #-}
-#endif
 -- |
 --
 -- Copyright: (c) 2019 Oleg Grenrus
@@ -107,11 +103,7 @@ import qualified Distribution.Compat.Binary   as Binary
 import qualified Data.Aeson as Aeson
 #endif
 
-#if __GLASGOW_HASKELL__ >= 800
 import Data.Kind (Type)
-#else
-#define Type *
-#endif
 
 import Distribution.Compat.Typeable (Typeable, TypeRep, typeRep)
 import Distribution.Utils.MD5
@@ -120,15 +112,6 @@ import Data.Monoid (mconcat)
 
 import qualified Data.Semigroup
 import qualified Data.Foldable
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative (pure)
-import Data.Traversable (traverse)
-#endif
-
-#if !MIN_VERSION_base(4,7,0)
-import Data.Typeable (Typeable1, typeOf1)
-#endif
 
 
 -------------------------------------------------------------------------------
@@ -287,11 +270,7 @@ structuredDecodeOrFailIO :: (Binary.Binary a, Structured a) => LBS.ByteString ->
 structuredDecodeOrFailIO bs =
     catch (evaluate (structuredDecode bs) >>= return . Right) handler
   where
-#if MIN_VERSION_base(4,9,0)
     handler (ErrorCallWithLocation str _) = return $ Left str
-#else
-    handler (ErrorCall str) = return $ Left str
-#endif
 
 -- | Lazily reconstruct a value previously written to a file.
 structuredDecodeFileOrFail :: (Binary.Binary a, Structured a) => FilePath -> IO (Either String a)
@@ -330,7 +309,6 @@ nominalStructure :: Typeable a => Proxy a -> Structure
 nominalStructure p = Nominal tr 0 (show tr) [] where
     tr = typeRep p
 
-#if MIN_VERSION_base(4,7,0)
 containerStructure :: forall f a. (Typeable f, Structured a) => Proxy (f a) -> Structure
 containerStructure _ = Nominal faTypeRep 0 (show fTypeRep)
     [ structure (Proxy :: Proxy a)
@@ -338,16 +316,6 @@ containerStructure _ = Nominal faTypeRep 0 (show fTypeRep)
   where
     fTypeRep  = typeRep (Proxy :: Proxy f)
     faTypeRep = typeRep (Proxy :: Proxy (f a))
-
-#else
-containerStructure :: forall f a. (Typeable1 f, Structured a) => Proxy (f a) -> Structure
-containerStructure _ = Nominal faTypeRep 0 (show fTypeRep)
-    [ structure (Proxy :: Proxy a)
-    ]
-  where
-    fTypeRep  = typeOf1 (undefined :: f ())
-    faTypeRep = typeRep (Proxy :: Proxy (f a))
-#endif
 
 -------------------------------------------------------------------------------
 -- Generic
@@ -363,9 +331,7 @@ class GStructured (f :: Type -> Type) where
 
 instance (i ~ D, Datatype c, GStructuredSum f) => GStructured (M1 i c f) where
     gstructured tr _ v = case sop of
-#if MIN_VERSION_base(4,7,0)
         [(_, [s])] | isNewtype p -> Newtype tr v name s
-#endif
         _                        -> Structure tr v name sop
       where
         p    = undefined :: M1 i c f ()
@@ -466,12 +432,3 @@ instance Structured Time.Day             where structure = nominalStructure
 instance Structured Time.TimeZone        where structure = nominalStructure
 instance Structured Time.TimeOfDay       where structure = nominalStructure
 instance Structured Time.LocalTime       where structure = nominalStructure
-
--- Proxy isn't Typeable in base-4.8 / base
-
--- #if __GLASGOW_HASKELL__ >= 800
--- instance (Typeable k, Typeable (a :: k)) => Structured (Proxy a)
--- #else
--- instance (Typeable a) => Structured (Proxy a) where
---     structure p = Structure (typeRep p) 0 "Proxy" [("Proxy",[])]
--- #endif

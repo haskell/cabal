@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Distribution.Fields.ConfVar (parseConditionConfVar) where
+module Distribution.Fields.ConfVar (parseConditionConfVar, parseConditionConfVarFromClause) where
 
 import Distribution.Compat.CharParsing     (char, integral)
 import Distribution.Compat.Prelude
-import Distribution.Fields.Field           (SectionArg (..))
+import Distribution.Fields.Field           (SectionArg (..), Field(..))
 import Distribution.Fields.ParseResult
 import Distribution.Parsec                 (Parsec (..), Position (..), runParsecParser)
 import Distribution.Parsec.FieldLineStream (fieldLineStreamFromBS)
 import Distribution.Types.Condition
 import Distribution.Types.ConfVar          (ConfVar (..))
+import Distribution.Fields.Parser          (readFields)
 import Distribution.Version
        (anyVersion, earlierVersion, intersectVersionRanges, laterVersion, majorBoundVersion,
        mkVersion, noVersion, orEarlierVersion, orLaterVersion, thisVersion, unionVersionRanges,
@@ -16,7 +17,14 @@ import Distribution.Version
 import Prelude ()
 
 import qualified Text.Parsec       as P
+import qualified Text.Parsec.Pos   as P
 import qualified Text.Parsec.Error as P
+import qualified Data.ByteString.Char8          as B8
+
+parseConditionConfVarFromClause :: B8.ByteString -> Either P.ParseError (Condition ConfVar)
+parseConditionConfVarFromClause x = readFields x >>= \r -> case r of
+                                       (Section _ xs _ : _ ) -> P.runParser (parser <* P.eof) () "<condition>" xs
+                                       _ -> Left $ P.newErrorMessage (P.Message "No fields in clause") (P.initialPos "<condition>")
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.

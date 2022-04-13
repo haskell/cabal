@@ -17,9 +17,6 @@ library
     , Cabal-syntax  ^>=3.7.0.0
     , QuickCheck    ^>=2.13.2 || ^>=2.14
 
-  if !impl(ghc >= 8.0)
-    build-depends: semigroups
-
   exposed-modules:
     Test.QuickCheck.GenericArbitrary
     Test.QuickCheck.Instances.Cabal

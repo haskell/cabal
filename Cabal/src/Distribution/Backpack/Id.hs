@@ -41,7 +41,7 @@ computeComponentId
 computeComponentId deterministic mb_ipid mb_cid pid cname mb_details =
     -- show is found to be faster than intercalate and then replacement of
     -- special character used in intercalating. We cannot simply hash by
-    -- doubly concating list, as it just flatten out the nested list, so
+    -- doubly concatenating list, as it just flatten out the nested list, so
     -- different sources can produce same hash
     let hash_suffix
             | Just (dep_ipids, flags) <- mb_details

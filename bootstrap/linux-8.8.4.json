@@ -4,9 +4,7 @@
             "cabal_sha256": null,
             "revision": null,
             "src_sha256": null,
-            "flags": [
-                "-bundled-binary-generic"
-            ],
+            "flags": [],
             "package": "Cabal-syntax",
             "source": "local",
             "version": "3.7.0.0"
