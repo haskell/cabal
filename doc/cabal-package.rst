@@ -742,9 +742,12 @@ describe the package as a whole:
 
     - ``**`` wildcards can only appear as the final path component
       before the file name (e.g., ``data/**/images/*.jpg`` is not
-      allowed). If a ``**`` wildcard is used, then the file name must
-      include a ``*`` wildcard (e.g., ``data/**/README.rst`` is not
       allowed).
+
+    - Prior to Cabal 3.8, if a ``**`` wildcard is used, then
+      the file name must include a ``*`` wildcard (e.g.,
+      ``data/**/README.rst`` was not allowed). As of ``cabal-version:
+      3.8`` or greater, this restriction is lifted.
 
     - A wildcard that does not match any files is an error.
 
@@ -2319,7 +2322,7 @@ system-dependent values for these fields.
        Cabal files with :pkg-field:`cabal-version` < 3.0 suffer from an
        infelicity in how the entries of :pkg-field:`mixins` are parsed: an
        entry will fail to parse if the provided renaming clause has whitespace
-       after the opening parenthesis. 
+       after the opening parenthesis.
 
        See issues :issue:`5150`, :issue:`4864`, and :issue:`5293`.
 
