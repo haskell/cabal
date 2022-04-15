@@ -708,6 +708,7 @@ platformDefines lbi =
       IOS       -> ["ios"]
       Android   -> ["android"]
       Ghcjs     -> ["ghcjs"]
+      Wasi      -> ["wasi"]
       Hurd      -> ["hurd"]
       OtherOS _ -> []
     archStr = case hostArch of
@@ -729,6 +730,7 @@ platformDefines lbi =
       M68k        -> ["m68k"]
       Vax         -> ["vax"]
       JavaScript  -> ["javascript"]
+      Wasm32      -> ["wasm32"]
       OtherArch _ -> []
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
