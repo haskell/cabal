@@ -1,0 +1,18 @@
+# Based on https://github.com/actions/cache/issues/2#issuecomment-1098723830
+# This seems to be the only way to flush GitHub Actions cache without changing
+# the cache key every time.
+# It looks like this has to be run a couple of times in a row to work.
+on:
+  workflow_dispatch:
+  pull_request: # temporary, remove before merging if this works
+jobs:
+  flush-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: /tmp/flush
+          key: ${{ github.run_id }}-${{ github.run_attempt }}
+      # 10 GB is the max cache size. Anything over that will be evicted.
+      # Data is zstd-compressed, so we can't fallocate it.
+      - run: dd if=/dev/urandom of=/tmp/flush bs=1M count=10000

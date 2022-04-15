@@ -75,6 +75,9 @@ failures:
 If none of these let you reproduce, there might be some race condition
 or continuous integration breakage; please file a bug.
 
+If all PRs are failing with a cache-related error, ask the maintainers to
+manually trigger the `flush-cache` GitHub Actions Workflow a couple of times.
+
 **Running tests locally.**
 To run tests locally with `v2-build`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
