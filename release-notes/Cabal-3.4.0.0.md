@@ -120,7 +120,7 @@
   This changes makes `Version` type less "syntactic",
   i.e. contains less constructors for semantically same version ranges.
   
-- Cabal-QuickCheck package with `Arbirary` instances [#6882](https://github.com/haskell/cabal/issues/6882) [!6557](https://github.com/haskell/cabal/pull/6557) [!6891](https://github.com/haskell/cabal/pull/6891)
+- Cabal-QuickCheck package with `Arbitrary` instances [#6882](https://github.com/haskell/cabal/issues/6882) [!6557](https://github.com/haskell/cabal/pull/6557) [!6891](https://github.com/haskell/cabal/pull/6891)
 - Create Cabal-tree-diff package with `ToExpr` instances [!6789](https://github.com/haskell/cabal/pull/6789)
 - `Cabal.Distribution.Compiler`: add `Traversable` instance for `PerCompilerFlavor` [!6763](https://github.com/haskell/cabal/pull/6763)
 - Improvements to cabal-testsuite framework [!6643](https://github.com/haskell/cabal/pull/6643)
