@@ -17,7 +17,7 @@ module Distribution.FieldGrammar  (
     PrettyFieldGrammar,
     PrettyFieldGrammar',
     prettyFieldGrammar,
-    -- * Auxlilary
+    -- * Auxiliary
     (^^^),
     Section(..),
     Fields,

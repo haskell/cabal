@@ -62,7 +62,7 @@ module Distribution.Simple.Utils (
         -- ** 'IOData' re-export
         --
         -- These types are re-exported from
-        -- "Distribution.Utils.IOData" for convience as they're
+        -- "Distribution.Utils.IOData" for convenience as they're
         -- exposed in the API of 'rawSystemStdInOut'
         IOData(..),
         KnownIODataMode (..),

@@ -28,7 +28,7 @@
   build-depends: thispkg:somesublib
   ```
   
-  This fixes an issue, where it was impossible to refer to extenral
+  This fixes an issue, where it was impossible to refer to external
   library, if you had sublibrary of the same name.
   
 - Add active-repositories configuration [#6819](https://github.com/haskell/cabal/issues/6819) [!6724](https://github.com/haskell/cabal/pull/6724) [!6868](https://github.com/haskell/cabal/pull/6868)

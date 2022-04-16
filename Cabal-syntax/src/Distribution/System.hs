@@ -231,7 +231,7 @@ instance Pretty Platform where
   pretty (Platform arch os) = pretty arch <<>> Disp.char '-' <<>> pretty os
 
 instance Parsec Platform where
-    -- TODO: there are ambigious platforms like: `arch-word-os`
+    -- TODO: there are ambiguous platforms like: `arch-word-os`
     -- which could be parsed as
     --   * Platform "arch-word" "os"
     --   * Platform "arch" "word-os"

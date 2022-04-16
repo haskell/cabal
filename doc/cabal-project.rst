@@ -613,7 +613,7 @@ The following settings control the behavior of the dependency solver:
     overriding repository.
 
     The special repository reference :rest stands for "all the other repositories"
-    and can be useful to avoid lenghty lists of repository names:
+    and can be useful to avoid lengthy lists of repository names:
 
     ::
 
@@ -1438,7 +1438,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-css: path
-    :synopsis: Location of Haddoc CSS file.
+    :synopsis: Location of Haddock CSS file.
 
     The CSS file that should be used to style the generated
     documentation (overriding haddock's default.)

@@ -1453,7 +1453,7 @@ listOptions =
         listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
         trueArg
     , option ['i'] ["ignore-case"]
-        "Ignore case destictions"
+        "Ignore case distinctions"
         listCaseInsensitive (\v flags -> flags { listCaseInsensitive = v })
         (boolOpt' (['i'], ["ignore-case"]) (['I'], ["strict-case"]))
 

@@ -1,4 +1,4 @@
-synoposis: use `nroff -man | less` instead of `man` as backend for `cabal man`
+synopsis: use `nroff -man | less` instead of `man` as backend for `cabal man`
 packages: cabal-install
 issues: #7714
 prs: #7726

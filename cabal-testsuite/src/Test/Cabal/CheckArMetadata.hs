@@ -25,7 +25,7 @@ import Distribution.Package               (getHSLibraryName)
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
 
--- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
+-- Almost a copy/paste of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h ->
   hFileSize h >>= checkArchive h

@@ -346,7 +346,7 @@ munch1 :: CharParsing m => (Char -> Bool) -> m String
 munch1 = some . satisfy
 {-# INLINE munch1 #-}
 
--- | Greedely munch characters while predicate holds.
+-- | Greedily munch characters while predicate holds.
 -- Always succeeds.
 munch :: CharParsing m => (Char -> Bool) -> m String
 munch = many . satisfy

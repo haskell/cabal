@@ -64,7 +64,7 @@ readFileHashValue tarball =
 
 -- | Convert a hash from TUF metadata into a 'PackageSourceHash'.
 --
--- Note that TUF hashes don't neessarily have to be SHA256, since it can
+-- Note that TUF hashes don't necessarily have to be SHA256, since it can
 -- support new algorithms in future.
 --
 hashFromTUF :: Sec.Hash -> HashValue

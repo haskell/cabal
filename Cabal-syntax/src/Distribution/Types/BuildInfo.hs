@@ -52,7 +52,7 @@ data BuildInfo = BuildInfo {
         -- field directly.
         buildToolDepends  :: [ExeDependency],
         cppOptions        :: [String],  -- ^ options for pre-processing Haskell code
-        asmOptions        :: [String],  -- ^ options for assmebler
+        asmOptions        :: [String],  -- ^ options for assembler
         cmmOptions        :: [String],  -- ^ options for C-- compiler
         ccOptions         :: [String],  -- ^ options for C compiler
         cxxOptions        :: [String],  -- ^ options for C++ compiler

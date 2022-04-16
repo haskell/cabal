@@ -37,7 +37,7 @@ Rationale
 The canonicalized path of the ghc binary usually points to the
 bin/ directory unpacked from a bindist, which is less likely to be
 tampered with by distributions and tools. As such, prefering the
-canoncialized path should get us more robust results.
+canonicalized path should get us more robust results.
 
 }
 

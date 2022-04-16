@@ -644,7 +644,7 @@
   * Fix `register --global/--user`
 
 ### 1.8.0.4 [Duncan Coutts](mailto:duncan@haskell.org) March 2010
-  * Set dylib-install-name for dynalic libs on OSX
+  * Set dylib-install-name for dynamic libs on OSX
   * Stricter configure check that compiler supports a package's extensions
   * More configure-time warnings
   * Hugs can compile Cabal lib again
@@ -746,7 +746,7 @@
   * Many checks added for common mistakes
   * New `--package-db=` option for specific package databases
   * Many internal changes to support cabal-install
-  * Stricter parsing for version strings, eg dissalows "1.05"
+  * Stricter parsing for version strings, e.g. disallows "1.05"
   * Improved user guide introduction
   * Programatica support removed
   * New options `--program-prefix/suffix` allows eg versioned programs

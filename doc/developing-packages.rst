@@ -276,7 +276,7 @@ If the package contains an executable, you can run it with:
 
    $ cabal run
 
-and the executable can also be installed for convenince:
+and the executable can also be installed for convenience:
 
 .. code-block:: console
 

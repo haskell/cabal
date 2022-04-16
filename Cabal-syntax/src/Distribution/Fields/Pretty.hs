@@ -59,7 +59,7 @@ showFields rann = showFields' rann (const id) 4
 -- | 'showFields' with user specified indentation.
 showFields'
   :: (ann -> CommentPosition)
-     -- ^ Convert an annotation to lined to preceed the field or section.
+     -- ^ Convert an annotation to lined to precede the field or section.
   -> (ann -> [String] -> [String])
      -- ^ Post-process non-annotation produced lines.
   -> Int

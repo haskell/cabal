@@ -41,7 +41,7 @@ Cabal 3.6.1.0 Changelog
   The canonicalized path of the ghc binary usually points to the
   bin/ directory unpacked from a bindist, which is less likely to be
   tampered with by distributions and tools. As such, prefering the
-  canoncialized path should get us more robust results.
+  canonicalized path should get us more robust results.
 
 - Fix `cabal test --enable-library-coverage` for other-modules [#5213](https://github.com/haskell/cabal/issues/5213) [#7493](https://github.com/haskell/cabal/pull/7493)
 
