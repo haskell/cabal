@@ -72,8 +72,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
       # The '+exe' constraint below is important, otherwise cabal-install
       # might decide to build the library but not the executable which is
@@ -211,8 +211,8 @@ jobs:
           path: |
             ${{ steps.setup-haskell.outputs.cabal-store }}
             dist-*
-          key: ${{ runner.os }}-${{ matrix.ghc }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
+          key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
 
       - name: Install cabal-plan
         run: |
