@@ -1094,7 +1094,7 @@ The following flags are supported by the ``outdated`` command:
 ``--project-file`` *PROJECTFILE*
     :since: 2.4
 
-    Read dependency version bounds from the v2-style freeze file
+    Read dependendency version bounds from the v2-style freeze file
     related to the named project file (i.e., ``$PROJECTFILE.freeze``)
     instead of the package desctription file. If multiple ``--project-file``
     flags are provided, only the final one is considered. This flag
