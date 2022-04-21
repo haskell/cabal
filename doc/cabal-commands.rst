@@ -715,3 +715,62 @@ not due to implementation but due to fundamental core invariants
 that must be satisfied for it to function correctly in the larger build ecosystem.
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
+
+cabal gen-bounds
+----------------
+
+``cabal gen-bounds [FLAGS]`` generates bounds for all dependencies that do not
+currently have them.  Generated bounds are printed to stdout. You can then
+paste them into your .cabal file.
+
+See `the section on generating dependency version bounds <cabal-package.html#generating-dependency-version-bounds>`__ for more details and examples.
+
+cabal outdated
+--------------
+
+``cabal outdated [FLAGS]`` checks for outdated dependencies in the package
+description file or freeze file.
+
+``cabal outdated`` supports the following flags:
+
+- ``--v1-freeze-file``: Read dependency version bounds from the freeze file
+  (``cabal.config``) instead of the package description file
+  (``$PACKAGENAME.cabal``).
+
+- ``--v2-freeze-file``:
+
+  :since: 2.4
+  
+  Read dependency version bounds from the v2-style freeze file
+  (by default, ``cabal.project.freeze``) instead of the package
+  description file. ``--new-freeze-file`` is an alias for this flag
+  that can be used with pre-2.4 ``cabal``.
+
+- ``--project-file PROJECTFILE``:
+
+  :since: 2.4
+  
+  Read dependendency version bounds from the v2-style freeze file
+  related to the named project file (i.e., ``$PROJECTFILE.freeze``)
+  instead of the package desctription file. If multiple ``--project-file``
+  flags are provided, only the final one is considered. This flag
+  must only be passed in when ``--new-freeze-file`` is present.
+
+- ``--simple-output``: Print only the names of outdated dependencies, one per line.
+
+- ``--exit-code``: Exit with a non-zero exit code when there are outdated dependencies.
+
+- ``-q, --quiet``: Don't print any output. Implies ``-v0`` and ``--exit-code``.
+
+- ``--ignore PACKAGENAMES``: Don't warn about outdated dependency version bounds for the packages in this list.
+
+- ``--minor [PACKAGENAMES]``: Ignore major version bumps for these packages.
+  E.g. if there's a version 2.0 of a package ``pkg`` on Hackage and the freeze
+  file specifies the constraint ``pkg == 1.9``, ``cabal outdated --freeze
+  --minor=pkg`` will only consider the ``pkg`` outdated when there's a version
+  of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
+  be used without arguments, in that case major version bumps are ignored for
+  all packages.
+
+  See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
+
