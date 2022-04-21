@@ -80,7 +80,7 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- | These are the known OS names: Linux, Windows, OSX
 --  ,FreeBSD, OpenBSD, NetBSD, DragonFly
 --  ,Solaris, AIX, HPUX, IRIX
---  ,HaLVM ,Hurd ,IOS, Android,Ghcjs
+--  ,HaLVM ,Hurd ,IOS, Android, Ghcjs, Wasi
 --
 -- The following aliases can also be used:,
 --    * Windows aliases: mingw32, win32, cygwin32
@@ -97,6 +97,7 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | Hurd                         -- GNU's microkernel
         | IOS  | Android               -- mobile OSs
         | Ghcjs
+        | Wasi
         | OtherOS String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -111,7 +112,8 @@ knownOSs = [Linux, Windows, OSX
            ,HaLVM
            ,Hurd
            ,IOS, Android
-           ,Ghcjs]
+           ,Ghcjs
+           ,Wasi]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "win32", "cygwin32"]
@@ -152,7 +154,7 @@ buildOS = classifyOS Permissive System.Info.os
 
 -- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc,
 -- Arm, AArch64, Mips, SH, IA64, S390, S390X, Alpha, Hppa, Rs6000,
--- M68k, Vax, and JavaScript.
+-- M68k, Vax, JavaScript and Wasm32.
 --
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
@@ -168,6 +170,7 @@ data Arch = I386  | X86_64  | PPC  | PPC64 | Sparc
           | Alpha | Hppa    | Rs6000
           | M68k  | Vax
           | JavaScript
+          | Wasm32
           | OtherArch String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -181,7 +184,8 @@ knownArches = [I386, X86_64, PPC, PPC64, Sparc
               ,IA64, S390, S390X
               ,Alpha, Hppa, Rs6000
               ,M68k, Vax
-              ,JavaScript]
+              ,JavaScript
+              ,Wasm32]
 
 archAliases :: ClassificationStrictness -> Arch -> [String]
 archAliases Strict _       = []
