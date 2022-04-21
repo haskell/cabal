@@ -498,9 +498,8 @@ checkFields pkg =
         ++ "The 'description' field content is typically shown by tooling "
         ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
         ++ "serves as a headline. "
-        ++ "Please refer to <https://www.haskell.org/"
-        ++ "cabal/users-guide/developing-packages.html#package-properties>"
-        ++ " for more details."
+        ++ "Please refer to <https://cabal.readthedocs.io/en/stable/"
+        ++ "cabal-package.html#package-properties> for more details."
 
     -- check use of impossible constraints "tested-with: GHC== 6.10 && ==6.12"
   , check (not (null testedWithImpossibleRanges)) $
