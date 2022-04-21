@@ -1020,7 +1020,7 @@ disambiguation purposes. Example:
     $ cabal repl bench:baz
 
 Freezing dependency versions
-""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a package is built in several different environments, such as a
 development environment, a staging environment and a production
@@ -1037,10 +1037,10 @@ The command writes the selected version for all dependencies to the
 the dependency versions specified in it.
 
 Generating dependency version bounds
-""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Cabal also has the ability to suggest dependency version bounds that
-conform to `Package Versioning Policy`_, which is
+conform to the `Package Versioning Policy`_, which is
 a recommended versioning system for publicly released Cabal packages.
 This is done by running the ``gen-bounds`` command:
 
@@ -1048,25 +1048,28 @@ This is done by running the ``gen-bounds`` command:
 
     $ cabal gen-bounds
 
-For example, given the following dependencies specified in
+For example, given the following dependencies without bounds specified in
 :pkg-field:`build-depends`:
 
 ::
 
     build-depends:
-      foo == 0.5.2
-      bar == 1.1
+      base,
+      mtl,
+      transformers,
 
-``gen-bounds`` will suggest changing them to the following:
+``gen-bounds`` might suggest changing them to the following:
 
 ::
 
     build-depends:
-      foo >= 0.5.2 && < 0.6
-      bar >= 1.1 && < 1.2
+      base          >= 4.15.0 && < 4.16,
+      mtl           >= 2.2.2 && < 2.3,
+      transformers  >= 0.5.6 && < 0.6,
+
 
 Listing outdated dependency version bounds
-""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Manually updating dependency version bounds in a ``.cabal`` file or a
 freeze file can be tedious, especially when there's a lot of
@@ -1077,44 +1080,6 @@ version on Hackage that is outside the version bound specified in the
 configured to act on the freeze file (both old- and v2-style) and
 ignore major (or all) version bumps on Hackage for a subset of
 dependencies.
-
-The following flags are supported by the ``outdated`` command:
-
-``--freeze-file``
-    Read dependency version bounds from the freeze file (``cabal.config``)
-    instead of the package description file (``$PACKAGENAME.cabal``).
-    ``--v1-freeze-file`` is an alias for this flag starting in Cabal 2.4.
-``--v2-freeze-file``
-    :since: 2.4
-
-    Read dependency version bounds from the v2-style freeze file
-    (by default, ``cabal.project.freeze``) instead of the package
-    description file. ``--new-freeze-file`` is an alias for this flag
-    that can be used with pre-2.4 ``cabal``.
-``--project-file`` *PROJECTFILE*
-    :since: 2.4
-
-    Read dependendency version bounds from the v2-style freeze file
-    related to the named project file (i.e., ``$PROJECTFILE.freeze``)
-    instead of the package desctription file. If multiple ``--project-file``
-    flags are provided, only the final one is considered. This flag
-    must only be passed in when ``--new-freeze-file`` is present.
-``--simple-output``
-    Print only the names of outdated dependencies, one per line.
-``--exit-code``
-    Exit with a non-zero exit code when there are outdated dependencies.
-``-q, --quiet``
-    Don't print any output. Implies ``-v0`` and ``--exit-code``.
-``--ignore`` *PACKAGENAMES*
-    Don't warn about outdated dependency version bounds for the packages in this
-    list.
-``--minor`` *[PACKAGENAMES]*
-    Ignore major version bumps for these packages. E.g. if there's a version 2.0
-    of a package ``pkg`` on Hackage and the freeze file specifies the constraint
-    ``pkg == 1.9``, ``cabal outdated --freeze --minor=pkg`` will only consider
-    the ``pkg`` outdated when there's a version of ``pkg`` on Hackage satisfying
-    ``pkg > 1.9 && < 2.0``. ``--minor`` can also be used without arguments, in
-    that case major version bumps are ignored for all packages.
 
 Examples:
 
@@ -1154,6 +1119,8 @@ Examples:
     Outdated dependencies:
     HUnit ==1.3.1.1 (latest: 1.3.1.2)
 
+See `the command documentation <cabal-commands.html#cabal-outdated>`__ for a
+list of available flags.
 
 Executables
 ^^^^^^^^^^^
