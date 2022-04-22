@@ -1294,9 +1294,7 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
       implInfo   = getImplInfo comp
       runGhcProg = runGHC verbosity ghcProg comp platform
 
-  let (bnfo, threaded) = case bm of
-        GBuildFLib _ -> popThreadedFlag (gbuildInfo bm)
-        _            -> (gbuildInfo bm, False)
+  let bnfo = gbuildInfo bm
 
   -- the name that GHC really uses (e.g., with .exe on Windows for executables)
   let targetName = gbuildTargetName lbi bm
@@ -1538,26 +1536,43 @@ gbuild verbosity numJobs pkg_descr lbi bm clbi = do
         when e (removeFile target)
       runGhcProg linkOpts { ghcOptOutputFile = toFlag target }
     GBuildFLib flib -> do
-      let rtsInfo  = extractRtsInfo lbi
-          rtsOptLinkLibs = [
-              if needDynamic
-                  then if threaded
-                            then dynRtsThreadedLib (rtsDynamicInfo rtsInfo)
-                            else dynRtsVanillaLib (rtsDynamicInfo rtsInfo)
-                  else if threaded
-                           then statRtsThreadedLib (rtsStaticInfo rtsInfo)
-                           else statRtsVanillaLib (rtsStaticInfo rtsInfo)
-              ]
+      let -- Instruct GHC to link against libHSrts.
+          rtsLinkOpts :: GhcOptions
+          rtsLinkOpts
+            | supportsFLinkRts =
+              mempty {
+                 ghcOptLinkRts         = toFlag True
+              }
+            | otherwise =
+              mempty {
+                 ghcOptLinkLibs        = rtsOptLinkLibs,
+                 ghcOptLinkLibPath     = toNubListR $ rtsLibPaths rtsInfo
+              }
+            where
+              threaded = hasThreaded (gbuildInfo bm)
+              supportsFLinkRts = compilerVersion comp >= mkVersion [9,0]
+              rtsInfo  = extractRtsInfo lbi
+              rtsOptLinkLibs = [
+                  if needDynamic
+                      then if threaded
+                                then dynRtsThreadedLib (rtsDynamicInfo rtsInfo)
+                                else dynRtsVanillaLib (rtsDynamicInfo rtsInfo)
+                      else if threaded
+                               then statRtsThreadedLib (rtsStaticInfo rtsInfo)
+                               else statRtsVanillaLib (rtsStaticInfo rtsInfo)
+                  ]
+
+
+          linkOpts :: GhcOptions
           linkOpts = case foreignLibType flib of
             ForeignLibNativeShared ->
                         commonOpts
               `mappend` linkerOpts
               `mappend` dynLinkerOpts
+              `mappend` rtsLinkOpts
               `mappend` mempty {
                  ghcOptLinkNoHsMain    = toFlag True,
                  ghcOptShared          = toFlag True,
-                 ghcOptLinkLibs        = rtsOptLinkLibs,
-                 ghcOptLinkLibPath     = toNubListR $ rtsLibPaths rtsInfo,
                  ghcOptFPic            = toFlag True,
                  ghcOptLinkModDefFiles = toNubListR $ gbuildModDefFiles bm
                 }
@@ -1784,24 +1799,13 @@ getRPaths lbi clbi | supportRPaths hostOS = do
 
 getRPaths _ _ = return mempty
 
--- | Remove the "-threaded" flag when building a foreign library, as it has no
---   effect when used with "-shared". Returns the updated 'BuildInfo', along
---   with whether or not the flag was present, so we can use it to link against
---   the appropriate RTS on our own.
-popThreadedFlag :: BuildInfo -> (BuildInfo, Bool)
-popThreadedFlag bi =
-  ( bi { options = filterHcOptions (/= "-threaded") (options bi) }
-  , hasThreaded (options bi))
-
+-- | Determine whether the given 'BuildInfo' is intended to link against the
+-- threaded RTS. This is used to determine which RTS to link against when
+-- building a foreign library with a GHC without support for @-flink-rts@.
+hasThreaded :: BuildInfo -> Bool
+hasThreaded bi = elem "-threaded" ghc
   where
-    filterHcOptions :: (String -> Bool)
-                    -> PerCompilerFlavor [String]
-                    -> PerCompilerFlavor [String]
-    filterHcOptions p (PerCompilerFlavor ghc ghcjs) =
-        PerCompilerFlavor (filter p ghc) ghcjs
-
-    hasThreaded :: PerCompilerFlavor [String] -> Bool
-    hasThreaded (PerCompilerFlavor ghc _) = elem "-threaded" ghc
+    PerCompilerFlavor ghc _ = options bi
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
