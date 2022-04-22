@@ -2232,7 +2232,7 @@ initOptions _ =
 
   , option "w" ["with-compiler"]
     "give the path to a particular compiler. For 'init', this flag is used \
-    \to set the base bound inference."
+    \to set the bounds inferred for the 'base' package."
     IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
     (reqArgFlag "PATH")
 
