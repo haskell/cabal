@@ -415,6 +415,9 @@ data GhcOptions = GhcOptions {
   -- @ghc -framework-path@ flag.
   ghcOptLinkFrameworkDirs :: NubListR String,
 
+  -- | Instruct GHC to link against @libHSrts@ when producing a shared library.
+  ghcOptLinkRts :: Flag Bool,
+
   -- | Don't do the link step, useful in make mode; the @ghc -no-link@ flag.
   ghcOptNoLink :: Flag Bool,
 
@@ -595,6 +598,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , ghcOptExtraDefault opts
 
   , [ "-no-link" | flagBool ghcOptNoLink ]
+  , [ "-flink-rts" | flagBool ghcOptLinkRts ]
 
   ---------------
   -- Misc flags

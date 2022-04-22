@@ -79,12 +79,15 @@ writeProject (ProjectSettings opts pkgDesc libTarget exeTarget testTarget)
         existingCabal <- readFile $ unPackageName (_optPkgName opts) ++ ".cabal"
         when (existingCabal /= cabalContents) $
           message opts T.Warning "A .cabal file was found and not updated, if updating is desired please use the '--overwrite' option."
+
+      -- clear out last line for presentation.
+      T.putStrLn ""
   where
     pkgName = unPackageName $ _optPkgName opts
 
 
 prepareLibTarget
-    :: Interactive m 
+    :: Interactive m
     => WriteOpts
     -> Maybe LibTarget
     -> m (PrettyField FieldAnnotation)
@@ -129,7 +132,7 @@ prepareExeTarget opts (Just exeTarget) = do
       else myExeHs
 
 prepareTestTarget
-    :: Interactive m 
+    :: Interactive m
     => WriteOpts
     -> Maybe TestTarget
     -> m (PrettyField FieldAnnotation)
@@ -146,7 +149,7 @@ prepareTestTarget opts (Just testTarget) = do
       _ -> testMainIs
 
 writeCabalFile
-    :: Interactive m 
+    :: Interactive m
     => WriteOpts
     -> [PrettyField FieldAnnotation]
       -- ^ .cabal fields

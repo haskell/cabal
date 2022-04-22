@@ -316,7 +316,7 @@ packageNamePrompt srcDb flags = getPackageName flags $ do
       ++ unPackageName pn
       ++ " is already in use by another package on Hackage."
 
-    promptOtherNameMsg pn = inUseMsg pn ++ " Do you want to choose a different name"
+    promptOtherNameMsg pn = inUseMsg pn ++ " Do you want to choose a different name (y/n)"
 
 versionPrompt :: Interactive m => InitFlags -> m Version
 versionPrompt flags = getVersion flags go

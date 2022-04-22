@@ -357,9 +357,9 @@ instance Interactive IO where
     copyFile = P.copyFile
     renameDirectory = P.renameDirectory
     hFlush = System.IO.hFlush
-    message q severity = unless (q == silent)
-      . putStrLn . (("\n" ++ show severity ++ ": ") ++)
-
+    message q severity msg
+      | q == silent = pure ()
+      | otherwise  = putStrLn $ "[" ++ show severity ++ "] " ++ msg
     break = return False
     throwPrompt = throwM
 
@@ -422,7 +422,7 @@ popList = pop >>= \a -> case P.safeRead a of
     Just as -> return as
 
 checkInvalidPath :: String -> a -> PurePrompt a
-checkInvalidPath path act = 
+checkInvalidPath path act =
     -- The check below is done this way so it's easier to append
     -- more invalid paths in the future, if necessary
     if path `elem` ["."] then
