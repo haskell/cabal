@@ -77,8 +77,8 @@ configureCommand = CommandUI {
      ++ "    Adjust the project configuration to use the given compiler\n"
      ++ "    program and check the resulting configuration works.\n"
      ++ "  " ++ pname ++ " v2-configure\n"
-     ++ "    Reset the local configuration to empty and check the overall\n"
-     ++ "    project configuration works.\n"
+     ++ "    Reset the local configuration to empty. To check that the\n"
+     ++ "    project configuration works, use 'cabal build'.\n"
 
   , commandDefaultFlags = defaultNixStyleFlags ()
   , commandOptions      = removeIgnoreProjectOption
