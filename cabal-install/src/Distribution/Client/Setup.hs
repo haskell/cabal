@@ -360,9 +360,9 @@ globalCommand commands = CommandUI {
       ,multiOption "nix"
         globalNix (\v flags -> flags { globalNix = v })
         [
-          noArg (Flag True) [] ["enable-nix"] 
+          noArg (Flag True) [] ["enable-nix"]
           "Enable Nix integration: run commands through nix-shell if a 'shell.nix' file exists",
-          noArg (Flag False) [] ["disable-nix"] 
+          noArg (Flag False) [] ["disable-nix"]
           "Disable Nix integration"
         ]
 
@@ -2031,7 +2031,7 @@ initCommand = CommandUI {
     commandSynopsis = "Create a new cabal package.",
     commandDescription = Just $ \_ -> wrapText $
          "Create a .cabal, CHANGELOG.md, minimal initial Haskell code and optionally a LICENSE file.\n"
-      ++ "\n"      
+      ++ "\n"
       ++ "Calling init with no arguments runs interactive mode, "
       ++ "which will try to guess as much as possible and prompt you for the rest.\n"
       ++ "Non-interactive mode can be invoked by the -n/--non-interactive flag, "
@@ -2230,11 +2230,9 @@ initOptions _ =
     (reqArg' "TOOL" (Flag . (:[]))
                     (fromFlagOrDefault []))
 
-    -- NB: this is a bit of a transitional hack and will likely be
-    -- removed again if `cabal init` is migrated to the v2-* command
-    -- framework
   , option "w" ["with-compiler"]
-    "give the path to a particular compiler"
+    "give the path to a particular compiler. For 'init', this flag is used \
+    \to set the bounds inferred for the 'base' package."
     IT.initHcPath (\v flags -> flags { IT.initHcPath = v })
     (reqArgFlag "PATH")
 
