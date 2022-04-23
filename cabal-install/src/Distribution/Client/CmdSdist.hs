@@ -27,9 +27,9 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Client.Types
     ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import Distribution.Client.DistDirLayout
-    ( DistDirLayout(..), ProjectRoot (..) )
+    ( DistDirLayout(..), ProjectRoot (..), CabalDirLayout (cabalLogsDirectory) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig, withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
+    ( ProjectConfig (projectPackagesOptional, projectConfigAllPackages), withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared, PackageConfig (packageConfigTests), projectPackages )
 import Distribution.Client.ProjectFlags
      ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 
@@ -174,7 +174,6 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
                 | listSources -> "-"
                 | otherwise   -> distSdistFile distDirLayout (packageId pkg)
 
-
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
         Right pkgs
@@ -210,7 +209,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
     withoutProject config = do
         cwd <- getCurrentDirectory
-        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
+        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) True (ProjectRootImplicit cwd) OtherCommand
         return (baseCtx, distDirLayout baseCtx)
 
 data OutputFormat = SourceList Char

@@ -209,7 +209,7 @@ establishProjectBaseContext
     -> IO ProjectBaseContext
 establishProjectBaseContext verbosity cliConfig currentCommand = do
     projectRoot <- either throwIO return =<< findProjectRoot Nothing mprojectFile
-    establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand
+    establishProjectBaseContextWithRoot verbosity cliConfig False projectRoot currentCommand
   where
     mprojectFile   = Setup.flagToMaybe projectConfigProjectFile
     ProjectConfigShared { projectConfigProjectFile} = projectConfigShared cliConfig
@@ -218,10 +218,11 @@ establishProjectBaseContext verbosity cliConfig currentCommand = do
 establishProjectBaseContextWithRoot
     :: Verbosity
     -> ProjectConfig
+    -> Bool
     -> ProjectRoot
     -> CurrentCommand
     -> IO ProjectBaseContext
-establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentCommand = do
+establishProjectBaseContextWithRoot verbosity cliConfig ignoreLocalProjectFile projectRoot currentCommand = do
     cabalDir <- getCabalDir
 
     let distDirLayout  = defaultDistDirLayout projectRoot mdistDirectory
@@ -233,6 +234,7 @@ establishProjectBaseContextWithRoot verbosity cliConfig projectRoot currentComma
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
                            httpTransport
+                           ignoreLocalProjectFile
                            distDirLayout
                            cliConfig
 

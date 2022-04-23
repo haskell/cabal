@@ -304,12 +304,14 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 --
 rebuildProjectConfig :: Verbosity
                      -> HttpTransport
+                     -> Bool
                      -> DistDirLayout
                      -> ProjectConfig
                      -> IO ( ProjectConfig
                            , [PackageSpecifier UnresolvedSourcePackage] )
 rebuildProjectConfig verbosity
                      httpTransport
+                     ignoreLocalProjectFile
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
                        distDirectory,
@@ -318,7 +320,7 @@ rebuildProjectConfig verbosity
                        distProjectFile
                      }
                      cliConfig = do
-
+           
     fileMonitorProjectConfigKey <- do
       configPath <- getConfigFilePath projectConfigConfigFile
       return (configPath, distProjectFile "")
@@ -364,7 +366,7 @@ rebuildProjectConfig verbosity
     --
     phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
-      readProjectConfig verbosity httpTransport projectConfigConfigFile distDirLayout
+      readProjectConfig verbosity httpTransport ignoreLocalProjectFile projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -376,7 +378,6 @@ rebuildProjectConfig verbosity
                                projectConfigBuildOnly
                              } = do
       pkgLocations <- findProjectPackages distDirLayout projectConfig
-
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
       liftIO $ do

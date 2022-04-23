@@ -504,15 +504,17 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 --
 readProjectConfig :: Verbosity
                   -> HttpTransport
+                  -> Bool
                   -> Flag FilePath
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
-readProjectConfig verbosity httpTransport configFileFlag distDirLayout = do
+readProjectConfig verbosity httpTransport ignoreProjectFlag configFileFlag distDirLayout = do
     global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
     local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
     freeze <- readProjectLocalFreezeConfig    verbosity httpTransport distDirLayout
     extra  <- readProjectLocalExtraConfig     verbosity httpTransport distDirLayout
-    return (global <> local <> freeze <> extra)
+    if ignoreProjectFlag then return global
+    else return (global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
@@ -793,7 +795,6 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
     optionalPkgs <- findPackageLocations False   projectPackagesOptional
     let repoPkgs  = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed      projectPackagesNamed
-
     return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
   where
     findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]
