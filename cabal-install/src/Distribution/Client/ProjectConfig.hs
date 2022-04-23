@@ -795,6 +795,7 @@ findProjectPackages DistDirLayout{distProjectRootDirectory}
     optionalPkgs <- findPackageLocations False   projectPackagesOptional
     let repoPkgs  = map ProjectPackageRemoteRepo projectPackagesRepo
         namedPkgs = map ProjectPackageNamed      projectPackagesNamed
+
     return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
   where
     findPackageLocations :: Bool -> [String] -> Rebuild [ProjectPackageLocation]

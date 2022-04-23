@@ -174,6 +174,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
                 | listSources -> "-"
                 | otherwise   -> distSdistFile distDirLayout (packageId pkg)
 
+
     case reifyTargetSelectors localPkgs targetSelectors of
         Left errs -> die' verbosity . unlines . fmap renderTargetProblem $ errs
         Right pkgs

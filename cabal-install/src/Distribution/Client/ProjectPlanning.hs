@@ -320,7 +320,7 @@ rebuildProjectConfig verbosity
                        distProjectFile
                      }
                      cliConfig = do
-           
+
     fileMonitorProjectConfigKey <- do
       configPath <- getConfigFilePath projectConfigConfigFile
       return (configPath, distProjectFile "")
@@ -377,6 +377,7 @@ rebuildProjectConfig verbosity
                                projectConfigShared,
                                projectConfigBuildOnly
                              } = do
+
       pkgLocations <- findProjectPackages distDirLayout projectConfig
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
