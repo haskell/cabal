@@ -27,9 +27,9 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Client.Types
     ( PackageSpecifier(..), PackageLocation(..), UnresolvedSourcePackage )
 import Distribution.Client.DistDirLayout
-    ( DistDirLayout(..), ProjectRoot (..), CabalDirLayout (cabalLogsDirectory) )
+    ( DistDirLayout(..), ProjectRoot (..) )
 import Distribution.Client.ProjectConfig
-    ( ProjectConfig (projectPackagesOptional, projectConfigAllPackages), withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared, PackageConfig (packageConfigTests), projectPackages )
+    ( ProjectConfig, withProjectOrGlobalConfig, commandLineFlagsToProjectConfig, projectConfigConfigFile, projectConfigShared )
 import Distribution.Client.ProjectFlags
      ( ProjectFlags (..), defaultProjectFlags, projectFlagsOptions )
 
