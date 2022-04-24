@@ -14,7 +14,7 @@ import Distribution.ReadE          (succeedReadE)
 import Distribution.Simple.Command
     ( MkOptDescr, OptionField(optionName), ShowOrParseArgs (..), boolOpt', option
     , reqArg )
-import Distribution.Simple.Setup   (Flag (..), flagToList, flagToMaybe, toFlag, trueArg)
+import Distribution.Simple.Setup   (Flag (..), flagToList, flagToMaybe, toFlag, trueArg, fromFlagOrDefault)
 
 data ProjectFlags = ProjectFlags
     { flagProjectFileName :: Flag FilePath
@@ -47,7 +47,8 @@ projectFlagsOptions showOrParseArgs =
         (reqArg "FILE" (succeedReadE Flag) flagToList)
     , option ['z'] ["ignore-project"]
         "Ignore local project configuration"
-        flagIgnoreProject (\v flags -> flags { flagIgnoreProject = v })
+        -- If the "--project-file" flag is set, then this will always be false
+        flagIgnoreProject (\v flags -> flags { flagIgnoreProject = toFlag (not ((not (fromFlagOrDefault False v)) || (NoFlag /= (flagProjectFileName flags))))  })
         (yesNoOpt showOrParseArgs)
     ]
 
