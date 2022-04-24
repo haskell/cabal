@@ -2,7 +2,7 @@
 -- |
 -- TODO: Document module.
 --
--- Exports C types for dynamic characters and their constructors allong with
+-- Exports C types for dynamic characters and their constructors along with
 -- an FFI binding for the memoizing TCM structure.
 -----------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ import System.IO.Unsafe
 
 
 -- |
--- A convient type alias for improved clairity of use.
+-- A convenient type alias for improved clarity of use.
 type CBufferUnit  = CULong -- This will be compatible with uint64_t
 
 
@@ -267,7 +267,7 @@ constructElementFromExportable exChar = do
 -- /O(1)/
 --
 -- Malloc and populate a pointer to a C representation of a dynamic character.
--- The buffer of the resulting value is intentially zeroed out.
+-- The buffer of the resulting value is intentionally zeroed out.
 constructEmptyElement :: Int -- ^ Bit width of a dynamic character element.
                       -> IO (Ptr DCElement)
 constructEmptyElement alphabetSize = do

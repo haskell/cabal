@@ -37,7 +37,7 @@ common ffi-build-info
   -- to locate when preprocessing the C files. Without listing the directories containing
   -- the C header files here, the FFI preprocession (hsc2hs, c2hs,etc.) will fail to locate
   -- the requisite files.
-  -- Note also, that the parent directory of the nessicary C header files must be specified.
+  -- Note also, that the parent directory of the necessary C header files must be specified.
   -- The preprocesser will not recursively look in subdirectories for C header files!
   include-dirs:     memoized-tcm
 

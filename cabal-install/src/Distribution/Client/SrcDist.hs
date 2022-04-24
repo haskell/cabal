@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
--- | Utilities to implemenet cabal @v2-sdist@.
+-- | Utilities to implement cabal @v2-sdist@.
 module Distribution.Client.SrcDist (
     allPackageSourceFiles,
     packageDirToSdist,

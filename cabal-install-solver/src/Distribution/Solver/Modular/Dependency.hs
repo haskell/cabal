@@ -94,7 +94,7 @@ data FlaggedDep qpn =
     -- | Dependencies which are always enabled, for the component 'comp'.
   | Simple (LDep qpn) Component
 
--- | Conversatively flatten out flagged dependencies
+-- | Conservatively flatten out flagged dependencies
 --
 -- NOTE: We do not filter out duplicates.
 flattenFlaggedDeps :: FlaggedDeps qpn -> [(LDep qpn, Component)]

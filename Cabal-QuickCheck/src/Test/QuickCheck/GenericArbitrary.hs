@@ -14,7 +14,7 @@ import Test.QuickCheck
 import Control.Applicative (pure, (<$>), (<*>))
 #endif
 
--- Generic arbitary for non-recursive types
+-- Generic arbitrary for non-recursive types
 genericArbitrary :: (Generic a, GArbitrary (Rep a)) => Gen a
 genericArbitrary = fmap to garbitrary
 

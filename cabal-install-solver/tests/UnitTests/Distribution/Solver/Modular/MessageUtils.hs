@@ -43,7 +43,7 @@ shouldSuggestExtension =
   , ("NoLamdaCase", "NoLambdaCase")
   ]
 
--- Given x misspelled language should suggest y langauge
+-- Given x misspelled language should suggest y language
 shouldSuggestLanguage :: [(String, String)]
 shouldSuggestLanguage =
   [ ("GHC2020", "GHC2021")

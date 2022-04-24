@@ -12,7 +12,7 @@ build-type:    Simple
 description:
   description: Trying to fool highlighter, successfully?
   Description is long and often written on multiple lines Haskell2010
-  type subdir extensions:, the colon could fool highligher
+  type subdir extensions:, the colon could fool highlighter
   DeriveFunctor
   as if else elif should not be matched here
 tested-with:

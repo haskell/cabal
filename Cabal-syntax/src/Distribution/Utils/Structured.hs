@@ -12,7 +12,7 @@
 --
 -- Copyright: (c) 2019 Oleg Grenrus
 --
--- Structurally tag binary serialisaton stream.
+-- Structurally tag binary serialisation stream.
 -- Useful when most 'Binary' instances are 'Generic' derived.
 --
 -- Say you have a data type
@@ -121,7 +121,7 @@ import qualified Data.Foldable
 type TypeName        = String
 type ConstructorName = String
 
--- | A sematic version of a data type. Usually 0.
+-- | A semantic version of a data type. Usually 0.
 type TypeVersion     = Word32
 
 -- | Structure of a datatype.

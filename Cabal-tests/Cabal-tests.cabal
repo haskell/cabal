@@ -9,7 +9,7 @@ maintainer:    cabal-devel@haskell.org
 homepage:      http://www.haskell.org/cabal/
 bug-reports:   https://github.com/haskell/cabal/issues
 synopsis:      Tests for Cabal library
-description:   The tests are external for development flows convinience.
+description:   The tests are external for development flows convenience.
 category:      Distribution
 build-type:    Simple
 

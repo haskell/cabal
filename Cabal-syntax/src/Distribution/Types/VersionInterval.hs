@@ -102,7 +102,7 @@ stage1 = cataVersionRange alg where
     -- intersection: pairwise intersect. Strip empty intervals. Sort to restore the invariant.
     alg (IntersectVersionRangesF v1 v2) = mapMaybe nonEmptyInterval $ liftA2 intersectInterval (stage2and3 v1) (stage2and3 v2)
 
--- | Creck that interval is non-empty
+-- | Check that interval is non-empty
 nonEmptyInterval :: VersionInterval -> Maybe VersionInterval
 nonEmptyInterval i | nonEmptyVI i = Just i
 nonEmptyInterval _                = Nothing
