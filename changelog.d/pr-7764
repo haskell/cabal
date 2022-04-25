@@ -1,0 +1,17 @@
+synopsis: Use ghc -flink-rts option when available
+packages: Cabal
+prs: #7764 #8111
+issues: #7763
+significance: significant
+
+description: {
+
+Previously Cabal did quite some headstands to link against libHSrts.
+Note only this is complex but it couples very tightly to GHC's implementation.
+Thankfully, as of GHC 9.0 GHC provides a -flink-rts flag for precisely this purpose.
+Use it when available.
+
+It fixed a bug which make Cabal unusable to build foreign libraries for windows and ghc 9.0 or 9.2.
+See <https://gitlab.haskell.org/ghc/ghc/-/issues/20520>
+
+}

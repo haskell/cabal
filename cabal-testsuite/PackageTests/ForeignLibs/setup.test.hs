@@ -28,9 +28,7 @@ main = setupAndCabalTest . recordMode DoNotRecord $ do
   skipUnlessGhcVersion ">= 7.8"
   osx <- isOSX
   ghc80 <- isGhcVersion "== 8.0.2"
-  win <- isWindows
-  ghcGreaterThan90 <- isGhcVersion ">= 9.0"
-  expectBrokenIf ((osx && ghc80) || (win && ghcGreaterThan90)) 7989 $
+  expectBrokenIf (osx && ghc80) 7989 $
     withPackageDb $ do
         setup_install []
         setup "copy" [] -- regression test #4156
