@@ -319,10 +319,8 @@ goSections specVer = traverse_ process
             let hasType ts = testInterface ts /= testInterface mempty
             unless (onAllBranches hasType testSuite) $ lift $ parseFailure pos $ concat
                 [ "Test suite " ++ show (prettyShow name')
-                , " is missing required field \"type\" or the field "
-                , "is not present in all conditional branches. The "
-                , "available test types are: "
-                , intercalate ", " (map prettyShow knownTestTypes)
+                , " is missing required field \"main-is\" or the field "
+                , "is not present in all conditional branches."
                 ]
 
             -- TODO check duplicate name here?
@@ -337,10 +335,8 @@ goSections specVer = traverse_ process
             let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
             unless (onAllBranches hasType bench) $ lift $ parseFailure pos $ concat
                 [ "Benchmark " ++ show (prettyShow name')
-                , " is missing required field \"type\" or the field "
-                , "is not present in all conditional branches. The "
-                , "available benchmark types are: "
-                , intercalate ", " (map prettyShow knownBenchmarkTypes)
+                , " is missing required field \"main-is\" or the field "
+                , "is not present in all conditional branches."
                 ]
 
             -- TODO check duplicate name here?

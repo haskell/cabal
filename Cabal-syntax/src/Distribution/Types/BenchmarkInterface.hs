@@ -11,8 +11,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.BenchmarkType
 import Distribution.Version
 
--- | The benchmark interfaces that are currently defined. Each
--- benchmark must specify which interface it supports.
+-- | The benchmark interfaces that are currently defined.
 --
 -- More interfaces may be defined in future, either new revisions or
 -- totally new interfaces.
