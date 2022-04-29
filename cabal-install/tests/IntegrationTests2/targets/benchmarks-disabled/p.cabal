@@ -9,7 +9,6 @@ benchmark solver-disabled
   build-depends: a-package-that-does-not-exist
 
 benchmark user-disabled
-  type: exitcode-stdio-1.0
   main-is: Test.hs
   build-depends: base
 

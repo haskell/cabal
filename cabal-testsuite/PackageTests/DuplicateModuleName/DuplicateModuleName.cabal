@@ -13,7 +13,6 @@ library
   default-language:    Haskell2010
 
 test-suite foo
-  type: detailed-0.9
   test-module:         Foo
   hs-source-dirs: tests
   build-depends: base, Cabal, DuplicateModuleName
