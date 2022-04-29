@@ -43,6 +43,8 @@ jobs:
           # lot of segfaults caused by ghc bugs
           - os: "windows-latest"
             ghc: "8.8.4"
+          - os: "windows-latest"
+            ghc: "8.4.4"
         include:
           - os: "ubuntu-latest"
             ghc: "8.0.2"
