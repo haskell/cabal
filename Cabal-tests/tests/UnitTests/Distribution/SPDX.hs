@@ -25,15 +25,7 @@ import Test.QuickCheck.Instances.Cabal ()
 spdxTests :: [TestTree]
 spdxTests =
     [ testProperty "LicenseId roundtrip" licenseIdRoundtrip
-#if MIN_VERSION_binary(0,7,0)
-    , testProperty "LicenseId Binary.put" licenseIdBinaryPut
-    , testProperty "LicenseId Binary.get" licenseIdBinaryGet
-#endif
     , testProperty "LicenseExceptionId roundtrip" licenseExceptionIdRoundtrip
-#if MIN_VERSION_binary(0,7,0)
-    , testProperty "LicenseExceptionId Binary.put" licenseExceptionIdBinaryPut
-    , testProperty "LicenseExceptionId Binary.get" licenseExceptionIdBinaryGet
-#endif
     , testProperty "LicenseRef roundtrip" licenseRefRoundtrip
     , testProperty "SimpleLicenseExpression roundtrip" simpleLicenseExpressionRoundtrip
     , testProperty "LicenseExpression roundtrip" licenseExpressionRoundtrip
@@ -45,29 +37,6 @@ licenseIdRoundtrip :: LicenseId -> Property
 licenseIdRoundtrip x =
     counterexample (prettyShow x) $
     Right x === eitherParsec (prettyShow x)
-
-#if MIN_VERSION_binary(0,7,0)
-licenseIdBinaryPut :: LicenseId -> Property
-licenseIdBinaryPut x =
-    Binary.runPut (Binary.put x)
-    ===
-    Binary.runPut (Binary.gput (from x))
-
-licenseIdBinaryGet :: Word8 -> Word8 -> Property
-licenseIdBinaryGet w0 w1 =
-    stripMsg id (Binary.runGetOrFail Binary.get bs)
-    ===
-    stripMsg to (Binary.runGetOrFail Binary.gget bs)
-  where
-    bs = LBS.pack [w0, w1]
-
-    stripMsg
-        :: (a -> LicenseId)
-        -> Either (x, y, String) (x, y, a)
-        -> Either (x, y) (x, y, LicenseId)
-    stripMsg _ (Left (x,y,_))  = Left (x,y)
-    stripMsg f (Right (x,y,t)) = Right (x,y,f t)
-#endif
 
 licenseExceptionIdRoundtrip :: LicenseExceptionId -> Property
 licenseExceptionIdRoundtrip x =
