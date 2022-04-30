@@ -513,9 +513,13 @@ readProjectConfig verbosity httpTransport ignoreProjectFlag configFileFlag distD
     local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
     freeze <- readProjectLocalFreezeConfig    verbosity httpTransport distDirLayout
     extra  <- readProjectLocalExtraConfig     verbosity httpTransport distDirLayout
-    if ignoreProjectFlag then return (global <> (singletonProjectConfigSkeleton defaultImplicitProjectConfig))
+    if ignoreProjectFlag then return (global <> (singletonProjectConfigSkeleton defaultProject))
     else return (global <> local <> freeze <> extra)
-
+    where
+      defaultProject :: ProjectConfig
+      defaultProject = mempty {
+        projectPackages = ["./"]
+      }
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
@@ -536,14 +540,13 @@ readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
   where
     projectFile :: FilePath
     projectFile = distProjectFile distDirLayout ""
+    defaultImplicitProjectConfig :: ProjectConfig
+    defaultImplicitProjectConfig = mempty {
+      -- We expect a package in the current directory.
+      projectPackages         = [ "./*.cabal" ],
 
-defaultImplicitProjectConfig :: ProjectConfig
-defaultImplicitProjectConfig = mempty {
-  -- We expect a package in the current directory.
-  projectPackages         = [ "./*.cabal" ],
-
-  projectConfigProvenance = Set.singleton Implicit
-}
+      projectConfigProvenance = Set.singleton Implicit
+    }
 
 -- | Reads a @cabal.project.local@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal configure@, or in
