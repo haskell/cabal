@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
 module Distribution.SPDX.LicenseId (
     LicenseId (..),
     licenseId,
@@ -35,7 +34,7 @@ import qualified Text.PrettyPrint as Disp
 -- | SPDX License identifier
 data LicenseId
 {{ licenseIds }}
-  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data)
 
 instance Binary LicenseId where
     -- Word16 is encoded in big endianess
