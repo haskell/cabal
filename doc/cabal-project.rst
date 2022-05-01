@@ -32,7 +32,7 @@ options):
 
 4. ``cabal.project.local`` (the output of ``cabal configure``)
 
-Any call to ``cabal build`` will consider ``cabal.project*`` files from parent 
+Any call to ``cabal build`` will consider ``cabal.project*`` files from parent
 directories when there is none in the current directory.
 
 .. _conditionals and imports:
@@ -312,7 +312,7 @@ package, and thus apply globally:
         Nix-style local build cache
     in-place
         Project-specific build directory
-    
+
     By default, the package stack you will have with v2 commands is:
 
     ::
@@ -328,7 +328,7 @@ package, and thus apply globally:
     ::
 
         -- [global, store, in-place]
-        
+
     So your local packages get put in ``dist-newstyle`` instead of the store.
 
     This flag manipulates the default prefix: ``[global, store]`` and accepts
@@ -1316,15 +1316,18 @@ Haddock options
 
     :default: False
 
-    Enables building of Haddock documentation
+    Enables building of Haddock documentation.
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
 
-    `documentation: true` does not imply :cfg-field:`haddock-benchmarks`,
-    :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal` or
-    :cfg-field:`haddock-tests`. These need to be enabled separately if
-    desired.
+    `documentation: true` does not imply
+    :cfg-field:`haddock-all`,
+    :cfg-field:`haddock-benchmarks`,
+    :cfg-field:`haddock-executables`,
+    :cfg-field:`haddock-internal` or
+    :cfg-field:`haddock-tests`.
+    These need to be enabled separately if desired.
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE
@@ -1334,49 +1337,68 @@ Haddock options
     ``$pkgid``), which should be updated as documentation is built.
 
     The command line variant of this flag is
-    ``--doc-index-file=TEMPLATE``
+    ``--doc-index-file=TEMPLATE``.
+    This flag is not available for the ``v1-haddock`` legacy command.
 
 The following commands are equivalent to ones that would be passed when
-running ``setup haddock``. (TODO: Where does the documentation get put.)
+running ``setup haddock``.
 
 .. cfg-field:: haddock-hoogle: boolean
+               --haddock-hoogle
     :synopsis: Generate Hoogle file.
 
     :default: False
 
     Generate a text file which can be converted by Hoogle_
-    into a database for searching. This is equivalent to running ``haddock``
-    with the ``--hoogle`` flag.
+    into a database for searching.
+    This is equivalent to running ``haddock`` with the ``--hoogle`` flag.
 
-    The command line variant of this flag is ``--hoogle`` (for the
-    ``haddock`` command).
+    The command line variant of this flag is
+    ``--haddock-hoogle`` for the ``haddock`` subcommand and
+    ``--hoogle`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-html: boolean
+               --haddock-html
     :synopsis: Build HTML documentation.
 
     :default: True
 
     Build HTML documentation.
 
-    The command line variant of this flag is ``--html`` (for the
-    ``haddock`` command).
+    The command line variant of this flag is
+    ``--haddock-html`` for the ``haddock`` subcommand and
+    ``--html`` for the ``v1-haddock`` legacy subcommand.
+
+.. cfg-field:: haddock-quickjump: boolean
+               --haddock-quickjump
+    :synopsis: Generate Quickjump file.
+
+    :default: False
+
+    Generate an index for interactive documentation navigation.
+    This is equivalent to running ``haddock`` with the ``--quickjump`` flag.
+
+    The command line variant of this flag is
+    ``--haddock-quickjump`` for the ``haddock`` subcommand and
+    ``--quickjump`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-html-location: templated path
-               --html-location=TEMPLATE
+               --haddock-html-location=TEMPLATE
     :synopsis: Haddock HTML templates location.
 
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions are applied to the template
     to obtain a location for each package, which will be used by
     hyperlinks in the generated documentation. For example, the
-    following command generates links pointing at [Hackage] pages:
+    following command generates links pointing at Hackage pages:
 
     ::
 
         html-location: http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html
 
-    The command line variant of this flag is ``--html-location`` (for
-    the ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-html-location`` for the ``haddock`` subcommand and
+    ``--html-location`` for the ``v1-haddock`` legacy subcommand.
 
     ::
 
@@ -1387,46 +1409,43 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     using the package tool (e.g. ``ghc-pkg``).
 
 .. cfg-field:: haddock-executables: boolean
+               --haddock-executables
     :synopsis: Generate documentation for executables.
 
     :default: False
 
     Run haddock on all executable programs.
 
-    The command line variant of this flag is ``--executables`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-executables`` for the ``haddock`` subcommand and
+    ``--executables`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-tests: boolean
+               --haddock-tests
     :synopsis: Generate documentation for tests.
 
     :default: False
 
     Run haddock on all test suites.
 
-    The command line variant of this flag is ``--tests`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-tests`` for the ``haddock`` subcommand and
+    ``--tests`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-benchmarks: boolean
+               --haddock-benchmarks
     :synopsis: Generate documentation for benchmarks.
 
     :default: False
 
     Run haddock on all benchmarks.
 
-    The command line variant of this flag is ``--benchmarks`` (for the
-    ``haddock`` subcommand).
-
-.. cfg-field:: haddock-all: boolean
-    :synopsis: Generate documentation for everything
-
-    :default: False
-
-    Run haddock on all components.
-
-    The command line variant of this flag is ``--all`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-benchmarks`` for the ``haddock`` subcommand and
+    ``--benchmarks`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-internal: boolean
+               --haddock-internal
     :synopsis: Generate documentation for internal modules
 
     :default: False
@@ -1434,60 +1453,88 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     Build haddock documentation which includes unexposed modules and
     symbols.
 
-    The command line variant of this flag is ``--internal`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-internal`` for the ``haddock`` subcommand and
+    ``--internal`` for the ``v1-haddock`` legacy subcommand.
+
+.. cfg-field:: haddock-all: boolean
+               --haddock-all
+    :synopsis: Generate documentation for everything
+
+    :default: False
+
+    Run haddock on all components.
+
+    The command line variant of this flag is
+    ``--haddock-all`` for the ``haddock`` subcommand and
+    ``--all`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-css: path
-    :synopsis: Location of Haddoc CSS file.
+               --haddock-css=PATH
+    :synopsis: Location of Haddock CSS file.
 
     The CSS file that should be used to style the generated
-    documentation (overriding haddock's default.)
+    documentation (overriding haddock's default).
 
-    The command line variant of this flag is ``--css`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-css`` for the ``haddock`` subcommand and
+    ``--css`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-hyperlink-source: boolean
+               --haddock-hyperlink-source
     :synopsis: Generate hyperlinked source code for documentation
 
     :default: False
 
     Generated hyperlinked source code using `HsColour`_, and have
     Haddock documentation link to it.
+    This is equivalent to running ``haddock`` with the ``--hyperlinked-source`` flag.
 
-    The command line variant of this flag is ``--hyperlink-source`` (for
-    the ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-hyperlink-source`` for the ``haddock`` subcommand and
+    ``--hyperlink-source`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-hscolour-css: path
+               --haddock-hscolour-css=PATH
     :synopsis: Location of CSS file for HsColour
 
     The CSS file that should be used to style the generated hyperlinked
     source code (from `HsColour`_).
 
-    The command line variant of this flag is ``--hscolour-css`` (for the
-    ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-hscolour-css`` for the ``haddock`` subcommand and
+    ``--hscolour-css`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-contents-location: URL
+               --haddock-contents-location=URL
     :synopsis: URL for contents page.
 
     A baked-in URL to be used as the location for the contents page.
 
-    The command line variant of this flag is ``--contents-location``
-    (for the ``haddock`` subcommand).
+    The command line variant of this flag is
+    ``--haddock-contents-location`` for the ``haddock`` subcommand and
+    ``--contents-location`` for the ``v1-haddock`` legacy subcommand.
 
 .. cfg-field:: haddock-keep-temp-files: boolean
     :synopsis: Keep temporary Haddock files.
 
     Keep temporary files.
 
-    The command line variant of this flag is ``--keep-temp-files`` (for
-    the ``haddock`` subcommand).
+    The command line variant of this flag is ``--keep-temp-files`` for
+    the ``v1-haddock`` legacy subcommand.
+    This flag is not supported by the ``haddock`` subcommand.
 
 .. cfg-field:: open: boolean
+               --open
     :synopsis: Open generated documentation in-browser.
 
     When generating HTML documentation, attempt to open it in a browser
     when complete. This will use ``xdg-open`` on Linux and BSD systems,
     ``open`` on macOS, and ``start`` on Windows.
+
+    The command line variant of this flag is ``--open`` for
+    the ``haddock`` subcommand.
+    This flag is not supported by the ``v1-haddock`` legacy subcommand.
 
 Advanced global configuration options
 -------------------------------------
