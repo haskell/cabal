@@ -187,12 +187,14 @@ selectComponentTarget :: SubComponentTarget
 selectComponentTarget = selectComponentTargetBasic
 
 reportBuildDocumentationTargetProblems :: Verbosity -> [TargetProblem'] -> IO a
-reportBuildDocumentationTargetProblems verbosity problems = 
+reportBuildDocumentationTargetProblems verbosity problems =
   case problems of
     [TargetProblemNoneEnabled _ _] -> do
-      notice verbosity $
-          "No documentation was generated as this package does not contain a library. "
-       ++ "Perhaps you want to use the --haddock-executables, --haddock-tests, --haddock-benchmarks or "
-       ++ "--haddock-internal flags."
+      notice verbosity $ unwords
+        [ "No documentation was generated as this package does not contain a library."
+        , "Perhaps you want to use the --haddock-all flag, or one or more of the"
+        , "--haddock-executables, --haddock-tests, --haddock-benchmarks or"
+        , "--haddock-internal flags."
+        ]
       System.Exit.exitSuccess
     _ -> reportTargetProblems verbosity "build documentation for" problems
