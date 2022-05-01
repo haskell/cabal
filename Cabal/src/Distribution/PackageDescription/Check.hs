@@ -322,12 +322,14 @@ checkTestSuite pkg test =
       TestSuiteUnsupported tt@(TestTypeUnknown _ _) -> Just $
         PackageBuildWarning $
              quote (prettyShow tt) ++ " is not a known type of test suite. "
+          ++ "Either remove the 'type' field or use a known type. "
           ++ "The known test suite types are: "
           ++ commaSep (map prettyShow knownTestTypes)
 
       TestSuiteUnsupported tt -> Just $
         PackageBuildWarning $
              quote (prettyShow tt) ++ " is not a supported test suite version. "
+          ++ "Either remove the 'type' field or use a known type. "
           ++ "The known test suite types are: "
           ++ commaSep (map prettyShow knownTestTypes)
       _ -> Nothing
@@ -372,12 +374,14 @@ checkBenchmark _pkg bm =
       BenchmarkUnsupported tt@(BenchmarkTypeUnknown _ _) -> Just $
         PackageBuildWarning $
              quote (prettyShow tt) ++ " is not a known type of benchmark. "
+          ++ "Either remove the 'type' field or use a known type. "
           ++ "The known benchmark types are: "
           ++ commaSep (map prettyShow knownBenchmarkTypes)
 
       BenchmarkUnsupported tt -> Just $
         PackageBuildWarning $
              quote (prettyShow tt) ++ " is not a supported benchmark version. "
+          ++ "Either remove the 'type' field or use a known type. "
           ++ "The known benchmark types are: "
           ++ commaSep (map prettyShow knownBenchmarkTypes)
       _ -> Nothing

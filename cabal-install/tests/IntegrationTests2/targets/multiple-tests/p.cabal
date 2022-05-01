@@ -4,7 +4,6 @@ build-type: Simple
 cabal-version: >= 1.10
 
 test-suite p1
-  type: exitcode-stdio-1.0
   main-is:  P1.hs
   build-depends: base
 
