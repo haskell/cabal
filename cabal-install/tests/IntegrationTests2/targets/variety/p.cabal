@@ -16,7 +16,6 @@ executable an-exe
   other-modules: AModule
 
 test-suite a-testsuite
-  type: exitcode-stdio-1.0
   main-is: Test.hs
   other-modules: AModule  
 

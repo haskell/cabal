@@ -12,8 +12,7 @@ import Distribution.Types.TestType
 import Distribution.ModuleName
 import Distribution.Version
 
--- | The test suite interfaces that are currently defined. Each test suite must
--- specify which interface it supports.
+-- | The test suite interfaces that are currently defined.
 --
 -- More interfaces may be defined in future, either new revisions or totally
 -- new interfaces.

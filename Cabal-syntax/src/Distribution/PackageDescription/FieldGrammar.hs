@@ -325,7 +325,7 @@ testSuiteFieldGrammar = TestSuiteStanza
           ^^^ availableSince CabalSpecV3_6 [] -- TODO 3_8
 
 validateTestSuite :: Position -> TestSuiteStanza -> ParseResult TestSuite
-validateTestSuite pos stanza = case _testStanzaTestType stanza of
+validateTestSuite pos stanza = case testSuiteType of
     Nothing -> pure basicTestSuite
 
     Just tt@(TestTypeUnknown _ _) ->
@@ -357,6 +357,11 @@ validateTestSuite pos stanza = case _testStanzaTestType stanza of
                 { testInterface = TestSuiteLibV09 ver module_ }
 
   where
+    testSuiteType =
+        _testStanzaTestType stanza
+        <|> testTypeExe <$ _testStanzaMainIs stanza
+        <|> testTypeLib <$ _testStanzaTestModule stanza
+
     missingField name tt = "The '" ++ name ++ "' field is required for the "
                         ++ prettyShow tt ++ " test suite type."
 
@@ -442,7 +447,7 @@ benchmarkFieldGrammar = BenchmarkStanza
     <*> blurFieldGrammar benchmarkStanzaBuildInfo buildInfoFieldGrammar
 
 validateBenchmark :: Position -> BenchmarkStanza -> ParseResult Benchmark
-validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
+validateBenchmark pos stanza = case benchmarkStanzaType of
     Nothing -> pure emptyBenchmark
         { benchmarkBuildInfo = _benchmarkStanzaBuildInfo stanza }
 
@@ -469,6 +474,10 @@ validateBenchmark pos stanza = case _benchmarkStanzaBenchmarkType stanza of
                 }
 
   where
+    benchmarkStanzaType =
+        _benchmarkStanzaBenchmarkType stanza
+        <|> benchmarkTypeExe <$ _benchmarkStanzaMainIs stanza
+
     missingField name tt = "The '" ++ name ++ "' field is required for the "
                         ++ prettyShow tt ++ " benchmark type."
 
