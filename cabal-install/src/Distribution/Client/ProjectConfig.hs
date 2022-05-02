@@ -462,7 +462,7 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity
-    -> Flag Bool                  -- ^ whether to ignore local project
+    -> Flag Bool                  -- ^ whether to ignore local project (--ignore-project flag)
     -> Flag FilePath              -- ^ @--cabal-config@
     -> IO a                       -- ^ with project
     -> (ProjectConfig -> IO a)    -- ^ without projet
@@ -504,7 +504,7 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 --
 readProjectConfig :: Verbosity
                   -> HttpTransport
-                  -> Bool
+                  -> Flag Bool
                   -> Flag FilePath
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
@@ -513,7 +513,7 @@ readProjectConfig verbosity httpTransport ignoreProjectFlag configFileFlag distD
     local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
     freeze <- readProjectLocalFreezeConfig    verbosity httpTransport distDirLayout
     extra  <- readProjectLocalExtraConfig     verbosity httpTransport distDirLayout
-    if ignoreProjectFlag then return (global <> (singletonProjectConfigSkeleton defaultProject))
+    if ignoreProjectFlag == Flag True then return (global <> (singletonProjectConfigSkeleton defaultProject))
     else return (global <> local <> freeze <> extra)
     where
       defaultProject :: ProjectConfig

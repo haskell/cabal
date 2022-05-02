@@ -138,7 +138,7 @@ sdistOptions showOrParseArgs =
 
 sdistAction :: (ProjectFlags, SdistFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
-    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity ignoreProject globalConfigFlag withProject withoutProject
+    (baseCtx, distDirLayout) <- withProjectOrGlobalConfig verbosity flagIgnoreProject globalConfigFlag withProject withoutProject
 
     let localPkgs = localPackages baseCtx
 
@@ -187,7 +187,6 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     listSources    = fromFlagOrDefault False sdistListSources
     nulSeparated   = fromFlagOrDefault False sdistNulSeparated
     mOutputPath    = flagToMaybe sdistOutputPath
-    ignoreProject  = flagIgnoreProject
 
     prjConfig :: ProjectConfig
     prjConfig = commandLineFlagsToProjectConfig
@@ -210,7 +209,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
     withoutProject config = do
         cwd <- getCurrentDirectory
-        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) True (ProjectRootImplicit cwd) OtherCommand
+        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) flagIgnoreProject (ProjectRootImplicit cwd) OtherCommand
         return (baseCtx, distDirLayout baseCtx)
 
 data OutputFormat = SourceList Char

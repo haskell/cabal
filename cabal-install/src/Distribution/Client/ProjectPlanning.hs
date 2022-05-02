@@ -304,14 +304,14 @@ sanityCheckElaboratedPackage ElaboratedConfiguredPackage{..}
 --
 rebuildProjectConfig :: Verbosity
                      -> HttpTransport
-                     -> Bool
+                     -> Flag Bool
                      -> DistDirLayout
                      -> ProjectConfig
                      -> IO ( ProjectConfig
                            , [PackageSpecifier UnresolvedSourcePackage] )
 rebuildProjectConfig verbosity
                      httpTransport
-                     ignoreLocalProjectFile
+                     ignoreProjectFlag -- ^ @--ignore-project@
                      distDirLayout@DistDirLayout {
                        distProjectRootDirectory,
                        distDirectory,
@@ -366,7 +366,7 @@ rebuildProjectConfig verbosity
     --
     phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
-      readProjectConfig verbosity httpTransport ignoreLocalProjectFile projectConfigConfigFile distDirLayout
+      readProjectConfig verbosity httpTransport ignoreProjectFlag projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
