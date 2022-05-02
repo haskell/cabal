@@ -209,7 +209,7 @@ sdistAction (ProjectFlags{..}, SdistFlags{..}) targetStrings globalFlags = do
     withoutProject :: ProjectConfig -> IO (ProjectBaseContext, DistDirLayout)
     withoutProject config = do
         cwd <- getCurrentDirectory
-        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) flagIgnoreProject (ProjectRootImplicit cwd) OtherCommand
+        baseCtx <- establishProjectBaseContextWithRoot verbosity (config <> prjConfig) (ProjectRootImplicit cwd) OtherCommand
         return (baseCtx, distDirLayout baseCtx)
 
 data OutputFormat = SourceList Char

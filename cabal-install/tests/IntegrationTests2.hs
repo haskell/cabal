@@ -174,7 +174,7 @@ testExceptionFindProjectRoot = do
 
 testTargetSelectors :: (String -> IO ()) -> Assertion
 testTargetSelectors reportSubCase = do
-    (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+    (_, _, _, localPackages, _) <- configureProject testdir config
     let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
                                                        Nothing
@@ -286,7 +286,7 @@ testTargetSelectors reportSubCase = do
 
 testTargetSelectorBadSyntax :: Assertion
 testTargetSelectorBadSyntax = do
-    (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+    (_, _, _, localPackages, _) <- configureProject testdir config
     let targets = [ "foo bar",  " foo"
                   , "foo:", "foo::bar"
                   , "foo: ", "foo: :bar"
@@ -528,7 +528,7 @@ instance IsString PackageIdentifier where
 
 testTargetSelectorNoCurrentPackage :: Assertion
 testTargetSelectorNoCurrentPackage = do
-    (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+    (_, _, _, localPackages, _) <- configureProject testdir config
     let readTargetSelectors' = readTargetSelectorsWith (dirActions testdir)
                                                        localPackages
                                                        Nothing
@@ -551,7 +551,7 @@ testTargetSelectorNoCurrentPackage = do
 
 testTargetSelectorNoTargets :: Assertion
 testTargetSelectorNoTargets = do
-    (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+    (_, _, _, localPackages, _) <- configureProject testdir config
     Left errs <- readTargetSelectors localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInCwd True]
     cleanProject testdir
@@ -562,7 +562,7 @@ testTargetSelectorNoTargets = do
 
 testTargetSelectorProjectEmpty :: Assertion
 testTargetSelectorProjectEmpty = do
-    (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+    (_, _, _, localPackages, _) <- configureProject testdir config
     Left errs <- readTargetSelectors localPackages Nothing []
     errs @?= [TargetSelectorNoTargetsInProject]
     cleanProject testdir
@@ -576,7 +576,7 @@ testTargetSelectorProjectEmpty = do
 -- drive capitalisation mismatch when no targets are given
 testTargetSelectorCanonicalizedPath :: Assertion
 testTargetSelectorCanonicalizedPath = do
-  (_, _, _, localPackages, _) <- configureProject NoFlag testdir config
+  (_, _, _, localPackages, _) <- configureProject testdir config
   cwd <- getCurrentDirectory
   let virtcwd = cwd </> basedir </> symlink
   -- Check that the symlink is there before running test as on Windows
@@ -1676,8 +1676,8 @@ type ProjDetails = (DistDirLayout,
                     [PackageSpecifier UnresolvedSourcePackage],
                     BuildTimeSettings)
 
-configureProject :: Flag Bool -> FilePath -> ProjectConfig -> IO ProjDetails
-configureProject ignoreProjectFlag testdir cliConfig = do
+configureProject :: FilePath -> ProjectConfig -> IO ProjDetails
+configureProject testdir cliConfig = do
     cabalDir <- getCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
 
@@ -1698,7 +1698,6 @@ configureProject ignoreProjectFlag testdir cliConfig = do
     (projectConfig, localPackages) <-
       rebuildProjectConfig verbosity
                            httpTransport
-                           ignoreProjectFlag
                            distDirLayout
                            cliConfig
 
@@ -1724,7 +1723,7 @@ planProject testdir cliConfig = do
        cabalDirLayout,
        projectConfig,
        localPackages,
-       _buildSettings) <- configureProject NoFlag testdir cliConfig
+       _buildSettings) <- configureProject testdir cliConfig
 
     (elaboratedPlan, _, elaboratedShared, _, _) <-
       rebuildInstallPlan verbosity
@@ -1968,13 +1967,15 @@ testNixFlags = do
 testIgnoreProjectFlag :: Assertion
 testIgnoreProjectFlag = do
   -- Coverage flag should be false globally by default (~/.cabal folder)
-  (_, _, prjConfigGlobal, _, _) <- configureProject (Flag True) testdir emptyConfig
+  (_, _, prjConfigGlobal, _, _) <- configureProject testdir ignoreSetConfig
   let globalCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigGlobal
   False @=? Flg.fromFlagOrDefault False globalCoverageFlag
   -- It is set to true in the cabal.project file
-  (_, _, prjConfigLocal, _, _) <- configureProject NoFlag testdir emptyConfig
+  (_, _, prjConfigLocal, _, _) <- configureProject testdir emptyConfig
   let localCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigLocal
   True @=? Flg.fromFlagOrDefault False localCoverageFlag
   where
     testdir = "build/ignore-project"
     emptyConfig = mempty
+    ignoreSetConfig :: ProjectConfig
+    ignoreSetConfig = mempty { projectConfigShared = mempty { projectConfigIgnoreProject = Flag True } }

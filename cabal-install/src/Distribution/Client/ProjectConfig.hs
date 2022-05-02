@@ -504,7 +504,7 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 --
 readProjectConfig :: Verbosity
                   -> HttpTransport
-                  -> Flag Bool
+                  -> Flag Bool -- ^ @--ignore-project@
                   -> Flag FilePath
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
