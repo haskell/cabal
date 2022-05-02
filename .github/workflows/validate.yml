@@ -276,6 +276,7 @@ jobs:
   # This way we can use it exclusively in branch protection rules
   # and abstract away the concrete jobs of the workflow, including their names
   validate-post-job:
+    if: always()
     name: Validate post job
     runs-on: ubuntu-18.04
     # IMPORTANT! Any job added to the workflow should be added here too
