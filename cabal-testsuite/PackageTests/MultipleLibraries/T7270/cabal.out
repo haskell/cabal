@@ -1,5 +1,4 @@
 # Setup configure
-Warning: dep.cabal:11:30: visibility is experimental feature (issue #5660)
 Configuring dep-0.1.0.0...
 # Setup build
 Preprocessing library 'sublib' for dep-0.1.0.0..
@@ -13,7 +12,6 @@ Installing library in <PATH>
 Registering library 'sublib' for dep-0.1.0.0..
 Registering library for dep-0.1.0.0..
 # Setup configure
-Warning: p.cabal:9:28: colon specifier is experimental feature (issue #5660)
 Configuring p-0.1.0.0...
 # Setup build
 Preprocessing library for p-0.1.0.0..

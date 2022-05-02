@@ -63,7 +63,6 @@ instance Parsec Mixin where
         ln <- P.option LMainLibName $ do
             _ <- P.char ':'
             versionGuardMultilibs
-            parsecWarning PWTExperimental "colon specifier is experimental feature (issue #5660)"
             LSubLibName <$> parsec
         P.spaces
         incl <- parsec
