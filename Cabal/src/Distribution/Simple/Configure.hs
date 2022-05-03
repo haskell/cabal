@@ -1160,7 +1160,7 @@ configureCoverage verbosity cfg comp = do
 computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
 computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
-  -- but can be overidden by --library-profiling, or the old deprecated
+  -- but can be overridden by --library-profiling, or the old deprecated
   -- --executable-profiling flag.
   --
   -- The --profiling-detail and --library-profiling-detail flags behave

@@ -1259,7 +1259,7 @@ data CabalFileParseError = CabalFileParseError
     [PWarning]         -- ^ warnings
   deriving (Typeable)
 
--- | Manual instance which skips file contentes
+-- | Manual instance which skips file contents
 instance Show CabalFileParseError where
     showsPrec d (CabalFileParseError fp _ es mv ws) = showParen (d > 10)
         $ showString "CabalFileParseError"

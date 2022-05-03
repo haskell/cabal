@@ -171,7 +171,7 @@ mergeBuckets xs@(x:xs') ys@(y:ys') =
         EQ -> y : mergeBuckets xs' ys'
         LT -> x : mergeBuckets xs' ys
 
--- | Override-merge oftwo indexes.
+-- | Override-merge of two indexes.
 --
 -- Packages from the second mask packages of the same exact name
 -- (case-sensitively) from the first.

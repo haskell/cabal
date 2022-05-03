@@ -79,7 +79,7 @@ import System.Directory
 newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
--- | Use this wihin the body action of 'rerunIfChanged' to declare that the
+-- | Use this within the body action of 'rerunIfChanged' to declare that the
 -- action depends on the given files. This can be based on what the action
 -- actually did. It is these files that will be checked for changes next
 -- time 'rerunIfChanged' is called for that 'FileMonitor'.

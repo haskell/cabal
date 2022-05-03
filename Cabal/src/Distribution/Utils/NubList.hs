@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Utils.NubList
     ( NubList    -- opaque
-    , toNubList  -- smart construtor
+    , toNubList  -- smart constructor
     , fromNubList
     , overNubList
 
@@ -39,7 +39,7 @@ overNubList :: Ord a => ([a] -> [a]) -> NubList a -> NubList a
 overNubList f (NubList list) = toNubList . f $ list
 
 -- | Monoid operations on NubLists.
--- For a valid Monoid instance we need to satistfy the required monoid laws;
+-- For a valid Monoid instance we need to satisfy the required monoid laws;
 -- identity, associativity and closure.
 --
 -- Identity : by inspection:
