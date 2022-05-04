@@ -68,7 +68,7 @@ check verbosity = do
     --          ghc-options: -Wall -Werror
     --      checkPackages will yield a warning on the last line, but it
     --      would not on each individual branch.
-    --      Hovever, this is the same way hackage does it, so we will yield
+    --      However, this is the same way hackage does it, so we will yield
     --      the exact same errors as it will.
     let pkg_desc = flattenPackageDescription ppd
     ioChecks <- checkPackageFiles verbosity pkg_desc "."

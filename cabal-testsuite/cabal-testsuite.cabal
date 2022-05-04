@@ -90,7 +90,7 @@ executable cabal-tests
   ghc-options: -threaded
   build-depends:
     , cabal-testsuite
-    -- cosntraints inherited via lib:cabal-testsuite component
+    -- constraints inherited via lib:cabal-testsuite component
     , async
     , exceptions
     , filepath

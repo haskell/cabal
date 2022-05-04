@@ -57,7 +57,7 @@ import Distribution.System
 -- * support tarball URLs via ad-hoc download cache (or in -o mode?)
 -- * suggest using --no-deps, unpack or fetch -o if deps cannot be satisfied
 -- * Port various flags from install:
---   * --updage-dependencies
+--   * --upgrade-dependencies
 --   * --constraint and --preference
 --   * --only-dependencies, but note it conflicts with --no-deps
 
@@ -225,7 +225,7 @@ fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
 
     RemoteSourceRepoPackage _repo _ ->
       die' verbosity $ "The 'fetch' command does not yet support remote "
-         ++ "source repositores."
+         ++ "source repositories."
 
     RepoTarballPackage repo pkgid _ -> do
       _ <- fetchRepoTarball verbosity repoCtxt repo pkgid

@@ -39,7 +39,7 @@ import UnitTests.TempTestDir (withTestDir, removeDirectoryRecursiveHack)
 -- working state.
 --
 -- The first test simply checks that the test infrastructure works. It
--- constructs a repository on disk and then checks out every tag or commmit
+-- constructs a repository on disk and then checks out every tag or commit
 -- and checks that the working state is the same as the pure representation.
 --
 -- The second test works in a similar way but tests 'syncSourceRepos'. It

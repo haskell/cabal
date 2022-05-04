@@ -26,9 +26,9 @@ relative to the respective preceding *published* version.
   enumerates executabes (possibly brought into scope by  :pkg-field:`build-tool-depends`) that are run after all other
   preprocessors. These executables are invoked with a target dir for
   output, a sequence of all source directories with source files of
-  local lib components that the given test stanza dependens on, and
+  local lib components that the given test stanza depends on, and
   following a double dash, all options cabal would pass to ghc for a
-  build. They are expected to output a newline-seperated list of
+  build. They are expected to output a newline-separated list of
   generated modules which have been written to the targetdir. This can
   be used for driving doctests and other discover-style tests generated
   from source code.
@@ -169,7 +169,7 @@ relative to the respective preceding *published* version.
 * New :pkg-field:`library:virtual-modules` field added.
 
 * New :pkg-field:`cxx-sources` and :pkg-field:`cxx-options` fields
-  added for suppporting bundled foreign routines implemented in C++.
+  added for supporting bundled foreign routines implemented in C++.
 
 * New :pkg-field:`extra-bundled-libraries` field for specifying
   additional custom library objects to be installed.

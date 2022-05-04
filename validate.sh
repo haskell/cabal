@@ -58,7 +58,7 @@ Available options:
       --partial-hackage-tests       Run hackage-tests on parts of Hackage data
   -v, --verbose                     Verbose output
   -q, --quiet                       Less output
-  -s, --step STEP                   Run only specific step (can be specified mutliple times)
+  -s, --step STEP                   Run only specific step (can be specified multiple times)
       --list-steps                  List steps and build-targets and exit
       --help                        Print this message and exit
 EOF

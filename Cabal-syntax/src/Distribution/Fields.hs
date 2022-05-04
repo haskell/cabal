@@ -1,4 +1,4 @@
--- | Utilitiies to work with @.cabal@ like file structure.
+-- | Utilities to work with @.cabal@ like file structure.
 module Distribution.Fields (
     -- * Types
     Field(..),

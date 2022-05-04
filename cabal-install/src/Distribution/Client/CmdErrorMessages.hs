@@ -94,7 +94,7 @@ sortGroupOn key = map (\(x:|xs) -> (key x, x:xs))
 
 
 ----------------------------------------------------
--- Renderering for a few project and package types
+-- Rendering for a few project and package types
 --
 
 renderTargetSelector :: TargetSelector -> String
@@ -201,7 +201,7 @@ renderComponentKind Plural ckind = case ckind of
 
 
 -------------------------------------------------------
--- Renderering error messages for TargetProblem
+-- Rendering error messages for TargetProblem
 --
 
 -- | Default implementation of 'reportTargetProblems' simply renders one problem per line.
@@ -302,7 +302,7 @@ renderTargetProblem verb _ (TargetProblemNoSuchComponent pkgid cname) =
 
 
 ------------------------------------------------------------
--- Renderering error messages for TargetProblemNoneEnabled
+-- Rendering error messages for TargetProblemNoneEnabled
 --
 
 -- | Several commands have a @TargetProblemNoneEnabled@ problem constructor.
@@ -370,7 +370,7 @@ renderTargetProblemNoneEnabled verb targetSelector targets =
       )
 
 ------------------------------------------------------------
--- Renderering error messages for TargetProblemNoneEnabled
+-- Rendering error messages for TargetProblemNoneEnabled
 --
 
 -- | Several commands have a @TargetProblemNoTargets@ problem constructor.
@@ -405,7 +405,7 @@ renderTargetProblemNoTargets verb targetSelector =
         error $ "renderTargetProblemNoTargets: " ++ show ts
 
 -----------------------------------------------------------
--- Renderering error messages for CannotPruneDependencies
+-- Rendering error messages for CannotPruneDependencies
 --
 
 renderCannotPruneDependencies :: CannotPruneDependencies -> String
@@ -436,7 +436,7 @@ renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
            ++ "    (name of library, executable, test-suite or benchmark)\n"
            ++ " - build Data.Foo       -- module name\n"
            ++ " - build Data/Foo.hsc   -- file name\n\n"
-           ++ "An ambigious target can be qualified by package, component\n"
+           ++ "An ambiguous target can be qualified by package, component\n"
            ++ "and/or component kind (lib|exe|test|bench|flib)\n"
            ++ " - build foo:tests      -- component qualified by package\n"
            ++ " - build tests:Data.Foo -- module qualified by component\n"

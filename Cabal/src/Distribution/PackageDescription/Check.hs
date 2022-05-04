@@ -1554,7 +1554,7 @@ checkPathsModuleExtensions pd
 
 -- | Checks GHC options from all ghc-*-options fields from the given BuildInfo
 -- and reports flags that are OK during development process, but are
--- unacceptable in a distrubuted package
+-- unacceptable in a distributed package
 checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
 checkDevelopmentOnlyFlagsBuildInfo bi =
     checkDevelopmentOnlyFlagsOptions "ghc-options" (hcOptions GHC bi)

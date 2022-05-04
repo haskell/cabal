@@ -225,7 +225,7 @@ makeCanonical lg qpn@(Q pp _) i =
 -- | Link the dependencies of linked parents.
 --
 -- When we decide to link one package against another we walk through the
--- package's direct depedencies and make sure that they're all linked to each
+-- package's direct dependencies and make sure that they're all linked to each
 -- other by merging their link groups (or creating new singleton link groups if
 -- they don't have link groups yet). We do not need to do this recursively,
 -- because having the direct dependencies in a link group means that we must

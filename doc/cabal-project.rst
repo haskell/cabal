@@ -613,7 +613,7 @@ The following settings control the behavior of the dependency solver:
     overriding repository.
 
     The special repository reference :rest stands for "all the other repositories"
-    and can be useful to avoid lenghty lists of repository names:
+    and can be useful to avoid lengthy lists of repository names:
 
     ::
 

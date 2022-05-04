@@ -855,7 +855,7 @@ libFieldNames :: [FieldName]
 libFieldNames = fieldGrammarKnownFieldList (libraryFieldGrammar LMainLibName)
 
 -------------------------------------------------------------------------------
--- Suplementary build information
+-- Supplementary build information
 -------------------------------------------------------------------------------
 
 parseHookedBuildInfo :: BS.ByteString -> ParseResult HookedBuildInfo

@@ -27,13 +27,13 @@ unix shells and PowerShell (if you're on Windows).
     $ cabal init myfirstapp -n
 
 .. note:: ``myfirstapp`` stands for the directory (or path) where the project
-          will reside in, if ommited, ``cabal init`` will do its proceedings
+          will reside in, if omitted, ``cabal init`` will do its proceedings
           in the directory it's called in.
 
 .. note:: ``-n`` stands for ``--non-interactive``, which means that cabal will try to guess
           how to set up the project for you and use the default settings, which will serve us
           well for the purpose of this tutorial.
-          When setting up your projects in the future, you will likely want to ommit ``-n``
+          When setting up your projects in the future, you will likely want to omit ``-n``
           and do just ``cabal init``, so that cabal will interactively ask you
           for the details on how the project should be set up
           (while still offering reasonable defaults on every step).
