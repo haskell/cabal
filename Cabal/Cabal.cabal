@@ -1,4 +1,4 @@
-cabal-version: >=1.22
+cabal-version: 1.22
 name:          Cabal
 version:       3.7.0.0
 copyright:     2003-2021, Cabal Development Team (see AUTHORS file)
