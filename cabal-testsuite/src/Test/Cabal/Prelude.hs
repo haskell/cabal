@@ -634,8 +634,8 @@ withRemoteRepo repoDir m = do
           (runReaderT (python3 ["-m", "http.server", "-d", workDir]) env)
           (\_ -> do
             -- wait for the python webserver to come up with a exponential
-            -- backoff starting from 50ms, up to a maximum wait of 10s
-            waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 10000000 $ exponentialBackoff 50000) "localhost" "8000"
+            -- backoff starting from 50ms, up to a maximum wait of 60s
+            waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 60000000 $ exponentialBackoff 50000) "localhost" "8000"
             runReaderT m (env { testHaveRepo = True }))
 
 
