@@ -63,8 +63,8 @@ import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normali
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
 import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
-import Control.Retry (constantDelay, limitRetries)
-import Network.Wait (waitTcp)
+import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
+import Network.Wait (waitTcpVerbose)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -633,7 +633,9 @@ withRemoteRepo repoDir m = do
         withAsync
           (runReaderT (python3 ["-m", "http.server", "-d", workDir]) env)
           (\_ -> do
-            waitTcp (constantDelay 50000 `mappend` limitRetries 5) "localhost" "8000"
+            -- wait for the python webserver to come up with a exponential
+            -- backoff starting from 50ms, up to a maximum wait of 10s
+            waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 10000000 $ exponentialBackoff 50000) "localhost" "8000"
             runReaderT m (env { testHaveRepo = True }))
 
 
