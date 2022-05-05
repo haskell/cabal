@@ -633,7 +633,7 @@ withRemoteRepo repoDir m = do
         withAsync
           (runReaderT (python3 ["-m", "http.server", "-d", workDir]) env)
           (\_ -> do
-            waitTcp (constantDelay 50000 <> limitRetries 5) "localhost" "8000"
+            waitTcp (constantDelay 50000 `mappend` limitRetries 5) "localhost" "8000"
             runReaderT m (env { testHaveRepo = True }))
 
 
