@@ -4,7 +4,7 @@ frameworks.
 How to run
 ----------
 
-1. Build `cabal-tests` (`cabal new-build cabal-tests`)
+1. Build `cabal-tests` (`cabal build cabal-tests`)
 2. Run the `cabal-tests` executable. It will scan for all tests
    in your current directory and subdirectories and run them.
    To run a specific set of tests, use `cabal-tests PATH ...`.  You can
@@ -116,10 +116,9 @@ function you should use depends on how you built the executable:
 * If you built it using `Setup build`, use `runExe`
 * If you installed it using `Setup install` or `cabal install`, use
   `runInstalledExe`.
-* If you built it with `cabal new-build`, use `runPlanExe`; note
+* If you built it with `cabal build`, use `runPlanExe`; note
   that you will need to run this inside of a `withPlan` that is
-  placed *after* you have invoked `new-build`.  (Grep
-  for an example!)
+  placed *after* you have invoked `build`. (Grep for an example!)
 
 **How do I turn off accept tests? My test output wobbles too much.**
 Use `recordMode DoNotRecord`.  This should be a last resort; consider
