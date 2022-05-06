@@ -71,7 +71,7 @@ instance Pretty RemoteRepo where
         pretty (remoteRepoName r) <<>> Disp.colon <<>>
         Disp.text (uriToString id (remoteRepoURI r) [])
 
--- | Note: serialised format represends 'RemoteRepo' only partially.
+-- | Note: serialised format represents 'RemoteRepo' only partially.
 instance Parsec RemoteRepo where
     parsec = do
         name <- parsec
@@ -150,7 +150,7 @@ data Repo
       , repoLocalDir :: FilePath
       }
 
-    -- | Standard (unsecured) remote repositores
+    -- | Standard (unsecured) remote repositories
   | RepoRemote {
         repoRemote   :: RemoteRepo
       , repoLocalDir :: FilePath

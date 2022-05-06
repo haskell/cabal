@@ -1572,7 +1572,7 @@ db23 = [
 -- or also its link target.
 --
 -- It turns out that as long as the Single Instance Restriction is in place,
--- it does not matter, because there will aways be an option that is failing
+-- it does not matter, because there will always be an option that is failing
 -- due to the SIR, which contains the link target in its conflict set.
 --
 -- Even if the SIR is not in place, if there is a solution, one will always

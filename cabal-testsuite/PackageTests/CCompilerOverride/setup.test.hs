@@ -1,6 +1,6 @@
 import Test.Cabal.Prelude
 
--- Test that all the respective defines -DNOERROR... specified in variosu ways
+-- Test that all the respective defines -DNOERROR... specified in various ways
 -- all end up routed to the C compiler. Otherwise the C file we depend on will
 -- not compile.
 main = setupAndCabalTest $ do

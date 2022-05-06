@@ -1160,7 +1160,7 @@ configureCoverage verbosity cfg comp = do
 computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
 computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
-  -- but can be overidden by --library-profiling, or the old deprecated
+  -- but can be overridden by --library-profiling, or the old deprecated
   -- --executable-profiling flag.
   --
   -- The --profiling-detail and --library-profiling-detail flags behave
@@ -1310,7 +1310,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing -> case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
+        Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex dep_pkgname vr lib of
           Nothing  -> Left (DependencyNotExists dep_pkgname)
           Just pkg -> Right pkg
       return $ ExternalDependency $ ipiToPreExistingComponent ipi

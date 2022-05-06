@@ -16,7 +16,7 @@ import           Distribution.PackageDescription
 -- | Desugar a "build-tools" entry into proper a executable dependency if
 -- possible.
 --
--- An entry can be so desguared in two cases:
+-- An entry can be so desugared in two cases:
 --
 -- 1. The name in build-tools matches a locally defined executable.  The
 --    executable dependency produced is on that exe in the current package.

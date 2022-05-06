@@ -1,0 +1,4 @@
+synopsis: Unmarked "visibility: public" and "build-depends: pkg:lib" syntaxes as experimental, allowing Hackage upload of packages exposing or using multiple public libraries
+packages: Cabal
+prs: #8089
+issues: #6801 #7286

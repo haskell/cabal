@@ -30,12 +30,12 @@ allKnownExtensions = enabledExtensions ++ disabledExtensions
     enabledExtensions = map (prettyShow . EnableExtension) knownExtensions
     disabledExtensions =  map (prettyShow . DisableExtension) knownExtensions
 
--- Measure the levenshtein distance between two strings
+-- Measure the Levenshtein distance between two strings
 distance :: String -> String -> Int
 distance = levenshteinDistance defaultEditCosts
 
 -- Given an `unknownElement` and a list of `elements` return the element
--- from the list with the closest levenshtein distance to the `unknownElement`
+-- from the list with the closest Levenshtein distance to the `unknownElement`
 mostSimilarElement :: String -> [String] -> String
 mostSimilarElement unknownElement elements = fst . minimumBy (comparing snd) . map mapDist $ elements
   where

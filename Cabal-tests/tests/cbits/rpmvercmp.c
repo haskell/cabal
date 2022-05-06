@@ -132,7 +132,7 @@ int rmpvercmp_impl(const char *a, const char *b, char *str1, char *str2) {
     }
 
     /* this catches the case where all numeric and alpha segments have */
-    /* compared identically but the segment sepparating characters were */
+    /* compared identically but the segment separating characters were */
     /* different */
     if ((!*one) && (!*two)) return 0;
 

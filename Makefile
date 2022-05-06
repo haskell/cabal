@@ -202,7 +202,7 @@ SPHINX_FLAGS:=-n -W --keep-going -E
 SPHINX_HTML_OUTDIR:=dist-newstyle/doc/users-guide
 USERGUIDE_STAMP:=$(SPHINX_HTML_OUTDIR)/index.html
 
-# do pip install everytime so we have up to date requirements when we build
+# do pip install every time so we have up to date requirements when we build
 users-guide: .python-sphinx-virtualenv $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/*.rst
 	mkdir -p $(SPHINX_HTML_OUTDIR)

@@ -112,7 +112,7 @@ versionIntervals (VersionIntervals is) = is
 type VersionInterval = (LowerBound, UpperBound)
 
 data LowerBound
-  = LowerBound Version !Bound  -- ^ Either exlusive @(v,..@ or inclusive @[v,..@.
+  = LowerBound Version !Bound  -- ^ Either exclusive @(v,..@ or inclusive @[v,..@.
   deriving (Eq, Show)
 
 data UpperBound

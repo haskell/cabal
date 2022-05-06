@@ -18,7 +18,7 @@
 -- numbers.
 --
 -- TODO Figure out what to do about backpack and internal libraries. It is very
--- suspecious that this stuff works with munged package identifiers
+-- suspicious that this stuff works with munged package identifiers
 module Distribution.Simple.Build.Macros (
     generateCabalMacrosHeader,
     generatePackageVersionMacros,

@@ -624,7 +624,7 @@ rebuildInstallPlan verbosity
           Map.fromList
             [ (pkgname, stanzas)
             | pkg <- localPackages
-              -- TODO: misnormer: we should separate
+              -- TODO: misnomer: we should separate
               -- builtin/global/inplace/local packages
               -- and packages explicitly mentioned in the project
               --
@@ -2756,7 +2756,7 @@ pruneInstallPlanToTargets targetActionType perPkgTargetsMap elaboratedPlan =
 -- | This is a temporary data type, where we temporarily
 -- override the graph dependencies of an 'ElaboratedPackage',
 -- so we can take a closure over them.  We'll throw out the
--- overriden dependencies when we're done so it's strictly temporary.
+-- overridden dependencies when we're done so it's strictly temporary.
 --
 -- For 'ElaboratedComponent', this the cached unit IDs always
 -- coincide with the real thing.
@@ -3203,7 +3203,7 @@ packageSetupScriptStyle pkg
 -- Note that adding default deps means these deps are actually /added/ to the
 -- packages that we get out of the solver in the 'SolverInstallPlan'. Making
 -- implicit setup deps explicit is a problem in the post-solver stages because
--- we still need to distinguish the case of explicit and implict setup deps.
+-- we still need to distinguish the case of explicit and implicit setup deps.
 -- See 'rememberImplicitSetupDeps'.
 --
 -- Note in addition to adding default setup deps, we also use

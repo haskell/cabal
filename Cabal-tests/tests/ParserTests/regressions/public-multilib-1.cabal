@@ -1,7 +1,7 @@
 cabal-version: 3.0
 name:          public-multilib1
 version:       0
-synopsis:      public-multilibs are not polished enough for Hackage
+synopsis:      public-multilibs
 category:      Tests
 license:       MIT
 
