@@ -4,11 +4,9 @@ Build profile: -w ghc-<GHCVER> -O1
 In order, the following will be built:
  - pkg-abc-0.1.0.0 (lib:pkg-def) (first run)
  - pkg-abc-0.1.0.0 (exe:program) (first run)
-Warning: pkg-abc.cabal:19:15: colon specifier is experimental feature (issue #5660)
 Configuring library 'pkg-def' for pkg-abc-0.1.0.0..
 Preprocessing library 'pkg-def' for pkg-abc-0.1.0.0..
 Building library 'pkg-def' for pkg-abc-0.1.0.0..
-Warning: pkg-abc.cabal:19:15: colon specifier is experimental feature (issue #5660)
 Configuring executable 'program' for pkg-abc-0.1.0.0..
 Preprocessing executable 'program' for pkg-abc-0.1.0.0..
 Building executable 'program' for pkg-abc-0.1.0.0..
