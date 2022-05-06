@@ -631,7 +631,7 @@ withRemoteRepo repoDir m = do
         putStrLn =<< readFile (testUserCabalConfigFile env)
 
         withAsync
-          (runReaderT (python3 ["-m", "http.server", "-d", workDir]) env)
+          (runReaderT (python3 ["-m", "http.server", "-d", workDir, "--bind", "localhost", "8000"]) env)
           (\_ -> do
             -- wait for the python webserver to come up with a exponential
             -- backoff starting from 50ms, up to a maximum wait of 60s
