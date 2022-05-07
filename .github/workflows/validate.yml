@@ -86,6 +86,17 @@ jobs:
           cabal install cabal-plan --constraint='cabal-plan +exe'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
+      # The tool is not essential to the rest of the test suite. If
+      # hackage-repo-tool is not present, any test that requires it will
+      # be skipped.
+      # We want to keep this in the loop but we don't want to fail if
+      # hackage-repo-tool breaks or fails to support a newer GHC version.
+      - name: Install hackage-repo-tool
+        continue-on-error: true
+        run: |
+          cd $(mktemp -d)
+          cabal install hackage-repo-tool
+
       # Needed by cabal-testsuite/PackageTests/Configure/setup.test.hs
       - name: Install Autotools
         if: runner.os == 'macOS'

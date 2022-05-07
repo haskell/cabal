@@ -63,6 +63,8 @@ import System.FilePath ((</>), takeExtensions, takeDrive, takeDirectory, normali
 import Control.Concurrent (threadDelay)
 import qualified Data.Char as Char
 import System.Directory (getTemporaryDirectory, getCurrentDirectory, canonicalizePath, copyFile, copyFile, doesDirectoryExist, doesFileExist, createDirectoryIfMissing, getDirectoryContents)
+import Control.Retry (exponentialBackoff, limitRetriesByCumulativeDelay)
+import Network.Wait (waitTcpVerbose)
 
 #ifndef mingw32_HOST_OS
 import Control.Monad.Catch ( bracket_ )
@@ -564,6 +566,79 @@ withRepo repo_dir m = do
   where
     repoUri env ="file+noindex://" ++ testRepoDir env
 
+-- | Given a directory (relative to the 'testCurrentDir') containing
+-- a series of directories representing packages, generate an
+-- remote repository corresponding to all of these packages
+withRemoteRepo :: FilePath -> TestM a -> TestM a
+withRemoteRepo repoDir m = do
+    -- https://github.com/haskell/cabal/issues/7065
+    -- you don't simply put a windows path into URL...
+    skipIfWindows
+
+    -- we rely on the presence of python3 for a simple http server
+    skipUnless "no python3" =<< isAvailableProgram python3Program
+    -- we rely on hackage-repo-tool to set up the secure repository
+    skipUnless "no hackage-repo-tool" =<< isAvailableProgram hackageRepoToolProgram
+
+    env <- getTestEnv
+
+    let workDir = testRepoDir env
+
+    -- 1. Initialize repo and repo_keys directory
+    let keysDir = workDir </> "keys"
+    let packageDir = workDir </> "package"
+
+    liftIO $ createDirectoryIfMissing True packageDir
+    liftIO $ createDirectoryIfMissing True keysDir
+
+    -- 2. Create tarballs
+    entries <- liftIO $ getDirectoryContents (testCurrentDir env </> repoDir)
+    forM_ entries $ \entry -> do
+        let srcPath = testCurrentDir env </> repoDir </> entry
+        let destPath = packageDir </> entry
+        isPreferredVersionsFile <- liftIO $
+            -- validate this is the "magic" 'preferred-versions' file
+            -- and perform a sanity-check whether this is actually a file
+            -- and not a package that happens to have the same name.
+            if entry == "preferred-versions"
+                then doesFileExist srcPath
+                else return False
+        case entry of
+            '.' : _ -> return ()
+            _
+                | isPreferredVersionsFile ->
+                      liftIO $ copyFile srcPath destPath
+                | otherwise ->
+                  archiveTo srcPath (destPath <.> "tar.gz")
+
+    -- 3. Create keys and bootstrap repository
+    hackageRepoTool "create-keys" $ ["--keys", keysDir ]
+    hackageRepoTool "bootstrap" $ ["--keys", keysDir, "--repo", workDir]
+
+    -- 4. Wire it up in .cabal/config
+    -- TODO: libify this
+    let package_cache = testCabalDir env </> "packages"
+
+    liftIO $ do
+        appendFile (testUserCabalConfigFile env) $
+            unlines [ "repository repository.localhost"
+                    , "  url: http://localhost:8000/"
+                    , "  secure: True"
+                    , "  root-keys:"
+                    , "  key-threshold: 0"
+                    , "remote-repo-cache: " ++ package_cache ]
+        putStrLn $ testUserCabalConfigFile env
+        putStrLn =<< readFile (testUserCabalConfigFile env)
+
+        withAsync
+          (runReaderT (python3 ["-m", "http.server", "-d", workDir, "--bind", "localhost", "8000"]) env)
+          (\_ -> do
+            -- wait for the python webserver to come up with a exponential
+            -- backoff starting from 50ms, up to a maximum wait of 60s
+            waitTcpVerbose putStrLn (limitRetriesByCumulativeDelay 60000000 $ exponentialBackoff 50000) "localhost" "8000"
+            runReaderT m (env { testHaveRepo = True }))
+
+
 ------------------------------------------------------------------------
 -- * Subprocess run results
 
@@ -910,6 +985,14 @@ ghc' :: [String] -> TestM Result
 ghc' args = do
     recordHeader ["ghc"]
     runProgramM ghcProgram args Nothing
+
+python3 :: [String] -> TestM ()
+python3 args = void $ python3' args
+
+python3' :: [String] -> TestM Result
+python3' args = do
+    recordHeader ["python3"]
+    runProgramM python3Program args Nothing
 
 -- | If a test needs to modify or write out source files, it's
 -- necessary to make a hermetic copy of the source files to operate
