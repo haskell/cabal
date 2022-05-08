@@ -156,8 +156,8 @@ Ruby Gems or Perl distributions. Each system has a notion of
 distributable packages, and has tools to manage the process of
 distributing and installing packages.
 
-Hackage is an online archive of Cabal packages. It is roughly comparable
-to CPAN but with rather fewer packages (around 5,000 vs 28,000).
+Hackage is an online archive of Cabal packages, roughly comparable to
+CPAN.
 
 Cabal is often compared with autoconf and automake and there is some
 overlap in functionality. The most obvious similarity is that the
