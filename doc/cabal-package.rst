@@ -2764,12 +2764,12 @@ repository specifies a tag.
 ::
 
     source-repository head
-      type:     darcs
-      location: http://darcs.haskell.org/cabal/
+      type:     git
+      location: https://github.com/haskell/cabal
 
     source-repository this
-      type:     darcs
-      location: http://darcs.haskell.org/cabal-branches/cabal-1.6/
+      type:     git
+      location: https://github.com/haskell/cabal
       tag:      1.6.1
 
 The exact fields are as follows:
