@@ -12,9 +12,11 @@ data LicenseListVersion
     | LicenseListVersion_3_6
     | LicenseListVersion_3_9
     | LicenseListVersion_3_10
+    | LicenseListVersion_3_16
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 cabalSpecVersionToSPDXListVersion :: CabalSpecVersion -> LicenseListVersion
+cabalSpecVersionToSPDXListVersion CabalSpecV3_8 = LicenseListVersion_3_16
 cabalSpecVersionToSPDXListVersion CabalSpecV3_6 = LicenseListVersion_3_10
 cabalSpecVersionToSPDXListVersion CabalSpecV3_4 = LicenseListVersion_3_9
 cabalSpecVersionToSPDXListVersion CabalSpecV3_0 = LicenseListVersion_3_6
