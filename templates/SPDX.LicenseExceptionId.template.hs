@@ -28,7 +28,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseExceptionId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifier
+-- | SPDX License Exceptions identifiers list v3.16 
 data LicenseExceptionId
 {{ licenseIds }}
   deriving (Eq, Ord, Enum, Bounded, Show, Read, Typeable, Data, Generic)
