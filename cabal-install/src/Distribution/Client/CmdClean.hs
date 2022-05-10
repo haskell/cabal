@@ -6,19 +6,22 @@ import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.DistDirLayout
     ( DistDirLayout(..), defaultDistDirLayout )
+import Distribution.Client.NixStyleOptions
+    ( NixStyleFlags (..), defaultNixStyleFlags )
 import Distribution.Client.ProjectConfig
     ( findProjectRoot )
+import Distribution.Client.ProjectFlags
+    ( ProjectFlags(..), projectFlagsOptions )
 import Distribution.Client.ScriptUtils
     ( getScriptCacheDirectoryRoot )
 import Distribution.Client.Setup
-    ( GlobalFlags )
-import Distribution.ReadE ( succeedReadE )
+    ( ConfigFlags(..), GlobalFlags, liftOptions )
 import Distribution.Simple.Setup
-    ( Flag(..), toFlag, fromFlagOrDefault, flagToList, flagToMaybe
+    ( Flag(..), toFlag, fromFlagOrDefault, flagToMaybe
     , optionDistPref, optionVerbosity, falseArg
     )
 import Distribution.Simple.Command
-    ( CommandUI(..), option, reqArg )
+    ( CommandUI(..), option )
 import Distribution.Simple.Utils
     ( info, die', wrapText, handleDoesNotExist )
 import Distribution.Verbosity
@@ -36,21 +39,15 @@ import System.FilePath
     ( (</>) )
 
 data CleanFlags = CleanFlags
-    { cleanSaveConfig  :: Flag Bool
-    , cleanVerbosity   :: Flag Verbosity
-    , cleanDistDir     :: Flag FilePath
-    , cleanProjectFile :: Flag FilePath
+    { cleanSaveConfig :: Flag Bool
     } deriving (Eq)
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags = CleanFlags
-    { cleanSaveConfig  = toFlag False
-    , cleanVerbosity   = toFlag normal
-    , cleanDistDir     = NoFlag
-    , cleanProjectFile = mempty
+    { cleanSaveConfig = toFlag False
     }
 
-cleanCommand :: CommandUI CleanFlags
+cleanCommand :: CommandUI (NixStyleFlags CleanFlags)
 cleanCommand = CommandUI
     { commandName         = "v2-clean"
     , commandSynopsis     = "Clean the package store and remove temporary files."
@@ -61,31 +58,33 @@ cleanCommand = CommandUI
      ++ "(.hi, .o, preprocessed sources, etc.) and also empties out the "
      ++ "local caches (by default).\n\n"
     , commandNotes        = Nothing
-    , commandDefaultFlags = defaultCleanFlags
+    , commandDefaultFlags = defaultNixStyleFlags defaultCleanFlags
     , commandOptions      = \showOrParseArgs ->
         [ optionVerbosity
-            cleanVerbosity (\v flags -> flags { cleanVerbosity = v })
+            (configVerbosity . configFlags)
+            (\v flags -> flags { configFlags = (configFlags flags) { configVerbosity = v } })
         , optionDistPref
-            cleanDistDir (\dd flags -> flags { cleanDistDir = dd })
+            (configDistPref . configFlags)
+            (\dd flags -> flags { configFlags = (configFlags flags) { configDistPref = dd } })
             showOrParseArgs
-        , option [] ["project-file"]
-            ("Set the name of the cabal.project file"
-             ++ " to search for in parent directories")
-            cleanProjectFile (\pf flags -> flags {cleanProjectFile = pf})
-            (reqArg "FILE" (succeedReadE Flag) flagToList)
-        , option ['s'] ["save-config"]
+        ] ++ liftOptions projectFlags
+               (\x flags -> flags { projectFlags = x })
+               (projectFlagsOptions showOrParseArgs)
+          ++
+        [ option ['s'] ["save-config"]
             "Save configuration, only remove build artifacts"
-            cleanSaveConfig (\sc flags -> flags { cleanSaveConfig = sc })
+            (cleanSaveConfig . extraFlags)
+            (\sc flags -> flags { extraFlags = (extraFlags flags) { cleanSaveConfig = sc } })
             falseArg
         ]
   }
 
-cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
-cleanAction CleanFlags{..} extraArgs _ = do
-    let verbosity      = fromFlagOrDefault normal cleanVerbosity
-        saveConfig     = fromFlagOrDefault False  cleanSaveConfig
-        mdistDirectory = flagToMaybe cleanDistDir
-        mprojectFile   = flagToMaybe cleanProjectFile
+cleanAction :: NixStyleFlags CleanFlags -> [String] -> GlobalFlags -> IO ()
+cleanAction NixStyleFlags{..} extraArgs _ = do
+    let verbosity      = fromFlagOrDefault normal $ configVerbosity configFlags
+        saveConfig     = fromFlagOrDefault False  $ cleanSaveConfig extraFlags
+        mdistDirectory = flagToMaybe $ configDistPref configFlags
+        mprojectFile   = flagToMaybe $ flagProjectFileName projectFlags
 
     -- TODO interpret extraArgs as targets and clean those targets only (issue #7506)
     --
