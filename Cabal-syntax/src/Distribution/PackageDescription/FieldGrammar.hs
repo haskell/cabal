@@ -322,7 +322,7 @@ testSuiteFieldGrammar = TestSuiteStanza
     <*> optionalField    "test-module"            testStanzaTestModule
     <*> blurFieldGrammar testStanzaBuildInfo buildInfoFieldGrammar
     <*> monoidalFieldAla "code-generators"        (alaList'  CommaFSep Token)     testStanzaCodeGenerators
-          ^^^ availableSince CabalSpecV3_6 [] -- TODO 3_8
+          ^^^ availableSince CabalSpecV3_8 []
 
 validateTestSuite :: Position -> TestSuiteStanza -> ParseResult TestSuite
 validateTestSuite pos stanza = case testSuiteType of
