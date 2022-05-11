@@ -213,9 +213,11 @@ GenericPackageDescription {
               condTreeData = TestSuite {
                 testName = UnqualComponentName
                   "",
-                testInterface = TestSuiteExeV10
-                  (mkVersion [1, 0])
-                  "FirstMain.hs",
+                testInterface =
+                TestSuiteUnsupported
+                  (TestTypeUnknown
+                    ""
+                    (mkVersion [])),
                 testBuildInfo = BuildInfo {
                   buildable = True,
                   buildTools = [],
