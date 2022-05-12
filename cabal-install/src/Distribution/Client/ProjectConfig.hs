@@ -462,7 +462,7 @@ renderBadProjectRoot (BadProjectRootExplicitFile projectFile) =
 
 withProjectOrGlobalConfig
     :: Verbosity                  -- ^ verbosity
-    -> Flag Bool                  -- ^ whether to ignore local project
+    -> Flag Bool                  -- ^ whether to ignore local project (--ignore-project flag)
     -> Flag FilePath              -- ^ @--cabal-config@
     -> IO a                       -- ^ with project
     -> (ProjectConfig -> IO a)    -- ^ without projet
@@ -504,16 +504,22 @@ withProjectOrGlobalConfig' verbosity globalConfigFlag with without = do
 --
 readProjectConfig :: Verbosity
                   -> HttpTransport
+                  -> Flag Bool -- ^ @--ignore-project@
                   -> Flag FilePath
                   -> DistDirLayout
                   -> Rebuild ProjectConfigSkeleton
-readProjectConfig verbosity httpTransport configFileFlag distDirLayout = do
+readProjectConfig verbosity httpTransport ignoreProjectFlag configFileFlag distDirLayout = do
     global <- singletonProjectConfigSkeleton <$> readGlobalConfig verbosity configFileFlag
     local  <- readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout
     freeze <- readProjectLocalFreezeConfig    verbosity httpTransport distDirLayout
     extra  <- readProjectLocalExtraConfig     verbosity httpTransport distDirLayout
-    return (global <> local <> freeze <> extra)
-
+    if ignoreProjectFlag == Flag True then return (global <> (singletonProjectConfigSkeleton defaultProject))
+    else return (global <> local <> freeze <> extra)
+    where
+      defaultProject :: ProjectConfig
+      defaultProject = mempty {
+        projectPackages = ["./"]
+      }
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
 -- or returns the default project config for an implicitly defined project.
@@ -534,15 +540,13 @@ readProjectLocalConfigOrDefault verbosity httpTransport distDirLayout = do
   where
     projectFile :: FilePath
     projectFile = distProjectFile distDirLayout ""
-
     defaultImplicitProjectConfig :: ProjectConfig
-    defaultImplicitProjectConfig =
-      mempty {
-        -- We expect a package in the current directory.
-        projectPackages         = [ "./*.cabal" ],
+    defaultImplicitProjectConfig = mempty {
+      -- We expect a package in the current directory.
+      projectPackages         = [ "./*.cabal" ],
 
-        projectConfigProvenance = Set.singleton Implicit
-      }
+      projectConfigProvenance = Set.singleton Implicit
+    }
 
 -- | Reads a @cabal.project.local@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal configure@, or in

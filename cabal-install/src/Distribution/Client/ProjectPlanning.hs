@@ -352,6 +352,9 @@ rebuildProjectConfig verbosity
     ProjectConfigShared { projectConfigConfigFile } =
       projectConfigShared cliConfig
 
+    ProjectConfigShared { projectConfigIgnoreProject } =
+      projectConfigShared cliConfig
+
     fileMonitorProjectConfig ::
       FileMonitor
         (FilePath, FilePath)
@@ -364,7 +367,7 @@ rebuildProjectConfig verbosity
     --
     phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
-      readProjectConfig verbosity httpTransport projectConfigConfigFile distDirLayout
+      readProjectConfig verbosity httpTransport projectConfigIgnoreProject projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -375,8 +378,8 @@ rebuildProjectConfig verbosity
                                projectConfigShared,
                                projectConfigBuildOnly
                              } = do
-      pkgLocations <- findProjectPackages distDirLayout projectConfig
 
+      pkgLocations <- findProjectPackages distDirLayout projectConfig
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
       liftIO $ do

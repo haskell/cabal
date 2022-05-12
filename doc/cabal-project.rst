@@ -295,6 +295,13 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
+-- option:: --ignore-project
+    
+    Ignores the local ``cabal.project`` file and uses the default
+    configuration with the local ``foo.cabal`` file. Note that
+    if this flag is set while the ``--project-file`` flag is also
+    set then this flag will be ignored.
+
 .. option:: --store-dir=DIR
 
     Specifies the name of the directory of the global package store.

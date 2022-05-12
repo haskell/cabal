@@ -6,4 +6,4 @@ import Test.Cabal.Prelude
 main :: IO ()
 main = cabalTest $ do
   tmpdir <- fmap testTmpDir getTestEnv
-  fails $ cabal "v2-sdist" ["--ignore-project", "--output-directory", tmpdir, "all"]
+  fails $ cabal "v2-sdist" ["--output-directory", tmpdir, "all"]
