@@ -3,15 +3,17 @@ Setup.hs Commands
 
 .. highlight:: console
 
-The low-level Cabal interface is implemented using ``Setup.hs`` scripts.
-You should prefer using higher level interface provided by
-nix-style builds.
+GHC provides the commands ``runhaskell`` and ``runghc`` (they are equivalent)
+to allow you to run Haskell programs without first having to compile them
+(scripts). The low-level Cabal interface is implemented using ``Setup.hs``
+scripts. You should prefer using higher level interface provided by nix-style
+builds.
 
 ::
 
     $ runhaskell Setup.hs [command] [option...]
 
-For the summary of the command syntax, run:
+For the summary of the ``Setup.hs`` script's command syntax, run:
 
 ::
 
