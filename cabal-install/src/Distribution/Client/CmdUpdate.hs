@@ -64,6 +64,7 @@ import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 
 import qualified Hackage.Security.Client as Sec
+import Distribution.Client.IndexUtils.Timestamp (nullTimestamp)
 
 updateCommand :: CommandUI (NixStyleFlags ())
 updateCommand = CommandUI
@@ -227,7 +228,10 @@ updateRepo verbosity _updateFlags repoCtxt (repo, indexState) = do
       -- TODO: This will print multiple times if there are multiple
       -- repositories: main problem is we don't have a way of updating
       -- a specific repo.  Once we implement that, update this.
-      when (new_ts /= current_ts) $
+
+      -- In case current_ts is a valid timestamp different from new_ts, let
+      -- the user know how to go back to current_ts
+      when (current_ts /= nullTimestamp && new_ts /= current_ts) $
         noticeNoWrap verbosity $
           "To revert to previous state run:\n" ++
           "    cabal v2-update '" ++ prettyShow (UpdateRequest rname (IndexStateTime current_ts)) ++ "'\n"

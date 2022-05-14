@@ -616,9 +616,15 @@ withRemoteRepo repoDir m = do
     hackageRepoTool "bootstrap" $ ["--keys", keysDir, "--repo", workDir]
 
     -- 4. Wire it up in .cabal/config
-    -- TODO: libify this
     let package_cache = testCabalDir env </> "packages"
-
+    -- In the following we launch a python http server to serve the remote
+    -- repository. When the http server is ready we proceed with the tests.
+    -- NOTE 1: it's important that both the http server and cabal use the
+    -- same hostname ("localhost"), otherwise there could be a mismatch
+    -- (depending on the details of the host networking settings).
+    -- NOTE 2: here we use a fixed port (8000). This can cause problems in
+    -- case multiple tests are running concurrently or other another
+    -- process on the developer machine is using the same port.
     liftIO $ do
         appendFile (testUserCabalConfigFile env) $
             unlines [ "repository repository.localhost"
@@ -631,7 +637,7 @@ withRemoteRepo repoDir m = do
         putStrLn =<< readFile (testUserCabalConfigFile env)
 
         withAsync
-          (runReaderT (python3 ["-m", "http.server", "-d", workDir, "--bind", "localhost", "8000"]) env)
+          (flip runReaderT env $ python3 ["-m", "http.server", "-d", workDir, "--bind", "localhost", "8000"])
           (\_ -> do
             -- wait for the python webserver to come up with a exponential
             -- backoff starting from 50ms, up to a maximum wait of 60s

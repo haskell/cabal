@@ -4,8 +4,6 @@ Warning: No mirrors found for http://localhost:8000/
 Downloading the latest package list from repository.localhost
 Package list of repository.localhost has been updated.
 The index-state is set to 2022-01-28T02:36:41Z.
-To revert to previous state run:
-    cabal v2-update 'repository.localhost,'
 # cabal update
 Downloading the latest package list from repository.localhost
 Package list of repository.localhost is up to date.
