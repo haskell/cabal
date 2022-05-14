@@ -115,7 +115,7 @@ import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..), LibraryName(..) )
 import Distribution.System ( Platform )
 import Distribution.ReadE
-         ( ReadE(..), succeedReadE, parsecToReadE )
+         ( ReadE(..), succeedReadE, parsecToReadE, parsecToReadEErr, unexpectMsgString )
 import qualified Distribution.Compat.CharParsing as P
 import Distribution.Verbosity
          ( lessVerbose, normal, verboseNoFlags, verboseNoTimestamp )
@@ -680,7 +680,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowOlder . configAllowOlder)
     (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
     (optArg "DEPS"
-     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadEErr unexpectMsgString  relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["allow-newer"]
@@ -688,7 +688,7 @@ configureExOptions _showOrParseArgs src =
     (fmap unAllowNewer . configAllowNewer)
     (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
     (optArg "DEPS"
-     (parsecToReadE ("Cannot parse the list of packages: " ++) relaxDepsParser)
+     (parsecToReadEErr unexpectMsgString  relaxDepsParser)
      (Just RelaxDepsAll) relaxDepsPrinter)
 
   , option [] ["write-ghc-environment-files"]
@@ -720,8 +720,13 @@ writeGhcEnvironmentFilesPolicyPrinter = \case
 
 
 relaxDepsParser :: CabalParsing m => m (Maybe RelaxDeps)
-relaxDepsParser =
-  (Just . RelaxDepsSome . toList) `fmap` P.sepByNonEmpty parsec (P.char ',')
+relaxDepsParser = do
+  rs <- P.sepBy parsec (P.char ',')
+  if null rs
+    then fail $ "empty argument list is not allowed. "
+             ++ "Note: use --allow-newer without the equals sign to permit all "
+             ++ "packages to use newer versions."
+    else return . Just . RelaxDepsSome . toList $ rs
 
 relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
 relaxDepsPrinter Nothing                     = []
