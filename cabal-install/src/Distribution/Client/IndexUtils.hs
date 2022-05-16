@@ -280,7 +280,7 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
                                    "Stopping this command as the requested index-state=" ++ prettyShow ts0
                                 ++ " is newer than " ++ prettyShow (isiMaxTime isi)
                                 ++ ", the most recent state of '" ++ unRepoName rname
-                                ++ "'. You could try 'cabal update' to bring down a later state or request an earlier timestamp for index-state."
+                                ++ "'. You could try 'cabal update' to bring down a later state or force the use of current local state with `--index-state=HEAD`."
                     else info verbosity $
                                    "Requested index-state " ++ prettyShow ts0
                                 ++ " does not exist in '"++ unRepoName rname ++"'!"
