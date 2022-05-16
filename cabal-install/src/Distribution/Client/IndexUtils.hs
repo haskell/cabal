@@ -278,8 +278,8 @@ getSourcePackagesAtIndexState verbosity repoCtxt mb_idxState mb_activeRepos = do
                 if ts0 > isiMaxTime isi
                     then die' verbosity $
                                    "Stopping this command as the requested index-state=" ++ prettyShow ts0
-                                ++ " is newer than (" ++ prettyShow (isiMaxTime isi)
-                                ++ "), the most recent state of '" ++ unRepoName rname
+                                ++ " is newer than " ++ prettyShow (isiMaxTime isi)
+                                ++ ", the most recent state of '" ++ unRepoName rname
                                 ++ "'. You could try 'cabal update' to bring down a later state or request an earlier timestamp for index-state."
                     else info verbosity $
                                    "Requested index-state " ++ prettyShow ts0
