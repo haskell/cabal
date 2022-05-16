@@ -4,7 +4,7 @@ prs: #8115
 issues: #7459
 description: {
 
-Allow the ommission of the `type` field in `test-suite` and `benchmark` stanzas
+Allow the omission of the `type` field in `test-suite` and `benchmark` stanzas
 when the type can be inferred by the presence of `main-is` or `test-module`.
 
 }
