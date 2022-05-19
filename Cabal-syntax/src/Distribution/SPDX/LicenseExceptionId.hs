@@ -255,6 +255,23 @@ licenseExceptionIdList LicenseListVersion_3_10 =
     , Universal_FOSS_exception_1_0
     ]
     ++ bulkOfLicenses
+licenseExceptionIdList LicenseListVersion_3_16 =
+    [ GPL_3_0_linking_exception
+    , GPL_3_0_linking_source_exception
+    , GPL_CC_1_0
+    , LGPL_3_0_linking_exception
+    , LLVM_exception
+    , OCaml_LGPL_linking_exception
+    , OpenJDK_assembly_exception_1_0
+    , PS_or_PDF_font_exception_20170817
+    , Qt_GPL_exception_1_0
+    , Qt_LGPL_exception_1_1
+    , SHL_2_0
+    , SHL_2_1
+    , Swift_exception
+    , Universal_FOSS_exception_1_0
+    ]
+    ++ bulkOfLicenses
 
 -- | Create a 'LicenseExceptionId' from a 'String'.
 mkLicenseExceptionId :: LicenseListVersion -> String -> Maybe LicenseExceptionId
@@ -263,6 +280,7 @@ mkLicenseExceptionId LicenseListVersion_3_2  s = Map.lookup s stringLookup_3_2
 mkLicenseExceptionId LicenseListVersion_3_6  s = Map.lookup s stringLookup_3_6
 mkLicenseExceptionId LicenseListVersion_3_9  s = Map.lookup s stringLookup_3_9
 mkLicenseExceptionId LicenseListVersion_3_10 s = Map.lookup s stringLookup_3_10
+mkLicenseExceptionId LicenseListVersion_3_16 s = Map.lookup s stringLookup_3_16
 
 stringLookup_3_0 :: Map String LicenseExceptionId
 stringLookup_3_0 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
@@ -283,6 +301,10 @@ stringLookup_3_9 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
 stringLookup_3_10 :: Map String LicenseExceptionId
 stringLookup_3_10 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
     licenseExceptionIdList LicenseListVersion_3_10
+
+stringLookup_3_16 :: Map String LicenseExceptionId
+stringLookup_3_16 = Map.fromList $ map (\i -> (licenseExceptionId i, i)) $
+    licenseExceptionIdList LicenseListVersion_3_16
 
 --  | License exceptions in all SPDX License lists
 bulkOfLicenses :: [LicenseExceptionId]
