@@ -46,7 +46,7 @@ library
     transformers (>= 0.3      && < 0.4) || (>=0.4.1.0 && <0.6)
 
   if os(windows)
-    build-depends: Win32 >= 2.3.0.0 && < 2.13
+    build-depends: Win32 >= 2.3.0.0 && < 2.14
   else
     build-depends: unix  >= 2.6.0.0 && < 2.8
 
