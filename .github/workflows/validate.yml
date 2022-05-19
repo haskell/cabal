@@ -46,6 +46,18 @@ jobs:
           - os: "windows-latest"
             ghc: "8.4.4"
         include:
+          # this is to build Cabal with boot packages form the lastest GHC
+          # (cabal-install will include other dependencies which will likely exclude package versions release with newer GHCs)
+          - os: "ubuntu-latest"
+            ghc: "9.2.1"
+            cli: "false"
+          - os: "macos-latest"
+            ghc: "9.2.1"
+            cli: "false"
+          - os: "windows-latest"
+            ghc: "9.2.1"
+            cli: "false"
+          #
           - os: "ubuntu-latest"
             ghc: "8.0.2"
             cli: "false"
