@@ -1,6 +1,6 @@
 name:          solver-benchmarks
 version:       3
-copyright:     2003-2020, Cabal Development Team (see AUTHORS file)
+copyright:     2003-2022, Cabal Development Team (see AUTHORS file)
 license:       BSD3
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -31,7 +31,7 @@ library
     base,
     bytestring,
     containers,
-    Cabal-syntax >= 3.7,
+    Cabal-syntax ^>=3.8,
     directory,
     filepath,
     optparse-applicative,
