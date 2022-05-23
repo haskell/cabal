@@ -1,5 +1,5 @@
 synopsis: Improve error message for empty --allow-newer= 
-packages: Cabal, cabal-install
+packages: Cabal cabal-install
 prs: #8140
 issues: #7740
 description: {

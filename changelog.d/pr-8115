@@ -1,5 +1,5 @@
 synopsis: Make type field optional for tests and benchmarks
-packages: Cabal, Cabal-syntax
+packages: Cabal Cabal-syntax
 prs: #8115
 issues: #7459
 description: {
