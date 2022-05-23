@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -134,9 +135,54 @@ unDir = normalise . unDir'
 type Template = String
 
 data Output = Html | Hoogle
+  deriving Eq
 
 -- ------------------------------------------------------------------------------
 -- Haddock support
+
+-- | Get Haddock program and check if it matches the request
+getHaddockProg :: Verbosity
+               -> ProgramDb
+               -> Compiler
+               -> HaddockArgs
+               -> Flag Bool -- ^ quickjump feature
+               -> IO (ConfiguredProgram, Version) 
+getHaddockProg verbosity programDb comp args quickJumpFlag = do
+    let HaddockArgs { argQuickJump
+                    , argOutput
+                    } = args
+        hoogle = Hoogle `elem` fromFlagOrDefault [] argOutput
+
+    (haddockProg, version, _) <-
+      requireProgramVersion verbosity haddockProgram
+        (orLaterVersion (mkVersion [2,0])) programDb
+
+    -- various sanity checks
+    when (hoogle && version < mkVersion [2,2]) $
+      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+
+    when (fromFlag argQuickJump && version < mkVersion [2,19]) $ do
+      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
+          alt = "The generated documentation won't have the QuickJump feature."
+      if Flag True == quickJumpFlag
+        then die' verbosity msg
+        else warn verbosity (msg ++ "\n" ++ alt)
+
+    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
+                              ["--ghc-version"]
+    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
+      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
+      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
+      (Just haddockGhcVersion, Just ghcVersion)
+        | haddockGhcVersion == ghcVersion -> return ()
+        | otherwise -> die' verbosity $
+               "Haddock's internal GHC version must match the configured "
+            ++ "GHC version.\n"
+            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
+
+    return (haddockProg, version)
+
 
 haddock :: PackageDescription
         -> LocalBuildInfo
@@ -181,48 +227,20 @@ haddock pkg_descr lbi suffixes flags' = do
         haddockTarget =
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
-    (haddockProg, version, _) <-
-      requireProgramVersion verbosity haddockProgram
-        (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
+    libdirArgs <- getGhcLibDir  verbosity lbi
+    let commonArgs = mconcat
+            [ libdirArgs
+            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
+            , fromPackageDescription haddockTarget pkg_descr ]
 
-    -- various sanity checks
-    when (flag haddockHoogle && version < mkVersion [2,2]) $
-      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
-
-
-    when (flag haddockQuickJump && version < mkVersion [2,19]) $ do
-      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
-          alt = "The generated documentation won't have the QuickJump feature."
-      if Flag True == quickJmpFlag
-        then die' verbosity msg
-        else warn verbosity (msg ++ "\n" ++ alt)
-
-    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
-                              ["--ghc-version"]
-    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
-      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
-      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
-      (Just haddockGhcVersion, Just ghcVersion)
-        | haddockGhcVersion == ghcVersion -> return ()
-        | otherwise -> die' verbosity $
-               "Haddock's internal GHC version must match the configured "
-            ++ "GHC version.\n"
-            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
-            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
-
-    -- the tools match the requests, we can proceed
+    (haddockProg, version) <-
+      getHaddockProg verbosity (withPrograms lbi) comp commonArgs quickJmpFlag
 
     -- We fall back to using HsColour only for versions of Haddock which don't
     -- support '--hyperlinked-sources'.
     when (flag haddockLinkedSource && version < mkVersion [2,17]) $
       hscolour' (warn verbosity) haddockTarget pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
-
-    libdirArgs <- getGhcLibDir  verbosity lbi
-    let commonArgs = mconcat
-            [ libdirArgs
-            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription haddockTarget pkg_descr ]
 
     targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
 
