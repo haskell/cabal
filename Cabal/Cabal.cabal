@@ -1,8 +1,8 @@
-cabal-version: 1.22
+cabal-version: 2.0
 name:          Cabal
 version:       3.7.0.0
 copyright:     2003-2021, Cabal Development Team (see AUTHORS file)
-license:       BSD3
+license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
 maintainer:    cabal-devel@haskell.org
