@@ -1376,10 +1376,12 @@ data HaddockFlags = HaddockFlags {
     haddockQuickJump    :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
     haddockContents     :: Flag PathTemplate,
+    haddockIndex        :: Flag PathTemplate,
     haddockDistPref     :: Flag FilePath,
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity,
     haddockCabalFilePath :: Flag FilePath,
+    haddockBaseUrl      :: Flag String,
     haddockArgs         :: [String]
   }
   deriving (Show, Generic, Typeable)
@@ -1406,6 +1408,8 @@ defaultHaddockFlags  = HaddockFlags {
     haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal,
     haddockCabalFilePath = mempty,
+    haddockIndex        = NoFlag,
+    haddockBaseUrl      = NoFlag,
     haddockArgs         = mempty
   }
 
@@ -1533,6 +1537,18 @@ haddockOptions showOrParseArgs =
    (reqArg' "URL"
     (toFlag . toPathTemplate)
     (flagToList . fmap fromPathTemplate))
+
+  ,option "" ["index-location"]
+   "Use a separately-generated HTML index"
+   haddockIndex (\v flags -> flags { haddockIndex = v})
+   (reqArg' "URL"
+    (toFlag . toPathTemplate)
+    (flagToList . fmap fromPathTemplate))
+
+  ,option "" ["base-url"]
+   "Base URL for static files."
+   haddockBaseUrl (\v flags -> flags { haddockBaseUrl = v})
+   (reqArgFlag "URL")
   ]
 
 emptyHaddockFlags :: HaddockFlags

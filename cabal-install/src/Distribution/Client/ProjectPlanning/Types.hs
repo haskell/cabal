@@ -292,6 +292,8 @@ data ElaboratedConfiguredPackage
        elabHaddockQuickJump      :: Bool,
        elabHaddockHscolourCss    :: Maybe FilePath,
        elabHaddockContents       :: Maybe PathTemplate,
+       elabHaddockIndex          :: Maybe PathTemplate,
+       elabHaddockBaseUrl        :: Maybe String,
 
        elabTestMachineLog        :: Maybe PathTemplate,
        elabTestHumanLog          :: Maybe PathTemplate,

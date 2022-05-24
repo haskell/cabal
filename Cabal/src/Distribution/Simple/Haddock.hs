@@ -105,6 +105,10 @@ data HaddockArgs = HaddockArgs {
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
  -- ^ Optional URL to contents page.
+ argIndex :: Flag String,
+ -- ^ Optional URL to index page.
+ argBaseUrl :: Flag String,
+ -- ^ Optional base url from which static files will be loaded.
  argVerbose :: Any,
  argOutput :: Flag [Output],
  -- ^ HTML or Hoogle doc or both? Required.
@@ -352,6 +356,9 @@ fromFlags env flags =
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
+      argIndex = fmap (fromPathTemplate . substPathTemplate env)
+                    (haddockIndex flags),
+      argBaseUrl = haddockBaseUrl flags,
       argVerbose = maybe mempty (Any . (>= deafening))
                    . flagToMaybe $ haddockVerbosity flags,
       argOutput =
@@ -658,6 +665,10 @@ renderPureArgs version comp platform args = concat
     , maybe [] ((:[]) . ("--css="++)) . flagToMaybe . argCssFile $ args
 
     , maybe [] ((:[]) . ("--use-contents="++)) . flagToMaybe . argContents $ args
+
+    , maybe [] ((:[]) . ("--use-index="++)) . flagToMaybe . argIndex $ args
+
+    , maybe [] ((:[]) . ("--base-url="++)) . flagToMaybe . argBaseUrl $ args
 
     , bool [] [verbosityFlag] . getAny . argVerbose $ args
 
