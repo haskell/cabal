@@ -105,8 +105,12 @@ data HaddockArgs = HaddockArgs {
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
  -- ^ Optional URL to contents page.
+ argGenContents :: Flag Bool,
+ -- ^ Generate contents
  argIndex :: Flag String,
  -- ^ Optional URL to index page.
+ argGenIndex :: Flag Bool,
+ -- ^ Generate index
  argBaseUrl :: Flag String,
  -- ^ Optional base url from which static files will be loaded.
  argVerbose :: Any,
@@ -119,7 +123,9 @@ data HaddockArgs = HaddockArgs {
  argTitle :: Flag String,
  -- ^ Page title, required.
  argPrologue :: Flag String,
- -- ^ Prologue text, required.
+ -- ^ Prologue text, required for 'haddock', ignored by 'haddocks'.
+ argPrologueFile :: Flag FilePath,
+ -- ^ Prologue file name, ignored by 'haddock', optional for 'haddocks'.
  argGhcOptions :: GhcOptions,
  -- ^ Additional flags to pass to GHC.
  argGhcLibDir :: Flag FilePath,
@@ -280,7 +286,7 @@ haddock pkg_descr lbi suffixes flags' = do
                              version exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp platform
-                  haddockProg exeArgs'
+                  haddockProg True exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
@@ -299,7 +305,7 @@ haddock pkg_descr lbi suffixes flags' = do
               libArgs <- fromLibrary verbosity tmp lbi' clbi htmlTemplate
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
-              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
+              runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
 
               pwd <- getCurrentDirectory
 
@@ -326,7 +332,7 @@ haddock pkg_descr lbi suffixes flags' = do
               flibArgs <- fromForeignLib verbosity tmp lbi' clbi htmlTemplate
                             version flib
               let libArgs' = commonArgs `mappend` flibArgs
-              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs')
+              runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs')
 
           >> return index
 
@@ -356,8 +362,10 @@ fromFlags env flags =
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
+      argGenContents = Flag False,
       argIndex = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockIndex flags),
+      argGenIndex = Flag False,
       argBaseUrl = haddockBaseUrl flags,
       argVerbose = maybe mempty (Any . (>= deafening))
                    . flagToMaybe $ haddockVerbosity flags,
@@ -568,10 +576,11 @@ runHaddock :: Verbosity
               -> Compiler
               -> Platform
               -> ConfiguredProgram
+              -> Bool -- ^ require targets
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg args
-  | null (argTargets args) = warn verbosity $
+runHaddock verbosity tmpFileOpts comp platform haddockProg requireTargets args
+  | requireTargets && null (argTargets args) = warn verbosity $
        "Haddocks are being requested, but there aren't any modules given "
     ++ "to create documentation for."
   | otherwise = do
@@ -597,26 +606,45 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8          = version >= mkVersion [2,14,4]
       haddockSupportsResponseFiles = version >  mkVersion [2,16,2]
   createDirectoryIfMissingVerbose verbosity True outputDir
-  withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
-    \prologueFileName h -> do
-          do
-             when haddockSupportsUTF8 (hSetEncoding h utf8)
-             hPutStrLn h $ fromFlag $ argPrologue args
-             hClose h
-             let pflag = "--prologue=" ++ prologueFileName
-                 renderedArgs = pflag : renderPureArgs version comp platform args
-             if haddockSupportsResponseFiles
-               then
-                 withResponseFile
-                   verbosity
-                   tmpFileOpts
-                   outputDir
-                   "haddock-response.txt"
-                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
-                   renderedArgs
-                   (\responseFileName -> k (["@" ++ responseFileName], result))
-               else
-                 k (renderedArgs, result)
+  case argPrologue args of
+    Flag prologueText -> 
+      withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
+        \prologueFileName h -> do
+              do
+                 when haddockSupportsUTF8 (hSetEncoding h utf8)
+                 hPutStrLn h prologueText
+                 hClose h
+                 let pflag = "--prologue=" ++ prologueFileName
+                     renderedArgs = pflag : renderPureArgs version comp platform args
+                 if haddockSupportsResponseFiles
+                   then
+                     withResponseFile
+                       verbosity
+                       tmpFileOpts
+                       outputDir
+                       "haddock-response.txt"
+                       (if haddockSupportsUTF8 then Just utf8 else Nothing)
+                       renderedArgs
+                       (\responseFileName -> k (["@" ++ responseFileName], result))
+                   else
+                     k (renderedArgs, result)
+    _ -> do
+      let renderedArgs = (case argPrologueFile args of
+                            Flag pfile -> ["--prologue="++pfile]
+                            _          -> [])
+                      <> renderPureArgs version comp platform args
+      if haddockSupportsResponseFiles
+        then
+          withResponseFile
+            verbosity
+            tmpFileOpts
+            outputDir
+            "haddock-response.txt"
+            (if haddockSupportsUTF8 then Just utf8 else Nothing)
+            renderedArgs
+            (\responseFileName -> k (["@" ++ responseFileName], result))
+        else
+          k (renderedArgs, result)
     where
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
@@ -668,7 +696,11 @@ renderPureArgs version comp platform args = concat
 
     , maybe [] ((:[]) . ("--use-contents="++)) . flagToMaybe . argContents $ args
 
+    , bool ["--gen-contents"] [] .fromFlagOrDefault False . argGenContents $ args
+
     , maybe [] ((:[]) . ("--use-index="++)) . flagToMaybe . argIndex $ args
+
+    , bool ["--gen-index"] [] . fromFlagOrDefault False . argGenIndex $ args
 
     , maybe [] ((:[]) . ("--base-url="++)) . flagToMaybe . argBaseUrl $ args
 
