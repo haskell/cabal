@@ -1588,6 +1588,8 @@ data HaddockProjectFlags = HaddockProjectFlags {
     -- options passed to @haddock@ via 'HaddockFlags' when building
     -- documentation
 
+    haddockProjectProgramPaths :: [(String, FilePath)],
+    haddockProjectProgramArgs  :: [(String, [String])],
     -- haddockHtml is not supported
     -- haddockForHackage is not supported
     haddockProjectExecutables  :: Flag Bool,
@@ -1616,6 +1618,8 @@ defaultHaddockProjectFlags = HaddockProjectFlags {
     haddockProjectGenIndex     = Flag False,
     haddockProjectGenContents  = Flag False,
     haddockProjectTestSuites   = Flag False,
+    haddockProjectProgramPaths = mempty,
+    haddockProjectProgramArgs  = mempty,
     haddockProjectExecutables  = Flag False,
     haddockProjectBenchmarks   = Flag False,
     haddockProjectForeignLibs  = Flag False,
@@ -1642,8 +1646,19 @@ haddockProjectCommand = CommandUI
       , "COMPONENTS [FLAGS]"
       ]
   , commandDefaultFlags = defaultHaddockProjectFlags
-  , commandOptions      = haddockProjectOptions
+  , commandOptions      = \showOrParseArgs ->
+         haddockProjectOptions showOrParseArgs
+      ++ programDbPaths   progDb ParseArgs
+             haddockProjectProgramPaths (\v flags -> flags { haddockProjectProgramPaths = v})
+      ++ programDbOption  progDb showOrParseArgs
+             haddockProjectProgramArgs (\v fs -> fs { haddockProjectProgramArgs = v })
+      ++ programDbOptions progDb ParseArgs
+             haddockProjectProgramArgs  (\v flags -> flags { haddockProjectProgramArgs = v})
   }
+  where
+    progDb = addKnownProgram haddockProgram
+             $ addKnownProgram ghcProgram
+             $ emptyProgramDb
 
 haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
 haddockProjectOptions _showOrParseArgs =

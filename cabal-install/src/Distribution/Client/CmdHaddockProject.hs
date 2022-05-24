@@ -52,6 +52,10 @@ import Distribution.Simple.Haddock (createHaddockIndex)
 import Distribution.Simple.Utils
          ( die', createDirectoryIfMissingVerbose
          , copyDirectoryRecursive, )
+import Distribution.Simple.Program.Builtin
+         ( haddockProgram )
+import Distribution.Simple.Program.Db
+         ( addKnownProgram, reconfigurePrograms )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), defaultHaddockFlags
          , HaddockProjectFlags(..)
@@ -74,6 +78,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
     let haddockFlags = defaultHaddockFlags
           { haddockHtml         = Flag True
           , haddockBaseUrl      = Flag ".."
+          , haddockProgramPaths = haddockProjectProgramPaths  flags
+          , haddockProgramArgs  = haddockProjectProgramArgs   flags
           , haddockExecutables  = haddockProjectExecutables   flags
           , haddockTestSuites   = haddockProjectTestSuites    flags
           , haddockBenchmarks   = haddockProjectBenchmarks    flags
@@ -136,10 +142,21 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
           pkgs :: [ElaboratedConfiguredPackage]
           pkgs = matchingPackages elaboratedPlan
+
+      progs <- reconfigurePrograms verbosity
+                 (haddockProjectProgramPaths flags)
+                 (haddockProjectProgramArgs flags)
+               -- we need to insert 'haddockProgram' before we reconfigure it,
+               -- otherwise 'set
+             . addKnownProgram haddockProgram
+             . pkgConfigCompilerProgs
+             $ sharedConfig
+      let sharedConfig' = sharedConfig { pkgConfigCompilerProgs = progs }
+
       packageNames <- fmap (nub . catMaybes) $ for pkgs $ \package ->
         if elabLocalToProject package
         then do
-          let distDirParams = elabDistDirParams sharedConfig package
+          let distDirParams = elabDistDirParams sharedConfig' package
               buildDir = distBuildDirectory distLayout distDirParams
               packageName = unPackageName (pkgName $ elabPkgSourceId package)
           let docDir = buildDir
@@ -154,7 +171,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
         else do
           let packageName = unPackageName (pkgName $ elabPkgSourceId package)
               packageDir = storePackageDirectory (cabalStoreDirLayout cabalLayout)
-                             (compilerId (pkgConfigCompiler sharedConfig))
+                             (compilerId (pkgConfigCompiler sharedConfig'))
                              (elabUnitId package)
               docDir = packageDir </> "share" </> "doc" </> "html"
               destDir = outputDir </> packageName
@@ -176,9 +193,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 ]
             }
       createHaddockIndex verbosity
-                         (pkgConfigCompilerProgs sharedConfig)
-                         (pkgConfigCompiler sharedConfig)
-                         (pkgConfigPlatform sharedConfig)
+                         (pkgConfigCompilerProgs sharedConfig')
+                         (pkgConfigCompiler sharedConfig')
+                         (pkgConfigPlatform sharedConfig')
                          flags'
   where
     verbosity = fromFlagOrDefault normal (haddockProjectVerbosity flags)

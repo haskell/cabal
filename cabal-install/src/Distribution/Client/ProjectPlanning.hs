@@ -3743,9 +3743,13 @@ setupHsHaddockFlags :: ElaboratedConfiguredPackage
                     -> Verbosity
                     -> FilePath
                     -> Cabal.HaddockFlags
-setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
+setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..}) verbosity builddir =
     Cabal.HaddockFlags {
-      haddockProgramPaths  = mempty, --unused, set at configure time
+      haddockProgramPaths  =
+        case lookupProgram haddockProgram pkgConfigCompilerProgs of
+          Nothing  -> mempty
+          Just prg -> [( programName haddockProgram
+                       , locationPath (programLocation prg) )],
       haddockProgramArgs   = mempty, --unused, set at configure time
       haddockHoogle        = toFlag elabHaddockHoogle,
       haddockHtml          = toFlag elabHaddockHtml,
