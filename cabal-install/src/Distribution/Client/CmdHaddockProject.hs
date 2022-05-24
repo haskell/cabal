@@ -80,6 +80,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockBaseUrl      = Flag ".."
           , haddockProgramPaths = haddockProjectProgramPaths  flags
           , haddockProgramArgs  = haddockProjectProgramArgs   flags
+          , haddockHoogle       = haddockProjectHoogle        flags
           , haddockExecutables  = haddockProjectExecutables   flags
           , haddockTestSuites   = haddockProjectTestSuites    flags
           , haddockBenchmarks   = haddockProjectBenchmarks    flags

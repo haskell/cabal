@@ -1590,6 +1590,7 @@ data HaddockProjectFlags = HaddockProjectFlags {
 
     haddockProjectProgramPaths :: [(String, FilePath)],
     haddockProjectProgramArgs  :: [(String, [String])],
+    haddockProjectHoogle       :: Flag Bool,
     -- haddockHtml is not supported
     -- haddockForHackage is not supported
     haddockProjectExecutables  :: Flag Bool,
@@ -1620,6 +1621,7 @@ defaultHaddockProjectFlags = HaddockProjectFlags {
     haddockProjectTestSuites   = Flag False,
     haddockProjectProgramPaths = mempty,
     haddockProjectProgramArgs  = mempty,
+    haddockProjectHoogle       = Flag False,
     haddockProjectExecutables  = Flag False,
     haddockProjectBenchmarks   = Flag False,
     haddockProjectForeignLibs  = Flag False,
@@ -1680,6 +1682,11 @@ haddockProjectOptions _showOrParseArgs =
     ,option "" ["gen-contents"]
      "Generate contents"
      haddockProjectGenContents (\v flags -> flags { haddockProjectGenContents = v})
+     trueArg
+
+    ,option "" ["hoogle"]
+     "Generate a hoogle database"
+     haddockProjectHoogle (\v flags -> flags { haddockProjectHoogle = v })
      trueArg
 
     ,option "" ["executables"]
