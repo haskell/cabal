@@ -132,8 +132,10 @@ data HaddockArgs = HaddockArgs {
  -- ^ To find the correct GHC, required.
  argReexports :: [OpenModule],
  -- ^ Re-exported modules
- argTargets :: [FilePath]
+ argTargets :: [FilePath],
  -- ^ Modules to process.
+ argLib :: Flag String
+ -- ^ haddock's static \/ auxiliary files.
 } deriving Generic
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
@@ -383,6 +385,7 @@ fromFlags env flags =
                     (haddockIndex flags),
       argGenIndex = Flag False,
       argBaseUrl = haddockBaseUrl flags,
+      argLib = haddockLib flags,
       argVerbose = maybe mempty (Any . (>= deafening))
                    . flagToMaybe $ haddockVerbosity flags,
       argOutput =
@@ -407,6 +410,7 @@ fromHaddockProjectFlags flags =
       , argPrologueFile = haddockProjectPrologue flags
       , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
       , argLinkedSource = haddockProjectLinkedSource flags
+      , argLib = haddockProjectLib flags
       }
 
 
@@ -763,6 +767,7 @@ renderPureArgs version comp platform args = concat
       ]
 
     , argTargets $ args
+    , maybe [] ((:[]) . ("--lib="++)) . flagToMaybe . argLib $ args
     ]
     where
       renderInterfaces = map renderInterface

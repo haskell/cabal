@@ -597,7 +597,8 @@ convertLegacyPerPackageFlags configFlags installFlags
       haddockHscolourCss        = packageConfigHaddockHscolourCss,
       haddockContents           = packageConfigHaddockContents,
       haddockIndex              = packageConfigHaddockIndex,
-      haddockBaseUrl            = packageConfigHaddockBaseUrl
+      haddockBaseUrl            = packageConfigHaddockBaseUrl,
+      haddockLib                = packageConfigHaddockLib
     } = haddockFlags
 
     TestFlags {
@@ -960,6 +961,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockCabalFilePath = mempty,
       haddockIndex         = packageConfigHaddockIndex,
       haddockBaseUrl       = packageConfigHaddockBaseUrl,
+      haddockLib           = packageConfigHaddockLib,
       haddockArgs          = mempty
     }
 
@@ -1280,6 +1282,7 @@ legacyPackageConfigFieldDescrs =
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "quickjump", "hscolour-css"
       , "contents-location", "index-location", "keep-temp-files", "base-url"
+      , "lib"
       ]
   . commandOptionsToFields
   ) (haddockOptions ParseArgs)

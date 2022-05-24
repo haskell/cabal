@@ -217,7 +217,8 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashHaddockQuickJump    :: Bool,
        pkgHashHaddockContents     :: Maybe PathTemplate,
        pkgHashHaddockIndex        :: Maybe PathTemplate,
-       pkgHashHaddockBaseUrl      :: Maybe String
+       pkgHashHaddockBaseUrl      :: Maybe String,
+       pkgHashHaddockLib          :: Maybe String
 
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
@@ -313,6 +314,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "haddock-contents-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockContents
       , opt   "haddock-index-location" Nothing (maybe "" fromPathTemplate) pkgHashHaddockIndex
       , opt   "haddock-base-url" Nothing (fromMaybe "") pkgHashHaddockBaseUrl
+      , opt   "haddock-lib" Nothing (fromMaybe "") pkgHashHaddockLib
 
       ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where

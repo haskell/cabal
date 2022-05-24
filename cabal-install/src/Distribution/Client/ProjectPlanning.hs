@@ -1956,6 +1956,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
         elabHaddockIndex        = perPkgOptionMaybe pkgid packageConfigHaddockIndex
         elabHaddockBaseUrl      = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
+        elabHaddockLib          = perPkgOptionMaybe pkgid packageConfigHaddockLib
 
         elabTestMachineLog      = perPkgOptionMaybe pkgid packageConfigTestMachineLog
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
@@ -3766,6 +3767,7 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockCabalFilePath = mempty,
       haddockIndex         = maybe mempty toFlag elabHaddockIndex,
       haddockBaseUrl       = maybe mempty toFlag elabHaddockBaseUrl,
+      haddockLib           = maybe mempty toFlag elabHaddockLib,
       haddockArgs          = mempty
     }
 
@@ -3920,7 +3922,8 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashHaddockQuickJump    = elabHaddockQuickJump,
       pkgHashHaddockContents     = elabHaddockContents,
       pkgHashHaddockIndex        = elabHaddockIndex,
-      pkgHashHaddockBaseUrl      = elabHaddockBaseUrl
+      pkgHashHaddockBaseUrl      = elabHaddockBaseUrl,
+      pkgHashHaddockLib          = elabHaddockLib
     }
   where
     ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg

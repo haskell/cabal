@@ -294,6 +294,7 @@ data ElaboratedConfiguredPackage
        elabHaddockContents       :: Maybe PathTemplate,
        elabHaddockIndex          :: Maybe PathTemplate,
        elabHaddockBaseUrl        :: Maybe String,
+       elabHaddockLib            :: Maybe String,
 
        elabTestMachineLog        :: Maybe PathTemplate,
        elabTestHumanLog          :: Maybe PathTemplate,

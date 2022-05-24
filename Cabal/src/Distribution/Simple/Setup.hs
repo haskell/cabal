@@ -1384,6 +1384,7 @@ data HaddockFlags = HaddockFlags {
     haddockVerbosity    :: Flag Verbosity,
     haddockCabalFilePath :: Flag FilePath,
     haddockBaseUrl      :: Flag String,
+    haddockLib          :: Flag String,
     haddockArgs         :: [String]
   }
   deriving (Show, Generic, Typeable)
@@ -1412,6 +1413,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockCabalFilePath = mempty,
     haddockIndex        = NoFlag,
     haddockBaseUrl      = NoFlag,
+    haddockLib          = NoFlag,
     haddockArgs         = mempty
   }
 
@@ -1551,6 +1553,11 @@ haddockOptions showOrParseArgs =
    "Base URL for static files."
    haddockBaseUrl (\v flags -> flags { haddockBaseUrl = v})
    (reqArgFlag "URL")
+
+  ,option "" ["lib"]
+   "location of Haddocks static / auxiliary files"
+   haddockLib (\v flags -> flags { haddockLib = v})
+   (reqArgFlag "DIR")
   ]
 
 emptyHaddockFlags :: HaddockFlags
@@ -1592,12 +1599,13 @@ data HaddockProjectFlags = HaddockProjectFlags {
     haddockProjectLinkedSource :: Flag Bool,
     haddockProjectQuickJump    :: Flag Bool,
     haddockProjectHscolourCss  :: Flag FilePath,
-    -- haddockProjectContent is not supported, a fixed value is provided
-    -- haddockProjectIndex is not supported, a fixed value is provided
-    -- haddockDistPerf is not supported, note: it changes location of the haddockProject
+    -- haddockContent is not supported, a fixed value is provided
+    -- haddockIndex is not supported, a fixed value is provided
+    -- haddockDistPerf is not supported, note: it changes location of the haddocks
     haddockProjectKeepTempFiles:: Flag Bool,
-    haddockProjectVerbosity    :: Flag Verbosity
+    haddockProjectVerbosity    :: Flag Verbosity,
     -- haddockBaseUrl is not supported, a fixed value is provided
+    haddockProjectLib          :: Flag String
   }
   deriving (Show, Generic, Typeable)
 
@@ -1618,6 +1626,7 @@ defaultHaddockProjectFlags = HaddockProjectFlags {
     haddockProjectHscolourCss  = NoFlag,
     haddockProjectKeepTempFiles= Flag False,
     haddockProjectVerbosity    = Flag normal,
+    haddockProjectLib          = NoFlag,
     haddockProjectInterfaces   = NoFlag
   }
 
@@ -1711,6 +1720,10 @@ haddockProjectOptions _showOrParseArgs =
     ,optionVerbosity haddockProjectVerbosity
      (\v flags -> flags { haddockProjectVerbosity = v })
 
+    ,option "" ["lib"]
+     "location of Haddocks static / auxiliary files"
+     haddockProjectLib (\v flags -> flags { haddockProjectLib = v})
+     (reqArgFlag "DIR")
     ]
 
 
