@@ -43,6 +43,8 @@ module Distribution.Simple.Setup (
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
+  HaddockProjectFlags(..), emptyHaddockProjectFlags,
+  defaultHaddockProjectFlags, haddockProjectCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   DumpBuildInfo(..),
@@ -58,7 +60,7 @@ module Distribution.Simple.Setup (
   defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, haddockOptions, installDirsOptions,
+  buildOptions, haddockOptions, haddockProjectOptions, installDirsOptions,
   testOptions', benchmarkOptions',
   programDbOptions, programDbPaths',
   programFlagsDescription,
@@ -1559,6 +1561,167 @@ instance Monoid HaddockFlags where
   mappend = (<>)
 
 instance Semigroup HaddockFlags where
+  (<>) = gmappend
+
+-- ------------------------------------------------------------
+-- * HaddocksFlags flags
+-- ------------------------------------------------------------
+
+data HaddockProjectFlags = HaddockProjectFlags {
+    -- options passed to @haddock@ via 'createHaddockIndex'
+    haddockProjectDir          :: Flag String,
+    -- ^ output directory of combined haddockProject, the default is './haddocks'
+    haddockProjectPrologue     :: Flag String,
+    haddockProjectGenIndex     :: Flag Bool,
+    haddockProjectGenContents  :: Flag Bool,
+    haddockProjectInterfaces   :: Flag [(FilePath, Maybe FilePath, Maybe FilePath)],
+    -- ^ 'haddockProjectInterfaces' is inferred by the 'haddocksAction'; currently not
+    -- exposed to the user.
+
+    -- options passed to @haddock@ via 'HaddockFlags' when building
+    -- documentation
+
+    -- haddockHtml is not supported
+    -- haddockForHackage is not supported
+    haddockProjectExecutables  :: Flag Bool,
+    haddockProjectTestSuites   :: Flag Bool,
+    haddockProjectBenchmarks   :: Flag Bool,
+    haddockProjectForeignLibs  :: Flag Bool,
+    haddockProjectInternal     :: Flag Bool,
+    haddockProjectCss          :: Flag FilePath,
+    haddockProjectLinkedSource :: Flag Bool,
+    haddockProjectQuickJump    :: Flag Bool,
+    haddockProjectHscolourCss  :: Flag FilePath,
+    -- haddockProjectContent is not supported, a fixed value is provided
+    -- haddockProjectIndex is not supported, a fixed value is provided
+    -- haddockDistPerf is not supported, note: it changes location of the haddockProject
+    haddockProjectKeepTempFiles:: Flag Bool,
+    haddockProjectVerbosity    :: Flag Verbosity
+    -- haddockBaseUrl is not supported, a fixed value is provided
+  }
+  deriving (Show, Generic, Typeable)
+
+defaultHaddockProjectFlags :: HaddockProjectFlags
+defaultHaddockProjectFlags = HaddockProjectFlags {
+    haddockProjectDir          = Flag "./haddocks",
+    haddockProjectPrologue     = NoFlag,
+    haddockProjectGenIndex     = Flag False,
+    haddockProjectGenContents  = Flag False,
+    haddockProjectTestSuites   = Flag False,
+    haddockProjectExecutables  = Flag False,
+    haddockProjectBenchmarks   = Flag False,
+    haddockProjectForeignLibs  = Flag False,
+    haddockProjectInternal     = Flag False,
+    haddockProjectCss          = NoFlag,
+    haddockProjectLinkedSource = Flag False,
+    haddockProjectQuickJump    = Flag False,
+    haddockProjectHscolourCss  = NoFlag,
+    haddockProjectKeepTempFiles= Flag False,
+    haddockProjectVerbosity    = Flag normal,
+    haddockProjectInterfaces   = NoFlag
+  }
+
+haddockProjectCommand :: CommandUI HaddockProjectFlags
+haddockProjectCommand = CommandUI
+  { commandName        = "v2-haddock-project"
+  , commandSynopsis    = "Generate Haddocks HTML documentation for the cabal project."
+  , commandDescription = Just $ \_ ->
+      "Require the programm haddock, version 2.26.\n"
+  , commandNotes       = Nothing
+  , commandUsage       = usageAlternatives "haddocks" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
+  , commandDefaultFlags = defaultHaddockProjectFlags
+  , commandOptions      = haddockProjectOptions
+  }
+
+haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
+haddockProjectOptions _showOrParseArgs =
+    [option "" ["output"]
+      "Output directory"
+      haddockProjectDir (\v flags -> flags { haddockProjectDir = v })
+      (optArg' "DIRECTORY" maybeToFlag (fmap Just . flagToList))
+
+    ,option "" ["prologue"]
+     "File path to a prologue file in haddock format"
+     haddockProjectPrologue (\v flags -> flags { haddockProjectPrologue = v})
+     (optArg' "PATH" maybeToFlag (fmap Just . flagToList))
+
+    ,option "" ["gen-index"]
+     "Generate index"
+     haddockProjectGenIndex (\v flags -> flags { haddockProjectGenIndex = v})
+     trueArg
+
+    ,option "" ["gen-contents"]
+     "Generate contents"
+     haddockProjectGenContents (\v flags -> flags { haddockProjectGenContents = v})
+     trueArg
+
+    ,option "" ["executables"]
+     "Run haddock for Executables targets"
+     haddockProjectExecutables (\v flags -> flags { haddockProjectExecutables = v })
+     trueArg
+
+    ,option "" ["tests"]
+     "Run haddock for Test Suite targets"
+     haddockProjectTestSuites (\v flags -> flags { haddockProjectTestSuites = v })
+     trueArg
+
+    ,option "" ["benchmarks"]
+     "Run haddock for Benchmark targets"
+     haddockProjectBenchmarks (\v flags -> flags { haddockProjectBenchmarks = v })
+     trueArg
+
+    ,option "" ["foreign-libraries"]
+     "Run haddock for Foreign Library targets"
+     haddockProjectForeignLibs (\v flags -> flags { haddockProjectForeignLibs = v })
+     trueArg
+
+    ,option "" ["internal"]
+     "Run haddock for internal modules and include all symbols"
+     haddockProjectInternal (\v flags -> flags { haddockProjectInternal = v })
+     trueArg
+
+    ,option "" ["css"]
+     "Use PATH as the haddock stylesheet"
+     haddockProjectCss (\v flags -> flags { haddockProjectCss = v })
+     (reqArgFlag "PATH")
+
+    ,option "" ["hyperlink-source","hyperlink-sources","hyperlinked-source"]
+     "Hyperlink the documentation to the source code"
+     haddockProjectLinkedSource (\v flags -> flags { haddockProjectLinkedSource = v })
+     trueArg
+
+    ,option "" ["quickjump"]
+     "Generate an index for interactive documentation navigation"
+     haddockProjectQuickJump (\v flags -> flags { haddockProjectQuickJump = v })
+     trueArg
+
+    ,option "" ["hscolour-css"]
+     "Use PATH as the HsColour stylesheet"
+     haddockProjectHscolourCss (\v flags -> flags { haddockProjectHscolourCss = v })
+     (reqArgFlag "PATH")
+
+    ,option "" ["keep-temp-files"]
+     "Keep temporary files"
+     haddockProjectKeepTempFiles (\b flags -> flags { haddockProjectKeepTempFiles = b })
+     trueArg
+
+    ,optionVerbosity haddockProjectVerbosity
+     (\v flags -> flags { haddockProjectVerbosity = v })
+
+    ]
+
+
+emptyHaddockProjectFlags :: HaddockProjectFlags
+emptyHaddockProjectFlags = mempty
+
+instance Monoid HaddockProjectFlags where
+  mempty = gmempty
+  mappend = (<>)
+
+instance Semigroup HaddockProjectFlags where
   (<>) = gmappend
 
 -- ------------------------------------------------------------
