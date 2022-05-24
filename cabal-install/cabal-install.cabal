@@ -83,6 +83,7 @@ library
         Distribution.Client.CmdExec
         Distribution.Client.CmdFreeze
         Distribution.Client.CmdHaddock
+        Distribution.Client.CmdHaddockProject
         Distribution.Client.CmdInstall
         Distribution.Client.CmdInstall.ClientInstallFlags
         Distribution.Client.CmdInstall.ClientInstallTargetSelector

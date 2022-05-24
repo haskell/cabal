@@ -78,6 +78,7 @@ import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
 import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 import qualified Distribution.Client.CmdHaddock   as CmdHaddock
+import qualified Distribution.Client.CmdHaddockProject as CmdHaddockProject
 import qualified Distribution.Client.CmdInstall   as CmdInstall
 import qualified Distribution.Client.CmdRun       as CmdRun
 import qualified Distribution.Client.CmdTest      as CmdTest
@@ -257,6 +258,8 @@ mainWorker args = do
       , newCmd  CmdRepl.replCommand           CmdRepl.replAction
       , newCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       , newCmd  CmdHaddock.haddockCommand     CmdHaddock.haddockAction
+      , newCmd  CmdHaddockProject.haddockProjectCommand
+                                              CmdHaddockProject.haddockProjectAction
       , newCmd  CmdInstall.installCommand     CmdInstall.installAction
       , newCmd  CmdRun.runCommand             CmdRun.runAction
       , newCmd  CmdTest.testCommand           CmdTest.testAction
