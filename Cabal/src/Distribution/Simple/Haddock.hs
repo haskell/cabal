@@ -624,7 +624,9 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                             case o of
                               Html -> "index.html"
                               Hoogle -> pkgstr <.> "txt")
-             $ arg argOutput
+             . fromFlagOrDefault [Html]
+             . argOutput
+             $ args
             where
               pkgstr = prettyShow $ packageName pkgid
               pkgid = arg argPackageName
@@ -632,23 +634,23 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
 
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat
-    [ (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
-      . fromFlag . argInterfaceFile $ args
+    [ map (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
+      . flagToList . argInterfaceFile $ args 
 
     , if isVersion 2 16
-        then (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
-                      , "--package-version=" ++ prettyShow (pkgVersion pkg)
-                      ])
-             . fromFlag . argPackageName $ args
+        then maybe [] (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
+                               , "--package-version=" ++ prettyShow (pkgVersion pkg)
+                               ])
+             . flagToMaybe . argPackageName $ args
         else []
 
     , [ "--since-qual=external" | isVersion 2 20 ]
 
     , [ "--quickjump" | isVersion 2 19
-                      , fromFlag . argQuickJump $ args ]
+                      , _ <- flagToList . argQuickJump $ args ]
 
     , [ "--hyperlinked-source" | isVersion 2 17
-                               , fromFlag . argLinkedSource $ args ]
+                               , True <- flagToList . argLinkedSource $ args ]
 
     , (\(All b,xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
                      . argHideModules $ args
@@ -673,16 +675,19 @@ renderPureArgs version comp platform args = concat
     , bool [] [verbosityFlag] . getAny . argVerbose $ args
 
     , map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html")
-      . fromFlag . argOutput $ args
+      . fromFlagOrDefault [] . argOutput $ args
 
     , renderInterfaces . argInterfaces $ args
 
     , (:[]) . ("--odir="++) . unDir . argOutputDir $ args
 
-    , (:[]) . ("--title="++)
-      . (bool (++" (internal documentation)")
-         id (getAny $ argIgnoreExports args))
-      . fromFlag . argTitle $ args
+    , maybe []
+        ( (:[])
+        . ("--title="++)
+        . (bool (++" (internal documentation)")
+                id (getAny $ argIgnoreExports args))
+        )
+        . flagToMaybe . argTitle $ args
 
     , [ "--optghc=" ++ opt | let opts = argGhcOptions args
                            , opt <- renderGhcOptions comp platform opts ]
@@ -710,7 +715,7 @@ renderPureArgs version comp platform args = concat
                                         -- enabled
                                         , Just x <- [hypsrc]
                                         , isVersion 2 17
-                                        , fromFlag . argLinkedSource $ args
+                                        , fromFlagOrDefault False . argLinkedSource $ args
                                         ]
                                   , [ i ]
                                   ])
