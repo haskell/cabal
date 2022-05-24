@@ -1,9 +1,16 @@
 {-# LANGUAGE DeriveDataTypeable #-}
--- | This is old version of "Distribution.Types.VersionInterval" module.
+
+-- | This module implements a view of a 'VersionRange' as a finite
+-- list of separated version intervals and provides the Boolean
+-- algebra operations union, intersection, and complement.
 --
--- It will be removed in @Cabal-3.8@.
+-- It interprets the caret operator @^>=x.y@ as simply @==x.y.*@.
+-- Until @Cabal < 3.6@, this module was called "Distribution.Types.VersionInterval".
+-- The current module "Distribution.Types.VersionInterval" (refurbished since
+-- @Cabal >= 3.6@) makes some effort to preserve the caret operator,
+-- but so far does not expose the Boolean algebra structure.
 --
-module Distribution.Types.VersionInterval.Legacy {-# DEPRECATED "Use Distribution.Types.VersionInterval instead" #-} (
+module Distribution.Types.VersionInterval.Legacy (
     -- * Version intervals
     VersionIntervals,
     toVersionIntervals,
