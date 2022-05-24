@@ -20,7 +20,7 @@
 -- source, with coloured syntax highlighting.
 
 module Distribution.Simple.Haddock (
-  haddock, hscolour,
+  haddock, createHaddockIndex, hscolour,
 
   haddockPackagePaths
   ) where
@@ -344,6 +344,22 @@ haddock pkg_descr lbi suffixes flags' = do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
+
+-- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
+-- index and contents for documentation of multiple packages. 
+--
+createHaddockIndex :: Verbosity
+                   -> ProgramDb
+                   -> Compiler
+                   -> Platform
+                   -> HaddockProjectFlags
+                   -> IO ()
+createHaddockIndex verbosity programDb comp platform flags = do
+    let args = fromHaddockProjectFlags flags
+    (haddockProg, _version) <-
+      getHaddockProg verbosity programDb comp args (haddockProjectQuickJump flags)
+    runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
+
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
 
@@ -380,6 +396,19 @@ fromFlags env flags =
     }
     where
       ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
+
+fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
+fromHaddockProjectFlags flags =
+    mempty
+      { argOutputDir = Dir (fromFlag $ haddockProjectDir flags)
+      , argQuickJump = haddockProjectQuickJump flags
+      , argGenContents = haddockProjectGenContents flags
+      , argGenIndex = haddockProjectGenIndex flags
+      , argPrologueFile = haddockProjectPrologue flags
+      , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
+      , argLinkedSource = haddockProjectLinkedSource flags
+      }
+
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription haddockTarget pkg_descr = mempty
