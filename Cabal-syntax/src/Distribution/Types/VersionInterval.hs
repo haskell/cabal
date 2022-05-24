@@ -1,7 +1,13 @@
 {-# LANGUAGE BangPatterns       #-}
 {-# LANGUAGE DeriveDataTypeable #-}
--- | In @Cabal-3.6@ this module have been rewritten.
+
+-- | This module implements a view of a 'VersionRange' as a finite
+-- list of separated version intervals.
 --
+-- In conversion from and to 'VersionRange' it makes some effort to
+-- preserve the caret operator @^>=x.y@.  This constraint a priori
+-- specifies the same interval as @==x.y.*@, but indicates that newer
+-- versions could be acceptable (@allow-newer: ^@).
 --
 module Distribution.Types.VersionInterval (
     -- * Version intervals
