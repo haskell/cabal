@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+3.8.0.20220526 a pre-release; Mikolaj Konarski <mikolaj@well-typed.com> May 2022
+	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.8.0.20220526.md
+
 3.6.2.0 Emily Pillmore <emilypi@cohomolo.gy> October 2021
 	* See https://github.com/haskell/cabal/blob/master/release-notes/cabal-install-3.6.2.0.md
 
