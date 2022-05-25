@@ -1,3 +1,4 @@
+cabal-version:      2.2
 name:               cabal-benchmarks
 version:            3
 copyright:          2003-2022, Cabal Development Team (see AUTHORS file)
@@ -12,7 +13,6 @@ description:
   This package contains benchmarks that test cabal's dependency solver by running the cabal executable.
 
 category:           Distribution
-cabal-version:      2.2
 build-type:         Simple
 extra-source-files: README.md
 
