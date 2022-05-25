@@ -209,7 +209,7 @@
             ],
             "package": "hackage-security",
             "source": "hackage",
-            "version": "0.6.2.0"
+            "version": "0.6.2.1"
         },
         {
             "cabal_sha256": "3a2beeafb220f9de706568a7e4a5b3c762cc4c9f25c94d7ef795b8c2d6a691d7",
