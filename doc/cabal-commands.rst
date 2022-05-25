@@ -229,6 +229,11 @@ We can also scope to test suite targets as they produce binaries.
     $ cabal list-bin cabal-install:unit-tests
     /.../dist-newstyle/.../unit-tests/unit-tests
 
+Note that ``cabal list-bin`` will print the executables' location, but
+will not make sure that these executables actually exist (i.e., have
+been successfully built).  In order to determine the correct location,
+it may invoke the configuration step (see ``cabal configure``).
+
 cabal configure
 ---------------
 
@@ -740,7 +745,7 @@ description file or freeze file.
 - ``--v2-freeze-file``:
 
   :since: 2.4
-  
+
   Read dependency version bounds from the v2-style freeze file
   (by default, ``cabal.project.freeze``) instead of the package
   description file. ``--new-freeze-file`` is an alias for this flag
@@ -749,7 +754,7 @@ description file or freeze file.
 - ``--project-file PROJECTFILE``:
 
   :since: 2.4
-  
+
   Read dependendency version bounds from the v2-style freeze file
   related to the named project file (i.e., ``$PROJECTFILE.freeze``)
   instead of the package desctription file. If multiple ``--project-file``
@@ -773,4 +778,3 @@ description file or freeze file.
   all packages.
 
   See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
-
