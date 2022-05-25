@@ -59,7 +59,9 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
          ( HaddockFlags(..), defaultHaddockFlags
          , HaddockProjectFlags(..)
-         , Flag(..), fromFlag, fromFlagOrDefault
+         , Flag(..)
+         , Visibility(..)
+         , fromFlag, fromFlagOrDefault
          , haddockProjectCommand
          )
 import Distribution.Verbosity as Verbosity
@@ -154,7 +156,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
              $ sharedConfig
       let sharedConfig' = sharedConfig { pkgConfigCompilerProgs = progs }
 
-      packageNames <- fmap (nub . catMaybes) $ for pkgs $ \package ->
+      packageInfos <- fmap (nub . catMaybes) $ for pkgs $ \package ->
         if elabLocalToProject package
         then do
           let distDirParams = elabDistDirParams sharedConfig' package
@@ -167,7 +169,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
           a <- doesDirectoryExist docDir
           case a of
             True  -> copyDirectoryRecursive verbosity docDir destDir
-                  >> return (Just (packageName, destDir))
+                  >> return (Just (packageName, destDir, Visible))
             False -> return Nothing
         else do
           let packageName = unPackageName (pkgName $ elabPkgSourceId package)
@@ -179,7 +181,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
           a <- doesDirectoryExist docDir
           case a of
             True  -> copyDirectoryRecursive verbosity docDir destDir
-                  >> return (Just (packageName, destDir))
+                  -- non local packages will be hidden in haddock's generated
+                  -- contents page
+                  >> return (Just (packageName, destDir, Hidden))
             False -> return Nothing
 
       -- run haddock to generate index, content, etc.
@@ -189,8 +193,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 [ ( destDir </> packageName <.> "haddock"
                   , Just packageName
                   , Just packageName
+                  , visibility
                   )
-                | (packageName, destDir) <- packageNames
+                | (packageName, destDir, visibility) <- packageInfos
                 ]
             }
       createHaddockIndex verbosity

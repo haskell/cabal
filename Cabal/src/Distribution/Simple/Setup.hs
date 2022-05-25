@@ -43,8 +43,8 @@ module Distribution.Simple.Setup (
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
-  HaddockProjectFlags(..), emptyHaddockProjectFlags,
-  defaultHaddockProjectFlags, haddockProjectCommand,
+  Visibility(..),
+  HaddockProjectFlags(..), emptyHaddockProjectFlags, defaultHaddockProjectFlags, haddockProjectCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   DumpBuildInfo(..),
@@ -1574,15 +1574,23 @@ instance Semigroup HaddockFlags where
 -- * HaddocksFlags flags
 -- ------------------------------------------------------------
 
+-- | Governs whether modules from a given interface should be visible or
+-- hidden in the Haddock generated content page.  We don't expose this
+-- functionality to the user, but simply use 'Visible' for only local packages.
+-- Visibility of modules is available since @haddock-2.26.1@.
+--
+data Visibility = Visible | Hidden
+  deriving (Eq, Show)
+
 data HaddockProjectFlags = HaddockProjectFlags {
     -- options passed to @haddock@ via 'createHaddockIndex'
     haddockProjectDir          :: Flag String,
-    -- ^ output directory of combined haddockProject, the default is './haddocks'
+    -- ^ output directory of combined haddocks, the default is './haddocks'
     haddockProjectPrologue     :: Flag String,
     haddockProjectGenIndex     :: Flag Bool,
     haddockProjectGenContents  :: Flag Bool,
-    haddockProjectInterfaces   :: Flag [(FilePath, Maybe FilePath, Maybe FilePath)],
-    -- ^ 'haddockProjectInterfaces' is inferred by the 'haddocksAction'; currently not
+    haddockProjectInterfaces   :: Flag [(FilePath, Maybe FilePath, Maybe FilePath, Visibility)],
+    -- ^ 'haddocksInterfaces' is inferred by the 'haddocksAction'; currently not
     -- exposed to the user.
 
     -- options passed to @haddock@ via 'HaddockFlags' when building

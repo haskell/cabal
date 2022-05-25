@@ -22,7 +22,8 @@
 module Distribution.Simple.Haddock (
   haddock, createHaddockIndex, hscolour,
 
-  haddockPackagePaths
+  haddockPackagePaths,
+  Visibility(..)
   ) where
 
 import Prelude ()
@@ -116,7 +117,7 @@ data HaddockArgs = HaddockArgs {
  argVerbose :: Any,
  argOutput :: Flag [Output],
  -- ^ HTML or Hoogle doc or both? Required.
- argInterfaces :: [(FilePath, Maybe String, Maybe String)],
+ argInterfaces :: [(FilePath, Maybe String, Maybe String, Visibility)],
  -- ^ [(Interface file, URL to the HTML docs and hyperlinked-source for links)].
  argOutputDir :: Directory,
  -- ^ Where to generate the documentation.
@@ -772,17 +773,27 @@ renderPureArgs version comp platform args = concat
     where
       renderInterfaces = map renderInterface
 
-      renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath) -> String
-      renderInterface (i, html, hypsrc) = "--read-interface=" ++
-        (intercalate "," $ concat [ [ x | Just x <- [html] ]
-                                  , [ x | Just _ <- [html]
-                                        -- only render hypsrc path if html path
-                                        -- is given and hyperlinked-source is
-                                        -- enabled
-                                        , Just x <- [hypsrc]
-                                        , isVersion 2 17
-                                        , fromFlagOrDefault False . argLinkedSource $ args
-                                        ]
+      renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
+      renderInterface (i, html, hypsrc, visibility) = "--read-interface=" ++
+        (intercalate "," $ concat [ [ fromMaybe "" html ]
+                                  , -- only render hypsrc path if html path
+                                    -- is given and hyperlinked-source is
+                                    -- enabled
+                                    [ case (html, hypsrc) of
+                                        (Nothing, _) -> ""
+                                        (_, Nothing) -> ""
+                                        (_, Just x)  | isVersion 2 17
+                                                     , fromFlagOrDefault False . argLinkedSource $ args
+                                                     -> x
+                                                     | otherwise
+                                                     -> ""
+                                    ]
+                                  , if haddockSupportsVisibility
+                                      then [ case visibility of
+                                               Visible -> "visible"
+                                               Hidden  -> "hidden"
+                                           ]
+                                      else []
                                   , [ i ]
                                   ])
 
@@ -791,6 +802,7 @@ renderPureArgs version comp platform args = concat
       verbosityFlag
        | isVersion 2 5 = "--verbosity=1"
        | otherwise     = "--verbose"
+      haddockSupportsVisibility = version >= mkVersion [2,26,1]
 
 ---------------------------------------------------------------------------------
 
@@ -806,6 +818,7 @@ haddockPackagePaths :: [InstalledPackageInfo]
 
                                        , Maybe FilePath  -- url to hyperlinked
                                                          -- source
+                                       , Visibility
                                        )]
                                      , Maybe String      -- warning about
                                                          -- missing documentation
@@ -830,7 +843,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
 
           exists <- doesFileExist interface
           if exists
-            then return (Right (interface, html', hypsrc'))
+            then return (Right (interface, html', hypsrc', Visible))
             else return (Left pkgid)
     | ipkg <- ipkgs, let pkgid = packageId ipkg
     , pkgName pkgid `notElem` noHaddockWhitelist
@@ -882,6 +895,7 @@ haddockPackageFlags :: Verbosity
 
                             , Maybe FilePath  -- url to hyperlinked
                                               -- source
+                            , Visibility
                             )]
                           , Maybe String      -- warning about
                                               -- missing documentation
