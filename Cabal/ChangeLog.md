@@ -1,16 +1,16 @@
-# 3.8.0.20220526 a pre-release; [Mikolaj Konarski](mikolaj@well-typed.com) May 2022
+# 3.8.0.20220526 a pre-release; [Mikolaj Konarski](mailto:mikolaj@well-typed.com) May 2022
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.8.0.20220526.md
 
 # 3.6.3.0 March 2022
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.3.0.md
 
-# 3.6.2.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) October 2021
+# 3.6.2.0 [Emily Pillmore](mailto:emilypi@cohomolo.gy) October 2021
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.2.0.md
 
-# 3.6.1.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) August 2021
+# 3.6.1.0 [Emily Pillmore](mailto:emilypi@cohomolo.gy) August 2021
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.1.0.md
 
-# 3.6.0.0 [Emily Pillmore](mailgo:emilypi@cohomolo.gy) August 2021
+# 3.6.0.0 [Emily Pillmore](mailto:emilypi@cohomolo.gy) August 2021
   * See https://github.com/haskell/cabal/blob/master/release-notes/Cabal-3.6.0.0.md
 
 # 3.4.1.0 [Emily Pillmore](mailto:emilypi@cohomolo.gy) October 2021
