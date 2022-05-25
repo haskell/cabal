@@ -38,7 +38,7 @@ extlinks = {
 
 # General information about the project.
 project = u'Cabal'
-copyright = u'2003-2021, Cabal Team'
+copyright = u'2003-2022, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 

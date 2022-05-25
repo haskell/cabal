@@ -11,7 +11,7 @@ license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team (see AUTHORS file)
 maintainer:    Cabal Development Team <cabal-devel@haskell.org>
-copyright:     2003-2020, Cabal Development Team
+copyright:     2003-2022, Cabal Development Team
 category:      Distribution
 build-type:    Simple
 
