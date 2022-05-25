@@ -28,8 +28,8 @@ common shared
   build-depends:
     , base >= 4.6 && <4.17
     -- this needs to match the in-tree lib:Cabal version
-    , Cabal == 3.7.0.0
-    , Cabal-syntax == 3.7.0.0
+    , Cabal ^>= 3.9.0.0
+    , Cabal-syntax ^>= 3.9.0.0
 
   ghc-options: -Wall -fwarn-tabs -fwarn-incomplete-uni-patterns
 
@@ -111,6 +111,8 @@ executable setup
 
 custom-setup
   -- we only depend on even stable releases of lib:Cabal
-  setup-depends: Cabal == 2.2.* || == 2.4.* || == 3.0.* || ==3.2.* || ==3.4.* || ==3.6.*,
+  -- and due to Custom complexity and ConstraintSetupCabalMaxVersion
+  -- it can't be the current version
+  setup-depends: Cabal == 3.6.*,
                  Cabal-syntax == 3.6.*,
                  base, filepath, directory
