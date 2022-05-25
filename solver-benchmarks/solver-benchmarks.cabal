@@ -11,7 +11,7 @@ synopsis:      Benchmarks for the cabal dependency solver
 description:
   This package contains benchmarks that test cabal's dependency solver by running the cabal executable.
 category:       Distribution
-cabal-version:  2.0
+cabal-version:  2.2
 build-type:     Simple
 
 extra-source-files:

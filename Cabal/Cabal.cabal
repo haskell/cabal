@@ -1,4 +1,4 @@
-cabal-version: 2.0
+cabal-version: 2.2
 name:          Cabal
 version:       3.9.0.0
 copyright:     2003-2022, Cabal Development Team (see AUTHORS file)
@@ -322,6 +322,9 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
     Distribution.ZinzaPrelude
+    Paths_Cabal
+
+  autogen-modules:
     Paths_Cabal
 
   other-extensions:
