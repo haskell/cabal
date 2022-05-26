@@ -78,6 +78,8 @@ normalizeOutput nenv =
         -- Remove cabal version output from show-build-info output
       . resub ("{\"cabal-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
               "{\"cabal-version\":\"<CABALVER>\""
+      . resub ("{\"cabal-lib-version\":\"" ++ posixRegexEscape (display (normalizerCabalVersion nenv)) ++ "\"")
+              "{\"cabal-lib-version\":\"<CABALVER>\""
         -- Remove the package id for stuff such as:
         -- > "-package-id","base-4.14.0.0-<some-hash>"
         -- and replace it with:

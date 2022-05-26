@@ -1,7 +1,7 @@
-cabal-version: 2.0
+cabal-version: 2.2
 name:          Cabal
-version:       3.7.0.0
-copyright:     2003-2021, Cabal Development Team (see AUTHORS file)
+version:       3.9.0.0
+copyright:     2003-2022, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
@@ -34,7 +34,7 @@ library
   hs-source-dirs: src
 
   build-depends:
-    Cabal-syntax >= 3.7    && < 3.8,
+    Cabal-syntax ^>= 3.9,
     array      >= 0.4.0.1  && < 0.6,
     base       >= 4.6      && < 5,
     bytestring >= 0.10.0.0 && < 0.12,
@@ -322,6 +322,9 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.ImplInfo
     Distribution.ZinzaPrelude
+    Paths_Cabal
+
+  autogen-modules:
     Paths_Cabal
 
   other-extensions:

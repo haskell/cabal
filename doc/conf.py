@@ -13,7 +13,7 @@ import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('.'))
 import cabaldomain
 
-version = "3.6.0.0"
+version = "3.9.0.0"
 
 extensions = [
     'sphinx.ext.extlinks',
@@ -38,7 +38,7 @@ extlinks = {
 
 # General information about the project.
 project = u'Cabal'
-copyright = u'2003-2021, Cabal Team'
+copyright = u'2003-2022, Cabal Team'
 # N.B. version comes from ghc_config
 release = version  # The full version, including alpha/beta/rc tags.
 

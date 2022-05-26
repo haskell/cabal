@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          cabal-install-solver
-version:       3.7.0.0
+version:       3.9.0.0
 synopsis:      The command-line interface for Cabal and Hackage.
 description:
   The solver component used in cabal-install command-line program
@@ -11,7 +11,7 @@ license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team (see AUTHORS file)
 maintainer:    Cabal Development Team <cabal-devel@haskell.org>
-copyright:     2003-2020, Cabal Development Team
+copyright:     2003-2022, Cabal Development Team
 category:      Distribution
 build-type:    Simple
 
@@ -105,8 +105,8 @@ library
     , array         >=0.4      && <0.6
     , base          >=4.10     && <4.17
     , bytestring    >=0.10.6.0 && <0.12
-    , Cabal         ^>=3.7
-    , Cabal-syntax  ^>=3.7
+    , Cabal         ^>=3.9
+    , Cabal-syntax  ^>=3.9
     , containers    >=0.5.6.2  && <0.7
     , edit-distance ^>= 0.2.2
     , filepath      ^>=1.4.0.0

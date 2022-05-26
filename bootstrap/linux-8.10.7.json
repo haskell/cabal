@@ -196,9 +196,9 @@
             "version": "0.6.2.3"
         },
         {
-            "cabal_sha256": "c71b22bb336502341325767ae3d4fb9623d846e7e78511ea8c8cda383e839137",
-            "revision": 0,
-            "src_sha256": "081725bb1e5c0e399ad5b1327b4c42a63c3db36bbb70cca2dbb7c7ac2feb17cb",
+            "cabal_sha256": "1d4b292bd90970f7ef52c72f2ae365f88bd2c6a75627dc34a31d24bc8f53f2e4",
+            "revision": 2,
+            "src_sha256": "bf22cd16dde7d6b7130463f4d7324b64a2964d9ef3f523df97d7cb98544d64a8",
             "flags": [
                 "+base48",
                 "+cabal-syntax",
@@ -209,7 +209,7 @@
             ],
             "package": "hackage-security",
             "source": "hackage",
-            "version": "0.6.2.0"
+            "version": "0.6.2.1"
         },
         {
             "cabal_sha256": "3a2beeafb220f9de706568a7e4a5b3c762cc4c9f25c94d7ef795b8c2d6a691d7",

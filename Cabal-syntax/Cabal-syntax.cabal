@@ -1,7 +1,7 @@
-cabal-version: 2.0
+cabal-version: 2.2
 name:          Cabal-syntax
-version:       3.7.0.0
-copyright:     2003-2021, Cabal Development Team (see AUTHORS file)
+version:       3.9.0.0
+copyright:     2003-2022, Cabal Development Team (see AUTHORS file)
 license:       BSD-3-Clause
 license-file:  LICENSE
 author:        Cabal Development Team <cabal-devel@haskell.org>
