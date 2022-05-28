@@ -1,0 +1,56 @@
+name: Changelogs
+
+on:
+  push:
+    branches:
+    - master
+    paths:
+    - 'changelog.d/*'
+    - '.github/workflows/changelogs.yml'
+  pull_request:
+    paths:
+    - 'changelog.d/*'
+    - '.github/workflows/changelogs.yml'
+  release:
+    types:
+      - created
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set PATH
+        # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#adding-a-system-path
+        run: |
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cabal/store
+          key: linux-store-changelogs
+      - name: ghcup
+        run: |
+          ghcup config set cache true
+          ghcup install ghc recommended
+          ghcup set ghc recommended
+      - name: Update Hackage index
+        run: cabal v2-update
+      # Cannot install it from tarball due to
+      # https://github.com/haskell/cabal/issues/7360
+      - uses: actions/checkout@v3
+        with:
+          repository: "phadej/changelog-d"
+          path: "changelog-d"
+      - name: Install changelog-d
+        run: |
+          pushd changelog-d
+          cabal v2-install
+          popd
+      - uses: actions/checkout@v3
+      - name: Run changelog-d
+        run: |
+          changelog-d changelog.d
