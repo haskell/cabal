@@ -699,7 +699,7 @@ renderPureArgs version comp platform args = concat
     [ map (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
       . flagToList . argInterfaceFile $ args 
 
-    , if isVersion 2 16
+    , if haddockSupportsPackageName
         then maybe [] (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
                                , "--package-version=" ++ prettyShow (pkgVersion pkg)
                                ])
@@ -803,6 +803,7 @@ renderPureArgs version comp platform args = concat
        | isVersion 2 5 = "--verbosity=1"
        | otherwise     = "--verbose"
       haddockSupportsVisibility = version >= mkVersion [2,26,1]
+      haddockSupportsPackageName = version > mkVersion [2,16]
 
 ---------------------------------------------------------------------------------
 
