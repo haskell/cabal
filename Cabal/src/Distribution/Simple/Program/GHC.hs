@@ -54,7 +54,7 @@ normaliseGhcArgs (Just ghcVersion) PackageDescription{..} ghcArgs
     supportedGHCVersions :: VersionRange
     supportedGHCVersions = intersectVersionRanges
         (orLaterVersion (mkVersion [8,0]))
-        (earlierVersion (mkVersion [9,1]))
+        (earlierVersion (mkVersion [9,3]))
 
     from :: Monoid m => [Int] -> m -> m
     from version flags
