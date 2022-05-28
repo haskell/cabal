@@ -869,6 +869,15 @@ data KnownExtension =
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
 
+  -- | Undocumented parsing-related extensions introduced in GHC 7.0.
+  | AlternativeLayoutRule
+
+  -- | Undocumented parsing-related extensions introduced in GHC 7.0.
+  | AlternativeLayoutRuleTransitional
+
+  -- | Undocumented parsing-related extensions introduced in GHC 7.2.
+  | RelaxedLayout
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
