@@ -43,6 +43,8 @@ import Distribution.Client.TargetProblem      (TargetProblem(..))
 
 import Distribution.Types.PackageId (pkgName)
 import Distribution.Types.PackageName (unPackageName)
+import Distribution.Types.Version (mkVersion)
+import Distribution.Types.VersionRange (orLaterVersion)
 import Distribution.Types.InstalledPackageInfo (InstalledPackageInfo (..))
 import Distribution.Simple.Command
          ( CommandUI(..) )
@@ -64,7 +66,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Program.Builtin
          ( haddockProgram )
 import Distribution.Simple.Program.Db
-         ( addKnownProgram, reconfigurePrograms )
+         ( addKnownProgram, reconfigurePrograms, requireProgramVersion )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), defaultHaddockFlags
          , HaddockProjectFlags(..)
@@ -133,12 +135,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
                        (NixStyleOptions.configFlags (commandDefaultFlags CmdBuild.buildCommand))
                        { configVerbosity = haddockProjectVerbosity flags }
                    }
-    CmdHaddock.haddockAction
-      nixFlags
-      ["all"]
-      globalFlags
 
-    -- copy local packages to the destination directory
+    --
+    -- Construct the build plan and infer the list of packages which haddocks
+    -- we need.
+    --
+
     withContextAndSelectors RejectNoTargets Nothing nixFlags ["all"] globalFlags $ \targetCtx ctx targetSelectors -> do
       baseCtx <- case targetCtx of
         ProjectContext             -> return ctx
@@ -184,6 +186,23 @@ haddockProjectAction flags _extraArgs globalFlags = do
              . pkgConfigCompilerProgs
              $ sharedConfig
       let sharedConfig' = sharedConfig { pkgConfigCompilerProgs = progs }
+
+      _ <- requireProgramVersion
+             verbosity haddockProgram
+             (orLaterVersion (mkVersion [2,26,1])) progs
+
+      --
+      -- Build haddocks of each components
+      --
+
+      CmdHaddock.haddockAction
+        nixFlags
+        ["all"]
+        globalFlags
+
+      --
+      -- Copy haddocks to the destination folder
+      --
 
       packageInfos <- fmap (nub . concat) $ for pkgs $ \pkg ->
         case pkg of
@@ -245,7 +264,10 @@ haddockProjectAction flags _extraArgs globalFlags = do
                                    )]
                   False -> return []
 
-      -- run haddock to generate index, content, etc.
+      --
+      -- generate index, content, etc.
+      --
+
       let flags' = flags
             { haddockProjectDir         = Flag outputDir
             , haddockProjectGenIndex    = if localOrHackage
