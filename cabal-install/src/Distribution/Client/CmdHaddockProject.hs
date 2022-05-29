@@ -80,9 +80,12 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- build all packages with appropriate haddock flags
     let haddockFlags = defaultHaddockFlags
           { haddockHtml         = Flag True
-          , haddockBaseUrl      = Flag ".."
+          -- one can either use `--haddock-base-url` or
+          -- `--haddock-html-location`.
+          , haddockBaseUrl      = if localStyle then Flag ".." else NoFlag
           , haddockProgramPaths = haddockProjectProgramPaths  flags
           , haddockProgramArgs  = haddockProjectProgramArgs   flags
+          , haddockHtmlLocation = haddockProjectHtmlLocation  flags
           , haddockHoogle       = haddockProjectHoogle        flags
           , haddockExecutables  = haddockProjectExecutables   flags
           , haddockTestSuites   = haddockProjectTestSuites    flags
@@ -93,8 +96,10 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockLinkedSource = haddockProjectLinkedSource  flags
           , haddockQuickJump    = haddockProjectQuickJump     flags
           , haddockHscolourCss  = haddockProjectHscolourCss   flags
-          , haddockContents     = Flag (toPathTemplate "../index.html")
-          , haddockIndex        = Flag (toPathTemplate "../doc-index.html")
+          , haddockContents     = if localStyle then Flag (toPathTemplate "../index.html")
+                                                else NoFlag
+          , haddockIndex        = if localStyle then Flag (toPathTemplate "../doc-index.html")
+                                                else NoFlag
           , haddockKeepTempFiles= haddockProjectKeepTempFiles flags
           , haddockVerbosity    = haddockProjectVerbosity     flags
           , haddockLib          = haddockProjectLib           flags
@@ -159,6 +164,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
       packageInfos <- fmap (nub . concat) $ for pkgs $ \pkg ->
         case pkg of
+          Left _ | not localStyle ->
+            return []
           Left package -> do
             let packageName = unPackageName (pkgName $ sourcePackageId package)
                 destDir = outputDir </> packageName
@@ -174,44 +181,46 @@ haddockProjectAction flags _extraArgs globalFlags = do
                 False -> return Nothing
 
           Right package ->
-            if elabLocalToProject package
-            then do
-              let distDirParams = elabDistDirParams sharedConfig' package
-                  buildDir = distBuildDirectory distLayout distDirParams
-                  packageName = unPackageName (pkgName $ elabPkgSourceId package)
-              let docDir = buildDir
-                       </> "doc" </> "html"
-                       </> packageName
-                  destDir = outputDir </> packageName
-                  interfacePath = destDir
-                              </> packageName <.> "haddock"
-              a <- doesDirectoryExist docDir
-              case a of
-                True  -> copyDirectoryRecursive verbosity docDir destDir
-                      >> return [( packageName
-                                 , interfacePath
-                                 , Visible
-                                 )]
-                False -> return []
-            else do
-              let packageName = unPackageName (pkgName $ elabPkgSourceId package)
-                  packageDir = storePackageDirectory (cabalStoreDirLayout cabalLayout)
-                                 (compilerId (pkgConfigCompiler sharedConfig'))
-                                 (elabUnitId package)
-                  docDir = packageDir </> "share" </> "doc" </> "html"
-                  destDir = outputDir </> packageName
-                  interfacePath = destDir
-                              </> packageName <.> "haddock"
-              a <- doesDirectoryExist docDir
-              case a of
-                True  -> copyDirectoryRecursive verbosity docDir destDir
-                      -- non local packages will be hidden in haddock's
-                      -- generated contents page
-                      >> return [( packageName
-                                 , interfacePath
-                                 , Hidden
-                                 )]
-                False -> return []
+            case elabLocalToProject package of
+              True -> do
+                let distDirParams = elabDistDirParams sharedConfig' package
+                    buildDir = distBuildDirectory distLayout distDirParams
+                    packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                let docDir = buildDir
+                         </> "doc" </> "html"
+                         </> packageName
+                    destDir = outputDir </> packageName
+                    interfacePath = destDir
+                                </> packageName <.> "haddock"
+                a <- doesDirectoryExist docDir
+                case a of
+                  True  -> copyDirectoryRecursive verbosity docDir destDir
+                        >> return [( packageName
+                                   , interfacePath
+                                   , Visible
+                                   )]
+                  False -> return []
+              False | not localStyle ->
+                return []
+              False -> do
+                let packageName = unPackageName (pkgName $ elabPkgSourceId package)
+                    packageDir = storePackageDirectory (cabalStoreDirLayout cabalLayout)
+                                   (compilerId (pkgConfigCompiler sharedConfig'))
+                                   (elabUnitId package)
+                    docDir = packageDir </> "share" </> "doc" </> "html"
+                    destDir = outputDir </> packageName
+                    interfacePath = destDir
+                                </> packageName <.> "haddock"
+                a <- doesDirectoryExist docDir
+                case a of
+                  True  -> copyDirectoryRecursive verbosity docDir destDir
+                        -- non local packages will be hidden in haddock's
+                        -- generated contents page
+                        >> return [( packageName
+                                   , interfacePath
+                                   , Hidden
+                                   )]
+                  False -> return []
 
       -- run haddock to generate index, content, etc.
       let flags' = flags
@@ -232,6 +241,13 @@ haddockProjectAction flags _extraArgs globalFlags = do
                          flags'
   where
     verbosity = fromFlagOrDefault normal (haddockProjectVerbosity flags)
+
+    -- Build a self contained directory which contains haddocks of all
+    -- transitive dependencies; or depend on `--haddocks-html-location` to
+    -- provide location of the documentation of dependencies.
+    localStyle = case haddockProjectHtmlLocation flags of
+      NoFlag -> True
+      Flag _ -> False
 
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =

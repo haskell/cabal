@@ -1600,6 +1600,7 @@ data HaddockProjectFlags = HaddockProjectFlags {
     haddockProjectProgramArgs  :: [(String, [String])],
     haddockProjectHoogle       :: Flag Bool,
     -- haddockHtml is not supported
+    haddockProjectHtmlLocation :: Flag String,
     -- haddockForHackage is not supported
     haddockProjectExecutables  :: Flag Bool,
     haddockProjectTestSuites   :: Flag Bool,
@@ -1630,6 +1631,7 @@ defaultHaddockProjectFlags = HaddockProjectFlags {
     haddockProjectProgramPaths = mempty,
     haddockProjectProgramArgs  = mempty,
     haddockProjectHoogle       = Flag False,
+    haddockProjectHtmlLocation = NoFlag,
     haddockProjectExecutables  = Flag False,
     haddockProjectBenchmarks   = Flag False,
     haddockProjectForeignLibs  = Flag False,
@@ -1696,6 +1698,11 @@ haddockProjectOptions _showOrParseArgs =
      "Generate a hoogle database"
      haddockProjectHoogle (\v flags -> flags { haddockProjectHoogle = v })
      trueArg
+
+    ,option "" ["html-location"]
+     "Location of HTML documentation for pre-requisite packages"
+     haddockProjectHtmlLocation (\v flags -> flags { haddockProjectHtmlLocation = v })
+     (reqArgFlag "URL")
 
     ,option "" ["executables"]
      "Run haddock for Executables targets"
