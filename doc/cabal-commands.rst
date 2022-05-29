@@ -33,6 +33,7 @@ legacy sections. We talk in detail about some global and package commands.
 
     freeze            Freeze dependencies.
     haddock           Build Haddock documentation.
+    haddock-project   Build Haddock documentation of local packages.
     exec              Give a command access to the store.
     list-bin          List path to a single executable.
 
@@ -580,6 +581,31 @@ the specified packages within the project.
 If a target is not a library :cfg-field:`haddock-benchmarks`,
 :cfg-field:`haddock-executables`, :cfg-field:`haddock-internal`,
 :cfg-field:`haddock-tests` will be implied as necessary.
+
+cabal haddock-project
+---------------------
+
+``cabal haddock-project [FLAGS]`` builds Haddock documentation for all local
+packages specified in the project.
+
+By default the documentation will be put in ``./haddocks`` folder, this can be
+modified with the ``--output`` flag.
+
+This command supports two primary modes: building a self contained directory
+(by specifying ``--local`` flag) or documentation that links to hackage (with
+``--hackage`` flag).  Both options imply: ``--quickjump``, ``--gen-index``,
+``--gen-contents`` and ``--hyperlinked-source``.
+
+If neither ``--local`` nor ``--hackage`` option is specified a self contained
+directory will only be build if ``--html-location`` is not specified.
+
+In both cases the html index as well as quickjump index will include all terms
+and types defined in any of the local packages, but not ones that are included
+in any of the dependencies.  But note that if you navigate to a dependency,
+you will have access to its quickjump index.
+
+The generated landing page will contain one tree of all modules per local
+package.
 
 cabal exec
 ----------
