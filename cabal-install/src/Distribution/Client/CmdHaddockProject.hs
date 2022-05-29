@@ -4,6 +4,7 @@ module Distribution.Client.CmdHaddockProject
   ) where
 
 import Prelude ()
+import Data.Bool (bool)
 import Distribution.Client.Compat.Prelude hiding (get)
 
 import qualified Distribution.Client.CmdBuild   as CmdBuild
@@ -47,6 +48,13 @@ import Distribution.Simple.Command
          ( CommandUI(..) )
 import Distribution.Simple.Compiler
          ( Compiler (..) )
+import Distribution.Simple.Flag
+        ( Flag(..)
+        , flagElim
+        , flagToList
+        , fromFlag
+        , fromFlagOrDefault
+        )
 import Distribution.Simple.InstallDirs
          ( toPathTemplate )
 import Distribution.Simple.Haddock (createHaddockIndex)
@@ -60,9 +68,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Setup
          ( HaddockFlags(..), defaultHaddockFlags
          , HaddockProjectFlags(..)
-         , Flag(..)
          , Visibility(..)
-         , fromFlag, fromFlagOrDefault
          , haddockProjectCommand
          )
 import Distribution.Verbosity as Verbosity
@@ -77,15 +83,26 @@ haddockProjectAction flags _extraArgs globalFlags = do
     let outputDir = normalise $ fromFlag (haddockProjectDir flags)
     createDirectoryIfMissingVerbose verbosity True outputDir
 
+    when ((2::Int) <= 
+            ( flagElim 0 (bool 0 1) (haddockProjectHackage flags)
+            + flagElim 0 (bool 0 1) (haddockProjectLocal flags)
+            + flagElim 0 (const 1)  (haddockProjectHtmlLocation flags)
+            )) $
+      die' verbosity "Options `--local`, `--hackage` and `--html-location` are mutually exclusive`"
+
     -- build all packages with appropriate haddock flags
     let haddockFlags = defaultHaddockFlags
           { haddockHtml         = Flag True
           -- one can either use `--haddock-base-url` or
           -- `--haddock-html-location`.
-          , haddockBaseUrl      = if localStyle then Flag ".." else NoFlag
+          , haddockBaseUrl      = if localStyle
+                                  then Flag ".."
+                                  else NoFlag
           , haddockProgramPaths = haddockProjectProgramPaths  flags
           , haddockProgramArgs  = haddockProjectProgramArgs   flags
-          , haddockHtmlLocation = haddockProjectHtmlLocation  flags
+          , haddockHtmlLocation = if fromFlagOrDefault False (haddockProjectHackage flags)
+                                  then Flag "https://hackage.haskell.org/package/$pkg-$version/docs"
+                                  else haddockProjectHtmlLocation flags
           , haddockHoogle       = haddockProjectHoogle        flags
           , haddockExecutables  = haddockProjectExecutables   flags
           , haddockTestSuites   = haddockProjectTestSuites    flags
@@ -93,9 +110,13 @@ haddockProjectAction flags _extraArgs globalFlags = do
           , haddockForeignLibs  = haddockProjectForeignLibs   flags
           , haddockInternal     = haddockProjectInternal      flags
           , haddockCss          = haddockProjectCss           flags
-          , haddockLinkedSource = haddockProjectLinkedSource  flags
-          , haddockQuickJump    = haddockProjectQuickJump     flags
-          , haddockHscolourCss  = haddockProjectHscolourCss   flags
+          , haddockLinkedSource = if localOrHackage
+                                  then Flag True
+                                  else haddockProjectLinkedSource flags
+          , haddockQuickJump    = if localOrHackage
+                                  then Flag True
+                                  else haddockProjectQuickJump flags
+          , haddockHscolourCss  = haddockProjectHscolourCss    flags
           , haddockContents     = if localStyle then Flag (toPathTemplate "../index.html")
                                                 else NoFlag
           , haddockIndex        = if localStyle then Flag (toPathTemplate "../doc-index.html")
@@ -224,8 +245,18 @@ haddockProjectAction flags _extraArgs globalFlags = do
 
       -- run haddock to generate index, content, etc.
       let flags' = flags
-            { haddockProjectDir        = Flag outputDir
-            , haddockProjectInterfaces = Flag
+            { haddockProjectDir         = Flag outputDir
+            , haddockProjectGenIndex    = if localOrHackage
+                                          then Flag True
+                                          else haddockProjectGenIndex flags
+            , haddockProjectGenContents = if localOrHackage
+                                          then Flag True
+                                          else haddockProjectGenContents flags
+            , haddockProjectQuickJump   = if localOrHackage
+                                          then Flag True
+                                          else haddockProjectQuickJump flags
+            , haddockProjectLinkedSource = haddockLinkedSource haddockFlags
+            , haddockProjectInterfaces  = Flag
                 [ ( interfacePath
                   , Just packageName
                   , Just packageName
@@ -245,9 +276,18 @@ haddockProjectAction flags _extraArgs globalFlags = do
     -- Build a self contained directory which contains haddocks of all
     -- transitive dependencies; or depend on `--haddocks-html-location` to
     -- provide location of the documentation of dependencies.
-    localStyle = case haddockProjectHtmlLocation flags of
-      NoFlag -> True
-      Flag _ -> False
+    localStyle =
+      let local    = fromFlagOrDefault False (haddockProjectLocal flags)
+          hackage  = fromFlagOrDefault False (haddockProjectHackage flags)
+          location = fromFlagOrDefault False (const True <$> haddockProjectHtmlLocation flags)
+      in        local && not hackage && not location
+         -- or if none of the flags is given set `localStyle` to `True` 
+         || not local && not hackage && not location
+      
+
+    localOrHackage =
+      any id $ flagToList (haddockProjectLocal flags)
+            ++ flagToList (haddockProjectHackage flags)
 
     reportTargetProblems :: Show x => [x] -> IO a
     reportTargetProblems =

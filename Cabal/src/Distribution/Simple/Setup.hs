@@ -1583,6 +1583,23 @@ data Visibility = Visible | Hidden
   deriving (Eq, Show)
 
 data HaddockProjectFlags = HaddockProjectFlags {
+    haddockProjectHackage      :: Flag Bool,
+    -- ^ a shortcut option which builds documentation linked to hackage.  It implies:
+    -- * `--html-location='https://hackage.haskell.org/package/$prg-$version/docs'
+    -- * `--quickjump`
+    -- * `--gen-index`
+    -- * `--gen-contents`
+    -- * `--hyperlinked-source`
+    haddockProjectLocal        :: Flag Bool,
+    -- ^ a shortcut option which builds self contained directory which contains
+    -- all the documentation, it implies:
+    -- * `--quickjump`
+    -- * `--gen-index`
+    -- * `--gen-contents`
+    -- * `--hyperlinked-source`
+    --
+    -- And it will also pass `--base-url` option to `haddock`.
+
     -- options passed to @haddock@ via 'createHaddockIndex'
     haddockProjectDir          :: Flag String,
     -- ^ output directory of combined haddocks, the default is './haddocks'
@@ -1623,6 +1640,8 @@ data HaddockProjectFlags = HaddockProjectFlags {
 
 defaultHaddockProjectFlags :: HaddockProjectFlags
 defaultHaddockProjectFlags = HaddockProjectFlags {
+    haddockProjectHackage      = Flag False,
+    haddockProjectLocal        = Flag False,
     haddockProjectDir          = Flag "./haddocks",
     haddockProjectPrologue     = NoFlag,
     haddockProjectGenIndex     = Flag False,
@@ -1674,7 +1693,23 @@ haddockProjectCommand = CommandUI
 
 haddockProjectOptions :: ShowOrParseArgs -> [OptionField HaddockProjectFlags]
 haddockProjectOptions _showOrParseArgs =
-    [option "" ["output"]
+    [option "" ["hackage"]
+     (concat ["A short-cut option to build documentation linked to hackage; "
+             ,"it implies --quickjump, --gen-index, --gen-contents, "
+             ,"--hyperlinked-source and --html-location"
+             ])
+     haddockProjectHackage (\v flags -> flags { haddockProjectHackage = v })
+     trueArg
+
+    ,option "" ["local"]
+     (concat ["A short-cut option to build self contained documentation; "
+             ,"it implies  --quickjump, --gen-index, --gen-contents "
+             ,"and --hyperlinked-source."
+             ])
+     haddockProjectLocal (\v flags -> flags { haddockProjectLocal = v })
+     trueArg
+
+    ,option "" ["output"]
       "Output directory"
       haddockProjectDir (\v flags -> flags { haddockProjectDir = v })
       (optArg' "DIRECTORY" maybeToFlag (fmap Just . flagToList))
