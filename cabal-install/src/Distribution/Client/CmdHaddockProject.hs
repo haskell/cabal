@@ -60,7 +60,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.Haddock (createHaddockIndex)
 import Distribution.Simple.Utils
          ( die', createDirectoryIfMissingVerbose
-         , copyDirectoryRecursive, )
+         , copyDirectoryRecursive, warn )
 import Distribution.Simple.Program.Builtin
          ( haddockProgram )
 import Distribution.Simple.Program.Db
@@ -89,6 +89,8 @@ haddockProjectAction flags _extraArgs globalFlags = do
             + flagElim 0 (const 1)  (haddockProjectHtmlLocation flags)
             )) $
       die' verbosity "Options `--local`, `--hackage` and `--html-location` are mutually exclusive`"
+
+    warn verbosity "haddock-project command is experimental, it might break in the future"
 
     -- build all packages with appropriate haddock flags
     let haddockFlags = defaultHaddockFlags
