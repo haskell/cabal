@@ -861,8 +861,22 @@ data KnownExtension =
   -- | Enable the use of record dot-accessor and updater syntax
   | OverloadedRecordDot
 
+  -- | Provides record @.@ syntax in record updates, e.g. @x {foo.bar = 1}@.
+  --
+  -- * <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/exts/overloaded_record_update.html#extension-OverloadedRecordUpdate>
+  | OverloadedRecordUpdate
+
   -- | Enable data types for which an unlifted or levity-polymorphic result kind is inferred.
   | UnliftedDatatypes
+
+  -- | Undocumented parsing-related extensions introduced in GHC 7.0.
+  | AlternativeLayoutRule
+
+  -- | Undocumented parsing-related extensions introduced in GHC 7.0.
+  | AlternativeLayoutRuleTransitional
+
+  -- | Undocumented parsing-related extensions introduced in GHC 7.2.
+  | RelaxedLayout
 
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
