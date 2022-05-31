@@ -6,7 +6,7 @@ See the [Cabal web site] for more information.
 If you also want the `cabal` command-line program, you need the
 [cabal-install] package in addition to this library.
 
-[cabal-install]: ../cabal-install/README.md
+[cabal-install]: ../cabal-install
 
 More information
 ================
