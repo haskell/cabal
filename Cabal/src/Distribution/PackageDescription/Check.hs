@@ -871,42 +871,43 @@ checkGhcOptions fieldName getOptions pkg =
         ++ "should only be used for executables."
 
   , checkAlternatives fieldName "extensions"
-      [ (flag, prettyShow extension) | flag <- all_ghc_options
+      [ (flag, prettyShow extension) | flag <- ghc_options_no_rtsopts
                                   , Just extension <- [ghcExtension flag] ]
 
   , checkAlternatives fieldName "extensions"
-      [ (flag, extension) | flag@('-':'X':extension) <- all_ghc_options ]
+      [ (flag, extension) | flag@('-':'X':extension) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "cpp-options" $
-         [ (flag, flag) | flag@('-':'D':_) <- all_ghc_options ]
-      ++ [ (flag, flag) | flag@('-':'U':_) <- all_ghc_options ]
+         [ (flag, flag) | flag@('-':'D':_) <- ghc_options_no_rtsopts ]
+      ++ [ (flag, flag) | flag@('-':'U':_) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "include-dirs"
-      [ (flag, dir) | flag@('-':'I':dir) <- all_ghc_options ]
+      [ (flag, dir) | flag@('-':'I':dir) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "extra-libraries"
-      [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
+      [ (flag, lib) | flag@('-':'l':lib) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "extra-libraries-static"
-      [ (flag, lib) | flag@('-':'l':lib) <- all_ghc_options ]
+      [ (flag, lib) | flag@('-':'l':lib) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "extra-lib-dirs"
-      [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
+      [ (flag, dir) | flag@('-':'L':dir) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "extra-lib-dirs-static"
-      [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
+      [ (flag, dir) | flag@('-':'L':dir) <- ghc_options_no_rtsopts ]
 
   , checkAlternatives fieldName "frameworks"
       [ (flag, fmwk) | (flag@"-framework", fmwk) <-
-           zip all_ghc_options (safeTail all_ghc_options) ]
+           zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts) ]
 
   , checkAlternatives fieldName "extra-framework-dirs"
       [ (flag, dir) | (flag@"-framework-path", dir) <-
-           zip all_ghc_options (safeTail all_ghc_options) ]
+           zip ghc_options_no_rtsopts (safeTail ghc_options_no_rtsopts) ]
   ]
 
   where
     all_ghc_options    = concatMap getOptions (allBuildInfo pkg)
+    ghc_options_no_rtsopts = rmRtsOpts all_ghc_options
     lib_ghc_options    = concatMap (getOptions . libBuildInfo)
                          (allLibraries pkg)
     test_ghc_options      = concatMap (getOptions . testBuildInfo)
@@ -966,6 +967,11 @@ checkGhcOptions fieldName getOptions pkg =
 
     enable  e = Just (EnableExtension e)
     disable e = Just (DisableExtension e)
+
+    rmRtsOpts :: [String] -> [String]
+    rmRtsOpts ("-with-rtsopts":_:xs) = rmRtsOpts xs
+    rmRtsOpts (x:xs) = x : rmRtsOpts xs
+    rmRtsOpts [] = []
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
 checkCCOptions = checkCLikeOptions "C" "cc-options" ccOptions
