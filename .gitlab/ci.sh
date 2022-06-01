@@ -8,14 +8,14 @@ export GHCUP_INSTALL_BASE_PREFIX="$CI_PROJECT_DIR/toolchain"
 export CABAL_DIR="$CI_PROJECT_DIR/cabal"
 
 case "$(uname)" in
-    MSYS_*|MINGW*)
-        export CABAL_DIR="$(cygpath -w "$CABAL_DIR")"
+	MSYS_*|MINGW*)
+		export CABAL_DIR="$(cygpath -w "$CABAL_DIR")"
 		GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/ghcup/bin"
-        EXE_EXT=".exe"
-        ;;
+		EXE_EXT=".exe"
+		;;
 	*)
 		GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/bin"
-        EXE_EXT=""
+		EXE_EXT=""
 		;;
 esac
 
