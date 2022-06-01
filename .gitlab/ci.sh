@@ -11,9 +11,11 @@ case "$(uname)" in
     MSYS_*|MINGW*)
         export CABAL_DIR="$(cygpath -w "$CABAL_DIR")"
 		GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/ghcup/bin"
+        EXE_EXT=".exe"
         ;;
 	*)
 		GHCUP_BINDIR="${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/bin"
+        EXE_EXT=""
 		;;
 esac
 
@@ -61,7 +63,7 @@ args=(
 run cabal v2-build ${args[@]} cabal-install
 
 mkdir "$CI_PROJECT_DIR/out"
-cp "$(cabal list-bin ${args[@]} cabal-install:exe:cabal)" "$CI_PROJECT_DIR/out/cabal"
+cp "$(cabal list-bin ${args[@]} cabal-install:exe:cabal)" "$CI_PROJECT_DIR/out/cabal$EXE_EXT"
 cp dist-newstyle/cache/plan.json "$CI_PROJECT_DIR/out/plan.json"
 cd "$CI_PROJECT_DIR/out/"
 
