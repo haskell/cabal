@@ -71,10 +71,10 @@ cd "$CI_PROJECT_DIR/out/"
 TARBALL_PREFIX="cabal-install-$("$CI_PROJECT_DIR/out/cabal" --numeric-version)"
 case "${TARBALL_EXT}" in
     zip)
-        zip "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" cabal plan.json
+        zip "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" "cabal$EXE_EXT" plan.json
         ;;
     tar.xz)
-        tar caf "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" cabal plan.json
+        tar caf "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" "cabal$EXE_EXT" plan.json
         ;;
     *)
         fail "Unknown TARBALL_EXT: ${TARBALL_EXT}"
