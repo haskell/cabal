@@ -256,25 +256,3 @@ recommended instead to use a *secure* local repository:
 The layout of these secure local repos matches the layout of remote
 repositories exactly; the :hackage-pkg:`hackage-repo-tool`
 can be used to create and manage such repositories.
-
-.. _installing-packages:
-
-Building and installing packages
-================================
-
-To be written
-
-Installing packages from Hackage
---------------------------------
-
-The ``cabal`` tool also can download, configure, build and install a
-`Hackage`_ package and all of its
-dependencies in a single step. To do this, run:
-
-::
-
-   $ cabal install [PACKAGE...]
-
-To browse the list of available packages, visit the `Hackage`_ web site.
-
-.. _Hackage: https://hackage.haskell.org/
