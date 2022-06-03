@@ -1,3 +1,5 @@
+.. _setup-commands:
+
 Setup.hs Commands
 =================
 

@@ -52,7 +52,7 @@ directory of the package:
 
 :file:`Setup.hs`
     a single-module Haskell program to perform various setup tasks (with
-    the interface described in the section on :ref:`installing-packages`).
+    the interface described in the section on :ref:`setup-commands`).
     This module should import only modules that will be present in all Haskell
     implementations, including modules of the Cabal library. The content of
     this file is determined by the :pkg-field:`build-type` setting in the
@@ -60,8 +60,8 @@ directory of the package:
     library to do most of the work.
 
 Once you have these, you can create a source bundle of this directory
-for distribution. Building of the package is discussed in the section on
-:ref:`installing-packages`.
+for distribution. Building of the package is demonstrated in the section
+:ref:`building-packages`.
 
 One of the purposes of Cabal is to make it easier to build a package
 with different Haskell implementations. So it provides abstractions of
@@ -3389,9 +3389,7 @@ a few options:
                                   sysconfdir=$(destdir)/$(sysconfdir) \
 
 -  Finally, with the :pkg-field:`build-type` ``Custom``, you can also write your
-   own setup script from scratch. It must conform to the interface
-   described in the section on :doc:`building and installing
-   packages <installing-packages>`, and you may use the Cabal
+   own setup script from scratch, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
 
