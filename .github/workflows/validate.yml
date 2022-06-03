@@ -43,8 +43,12 @@ jobs:
           # lot of segfaults caused by ghc bugs
           - os: "windows-latest"
             ghc: "8.8.4"
+          # it also throws segfaults randomly
           - os: "windows-latest"
             ghc: "8.4.4"
+          # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
+          - os: "windows-latest"
+            ghc: "8.6.5"
         include:
           - os: "ubuntu-latest"
             ghc: "8.0.2"
