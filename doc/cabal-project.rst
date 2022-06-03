@@ -295,7 +295,7 @@ package, and thus apply globally:
 
     This option cannot be specified via a ``cabal.project`` file.
 
--- option:: --ignore-project
+.. option:: --ignore-project
     
     Ignores the local ``cabal.project`` file and uses the default
     configuration with the local ``foo.cabal`` file. Note that

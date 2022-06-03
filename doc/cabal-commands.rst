@@ -372,8 +372,10 @@ See ``cabal run`` for more information on scripts.
 
 In addition ``cabal build`` accepts these flags:
 
-- ``--only-configure``: When given we will forego performing a full build and
-  abort after running the configure phase of each target package.
+.. option:: --only-configure
+
+    When given we will forego performing a full build and abort after running
+    the configure phase of each target package.
 
 
 cabal repl
@@ -703,16 +705,23 @@ and two archives of the same format built from the same source will hash to the 
 
 ``cabal sdist`` takes the following flags:
 
-- ``-l``, ``--list-only``: Rather than creating an archive, lists files that would be included.
-  Output is to ``stdout`` by default. The file paths are relative to the project's root
-  directory.
+.. option:: -l, --list-only
 
-- ``-o``, ``--output-directory``: Sets the output dir, if a non-default one is desired. The default is
-  ``dist-newstyle/sdist/``. ``--output-directory -`` will send output to ``stdout``
-  unless multiple archives are being created.
+    Rather than creating an archive, lists files that would be included.
 
-- ``--null-sep``: Only used with ``--list-only``. Separates filenames with a NUL
-  byte instead of newlines.
+    Output is to ``stdout`` by default. The file paths are relative to the project's root
+    directory.
+
+.. option:: -o, --output-directory
+
+    Sets the output dir, if a non-default one is desired. The default is
+    ``dist-newstyle/sdist/``. ``--output-directory -`` will send output to ``stdout``
+    unless multiple archives are being created.
+
+.. option:: --null-sep
+
+    Only used with ``--list-only``. Separates filenames with a NUL
+    byte instead of newlines.
 
 ``sdist`` is inherently incompatible with sdist hooks (which were removed in `Cabal-3.0`),
 not due to implementation but due to fundamental core invariants
@@ -738,43 +747,57 @@ description file or freeze file.
 
 ``cabal outdated`` supports the following flags:
 
-- ``--v1-freeze-file``: Read dependency version bounds from the freeze file
-  (``cabal.config``) instead of the package description file
-  (``$PACKAGENAME.cabal``).
+.. option:: --v1-freeze-file
 
-- ``--v2-freeze-file``:
+    Read dependency version bounds from the freeze file.
 
-  :since: 2.4
+    (``cabal.config``) instead of the package description file
+    (``$PACKAGENAME.cabal``).
 
-  Read dependency version bounds from the v2-style freeze file
-  (by default, ``cabal.project.freeze``) instead of the package
-  description file. ``--new-freeze-file`` is an alias for this flag
-  that can be used with pre-2.4 ``cabal``.
+.. option:: --v2-freeze-file
 
-- ``--project-file PROJECTFILE``:
+    :since: 2.4
 
-  :since: 2.4
+    Read dependency version bounds from the v2-style freeze file
+    (by default, ``cabal.project.freeze``) instead of the package
+    description file. ``--new-freeze-file`` is an alias for this flag
+    that can be used with pre-2.4 ``cabal``.
 
-  Read dependendency version bounds from the v2-style freeze file
-  related to the named project file (i.e., ``$PROJECTFILE.freeze``)
-  instead of the package desctription file. If multiple ``--project-file``
-  flags are provided, only the final one is considered. This flag
-  must only be passed in when ``--new-freeze-file`` is present.
+.. option:: --project-file PROJECTFILE
 
-- ``--simple-output``: Print only the names of outdated dependencies, one per line.
+    :since: 2.4
 
-- ``--exit-code``: Exit with a non-zero exit code when there are outdated dependencies.
+    Read dependendency version bounds from the v2-style freeze file
+    related to the named project file (i.e., ``$PROJECTFILE.freeze``)
+    instead of the package desctription file. If multiple ``--project-file``
+    flags are provided, only the final one is considered. This flag
+    must only be passed in when ``--new-freeze-file`` is present.
 
-- ``-q, --quiet``: Don't print any output. Implies ``-v0`` and ``--exit-code``.
+.. option:: --simple-output
 
-- ``--ignore PACKAGENAMES``: Don't warn about outdated dependency version bounds for the packages in this list.
+    Print only the names of outdated dependencies, one per line.
 
-- ``--minor [PACKAGENAMES]``: Ignore major version bumps for these packages.
-  E.g. if there's a version 2.0 of a package ``pkg`` on Hackage and the freeze
-  file specifies the constraint ``pkg == 1.9``, ``cabal outdated --freeze
-  --minor=pkg`` will only consider the ``pkg`` outdated when there's a version
-  of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
-  be used without arguments, in that case major version bumps are ignored for
-  all packages.
+.. option:: --exit-code
 
-  See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
+    Exit with a non-zero exit code when there are outdated dependencies.
+
+.. option:: -q, --quiet
+
+    Don't print any output. Implies ``-v0`` and ``--exit-code``.
+
+.. option:: --ignore PACKAGENAMES
+
+    Don't warn about outdated dependency version bounds for the packages in this list.
+
+.. option:: --minor [PACKAGENAMES]
+
+    Ignore major version bumps for these packages.
+
+    E.g. if there's a version 2.0 of a package ``pkg`` on Hackage and the freeze
+    file specifies the constraint ``pkg == 1.9``, ``cabal outdated --freeze
+    --minor=pkg`` will only consider the ``pkg`` outdated when there's a version
+    of ``pkg`` on Hackage satisfying ``pkg > 1.9 && < 2.0``. ``--minor`` can also
+    be used without arguments, in that case major version bumps are ignored for
+    all packages.
+
+    See `the section on listing outdated dependency version bounds <cabal-package.html#listing-outdated-dependency-version-bounds>`__ for more details and examples.
