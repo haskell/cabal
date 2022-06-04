@@ -8,7 +8,7 @@ Welcome to the Cabal User Guide
 
    getting-started
    intro
-   config-and-install
+   config
    concepts-and-development
    nix-local-build-overview
    cabal-commands

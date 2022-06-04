@@ -1,2 +1,0 @@
-.. toctree::
-   installing-packages
