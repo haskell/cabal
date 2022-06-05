@@ -352,6 +352,9 @@ rebuildProjectConfig verbosity
     ProjectConfigShared { projectConfigConfigFile } =
       projectConfigShared cliConfig
 
+    ProjectConfigShared { projectConfigIgnoreProject } =
+      projectConfigShared cliConfig
+
     fileMonitorProjectConfig ::
       FileMonitor
         (FilePath, FilePath)
@@ -364,7 +367,7 @@ rebuildProjectConfig verbosity
     --
     phaseReadProjectConfig :: Rebuild ProjectConfigSkeleton
     phaseReadProjectConfig = do
-      readProjectConfig verbosity httpTransport projectConfigConfigFile distDirLayout
+      readProjectConfig verbosity httpTransport projectConfigIgnoreProject projectConfigConfigFile distDirLayout
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -375,8 +378,8 @@ rebuildProjectConfig verbosity
                                projectConfigShared,
                                projectConfigBuildOnly
                              } = do
-      pkgLocations <- findProjectPackages distDirLayout projectConfig
 
+      pkgLocations <- findProjectPackages distDirLayout projectConfig
       -- Create folder only if findProjectPackages did not throw a
       -- BadPackageLocations exception.
       liftIO $ do
@@ -1178,6 +1181,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- respective major Cabal version bundled with the respective GHC
     -- release).
     --
+    -- GHC 9.2   needs  Cabal >= 3.6
     -- GHC 9.0   needs  Cabal >= 3.4
     -- GHC 8.10  needs  Cabal >= 3.2
     -- GHC 8.8   needs  Cabal >= 3.0
@@ -1193,6 +1197,7 @@ planPackages verbosity comp platform solver SolverSettings{..}
     -- TODO: long-term, this compatibility matrix should be
     --       stored as a field inside 'Distribution.Compiler.Compiler'
     setupMinCabalVersionConstraint
+      | isGHC, compVer >= mkVersion [9,2]  = mkVersion [3,6]
       | isGHC, compVer >= mkVersion [9,0]  = mkVersion [3,4]
       | isGHC, compVer >= mkVersion [8,10] = mkVersion [3,2]
       | isGHC, compVer >= mkVersion [8,8]  = mkVersion [3,0]

@@ -226,6 +226,9 @@ You can find a large number of real-world examples of changelog files
 At release time, the entries will be merged with
 [this tool](https://github.com/phadej/changelog-d).
 
+In addition, if you're changing the .cabal file format specification you should
+add an entry in `doc/file-format-changelog.rst`.
+
 Communicating
 -------------
 

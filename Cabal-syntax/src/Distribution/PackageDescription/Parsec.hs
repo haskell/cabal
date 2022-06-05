@@ -314,13 +314,23 @@ goSections specVer = traverse_ process
             commonStanzas <- use stateCommonStanzas
             name'      <- parseUnqualComponentName pos args
             testStanza <- lift $ parseCondTree' testSuiteFieldGrammar (fromBuildInfo' name') commonStanzas fields
-            testSuite  <- lift $ traverse (validateTestSuite pos) testStanza
+            testSuite  <- lift $ traverse (validateTestSuite specVer pos) testStanza
 
             let hasType ts = testInterface ts /= testInterface mempty
             unless (onAllBranches hasType testSuite) $ lift $ parseFailure pos $ concat
                 [ "Test suite " ++ show (prettyShow name')
-                , " is missing required field \"main-is\" or the field "
-                , "is not present in all conditional branches."
+
+                , concat $ case specVer of
+                    v | v >= CabalSpecV3_8 ->
+                        [ " is missing required field \"main-is\" or the field "
+                        , "is not present in all conditional branches."
+                        ]
+                    _ ->
+                        [ " is missing required field \"type\" or the field "
+                        , "is not present in all conditional branches. The "
+                        , "available test types are: "
+                        , intercalate ", " (map prettyShow knownTestTypes)
+                        ]
                 ]
 
             -- TODO check duplicate name here?
@@ -330,13 +340,22 @@ goSections specVer = traverse_ process
             commonStanzas <- use stateCommonStanzas
             name'       <- parseUnqualComponentName pos args
             benchStanza <- lift $ parseCondTree' benchmarkFieldGrammar (fromBuildInfo' name') commonStanzas fields
-            bench       <- lift $ traverse (validateBenchmark pos) benchStanza
+            bench       <- lift $ traverse (validateBenchmark specVer pos) benchStanza
 
             let hasType ts = benchmarkInterface ts /= benchmarkInterface mempty
             unless (onAllBranches hasType bench) $ lift $ parseFailure pos $ concat
                 [ "Benchmark " ++ show (prettyShow name')
-                , " is missing required field \"main-is\" or the field "
-                , "is not present in all conditional branches."
+                , concat $ case specVer of
+                    v | v >= CabalSpecV3_8 ->
+                        [ " is missing required field \"main-is\" or the field "
+                        , "is not present in all conditional branches."
+                        ]
+                    _ ->
+                        [ " is missing required field \"type\" or the field "
+                        , "is not present in all conditional branches. The "
+                        , "available benchmark types are: "
+                        , intercalate ", " (map prettyShow knownBenchmarkTypes)
+                        ]
                 ]
 
             -- TODO check duplicate name here?

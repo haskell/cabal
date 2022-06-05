@@ -1310,7 +1310,7 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         -- If we know the exact pkg to use, then use it.
         Just pkginstance -> Right pkginstance
         -- Otherwise we just pick an arbitrary instance of the latest version.
-        Nothing -> case pickLastIPI $ PackageIndex.lookupDependency installedIndex dep_pkgname vr of
+        Nothing -> case pickLastIPI $ PackageIndex.lookupInternalDependency installedIndex dep_pkgname vr lib of
           Nothing  -> Left (DependencyNotExists dep_pkgname)
           Just pkg -> Right pkg
       return $ ExternalDependency $ ipiToPreExistingComponent ipi

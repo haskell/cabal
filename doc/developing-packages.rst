@@ -259,6 +259,7 @@ your libraries and executable sections. For example:
 Note that the ``import`` **must** be the first thing in the stanza. For more
 information see the :ref:`common-stanzas` section.
 
+.. _building-packages:
 
 Building the package
 --------------------

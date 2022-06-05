@@ -53,6 +53,7 @@ import Distribution.Simple.Setup (toFlag, HaddockFlags(..), defaultHaddockFlags)
 import Distribution.Client.Setup (globalCommand)
 import Distribution.Simple.Compiler
 import Distribution.Simple.Command
+import qualified Distribution.Simple.Flag as Flag
 import Distribution.System
 import Distribution.Version
 import Distribution.ModuleName (ModuleName)
@@ -147,7 +148,8 @@ tests config =
     ]
   , testGroup "Flag tests" $
     [
-      testCase "Test Nix Flag" testNixFlags
+      testCase "Test Nix Flag" testNixFlags,
+      testCase "Test Ignore Project Flag" testIgnoreProjectFlag
     ]
   ]
 
@@ -1961,3 +1963,19 @@ testNixFlags = do
     getFlags :: CommandUI GlobalFlags -> CommandParse (GlobalFlags -> GlobalFlags, [String]) -> Maybe GlobalFlags
     getFlags cui (CommandReadyToGo (mkflags, _)) = Just . mkflags . commandDefaultFlags $ cui
     getFlags _ _ = Nothing
+
+testIgnoreProjectFlag :: Assertion
+testIgnoreProjectFlag = do
+  -- Coverage flag should be false globally by default (~/.cabal folder)
+  (_, _, prjConfigGlobal, _, _) <- configureProject testdir ignoreSetConfig
+  let globalCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigGlobal
+  False @=? Flag.fromFlagOrDefault False globalCoverageFlag
+  -- It is set to true in the cabal.project file
+  (_, _, prjConfigLocal, _, _) <- configureProject testdir emptyConfig
+  let localCoverageFlag = packageConfigCoverage . projectConfigLocalPackages $ prjConfigLocal
+  True @=? Flag.fromFlagOrDefault False localCoverageFlag
+  where
+    testdir = "build/ignore-project"
+    emptyConfig = mempty
+    ignoreSetConfig :: ProjectConfig
+    ignoreSetConfig = mempty { projectConfigShared = mempty { projectConfigIgnoreProject = Flag True } }

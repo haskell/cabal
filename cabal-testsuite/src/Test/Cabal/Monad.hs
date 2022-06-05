@@ -18,6 +18,7 @@ module Test.Cabal.Monad (
     gitProgram,
     cabalProgram,
     diffProgram,
+    python3Program,
     -- * The test environment
     TestEnv(..),
     getTestEnv,
@@ -215,6 +216,9 @@ cabalProgram = (simpleProgram "cabal") {
 diffProgram :: Program
 diffProgram = simpleProgram "diff"
 
+python3Program :: Program
+python3Program = simpleProgram "python3"
+
 -- | Run a test in the test monad according to program's arguments.
 runTestM :: String -> TestM a -> IO a
 runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
@@ -229,7 +233,7 @@ runTestM mode m = withSystemTempDirectory "cabal-testsuite" $ \tmp_dir -> do
     -- Add test suite specific programs
     let program_db0 =
             addKnownPrograms
-                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram] ++ builtinPrograms)
+                ([gitProgram, hackageRepoToolProgram, cabalProgram, diffProgram, python3Program] ++ builtinPrograms)
                 (runnerProgramDb senv)
     -- Reconfigure according to user flags
     let cargs = testCommonArgs args

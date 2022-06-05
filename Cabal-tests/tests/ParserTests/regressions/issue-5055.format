@@ -19,5 +19,3 @@ test-suite flag-cabal-test
     build-depends:    base >=4.8 && <5
 
     if os(windows)
-        type:    exitcode-stdio-1.0
-        main-is: FirstMain.hs

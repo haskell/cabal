@@ -1,0 +1,11 @@
+synopsis: Remove the Generic instance of LicenseId
+packages: Cabal
+prs: #8117
+issues: #8074
+significance: significant
+
+description: {
+
+- The `Generic` instance of LicenseId is removed, due to the extraordinary amount of memory required to compile
+  the Generic instances of large sum types in GHC.
+}

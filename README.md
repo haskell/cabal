@@ -11,7 +11,7 @@
 This Cabal Git repository contains the following packages:
 
  * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
- * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE)
+ * [Cabal-syntax](Cabal-syntax/README.md): the `.cabal` file format library ([license](Cabal-syntax/LICENSE))
  * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
 
 The canonical upstream repository is located at

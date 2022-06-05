@@ -33,7 +33,6 @@ instance Pretty LibraryVisibility where
 instance Parsec LibraryVisibility where
   parsec = do
     name <- P.munch1 isAlpha
-    parsecWarning PWTExperimental "visibility is experimental feature (issue #5660)"
     case name of
       "public"  -> return LibraryVisibilityPublic
       "private" -> return LibraryVisibilityPrivate

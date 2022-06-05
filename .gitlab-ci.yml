@@ -8,7 +8,7 @@ variables:
   DOCKER_REV: "4ed1a4f27828ba96a34662dc954335e29b470cd2"
 
   GHC_VERSION: 8.10.7
-  CABAL_INSTALL_VERSION: 3.6.2.0
+  CABAL_INSTALL_VERSION: 3.9.0.0
 
 workflow:
   rules:

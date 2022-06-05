@@ -145,7 +145,6 @@ instance Parsec Dependency where
         libs <- option mainLibSet $ do
           _ <- char ':'
           versionGuardMultilibs
-          parsecWarning PWTExperimental "colon specifier is experimental feature (issue #5660)"
           NES.singleton <$> parseLib <|> parseMultipleLibs
 
         spaces -- https://github.com/haskell/cabal/issues/5846

@@ -49,6 +49,11 @@ relative to the respective preceding *published* version.
   allowed of the form ``foo/**/literalFile``. Prior, double-star
   wildcards required the trailing filename itself be a wildcard.
 
+* Allow the omission of the `type` field in `test-suite` and `benchmark` stanzas
+  when the type can be inferred by the presence of `main-is` or `test-module`.
+
+* License fields use identifiers from SPDX License List version
+  ``3.16 2022-02-06``
 
 ``cabal-version: 3.6``
 ----------------------

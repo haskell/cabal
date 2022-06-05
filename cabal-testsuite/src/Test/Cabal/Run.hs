@@ -69,7 +69,8 @@ runAction _verbosity mb_cwd env_overrides path0 args input action = do
           , std_out = UseHandle writeh
           , std_err = UseHandle writeh
           }
-    (stdin_h, _, _, procHandle) <- createProcess prc
+
+    withCreateProcess prc $ \stdin_h _ _ procHandle -> do
 
     case input of
       Just x ->

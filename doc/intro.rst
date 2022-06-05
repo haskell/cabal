@@ -102,9 +102,6 @@ which Haskell implementation to use and whether to build optimised code
 or build with the ability to profile code. It is not expected that users
 will have to modify any of the information in the ``.cabal`` file.
 
-For full details, see the section on :doc:`building and installing
-packages <installing-packages>`.
-
 Note that ``cabal`` is not the only tool for working with Cabal
 packages. Due to the standardised format and a library for reading
 ``.cabal`` files, there are several other special-purpose tools.
@@ -156,8 +153,8 @@ Ruby Gems or Perl distributions. Each system has a notion of
 distributable packages, and has tools to manage the process of
 distributing and installing packages.
 
-Hackage is an online archive of Cabal packages. It is roughly comparable
-to CPAN but with rather fewer packages (around 5,000 vs 28,000).
+Hackage is an online archive of Cabal packages, roughly comparable to
+CPAN.
 
 Cabal is often compared with autoconf and automake and there is some
 overlap in functionality. The most obvious similarity is that the
