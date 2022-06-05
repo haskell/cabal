@@ -74,7 +74,7 @@ case "${TARBALL_EXT}" in
         zip "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" "cabal${EXE_EXT}" plan.json
         ;;
     tar.xz)
-        tar caf "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" "cabal$EXE_EXT" plan.json
+        tar caf "${TARBALL_PREFIX}-${TARBALL_ARCHIVE_SUFFIX}.${TARBALL_EXT}" "cabal${EXE_EXT}" plan.json
         ;;
     *)
         fail "Unknown TARBALL_EXT: ${TARBALL_EXT}"
