@@ -73,8 +73,8 @@ import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version
-         ( Version, mkVersion, anyVersion, thisVersion
-         , VersionRange, orLaterVersion )
+         ( Version, anyVersion, thisVersion
+         , VersionRange )
 import Distribution.Simple.Utils as Utils
          ( warn, notice, debug, die'
          , defaultPackageDesc )
@@ -84,21 +84,12 @@ import Distribution.System
 import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
--- version will support the given command-line flags.
+-- version will support the given command-line flags. Currently, it implements no
+-- specific restrictions and allows any version, unless the second argument is
+-- filled with a 'Version', in which case this version is picked.
 chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
-chooseCabalVersion configExFlags maybeVersion =
-  maybe defaultVersionRange thisVersion maybeVersion
-  where
-    -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
-    -- for '--allow-newer' to work.
-    allowNewer = isRelaxDeps
-                 (maybe mempty unAllowNewer $ configAllowNewer configExFlags)
-    allowOlder = isRelaxDeps
-                 (maybe mempty unAllowOlder $ configAllowOlder configExFlags)
-
-    defaultVersionRange = if allowOlder || allowNewer
-                          then orLaterVersion (mkVersion [1,19,2])
-                          else anyVersion
+chooseCabalVersion _configExFlags maybeVersion =
+  maybe anyVersion thisVersion maybeVersion
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
