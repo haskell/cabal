@@ -28,12 +28,12 @@ master_doc = 'index'
 
 # extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
 extlinks = {
-    'issue': ('https://github.com/haskell/cabal/issues/%s', '#'),
+    'issue': ('https://github.com/haskell/cabal/issues/%s', 'issue #%s'),
 
-    'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', ''),
-    'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC #'),
+    'ghc-wiki': ('https://gitlab.haskell.org/ghc/ghc/-/wikis/%s', '%s'),
+    'ghc-ticket': ('https://gitlab.haskell.org/ghc/ghc/-/issues/%s', 'GHC issue #%s'),
 
-    'hackage-pkg': ('http://hackage.haskell.org/package/%s', ''),
+    'hackage-pkg': ('http://hackage.haskell.org/package/%s', '%s'),
 }
 
 # General information about the project.

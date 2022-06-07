@@ -21,6 +21,8 @@ idna==2.10
     # via requests
 imagesize==1.2.0
     # via sphinx
+importlib-metadata==4.11.4
+    # via sphinx
 jinja2==2.11.3
     # via sphinx
 jsonpointer==2.1
@@ -45,7 +47,7 @@ requests==2.26.0
     #   sphinx-jsonschema
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.2.0
+sphinx==5.0.1
     # via
     #   -r requirements.in
     #   sphinx-rtd-theme
@@ -67,6 +69,5 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 urllib3==1.26.7
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
+zipp==3.8.0
+    # via importlib-metadata
