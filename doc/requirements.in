@@ -1,5 +1,5 @@
-sphinx >= 3.1
-sphinx_rtd_theme
+sphinx >= 5
+sphinx_rtd_theme >= 1
 sphinx-jsonschema
 # Pygments>=2.7.4 suggested by CVE-2021-20270 CVE-2021-27291
 Pygments >= 2.7.4
