@@ -184,6 +184,12 @@ def install_dep(dep: BootstrapDep, ghc: Compiler) -> None:
         if dep.revision is not None:
             shutil.copyfile(cabal_file, sdist_dir / f'{dep.package}.cabal')
 
+        # We rely on the presence of Setup.hs
+        if len(list(sdist_dir.glob('Setup.*hs'))) == 0:
+            with open(sdist_dir / 'Setup.hs', 'w') as f:
+                f.write('import Distribution.Simple\n')
+                f.write('main = defaultMain\n')
+
     elif dep.source == PackageSource.LOCAL:
         if dep.package == 'Cabal':
             sdist_dir = Path('Cabal').resolve()
