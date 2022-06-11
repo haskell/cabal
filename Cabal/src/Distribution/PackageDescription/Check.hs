@@ -299,7 +299,7 @@ checkExecutable pkg exe =
         && takeExtension (modulePath exe) `notElem` [".hs", ".lhs"]) $
       PackageDistInexcusable $
            "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
+        ++ "To use this feature you need to specify 'cabal-version: 1.18' or higher."
 
     -- check that all autogen-modules appear on other-modules
   , check
@@ -343,7 +343,7 @@ checkTestSuite pkg test =
   , checkSpecVersion pkg CabalSpecV1_18 (mainIsNotHsExt && not mainIsWrongExt) $
       PackageDistInexcusable $
            "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
+        ++ "To use this feature you need to specify 'cabal-version: 1.18' or higher."
 
     -- check that all autogen-modules appear on other-modules
   , check
@@ -1192,7 +1192,7 @@ checkCabalVersion pkg =
     (not . null $ extraDocFiles pkg) $
       PackageDistInexcusable $
            "To use the 'extra-doc-files' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.18'."
+        ++ "'cabal-version: 1.18' or higher."
 
   , checkVersion CabalSpecV2_0
     (not (null (subLibraries pkg))) $
@@ -1205,7 +1205,7 @@ checkCabalVersion pkg =
     (any (not.null.reexportedModules) (allLibraries pkg)) $
       PackageDistInexcusable $
            "To use the 'reexported-module' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.22'."
+        ++ "'cabal-version: 1.22' or higher."
 
     -- check use of thinning and renaming
   , checkVersion CabalSpecV2_0 usesBackpackIncludes $
@@ -1218,7 +1218,7 @@ checkCabalVersion pkg =
       -- Just a warning, because this won't break on old Cabal versions.
       PackageDistSuspiciousWarn $
            "To use the 'extra-framework-dirs' field the package needs to specify"
-        ++ " at least 'cabal-version: >= 1.24'."
+        ++ " 'cabal-version: 1.24' or higher."
 
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions
@@ -1292,7 +1292,7 @@ checkCabalVersion pkg =
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
       PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.24' with 'build-type: Custom' "
+           "Packages using 'cabal-version: 1.24' or higher with 'build-type: Custom' "
         ++ "must use a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
@@ -1303,8 +1303,8 @@ checkCabalVersion pkg =
            && buildType pkg == Custom) $
       PackageDistSuspiciousWarn $
            "From version 1.24 cabal supports specifying explicit dependencies "
-        ++ "for Custom setup scripts. Consider using cabal-version >= 1.24 and "
-        ++ "adding a 'custom-setup' section with a 'setup-depends' field "
+        ++ "for Custom setup scripts. Consider using 'cabal-version: 1.24' or higher "
+        ++ "and adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
