@@ -225,6 +225,6 @@ cabal-install 3.8.0.20220526 Changelog
 
 - Remove bootstrapping plan files from version control, and simplify bootstrap update `Makefile` targets. [#7949](https://github.com/haskell/cabal/pull/7949)
 
-- CI setup [#6959](https://github.com/haskell/cabal/pull/6959)
+- CI setup
 
-  - Remove travis scripts
+  - Remove Travis scripts [#6959](https://github.com/haskell/cabal/pull/6959)
