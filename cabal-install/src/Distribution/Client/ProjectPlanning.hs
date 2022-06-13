@@ -1954,6 +1954,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockQuickJump    = perPkgOptionFlag pkgid False packageConfigHaddockQuickJump
         elabHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
         elabHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
+        elabHaddockIndex        = perPkgOptionMaybe pkgid packageConfigHaddockIndex
+        elabHaddockBaseUrl      = perPkgOptionMaybe pkgid packageConfigHaddockBaseUrl
+        elabHaddockLib          = perPkgOptionMaybe pkgid packageConfigHaddockLib
 
         elabTestMachineLog      = perPkgOptionMaybe pkgid packageConfigTestMachineLog
         elabTestHumanLog        = perPkgOptionMaybe pkgid packageConfigTestHumanLog
@@ -3740,9 +3743,13 @@ setupHsHaddockFlags :: ElaboratedConfiguredPackage
                     -> Verbosity
                     -> FilePath
                     -> Cabal.HaddockFlags
-setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
+setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) (ElaboratedSharedConfig{..}) verbosity builddir =
     Cabal.HaddockFlags {
-      haddockProgramPaths  = mempty, --unused, set at configure time
+      haddockProgramPaths  =
+        case lookupProgram haddockProgram pkgConfigCompilerProgs of
+          Nothing  -> mempty
+          Just prg -> [( programName haddockProgram
+                       , locationPath (programLocation prg) )],
       haddockProgramArgs   = mempty, --unused, set at configure time
       haddockHoogle        = toFlag elabHaddockHoogle,
       haddockHtml          = toFlag elabHaddockHtml,
@@ -3762,6 +3769,9 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockKeepTempFiles = mempty, --TODO: from build settings
       haddockVerbosity     = toFlag verbosity,
       haddockCabalFilePath = mempty,
+      haddockIndex         = maybe mempty toFlag elabHaddockIndex,
+      haddockBaseUrl       = maybe mempty toFlag elabHaddockBaseUrl,
+      haddockLib           = maybe mempty toFlag elabHaddockLib,
       haddockArgs          = mempty
     }
 
@@ -3914,7 +3924,10 @@ packageHashConfigInputs shared@ElaboratedSharedConfig{..} pkg =
       pkgHashHaddockCss          = elabHaddockCss,
       pkgHashHaddockLinkedSource = elabHaddockLinkedSource,
       pkgHashHaddockQuickJump    = elabHaddockQuickJump,
-      pkgHashHaddockContents     = elabHaddockContents
+      pkgHashHaddockContents     = elabHaddockContents,
+      pkgHashHaddockIndex        = elabHaddockIndex,
+      pkgHashHaddockBaseUrl      = elabHaddockBaseUrl,
+      pkgHashHaddockLib          = elabHaddockLib
     }
   where
     ElaboratedConfiguredPackage{..} = normaliseConfiguredPackage shared pkg

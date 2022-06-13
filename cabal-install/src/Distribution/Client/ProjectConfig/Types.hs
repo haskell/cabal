@@ -287,6 +287,9 @@ data PackageConfig
        packageConfigHaddockQuickJump    :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHscolourCss  :: Flag FilePath, --TODO: [required eventually] use this
        packageConfigHaddockContents     :: Flag PathTemplate, --TODO: [required eventually] use this
+       packageConfigHaddockIndex        :: Flag PathTemplate, --TODO: [required eventually] use this
+       packageConfigHaddockBaseUrl      :: Flag String, --TODO: [required eventually] use this
+       packageConfigHaddockLib          :: Flag String, --TODO: [required eventually] use this
        packageConfigHaddockForHackage   :: Flag HaddockTarget,
        -- Test options
        packageConfigTestHumanLog        :: Flag PathTemplate,

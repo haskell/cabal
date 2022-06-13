@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
@@ -19,9 +20,10 @@
 -- source, with coloured syntax highlighting.
 
 module Distribution.Simple.Haddock (
-  haddock, hscolour,
+  haddock, createHaddockIndex, hscolour,
 
-  haddockPackagePaths
+  haddockPackagePaths,
+  Visibility(..)
   ) where
 
 import Prelude ()
@@ -104,25 +106,37 @@ data HaddockArgs = HaddockArgs {
  -- ^ Optional custom CSS file.
  argContents :: Flag String,
  -- ^ Optional URL to contents page.
+ argGenContents :: Flag Bool,
+ -- ^ Generate contents
+ argIndex :: Flag String,
+ -- ^ Optional URL to index page.
+ argGenIndex :: Flag Bool,
+ -- ^ Generate index
+ argBaseUrl :: Flag String,
+ -- ^ Optional base url from which static files will be loaded.
  argVerbose :: Any,
  argOutput :: Flag [Output],
  -- ^ HTML or Hoogle doc or both? Required.
- argInterfaces :: [(FilePath, Maybe String, Maybe String)],
+ argInterfaces :: [(FilePath, Maybe String, Maybe String, Visibility)],
  -- ^ [(Interface file, URL to the HTML docs and hyperlinked-source for links)].
  argOutputDir :: Directory,
  -- ^ Where to generate the documentation.
  argTitle :: Flag String,
  -- ^ Page title, required.
  argPrologue :: Flag String,
- -- ^ Prologue text, required.
+ -- ^ Prologue text, required for 'haddock', ignored by 'haddocks'.
+ argPrologueFile :: Flag FilePath,
+ -- ^ Prologue file name, ignored by 'haddock', optional for 'haddocks'.
  argGhcOptions :: GhcOptions,
  -- ^ Additional flags to pass to GHC.
  argGhcLibDir :: Flag FilePath,
  -- ^ To find the correct GHC, required.
  argReexports :: [OpenModule],
  -- ^ Re-exported modules
- argTargets :: [FilePath]
+ argTargets :: [FilePath],
  -- ^ Modules to process.
+ argLib :: Flag String
+ -- ^ haddock's static \/ auxiliary files.
 } deriving Generic
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
@@ -134,9 +148,54 @@ unDir = normalise . unDir'
 type Template = String
 
 data Output = Html | Hoogle
+  deriving Eq
 
 -- ------------------------------------------------------------------------------
 -- Haddock support
+
+-- | Get Haddock program and check if it matches the request
+getHaddockProg :: Verbosity
+               -> ProgramDb
+               -> Compiler
+               -> HaddockArgs
+               -> Flag Bool -- ^ quickjump feature
+               -> IO (ConfiguredProgram, Version) 
+getHaddockProg verbosity programDb comp args quickJumpFlag = do
+    let HaddockArgs { argQuickJump
+                    , argOutput
+                    } = args
+        hoogle = Hoogle `elem` fromFlagOrDefault [] argOutput
+
+    (haddockProg, version, _) <-
+      requireProgramVersion verbosity haddockProgram
+        (orLaterVersion (mkVersion [2,0])) programDb
+
+    -- various sanity checks
+    when (hoogle && version < mkVersion [2,2]) $
+      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
+
+    when (fromFlag argQuickJump && version < mkVersion [2,19]) $ do
+      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
+          alt = "The generated documentation won't have the QuickJump feature."
+      if Flag True == quickJumpFlag
+        then die' verbosity msg
+        else warn verbosity (msg ++ "\n" ++ alt)
+
+    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
+                              ["--ghc-version"]
+    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
+      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
+      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
+      (Just haddockGhcVersion, Just ghcVersion)
+        | haddockGhcVersion == ghcVersion -> return ()
+        | otherwise -> die' verbosity $
+               "Haddock's internal GHC version must match the configured "
+            ++ "GHC version.\n"
+            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
+
+    return (haddockProg, version)
+
 
 haddock :: PackageDescription
         -> LocalBuildInfo
@@ -181,48 +240,20 @@ haddock pkg_descr lbi suffixes flags' = do
         haddockTarget =
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
-    (haddockProg, version, _) <-
-      requireProgramVersion verbosity haddockProgram
-        (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
+    libdirArgs <- getGhcLibDir  verbosity lbi
+    let commonArgs = mconcat
+            [ libdirArgs
+            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
+            , fromPackageDescription haddockTarget pkg_descr ]
 
-    -- various sanity checks
-    when (flag haddockHoogle && version < mkVersion [2,2]) $
-      die' verbosity "Haddock 2.0 and 2.1 do not support the --hoogle flag."
-
-
-    when (flag haddockQuickJump && version < mkVersion [2,19]) $ do
-      let msg = "Haddock prior to 2.19 does not support the --quickjump flag."
-          alt = "The generated documentation won't have the QuickJump feature."
-      if Flag True == quickJmpFlag
-        then die' verbosity msg
-        else warn verbosity (msg ++ "\n" ++ alt)
-
-    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
-                              ["--ghc-version"]
-    case (simpleParsec haddockGhcVersionStr, compilerCompatVersion GHC comp) of
-      (Nothing, _) -> die' verbosity "Could not get GHC version from Haddock"
-      (_, Nothing) -> die' verbosity "Could not get GHC version from compiler"
-      (Just haddockGhcVersion, Just ghcVersion)
-        | haddockGhcVersion == ghcVersion -> return ()
-        | otherwise -> die' verbosity $
-               "Haddock's internal GHC version must match the configured "
-            ++ "GHC version.\n"
-            ++ "The GHC version is " ++ prettyShow ghcVersion ++ " but "
-            ++ "haddock is using GHC version " ++ prettyShow haddockGhcVersion
-
-    -- the tools match the requests, we can proceed
+    (haddockProg, version) <-
+      getHaddockProg verbosity (withPrograms lbi) comp commonArgs quickJmpFlag
 
     -- We fall back to using HsColour only for versions of Haddock which don't
     -- support '--hyperlinked-sources'.
     when (flag haddockLinkedSource && version < mkVersion [2,17]) $
       hscolour' (warn verbosity) haddockTarget pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
-
-    libdirArgs <- getGhcLibDir  verbosity lbi
-    let commonArgs = mconcat
-            [ libdirArgs
-            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription haddockTarget pkg_descr ]
 
     targets <- readTargetInfos verbosity pkg_descr lbi (haddockArgs flags)
 
@@ -258,7 +289,7 @@ haddock pkg_descr lbi suffixes flags' = do
                              version exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp platform
-                  haddockProg exeArgs'
+                  haddockProg True exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
@@ -277,7 +308,7 @@ haddock pkg_descr lbi suffixes flags' = do
               libArgs <- fromLibrary verbosity tmp lbi' clbi htmlTemplate
                            version lib
               let libArgs' = commonArgs `mappend` libArgs
-              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
+              runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs'
 
               pwd <- getCurrentDirectory
 
@@ -304,7 +335,7 @@ haddock pkg_descr lbi suffixes flags' = do
               flibArgs <- fromForeignLib verbosity tmp lbi' clbi htmlTemplate
                             version flib
               let libArgs' = commonArgs `mappend` flibArgs
-              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs')
+              runHaddock verbosity tmpFileOpts comp platform haddockProg True libArgs')
 
           >> return index
 
@@ -315,6 +346,22 @@ haddock pkg_descr lbi suffixes flags' = do
     for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchDirFileGlob verbosity (specVersion pkg_descr) "." fpath
       for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
+
+
+-- | Execute 'Haddock' configured with 'HaddocksFlags'.  It is used to build
+-- index and contents for documentation of multiple packages. 
+--
+createHaddockIndex :: Verbosity
+                   -> ProgramDb
+                   -> Compiler
+                   -> Platform
+                   -> HaddockProjectFlags
+                   -> IO ()
+createHaddockIndex verbosity programDb comp platform flags = do
+    let args = fromHaddockProjectFlags flags
+    (haddockProg, _version) <-
+      getHaddockProg verbosity programDb comp args (haddockProjectQuickJump flags)
+    runHaddock verbosity defaultTempFileOptions comp platform haddockProg False args
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs (see also Doctest.hs for very similar code).
@@ -334,6 +381,12 @@ fromFlags env flags =
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env)
                     (haddockContents flags),
+      argGenContents = Flag False,
+      argIndex = fmap (fromPathTemplate . substPathTemplate env)
+                    (haddockIndex flags),
+      argGenIndex = Flag False,
+      argBaseUrl = haddockBaseUrl flags,
+      argLib = haddockLib flags,
       argVerbose = maybe mempty (Any . (>= deafening))
                    . flagToMaybe $ haddockVerbosity flags,
       argOutput =
@@ -347,6 +400,20 @@ fromFlags env flags =
     }
     where
       ghcArgs = fromMaybe [] . lookup "ghc" . haddockProgramArgs $ flags
+
+fromHaddockProjectFlags :: HaddockProjectFlags -> HaddockArgs
+fromHaddockProjectFlags flags =
+    mempty
+      { argOutputDir = Dir (fromFlag $ haddockProjectDir flags)
+      , argQuickJump = haddockProjectQuickJump flags
+      , argGenContents = haddockProjectGenContents flags
+      , argGenIndex = haddockProjectGenIndex flags
+      , argPrologueFile = haddockProjectPrologue flags
+      , argInterfaces = fromFlagOrDefault [] (haddockProjectInterfaces flags)
+      , argLinkedSource = haddockProjectLinkedSource flags
+      , argLib = haddockProjectLib flags
+      }
+
 
 fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
 fromPackageDescription haddockTarget pkg_descr = mempty
@@ -543,10 +610,11 @@ runHaddock :: Verbosity
               -> Compiler
               -> Platform
               -> ConfiguredProgram
+              -> Bool -- ^ require targets
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform haddockProg args
-  | null (argTargets args) = warn verbosity $
+runHaddock verbosity tmpFileOpts comp platform haddockProg requireTargets args
+  | requireTargets && null (argTargets args) = warn verbosity $
        "Haddocks are being requested, but there aren't any modules given "
     ++ "to create documentation for."
   | otherwise = do
@@ -572,26 +640,45 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8          = version >= mkVersion [2,14,4]
       haddockSupportsResponseFiles = version >  mkVersion [2,16,2]
   createDirectoryIfMissingVerbose verbosity True outputDir
-  withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
-    \prologueFileName h -> do
-          do
-             when haddockSupportsUTF8 (hSetEncoding h utf8)
-             hPutStrLn h $ fromFlag $ argPrologue args
-             hClose h
-             let pflag = "--prologue=" ++ prologueFileName
-                 renderedArgs = pflag : renderPureArgs version comp platform args
-             if haddockSupportsResponseFiles
-               then
-                 withResponseFile
-                   verbosity
-                   tmpFileOpts
-                   outputDir
-                   "haddock-response.txt"
-                   (if haddockSupportsUTF8 then Just utf8 else Nothing)
-                   renderedArgs
-                   (\responseFileName -> k (["@" ++ responseFileName], result))
-               else
-                 k (renderedArgs, result)
+  case argPrologue args of
+    Flag prologueText -> 
+      withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
+        \prologueFileName h -> do
+              do
+                 when haddockSupportsUTF8 (hSetEncoding h utf8)
+                 hPutStrLn h prologueText
+                 hClose h
+                 let pflag = "--prologue=" ++ prologueFileName
+                     renderedArgs = pflag : renderPureArgs version comp platform args
+                 if haddockSupportsResponseFiles
+                   then
+                     withResponseFile
+                       verbosity
+                       tmpFileOpts
+                       outputDir
+                       "haddock-response.txt"
+                       (if haddockSupportsUTF8 then Just utf8 else Nothing)
+                       renderedArgs
+                       (\responseFileName -> k (["@" ++ responseFileName], result))
+                   else
+                     k (renderedArgs, result)
+    _ -> do
+      let renderedArgs = (case argPrologueFile args of
+                            Flag pfile -> ["--prologue="++pfile]
+                            _          -> [])
+                      <> renderPureArgs version comp platform args
+      if haddockSupportsResponseFiles
+        then
+          withResponseFile
+            verbosity
+            tmpFileOpts
+            outputDir
+            "haddock-response.txt"
+            (if haddockSupportsUTF8 then Just utf8 else Nothing)
+            renderedArgs
+            (\responseFileName -> k (["@" ++ responseFileName], result))
+        else
+          k (renderedArgs, result)
     where
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
@@ -599,7 +686,9 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                             case o of
                               Html -> "index.html"
                               Hoogle -> pkgstr <.> "txt")
-             $ arg argOutput
+             . fromFlagOrDefault [Html]
+             . argOutput
+             $ args
             where
               pkgstr = prettyShow $ packageName pkgid
               pkgid = arg argPackageName
@@ -607,23 +696,23 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
 
 renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
 renderPureArgs version comp platform args = concat
-    [ (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
-      . fromFlag . argInterfaceFile $ args
+    [ map (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
+      . flagToList . argInterfaceFile $ args 
 
-    , if isVersion 2 16
-        then (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
-                      , "--package-version=" ++ prettyShow (pkgVersion pkg)
-                      ])
-             . fromFlag . argPackageName $ args
+    , if haddockSupportsPackageName
+        then maybe [] (\pkg -> [ "--package-name=" ++ prettyShow (pkgName pkg)
+                               , "--package-version=" ++ prettyShow (pkgVersion pkg)
+                               ])
+             . flagToMaybe . argPackageName $ args
         else []
 
     , [ "--since-qual=external" | isVersion 2 20 ]
 
     , [ "--quickjump" | isVersion 2 19
-                      , fromFlag . argQuickJump $ args ]
+                      , _ <- flagToList . argQuickJump $ args ]
 
     , [ "--hyperlinked-source" | isVersion 2 17
-                               , fromFlag . argLinkedSource $ args ]
+                               , True <- flagToList . argLinkedSource $ args ]
 
     , (\(All b,xs) -> bool (map (("--hide=" ++) . prettyShow) xs) [] b)
                      . argHideModules $ args
@@ -641,19 +730,30 @@ renderPureArgs version comp platform args = concat
 
     , maybe [] ((:[]) . ("--use-contents="++)) . flagToMaybe . argContents $ args
 
+    , bool ["--gen-contents"] [] .fromFlagOrDefault False . argGenContents $ args
+
+    , maybe [] ((:[]) . ("--use-index="++)) . flagToMaybe . argIndex $ args
+
+    , bool ["--gen-index"] [] . fromFlagOrDefault False . argGenIndex $ args
+
+    , maybe [] ((:[]) . ("--base-url="++)) . flagToMaybe . argBaseUrl $ args
+
     , bool [] [verbosityFlag] . getAny . argVerbose $ args
 
     , map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html")
-      . fromFlag . argOutput $ args
+      . fromFlagOrDefault [] . argOutput $ args
 
     , renderInterfaces . argInterfaces $ args
 
     , (:[]) . ("--odir="++) . unDir . argOutputDir $ args
 
-    , (:[]) . ("--title="++)
-      . (bool (++" (internal documentation)")
-         id (getAny $ argIgnoreExports args))
-      . fromFlag . argTitle $ args
+    , maybe []
+        ( (:[])
+        . ("--title="++)
+        . (bool (++" (internal documentation)")
+                id (getAny $ argIgnoreExports args))
+        )
+        . flagToMaybe . argTitle $ args
 
     , [ "--optghc=" ++ opt | let opts = argGhcOptions args
                            , opt <- renderGhcOptions comp platform opts ]
@@ -668,21 +768,32 @@ renderPureArgs version comp platform args = concat
       ]
 
     , argTargets $ args
+    , maybe [] ((:[]) . ("--lib="++)) . flagToMaybe . argLib $ args
     ]
     where
       renderInterfaces = map renderInterface
 
-      renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath) -> String
-      renderInterface (i, html, hypsrc) = "--read-interface=" ++
-        (intercalate "," $ concat [ [ x | Just x <- [html] ]
-                                  , [ x | Just _ <- [html]
-                                        -- only render hypsrc path if html path
-                                        -- is given and hyperlinked-source is
-                                        -- enabled
-                                        , Just x <- [hypsrc]
-                                        , isVersion 2 17
-                                        , fromFlag . argLinkedSource $ args
-                                        ]
+      renderInterface :: (FilePath, Maybe FilePath, Maybe FilePath, Visibility) -> String
+      renderInterface (i, html, hypsrc, visibility) = "--read-interface=" ++
+        (intercalate "," $ concat [ [ fromMaybe "" html ]
+                                  , -- only render hypsrc path if html path
+                                    -- is given and hyperlinked-source is
+                                    -- enabled
+                                    [ case (html, hypsrc) of
+                                        (Nothing, _) -> ""
+                                        (_, Nothing) -> ""
+                                        (_, Just x)  | isVersion 2 17
+                                                     , fromFlagOrDefault False . argLinkedSource $ args
+                                                     -> x
+                                                     | otherwise
+                                                     -> ""
+                                    ]
+                                  , if haddockSupportsVisibility
+                                      then [ case visibility of
+                                               Visible -> "visible"
+                                               Hidden  -> "hidden"
+                                           ]
+                                      else []
                                   , [ i ]
                                   ])
 
@@ -691,6 +802,8 @@ renderPureArgs version comp platform args = concat
       verbosityFlag
        | isVersion 2 5 = "--verbosity=1"
        | otherwise     = "--verbose"
+      haddockSupportsVisibility = version >= mkVersion [2,26,1]
+      haddockSupportsPackageName = version > mkVersion [2,16]
 
 ---------------------------------------------------------------------------------
 
@@ -706,6 +819,7 @@ haddockPackagePaths :: [InstalledPackageInfo]
 
                                        , Maybe FilePath  -- url to hyperlinked
                                                          -- source
+                                       , Visibility
                                        )]
                                      , Maybe String      -- warning about
                                                          -- missing documentation
@@ -730,7 +844,7 @@ haddockPackagePaths ipkgs mkHtmlPath = do
 
           exists <- doesFileExist interface
           if exists
-            then return (Right (interface, html', hypsrc'))
+            then return (Right (interface, html', hypsrc', Visible))
             else return (Left pkgid)
     | ipkg <- ipkgs, let pkgid = packageId ipkg
     , pkgName pkgid `notElem` noHaddockWhitelist
@@ -782,6 +896,7 @@ haddockPackageFlags :: Verbosity
 
                             , Maybe FilePath  -- url to hyperlinked
                                               -- source
+                            , Visibility
                             )]
                           , Maybe String      -- warning about
                                               -- missing documentation

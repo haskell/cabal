@@ -16,6 +16,8 @@ import Distribution.Client.Compat.Prelude
 import Prelude ()
 
 import Distribution.Client.ProjectOrchestration
+import Distribution.Client.ProjectPlanning
+         ( ElaboratedSharedConfig(..) )
 import Distribution.Client.CmdErrorMessages
 import Distribution.Client.TargetProblem
          ( TargetProblem (..), TargetProblem' )
@@ -27,6 +29,10 @@ import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, trueArg )
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives, ShowOrParseArgs, OptionField, option )
+import Distribution.Simple.Program.Builtin
+         ( haddockProgram )
+import Distribution.Simple.Program.Db
+         ( addKnownProgram, reconfigurePrograms )
 import Distribution.Verbosity
          ( normal )
 import Distribution.Simple.Utils
@@ -118,8 +124,21 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
 
     printPlan verbosity baseCtx buildCtx
 
-    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx
-    runProjectPostBuildPhase verbosity baseCtx buildCtx buildOutcomes
+    progs <- reconfigurePrograms verbosity
+               (haddockProgramPaths haddockFlags)
+               (haddockProgramArgs haddockFlags)
+             -- we need to insert 'haddockProgram' before we reconfigure it,
+             -- otherwise 'set
+           . addKnownProgram haddockProgram
+           . pkgConfigCompilerProgs
+           . elaboratedShared
+           $ buildCtx
+    let buildCtx' = buildCtx { elaboratedShared =
+                               (elaboratedShared buildCtx)
+                               { pkgConfigCompilerProgs = progs } }
+
+    buildOutcomes <- runProjectBuildPhase verbosity baseCtx buildCtx'
+    runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
