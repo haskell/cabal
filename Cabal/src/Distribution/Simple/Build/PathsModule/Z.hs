@@ -104,6 +104,29 @@ render z_root = execWriter $ do
   tell "\n"
   tell "getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"
   tell "\n"
+  let
+    z_var0_function_defs = do
+      tell "minusFileName :: FilePath -> String -> FilePath\n"
+      tell "minusFileName dir \"\"     = dir\n"
+      tell "minusFileName dir \".\"    = dir\n"
+      tell "minusFileName dir suffix =\n"
+      tell "  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))\n"
+      tell "\n"
+      tell "splitFileName :: FilePath -> (String, String)\n"
+      tell "splitFileName p = (reverse (path2++drive), reverse fname)\n"
+      tell "  where\n"
+      tell "    (path,drive) = case p of\n"
+      tell "      (c:':':p') -> (reverse p',[':',c])\n"
+      tell "      _          -> (reverse p ,\"\")\n"
+      tell "    (fname,path1) = break isPathSeparator path\n"
+      tell "    path2 = case path1 of\n"
+      tell "      []                           -> \".\"\n"
+      tell "      [_]                          -> path1   -- don't remove the trailing slash if\n"
+      tell "                                              -- there is only one character\n"
+      tell "      (c:path') | isPathSeparator c -> path'\n"
+      tell "      _                             -> path1\n"
+      return ()
+  tell "\n"
   tell "\n"
   if (zRelocatable z_root)
   then do
@@ -146,6 +169,8 @@ render z_root = execWriter $ do
     tell "_sysconfdir\") (\\_ -> getPrefixDirReloc $ "
     tell (zSysconfdir z_root)
     tell ")\n"
+    tell "\n"
+    z_var0_function_defs
     tell "\n"
     return ()
   else do
@@ -237,6 +262,8 @@ render z_root = execWriter $ do
         tell ") `joinFileName` dirRel)\n"
         tell "            | otherwise  -> try_size (size * 2)\n"
         tell "\n"
+        z_var0_function_defs
+        tell "\n"
         if (zIsI386 z_root)
         then do
           tell "foreign import stdcall unsafe \"windows.h GetModuleFileNameW\"\n"
@@ -265,31 +292,6 @@ render z_root = execWriter $ do
       return ()
     return ()
   tell "\n"
-  tell "\n"
-  if (zNot z_root (zAbsolute z_root))
-  then do
-    tell "minusFileName :: FilePath -> String -> FilePath\n"
-    tell "minusFileName dir \"\"     = dir\n"
-    tell "minusFileName dir \".\"    = dir\n"
-    tell "minusFileName dir suffix =\n"
-    tell "  minusFileName (fst (splitFileName dir)) (fst (splitFileName suffix))\n"
-    tell "\n"
-    tell "splitFileName :: FilePath -> (String, String)\n"
-    tell "splitFileName p = (reverse (path2++drive), reverse fname)\n"
-    tell "  where\n"
-    tell "    (path,drive) = case p of\n"
-    tell "       (c:':':p') -> (reverse p',[':',c])\n"
-    tell "       _          -> (reverse p ,\"\")\n"
-    tell "    (fname,path1) = break isPathSeparator path\n"
-    tell "    path2 = case path1 of\n"
-    tell "      []                           -> \".\"\n"
-    tell "      [_]                          -> path1   -- don't remove the trailing slash if\n"
-    tell "                                              -- there is only one character\n"
-    tell "      (c:path') | isPathSeparator c -> path'\n"
-    tell "      _                             -> path1\n"
-    return ()
-  else do
-    return ()
   tell "\n"
   tell "joinFileName :: String -> String -> FilePath\n"
   tell "joinFileName \"\"  fname = fname\n"
