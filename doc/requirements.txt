@@ -51,6 +51,7 @@ sphinx==5.0.1
     # via
     #   -r requirements.in
     #   sphinx-rtd-theme
+    #   sphinxnotes-strike
 sphinx-jsonschema==1.16.11
     # via -r requirements.in
 sphinx-rtd-theme==1.0.0
@@ -67,6 +68,8 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
+sphinxnotes-strike==1.1
+    # via -r requirements.in
 urllib3==1.26.7
     # via requests
 zipp==3.8.0
