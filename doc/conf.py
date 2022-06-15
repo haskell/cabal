@@ -18,7 +18,8 @@ version = "3.9.0.0"
 extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.todo',
-    'sphinx-jsonschema'
+    'sphinx-jsonschema',
+    'sphinxnotes.strike'
 ]
 
 templates_path = ['_templates']
