@@ -38,7 +38,7 @@ module Distribution.Types.VersionInterval (
 
 import Control.Applicative         (liftA2)
 import Control.Exception           (assert)
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (Applicative(..))
 import Prelude ()
 
 import Distribution.Types.Version
