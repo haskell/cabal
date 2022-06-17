@@ -17,15 +17,21 @@ module Distribution.Fields.ParseResult (
     withoutWarnings,
     ) where
 
-import           Distribution.Compat.Prelude
 import           Distribution.Parsec.Error    (PError (..))
 import           Distribution.Parsec.Position (Position (..), zeroPos)
 import           Distribution.Parsec.Warning  (PWarnType (..), PWarning (..))
 import           Distribution.Version         (Version)
 import           Prelude ()
 
+-- liftA2 is not in base <4.10, hence we need to only import it explicitly when we're on >=4.10
+--
+-- Additionally, since liftA2 will be exported from Prelude starting with ~4.18, we should hide
+-- it from Prelude and get it from Control.Applicative to be backwards compatible and avoid warnings
 #if MIN_VERSION_base(4,10,0)
-import Control.Applicative (Applicative (..))
+import           Distribution.Compat.Prelude hiding (Applicative(..))
+import           Control.Applicative (Applicative (..))
+#else
+import           Distribution.Compat.Prelude
 #endif
 
 -- | A monad with failure and accumulating errors and warnings.
