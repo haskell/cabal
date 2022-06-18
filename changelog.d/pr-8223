@@ -1,0 +1,10 @@
+synopsis: Future compat for liftA2 being exported from Prelude
+packages: Cabal-syntax
+prs: #8823
+
+description: {
+
+- liftA2 will be exported from Prelude in the future(see https://github.com/haskell/core-libraries-committee/issues/50).
+    Cabal-syntax was future-proofed to have no warnings when that happens.
+
+}
