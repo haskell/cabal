@@ -116,8 +116,8 @@ project are:
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
     :synopsis: Adds external packages as local
 
-    [STRIKEOUT:Specifies a list of external packages from Hackage which
-    should be considered local packages.] (Not implemented)
+    :strike:`Specifies a list of external packages from Hackage which
+    should be considered local packages.` (Not implemented)
 
     There is no command line variant of this field.
 
@@ -994,7 +994,7 @@ Executable options
                --program-prefix=prefix
     :synopsis: Prepend prefix to program names.
 
-    [STRIKEOUT:Prepend *prefix* to installed program names.] (Currently
+    :strike:`Prepend *prefix* to installed program names.` (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
 
@@ -1008,7 +1008,7 @@ Executable options
                --program-suffix=suffix
     :synopsis: Append refix to program names.
 
-    [STRIKEOUT:Append *suffix* to installed program names.] (Currently
+    :strike:`Append *suffix* to installed program names.` (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
 
@@ -1078,7 +1078,7 @@ Dynamic linking options
 
     :default: False
 
-    [STRIKEOUT:Build a package which is relocatable.] (TODO: It is not
+    :strike:`Build a package which is relocatable.` (TODO: It is not
     clear what this actually does, or if it works at all.)
 
     The command line variant of this flag is ``--relocatable``.
@@ -1561,8 +1561,8 @@ Advanced global configuration options
 
     :default: ``~/.cabal/packages``
 
-    [STRIKEOUT:The location where packages downloaded from remote
-    repositories will be cached.] Not implemented yet.
+    :strike:`The location where packages downloaded from remote
+    repositories will be cached.` Not implemented yet.
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
@@ -1573,7 +1573,7 @@ Advanced global configuration options
 
     :default: ``~/.cabal/logs``
 
-    [STRIKEOUT:The location where build logs for packages are stored.]
+    :strike:`The location where build logs for packages are stored.`
     Not implemented yet.
 
     The command line variant of this flag is ``--logs-dir=DIR``.
@@ -1584,9 +1584,10 @@ Advanced global configuration options
 
     :default: ``~/.cabal/logs/build.log``
 
-    [STRIKEOUT:The file to save build summaries. Valid variables which
-    can be used in the path are ``$pkgid``, ``$compiler``, ``$os`` and
-    ``$arch``.] Not implemented yet.
+    :strike:`The file to save build summaries.` Not implemented yet.
+
+    Valid variables which can be used in the path are ``$pkgid``,
+    ``$compiler``, ``$os`` and ``$arch``.
 
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
