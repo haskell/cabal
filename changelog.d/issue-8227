@@ -1,0 +1,11 @@
+synopsis: Enabled foreign library building on apple silicon
+packages: cabal-install
+issues: #8227, #7837
+significance: significant
+
+description: {
+
+- Enabled foreign library building on apple silicon
+- Updated error message for foreign library builds on unsupported platforms
+
+}
