@@ -27,7 +27,8 @@ import Distribution.Client.CmdErrorMessages
          ( renderTargetSelector, showTargetSelector,
            renderTargetProblem,
            renderTargetProblemNoTargets, plural, targetSelectorPluralPkgs,
-           targetSelectorFilter, renderListCommaAnd )
+           targetSelectorFilter, renderListCommaAnd,
+           renderListPretty )
 import Distribution.Client.TargetProblem
          ( TargetProblem (..) )
 
@@ -42,11 +43,11 @@ import Distribution.Simple.Flag
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Types.ComponentName
-         ( showComponentName )
+         ( componentNameRaw )
 import Distribution.Verbosity
          ( normal, silent )
 import Distribution.Simple.Utils
-         ( wrapText, die', info, notice )
+         ( wrapText, die', info, notice, safeHead )
 import Distribution.Client.ProjectPlanning
          ( ElaboratedConfiguredPackage(..)
          , ElaboratedInstallPlan, binDirectoryFor )
@@ -64,6 +65,7 @@ import Distribution.Types.UnitId
 import Distribution.Client.ScriptUtils
          ( AcceptNoTargets(..), withContextAndSelectors, updateContextAndWriteProjectFile, TargetContext(..) )
 
+import Data.List (group)
 import qualified Data.Set as Set
 import System.Directory
          ( doesFileExist )
@@ -424,14 +426,13 @@ renderRunProblem :: RunProblem -> String
 renderRunProblem (TargetProblemMatchesMultiple targetSelector targets) =
     "The run command is for running a single executable at once. The target '"
  ++ showTargetSelector targetSelector ++ "' refers to "
- ++ renderTargetSelector targetSelector ++ " which includes "
- ++ renderListCommaAnd ( ("the "++) <$>
-                         showComponentName <$>
-                         availableTargetComponentName <$>
-                         foldMap
-                           (\kind -> filterTargetsKind kind targets)
-                           [ExeKind, TestKind, BenchKind] )
- ++ "."
+ ++ renderTargetSelector targetSelector ++ " which includes \n"
+ ++ unlines ((\(label, xs) -> "- " ++ label ++ ": " ++ renderListPretty xs)
+    <$> (zip ["executables", "test-suites", "benchmarks"]
+     $  filter (not . null) . map removeDuplicates
+     $  map (componentNameRaw . availableTargetComponentName)
+    <$> (flip filterTargetsKind $ targets) <$> [ExeKind, TestKind, BenchKind] ))
+    where removeDuplicates = catMaybes . map safeHead . group . sort
 
 renderRunProblem (TargetProblemMultipleTargets selectorMap) =
     "The run command is for running a single executable at once. The targets "
