@@ -166,8 +166,7 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 import System.Directory         ( doesFileExist, getCurrentDirectory
                                 , withCurrentDirectory)
 import Data.Monoid              (Any(..))
-import Control.Exception        (AssertionFailed, assert, catch, try)
-import Control.Monad            (mapM_)
+import Control.Exception        (AssertionFailed, assert, try)
 
 
 -- | Entry point
