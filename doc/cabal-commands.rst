@@ -607,6 +607,22 @@ you will have access to its quickjump index.
 The generated landing page will contain one tree of all modules per local
 package.
 
+cabal check
+-----------
+
+``cabal check [FLAGS]`` checks the package for common mistakes (e.g.: if
+it is missing important fields like ``synopsis``, if it is using
+tricky GHC options, etc.).
+
+Run ``cabal check`` in the folder where your ``.cabal`` package file is.
+
+.. option:: -v, --verbose[=n]
+
+    Set verbosity level (0–3, default is 1).
+
+``cabal check`` mimics Hackage's requirements: if no error or warning
+is reported, Hackage should accept your package.
+
 cabal exec
 ----------
 
