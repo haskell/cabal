@@ -1,5 +1,5 @@
 synopsis: Enabled foreign library building on apple silicon
-packages: cabal-install
+packages: Cabal
 prs: #8232
 issues: #8227 #7837
 significance: significant
