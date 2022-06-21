@@ -59,8 +59,9 @@ jobs:
           - os: "windows-latest"
             ghc: "8.0.2"
             cli: "false"
-          - os: "ubuntu-latest"
-            ghc: "head"
+          # haskell/actions/setup fails: https://github.com/haskell/actions/issues/93
+          #- os: "ubuntu-latest"
+          #  ghc: "head"
           - os: "ubuntu-latest"
             ghc: "9.4.0-alpha2"
 
