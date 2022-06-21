@@ -204,9 +204,9 @@
             "version": "0.6.3.0"
         },
         {
-            "cabal_sha256": "c71b22bb336502341325767ae3d4fb9623d846e7e78511ea8c8cda383e839137",
-            "revision": 0,
-            "src_sha256": "081725bb1e5c0e399ad5b1327b4c42a63c3db36bbb70cca2dbb7c7ac2feb17cb",
+            "cabal_sha256": "1d4b292bd90970f7ef52c72f2ae365f88bd2c6a75627dc34a31d24bc8f53f2e4",
+            "revision": 2,
+            "src_sha256": "bf22cd16dde7d6b7130463f4d7324b64a2964d9ef3f523df97d7cb98544d64a8",
             "flags": [
                 "+base48",
                 "+cabal-syntax",
@@ -217,7 +217,7 @@
             ],
             "package": "hackage-security",
             "source": "hackage",
-            "version": "0.6.2.0"
+            "version": "0.6.2.1"
         },
         {
             "cabal_sha256": "0cddd0229d1aac305ea0404409c0bbfab81f075817bd74b8b2929eff58333e55",
@@ -297,19 +297,19 @@
     "builtin": [
         {
             "package": "rts",
-            "version": "1.0.1"
+            "version": "1.0.2"
         },
         {
             "package": "ghc-prim",
-            "version": "0.6.1"
+            "version": "0.7.0"
         },
         {
-            "package": "integer-gmp",
-            "version": "1.0.3.0"
+            "package": "ghc-bignum",
+            "version": "1.1"
         },
         {
             "package": "base",
-            "version": "4.14.3.0"
+            "version": "4.15.1.0"
         },
         {
             "package": "array",
@@ -317,15 +317,15 @@
         },
         {
             "package": "deepseq",
-            "version": "1.4.4.0"
+            "version": "1.4.5.0"
         },
         {
             "package": "bytestring",
-            "version": "0.10.12.0"
+            "version": "0.10.12.1"
         },
         {
             "package": "containers",
-            "version": "0.6.5.1"
+            "version": "0.6.4.1"
         },
         {
             "package": "binary",
@@ -345,7 +345,7 @@
         },
         {
             "package": "directory",
-            "version": "1.3.6.0"
+            "version": "1.3.6.2"
         },
         {
             "package": "transformers",
@@ -357,7 +357,7 @@
         },
         {
             "package": "ghc-boot-th",
-            "version": "8.10.7"
+            "version": "9.0.2"
         },
         {
             "package": "pretty",
@@ -365,11 +365,11 @@
         },
         {
             "package": "template-haskell",
-            "version": "2.16.0.0"
+            "version": "2.17.0.0"
         },
         {
             "package": "text",
-            "version": "1.2.4.1"
+            "version": "1.2.5.0"
         },
         {
             "package": "parsec",
@@ -381,7 +381,7 @@
         },
         {
             "package": "stm",
-            "version": "2.5.0.1"
+            "version": "2.5.0.0"
         },
         {
             "package": "exceptions",
