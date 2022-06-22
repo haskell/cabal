@@ -159,9 +159,8 @@ jobs:
           path: ${{ env.CABAL_EXEC_TAR }}
 
       - name: Validate lib-tests
-        env:
-          # `rawSystemStdInOut reports text decoding errors`
-          # test does not find ghc without the full path in windows
+        # `rawSystemStdInOut reports text decoding errors`
+        # test does not find ghc without the full path in windows
         run: |
           export GHCPATH=$(ghcup whereis ghc)
           sh validate.sh $FLAGS -s lib-tests
