@@ -64,11 +64,10 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - uses: haskell/actions/setup@v1
-        id: setup-haskell
-        with:
-          ghc-version: ${{ matrix.ghc }}
-          cabal-version: latest # default, keeping for visibility
+      - name: ghcup
+        run: |
+          ghcup install ghc ${{ matrix.ghc }}
+          ghcup set ghc ${{ matrix.ghc }}
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
@@ -76,7 +75,7 @@ jobs:
         with:
           # validate.sh uses a special build dir
           path: |
-            ${{ steps.setup-haskell.outputs.cabal-store }}
+            ~/.cabal/store
             dist-*
           key: ${{ runner.os }}-${{ matrix.ghc }}-20220419-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-20220419-
@@ -163,8 +162,9 @@ jobs:
         env:
           # `rawSystemStdInOut reports text decoding errors`
           # test does not find ghc without the full path in windows
-          GHCPATH: ${{ steps.setup-haskell.outputs.ghc-exe }}
-        run: sh validate.sh $FLAGS -s lib-tests
+        run: |
+          export GHCPATH=$(ghcup whereis ghc)
+          sh validate.sh $FLAGS -s lib-tests
 
       - name: Validate lib-suite
         run: sh validate.sh $FLAGS -s lib-suite
