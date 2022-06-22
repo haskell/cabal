@@ -1,0 +1,14 @@
+cabal-version: 3.0
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+benchmark benchmark
+  main-is: Main.hs
+  default-language: Haskell2010
+  autogen-modules: AutoGenMod
+  type: exitcode-stdio-1.0
