@@ -2065,12 +2065,12 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
       ]
 
     goGhcPlatform :: Platform -> Maybe String
-    goGhcPlatform (Platform X86_64 OSX    ) = goGhcOsx     (foreignLibType flib)
+    goGhcPlatform (Platform _      OSX    ) = goGhcOsx     (foreignLibType flib)
     goGhcPlatform (Platform _      Linux  ) = goGhcLinux   (foreignLibType flib)
     goGhcPlatform (Platform I386   Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
     goGhcPlatform _ = unsupported [
-        "Building foreign libraries is currently only supported on OSX, "
+        "Building foreign libraries is currently only supported on Mac OS, "
       , "Linux and Windows"
       ]
 
