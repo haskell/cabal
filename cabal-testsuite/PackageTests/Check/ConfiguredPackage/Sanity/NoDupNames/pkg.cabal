@@ -1,0 +1,17 @@
+cabal-version: 2.2
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+maintainer: none@example.com
+license: GPL-3.0-or-later
+
+library dup
+  exposed-modules: Foo
+  default-language: Haskell2010
+
+test-suite dup
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+  default-language: Haskell2010
