@@ -297,19 +297,19 @@
     "builtin": [
         {
             "package": "rts",
-            "version": "1.0.1"
+            "version": "1.0.2"
         },
         {
             "package": "ghc-prim",
-            "version": "0.6.1"
+            "version": "0.7.0"
         },
         {
-            "package": "integer-gmp",
-            "version": "1.0.3.0"
+            "package": "ghc-bignum",
+            "version": "1.1"
         },
         {
             "package": "base",
-            "version": "4.14.3.0"
+            "version": "4.15.1.0"
         },
         {
             "package": "array",
@@ -317,15 +317,15 @@
         },
         {
             "package": "deepseq",
-            "version": "1.4.4.0"
+            "version": "1.4.5.0"
         },
         {
             "package": "bytestring",
-            "version": "0.10.12.0"
+            "version": "0.10.12.1"
         },
         {
             "package": "containers",
-            "version": "0.6.5.1"
+            "version": "0.6.4.1"
         },
         {
             "package": "binary",
@@ -345,7 +345,7 @@
         },
         {
             "package": "directory",
-            "version": "1.3.6.0"
+            "version": "1.3.6.2"
         },
         {
             "package": "transformers",
@@ -357,7 +357,7 @@
         },
         {
             "package": "ghc-boot-th",
-            "version": "8.10.7"
+            "version": "9.0.2"
         },
         {
             "package": "pretty",
@@ -365,11 +365,11 @@
         },
         {
             "package": "template-haskell",
-            "version": "2.16.0.0"
+            "version": "2.17.0.0"
         },
         {
             "package": "text",
-            "version": "1.2.4.1"
+            "version": "1.2.5.0"
         },
         {
             "package": "parsec",
@@ -381,7 +381,7 @@
         },
         {
             "package": "stm",
-            "version": "2.5.0.1"
+            "version": "2.5.0.0"
         },
         {
             "package": "exceptions",

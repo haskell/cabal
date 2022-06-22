@@ -18,19 +18,22 @@ jobs:
   bootstrap:
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-    name: Bootstrap ${{ matrix.os }}
+        os: [ubuntu-latest]
+        ghc: ["8.6.5", "8.8.4", "8.10.7", "9.0.2", "9.2.3"]
+        include:
+          - os: macos-latest
+            ghc: "8.10.7"
+    name: Bootstrap ${{ matrix.os }} ghc-${{ matrix.ghc }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - name: bootstrap.py
         run: |
+          GHC_VERSION=${{ matrix.ghc }}
           ghcup config set cache true
-          ghcup install ghc 8.10.7
+          ghcup install ghc $GHC_VERSION
           # We use linux dependencies also on macos
-          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc 8.10.7) -d bootstrap/linux-8.10.7.json
+          python3 bootstrap/bootstrap.py -w $(ghcup whereis ghc $GHC_VERSION) -d bootstrap/linux-$GHC_VERSION.json
 
       - name: Smoke test
         run: |
@@ -38,5 +41,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: cabal-${{ matrix.os }}-bootstrapped
+          name: cabal-${{ matrix.os }}-${{ matrix.ghc }}-bootstrapped
           path: _build/artifacts/*
