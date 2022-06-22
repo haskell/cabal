@@ -68,6 +68,7 @@ jobs:
         run: |
           ghcup install ghc ${{ matrix.ghc }}
           ghcup set ghc ${{ matrix.ghc }}
+          cabal update
 
       #  See the following link for a breakdown of the following step
       #  https://github.com/haskell/actions/issues/7#issuecomment-745697160
