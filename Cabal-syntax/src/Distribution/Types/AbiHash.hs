@@ -27,18 +27,18 @@ import Text.PrettyPrint (text)
 newtype AbiHash = AbiHash ShortText
     deriving (Eq, Show, Read, Generic, Typeable)
 
+-- | Convert 'AbiHash' to 'String'
+--
+-- @since 2.0.0.2
+unAbiHash :: AbiHash -> String
+unAbiHash (AbiHash h) = fromShortText h
+
 -- | Construct a 'AbiHash' from a 'String'
 --
 -- 'mkAbiHash' is the inverse to 'unAbiHash'
 --
 -- Note: No validations are performed to ensure that the resulting
 -- 'AbiHash' is valid
---
--- @since 2.0.0.2
-unAbiHash :: AbiHash -> String
-unAbiHash (AbiHash h) = fromShortText h
-
--- | Convert 'AbiHash' to 'String'
 --
 -- @since 2.0.0.2
 mkAbiHash :: String -> AbiHash
