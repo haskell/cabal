@@ -7,7 +7,7 @@
             "flags": [],
             "package": "Cabal-syntax",
             "source": "local",
-            "version": "3.9.0.0"
+            "version": "3.8.0.20220526"
         },
         {
             "cabal_sha256": null,
@@ -16,7 +16,7 @@
             "flags": [],
             "package": "Cabal",
             "source": "local",
-            "version": "3.9.0.0"
+            "version": "3.8.0.20220526"
         },
         {
             "cabal_sha256": "e3d78b13db9512aeb106e44a334ab42b7aa48d26c097299084084cb8be5c5568",
@@ -60,6 +60,30 @@
             "package": "HTTP",
             "source": "hackage",
             "version": "4000.4.1"
+        },
+        {
+            "cabal_sha256": "0cddd0229d1aac305ea0404409c0bbfab81f075817bd74b8b2929eff58333e55",
+            "revision": 0,
+            "src_sha256": "83606edd356d914c075ecd44f6d5fe91a3b186aa0683c8dd8c9a7e8e22a47600",
+            "flags": [
+                "+containers",
+                "+integer-gmp",
+                "-random-initial-seed"
+            ],
+            "package": "hashable",
+            "source": "hackage",
+            "version": "1.4.0.2"
+        },
+        {
+            "cabal_sha256": "b83dec34a53520de84c6dd3dc7aae45d22409b46eb471c478b98108215a370f0",
+            "revision": 1,
+            "src_sha256": "484df85be0e76c4fed9376451e48e1d0c6e97952ce79735b72d54297e7e0a725",
+            "flags": [
+                "-bench"
+            ],
+            "package": "async",
+            "source": "hackage",
+            "version": "2.2.4"
         },
         {
             "cabal_sha256": "64abad7816ab8cabed8489e29f807b3a6f828e0b2cec0eae404323d69d36df9a",
@@ -119,18 +143,7 @@
             ],
             "package": "cabal-install-solver",
             "source": "local",
-            "version": "3.9.0.0"
-        },
-        {
-            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
-            "revision": 0,
-            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
-            "flags": [
-                "-example"
-            ],
-            "package": "echo",
-            "source": "hackage",
-            "version": "0.1.4"
+            "version": "3.8.0.20220526"
         },
         {
             "cabal_sha256": "188d0b5a0491e8b686b32d9b144c9287760ba333d2509bf3f17e3d846fbc2332",
@@ -143,6 +156,17 @@
             "package": "cryptohash-sha256",
             "source": "hackage",
             "version": "0.11.102.1"
+        },
+        {
+            "cabal_sha256": "ccce771562c49a2b29a52046ca68c62179e97e8fbeacdae32ca84a85445e8f42",
+            "revision": 0,
+            "src_sha256": "c9fe1bf2904825a65b667251ec644f197b71dc5c209d2d254be5de3d496b0e43",
+            "flags": [
+                "-example"
+            ],
+            "package": "echo",
+            "source": "hackage",
+            "version": "0.1.4"
         },
         {
             "cabal_sha256": "24ac7b5f3d9fa3c2f70262b329f2a75f24e7fd829f88c189b388efa1bcd67eb2",
@@ -211,19 +235,6 @@
             "version": "0.6.2.1"
         },
         {
-            "cabal_sha256": "0cddd0229d1aac305ea0404409c0bbfab81f075817bd74b8b2929eff58333e55",
-            "revision": 0,
-            "src_sha256": "83606edd356d914c075ecd44f6d5fe91a3b186aa0683c8dd8c9a7e8e22a47600",
-            "flags": [
-                "+containers",
-                "+integer-gmp",
-                "-random-initial-seed"
-            ],
-            "package": "hashable",
-            "source": "hackage",
-            "version": "1.4.0.2"
-        },
-        {
             "cabal_sha256": "4ff4425c710cddf440dfbac6cd52310bb6b23e17902390ff71c9fc7eaafc4fcc",
             "revision": 1,
             "src_sha256": "7b99408f580f5bb67a1c413e0bc735886608251331ad36322020f2169aea2ef1",
@@ -262,17 +273,6 @@
             "version": "0.1.7.3"
         },
         {
-            "cabal_sha256": "b83dec34a53520de84c6dd3dc7aae45d22409b46eb471c478b98108215a370f0",
-            "revision": 1,
-            "src_sha256": "484df85be0e76c4fed9376451e48e1d0c6e97952ce79735b72d54297e7e0a725",
-            "flags": [
-                "-bench"
-            ],
-            "package": "async",
-            "source": "hackage",
-            "version": "2.2.4"
-        },
-        {
             "cabal_sha256": null,
             "revision": null,
             "src_sha256": null,
@@ -282,7 +282,7 @@
             ],
             "package": "cabal-install",
             "source": "local",
-            "version": "3.9.0.0"
+            "version": "3.8.0.20220526"
         }
     ],
     "builtin": [
