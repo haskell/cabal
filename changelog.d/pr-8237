@@ -1,0 +1,3 @@
+synopsis: Document `cabal check` in the user guide
+packages: cabal-install
+prs: #8237
