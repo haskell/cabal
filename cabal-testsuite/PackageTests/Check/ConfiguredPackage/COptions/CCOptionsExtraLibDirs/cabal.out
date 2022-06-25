@@ -1,0 +1,4 @@
+# cabal check
+Warning: The following warnings are likely to affect your build negatively:
+Warning: Instead of 'cc-options: -Llibdir' use 'extra-lib-dirs: libdir'
+Warning: Hackage would reject this package.
