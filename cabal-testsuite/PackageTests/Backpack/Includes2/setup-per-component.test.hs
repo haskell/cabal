@@ -2,7 +2,7 @@ import Test.Cabal.Prelude
 main = setupTest $ do
   -- No cabal test because per-component is broken with it
   skipUnlessGhcVersion ">= 8.1"
-  ghc <- isGhcVersion "== 9.0.2 || == 9.2.1"
+  ghc <- isGhcVersion "== 9.0.2 || == 9.2.*"
   expectBrokenIf ghc 7987 $
     withPackageDb $ do
       let setup_install' args = setup_install_with_docs (["--cabal-file", "Includes2.cabal"] ++ args)
