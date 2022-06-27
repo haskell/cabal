@@ -183,6 +183,20 @@ We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
+GitHub conventions
+-------------------
+
+Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
+corresponding GitHub Project and milestone. A ticket is included in a release's
+project if the release managers are tenatively planning on including a fix for
+the ticket in the release, i.e. if they are actively seeking someone to work on
+the ticket.
+
+By contrast, a ticket is milestoned to a given release if we are open to
+accepting a fix in that release, i.e. we would very much appreciate someone
+working on it, but are not committing to actively sourcing someone to work on
+it.
+
 Changelog
 ---------
 
