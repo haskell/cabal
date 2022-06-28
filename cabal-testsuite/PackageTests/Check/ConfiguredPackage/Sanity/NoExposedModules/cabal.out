@@ -1,0 +1,4 @@
+# cabal check
+Warning: These warnings may cause trouble when distributing the package:
+Warning: library does not expose any modules
+
