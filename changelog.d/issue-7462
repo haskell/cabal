@@ -1,0 +1,4 @@
+synopsis: `cabal haddock` now implies `--enable-documentation`
+packages: cabal-install
+issues: #7462
+prs: #8259
