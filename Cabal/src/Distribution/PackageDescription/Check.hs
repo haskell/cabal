@@ -1574,14 +1574,7 @@ checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
 checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
-    check has_WerrorWall $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -Wall -Werror' makes the package very easy to "
-        ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. Use just '" ++ fieldName ++ ": -Wall' instead."
-        ++ extraExplanation
-
-  , check (not has_WerrorWall && has_Werror) $
+    check (has_Werror) $
       PackageDistInexcusable $
            "'" ++ fieldName ++ ": -Werror' makes the package easy to "
         ++ "break with future GHC versions because new GHC versions often "
@@ -1627,10 +1620,7 @@ checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
       ++ "on a Cabal configuration flag (with 'manual: True' and 'default: "
       ++ "False') and enable that flag during development."
 
-    has_WerrorWall   = has_Werror && ( has_Wall || has_W )
     has_Werror       = "-Werror" `elem` ghcOptions
-    has_Wall         = "-Wall"   `elem` ghcOptions
-    has_W            = "-W"      `elem` ghcOptions
     has_J            = any
                          (\o -> case o of
                            "-j"                -> True
