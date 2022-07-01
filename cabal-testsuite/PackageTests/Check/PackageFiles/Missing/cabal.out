@@ -1,0 +1,3 @@
+# cabal check
+Error: cabal: No cabal file found.
+Please create a package description file <pkgname>.cabal

@@ -1,0 +1,11 @@
+cabal-version: 3.0
+name: pkg
+synopsis: synopsis
+description: description
+version: 0
+category: example
+license: GPL-3.0-or-later
+
+library
+  exposed-modules: Module
+  default-language: Haskell2010
