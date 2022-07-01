@@ -128,6 +128,7 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 
+import qualified Data.Maybe as M
 import qualified Data.Set as Set
 import qualified Distribution.Compat.NonEmptySet as NES
 
@@ -1961,11 +1962,19 @@ checkPackageProblems :: Verbosity
 checkPackageProblems verbosity dir gpkg pkg = do
   ioChecks      <- checkPackageFiles verbosity pkg dir
   let pureChecks = checkPackage gpkg (Just pkg)
-      errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
-      warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
+      (errors, warnings) =
+        partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) warnings
-    else die' verbosity (intercalate "\n\n" errors)
+    then traverse_ (warn verbosity) (map show warnings)
+    else die' verbosity (intercalate "\n\n" $ map show errors)
+  where
+    -- Classify error/warnings. Left: error, Right: warning.
+    classEW :: PackageCheck -> Maybe (Either PackageCheck PackageCheck)
+    classEW e@(PackageBuildImpossible _) = Just (Left e)
+    classEW w@(PackageBuildWarning _) = Just (Right w)
+    classEW (PackageDistSuspicious _) = Nothing
+    classEW (PackageDistSuspiciousWarn _) = Nothing
+    classEW (PackageDistInexcusable _) = Nothing
 
 -- | Preform checks if a relocatable build is allowed
 checkRelocatable :: Verbosity

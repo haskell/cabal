@@ -28,7 +28,7 @@ data Library = Library
     , libVisibility     :: LibraryVisibility  -- ^ Whether this multilib can be dependent from outside.
     , libBuildInfo      :: BuildInfo
     }
-    deriving (Generic, Show, Eq, Read, Typeable, Data)
+    deriving (Generic, Show, Eq, Ord, Read, Typeable, Data)
 
 instance L.HasBuildInfo Library where
     buildInfo f l = (\x -> l { libBuildInfo = x }) <$> f (libBuildInfo l)

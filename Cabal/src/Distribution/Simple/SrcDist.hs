@@ -504,10 +504,10 @@ printPackageProblems verbosity pkg_descr = do
       (errors, warnings) = partition isDistError (pureChecks ++ ioChecks)
   unless (null errors) $
       notice verbosity $ "Distribution quality errors:\n"
-                      ++ unlines (map explanation errors)
+                      ++ unlines (map show errors)
   unless (null warnings) $
       notice verbosity $ "Distribution quality warnings:\n"
-                      ++ unlines (map explanation warnings)
+                      ++ unlines (map show warnings)
   unless (null errors) $
       notice verbosity
         "Note: the public hackage server would reject this package."

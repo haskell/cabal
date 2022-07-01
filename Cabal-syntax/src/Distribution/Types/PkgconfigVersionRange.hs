@@ -35,7 +35,7 @@ data PkgconfigVersionRange
   | PcOrEarlierVersion       PkgconfigVersion -- =< version
   | PcUnionVersionRanges     PkgconfigVersionRange PkgconfigVersionRange
   | PcIntersectVersionRanges PkgconfigVersionRange PkgconfigVersionRange
-  deriving (Generic, Read, Show, Eq, Typeable, Data)
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary PkgconfigVersionRange
 instance Structured PkgconfigVersionRange

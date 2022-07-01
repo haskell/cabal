@@ -22,7 +22,7 @@ data ForeignLibOption =
      -- This option is compulsory on Windows and unsupported
      -- on other platforms.
      ForeignLibStandalone
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Pretty ForeignLibOption where
   pretty ForeignLibStandalone = Disp.text "standalone"

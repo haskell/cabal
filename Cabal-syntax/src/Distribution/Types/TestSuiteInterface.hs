@@ -35,7 +35,7 @@ data TestSuiteInterface =
      -- the given reason (e.g. unknown test type).
      --
    | TestSuiteUnsupported TestType
-   deriving (Eq, Generic, Read, Show, Typeable, Data)
+   deriving (Eq, Ord, Generic, Read, Show, Typeable, Data)
 
 instance Binary TestSuiteInterface
 instance Structured TestSuiteInterface

@@ -24,7 +24,7 @@ import qualified Text.PrettyPrint                as Disp
 data LegacyExeDependency = LegacyExeDependency
                            String
                            VersionRange
-                         deriving (Generic, Read, Show, Eq, Typeable, Data)
+                         deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary LegacyExeDependency
 instance Structured LegacyExeDependency

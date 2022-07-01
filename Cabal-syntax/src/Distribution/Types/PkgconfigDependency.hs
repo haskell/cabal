@@ -21,7 +21,7 @@ import qualified Distribution.Compat.CharParsing as P
 data PkgconfigDependency = PkgconfigDependency
                            PkgconfigName
                            PkgconfigVersionRange
-                         deriving (Generic, Read, Show, Eq, Typeable, Data)
+                         deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary PkgconfigDependency
 instance Structured PkgconfigDependency

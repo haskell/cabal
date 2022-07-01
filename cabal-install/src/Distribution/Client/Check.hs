@@ -26,7 +26,7 @@ import Distribution.PackageDescription.Check
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parsec
        (parseGenericPackageDescription, runParseResult)
-import Distribution.Parsec                           (PWarning (..), showPError, showPWarning)
+import Distribution.Parsec                           (PWarning (..), showPError)
 import Distribution.Simple.Utils                     (defaultPackageDesc, die', notice, warn)
 import System.IO                                     (hPutStr, stderr)
 
@@ -55,8 +55,7 @@ check verbosity = do
     pdfile <- defaultPackageDesc verbosity
     (ws, ppd) <- readGenericPackageDescriptionCheck verbosity pdfile
     -- convert parse warnings into PackageChecks
-    -- Note: we /could/ pick different levels, based on warning type.
-    let ws' = [ PackageDistSuspicious (showPWarning pdfile w) | w <- ws ]
+    let ws' = map (wrapParseWarning pdfile) ws
     -- flatten the generic package description into a regular package
     -- description
     -- TODO: this may give more warnings than it should give;
@@ -111,4 +110,6 @@ check verbosity = do
     return (not . any isCheckError $ packageChecks)
 
   where
-    printCheckMessages = traverse_ (warn verbosity . explanation)
+    printCheckMessages :: [PackageCheck] -> IO ()
+    printCheckMessages = traverse_ (warn verbosity) . map show
+        -- xxx mapM_ o traverse?
