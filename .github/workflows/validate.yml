@@ -51,6 +51,12 @@ jobs:
             ghc: "8.6.5"
         include:
           - os: "ubuntu-latest"
+            ghc: "9.4.0.20220623"
+            cli: "false"
+          - os: "macos-latest"
+            ghc: "9.4.0.20220623"
+            cli: "false"
+          - os: "ubuntu-latest"
             ghc: "8.0.2"
             cli: "false"
           - os: "macos-latest"
@@ -63,6 +69,9 @@ jobs:
     steps:
 
       - uses: actions/checkout@v2
+
+      - name: Enable ghcup prerelease channel
+        run: ghcup config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.7.yaml
 
       - uses: haskell/actions/setup@v1
         id: setup-haskell
