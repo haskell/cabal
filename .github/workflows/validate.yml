@@ -96,7 +96,7 @@ jobs:
       - name: Install cabal-plan
         run: |
           cd $(mktemp -d)
-          cabal install cabal-plan --constraint='cabal-plan +exe'
+          cabal install cabal-plan --constraint='cabal-plan +exe' --allow-newer='base,template-haskell,ghc-bignum,ghc-prim'
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
 
       # The tool is not essential to the rest of the test suite. If
