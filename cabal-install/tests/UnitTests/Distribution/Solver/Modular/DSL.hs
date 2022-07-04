@@ -733,6 +733,7 @@ exResolve :: ExampleDb
           -> FineGrainedConflicts
           -> MinimizeConflictSet
           -> IndependentGoals
+          -> PreferOldest
           -> ReorderGoals
           -> AllowBootLibInstalls
           -> OnlyConstrained
@@ -745,7 +746,7 @@ exResolve :: ExampleDb
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets mbj countConflicts
-          fineGrainedConflicts minimizeConflictSet indepGoals reorder
+          fineGrainedConflicts minimizeConflictSet indepGoals prefOldest reorder
           allowBootLibInstalls onlyConstrained enableBj solveExes goalOrder
           constraints prefs verbosity enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb Modular params
@@ -774,6 +775,7 @@ exResolve db exts langs pkgConfigDb targets mbj countConflicts
                    $ setFineGrainedConflicts fineGrainedConflicts
                    $ setMinimizeConflictSet minimizeConflictSet
                    $ setIndependentGoals indepGoals
+                   $ (if asBool prefOldest then setPreferenceDefault PreferAllOldest else id)
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
                    $ setAllowBootLibInstalls allowBootLibInstalls
