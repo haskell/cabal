@@ -178,7 +178,7 @@ organizeByRepos (ActiveRepos xs0) sel ys0 =
 
     extract :: RepoName -> [a] -> Either String (a, [a])
     extract r = loop id where
-        loop _acc []     = Left $ "no repository provided " ++ prettyShow r
+        loop _acc []     = Left $ "unknown repository: " ++ prettyShow r
         loop  acc (x:xs)
             | sel x == r = Right (x, acc xs)
             | otherwise  = loop (acc . (x :)) xs
