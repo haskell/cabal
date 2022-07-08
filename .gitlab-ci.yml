@@ -12,8 +12,12 @@ variables:
   CABAL_INSTALL_VERSION: 3.8.0.20220526
 =======
   GHC_VERSION: 9.2.3
+<<<<<<< HEAD
   CABAL_INSTALL_VERSION: 3.9.0.0
 >>>>>>> f55ae058a (Build release archives (and validate) with GHC 9.2.3)
+=======
+  CABAL_INSTALL_VERSION: 3.6.2.0
+>>>>>>> 5ee0cab7d (Fix bootstrap cabal-install version in gitlab-ci.yml)
 
 workflow:
   rules:
