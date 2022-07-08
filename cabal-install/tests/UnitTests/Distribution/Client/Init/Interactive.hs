@@ -145,8 +145,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -249,8 +251,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -338,8 +342,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -414,8 +420,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -504,8 +512,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -579,8 +589,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -660,8 +672,10 @@ createProjectTest pkgIx srcDb = testGroup "createProject tests"
               -- license
               , "3"
               -- author
+              , "git username"
               , "Foobar"
               -- email
+              , "git email"
               , "foobar@qux.com"
               -- homepage
               , "qux.com"
@@ -728,7 +742,9 @@ fileCreatorTests pkgIx srcDb _pkgName = testGroup "generators"
               , "y"               -- "yes to prompt internal to package name"
               , "0.2.0.1"         -- package version
               , "2"               -- pick the second license in the list
+              , "git username"    -- name guessed by calling "git config user.name"
               , "Foobar"          -- author name
+              , "git email"       -- email guessed by calling "git config user.email"
               , "foobar@qux.com"  -- maintainer email
               , "qux.com"         -- package homepage
               , "Qux's package"   -- package synopsis
@@ -834,10 +850,14 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
         , testSimplePrompt "2" synopsisPrompt
             "Resistance is futile, you will be assimilated" ["Resistance is futile, you will be assimilated"]
         ]
-    , testSimplePrompt "Check authorPrompt output" authorPrompt
-        "Foobar" ["Foobar"]
-    , testSimplePrompt "Check emailPrompt output" emailPrompt
-        "foobar@qux.com" ["foobar@qux.com"]
+    , testSimplePrompt "Check authorPrompt output (name supplied by the user)" authorPrompt
+        "Foobar" ["git username", "Foobar"]
+    , testSimplePrompt "Check authorPrompt output (name guessed from git config)" authorPrompt
+        "git username" ["git username", ""]
+    , testSimplePrompt "Check emailPrompt output (email supplied by the user)" emailPrompt
+        "foobar@qux.com" ["git email", "foobar@qux.com"]
+    , testSimplePrompt "Check emailPrompt output (email guessed from git config)" emailPrompt
+        "git@email" ["git@email", ""]
     , testSimplePrompt "Check homepagePrompt output" homepagePrompt
         "qux.com" ["qux.com"]
     , testSimplePrompt "Check testDirsPrompt output" testDirsPrompt
