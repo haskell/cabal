@@ -53,6 +53,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
+import Distribution.Client.Init.NonInteractive.Heuristics (guessAuthorName, guessAuthorEmail)
 import Distribution.FieldGrammar.Newtypes (SpecLicense(..))
 import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -355,12 +356,14 @@ licensePrompt flags = getLicense flags $ do
       else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
-authorPrompt flags = getAuthor flags $
-    promptStr "Author name" OptionalPrompt
+authorPrompt flags = getAuthor flags $ do
+    name <- guessAuthorName
+    promptStr "Author name" (DefaultPrompt name)
 
 emailPrompt :: Interactive m => InitFlags -> m String
-emailPrompt flags = getEmail flags $
-    promptStr "Maintainer email" OptionalPrompt
+emailPrompt flags = getEmail flags $ do
+    email' <- guessAuthorEmail
+    promptStr "Maintainer email" (DefaultPrompt email')
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags = getHomepage flags $
