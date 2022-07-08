@@ -23,10 +23,10 @@ on:
 env:
   # We choose a stable ghc version across all os's
   # which will be used to do the next release
-  GHC_FOR_RELEASE: '8.10.7'
+  GHC_FOR_RELEASE: '9.2.3'
   # Ideally we should use the version about to be released for hackage tests and benchmarks
-  GHC_FOR_SOLVER_BENCHMARKS: '8.10.7'
-  GHC_FOR_COMPLETE_HACKAGE_TESTS: '8.10.7'
+  GHC_FOR_SOLVER_BENCHMARKS: '9.2.3'
+  GHC_FOR_COMPLETE_HACKAGE_TESTS: '9.2.3'
   COMMON_FLAGS: '-j 2 -v'
 
 jobs:
