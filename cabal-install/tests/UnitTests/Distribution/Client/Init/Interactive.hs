@@ -850,10 +850,14 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
         , testSimplePrompt "2" synopsisPrompt
             "Resistance is futile, you will be assimilated" ["Resistance is futile, you will be assimilated"]
         ]
-    , testSimplePrompt "Check authorPrompt output" authorPrompt
+    , testSimplePrompt "Check authorPrompt output (name supplied by the user)" authorPrompt
         "Foobar" ["git username", "Foobar"]
-    , testSimplePrompt "Check emailPrompt output" emailPrompt
+    , testSimplePrompt "Check authorPrompt output (name guessed from git config)" authorPrompt
+        "git username" ["git username", ""]
+    , testSimplePrompt "Check emailPrompt output (email supplied by the user)" emailPrompt
         "foobar@qux.com" ["git email", "foobar@qux.com"]
+    , testSimplePrompt "Check emailPrompt output (email guessed from git config)" emailPrompt
+        "git@email" ["git@email", ""]
     , testSimplePrompt "Check homepagePrompt output" homepagePrompt
         "qux.com" ["qux.com"]
     , testSimplePrompt "Check testDirsPrompt output" testDirsPrompt
