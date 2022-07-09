@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, MultiWayIf #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Command
@@ -413,17 +413,22 @@ testDirsPrompt flags = getTestDirs flags $ do
 
 languagePrompt :: Interactive m => InitFlags -> String -> m Language
 languagePrompt flags pkgType = getLanguage flags $ do
-    lang <- promptList ("Choose a language for your " ++ pkgType)
-      ["Haskell2010", "Haskell98"]
-      (DefaultPrompt "Haskell2010")
+    let h2010   = "Haskell2010"
+        h98     = "Haskell98"
+        ghc2021 = "GHC2021 (requires at least GHC 9.2)"
+          
+    l <- promptList ("Choose a language for your " ++ pkgType)
+      [h2010, h98, ghc2021]
+      (DefaultPrompt h2010)
       Nothing
       True
 
-    case lang of
-      "Haskell2010" -> return Haskell2010
-      "Haskell98" -> return Haskell98
-      l | all isAlphaNum l -> return $ UnknownLanguage l
-      _ -> do
+    if
+      | l == h2010       -> return Haskell2010
+      | l == h98         -> return Haskell98
+      | l == ghc2021     -> return GHC2021
+      | all isAlphaNum l -> return $ UnknownLanguage l
+      | otherwise        -> do
         putStrLn
           $ "\nThe language must be alphanumeric. "
           ++ "Please enter a different language."

@@ -912,15 +912,15 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
         ]
     , testGroup "Check languagePrompt output"
         [ testNumberedPrompt "Language indices" (`languagePrompt` "test")
-            [Haskell2010, Haskell98]
+            [Haskell2010, Haskell98, GHC2021]
         , testSimplePrompt "Other language"
             (`languagePrompt` "test") (UnknownLanguage "Haskell2022")
-            [ "3"
+            [ "4"
             , "Haskell2022"
             ]
         , testSimplePrompt "Invalid language"
             (`languagePrompt` "test") Haskell2010
-            [ "3"
+            [ "4"
             , "Lang_TS!"
             , "1"
             ]
