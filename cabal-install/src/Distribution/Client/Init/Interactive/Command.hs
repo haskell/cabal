@@ -416,7 +416,7 @@ languagePrompt flags pkgType = getLanguage flags $ do
     let h2010   = "Haskell2010"
         h98     = "Haskell98"
         ghc2021 = "GHC2021 (requires at least GHC 9.2)"
-          
+
     l <- promptList ("Choose a language for your " ++ pkgType)
       [h2010, h98, ghc2021]
       (DefaultPrompt h2010)
