@@ -427,13 +427,7 @@ languagePrompt flags pkgType = getLanguage flags $ do
       | l == h2010       -> return Haskell2010
       | l == h98         -> return Haskell98
       | l == ghc2021     -> return GHC2021
-      | all isAlphaNum l -> return $ UnknownLanguage l
-      | otherwise        -> do
-        putStrLn
-          $ "\nThe language must be alphanumeric. "
-          ++ "Please enter a different language."
-
-        languagePrompt flags pkgType
+      | otherwise        -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do
