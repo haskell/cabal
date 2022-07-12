@@ -183,7 +183,7 @@ We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
-GitHub conventions
+GitHub Ticket Conventions
 -------------------
 
 Each major `Cabal`/`cabal-install` release (e.g. 3.4, 3.6, etc.) has a
@@ -196,6 +196,26 @@ By contrast, a ticket is milestoned to a given release if we are open to
 accepting a fix in that release, i.e. we would very much appreciate someone
 working on it, but are not committing to actively sourcing someone to work on
 it.
+
+GitHub Pull Request Conventions
+-------------------
+
+Every (non-backport) pull request has to go through a review and get 2
+approvals. After this is done, the author of the pull request is expected to add
+any final touches they deem important and put the `merge me` label on the pull
+request. If the author lacks permissions to apply labels, they are welcome to
+explicitly signal the merge intent on the discussion thread of the pull request,
+at which point others (e.g., reviewers) apply the label. Merge buttons are
+reserved for exceptional situations, e.g., CI fixes being iterated on or
+backports/patches that need to be expedited for a release.
+
+Currently there is a 2 day buffer for potential extra feedback between the last
+update of a pull request (e.g. a commit, a rebase, an addition of the `merge me`
+label) and the moment the Mergify bot picks up the pull request for a merge.
+
+If your pull request consists of several commits, consider using `squash+merge
+me` instead of `merge me`: the Mergify bot will squash all the commits into one
+and concatenate the commit messages of the commits before merging.
 
 Changelog
 ---------
