@@ -9,7 +9,7 @@ pull_request_rules:
         update_method: rebase
     name: Put pull requests in the rebase+merge queue
     conditions:
-      - base=main
+      - base=master
       - label=merge me
       - '#approved-reviews-by>=2'
   # merge+squash strategy
@@ -22,7 +22,7 @@ pull_request_rules:
         update_method: merge
     name: Put pull requests in the squash+merge queue
     conditions:
-      - base=main
+      - base=master
       - label=squash+merge me
       - '#approved-reviews-by>=2'
   # rebase+merge strategy for backports: require 1 approver instead of 2
