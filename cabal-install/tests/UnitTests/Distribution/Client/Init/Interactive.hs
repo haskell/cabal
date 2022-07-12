@@ -919,10 +919,9 @@ interactiveTests srcDb = testGroup "Check top level getter functions"
             , "Haskell2022"
             ]
         , testSimplePrompt "Invalid language"
-            (`languagePrompt` "test") Haskell2010
+            (`languagePrompt` "test") (UnknownLanguage "Lang_TS!")
             [ "4"
             , "Lang_TS!"
-            , "1"
             ]
         ]
     , testGroup "Check srcDirsPrompt output"
