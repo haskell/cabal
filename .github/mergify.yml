@@ -35,8 +35,7 @@ pull_request_rules:
         update_method: rebase
     name: Put backports in the rebase+merge queue
     conditions:
-      - label=merge me
-      - author=mergify
+      - label=merge backport
       - base!=master
       - body~=backport
       - '#approved-reviews-by>=1'
