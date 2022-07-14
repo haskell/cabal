@@ -77,7 +77,7 @@ instance Pretty Language where
   pretty other                   = Disp.text (show other)
 
 instance Parsec Language where
-  parsec = classifyLanguage <$> P.munch1 isAlphaNum
+  parsec = classifyLanguage <$> P.some P.anyChar
 
 classifyLanguage :: String -> Language
 classifyLanguage = \str -> case lookup str langTable of
