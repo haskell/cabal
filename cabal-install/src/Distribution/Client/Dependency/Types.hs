@@ -49,6 +49,11 @@ data PackagesPreferenceDefault =
      --
      PreferAllLatest
 
+     -- | Always prefer the oldest version irrespective of any existing
+     -- installed version or packages explicitly requested.
+     --
+     -- * This is enabled by --prefer-oldest.
+     --
    | PreferAllOldest
 
      -- | Always prefer the installed versions over ones that would need to be

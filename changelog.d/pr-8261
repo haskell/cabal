@@ -1,6 +1,6 @@
 synopsis: Implement --prefer-oldest
 packages: cabal-install
-prs: #8861
+prs: #8261
 
 description: {
 

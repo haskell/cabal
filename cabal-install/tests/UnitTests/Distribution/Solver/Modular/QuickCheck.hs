@@ -106,7 +106,7 @@ tests = [
             let r1 = solve' (PreferOldest True)  test
                 r2 = solve' (PreferOldest False) test
                 solve' prefOldest  =
-                    solve (EnableBackjumping True) (FineGrainedConflicts False)
+                    solve (EnableBackjumping True) (FineGrainedConflicts True)
                     reorderGoals (CountConflicts True) indepGoals prefOldest Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>

@@ -101,10 +101,6 @@ preferPackagePreferences pcs =
     -- For 'PreferOldest' one weight measures how close is the version to the
     -- the oldest one possible (between 0.0 and 1.0) and another checks whether
     -- the version is installed (0 or 1).
-    --
-    -- NB The third weight is actually redundant unless 'preference' is 'PreferInstalled',
-    -- because for 'PreferLatest' / 'PreferOldest' the second weight is distinct for each
-    -- version and sufficient for the purposes of ordering.
     addWeights [
           \pn _  opt -> preferred pn opt
         , \pn vs opt -> case preference pn of
