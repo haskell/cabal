@@ -17,9 +17,65 @@ constraints: these -assoc
 package Cabal-syntax
   ghc-options: -Werror -fno-ignore-asserts
 package Cabal
-  ghc-options: -Werror -fno-ignore-asserts
+  -- https://github.com/haskell/cabal/issues/8268
+  ghc-options: -Werror -fno-ignore-asserts -Wno-type-equality-requires-operators
 package cabal-testsuite
   ghc-options: -Werror -fno-ignore-asserts
 
--- https://github.com/haskell-hvr/cryptohash-sha256/issues/12
-allow-newer: cryptohash-sha256:base
+allow-newer:
+  -- https://github.com/haskellari/splitmix/issues/64
+  splitmix:base,
+  -- https://github.com/ekmett/tagged/issues/54
+  tagged:template-haskell,
+  -- https://github.com/phadej/rere/issues/17
+  rere:base,
+  --
+  tree-diff:base,
+  --
+  uuid-types:template-haskell,
+  --
+  these:base,
+  --
+  assoc:base,
+  --
+  bifunctors:template-haskell,
+  --
+  th-abstraction:template-haskell,
+  --
+  semialign:base,
+  --
+  indexed-traversable:base,
+  indexed-traversable-instances:base,
+  --
+  hashable:base,
+  hashable:ghc-bignum,
+  --
+  aeson:ghc-prim,
+  aeson:template-haskell,
+  --
+  scientific:base,
+  scientific:template-haskell,
+  --
+  OneTuple:base,
+  --
+  time-compat:base,
+  --
+  text-short:base,
+  text-short:ghc-prim,
+  text-short:template-haskell,
+  --
+  data-fix:base,
+  --
+  attoparsec:base,
+  attoparsec:ghc-prim,
+  --
+  integer-logarithms:base,
+  integer-logarithms:ghc-prim,
+  integer-logarithms:ghc-bignum,
+  --
+  async:base,
+  --
+  cabal-testsuite:base,
+  cabal-testsuite:text,
+  --
+  cryptohash-sha256:base
