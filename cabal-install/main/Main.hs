@@ -195,7 +195,7 @@ warnIfAssertionsAreEnabled =
   (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
   where
     assertionsEnabledMsg =
-      "Warning: this is a debug build with assertions enabled."
+      "Warning: this is a debug build of cabal-install with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do
