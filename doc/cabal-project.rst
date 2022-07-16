@@ -1722,4 +1722,22 @@ Most users generally won't need these.
     The command line variant of this field is
     ``--cabal-lib-version=1.24.0.1``.
 
+.. cfg-field:: prefer-oldest: boolean
+               --prefer-oldest
+               --no-prefer-oldest
+    :synopsis: Prefer the oldest versions of packages available.
+    :since:    3.8
+
+    :default:  False
+
+    By default, when solver has a choice of multiple versions of the same
+    package, it will first try to derive a build plan with the latest
+    version. This flag switches the behaviour, making the solver
+    to prefer the oldest packages available.
+
+    The primary use case is to help users in establishing lower bounds
+    of upstream dependencies.
+
+    The command line variant of this field is ``--(no-)prefer-oldest``.
+
 .. include:: references.inc
