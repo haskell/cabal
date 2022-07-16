@@ -24,7 +24,7 @@ import Distribution.Client.TargetProblem
 import Distribution.Client.NixStyleOptions
          ( NixStyleFlags (..), nixStyleOptions, defaultNixStyleFlags )
 import Distribution.Client.Setup
-         ( GlobalFlags, ConfigFlags(..) )
+         ( GlobalFlags, ConfigFlags(..), InstallFlags (..))
 import Distribution.Simple.Setup
          ( HaddockFlags(..), fromFlagOrDefault, trueArg )
 import Distribution.Simple.Command
@@ -141,7 +141,8 @@ haddockAction flags@NixStyleFlags {..} targetStrings globalFlags = do
     runProjectPostBuildPhase verbosity baseCtx buildCtx' buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    cliConfig = commandLineFlagsToProjectConfig globalFlags flags mempty -- ClientInstallFlags, not needed here
+    flags' = flags { installFlags = installFlags { installDocumentation = Flag True } }
+    cliConfig = commandLineFlagsToProjectConfig globalFlags flags' mempty -- ClientInstallFlags, not needed here
 
 -- | This defines what a 'TargetSelector' means for the @haddock@ command.
 -- It selects the 'AvailableTarget's that the 'TargetSelector' refers to,

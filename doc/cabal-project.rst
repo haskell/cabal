@@ -1324,11 +1324,12 @@ Haddock options
     :default: False
 
     Enables building of Haddock documentation.
+    Implied when calling ``cabal haddock``.
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
 
-    `documentation: true` does not imply
+    ``documentation: true`` does not imply
     :cfg-field:`haddock-all`,
     :cfg-field:`haddock-benchmarks`,
     :cfg-field:`haddock-executables`,

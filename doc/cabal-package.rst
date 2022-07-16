@@ -2865,6 +2865,9 @@ The ``get`` command supports the following options:
     ``2016-09-24T17:47:48Z``), or ``HEAD`` (default).
     This determines which package versions are available as well as which
     ``.cabal`` file revision is selected (unless ``--pristine`` is used).
+``--only-package-description``
+    Unpack only the package description file. A synonym,
+    ``--package-description-only``, is provided for convenience.
 ``--pristine``
     Unpack the original pristine tarball, rather than updating the
     ``.cabal`` file with the latest revision from the package archive.

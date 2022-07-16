@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -166,7 +166,7 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 import System.Directory         ( doesFileExist, getCurrentDirectory
                                 , withCurrentDirectory)
 import Data.Monoid              (Any(..))
-import Control.Exception        (try)
+import Control.Exception        (AssertionFailed, assert, try)
 
 
 -- | Entry point
@@ -177,6 +177,10 @@ main = do
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
+
+  -- Check whether assertions are enabled and print a warning in that case.
+  warnIfAssertionsAreEnabled
+
   -- If the locale encoding for CLI doesn't support all Unicode characters,
   -- printing to it may fail unless we relax the handling of encoding errors
   -- when writing to stderr and stdout.
@@ -184,6 +188,14 @@ main = do
   relaxEncodingErrors stderr
   (args0, args1) <- break (== "--") <$> getArgs
   mainWorker =<< (++ args1) <$> expandResponse args0
+
+warnIfAssertionsAreEnabled :: IO ()
+warnIfAssertionsAreEnabled =
+  assert False (return ()) `catch`
+  (\(_e :: AssertionFailed) -> putStrLn assertionsEnabledMsg)
+  where
+    assertionsEnabledMsg =
+      "Warning: this is a debug build with assertions enabled."
 
 mainWorker :: [String] -> IO ()
 mainWorker args = do

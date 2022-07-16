@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, MultiWayIf #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Command
@@ -53,6 +53,7 @@ import Distribution.Client.Init.FlagExtractors
 import Distribution.Client.Init.Prompt
 import Distribution.Client.Init.Types
 import Distribution.Client.Init.Utils
+import Distribution.Client.Init.NonInteractive.Heuristics (guessAuthorName, guessAuthorEmail)
 import Distribution.FieldGrammar.Newtypes (SpecLicense(..))
 import Distribution.Simple.Setup (Flag(..), fromFlagOrDefault)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -355,12 +356,14 @@ licensePrompt flags = getLicense flags $ do
       else fmap prettyShow knownLicenses
 
 authorPrompt :: Interactive m => InitFlags -> m String
-authorPrompt flags = getAuthor flags $
-    promptStr "Author name" OptionalPrompt
+authorPrompt flags = getAuthor flags $ do
+    name <- guessAuthorName
+    promptStr "Author name" (DefaultPrompt name)
 
 emailPrompt :: Interactive m => InitFlags -> m String
-emailPrompt flags = getEmail flags $
-    promptStr "Maintainer email" OptionalPrompt
+emailPrompt flags = getEmail flags $ do
+    email' <- guessAuthorEmail
+    promptStr "Maintainer email" (DefaultPrompt email')
 
 homepagePrompt :: Interactive m => InitFlags -> m String
 homepagePrompt flags = getHomepage flags $
@@ -410,22 +413,21 @@ testDirsPrompt flags = getTestDirs flags $ do
 
 languagePrompt :: Interactive m => InitFlags -> String -> m Language
 languagePrompt flags pkgType = getLanguage flags $ do
-    lang <- promptList ("Choose a language for your " ++ pkgType)
-      ["Haskell2010", "Haskell98"]
-      (DefaultPrompt "Haskell2010")
+    let h2010   = "Haskell2010"
+        h98     = "Haskell98"
+        ghc2021 = "GHC2021 (requires at least GHC 9.2)"
+
+    l <- promptList ("Choose a language for your " ++ pkgType)
+      [h2010, h98, ghc2021]
+      (DefaultPrompt h2010)
       Nothing
       True
 
-    case lang of
-      "Haskell2010" -> return Haskell2010
-      "Haskell98" -> return Haskell98
-      l | all isAlphaNum l -> return $ UnknownLanguage l
-      _ -> do
-        putStrLn
-          $ "\nThe language must be alphanumeric. "
-          ++ "Please enter a different language."
-
-        languagePrompt flags pkgType
+    if
+      | l == h2010       -> return Haskell2010
+      | l == h98         -> return Haskell98
+      | l == ghc2021     -> return GHC2021
+      | otherwise        -> return $ UnknownLanguage l
 
 noCommentsPrompt :: Interactive m => InitFlags -> m Bool
 noCommentsPrompt flags = getNoComments flags $ do
