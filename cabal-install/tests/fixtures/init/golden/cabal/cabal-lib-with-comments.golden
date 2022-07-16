@@ -105,4 +105,3 @@ test-suite y-test
     build-depends:
         base,
         y
-
