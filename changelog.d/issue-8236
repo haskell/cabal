@@ -1,0 +1,4 @@
+synopsis: cabal init -n: avoid extra blank lines
+packages: cabal-init Cabal-syntax
+issues: #8236
+prs: #8292

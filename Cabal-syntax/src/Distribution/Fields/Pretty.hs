@@ -89,18 +89,23 @@ data Opts ann = Opts
   }
 
 renderFields :: Opts ann -> [PrettyField ann] -> [String]
-renderFields opts fields = flattenBlocks $ map (renderField opts len) fields
+renderFields opts fields = flattenBlocks blocks
   where
     len = maxNameLength 0 fields
+    blocks = filter (not . null . _contentsBlock) -- empty blocks cause extra newlines #8236
+           $ map (renderField opts len) fields
 
     maxNameLength !acc []                            = acc
     maxNameLength !acc (PrettyField _ name _ : rest) = maxNameLength (max acc (BS.length name)) rest
     maxNameLength !acc (PrettySection {}   : rest)   = maxNameLength acc rest
     maxNameLength !acc (PrettyEmpty : rest) = maxNameLength acc rest
 
--- | Block of lines,
--- Boolean parameter tells whether block should be surrounded by empty lines
-data Block = Block Margin Margin [String]
+-- | Block of lines with flags for optional blank lines before and after
+data Block = Block
+  { _beforeBlock   :: Margin
+  , _afterBlock    :: Margin
+  , _contentsBlock :: [String]
+  }
 
 data Margin = Margin | NoMargin
   deriving Eq
