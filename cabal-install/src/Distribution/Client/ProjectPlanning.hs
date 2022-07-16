@@ -1076,7 +1076,10 @@ planPackages verbosity comp platform solver SolverSettings{..}
         -- installed for global packages, or prefer latest even for
         -- global packages. Perhaps should be configurable but with a
         -- different name than "upgrade-dependencies".
-      . setPreferenceDefault PreferLatestForSelected
+      . setPreferenceDefault
+        (if Cabal.asBool solverSettingPreferOldest
+          then PreferAllOldest
+          else PreferLatestForSelected)
                            {-(if solverSettingUpgradeDeps
                                 then PreferAllLatest
                                 else PreferLatestForSelected)-}
