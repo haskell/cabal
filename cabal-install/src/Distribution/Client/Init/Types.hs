@@ -72,7 +72,7 @@ import Language.Haskell.Extension ( Language(..), Extension )
 import qualified System.IO
 
 import qualified System.Directory as P
-import qualified System.Process as Process
+import qualified System.Process as P
 import qualified Distribution.Compat.Environment as P
 import System.FilePath
 import Distribution.FieldGrammar.Newtypes (SpecLicense)
@@ -342,7 +342,7 @@ instance Interactive IO where
     doesDirectoryExist = P.doesDirectoryExist
     doesFileExist = P.doesFileExist
     canonicalizePathNoThrow = P.canonicalizePathNoThrow
-    readProcessWithExitCode = Process.readProcessWithExitCode
+    readProcessWithExitCode = P.readProcessWithExitCode
     getEnvironment = P.getEnvironment
     getCurrentYear = P.getCurrentYear
     listFilesInside = P.listFilesInside
