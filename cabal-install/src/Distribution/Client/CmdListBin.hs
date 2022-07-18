@@ -78,7 +78,7 @@ listbinAction flags@NixStyleFlags{..} args globalFlags = do
       _   -> die' verbosity "One target is required, given multiple"
 
   -- configure and elaborate target selectors
-  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags $ \targetCtx ctx targetSelectors -> do
+  withContextAndSelectors RejectNoTargets (Just ExeKind) flags [target] globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     baseCtx <- case targetCtx of
       ProjectContext             -> return ctx
       GlobalContext              -> return ctx

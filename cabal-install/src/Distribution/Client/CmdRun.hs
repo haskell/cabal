@@ -122,7 +122,7 @@ runCommand = CommandUI
 --
 runAction :: NixStyleFlags () -> [String] -> GlobalFlags -> IO ()
 runAction flags@NixStyleFlags {..} targetAndArgs globalFlags
-  = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags $ \targetCtx ctx targetSelectors -> do
+  = withContextAndSelectors RejectNoTargets (Just ExeKind) flags targetStr globalFlags OtherCommand $ \targetCtx ctx targetSelectors -> do
     (baseCtx, defaultVerbosity) <- case targetCtx of
       ProjectContext             -> return (ctx, normal)
       GlobalContext              -> return (ctx, normal)
