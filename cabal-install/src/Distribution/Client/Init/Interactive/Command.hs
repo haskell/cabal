@@ -291,7 +291,7 @@ cabalVersionPrompt flags = getCabalVersion flags $ do
       CabalSpecV2_2  -> "2.2   (+ support for 'common', 'elif', redundant commas, SPDX)"
       CabalSpecV2_4  -> "2.4   (+ support for '**' globbing)"
       CabalSpecV3_0  -> "3.0   (+ set notation for ==, common stanzas in ifs, more redundant commas, better pkgconfig-depends)"
-      CabalSpecV3_4  -> "3.4   (+ support for 'pkg:sublib' syntax, active repo configuration, rich index-state syntax)"
+      CabalSpecV3_4  -> "3.4   (+ sublibraries in 'mixins', optional 'default-language')"
       _ -> showCabalSpecVersion v
 
 packageNamePrompt :: Interactive m => SourcePackageDb -> InitFlags -> m PackageName
