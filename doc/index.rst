@@ -8,10 +8,9 @@ Welcome to the Cabal User Guide
 
    getting-started
    intro
-   config-and-install
    concepts-and-development
    nix-local-build-overview
-   cabal-commands
+   cabal-config-and-commands
    cabal-package
    cabal-project
    setup-commands
