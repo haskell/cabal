@@ -417,7 +417,7 @@ ppExplanation UncommonBSD4 =
       ++ "refers to the old 4-clause BSD license with the advertising "
       ++ "clause. 'BSD3' refers the new 3-clause BSD license."
 ppExplanation (UnknownLicenseVersion lic known) =
-    "'license: " ++ prettyShow (lic) ++ "' is not a known "
+    "'license: " ++ prettyShow lic ++ "' is not a known "
       ++ "version of that license. The known versions are "
       ++ commaSep (map prettyShow known)
       ++ ". If this is not a mistake and you think it should be a known "
@@ -956,7 +956,7 @@ checkExecutable pkg exe =
   -- This check does not apply to scripts.
   , check (package pkg /= fakePackageId
        && not (null (modulePath exe))
-       && (not $ fileExtensionSupportedLanguage $ modulePath exe)) $
+       && not (fileExtensionSupportedLanguage $ modulePath exe)) $
       PackageBuildImpossible NoHsLhsMain
 
   , checkSpecVersion pkg CabalSpecV1_18
@@ -1053,7 +1053,7 @@ checkFields pkg =
     check (not . FilePath.Windows.isValid . prettyShow . packageName $ pkg) $
       PackageDistInexcusable (InvalidNameWin pkg)
 
-  , check ((isPrefixOf "z-") . prettyShow . packageName $ pkg) $
+  , check (isPrefixOf "z-" . prettyShow . packageName $ pkg) $
       PackageDistInexcusable ZPrefix
 
   , check (isNothing (buildTypeRaw pkg) && specVersion pkg < CabalSpecV2_2) $
@@ -1159,7 +1159,7 @@ checkFields pkg =
       , isNoVersion vr ]
 
     internalLibraries =
-        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libraryNameString . libName)
+        map (maybe (packageName pkg) unqualComponentNameToPackageName . libraryNameString . libName)
             (allLibraries pkg)
 
     internalExecutables = map exeName $ executables pkg
@@ -1238,7 +1238,7 @@ checkOldLicense pkg lic = catMaybes
   , check (lic == BSD4) $
       PackageDistSuspicious UncommonBSD4
 
-  , case unknownLicenseVersion (lic) of -- xxx qua elimina parentesi?
+  , case unknownLicenseVersion lic of
       Just knownVersions -> Just $
         PackageDistSuspicious (UnknownLicenseVersion lic knownVersions)
       _ -> Nothing
@@ -1662,7 +1662,7 @@ checkCabalVersion pkg =
       PackageBuildWarning CVDefaultLanguage
 
   , check (specVersion pkg >= CabalSpecV1_10 && specVersion pkg < CabalSpecV3_4
-           && (any isNothing (buildInfoField defaultLanguage))) $
+           && any isNothing (buildInfoField defaultLanguage)) $
       PackageBuildWarning CVDefaultLanguageComponent
 
   , checkVersion CabalSpecV1_18
@@ -1694,7 +1694,7 @@ checkCabalVersion pkg =
 
     -- check use of extensions field
   , check (specVersion pkg >= CabalSpecV1_10
-           && (any (not . null) (buildInfoField oldExtensions))) $
+           && any (not . null) (buildInfoField oldExtensions)) $
       PackageBuildWarning CVExtensionsDeprecated
 
   , checkVersion CabalSpecV3_0 (any (not . null)
@@ -1961,10 +1961,10 @@ checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
 checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
-    check (has_Werror) $
+    check has_Werror $
       PackageDistInexcusable (WErrorUnneeded fieldName)
 
-  , check (has_J) $
+  , check has_J $
       PackageDistInexcusable (JUnneeded fieldName)
 
   , checkFlags ["-fdefer-type-errors"] $
@@ -2130,9 +2130,9 @@ checkCabalFileBOM ops = do
     -- But this can be an issue, see #3552 and also when
     -- --cabal-file is specified.  So if you can't find the file,
     -- just don't bother with this check.
-    Left _       -> return $ Nothing
+    Left _       -> return Nothing
     Right pdfile -> (flip check pc . BS.isPrefixOf bomUtf8)
-                    `liftM` (getFileContents ops pdfile)
+                    `liftM` getFileContents ops pdfile
       where pc = PackageDistInexcusable (BOMStart pdfile)
 
   where
