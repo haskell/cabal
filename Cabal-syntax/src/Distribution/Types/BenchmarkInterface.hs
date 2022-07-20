@@ -30,7 +30,7 @@ data BenchmarkInterface =
      -- interfaces for the given reason (e.g. unknown benchmark type).
      --
    | BenchmarkUnsupported BenchmarkType
-   deriving (Eq, Generic, Read, Show, Typeable, Data)
+   deriving (Eq, Ord, Generic, Read, Show, Typeable, Data)
 
 instance Binary BenchmarkInterface
 instance Structured BenchmarkInterface

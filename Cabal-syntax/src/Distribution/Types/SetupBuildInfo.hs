@@ -25,7 +25,7 @@ data SetupBuildInfo = SetupBuildInfo
         -- internally, and doesn't correspond to anything in the .cabal
         -- file. See #3199.
     }
-    deriving (Generic, Show, Eq, Read, Typeable, Data)
+    deriving (Generic, Show, Eq, Ord, Read, Typeable, Data)
 
 instance Binary SetupBuildInfo
 instance Structured SetupBuildInfo

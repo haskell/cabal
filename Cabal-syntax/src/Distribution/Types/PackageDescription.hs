@@ -146,7 +146,7 @@ data PackageDescription
         extraTmpFiles  :: [FilePath],
         extraDocFiles  :: [FilePath]
     }
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary PackageDescription
 instance Structured PackageDescription

@@ -24,7 +24,7 @@ data ModuleReexport = ModuleReexport {
        moduleReexportOriginalName    :: ModuleName,
        moduleReexportName            :: ModuleName
     }
-    deriving (Eq, Generic, Read, Show, Typeable, Data)
+    deriving (Eq, Ord, Generic, Read, Show, Typeable, Data)
 
 instance Binary ModuleReexport
 instance Structured ModuleReexport

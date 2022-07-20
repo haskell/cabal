@@ -477,9 +477,8 @@ exAvSrcPkg ex =
           -- We ignore these warnings because some unit tests test that the
           -- solver allows unknown extensions/languages when the compiler
           -- supports them.
-          let ignore = ["Unknown extensions:", "Unknown languages:"]
-          in [ err | err <- C.checkPackage (srcpkgDescription package) Nothing
-             , not $ any (`isPrefixOf` C.explanation err) ignore ]
+          let checks = C.checkPackage (srcpkgDescription package) Nothing
+          in filter (not . isUnknownLangExt) checks
     in if null pkgCheckErrors
        then package
        else error $ "invalid GenericPackageDescription for package "
@@ -665,6 +664,14 @@ exAvSrcPkg ex =
       case splitDeps deps of
         (directDeps, []) -> map mkDirect directDeps
         _                -> error "mkSetupDeps: custom setup has non-simple deps"
+
+    -- Check for `UnknownLanguages` and `UnknownExtensions`. See
+    isUnknownLangExt :: C.PackageCheck -> Bool
+    isUnknownLangExt pc = case C.explanation pc of
+                            C.UnknownExtensions {} -> True
+                            C.UnknownLanguages {} -> True
+                            _ -> False
+
 
 mkSimpleVersion :: ExamplePkgVersion -> C.Version
 mkSimpleVersion n = C.mkVersion [n, 0, 0]

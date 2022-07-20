@@ -24,7 +24,7 @@ data LibraryVisibility
     = LibraryVisibilityPublic
       -- | Internal library, default
     | LibraryVisibilityPrivate
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Pretty LibraryVisibility where
     pretty LibraryVisibilityPublic  = Disp.text "public"

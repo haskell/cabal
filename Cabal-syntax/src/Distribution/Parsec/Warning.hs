@@ -51,7 +51,7 @@ instance NFData PWarnType where rnf = genericRnf
 
 -- | Parser warning.
 data PWarning = PWarning !PWarnType !Position String
-    deriving (Show, Generic)
+    deriving (Eq, Ord, Show, Generic)
 
 instance Binary PWarning
 instance NFData PWarning where rnf = genericRnf

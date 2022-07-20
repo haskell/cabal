@@ -22,7 +22,7 @@ import Text.PrettyPrint    (char, text)
 data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
               | TestTypeLib Version     -- ^ \"type: detailed-x.y\"
               | TestTypeUnknown String Version -- ^ Some unknown test type e.g. \"type: foo\"
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary TestType
 instance Structured TestType
