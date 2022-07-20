@@ -74,6 +74,12 @@ project are:
 
     :default: ``./*.cabal``
 
+    .. warning::
+
+      The default value ``./*.cabal`` only takes effect if there is no explicit 
+      ``cabal.project`` file.
+      If you use such explicit file you *must* fill the field.
+
     Specifies the list of package locations which contain the local
     packages to be built by this project. Package locations can take the
     following forms:
