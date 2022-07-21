@@ -528,6 +528,34 @@ or the interpreter line
 
 For more information see :cfg-field:`verbose`
 
+cabal get
+---------
+
+``cabal get [PACKAGES]`` (synonym: ``cabal unpack``) downloads and unpacks
+the source code of ``PACKAGES`` locally. By default the content of the
+packages is unpacked in the current working directory, in named subfolders
+(e.g.  ``./filepath-1.2.0.8/``), use ``--destdir=PATH`` to specify another
+folder. By default the latest version of the package is downloaded, you can
+ask for a spefic one by adding version numbers
+(``cabal get random-1.0.0.1``).
+
+.. option:: -s, --source-repository[=head|this|...]]
+
+    Clone the package's source repository (Darcs, Git, etc.) instead
+    of downloading the tarball. Only works if the package specifies
+    a ``source-repository``.
+
+.. option:: --index-state=STATE
+
+    Pin your request to a specific Hackage index state. Available
+    ``STATE`` formats: Unix timestamps (e.g. ``@1474732068``),
+    ISO8601 UTC timestamps (e.g. ``2016-09-24T17:47:48Z``), or ``HEAD``
+    (default).
+
+.. option:: --pristine
+
+    Unpacks the pristine tarball, i.e. disregarding any Hackage revision.
+
 cabal freeze
 ------------
 
