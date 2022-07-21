@@ -28,7 +28,7 @@ data Benchmark = Benchmark {
         benchmarkInterface :: BenchmarkInterface,
         benchmarkBuildInfo :: BuildInfo
     }
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary Benchmark
 instance Structured Benchmark

@@ -60,7 +60,7 @@ data ForeignLib = ForeignLib {
       -- the condition trees (for instance, when creating an sdist)
     , foreignLibModDefFile :: [FilePath]
     }
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 data LibVersionInfo = LibVersionInfo Int Int Int deriving (Data, Eq, Generic, Typeable)
 

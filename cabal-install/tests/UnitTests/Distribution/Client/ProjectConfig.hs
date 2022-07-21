@@ -479,6 +479,7 @@ instance Arbitrary ProjectConfigShared where
         projectConfigOnlyConstrained      <- arbitrary
         projectConfigPerComponent         <- arbitrary
         projectConfigIndependentGoals     <- arbitrary
+        projectConfigPreferOldest         <- arbitrary
         projectConfigProgPathExtra        <- toNubList <$> listOf arbitraryShortToken
         return ProjectConfigShared {..}
       where
@@ -518,6 +519,7 @@ instance Arbitrary ProjectConfigShared where
         <*> shrinker projectConfigOnlyConstrained
         <*> shrinker projectConfigPerComponent
         <*> shrinker projectConfigIndependentGoals
+        <*> shrinker projectConfigPreferOldest
         <*> shrinker projectConfigProgPathExtra
       where
         preShrink_Constraints  = map fst
@@ -804,6 +806,9 @@ instance Arbitrary MinimizeConflictSet where
 
 instance Arbitrary IndependentGoals where
     arbitrary = IndependentGoals <$> arbitrary
+
+instance Arbitrary PreferOldest where
+    arbitrary = PreferOldest <$> arbitrary
 
 instance Arbitrary StrongFlags where
     arbitrary = StrongFlags <$> arbitrary

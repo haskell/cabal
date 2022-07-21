@@ -125,7 +125,7 @@ defaultCompilerFlavor = case buildCompilerFlavor of
 -- Cabal parses only @ghc-options@ and @ghcjs-options@, others are omitted.
 --
 data PerCompilerFlavor v = PerCompilerFlavor v v
-  deriving (Generic, Show, Read, Eq, Typeable, Data, Functor, Foldable
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data, Functor, Foldable
            , Traversable)
 
 instance Binary a => Binary (PerCompilerFlavor a)

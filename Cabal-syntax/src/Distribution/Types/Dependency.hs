@@ -44,7 +44,7 @@ data Dependency = Dependency
                     -- ^ The set of libraries required from the package.
                     -- Only the selected libraries will be built.
                     -- It does not affect the cabal-install solver yet.
-                  deriving (Generic, Read, Show, Eq, Typeable, Data)
+                  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 depPkgName :: Dependency -> PackageName
 depPkgName (Dependency pn _ _) = pn

@@ -17,7 +17,7 @@ import qualified Text.PrettyPrint as Disp
 
 data ExecutableScope = ExecutablePublic
                      | ExecutablePrivate
-    deriving (Generic, Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Pretty ExecutableScope where
     pretty ExecutablePublic       = Disp.text "public"

@@ -22,9 +22,11 @@
 
 module Distribution.PackageDescription.Check (
         -- * Package Checking
+        CheckExplanation(..),
         PackageCheck(..),
         checkPackage,
         checkConfiguredPackage,
+        wrapParseWarning,
 
         -- ** Checking package contents
         checkPackageFiles,
@@ -41,9 +43,11 @@ import Distribution.CabalSpecVersion
 import Distribution.Compat.Lens
 import Distribution.Compiler
 import Distribution.License
+import Distribution.ModuleName                       (ModuleName)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
+import Distribution.Parsec.Warning                   (PWarning, showPWarning)
 import Distribution.Pretty                           (prettyShow)
 import Distribution.Simple.BuildPaths                (autogenPathsModuleName)
 import Distribution.Simple.BuildToolDepends
@@ -80,6 +84,687 @@ import qualified Distribution.Types.PackageDescription.Lens        as L
 -- $setup
 -- >>> import Control.Arrow ((&&&))
 
+-- ------------------------------------------------------------
+-- * Warning messages
+-- ------------------------------------------------------------
+
+-- | Which stanza does `CheckExplanation` refer to?
+--
+data CEType = CETLibrary | CETExecutable | CETTest | CETBenchmark
+    deriving (Eq, Ord, Show)
+
+-- | Pretty printing `CEType`.
+--
+ppCE :: CEType -> String
+ppCE CETLibrary = "library"
+ppCE CETExecutable = "executable"
+ppCE CETTest = "test suite"
+ppCE CETBenchmark = "benchmark"
+
+-- | Which field does `CheckExplanation` refer to?
+--
+data CEField = CEFCategory | CEFMaintainer | CEFSynopsis
+             | CEFDescription | CEFSynOrDesc
+    deriving (Eq, Ord, Show)
+
+-- | Pretty printing `CEField`.
+--
+ppCEField :: CEField -> String
+ppCEField CEFCategory = "category"
+ppCEField CEFMaintainer = "maintainer"
+ppCEField CEFSynopsis = "synopsis"
+ppCEField CEFDescription = "description"
+ppCEField CEFSynOrDesc = "synopsis' or 'description"
+
+-- | Explanations of 'PackageCheck`'s errors/warnings.
+--
+data CheckExplanation =
+          ParseWarning FilePath PWarning
+        | NoNameField
+        | NoVersionField
+        | NoTarget
+        | UnnamedInternal
+        | DuplicateSections [UnqualComponentName]
+        | IllegalLibraryName PackageDescription
+        | NoModulesExposed Library
+        | SignaturesCabal2
+        | AutogenNotExposed
+        | AutogenIncludesNotIncluded
+        | NoMainIs Executable
+        | NoHsLhsMain
+        | MainCCabal1_18
+        | AutogenNoOther CEType UnqualComponentName
+        | AutogenIncludesNotIncludedExe
+        | TestsuiteTypeNotKnown TestType
+        | TestsuiteNotSupported TestType
+        | BenchmarkTypeNotKnown BenchmarkType
+        | BenchmarkNotSupported BenchmarkType
+        | NoHsLhsMainBench
+        | InvalidNameWin PackageDescription
+        | ZPrefix
+        | NoBuildType
+        | NoCustomSetup
+        | UnknownCompilers [String]
+        | UnknownLanguages [String]
+        | UnknownExtensions [String]
+        | LanguagesAsExtension [String]
+        | DeprecatedExtensions [(Extension, Maybe Extension)]
+        | MissingField CEField
+        | SynopsisTooLong
+        | ShortDesc
+        | InvalidTestWith [Dependency]
+        | ImpossibleInternalDep [Dependency]
+        | ImpossibleInternalExe [ExeDependency]
+        | MissingInternalExe [ExeDependency]
+        | NONELicense
+        | NoLicense
+        | AllRightsReservedLicense
+        | LicenseMessParse PackageDescription
+        | UnrecognisedLicense String
+        | UncommonBSD4
+        | UnknownLicenseVersion License [Version]
+        | NoLicenseFile
+        | UnrecognisedSourceRepo String
+        | MissingType
+        | MissingLocation
+        | MissingModule
+        | MissingTag
+        | SubdirRelPath
+        | SubdirGoodRelPath String
+        | OptFasm String
+        | OptViaC String
+        | OptHpc String
+        | OptProf String
+        | OptO String
+        | OptHide String
+        | OptMake String
+        | OptMain String
+        | OptONot String
+        | OptOOne String
+        | OptOTwo String
+        | OptSplitSections String
+        | OptSplitObjs String
+        | OptWls String
+        | OptExts String
+        | OptThreaded String
+        | OptRts String
+        | OptWithRts String
+        | COptONumber String String
+        | COptCPP String
+        | OptAlternatives String String [(String, String)]
+        | RelativeOutside String FilePath
+        | AbsolutePath String FilePath
+        | BadRelativePAth String FilePath String
+        | DistPoint (Maybe String) FilePath
+        | GlobSyntaxError String String
+        | InvalidOnWin [FilePath]
+        | FilePathTooLong FilePath
+        | FilePathNameTooLong FilePath
+        | FilePathSplitTooLong FilePath
+        | FilePathEmpty
+        | CVTestSuite
+        | CVDefaultLanguage
+        | CVDefaultLanguageComponent
+        | CVExtraDocFiles
+        | CVMultiLib
+        | CVReexported
+        | CVMixins
+        | CVExtraFrameworkDirs
+        | CVDefaultExtensions
+        | CVExtensionsDeprecated
+        | CVSources
+        | CVExtraDynamic [[String]]
+        | CVVirtualModules
+        | CVSourceRepository
+        | CVExtensions CabalSpecVersion [Extension]
+        | CVCustomSetup
+        | CVExpliticDepsCustomSetup
+        | CVAutogenPaths
+        | GlobNoMatch String String
+        | GlobExactMatch String String FilePath
+        | GlobNoDir String String FilePath
+        | UnknownOS [String]
+        | UnknownArch [String]
+        | UnknownCompiler [String]
+        | BaseNoUpperBounds
+        | SuspiciousFlagName [String]
+        | DeclaredUsedFlags (Set FlagName) (Set FlagName)
+        | NonASCIICustomField [String]
+        | RebindableClash
+        | WErrorUnneeded String
+        | JUnneeded String
+        | FDeferTypeErrorsUnneeded String
+        | DynamicUnneeded String
+        | ProfilingUnneeded String
+        | UpperBoundSetup String
+        | DuplicateModule String [ModuleName]
+        | PotentialDupModule String [ModuleName]
+        | BOMStart FilePath
+        | NotPackageName FilePath String
+        | NoDesc
+        | MultiDesc [String]
+        | UnknownFile String (SymbolicPath PackageDir LicenseFile)
+        | MissingSetupFile
+        | MissingConfigureScript
+        | UnknownDirectory String FilePath
+        | MissingSourceControl
+    deriving (Eq, Ord, Show)
+
+-- | Wraps `ParseWarning` into `PackageCheck`.
+--
+wrapParseWarning :: FilePath -> PWarning -> PackageCheck
+wrapParseWarning fp pw = PackageDistSuspicious (ParseWarning fp pw)
+    -- TODO: as Jul 2022 there is no severity indication attached PWarnType.
+    --       Once that is added, we can output something more appropriate
+    --       than PackageDistSuspicious for every parse warning.
+    --       (see: Cabal-syntax/src/Distribution/Parsec/Warning.hs)
+
+-- | Pretty printing `CheckExplanation`.
+--
+ppExplanation :: CheckExplanation -> String
+ppExplanation (ParseWarning fp pp) = showPWarning fp pp
+ppExplanation NoNameField = "No 'name' field."
+ppExplanation NoVersionField = "No 'version' field."
+ppExplanation NoTarget =
+    "No executables, libraries, tests, or benchmarks found. Nothing to do."
+ppExplanation UnnamedInternal =
+    "Found one or more unnamed internal libraries. Only the non-internal"
+      ++ " library can have the same name as the package."
+ppExplanation (DuplicateSections duplicateNames) =
+    "Duplicate sections: "
+      ++ commaSep (map unUnqualComponentName duplicateNames)
+      ++ ". The name of every library, executable, test suite,"
+      ++ " and benchmark section in the package must be unique."
+ppExplanation (IllegalLibraryName pkg) =
+    "Illegal internal library name "
+      ++ prettyShow (packageName pkg)
+      ++ ". Internal libraries cannot have the same name as the package."
+      ++ " Maybe you wanted a non-internal library?"
+      ++ " If so, rewrite the section stanza"
+      ++ " from 'library: '" ++ prettyShow (packageName pkg)
+      ++ "' to 'library'."
+ppExplanation (NoModulesExposed lib) =
+    showLibraryName (libName lib) ++ " does not expose any modules"
+ppExplanation SignaturesCabal2 =
+    "To use the 'signatures' field the package needs to specify "
+      ++ "at least 'cabal-version: 2.0'."
+ppExplanation AutogenNotExposed =
+    "An 'autogen-module' is neither on 'exposed-modules' or 'other-modules'."
+ppExplanation AutogenIncludesNotIncluded =
+    "An include in 'autogen-includes' is neither in 'includes' or "
+       ++ "'install-includes'."
+ppExplanation (NoMainIs exe) =
+    "No 'main-is' field found for executable " ++ prettyShow (exeName exe)
+ppExplanation NoHsLhsMain =
+    "The 'main-is' field must specify a '.hs' or '.lhs' file "
+      ++ "(even if it is generated by a preprocessor), "
+      ++ "or it may specify a C/C++/obj-C source file."
+ppExplanation MainCCabal1_18 =
+    "The package uses a C/C++/obj-C source file for the 'main-is' field. "
+      ++ "To use this feature you need to specify 'cabal-version: 1.18' or"
+      ++ " higher."
+ppExplanation (AutogenNoOther ct ucn) =
+    "On " ++ ppCE ct ++ " '" ++ prettyShow ucn ++ "' an 'autogen-module'"
+      ++ " is not on 'other-modules'"
+ppExplanation AutogenIncludesNotIncludedExe =
+    "An include in 'autogen-includes' is not in 'includes'."
+ppExplanation (TestsuiteTypeNotKnown tt) =
+    quote (prettyShow tt) ++ " is not a known type of test suite. "
+      ++ "Either remove the 'type' field or use a known type. "
+      ++ "The known test suite types are: "
+      ++ commaSep (map prettyShow knownTestTypes)
+ppExplanation (TestsuiteNotSupported tt) =
+    quote (prettyShow tt) ++ " is not a supported test suite version. "
+      ++ "Either remove the 'type' field or use a known type. "
+      ++ "The known test suite types are: "
+      ++ commaSep (map prettyShow knownTestTypes)
+ppExplanation (BenchmarkTypeNotKnown tt) =
+    quote (prettyShow tt) ++ " is not a known type of benchmark. "
+      ++ "Either remove the 'type' field or use a known type. "
+      ++ "The known benchmark types are: "
+      ++ commaSep (map prettyShow knownBenchmarkTypes)
+ppExplanation (BenchmarkNotSupported tt) =
+    quote (prettyShow tt) ++ " is not a supported benchmark version. "
+      ++ "Either remove the 'type' field or use a known type. "
+      ++ "The known benchmark types are: "
+      ++ commaSep (map prettyShow knownBenchmarkTypes)
+ppExplanation NoHsLhsMainBench =
+    "The 'main-is' field must specify a '.hs' or '.lhs' file "
+      ++ "(even if it is generated by a preprocessor)."
+ppExplanation (InvalidNameWin pkg) =
+    "The package name '" ++ prettyShow (packageName pkg) ++ "' is "
+      ++ "invalid on Windows. Many tools need to convert package names to "
+      ++ "file names so using this name would cause problems."
+ppExplanation ZPrefix =
+    "Package names with the prefix 'z-' are reserved by Cabal and "
+      ++ "cannot be used."
+ppExplanation NoBuildType =
+    "No 'build-type' specified. If you do not need a custom Setup.hs or "
+      ++ "./configure script then use 'build-type: Simple'."
+ppExplanation NoCustomSetup =
+    "Ignoring the 'custom-setup' section because the 'build-type' is "
+      ++ "not 'Custom'. Use 'build-type: Custom' if you need to use a "
+      ++ "custom Setup.hs script."
+ppExplanation (UnknownCompilers unknownCompilers) =
+    "Unknown compiler " ++ commaSep (map quote unknownCompilers)
+      ++ " in 'tested-with' field."
+ppExplanation (UnknownLanguages unknownLanguages) =
+    "Unknown languages: " ++ commaSep unknownLanguages
+ppExplanation (UnknownExtensions unknownExtensions) =
+    "Unknown extensions: " ++ commaSep unknownExtensions
+ppExplanation (LanguagesAsExtension languagesUsedAsExtensions) =
+    "Languages listed as extensions: "
+      ++ commaSep languagesUsedAsExtensions
+      ++ ". Languages must be specified in either the 'default-language' "
+      ++ " or the 'other-languages' field."
+ppExplanation (DeprecatedExtensions ourDeprecatedExtensions) =
+    "Deprecated extensions: "
+      ++ commaSep (map (quote . prettyShow . fst) ourDeprecatedExtensions)
+      ++ ". " ++ unwords
+           [ "Instead of '" ++ prettyShow ext
+          ++ "' use '" ++ prettyShow replacement ++ "'."
+           | (ext, Just replacement) <- ourDeprecatedExtensions ]
+ppExplanation (MissingField cef) =
+    "No '" ++ ppCEField cef ++ "' field."
+ppExplanation SynopsisTooLong =
+    "The 'synopsis' field is rather long (max 80 chars is recommended)."
+ppExplanation ShortDesc =
+    "The 'description' field should be longer than the 'synopsis' field. "
+      ++ "It's useful to provide an informative 'description' to allow "
+      ++ "Haskell programmers who have never heard about your package to "
+      ++ "understand the purpose of your package. "
+      ++ "The 'description' field content is typically shown by tooling "
+      ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
+      ++ "serves as a headline. "
+      ++ "Please refer to <https://cabal.readthedocs.io/en/stable/"
+      ++ "cabal-package.html#package-properties> for more details."
+ppExplanation (InvalidTestWith testedWithImpossibleRanges) =
+    "Invalid 'tested-with' version range: "
+      ++ commaSep (map prettyShow testedWithImpossibleRanges)
+      ++ ". To indicate that you have tested a package with multiple "
+      ++ "different versions of the same compiler use multiple entries, "
+      ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
+      ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
+ppExplanation (ImpossibleInternalDep depInternalLibWithImpossibleVersion) =
+    "The package has an impossible version range for a dependency on an "
+      ++ "internal library: "
+      ++ commaSep (map prettyShow depInternalLibWithImpossibleVersion)
+      ++ ". This version range does not include the current package, and must "
+      ++ "be removed as the current package's library will always be used."
+ppExplanation (ImpossibleInternalExe depInternalExecWithImpossibleVersion) =
+    "The package has an impossible version range for a dependency on an "
+      ++ "internal executable: "
+      ++ commaSep (map prettyShow depInternalExecWithImpossibleVersion)
+      ++ ". This version range does not include the current package, and must "
+      ++ "be removed as the current package's executable will always be used."
+ppExplanation (MissingInternalExe depInternalExeWithImpossibleVersion) =
+    "The package depends on a missing internal executable: "
+      ++ commaSep (map prettyShow depInternalExeWithImpossibleVersion)
+ppExplanation NONELicense = "The 'license' field is missing or is NONE."
+ppExplanation NoLicense = "The 'license' field is missing."
+ppExplanation AllRightsReservedLicense =
+    "The 'license' is AllRightsReserved. Is that really what you want?"
+ppExplanation (LicenseMessParse pkg) =
+    "Unfortunately the license " ++ quote (prettyShow (license pkg))
+      ++ " messes up the parser in earlier Cabal versions so you need to "
+      ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
+      ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
+ppExplanation (UnrecognisedLicense l) =
+    quote ("license: " ++ l) ++ " is not a recognised license. The "
+      ++ "known licenses are: " ++ commaSep (map prettyShow knownLicenses)
+ppExplanation UncommonBSD4 =
+    "Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' "
+      ++ "refers to the old 4-clause BSD license with the advertising "
+      ++ "clause. 'BSD3' refers the new 3-clause BSD license."
+ppExplanation (UnknownLicenseVersion lic known) =
+    "'license: " ++ prettyShow lic ++ "' is not a known "
+      ++ "version of that license. The known versions are "
+      ++ commaSep (map prettyShow known)
+      ++ ". If this is not a mistake and you think it should be a known "
+      ++ "version then please file a ticket."
+ppExplanation NoLicenseFile = "A 'license-file' is not specified."
+ppExplanation (UnrecognisedSourceRepo kind) =
+    quote kind ++ " is not a recognised kind of source-repository. "
+      ++ "The repo kind is usually 'head' or 'this'"
+ppExplanation MissingType =
+    "The source-repository 'type' is a required field."
+ppExplanation MissingLocation =
+    "The source-repository 'location' is a required field."
+ppExplanation MissingModule =
+    "For a CVS source-repository, the 'module' is a required field."
+ppExplanation MissingTag =
+    "For the 'this' kind of source-repository, the 'tag' is a required "
+      ++ "field. It should specify the tag corresponding to this version "
+      ++ "or release of the package."
+ppExplanation SubdirRelPath =
+    "The 'subdir' field of a source-repository must be a relative path."
+ppExplanation (SubdirGoodRelPath err) =
+    "The 'subdir' field of a source-repository is not a good relative path: "
+      ++ show err
+ppExplanation (OptFasm fieldName) =
+    "'" ++ fieldName ++ ": -fasm' is unnecessary and will not work on CPU "
+      ++ "architectures other than x86, x86-64, ppc or sparc."
+ppExplanation (OptViaC fieldName) =
+    "'" ++ fieldName ++": -fvia-C' is usually unnecessary. If your package "
+      ++ "needs -via-C for correctness rather than performance then it "
+      ++ "is using the FFI incorrectly and will probably not work with GHC "
+      ++ "6.10 or later."
+ppExplanation (OptHpc fieldName) =
+    "'" ++ fieldName ++ ": -fhpc' is not necessary. Use the configure flag "
+      ++ " --enable-coverage instead."
+ppExplanation (OptProf fieldName) =
+    "'" ++ fieldName ++ ": -prof' is not necessary and will lead to problems "
+      ++ "when used on a library. Use the configure flag "
+      ++ "--enable-library-profiling and/or --enable-profiling."
+ppExplanation (OptO fieldName) =
+    "'" ++ fieldName ++ ": -o' is not needed. "
+      ++ "The output files are named automatically."
+ppExplanation (OptHide fieldName) =
+    "'" ++ fieldName ++ ": -hide-package' is never needed. "
+      ++ "Cabal hides all packages."
+ppExplanation (OptMake fieldName) =
+    "'" ++ fieldName
+      ++ ": --make' is never needed. Cabal uses this automatically."
+ppExplanation (OptMain fieldName) =
+    "'" ++ fieldName ++ ": -main-is' is not portable."
+ppExplanation (OptONot fieldName) =
+      "'" ++ fieldName ++ ": -O0' is not needed. "
+      ++ "Use the --disable-optimization configure flag."
+ppExplanation (OptOOne fieldName) =
+    "'" ++ fieldName ++ ": -O' is not needed. "
+      ++ "Cabal automatically adds the '-O' flag. "
+      ++ "Setting it yourself interferes with the --disable-optimization flag."
+ppExplanation (OptOTwo fieldName) =
+    "'" ++ fieldName ++ ": -O2' is rarely needed. "
+      ++ "Check that it is giving a real benefit "
+      ++ "and not just imposing longer compile times on your users."
+ppExplanation (OptSplitSections fieldName) =
+    "'" ++ fieldName ++ ": -split-sections' is not needed. "
+      ++ "Use the --enable-split-sections configure flag."
+ppExplanation (OptSplitObjs fieldName) =
+    "'" ++ fieldName ++ ": -split-objs' is not needed. "
+      ++ "Use the --enable-split-objs configure flag."
+ppExplanation (OptWls fieldName) =
+    "'" ++ fieldName ++ ": -optl-Wl,-s' is not needed and is not portable to"
+      ++ " all operating systems. Cabal 1.4 and later automatically strip"
+      ++ " executables. Cabal also has a flag --disable-executable-stripping"
+      ++ " which is necessary when building packages for some Linux"
+      ++ " distributions and using '-optl-Wl,-s' prevents that from working."
+ppExplanation (OptExts fieldName) =
+    "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
+      ++ "the 'extensions' field."
+ppExplanation (OptThreaded fieldName) =
+    "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
+      ++ "only be used for executables."
+ppExplanation (OptRts fieldName) =
+    "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
+      ++ "only be used for executables."
+ppExplanation (OptWithRts fieldName) =
+    "'" ++ fieldName ++ ": -with-rtsopts' has no effect for libraries. It "
+      ++ "should only be used for executables."
+ppExplanation (COptONumber prefix label) =
+    "'" ++ prefix ++": -O[n]' is generally not needed. When building with "
+      ++ " optimisations Cabal automatically adds '-O2' for " ++ label
+      ++ " code. Setting it yourself interferes with the"
+      ++ " --disable-optimization flag."
+ppExplanation (COptCPP opt) =
+    "'cpp-options: " ++ opt ++ "' is not a portable C-preprocessor flag."
+ppExplanation (OptAlternatives badField goodField flags) =
+    "Instead of " ++ quote (badField ++ ": " ++ unwords badFlags)
+      ++ " use " ++ quote (goodField ++ ": " ++ unwords goodFlags)
+  where (badFlags, goodFlags) = unzip flags
+ppExplanation (RelativeOutside field path) =
+    quote (field ++ ": " ++ path)
+      ++ " is a relative path outside of the source tree. "
+      ++ "This will not work when generating a tarball with 'sdist'."
+ppExplanation (AbsolutePath field path) =
+    quote (field ++ ": " ++ path) ++ " specifies an absolute path, but the "
+      ++ quote field ++ " field must use relative paths."
+ppExplanation (BadRelativePAth field path err) =
+    quote (field ++ ": " ++ path)
+      ++ " is not a good relative path: " ++ show err
+ppExplanation (DistPoint mfield path) =
+    incipit ++ " points inside the 'dist' "
+      ++ "directory. This is not reliable because the location of this "
+      ++ "directory is configurable by the user (or package manager). In "
+      ++ "addition the layout of the 'dist' directory is subject to change "
+      ++ "in future versions of Cabal."
+  where -- mfiled Nothing -> the path is inside `ghc-options`
+        incipit = maybe ("'ghc-options' path " ++ quote path)
+                        (\field -> quote (field ++ ": " ++ path))
+                        mfield
+ppExplanation (GlobSyntaxError field expl) =
+    "In the '" ++ field ++ "' field: " ++ expl
+ppExplanation (InvalidOnWin paths) =
+    "The " ++ quotes paths ++ " invalid on Windows, which "
+      ++ "would cause portability problems for this package. Windows file "
+      ++ "names cannot contain any of the characters \":*?<>|\" and there "
+      ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
+      ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+  where quotes [failed] = "path " ++ quote failed ++ " is"
+        quotes failed = "paths " ++ intercalate ", " (map quote failed)
+                          ++ " are"
+ppExplanation (FilePathTooLong path) =
+         "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. The maximum length is 255 ASCII characters.\n"
+      ++ "The file in question is:\n  " ++ path
+ppExplanation (FilePathNameTooLong path) =
+    "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. The maximum length for the name part (including "
+      ++ "extension) is 100 ASCII characters. The maximum length for any "
+      ++ "individual directory component is 155.\n"
+      ++ "The file in question is:\n  " ++ path
+ppExplanation (FilePathSplitTooLong path) =
+    "The following file name is too long to store in a portable POSIX "
+      ++ "format tar archive. While the total length is less than 255 ASCII "
+      ++ "characters, there are unfortunately further restrictions. It has to "
+      ++ "be possible to split the file path on a directory separator into "
+      ++ "two parts such that the first part fits in 155 characters or less "
+      ++ "and the second part fits in 100 characters or less. Basically you "
+      ++ "have to make the file name or directory names shorter, or you could "
+      ++ "split a long directory name into nested subdirectories with shorter "
+      ++ "names.\nThe file in question is:\n  " ++ path
+ppExplanation FilePathEmpty =
+    "Encountered a file with an empty name, something is very wrong! "
+      ++ "Files with an empty name cannot be stored in a tar archive or in "
+      ++ "standard file systems."
+ppExplanation CVTestSuite =
+    "The 'test-suite' section is new in Cabal 1.10. "
+      ++ "Unfortunately it messes up the parser in older Cabal versions "
+      ++ "so you must specify at least 'cabal-version: >= 1.8', but note "
+      ++ "that only Cabal 1.10 and later can actually run such test suites."
+ppExplanation CVDefaultLanguage =
+    "To use the 'default-language' field the package needs to specify "
+      ++ "at least 'cabal-version: >= 1.10'."
+ppExplanation CVDefaultLanguageComponent =
+    "Packages using 'cabal-version: >= 1.10' and before 'cabal-version: 3.4' "
+      ++ "must specify the 'default-language' field for each component (e.g. "
+      ++ "Haskell98 or Haskell2010). If a component uses different languages "
+      ++ "in different modules then list the other ones in the "
+      ++ "'other-languages' field."
+ppExplanation CVExtraDocFiles =
+    "To use the 'extra-doc-files' field the package needs to specify "
+      ++ "'cabal-version: 1.18' or higher."
+ppExplanation CVMultiLib =
+    "To use multiple 'library' sections or a named library section "
+      ++ "the package needs to specify at least 'cabal-version: 2.0'."
+ppExplanation CVReexported =
+    "To use the 'reexported-module' field the package needs to specify "
+      ++ "'cabal-version: 1.22' or higher."
+ppExplanation CVMixins =
+    "To use the 'mixins' field the package needs to specify "
+      ++ "at least 'cabal-version: 2.0'."
+ppExplanation CVExtraFrameworkDirs =
+    "To use the 'extra-framework-dirs' field the package needs to specify"
+      ++ " 'cabal-version: 1.24' or higher."
+ppExplanation CVDefaultExtensions =
+    "To use the 'default-extensions' field the package needs to specify "
+      ++ "at least 'cabal-version: >= 1.10'."
+ppExplanation CVExtensionsDeprecated =
+    "For packages using 'cabal-version: >= 1.10' the 'extensions' "
+      ++ "field is deprecated. The new 'default-extensions' field lists "
+      ++ "extensions that are used in all modules in the component, while "
+      ++ "the 'other-extensions' field lists extensions that are used in "
+      ++ "some modules, e.g. via the {-# LANGUAGE #-} pragma."
+ppExplanation CVSources =
+    "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
+      ++ " and 'extra-library-flavours' requires the package "
+      ++ " to specify at least 'cabal-version: 3.0'."
+ppExplanation (CVExtraDynamic flavs) =
+    "The use of 'extra-dynamic-library-flavours' requires the package "
+      ++ " to specify at least 'cabal-version: 3.0'. The flavours are: "
+      ++ commaSep (concat flavs)
+ppExplanation CVVirtualModules =
+    "The use of 'virtual-modules' requires the package "
+      ++ " to specify at least 'cabal-version: 2.2'."
+ppExplanation CVSourceRepository =
+    "The 'source-repository' section is new in Cabal 1.6. "
+      ++ "Unfortunately it messes up the parser in earlier Cabal versions "
+      ++ "so you need to specify 'cabal-version: >= 1.6'."
+ppExplanation (CVExtensions version extCab12) =
+    "Unfortunately the language extensions "
+      ++ commaSep (map (quote . prettyShow) extCab12)
+      ++ " break the parser in earlier Cabal versions so you need to "
+      ++ "specify 'cabal-version: >= " ++ showCabalSpecVersion version
+      ++ "'. Alternatively if you require compatibility with earlier "
+      ++ "Cabal versions then you may be able to use an equivalent "
+      ++ "compiler-specific flag."
+ppExplanation CVCustomSetup =
+    "Packages using 'cabal-version: 1.24' or higher with 'build-type: Custom' "
+      ++ "must use a 'custom-setup' section with a 'setup-depends' field "
+      ++ "that specifies the dependencies of the Setup.hs script itself. "
+      ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
+      ++ "so a simple example would be 'setup-depends: base, Cabal'."
+ppExplanation CVExpliticDepsCustomSetup =
+    "From version 1.24 cabal supports specifying explicit dependencies "
+      ++ "for Custom setup scripts. Consider using 'cabal-version: 1.24' or "
+      ++ "higher and adding a 'custom-setup' section with a 'setup-depends' "
+      ++ "field that specifies the dependencies of the Setup.hs script "
+      ++ "itself. The 'setup-depends' field uses the same syntax as "
+      ++ "'build-depends', so a simple example would be 'setup-depends: base, "
+      ++ "Cabal'."
+ppExplanation CVAutogenPaths =
+    "Packages using 'cabal-version: 2.0' and the autogenerated "
+      ++ "module Paths_* must include it also on the 'autogen-modules' field "
+      ++ "besides 'exposed-modules' and 'other-modules'. This specifies that "
+      ++ "the module does not come with the package and is generated on "
+      ++ "setup. Modules built with a custom Setup.hs script also go here "
+      ++ "to ensure that commands like sdist don't fail."
+ppExplanation (GlobNoMatch field glob) =
+    "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+      ++ " match any files."
+ppExplanation (GlobExactMatch field glob file) =
+    "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
+      ++ " match the file '" ++ file ++ "' because the extensions do not"
+      ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
+      ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or"
+      ++ " higher."
+ppExplanation (GlobNoDir field glob dir) =
+    "In '" ++ field ++ "': the pattern '" ++ glob ++ "' attempts to"
+      ++ " match files in the directory '" ++ dir ++ "', but there is no"
+      ++ " directory by that name."
+ppExplanation (UnknownOS unknownOSs) =
+    "Unknown operating system name " ++ commaSep (map quote unknownOSs)
+ppExplanation (UnknownArch unknownArches) =
+    "Unknown architecture name " ++ commaSep (map quote unknownArches)
+ppExplanation (UnknownCompiler unknownImpls) =
+    "Unknown compiler name " ++ commaSep (map quote unknownImpls)
+ppExplanation BaseNoUpperBounds =
+    "The dependency 'build-depends: base' does not specify an upper "
+      ++ "bound on the version number. Each major release of the 'base' "
+      ++ "package changes the API in various ways and most packages will "
+      ++ "need some changes to compile with it. The recommended practice "
+      ++ "is to specify an upper bound on the version of the 'base' "
+      ++ "package. This ensures your package will continue to build when a "
+      ++ "new major version of the 'base' package is released. If you are "
+      ++ "not sure what upper bound to use then use the next  major "
+      ++ "version. For example if you have tested your package with 'base' "
+      ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
+ppExplanation (SuspiciousFlagName invalidFlagNames) =
+    "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
+      ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
+      ++ "start with a dash. Also for better compatibility, flag names "
+      ++ "shouldn't contain non-ascii characters."
+ppExplanation (DeclaredUsedFlags declared used) =
+    "Declared and used flag sets differ: "
+      ++ s declared ++ " /= " ++ s used ++ ". "
+  where s :: Set.Set FlagName -> String
+        s = commaSep . map unFlagName . Set.toList
+ppExplanation (NonASCIICustomField nonAsciiXFields) =
+    "Non ascii custom fields: " ++ unwords nonAsciiXFields ++ ". "
+      ++ "For better compatibility, custom field names "
+      ++ "shouldn't contain non-ascii characters."
+ppExplanation RebindableClash =
+    "Packages using RebindableSyntax with OverloadedStrings or"
+      ++ " OverloadedLists in default-extensions, in conjunction with the"
+      ++ " autogenerated module Paths_*, are known to cause compile failures"
+      ++ " with Cabal < 2.2. To use these default-extensions with a Paths_*"
+      ++ " autogen module, specify at least 'cabal-version: 2.2'."
+ppExplanation (WErrorUnneeded fieldName) = addConditionalExp $
+    "'" ++ fieldName ++ ": -Werror' makes the package easy to "
+      ++ "break with future GHC versions because new GHC versions often "
+      ++ "add new warnings."
+ppExplanation (JUnneeded fieldName) = addConditionalExp $
+    "'" ++ fieldName ++ ": -j[N]' can make sense for specific user's setup,"
+      ++ " but it is not appropriate for a distributed package."
+ppExplanation (FDeferTypeErrorsUnneeded fieldName) = addConditionalExp $
+    "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development "
+      ++ "but is not appropriate for a distributed package."
+ppExplanation (DynamicUnneeded fieldName) = addConditionalExp $
+    "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
+      ++ "for a distributed package."
+ppExplanation (ProfilingUnneeded fieldName) = addConditionalExp $
+    "'" ++ fieldName ++ ": -fprof*' profiling flags are typically not "
+      ++ "appropriate for a distributed library package. These flags are "
+      ++ "useful to profile this package, but when profiling other packages "
+      ++ "that use this one these flags clutter the profile output with "
+      ++ "excessive detail. If you think other packages really want to see "
+      ++ "cost centres from this package then use '-fprof-auto-exported' "
+      ++ "which puts cost centres only on exported functions."
+ppExplanation (UpperBoundSetup nm) =
+    "The dependency 'setup-depends: '"++nm++"' does not specify an "
+      ++ "upper bound on the version number. Each major release of the "
+      ++ "'"++nm++"' package changes the API in various ways and most "
+      ++ "packages will need some changes to compile with it. If you are "
+      ++ "not sure what upper bound to use then use the next major "
+      ++ "version."
+ppExplanation (DuplicateModule s dupLibsLax) =
+    "Duplicate modules in " ++ s ++ ": "
+      ++ commaSep (map prettyShow dupLibsLax)
+ppExplanation (PotentialDupModule s dupLibsStrict) =
+    "Potential duplicate modules (subject to conditionals) in " ++ s
+      ++ ": " ++ commaSep (map prettyShow dupLibsStrict)
+ppExplanation (BOMStart pdfile) =
+    pdfile ++ " starts with an Unicode byte order mark (BOM)."
+      ++ " This may cause problems with older cabal versions."
+ppExplanation (NotPackageName pdfile expectedCabalname) =
+    "The filename " ++ quote pdfile ++ " does not match package name "
+      ++ "(expected: " ++ quote expectedCabalname ++ ")"
+ppExplanation NoDesc =
+    "No cabal file found.\n"
+      ++ "Please create a package description file <pkgname>.cabal"
+ppExplanation (MultiDesc multiple) =
+    "Multiple cabal files found while checking.\n"
+      ++ "Please use only one of: "
+      ++ intercalate ", " multiple
+ppExplanation (UnknownFile fieldname file) =
+    "The '" ++ fieldname ++ "' field refers to the file "
+      ++ quote (getSymbolicPath file) ++ " which does not exist."
+ppExplanation MissingSetupFile =
+    "The package is missing a Setup.hs or Setup.lhs script."
+ppExplanation MissingConfigureScript =
+    "The 'build-type' is 'Configure' but there is no 'configure' script. "
+      ++ "You probably need to run 'autoreconf -i' to generate it."
+ppExplanation (UnknownDirectory kind dir) =
+    quote (kind ++ ": " ++ dir)
+      ++ " specifies a directory which does not exist."
+ppExplanation MissingSourceControl =
+    "When distributing packages it is encouraged to specify source "
+      ++ "control information in the .cabal file using one or more "
+      ++ "'source-repository' sections. See the Cabal user guide for "
+      ++ "details."
+
+
 -- | Results of some kind of failed package check.
 --
 -- There are a range of severities, from merely dubious to totally insane.
@@ -91,33 +776,33 @@ data PackageCheck =
 
        -- | This package description is no good. There's no way it's going to
        -- build sensibly. This should give an error at configure time.
-       PackageBuildImpossible { explanation :: String }
+       PackageBuildImpossible { explanation :: CheckExplanation }
 
        -- | A problem that is likely to affect building the package, or an
        -- issue that we'd like every package author to be aware of, even if
        -- the package is never distributed.
-     | PackageBuildWarning { explanation :: String }
+     | PackageBuildWarning { explanation :: CheckExplanation }
 
        -- | An issue that might not be a problem for the package author but
        -- might be annoying or detrimental when the package is distributed to
        -- users. We should encourage distributed packages to be free from these
        -- issues, but occasionally there are justifiable reasons so we cannot
        -- ban them entirely.
-     | PackageDistSuspicious { explanation :: String }
+     | PackageDistSuspicious { explanation :: CheckExplanation }
 
        -- | Like PackageDistSuspicious but will only display warnings
        -- rather than causing abnormal exit when you run 'cabal check'.
-     | PackageDistSuspiciousWarn { explanation :: String }
+     | PackageDistSuspiciousWarn { explanation :: CheckExplanation }
 
        -- | An issue that is OK in the author's environment but is almost
        -- certain to be a portability problem for other environments. We can
        -- quite legitimately refuse to publicly distribute packages with these
        -- problems.
-     | PackageDistInexcusable { explanation :: String }
+     | PackageDistInexcusable { explanation :: CheckExplanation }
   deriving (Eq, Ord)
 
 instance Show PackageCheck where
-    show notice = explanation notice
+    show notice = ppExplanation (explanation notice)
 
 check :: Bool -> PackageCheck -> Maybe PackageCheck
 check False _  = Nothing
@@ -187,39 +872,29 @@ checkSanity pkg =
   catMaybes [
 
     check (null . unPackageName . packageName $ pkg) $
-      PackageBuildImpossible "No 'name' field."
+      PackageBuildImpossible NoNameField
 
   , check (nullVersion == packageVersion pkg) $
-      PackageBuildImpossible "No 'version' field."
+      PackageBuildImpossible NoVersionField
 
   , check (all ($ pkg) [ null . executables
                        , null . testSuites
                        , null . benchmarks
                        , null . allLibraries
                        , null . foreignLibs ]) $
-      PackageBuildImpossible
-        "No executables, libraries, tests, or benchmarks found. Nothing to do."
+      PackageBuildImpossible NoTarget
 
   , check (any (== LMainLibName) (map libName $ subLibraries pkg)) $
-      PackageBuildImpossible $ "Found one or more unnamed internal libraries. "
-        ++ "Only the non-internal library can have the same name as the package."
+      PackageBuildImpossible UnnamedInternal
 
   , check (not (null duplicateNames)) $
-      PackageBuildImpossible $ "Duplicate sections: "
-        ++ commaSep (map unUnqualComponentName duplicateNames)
-        ++ ". The name of every library, executable, test suite,"
-        ++ " and benchmark section in"
-        ++ " the package must be unique."
+      PackageBuildImpossible (DuplicateSections duplicateNames)
 
   -- NB: but it's OK for executables to have the same name!
   -- TODO shouldn't need to compare on the string level
-  , check (any (== prettyShow (packageName pkg)) (prettyShow <$> subLibNames)) $
-      PackageBuildImpossible $ "Illegal internal library name "
-        ++ prettyShow (packageName pkg)
-        ++ ". Internal libraries cannot have the same name as the package."
-        ++ " Maybe you wanted a non-internal library?"
-        ++ " If so, rewrite the section stanza"
-        ++ " from 'library: '" ++ prettyShow (packageName pkg) ++ "' to 'library'."
+  , check (any (== prettyShow (packageName pkg))
+               (prettyShow <$> subLibNames)) $
+      PackageBuildImpossible (IllegalLibraryName pkg)
   ]
   --TODO: check for name clashes case insensitively: windows file systems cannot
   --cope.
@@ -245,28 +920,21 @@ checkLibrary pkg lib =
 
   -- TODO: This check is bogus if a required-signature was passed through
     check (null (explicitLibModules lib) && null (reexportedModules lib)) $
-      PackageDistSuspiciousWarn $
-           showLibraryName (libName lib) ++ " does not expose any modules"
+      PackageDistSuspiciousWarn (NoModulesExposed lib)
 
     -- check use of signatures sections
   , checkVersion CabalSpecV2_0 (not (null (signatures lib))) $
-      PackageDistInexcusable $
-           "To use the 'signatures' field the package needs to specify "
-        ++ "at least 'cabal-version: 2.0'."
+      PackageDistInexcusable SignaturesCabal2
 
     -- check that all autogen-modules appear on other-modules or exposed-modules
   , check
       (not $ and $ map (flip elem (explicitLibModules lib)) (libModulesAutogen lib)) $
-      PackageBuildImpossible $
-           "An 'autogen-module' is neither on 'exposed-modules' or "
-        ++ "'other-modules'."
+      PackageBuildImpossible AutogenNotExposed
 
     -- check that all autogen-includes appear on includes or install-includes
   , check
       (not $ and $ map (flip elem (allExplicitIncludes lib)) (view L.autogenIncludes lib)) $
-      PackageBuildImpossible $
-           "An include in 'autogen-includes' is neither in 'includes' or "
-        ++ "'install-includes'."
+      PackageBuildImpossible AutogenIncludesNotIncluded
   ]
 
   where
@@ -283,35 +951,28 @@ checkExecutable pkg exe =
   catMaybes [
 
     check (null (modulePath exe)) $
-      PackageBuildImpossible $
-        "No 'main-is' field found for executable " ++ prettyShow (exeName exe)
+      PackageBuildImpossible (NoMainIs exe)
+
   -- This check does not apply to scripts.
   , check (package pkg /= fakePackageId
        && not (null (modulePath exe))
-       && (not $ fileExtensionSupportedLanguage $ modulePath exe)) $
-      PackageBuildImpossible $
-           "The 'main-is' field must specify a '.hs' or '.lhs' file "
-        ++ "(even if it is generated by a preprocessor), "
-        ++ "or it may specify a C/C++/obj-C source file."
+       && not (fileExtensionSupportedLanguage $ modulePath exe)) $
+      PackageBuildImpossible NoHsLhsMain
 
   , checkSpecVersion pkg CabalSpecV1_18
           (fileExtensionSupportedLanguage (modulePath exe)
         && takeExtension (modulePath exe) `notElem` [".hs", ".lhs"]) $
-      PackageDistInexcusable $
-           "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you need to specify 'cabal-version: 1.18' or higher."
+      PackageDistInexcusable MainCCabal1_18
 
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (exeModules exe)) (exeModulesAutogen exe)) $
-      PackageBuildImpossible $
-           "On executable '" ++ prettyShow (exeName exe) ++ "' an 'autogen-module' is not "
-        ++ "on 'other-modules'"
+      PackageBuildImpossible (AutogenNoOther CETExecutable (exeName exe))
 
     -- check that all autogen-includes appear on includes
   , check
       (not $ and $ map (flip elem (view L.includes exe)) (view L.autogenIncludes exe)) $
-      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
+      PackageBuildImpossible AutogenIncludesNotIncludedExe
   ]
 
 checkTestSuite :: PackageDescription -> TestSuite -> [PackageCheck]
@@ -320,42 +981,27 @@ checkTestSuite pkg test =
 
     case testInterface test of
       TestSuiteUnsupported tt@(TestTypeUnknown _ _) -> Just $
-        PackageBuildWarning $
-             quote (prettyShow tt) ++ " is not a known type of test suite. "
-          ++ "Either remove the 'type' field or use a known type. "
-          ++ "The known test suite types are: "
-          ++ commaSep (map prettyShow knownTestTypes)
+        PackageBuildWarning (TestsuiteTypeNotKnown tt)
 
       TestSuiteUnsupported tt -> Just $
-        PackageBuildWarning $
-             quote (prettyShow tt) ++ " is not a supported test suite version. "
-          ++ "Either remove the 'type' field or use a known type. "
-          ++ "The known test suite types are: "
-          ++ commaSep (map prettyShow knownTestTypes)
+        PackageBuildWarning (TestsuiteNotSupported tt)
       _ -> Nothing
 
   , check mainIsWrongExt $
-      PackageBuildImpossible $
-           "The 'main-is' field must specify a '.hs' or '.lhs' file "
-        ++ "(even if it is generated by a preprocessor), "
-        ++ "or it may specify a C/C++/obj-C source file."
+      PackageBuildImpossible NoHsLhsMain
 
   , checkSpecVersion pkg CabalSpecV1_18 (mainIsNotHsExt && not mainIsWrongExt) $
-      PackageDistInexcusable $
-           "The package uses a C/C++/obj-C source file for the 'main-is' field. "
-        ++ "To use this feature you need to specify 'cabal-version: 1.18' or higher."
+      PackageDistInexcusable MainCCabal1_18
 
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (testModules test)) (testModulesAutogen test)) $
-      PackageBuildImpossible $
-           "On test suite '" ++ prettyShow (testName test) ++ "' an 'autogen-module' is not "
-        ++ "on 'other-modules'"
+      PackageBuildImpossible (AutogenNoOther CETTest (testName test))
 
     -- check that all autogen-includes appear on includes
   , check
       (not $ and $ map (flip elem (view L.includes test)) (view L.autogenIncludes test)) $
-      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
+      PackageBuildImpossible AutogenIncludesNotIncludedExe
   ]
   where
     mainIsWrongExt = case testInterface test of
@@ -372,36 +1018,24 @@ checkBenchmark _pkg bm =
 
     case benchmarkInterface bm of
       BenchmarkUnsupported tt@(BenchmarkTypeUnknown _ _) -> Just $
-        PackageBuildWarning $
-             quote (prettyShow tt) ++ " is not a known type of benchmark. "
-          ++ "Either remove the 'type' field or use a known type. "
-          ++ "The known benchmark types are: "
-          ++ commaSep (map prettyShow knownBenchmarkTypes)
+        PackageBuildWarning (BenchmarkTypeNotKnown tt)
 
       BenchmarkUnsupported tt -> Just $
-        PackageBuildWarning $
-             quote (prettyShow tt) ++ " is not a supported benchmark version. "
-          ++ "Either remove the 'type' field or use a known type. "
-          ++ "The known benchmark types are: "
-          ++ commaSep (map prettyShow knownBenchmarkTypes)
+        PackageBuildWarning (BenchmarkNotSupported tt)
       _ -> Nothing
 
   , check mainIsWrongExt $
-      PackageBuildImpossible $
-           "The 'main-is' field must specify a '.hs' or '.lhs' file "
-        ++ "(even if it is generated by a preprocessor)."
+      PackageBuildImpossible NoHsLhsMainBench
 
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (benchmarkModules bm)) (benchmarkModulesAutogen bm)) $
-      PackageBuildImpossible $
-             "On benchmark '" ++ prettyShow (benchmarkName bm) ++ "' an 'autogen-module' is "
-          ++ "not on 'other-modules'"
+      PackageBuildImpossible (AutogenNoOther CETBenchmark (benchmarkName bm))
 
     -- check that all autogen-includes appear on includes
   , check
       (not $ and $ map (flip elem (view L.includes bm)) (view L.autogenIncludes bm)) $
-      PackageBuildImpossible "An include in 'autogen-includes' is not in 'includes'."
+      PackageBuildImpossible AutogenIncludesNotIncludedExe
   ]
   where
     mainIsWrongExt = case benchmarkInterface bm of
@@ -417,103 +1051,62 @@ checkFields pkg =
   catMaybes [
 
     check (not . FilePath.Windows.isValid . prettyShow . packageName $ pkg) $
-      PackageDistInexcusable $
-           "The package name '" ++ prettyShow (packageName pkg) ++ "' is "
-        ++ "invalid on Windows. Many tools need to convert package names to "
-        ++ "file names so using this name would cause problems."
+      PackageDistInexcusable (InvalidNameWin pkg)
 
-  , check ((isPrefixOf "z-") . prettyShow . packageName $ pkg) $
-      PackageDistInexcusable $
-           "Package names with the prefix 'z-' are reserved by Cabal and "
-        ++ "cannot be used."
+  , check (isPrefixOf "z-" . prettyShow . packageName $ pkg) $
+      PackageDistInexcusable ZPrefix
 
   , check (isNothing (buildTypeRaw pkg) && specVersion pkg < CabalSpecV2_2) $
-      PackageBuildWarning $
-           "No 'build-type' specified. If you do not need a custom Setup.hs or "
-        ++ "./configure script then use 'build-type: Simple'."
+      PackageBuildWarning NoBuildType
 
   , check (isJust (setupBuildInfo pkg) && buildType pkg /= Custom) $
-      PackageBuildWarning $
-           "Ignoring the 'custom-setup' section because the 'build-type' is "
-        ++ "not 'Custom'. Use 'build-type: Custom' if you need to use a "
-        ++ "custom Setup.hs script."
+      PackageBuildWarning NoCustomSetup
 
   , check (not (null unknownCompilers)) $
-      PackageBuildWarning $
-        "Unknown compiler " ++ commaSep (map quote unknownCompilers)
-                            ++ " in 'tested-with' field."
+      PackageBuildWarning (UnknownCompilers unknownCompilers)
 
   , check (not (null unknownLanguages)) $
-      PackageBuildWarning $
-        "Unknown languages: " ++ commaSep unknownLanguages
+      PackageBuildWarning (UnknownLanguages unknownLanguages)
 
   , check (not (null unknownExtensions)) $
-      PackageBuildWarning $
-        "Unknown extensions: " ++ commaSep unknownExtensions
+      PackageBuildWarning (UnknownExtensions unknownExtensions)
 
   , check (not (null languagesUsedAsExtensions)) $
-      PackageBuildWarning $
-           "Languages listed as extensions: "
-        ++ commaSep languagesUsedAsExtensions
-        ++ ". Languages must be specified in either the 'default-language' "
-        ++ " or the 'other-languages' field."
+      PackageBuildWarning (LanguagesAsExtension languagesUsedAsExtensions)
 
   , check (not (null ourDeprecatedExtensions)) $
-      PackageDistSuspicious $
-           "Deprecated extensions: "
-        ++ commaSep (map (quote . prettyShow . fst) ourDeprecatedExtensions)
-        ++ ". " ++ unwords
-             [ "Instead of '" ++ prettyShow ext
-            ++ "' use '" ++ prettyShow replacement ++ "'."
-             | (ext, Just replacement) <- ourDeprecatedExtensions ]
+      PackageDistSuspicious (DeprecatedExtensions ourDeprecatedExtensions)
 
   , check (ShortText.null (category pkg)) $
-      PackageDistSuspicious "No 'category' field."
+      PackageDistSuspicious (MissingField CEFCategory)
 
   , check (ShortText.null (maintainer pkg)) $
-      PackageDistSuspicious "No 'maintainer' field."
+      PackageDistSuspicious (MissingField CEFMaintainer)
 
   , check (ShortText.null (synopsis pkg) && ShortText.null (description pkg)) $
-      PackageDistInexcusable "No 'synopsis' or 'description' field."
+      PackageDistInexcusable (MissingField CEFSynOrDesc)
 
   , check (ShortText.null (description pkg) && not (ShortText.null (synopsis pkg))) $
-      PackageDistSuspicious "No 'description' field."
+      PackageDistSuspicious (MissingField CEFDescription)
 
   , check (ShortText.null (synopsis pkg) && not (ShortText.null (description pkg))) $
-      PackageDistSuspicious "No 'synopsis' field."
+      PackageDistSuspicious (MissingField CEFSynopsis)
 
     --TODO: recommend the bug reports URL, author and homepage fields
     --TODO: recommend not using the stability field
     --TODO: recommend specifying a source repo
 
   , check (ShortText.length (synopsis pkg) > 80) $
-      PackageDistSuspicious
-        "The 'synopsis' field is rather long (max 80 chars is recommended)."
+      PackageDistSuspicious SynopsisTooLong
 
     -- See also https://github.com/haskell/cabal/pull/3479
   , check (not (ShortText.null (description pkg))
            && ShortText.length (description pkg) <= ShortText.length (synopsis pkg)) $
-      PackageDistSuspicious $
-           "The 'description' field should be longer than the 'synopsis' "
-        ++ "field. "
-        ++ "It's useful to provide an informative 'description' to allow "
-        ++ "Haskell programmers who have never heard about your package to "
-        ++ "understand the purpose of your package. "
-        ++ "The 'description' field content is typically shown by tooling "
-        ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
-        ++ "serves as a headline. "
-        ++ "Please refer to <https://cabal.readthedocs.io/en/stable/"
-        ++ "cabal-package.html#package-properties> for more details."
+      PackageDistSuspicious ShortDesc
 
     -- check use of impossible constraints "tested-with: GHC== 6.10 && ==6.12"
   , check (not (null testedWithImpossibleRanges)) $
-      PackageDistInexcusable $
-           "Invalid 'tested-with' version range: "
-        ++ commaSep (map prettyShow testedWithImpossibleRanges)
-        ++ ". To indicate that you have tested a package with multiple "
-        ++ "different versions of the same compiler use multiple entries, "
-        ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
-        ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
+      PackageDistInexcusable (InvalidTestWith testedWithImpossibleRanges)
 
   -- for more details on why the following was commented out,
   -- check https://github.com/haskell/cabal/pull/7470#issuecomment-875878507
@@ -526,12 +1119,8 @@ checkFields pkg =
   --       ++ "as the current package's library will always be used."
 
   , check (not (null depInternalLibraryWithImpossibleVersion)) $
-      PackageBuildImpossible $
-           "The package has an impossible version range for a dependency on an "
-        ++ "internal library: "
-        ++ commaSep (map prettyShow depInternalLibraryWithImpossibleVersion)
-        ++ ". This version range does not include the current package, and must "
-        ++ "be removed as the current package's library will always be used."
+      PackageBuildImpossible
+        (ImpossibleInternalDep depInternalLibraryWithImpossibleVersion)
 
   -- , check (not (null depInternalExecutableWithExtraVersion)) $
   --     PackageBuildWarning $
@@ -542,17 +1131,11 @@ checkFields pkg =
   --       ++ "as the current package's executable will always be used."
 
   , check (not (null depInternalExecutableWithImpossibleVersion)) $
-      PackageBuildImpossible $
-           "The package has an impossible version range for a dependency on an "
-        ++ "internal executable: "
-        ++ commaSep (map prettyShow depInternalExecutableWithImpossibleVersion)
-        ++ ". This version range does not include the current package, and must "
-        ++ "be removed as the current package's executable will always be used."
+      PackageBuildImpossible
+        (ImpossibleInternalExe depInternalExecutableWithImpossibleVersion)
 
   , check (not (null depMissingInternalExecutable)) $
-      PackageBuildImpossible $
-           "The package depends on a missing internal executable: "
-        ++ commaSep (map prettyShow depInternalExecutableWithImpossibleVersion)
+      PackageBuildImpossible (MissingInternalExe depMissingInternalExecutable)
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
@@ -576,7 +1159,7 @@ checkFields pkg =
       , isNoVersion vr ]
 
     internalLibraries =
-        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libraryNameString . libName)
+        map (maybe (packageName pkg) unqualComponentNameToPackageName . libraryNameString . libName)
             (allLibraries pkg)
 
     internalExecutables = map exeName $ executables pkg
@@ -627,7 +1210,6 @@ checkFields pkg =
       , not $ eName `elem` internalExecutables
       ]
 
-
 checkLicense :: PackageDescription -> [PackageCheck]
 checkLicense pkg = case licenseRaw pkg of
     Right l -> checkOldLicense pkg l
@@ -636,49 +1218,29 @@ checkLicense pkg = case licenseRaw pkg of
 checkNewLicense :: PackageDescription -> SPDX.License -> [PackageCheck]
 checkNewLicense _pkg lic = catMaybes
     [ check (lic == SPDX.NONE) $
-        PackageDistInexcusable
-            "The 'license' field is missing or is NONE."
-    ]
+        PackageDistInexcusable NONELicense ]
 
 checkOldLicense :: PackageDescription -> License -> [PackageCheck]
 checkOldLicense pkg lic = catMaybes
   [ check (lic == UnspecifiedLicense) $
-      PackageDistInexcusable
-        "The 'license' field is missing."
+      PackageDistInexcusable NoLicense
 
   , check (lic == AllRightsReserved) $
-      PackageDistSuspicious
-        "The 'license' is AllRightsReserved. Is that really what you want?"
+      PackageDistSuspicious AllRightsReservedLicense
 
   , checkVersion CabalSpecV1_4 (lic `notElem` compatLicenses) $
-      PackageDistInexcusable $
-           "Unfortunately the license " ++ quote (prettyShow (license pkg))
-        ++ " messes up the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
-        ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
+      PackageDistInexcusable (LicenseMessParse pkg)
 
   , case lic of
-      UnknownLicense l -> Just $
-        PackageBuildWarning $
-             quote ("license: " ++ l) ++ " is not a recognised license. The "
-          ++ "known licenses are: "
-          ++ commaSep (map prettyShow knownLicenses)
+      UnknownLicense l -> Just $ PackageBuildWarning (UnrecognisedLicense l)
       _ -> Nothing
 
   , check (lic == BSD4) $
-      PackageDistSuspicious $
-           "Using 'license: BSD4' is almost always a misunderstanding. 'BSD4' "
-        ++ "refers to the old 4-clause BSD license with the advertising "
-        ++ "clause. 'BSD3' refers the new 3-clause BSD license."
+      PackageDistSuspicious UncommonBSD4
 
-  , case unknownLicenseVersion (lic) of
+  , case unknownLicenseVersion lic of
       Just knownVersions -> Just $
-        PackageDistSuspicious $
-             "'license: " ++ prettyShow (lic) ++ "' is not a known "
-          ++ "version of that license. The known versions are "
-          ++ commaSep (map prettyShow knownVersions)
-          ++ ". If this is not a mistake and you think it should be a known "
-          ++ "version then please file a ticket."
+        PackageDistSuspicious (UnknownLicenseVersion lic knownVersions)
       _ -> Nothing
 
   , check (lic `notElem` [ AllRightsReserved
@@ -686,7 +1248,7 @@ checkOldLicense pkg lic = catMaybes
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
         && null (licenseFiles pkg)) $
-      PackageDistSuspicious "A 'license-file' is not specified."
+      PackageDistSuspicious NoLicenseFile
   ]
   where
     unknownLicenseVersion (GPL  (Just v))
@@ -718,37 +1280,28 @@ checkSourceRepos pkg =
 
     case repoKind repo of
       RepoKindUnknown kind -> Just $ PackageDistInexcusable $
-        quote kind ++ " is not a recognised kind of source-repository. "
-                   ++ "The repo kind is usually 'head' or 'this'"
+        UnrecognisedSourceRepo kind
       _ -> Nothing
 
   , check (isNothing (repoType repo)) $
-      PackageDistInexcusable
-        "The source-repository 'type' is a required field."
+      PackageDistInexcusable MissingType
 
   , check (isNothing (repoLocation repo)) $
-      PackageDistInexcusable
-        "The source-repository 'location' is a required field."
+      PackageDistInexcusable MissingLocation
 
   , check (repoType repo == Just (KnownRepoType CVS) && isNothing (repoModule repo)) $
-      PackageDistInexcusable
-        "For a CVS source-repository, the 'module' is a required field."
+      PackageDistInexcusable MissingModule
 
   , check (repoKind repo == RepoThis && isNothing (repoTag repo)) $
-      PackageDistInexcusable $
-           "For the 'this' kind of source-repository, the 'tag' is a required "
-        ++ "field. It should specify the tag corresponding to this version "
-        ++ "or release of the package."
+      PackageDistInexcusable MissingTag
 
   , check (maybe False isAbsoluteOnAnyPlatform (repoSubdir repo)) $
-      PackageDistInexcusable
-        "The 'subdir' field of a source-repository must be a relative path."
+      PackageDistInexcusable SubdirRelPath
 
   , do
       subdir <- repoSubdir repo
       err    <- isGoodRelativeDirectoryPath subdir
-      return $ PackageDistInexcusable $
-        "The 'subdir' field of a source-repository is not a good relative path: " ++ show err
+      return $ PackageDistInexcusable (SubdirGoodRelPath err)
   ]
   | repo <- sourceRepos pkg ]
 
@@ -770,105 +1323,61 @@ checkGhcOptions fieldName getOptions pkg =
   catMaybes [
 
     checkFlags ["-fasm"] $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -fasm' is unnecessary and will not work on CPU "
-        ++ "architectures other than x86, x86-64, ppc or sparc."
+      PackageDistInexcusable (OptFasm fieldName)
 
   , checkFlags ["-fvia-C"] $
-      PackageDistSuspicious $
-           "'" ++ fieldName ++": -fvia-C' is usually unnecessary. If your package "
-        ++ "needs -via-C for correctness rather than performance then it "
-        ++ "is using the FFI incorrectly and will probably not work with GHC "
-        ++ "6.10 or later."
+      PackageDistSuspicious (OptViaC fieldName)
 
   , checkFlags ["-fhpc"] $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -fhpc' is not necessary. Use the configure flag "
-        ++ " --enable-coverage instead."
+      PackageDistInexcusable (OptHpc fieldName)
 
   , checkFlags ["-prof"] $
-      PackageBuildWarning $
-           "'" ++ fieldName ++ ": -prof' is not necessary and will lead to problems "
-        ++ "when used on a library. Use the configure flag "
-        ++ "--enable-library-profiling and/or --enable-profiling."
+      PackageBuildWarning (OptProf fieldName)
 
   , checkFlags ["-o"] $
-      PackageBuildWarning $
-           "'" ++ fieldName ++ ": -o' is not needed. "
-        ++ "The output files are named automatically."
+      PackageBuildWarning (OptO fieldName)
 
   , checkFlags ["-hide-package"] $
-      PackageBuildWarning $
-      "'" ++ fieldName ++ ": -hide-package' is never needed. "
-      ++ "Cabal hides all packages."
+      PackageBuildWarning (OptHide fieldName)
 
   , checkFlags ["--make"] $
-      PackageBuildWarning $
-      "'" ++ fieldName ++ ": --make' is never needed. Cabal uses this automatically."
+      PackageBuildWarning (OptMake fieldName)
 
   , checkFlags ["-main-is"] $
-      PackageDistSuspicious $
-      "'" ++ fieldName ++ ": -main-is' is not portable."
+      PackageDistSuspicious (OptMain fieldName)
 
   , checkNonTestAndBenchmarkFlags ["-O0", "-Onot"] $
-      PackageDistSuspicious $
-      "'" ++ fieldName ++ ": -O0' is not needed. "
-      ++ "Use the --disable-optimization configure flag."
+      PackageDistSuspicious (OptONot fieldName)
 
   , checkTestAndBenchmarkFlags ["-O0", "-Onot"] $
-      PackageDistSuspiciousWarn $
-      "'" ++ fieldName ++ ": -O0' is not needed. "
-      ++ "Use the --disable-optimization configure flag."
+      PackageDistSuspiciousWarn (OptONot fieldName)
 
   , checkFlags [ "-O", "-O1"] $
-      PackageDistInexcusable $
-      "'" ++ fieldName ++ ": -O' is not needed. "
-      ++ "Cabal automatically adds the '-O' flag. "
-      ++ "Setting it yourself interferes with the --disable-optimization flag."
+      PackageDistInexcusable (OptOOne fieldName)
 
   , checkFlags ["-O2"] $
-      PackageDistSuspiciousWarn $
-      "'" ++ fieldName ++ ": -O2' is rarely needed. "
-      ++ "Check that it is giving a real benefit "
-      ++ "and not just imposing longer compile times on your users."
+      PackageDistSuspiciousWarn (OptOTwo fieldName)
 
   , checkFlags ["-split-sections"] $
-      PackageBuildWarning $
-        "'" ++ fieldName ++ ": -split-sections' is not needed. "
-        ++ "Use the --enable-split-sections configure flag."
+      PackageBuildWarning (OptSplitSections fieldName)
 
   , checkFlags ["-split-objs"] $
-      PackageBuildWarning $
-        "'" ++ fieldName ++ ": -split-objs' is not needed. "
-        ++ "Use the --enable-split-objs configure flag."
+      PackageBuildWarning (OptSplitObjs fieldName)
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -optl-Wl,-s' is not needed and is not portable to all"
-        ++ " operating systems. Cabal 1.4 and later automatically strip"
-        ++ " executables. Cabal also has a flag --disable-executable-stripping"
-        ++ " which is necessary when building packages for some Linux"
-        ++ " distributions and using '-optl-Wl,-s' prevents that from working."
+      PackageDistInexcusable (OptWls fieldName)
 
   , checkFlags ["-fglasgow-exts"] $
-      PackageDistSuspicious $
-        "Instead of '" ++ fieldName ++ ": -fglasgow-exts' it is preferable to use "
-        ++ "the 'extensions' field."
+      PackageDistSuspicious (OptExts fieldName)
 
   , check ("-threaded" `elem` lib_ghc_options) $
-      PackageBuildWarning $
-           "'" ++ fieldName ++ ": -threaded' has no effect for libraries. It should "
-        ++ "only be used for executables."
+      PackageBuildWarning (OptThreaded fieldName)
 
   , check ("-rtsopts" `elem` lib_ghc_options) $
-      PackageBuildWarning $
-           "'" ++ fieldName ++ ": -rtsopts' has no effect for libraries. It should "
-        ++ "only be used for executables."
+      PackageBuildWarning (OptRts fieldName)
 
   , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
-      PackageBuildWarning $
-           "'" ++ fieldName ++ ": -with-rtsopts' has no effect for libraries. It "
-        ++ "should only be used for executables."
+      PackageBuildWarning (OptWithRts fieldName)
 
   , checkAlternatives fieldName "extensions"
       [ (flag, prettyShow extension) | flag <- ghc_options_no_rtsopts
@@ -973,6 +1482,7 @@ checkGhcOptions fieldName getOptions pkg =
     rmRtsOpts (x:xs) = x : rmRtsOpts xs
     rmRtsOpts [] = []
 
+
 checkCCOptions :: PackageDescription -> [PackageCheck]
 checkCCOptions = checkCLikeOptions "C" "cc-options" ccOptions
 
@@ -999,10 +1509,7 @@ checkCLikeOptions label prefix accessor pkg =
       [ (flag, dir) | flag@('-':'L':dir) <- all_ldOptions ]
 
   , checkCCFlags [ "-O", "-Os", "-O0", "-O1", "-O2", "-O3" ] $
-      PackageDistSuspicious $
-           "'"++prefix++": -O[n]' is generally not needed. When building with "
-        ++ " optimisations Cabal automatically adds '-O2' for "++label++" code. "
-        ++ "Setting it yourself interferes with the --disable-optimization flag."
+      PackageDistSuspicious (COptONumber prefix label)
   ]
 
   where all_cLikeOptions = [ opts | bi <- allBuildInfo pkg
@@ -1019,7 +1526,7 @@ checkCPPOptions pkg = catMaybes
       [ (flag, dir) | flag@('-':'I':dir) <- all_cppOptions ]
     ]
     ++
-    [ PackageBuildWarning $ "'cpp-options: " ++ opt ++ "' is not a portable C-preprocessor flag."
+    [ PackageBuildWarning (COptCPP opt)
     | opt <- all_cppOptions
     -- "-I" is handled above, we allow only -DNEWSTUFF and -UOLDSTUFF
     , not $ any (`isPrefixOf` opt) ["-D", "-U", "-I" ]
@@ -1031,11 +1538,8 @@ checkAlternatives :: String -> String -> [(String, String)]
                   -> Maybe PackageCheck
 checkAlternatives badField goodField flags =
   check (not (null badFlags)) $
-    PackageBuildWarning $
-         "Instead of " ++ quote (badField ++ ": " ++ unwords badFlags)
-      ++ " use " ++ quote (goodField ++ ": " ++ unwords goodFlags)
-
-  where (badFlags, goodFlags) = unzip flags
+    PackageBuildWarning (OptAlternatives badField goodField flags)
+  where (badFlags, _) = unzip flags
 
 data PathKind
     = PathKindFile
@@ -1050,21 +1554,15 @@ checkPaths pkg =
   | (path, _, kind) <- relPaths ++ absPaths
   ]
   ++
-  [ PackageBuildWarning $
-         quote (field ++ ": " ++ path)
-      ++ " is a relative path outside of the source tree. "
-      ++ "This will not work when generating a tarball with 'sdist'."
+  [ PackageBuildWarning (RelativeOutside field path)
   | (path, field, _) <- relPaths ++ absPaths
   , isOutsideTree path ]
   ++
-  [ PackageDistInexcusable $
-         quote (field ++ ": " ++ path) ++ " specifies an absolute path, but the "
-      ++ quote field ++ " field must use relative paths."
+  [ PackageDistInexcusable (AbsolutePath field path)
   | (path, field, _) <- relPaths
   , isAbsoluteOnAnyPlatform path ]
   ++
-  [ PackageDistInexcusable $
-      quote (field ++ ": " ++ path) ++ " is not a good relative path: " ++ show err
+  [ PackageDistInexcusable (BadRelativePAth field path err)
   | (path, field, kind) <- relPaths
   -- these are not paths, but globs...
   , err <- maybeToList $ case kind of
@@ -1073,40 +1571,30 @@ checkPaths pkg =
       PathKindDirectory -> isGoodRelativeDirectoryPath path
   ]
   ++
-  [ PackageDistInexcusable $
-         quote (field ++ ": " ++ path) ++ " points inside the 'dist' "
-      ++ "directory. This is not reliable because the location of this "
-      ++ "directory is configurable by the user (or package manager). In "
-      ++ "addition the layout of the 'dist' directory is subject to change "
-      ++ "in future versions of Cabal."
+  [ PackageDistInexcusable $ DistPoint (Just field) path
   | (path, field, _) <- relPaths ++ absPaths
   , isInsideDist path ]
   ++
-  [ PackageDistInexcusable $
-         "The 'ghc-options' contain the path '" ++ path ++ "' which points "
-      ++ "inside the 'dist' directory. This is not reliable because the "
-      ++ "location of this directory is configurable by the user (or package "
-      ++ "manager). In addition the layout of the 'dist' directory is subject "
-      ++ "to change in future versions of Cabal."
+  [ PackageDistInexcusable (DistPoint Nothing path)
   | bi <- allBuildInfo pkg
   , (GHC, flags) <- perCompilerFlavorToList $ options bi
   , path <- flags
   , isInsideDist path ]
   ++
   [ PackageDistInexcusable $
-        "In the 'data-files' field: " ++ explainGlobSyntaxError pat err
+      GlobSyntaxError "data-files" (explainGlobSyntaxError pat err)
   | pat <- dataFiles pkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
   ++
-  [ PackageDistInexcusable $
-        "In the 'extra-source-files' field: " ++ explainGlobSyntaxError pat err
+  [ PackageDistInexcusable
+      (GlobSyntaxError "extra-source-files" (explainGlobSyntaxError pat err))
   | pat <- extraSrcFiles pkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
   ++
   [ PackageDistInexcusable $
-        "In the 'extra-doc-files' field: " ++ explainGlobSyntaxError pat err
+      GlobSyntaxError "extra-doc-files" (explainGlobSyntaxError pat err)
   | pat <- extraDocFiles pkg
   , Left err <- [parseFileGlob (specVersion pkg) pat]
   ]
@@ -1165,77 +1653,49 @@ checkCabalVersion pkg =
 
     -- check use of test suite sections
     checkVersion CabalSpecV1_8 (not (null $ testSuites pkg)) $
-      PackageDistInexcusable $
-           "The 'test-suite' section is new in Cabal 1.10. "
-        ++ "Unfortunately it messes up the parser in older Cabal versions "
-        ++ "so you must specify at least 'cabal-version: >= 1.8', but note "
-        ++ "that only Cabal 1.10 and later can actually run such test suites."
+      PackageDistInexcusable CVTestSuite
 
     -- check use of default-language field
     -- note that we do not need to do an equivalent check for the
     -- other-language field since that one does not change behaviour
   , checkVersion CabalSpecV1_10 (any isJust (buildInfoField defaultLanguage)) $
-      PackageBuildWarning $
-           "To use the 'default-language' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.10'."
+      PackageBuildWarning CVDefaultLanguage
 
   , check (specVersion pkg >= CabalSpecV1_10 && specVersion pkg < CabalSpecV3_4
-           && (any isNothing (buildInfoField defaultLanguage))) $
-      PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.10' and before 'cabal-version: 3.4' must specify the "
-        ++ "'default-language' field for each component (e.g. Haskell98 or "
-        ++ "Haskell2010). If a component uses different languages in "
-        ++ "different modules then list the other ones in the "
-        ++ "'other-languages' field."
+           && any isNothing (buildInfoField defaultLanguage)) $
+      PackageBuildWarning CVDefaultLanguageComponent
 
   , checkVersion CabalSpecV1_18
     (not . null $ extraDocFiles pkg) $
-      PackageDistInexcusable $
-           "To use the 'extra-doc-files' field the package needs to specify "
-        ++ "'cabal-version: 1.18' or higher."
+      PackageDistInexcusable CVExtraDocFiles
 
   , checkVersion CabalSpecV2_0
     (not (null (subLibraries pkg))) $
-      PackageDistInexcusable $
-           "To use multiple 'library' sections or a named library section "
-        ++ "the package needs to specify at least 'cabal-version: 2.0'."
+      PackageDistInexcusable CVMultiLib
 
     -- check use of reexported-modules sections
   , checkVersion CabalSpecV1_22
     (any (not.null.reexportedModules) (allLibraries pkg)) $
-      PackageDistInexcusable $
-           "To use the 'reexported-module' field the package needs to specify "
-        ++ "'cabal-version: 1.22' or higher."
+      PackageDistInexcusable CVReexported
 
     -- check use of thinning and renaming
   , checkVersion CabalSpecV2_0 usesBackpackIncludes $
-      PackageDistInexcusable $
-           "To use the 'mixins' field the package needs to specify "
-        ++ "at least 'cabal-version: 2.0'."
+      PackageDistInexcusable CVMixins
 
     -- check use of 'extra-framework-dirs' field
   , checkVersion CabalSpecV1_24 (any (not . null) (buildInfoField extraFrameworkDirs)) $
       -- Just a warning, because this won't break on old Cabal versions.
-      PackageDistSuspiciousWarn $
-           "To use the 'extra-framework-dirs' field the package needs to specify"
-        ++ " 'cabal-version: 1.24' or higher."
+      PackageDistSuspiciousWarn CVExtraFrameworkDirs
 
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions
   , checkVersion CabalSpecV1_10 (any (not . null) (buildInfoField defaultExtensions)) $
-      PackageBuildWarning $
-           "To use the 'default-extensions' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.10'."
+      PackageBuildWarning CVDefaultExtensions
 
     -- check use of extensions field
   , check (specVersion pkg >= CabalSpecV1_10
-           && (any (not . null) (buildInfoField oldExtensions))) $
-      PackageBuildWarning $
-           "For packages using 'cabal-version: >= 1.10' the 'extensions' "
-        ++ "field is deprecated. The new 'default-extensions' field lists "
-        ++ "extensions that are used in all modules in the component, while "
-        ++ "the 'other-extensions' field lists extensions that are used in "
-        ++ "some modules, e.g. via the {-# LANGUAGE #-} pragma."
+           && any (not . null) (buildInfoField oldExtensions)) $
+      PackageBuildWarning CVExtensionsDeprecated
 
   , checkVersion CabalSpecV3_0 (any (not . null)
                         (concatMap buildInfoField
@@ -1243,82 +1703,43 @@ checkCabalVersion pkg =
                          , cmmSources
                          , extraBundledLibs
                          , extraLibFlavours ])) $
-      PackageDistInexcusable $
-           "The use of 'asm-sources', 'cmm-sources', 'extra-bundled-libraries' "
-        ++ " and 'extra-library-flavours' requires the package "
-        ++ " to specify at least 'cabal-version: 3.0'."
+      PackageDistInexcusable CVSources
 
   , checkVersion CabalSpecV3_0 (any (not . null) $ buildInfoField extraDynLibFlavours) $
-      PackageDistInexcusable $
-           "The use of 'extra-dynamic-library-flavours' requires the package "
-        ++ " to specify at least 'cabal-version: 3.0'. The flavours are: "
-        ++ commaSep [ flav
-                    | flavs <- buildInfoField extraDynLibFlavours
-                    , flav <- flavs ]
+      PackageDistInexcusable
+        (CVExtraDynamic $ buildInfoField extraDynLibFlavours)
 
   , checkVersion CabalSpecV2_2 (any (not . null)
                         (buildInfoField virtualModules)) $
-      PackageDistInexcusable $
-           "The use of 'virtual-modules' requires the package "
-        ++ " to specify at least 'cabal-version: 2.2'."
+      PackageDistInexcusable CVVirtualModules
 
     -- check use of "source-repository" section
   , checkVersion CabalSpecV1_6 (not (null (sourceRepos pkg))) $
-      PackageDistInexcusable $
-           "The 'source-repository' section is new in Cabal 1.6. "
-        ++ "Unfortunately it messes up the parser in earlier Cabal versions "
-        ++ "so you need to specify 'cabal-version: >= 1.6'."
+      PackageDistInexcusable CVSourceRepository
 
     -- check for new language extensions
   , checkVersion CabalSpecV1_2 (not (null mentionedExtensionsThatNeedCabal12)) $
-      PackageDistInexcusable $
-           "Unfortunately the language extensions "
-        ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal12)
-        ++ " break the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.2'. Alternatively if you require "
-        ++ "compatibility with earlier Cabal versions then you may be able to "
-        ++ "use an equivalent compiler-specific flag."
+      PackageDistInexcusable
+        (CVExtensions CabalSpecV1_2 mentionedExtensionsThatNeedCabal12)
 
   , checkVersion CabalSpecV1_4 (not (null mentionedExtensionsThatNeedCabal14)) $
-      PackageDistInexcusable $
-           "Unfortunately the language extensions "
-        ++ commaSep (map (quote . prettyShow) mentionedExtensionsThatNeedCabal14)
-        ++ " break the parser in earlier Cabal versions so you need to "
-        ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
-        ++ "compatibility with earlier Cabal versions then you may be able to "
-        ++ "use an equivalent compiler-specific flag."
+      PackageDistInexcusable
+        (CVExtensions CabalSpecV1_4 mentionedExtensionsThatNeedCabal14)
 
   , check (specVersion pkg >= CabalSpecV1_24
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
-      PackageBuildWarning $
-           "Packages using 'cabal-version: 1.24' or higher with 'build-type: Custom' "
-        ++ "must use a 'custom-setup' section with a 'setup-depends' field "
-        ++ "that specifies the dependencies of the Setup.hs script itself. "
-        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
-        ++ "so a simple example would be 'setup-depends: base, Cabal'."
+      PackageBuildWarning CVCustomSetup
 
   , check (specVersion pkg < CabalSpecV1_24
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Custom) $
-      PackageDistSuspiciousWarn $
-           "From version 1.24 cabal supports specifying explicit dependencies "
-        ++ "for Custom setup scripts. Consider using 'cabal-version: 1.24' or higher "
-        ++ "and adding a 'custom-setup' section with a 'setup-depends' field "
-        ++ "that specifies the dependencies of the Setup.hs script itself. "
-        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
-        ++ "so a simple example would be 'setup-depends: base, Cabal'."
+      PackageDistSuspiciousWarn CVExpliticDepsCustomSetup
 
   , check (specVersion pkg >= CabalSpecV2_0
            && elem (autogenPathsModuleName pkg) allModuleNames
            && not (elem (autogenPathsModuleName pkg) allModuleNamesAutogen) ) $
-      PackageDistInexcusable $
-           "Packages using 'cabal-version: 2.0' and the autogenerated "
-        ++ "module Paths_* must include it also on the 'autogen-modules' field "
-        ++ "besides 'exposed-modules' and 'other-modules'. This specifies that "
-        ++ "the module does not come with the package and is generated on "
-        ++ "setup. Modules built with a custom Setup.hs script also go here "
-        ++ "to ensure that commands like sdist don't fail."
+      PackageDistInexcusable CVAutogenPaths
 
   ]
   where
@@ -1400,17 +1821,7 @@ checkPackageVersions pkg =
     -- It should probably be "build-depends: base >= 3 && < 4"
     -- which is the same as  "build-depends: base == 3.*"
     check (not (hasUpperBound baseDependency)) $
-      PackageDistInexcusable $
-           "The dependency 'build-depends: base' does not specify an upper "
-        ++ "bound on the version number. Each major release of the 'base' "
-        ++ "package changes the API in various ways and most packages will "
-        ++ "need some changes to compile with it. The recommended practice "
-        ++ "is to specify an upper bound on the version of the 'base' "
-        ++ "package. This ensures your package will continue to build when a "
-        ++ "new major version of the 'base' package is released. If you are "
-        ++ "not sure what upper bound to use then use the next  major "
-        ++ "version. For example if you have tested your package with 'base' "
-        ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
+      PackageDistInexcusable BaseNoUpperBounds
 
   ]
   where
@@ -1432,19 +1843,13 @@ checkConditionals pkg =
   catMaybes [
 
     check (not $ null unknownOSs) $
-      PackageDistInexcusable $
-           "Unknown operating system name "
-        ++ commaSep (map quote unknownOSs)
+      PackageDistInexcusable (UnknownOS unknownOSs)
 
   , check (not $ null unknownArches) $
-      PackageDistInexcusable $
-           "Unknown architecture name "
-        ++ commaSep (map quote unknownArches)
+      PackageDistInexcusable (UnknownArch unknownArches)
 
   , check (not $ null unknownImpls) $
-      PackageDistInexcusable $
-           "Unknown compiler name "
-        ++ commaSep (map quote unknownImpls)
+      PackageDistInexcusable (UnknownCompiler unknownImpls)
   ]
   where
     unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
@@ -1468,12 +1873,8 @@ checkConditionals pkg =
 checkFlagNames :: GenericPackageDescription -> [PackageCheck]
 checkFlagNames gpd
     | null invalidFlagNames = []
-    | otherwise             = [ PackageDistInexcusable
-        $ "Suspicious flag names: " ++ unwords invalidFlagNames ++ ". "
-        ++ "To avoid ambiguity in command line interfaces, flag shouldn't "
-        ++ "start with a dash. Also for better compatibility, flag names "
-        ++ "shouldn't contain non-ascii characters."
-        ]
+    | otherwise             =
+        [ PackageDistInexcusable (SuspiciousFlagName invalidFlagNames) ]
   where
     invalidFlagNames =
         [ fn
@@ -1489,14 +1890,9 @@ checkFlagNames gpd
 checkUnusedFlags :: GenericPackageDescription -> [PackageCheck]
 checkUnusedFlags gpd
     | declared == used = []
-    | otherwise        = [ PackageDistSuspicious
-        $ "Declared and used flag sets differ: "
-        ++ s declared ++ " /= " ++ s used ++ ". "
-        ]
+    | otherwise        =
+        [ PackageDistSuspicious (DeclaredUsedFlags declared used) ]
   where
-    s :: Set.Set FlagName -> String
-    s = commaSep . map unFlagName . Set.toList
-
     declared :: Set.Set FlagName
     declared = toSetOf (L.genPackageFlags . traverse . L.flagName) gpd
 
@@ -1513,11 +1909,8 @@ checkUnusedFlags gpd
 checkUnicodeXFields :: GenericPackageDescription -> [PackageCheck]
 checkUnicodeXFields gpd
     | null nonAsciiXFields = []
-    | otherwise            = [ PackageDistInexcusable
-        $ "Non ascii custom fields: " ++ unwords nonAsciiXFields ++ ". "
-        ++ "For better compatibility, custom field names "
-        ++ "shouldn't contain non-ascii characters."
-        ]
+    | otherwise            =
+        [ PackageDistInexcusable (NonASCIICustomField nonAsciiXFields) ]
   where
     nonAsciiXFields :: [String]
     nonAsciiXFields = [ n | (n, _) <- xfields, any (not . isAscii) n ]
@@ -1533,13 +1926,7 @@ checkPathsModuleExtensions :: PackageDescription -> [PackageCheck]
 checkPathsModuleExtensions pd
     | specVersion pd >= CabalSpecV2_2 = []
     | any checkBI (allBuildInfo pd) || any checkLib (allLibraries pd)
-        = return $ PackageBuildImpossible $ unwords
-            [ "Packages using RebindableSyntax with OverloadedStrings or"
-            , "OverloadedLists in default-extensions, in conjunction with the"
-            , "autogenerated module Paths_*, are known to cause compile failures"
-            , "with Cabal < 2.2. To use these default-extensions with a Paths_*"
-            , "autogen module, specify at least 'cabal-version: 2.2'."
-            ]
+        = return (PackageBuildImpossible RebindableClash)
     | otherwise = []
   where
     mn = autogenPathsModuleName pd
@@ -1574,51 +1961,26 @@ checkDevelopmentOnlyFlagsOptions :: String -> [String] -> [PackageCheck]
 checkDevelopmentOnlyFlagsOptions fieldName ghcOptions =
   catMaybes [
 
-    check (has_Werror) $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -Werror' makes the package easy to "
-        ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings."
-        ++ extraExplanation
+    check has_Werror $
+      PackageDistInexcusable (WErrorUnneeded fieldName)
 
-  , check (has_J) $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -j[N]' can make sense for specific user's setup,"
-        ++ " but it is not appropriate for a distributed package."
-        ++ extraExplanation
+  , check has_J $
+      PackageDistInexcusable (JUnneeded fieldName)
 
   , checkFlags ["-fdefer-type-errors"] $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -fdefer-type-errors' is fine during development but "
-        ++ "is not appropriate for a distributed package."
-        ++ extraExplanation
+      PackageDistInexcusable (FDeferTypeErrorsUnneeded fieldName)
 
     -- -dynamic is not a debug flag
   , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
            ghcOptions) $
-      PackageDistInexcusable $
-           "'" ++ fieldName ++ ": -d*' debug flags are not appropriate "
-        ++ "for a distributed package."
-        ++ extraExplanation
+      PackageDistInexcusable (DynamicUnneeded fieldName)
 
   , checkFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
                "-fprof-cafs", "-fno-prof-count-entries",
                "-auto-all", "-auto", "-caf-all"] $
-      PackageDistSuspicious $
-           "'" ++ fieldName ++ ": -fprof*' profiling flags are typically not "
-        ++ "appropriate for a distributed library package. These flags are "
-        ++ "useful to profile this package, but when profiling other packages "
-        ++ "that use this one these flags clutter the profile output with "
-        ++ "excessive detail. If you think other packages really want to see "
-        ++ "cost centres from this package then use '-fprof-auto-exported' "
-        ++ "which puts cost centres only on exported functions."
-        ++ extraExplanation
+      PackageDistSuspicious (ProfilingUnneeded fieldName)
   ]
   where
-    extraExplanation =
-         " Alternatively, if you want to use this, make it conditional based "
-      ++ "on a Cabal configuration flag (with 'manual: True' and 'default: "
-      ++ "False') and enable that flag during development."
 
     has_Werror       = "-Werror" `elem` ghcOptions
     has_J            = any
@@ -1768,12 +2130,10 @@ checkCabalFileBOM ops = do
     -- But this can be an issue, see #3552 and also when
     -- --cabal-file is specified.  So if you can't find the file,
     -- just don't bother with this check.
-    Left _       -> return $ Nothing
+    Left _       -> return Nothing
     Right pdfile -> (flip check pc . BS.isPrefixOf bomUtf8)
-                    `liftM` (getFileContents ops pdfile)
-      where pc = PackageDistInexcusable $
-                 pdfile ++ " starts with an Unicode byte order mark (BOM)."
-                 ++ " This may cause problems with older cabal versions."
+                    `liftM` getFileContents ops pdfile
+      where pc = PackageDistInexcusable (BOMStart pdfile)
 
   where
     bomUtf8 :: BS.ByteString
@@ -1792,9 +2152,8 @@ checkCabalFileName ops pkg = do
     Left _       -> return Nothing
     Right pdfile
       | takeFileName pdfile == expectedCabalname -> return Nothing
-      | otherwise -> return $ Just $ PackageDistInexcusable $
-                 "The filename " ++ quote pdfile ++ " does not match package name " ++
-                 "(expected: " ++ quote expectedCabalname ++ ")"
+      | otherwise -> return $ Just $ PackageDistInexcusable
+                       (NotPackageName pdfile expectedCabalname)
   where
     pkgname = unPackageName . packageName $ pkg
     expectedCabalname = pkgname <.> "cabal"
@@ -1816,20 +2175,10 @@ findPackageDesc ops
                        , let (name, ext) = splitExtension file
                        , not (null name) && ext == ".cabal" ]
       case cabalFiles of
-        []          -> return (Left $ PackageBuildImpossible noDesc)
+        []          -> return (Left $ PackageBuildImpossible NoDesc)
         [cabalFile] -> return (Right cabalFile)
         multiple    -> return (Left $ PackageBuildImpossible
-                               $ multiDesc multiple)
-
-  where
-    noDesc :: String
-    noDesc = "No cabal file found.\n"
-             ++ "Please create a package description file <pkgname>.cabal"
-
-    multiDesc :: [String] -> String
-    multiDesc l = "Multiple cabal files found while checking.\n"
-                  ++ "Please use only one of: "
-                  ++ intercalate ", " l
+                                (MultiDesc multiple))
 
 checkLicensesExist :: (Monad m, Applicative m)
                    => CheckPackageContentOps m
@@ -1838,9 +2187,7 @@ checkLicensesExist :: (Monad m, Applicative m)
 checkLicensesExist ops pkg = do
     exists <- traverse (doesFileExist ops . getSymbolicPath) (licenseFiles pkg)
     return
-      [ PackageBuildWarning $
-           "The '" ++ fieldname ++ "' field refers to the file "
-        ++ quote (getSymbolicPath file) ++ " which does not exist."
+      [ PackageBuildWarning (UnknownFile fieldname file)
       | (file, False) <- zip (licenseFiles pkg) exists ]
   where
     fieldname | length (licenseFiles pkg) == 1 = "license-file"
@@ -1854,8 +2201,7 @@ checkSetupExists ops pkg = do
   hsexists  <- doesFileExist ops "Setup.hs"
   lhsexists <- doesFileExist ops "Setup.lhs"
   return $ check (not simpleBuild && not hsexists && not lhsexists) $
-    PackageDistInexcusable $
-      "The package is missing a Setup.hs or Setup.lhs script."
+    PackageDistInexcusable MissingSetupFile
 
 checkConfigureExists :: Monad m => CheckPackageContentOps m
                      -> PackageDescription
@@ -1864,9 +2210,7 @@ checkConfigureExists ops pd
   | buildType pd == Configure = do
       exists <- doesFileExist ops "configure"
       return $ check (not exists) $
-        PackageBuildWarning $
-          "The 'build-type' is 'Configure' but there is no 'configure' script. "
-          ++ "You probably need to run 'autoreconf -i' to generate it."
+        PackageBuildWarning MissingConfigureScript
   | otherwise = return Nothing
 
 checkLocalPathsExist :: Monad m => CheckPackageContentOps m
@@ -1884,10 +2228,7 @@ checkLocalPathsExist ops pkg = do
                ++ [ (getSymbolicPath dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelativeOnAnyPlatform dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
-  return [ PackageBuildWarning {
-             explanation = quote (kind ++ ": " ++ dir)
-                        ++ " specifies a directory which does not exist."
-           }
+  return [ PackageBuildWarning (UnknownDirectory kind dir)
          | (dir, kind) <- missing ]
 
 checkMissingVcsInfo :: (Monad m, Applicative m)
@@ -1897,15 +2238,11 @@ checkMissingVcsInfo :: (Monad m, Applicative m)
 checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
     vcsInUse <- liftM or $ traverse (doesDirectoryExist ops) repoDirnames
     if vcsInUse
-      then return [ PackageDistSuspicious message ]
+      then return [ PackageDistSuspicious MissingSourceControl ]
       else return []
   where
     repoDirnames = [ dirname | repo    <- knownRepoTypes
                              , dirname <- repoTypeDirname repo]
-    message  = "When distributing packages it is encouraged to specify source "
-            ++ "control information in the .cabal file using one or more "
-            ++ "'source-repository' sections. See the Cabal user guide for "
-            ++ "details."
 
 checkMissingVcsInfo _ _ = return []
 
@@ -1944,12 +2281,7 @@ checkWindowsPaths paths =
     case filter (not . FilePath.Windows.isValid . escape) paths of
       [] -> Nothing
       ps -> Just $
-        PackageDistInexcusable $
-             "The " ++ quotes (map snd ps) ++ " invalid on Windows, which "
-          ++ "would cause portability problems for this package. Windows file "
-          ++ "names cannot contain any of the characters \":*?<>|\" and there "
-          ++ "a few reserved names including \"aux\", \"nul\", \"con\", "
-          ++ "\"prn\", \"com1-9\", \"lpt1-9\" and \"clock$\"."
+        PackageDistInexcusable (InvalidOnWin $ map snd ps)
   where
     -- force a relative name to catch invalid file names like "f:oo" which
     -- otherwise parse as file "oo" in the current directory on the 'f' drive.
@@ -1957,10 +2289,6 @@ checkWindowsPaths paths =
         -- glob paths will be expanded before being dereferenced, so asterisks
         -- shouldn't count against them.
       $ map (\c -> if c == '*' && isGlob then 'x' else c) path
-    quotes [failed] =
-        "path " ++ quote failed ++ " is"
-    quotes failed =
-        "paths " ++ intercalate ", " (map quote failed) ++ " are"
 
 -- | Check a file name is valid for the portable POSIX tar format.
 --
@@ -2000,30 +2328,10 @@ checkTarPath path
       where n' = n + length c
     pack' _     _ cs = cs
 
-    longPath = PackageDistInexcusable $
-         "The following file name is too long to store in a portable POSIX "
-      ++ "format tar archive. The maximum length is 255 ASCII characters.\n"
-      ++ "The file in question is:\n  " ++ path
-    longName = PackageDistInexcusable $
-         "The following file name is too long to store in a portable POSIX "
-      ++ "format tar archive. The maximum length for the name part (including "
-      ++ "extension) is 100 ASCII characters. The maximum length for any "
-      ++ "individual directory component is 155.\n"
-      ++ "The file in question is:\n  " ++ path
-    noSplit = PackageDistInexcusable $
-         "The following file name is too long to store in a portable POSIX "
-      ++ "format tar archive. While the total length is less than 255 ASCII "
-      ++ "characters, there are unfortunately further restrictions. It has to "
-      ++ "be possible to split the file path on a directory separator into "
-      ++ "two parts such that the first part fits in 155 characters or less "
-      ++ "and the second part fits in 100 characters or less. Basically you "
-      ++ "have to make the file name or directory names shorter, or you could "
-      ++ "split a long directory name into nested subdirectories with shorter "
-      ++ "names.\nThe file in question is:\n  " ++ path
-    emptyName = PackageDistInexcusable $
-         "Encountered a file with an empty name, something is very wrong! "
-      ++ "Files with an empty name cannot be stored in a tar archive or in "
-      ++ "standard file systems."
+    longPath = PackageDistInexcusable (FilePathTooLong path)
+    longName = PackageDistInexcusable (FilePathNameTooLong path)
+    noSplit = PackageDistInexcusable (FilePathSplitTooLong path)
+    emptyName = PackageDistInexcusable FilePathEmpty
 
 -- --------------------------------------------------------------
 -- * Checks for missing content and other pre-distribution checks
@@ -2058,9 +2366,7 @@ checkGlobFiles verbosity pkg root =
         results <- runDirFileGlob verbosity (root </> dir) parsedGlob
         let individualWarnings = results >>= getWarning field glob
             noMatchesWarning =
-              [ PackageDistSuspiciousWarn $
-                     "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
-                  ++ " match any files."
+              [ PackageDistSuspiciousWarn (GlobNoMatch field glob)
               | all (not . suppressesNoMatchesWarning) results
               ]
         return (noMatchesWarning ++ individualWarnings)
@@ -2088,18 +2394,9 @@ checkGlobFiles verbosity pkg root =
     -- suffix. This warning detects when pre-2.4 package descriptions are
     -- omitting files purely because of the stricter check.
     getWarning field glob (GlobWarnMultiDot file) =
-      [ PackageDistSuspiciousWarn $
-             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' does not"
-          ++ " match the file '" ++ file ++ "' because the extensions do not"
-          ++ " exactly match (e.g., foo.en.html does not exactly match *.html)."
-          ++ " To enable looser suffix-only matching, set 'cabal-version: 2.4' or higher."
-      ]
+      [ PackageDistSuspiciousWarn (GlobExactMatch field glob file) ]
     getWarning field glob (GlobMissingDirectory dir) =
-      [ PackageDistSuspiciousWarn $
-             "In '" ++ field ++ "': the pattern '" ++ glob ++ "' attempts to"
-          ++ " match files in the directory '" ++ dir ++ "', but there is no"
-          ++ " directory by that name."
-      ]
+      [ PackageDistSuspiciousWarn (GlobNoDir field glob dir) ]
 
 -- | Check that setup dependencies, have proper bounds.
 -- In particular, @base@ and @Cabal@ upper bounds are mandatory.
@@ -2122,13 +2419,7 @@ checkSetupVersions pkg =
           ]
       _ -> Map.empty
     emitError nm =
-      PackageDistInexcusable $
-           "The dependency 'setup-depends: '"++nm++"' does not specify an "
-        ++ "upper bound on the version number. Each major release of the "
-        ++ "'"++nm++"' package changes the API in various ways and most "
-        ++ "packages will need some changes to compile with it. If you are "
-        ++ "not sure what upper bound to use then use the next major "
-        ++ "version."
+      PackageDistInexcusable (UpperBoundSetup nm)
 
 checkDuplicateModules :: GenericPackageDescription -> [PackageCheck]
 checkDuplicateModules pkg =
@@ -2154,9 +2445,11 @@ checkDuplicateModules pkg =
                    dupLibsStrict = Map.keys $ Map.filter ((>1) . fst) libMap
                    dupLibsLax = Map.keys $ Map.filter ((>1) . snd) libMap
                in if not (null dupLibsLax)
-                      then [PackageBuildImpossible $ "Duplicate modules in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibsLax)]
+                      then [PackageBuildImpossible
+                             (DuplicateModule s dupLibsLax)]
                       else if not (null dupLibsStrict)
-                           then [PackageDistSuspicious $ "Potential duplicate modules (subject to conditionals) in " ++ s ++ ": " ++ commaSep (map prettyShow dupLibsStrict)]
+                           then [PackageDistSuspicious
+                                   (PotentialDupModule s dupLibsStrict)]
                            else []
 
 -- ------------------------------------------------------------
@@ -2410,3 +2703,9 @@ typicalPkg = finalizePD
     (CompilerId buildCompilerFlavor nullVersion)
       NoAbiTag)
   []
+
+addConditionalExp :: String -> String
+addConditionalExp expl = expl ++
+         " Alternatively, if you want to use this, make it conditional based "
+      ++ "on a Cabal configuration flag (with 'manual: True' and 'default: "
+      ++ "False') and enable that flag during development."

@@ -57,7 +57,7 @@ tests = [
                 r2 = solve' mGoalOrder2 test { testTargets = targets2 }
                 solve' goalOrder =
                     solve (EnableBackjumping True) (FineGrainedConflicts True)
-                          (ReorderGoals False) (CountConflicts True) indepGoals
+                          (ReorderGoals False) (CountConflicts True) indepGoals (PreferOldest False)
                           (getBlind <$> goalOrder)
                 targets = testTargets test
                 targets2 = case targetOrder of
@@ -74,7 +74,7 @@ tests = [
                 r2 = solve' (IndependentGoals True)  test
                 solve' indep =
                     solve (EnableBackjumping True) (FineGrainedConflicts True)
-                          reorderGoals (CountConflicts True) indep Nothing
+                          reorderGoals (CountConflicts True) indep (PreferOldest False)Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -85,7 +85,7 @@ tests = [
                 r2 = solve' (EnableBackjumping False) test
                 solve' enableBj =
                     solve enableBj (FineGrainedConflicts False) reorderGoals
-                          (CountConflicts True) indepGoals Nothing
+                          (CountConflicts True) indepGoals (PreferOldest False) Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
@@ -96,7 +96,18 @@ tests = [
                 r2 = solve' (FineGrainedConflicts False) test
                 solve' fineGrainedConflicts =
                     solve (EnableBackjumping True) fineGrainedConflicts
-                    reorderGoals (CountConflicts True) indepGoals Nothing
+                    reorderGoals (CountConflicts True) indepGoals (PreferOldest False) Nothing
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                isRight (resultPlan r1) === isRight (resultPlan r2)
+
+    , testPropertyWithSeed "prefer oldest does not affect solvability" $
+          \test reorderGoals indepGoals ->
+            let r1 = solve' (PreferOldest True)  test
+                r2 = solve' (PreferOldest False) test
+                solve' prefOldest  =
+                    solve (EnableBackjumping True) (FineGrainedConflicts True)
+                    reorderGoals (CountConflicts True) indepGoals prefOldest Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) === isRight (resultPlan r2)
@@ -116,7 +127,7 @@ tests = [
                 r2 = solve' (EnableBackjumping False) test
                 solve' enableBj =
                     solve enableBj (FineGrainedConflicts False) reorderGoals
-                          (CountConflicts False) indepGoals Nothing
+                          (CountConflicts False) indepGoals (PreferOldest False) Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 resultPlan r1 === resultPlan r2
@@ -128,7 +139,7 @@ tests = [
                 r2 = solve' (FineGrainedConflicts False) test
                 solve' fineGrainedConflicts =
                     solve (EnableBackjumping True) fineGrainedConflicts
-                          reorderGoals (CountConflicts False) indepGoals Nothing
+                          reorderGoals (CountConflicts False) indepGoals (PreferOldest False) Nothing
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 resultPlan r1 === resultPlan r2
@@ -163,10 +174,11 @@ solve :: EnableBackjumping
       -> ReorderGoals
       -> CountConflicts
       -> IndependentGoals
+      -> PreferOldest
       -> Maybe VarOrdering
       -> SolverTest
       -> Result
-solve enableBj fineGrainedConflicts reorder countConflicts indep goalOrder test =
+solve enableBj fineGrainedConflicts reorder countConflicts indep prefOldest goalOrder test =
   let (lg, result) =
         runProgress $ exResolve (unTestDb (testDb test)) Nothing Nothing
                   (pkgConfigDbFromList [])
@@ -175,7 +187,7 @@ solve enableBj fineGrainedConflicts reorder countConflicts indep goalOrder test 
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
                   countConflicts fineGrainedConflicts
-                  (MinimizeConflictSet False) indep reorder
+                  (MinimizeConflictSet False) indep prefOldest reorder
                   (AllowBootLibInstalls False) OnlyConstrainedNone enableBj
                   (SolveExecutables True) (unVarOrdering <$> goalOrder)
                   (testConstraints test) (testPreferences test) normal

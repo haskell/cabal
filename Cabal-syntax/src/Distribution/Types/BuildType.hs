@@ -25,7 +25,7 @@ data BuildType
                 -- information used by later phases.
   | Make        -- ^ calls @Distribution.Make.defaultMain@
   | Custom      -- ^ uses user-supplied @Setup.hs@ or @Setup.lhs@ (default)
-                deriving (Generic, Show, Read, Eq, Typeable, Data)
+                deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary BuildType
 instance Structured BuildType
