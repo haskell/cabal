@@ -766,6 +766,19 @@ artifacts for the script, which are stored under the .cabal/script-builds direct
 In addition when clean is invoked it will remove all script build artifacts for
 which the corresponding script no longer exists.
 
+cabal info
+----------
+
+``cabal info [FLAGS] PACKAGES`` displays useful informations about remote
+packages.
+
+.. option:: --package-db=DB
+
+    Append the given package database to the list of package databases
+    used (to satisfy dependencies and register into). May be a specific
+    file, ``global`` or ``user``. The initial list is ``['global'], ['global',
+    'user']``, depending on context. Use ``clear`` to reset the list to empty.
+
 cabal sdist
 -----------
 
