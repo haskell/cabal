@@ -934,6 +934,38 @@ paste them into your .cabal file.
 
 See `the section on generating dependency version bounds <cabal-package.html#generating-dependency-version-bounds>`__ for more details and examples.
 
+cabal user-config
+-----------------
+
+``cabal user-config [init|diff|update]`` prints and updates user's global
+cabal preferences. It is very useful when you are e.g. first configuring
+``cabal`` on a new machine.
+
+- ``cabal user-config init`` creates a new configuration file.
+
+  .. option:: --config-file=PATH
+
+      Specify config file path. (default: ``~/.cabal/config``).
+
+  .. option:: -f, --force
+
+    Force configuration file overwriting if already exists.
+
+- ``cabal user-config diff`` prints a diff of the user's config file and the
+  default one.
+
+- ``cabal user-config update`` updates the user's config file with additional
+  lines.
+
+  .. option:: -a, --augment=CONFIGLINE
+
+      Pass additional configuration lines to be incorporated in the
+      config file. e.g.
+      ``cabal user-config update --augment "offline: True"``.
+
+      Note how ``--augment`` syntax follows ``cabal user-config diff``
+      output.
+
 cabal outdated
 --------------
 
