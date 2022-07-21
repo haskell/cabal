@@ -570,6 +570,31 @@ e.g. you plan to work on a project with unreliable or no internet access.
 
 Check ``cabal fetch --help`` for a complete list of options.
 
+cabal list
+----------
+
+``cabal list [FLAGS] STRINGS`` lists all packages matching a search string.
+
+.. option::  --installed
+
+    Only output installed packages.
+
+.. option::  --simple-output
+
+    Print matching packages in a one-package-one-line format.
+
+.. option::  -i, --ignore-case
+
+.. option::  -I, --strict-case
+
+.. option:: --package-db=DB
+
+    Append the given package database to the list of used package
+    databases. See `cabal info`_ for a thorough explanation.
+
+.. option:: -w, --with-compiler=PATH
+
+    Path to specific compiler.
 
 cabal get
 ---------
