@@ -528,6 +528,32 @@ or the interpreter line
 
 For more information see :cfg-field:`verbose`
 
+cabal fetch
+-----------
+
+``cabal fetch [FLAGS] PACKAGES`` downloads packages for later installation.
+It fetches the project plus its dependencies, very useful when
+e.g. you plan to work on a project with unreliable or no internet access.
+
+.. option:: --no-dependencies
+
+    Ignore dependencies.
+
+.. option:: --disable-tests
+
+    Disable dependency checking and compilation
+    for test suites listed in the package
+    description file.
+
+.. option::  --disable-benchmarks
+
+    Disable dependency checking and compilation
+    for benchmarks listed in the package
+    description file.
+
+Check ``cabal fetch --help`` for a complete list of options.
+
+
 cabal get
 ---------
 
