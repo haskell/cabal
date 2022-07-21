@@ -186,6 +186,23 @@ Arguments and flags common to some or all commands are:
 
     Already generated `build-info.json` files will be removed since they would be stale otherwise.
 
+cabal init
+----------
+
+``cabal init [FLAGS]`` initialises a Cabal package, picking
+reasonable defaults. Run it in your project folder.
+
+.. option:: -i, --interactive
+
+    Enable interactive mode.
+
+.. option:: -m, --minimal
+
+    Generate a short .cabal file, without extra empty fields or
+    explanatory comments.
+
+See :ref:`init quickstart` for an overview on the command, and
+``cabal init --help`` for the complete list of options.
 
 cabal list-bin
 --------------
