@@ -800,6 +800,37 @@ that must be satisfied for it to function correctly in the larger build ecosyste
 ``autogen-modules`` is able to replace uses of the hooks to add generated modules, along with
 the custom publishing of Haddock documentation to Hackage.
 
+cabal upload
+------------
+
+``cabal upload [FLAGS] TARFILES`` uploads source packages or documentation
+to Hackage.
+
+.. option:: --publish
+
+    Publish the package immediately instead of uploading it as a
+    `package candidate <https://hackage.haskell.org/upload#candidates>`__
+    (make sure everything is fine, you cannot delete published packages
+    on Hackage!).
+
+.. option:: -d, --documentation
+
+    Upload documentation instead of a source package. To upload
+    documentation for a published package (and not a candidate), add
+    ``--publish``.
+
+.. option:: -u, --username
+
+    Your Hackage username.
+
+.. option:: -p, --password
+
+    Your Hackage password.
+
+.. option:: -P, --password-command
+
+    Command to get your Hackage password.
+
 cabal gen-bounds
 ----------------
 
