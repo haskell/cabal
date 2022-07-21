@@ -12,6 +12,7 @@ pull_request_rules:
       - base=master
       - label=merge me
       - '#approved-reviews-by>=2'
+      - updated-at<2 days ago
   # merge+squash strategy
   - actions:
       queue:
@@ -25,6 +26,7 @@ pull_request_rules:
       - base=master
       - label=squash+merge me
       - '#approved-reviews-by>=2'
+      - updated-at<2 days ago
   # rebase+merge strategy for backports: require 1 approver instead of 2
   - actions:
       queue:
