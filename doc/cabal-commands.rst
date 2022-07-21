@@ -912,6 +912,19 @@ to Hackage.
 
     Command to get your Hackage password.
 
+cabal report
+------------
+
+``cabal report [FLAGS]`` uploads build reports to Hackage.
+
+.. option:: -u, --username
+
+    Your Hackage username.
+
+.. option:: -p, --password
+
+    Your Hackage password.
+
 cabal gen-bounds
 ----------------
 
