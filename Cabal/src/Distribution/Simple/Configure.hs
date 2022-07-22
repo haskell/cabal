@@ -1965,8 +1965,8 @@ checkPackageProblems verbosity dir gpkg pkg = do
       (errors, warnings) =
         partitionEithers (M.mapMaybe classEW $ pureChecks ++ ioChecks)
   if null errors
-    then traverse_ (warn verbosity) (map show warnings)
-    else die' verbosity (intercalate "\n\n" $ map show errors)
+    then traverse_ (warn verbosity) (map ppPackageCheck warnings)
+    else die' verbosity (intercalate "\n\n" $ map ppPackageCheck errors)
   where
     -- Classify error/warnings. Left: error, Right: warning.
     classEW :: PackageCheck -> Maybe (Either PackageCheck PackageCheck)
