@@ -27,6 +27,7 @@ module Distribution.PackageDescription.Check (
         checkPackage,
         checkConfiguredPackage,
         wrapParseWarning,
+        ppPackageCheck,
 
         -- ** Checking package contents
         checkPackageFiles,
@@ -801,8 +802,13 @@ data PackageCheck =
      | PackageDistInexcusable { explanation :: CheckExplanation }
   deriving (Eq, Ord)
 
+-- | Pretty printing 'PackageCheck'.
+--
+ppPackageCheck :: PackageCheck -> String
+ppPackageCheck e = ppExplanation (explanation e)
+
 instance Show PackageCheck where
-    show notice = ppExplanation (explanation notice)
+    show notice = ppPackageCheck notice
 
 check :: Bool -> PackageCheck -> Maybe PackageCheck
 check False _  = Nothing
