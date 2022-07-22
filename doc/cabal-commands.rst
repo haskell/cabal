@@ -548,6 +548,11 @@ For more information see :cfg-field:`verbose`
 cabal fetch
 -----------
 
+*☞ N.B.:* ``cabal fetch`` only works for legacy ``v1-`` commands and only
+for single package projects. If you are not maintaining an old project,
+`cabal build`_ with ``--only-download`` has similar effects to ``fetch``
+and benefits from compatibility with newer build methods.
+
 ``cabal fetch [FLAGS] PACKAGES`` downloads packages for later installation.
 It fetches the project plus its dependencies, very useful when
 e.g. you plan to work on a project with unreliable or no internet access.
