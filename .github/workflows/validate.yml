@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        ghc: ["9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4", "8.0.2"]
+        ghc: ["9.2.3", "9.0.2", "8.10.7", "8.8.4", "8.6.5", "8.4.4"]
         exclude:
           # corrupts GHA cache or the fabric of reality itself, see https://github.com/haskell/cabal/issues/8356
           - os: "windows-latest"
@@ -48,6 +48,7 @@ jobs:
             ghc: "8.8.4"
           - os: "windows-latest"
             ghc: "8.4.4"
+<<<<<<< HEAD
         include:
           - os: "ubuntu-latest"
             ghc: "8.0.2"
@@ -58,6 +59,11 @@ jobs:
           - os: "windows-latest"
             ghc: "8.0.2"
             cli: "false"
+=======
+          # it often randomly does "C:\Users\RUNNER~1\AppData\Local\Temp\ghcFEDE.c: DeleteFile "\\\\?\\C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\ghcFEDE.c": permission denied (Access is denied.)"
+          - os: "windows-latest"
+            ghc: "8.6.5"
+>>>>>>> bd998cefe (drop ci support for GHC 8.0.2)
 
     steps:
 
