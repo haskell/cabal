@@ -2,7 +2,6 @@
 module Distribution.Compat.Process (
     -- * Redefined functions
     createProcess,
-    proc,
     runInteractiveProcess,
     rawSystem,
     -- * Additions
@@ -12,7 +11,7 @@ module Distribution.Compat.Process (
 import System.Exit (ExitCode (..))
 import System.IO   (Handle)
 
-import           System.Process (CreateProcess, ProcessHandle)
+import           System.Process (CreateProcess, ProcessHandle, waitForProcess)
 import qualified System.Process as Process
 
 #if defined(mingw32_HOST_OS) && MIN_VERSION_process(1,6,9)
@@ -61,11 +60,6 @@ enableProcessJobs cp = cp
 -- process redefinitions
 -------------------------------------------------------------------------------
 
--- | 'System.Process.proc' with process jobs enabled when appropriate,
--- and defaulting 'delegate_ctlc' to 'True'.
-proc :: FilePath -> [String] -> CreateProcess
-proc path args = enableProcessJobs (Process.proc path args)
-
 -- | 'System.Process.createProcess' with process jobs enabled when appropriate.
 -- See 'enableProcessJobs'.
 createProcess :: CreateProcess
@@ -74,10 +68,10 @@ createProcess = Process.createProcess . enableProcessJobs
 
 -- | 'System.Process.rawSystem' with process jobs enabled when appropriate.
 -- See 'enableProcessJobs'.
-rawSystem :: FilePath -> [String] -> IO ExitCode
-rawSystem path args = do
-  (_,_,_,p) <- Process.createProcess (proc path args) { Process.delegate_ctlc = True }
-  Process.waitForProcess p
+rawSystem :: String -> [String] -> IO ExitCode
+rawSystem cmd args = do
+  (_,_,_,p) <- createProcess (Process.proc cmd args) { Process.delegate_ctlc = True }
+  waitForProcess p
 
 -- | 'System.Process.runInteractiveProcess' with process jobs enabled when
 -- appropriate. See 'enableProcessJobs'.
@@ -87,9 +81,9 @@ runInteractiveProcess
   -> Maybe FilePath             -- ^ Optional path to the working directory
   -> Maybe [(String,String)]    -- ^ Optional environment (otherwise inherit)
   -> IO (Handle,Handle,Handle,ProcessHandle)
-runInteractiveProcess path args mb_cwd mb_env = do
+runInteractiveProcess cmd args mb_cwd mb_env = do
   (mb_in, mb_out, mb_err, p) <-
-      Process.createProcess (proc path args)
+      createProcess (Process.proc cmd args)
               { Process.std_in  = Process.CreatePipe,
                 Process.std_out = Process.CreatePipe,
                 Process.std_err = Process.CreatePipe,
