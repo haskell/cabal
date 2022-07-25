@@ -55,6 +55,9 @@ module Distribution.Simple.Utils (
         rawSystemIOWithEnvAndAction,
         createProcessWithEnv,
         maybeExit,
+        logCommand,
+        rawSystemProcAction,
+        fromCreatePipe,
         xargs,
         findProgramVersion,
 
