@@ -1,4 +1,0 @@
-synopsis: '--repl-no-load' option skips startup modules load in REPL
-issues: #7541
-packages: Cabal cabal-install
-prs: #7578

@@ -1,9 +1,0 @@
-synopsis: Allow glob-star matches with literal filenames (no extensions)
-packages: Cabal
-prs: #8005
-issues: #5883
-description: {
-
-- Cabal file glob syntax extended to allow matches of the form dir/**/FileNoExtension
-
-}

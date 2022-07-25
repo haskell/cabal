@@ -1,4 +1,0 @@
-synopsis: changes the cabal check warning about long synopsis, so it warns only synopsis bigger than the set size
-packages: Cabal
-prs: #7933
-issues: #7932
