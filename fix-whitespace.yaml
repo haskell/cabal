@@ -1,0 +1,136 @@
+# This file contains the project-specific settings for `fix-whitespace` a tiny
+# but useful tool to
+#
+# * Removes trailing whitespace.
+# * Removes trailing lines containing nothing but whitespace.
+# * Ensures that the file ends in a newline character.
+#
+# By default, fix-whitespace checks every directory under the current working
+# directory but no files. This program should be placed under a text-based
+# project.
+#
+# For directories,
+#
+# 1) excluded-dirs is a black-list of directories,
+# 2) included-dirs is a white-list of excluded-dirs
+#
+# For files,
+#
+# 3) included-files is a white-list of files,
+# 4) excluded-files is a black-list of included-files.
+#
+# The extended glob pattern can be used to specify file/direcotory names.
+# For details, see http://hackage.haskell.org/package/filemanip-0.3.6.3/docs/System-FilePath-GlobPattern.html
+#
+included-dirs:
+    # Without this line the above path will be excluded.
+
+excluded-dirs:
+  - "**/dist*"   # matches every dist* in any directory
+  - _darcs
+  - .git
+  - .python-sphinx-virtualenv
+  - .stack-work
+  - .vscode
+
+# Every matched filename is included unless it is matched by excluded-files.
+included-files:
+  - .dockerignore
+  - .gitignore
+  - .gitattributes
+  - AUTHORS
+  - LICENSE
+  - "cabal.project.*"
+  - "*.ac"
+  - "*.bat"
+  - "*.bat_t"
+  - "*.c"
+  - "*.cabal"
+  - "*.cmm"
+  - "*.cobol"
+  - "*.conf"
+  - "*.config"
+  - "*.cfg"
+  - "*.cpp"
+  - "*.csh"
+  - "*.css"
+  - "*.css_t"
+  - "*.dhall"
+  - "*.dockerfile"
+  - "*.el"
+  - "*.h"
+  - "*.hs"
+  - "*.hs-boot"
+  - "*.hsc"
+  - "*.hsig"
+  - "*.html"
+  - "*.html_t"
+  - "*.in"
+  - "*.inc"
+  - "*.js"
+  - "*.js_t"
+  - "*.json"
+  - "*.lhs"
+  - "*.md"
+  - "*.py"
+  - "*.rst"
+  - "*.rst_t"
+  - "*.sh"
+  - "*.sty"
+  - "*.tex"
+  - "*.tex_t"
+  - "*.toml"
+  - "*.txt"
+  - "*.x"
+  - "*.y"
+  - "*.yaml"
+  - "*.yml"
+  - "*.zinza"
+
+excluded-files:
+# Exceptions
+  - Cabal-syntax/src/Distribution/Fields/Lexer.hs
+  - Cabal-tests/tests/ParserTests/warnings/tab.cabal
+  - Cabal-tests/tests/ParserTests/warnings/utf8.cabal
+
+  # These also contain tabs that affect the golden value:
+  # Could be removed from exceptions, but then the tab warning
+  # has to be removed from the corresponding .format file.
+  - Cabal-tests/tests/ParserTests/regressions/monad-param.cabal
+  - Cabal-tests/tests/ParserTests/regressions/th-lift-instances.cabal
+
+# Files that use tabs
+  - Makefile
+  - GNUmakefile
+  - "*.mk"
+  - .mailmap
+
+# Generated files
+  - TAGS
+  - "*.buildinfo"
+  - "*.check"
+  - "*.expr"
+  - "*.errors"
+  - "*.format"
+  - "*.freeze"
+  - "*.golden"
+  - "*.log"
+  - "*.out"
+
+# Binary files
+  - "*.a"
+  - "*.dylib"
+  - "*.dyn_hi"
+  - "*.dyn_hi-boot"
+  - "*.enc"
+  - "*.exe"
+  - "*.gif"
+  - "*.gz"
+  - "*.hi"
+  - "*.hi-boot"
+  - "*.o"
+  - "*.o-boot"
+  - "*.p_hi"
+  - "*.p_o"
+  - "*.png"
+  - "*.so"
