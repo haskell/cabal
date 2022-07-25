@@ -1,4 +1,0 @@
-synopsis: `ghc-options` and `--with-gcc` are now passed to GHC when compiling C and C++ sources
-packages: Cabal
-issues: #4439
-prs: #5440 #7874

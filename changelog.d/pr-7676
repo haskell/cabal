@@ -1,4 +1,0 @@
-synopsis: Add support for `--package-db` flags to v2 commands
-packages: cabal-install
-prs: #7676
-issues: #5773

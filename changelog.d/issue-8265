@@ -1,4 +1,0 @@
-synopsis: cabal init -i: add the GHC2021 language option
-packages: cabal-install
-prs: #8277
-issues: #8265

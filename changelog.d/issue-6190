@@ -1,4 +1,0 @@
-synopsis: --repl-options doesn’t split on whitespace
-packages: Cabal
-issues: #6190
-prs: #7799

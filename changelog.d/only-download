@@ -1,4 +1,0 @@
-synopsis: Add a --only-download flag
-packages: cabal-install
-prs: #7347
-issues: #7323

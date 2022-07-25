@@ -1,8 +1,0 @@
-synopsis: CI setup
-prs: #6959
-
-description: {
-
-- Remove travis scripts
-
-}

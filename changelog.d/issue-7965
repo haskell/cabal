@@ -1,5 +1,0 @@
-synopsis: Ensure that v2-sdist command respects the --ignore-project flag
--- If the "--project-file" flag is set, then this [--ignore-project] will always be false
-packages: cabal-install
-issues: #7965
-prs: #8109
