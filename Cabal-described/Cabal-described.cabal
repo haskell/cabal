@@ -1,6 +1,6 @@
 cabal-version: 2.2
 name:          Cabal-described
-version:       3.8.0.20220526
+version:       3.8.1.0
 synopsis:      Described functionality for types in Cabal
 category:      Testing, Parsec
 description:   Provides rere bindings
