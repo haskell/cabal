@@ -37,7 +37,7 @@ argumentTests =
       , commandOptions = const [ optField ]
       }
     optField = optionVerbosity id const
-        
+
 tests :: [TestTree]
 tests =
   [ testGroup "option argument tests" argumentTests

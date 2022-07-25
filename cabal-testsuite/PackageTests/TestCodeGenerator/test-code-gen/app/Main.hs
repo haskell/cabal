@@ -7,7 +7,7 @@ main = do
   (tgt:rest) <- getArgs
   let (srcDirs, ghcArgs) = splitArgs rest
   let isGood = srcDirs == ["."] && "-outputdir" `elem` ghcArgs
-  if isGood 
+  if isGood
    then writeFile (tgt </> "Main.hs") $ "module Main where main = pure ()"
    else writeFile (tgt </> "Main.hs") $ "module Main where main = error \"failure\""
 

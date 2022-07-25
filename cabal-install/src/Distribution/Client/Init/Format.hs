@@ -123,7 +123,7 @@ postProcessFieldLines ann
 mkCommonStanza :: WriteOpts -> PrettyField FieldAnnotation
 mkCommonStanza opts = case specHasCommonStanzas $ _optCabalSpec opts of
   NoCommonStanzas -> PrettyEmpty
-  _ -> PrettySection 
+  _ -> PrettySection
     annNoComments
     "common"
     [text "warnings"]
@@ -136,7 +136,7 @@ mkLibStanza opts (LibTarget srcDirs lang expMods otherMods exts deps tools) =
         NoCommonStanzas -> PrettyEmpty
         _ -> field "import" (hsep . map text) ["warnings"]
           ["Import common warning flags."]
-          False 
+          False
           opts
 
     , field "exposed-modules" formatExposedModules (toList expMods)
@@ -182,9 +182,9 @@ mkExeStanza opts (ExeTarget exeMain appDirs lang otherMods exts deps tools) =
           NoCommonStanzas -> PrettyEmpty
           _ -> field "import" (hsep . map text) ["warnings"]
             ["Import common warning flags."]
-            False 
+            False
             opts
-      
+
       , field "main-is" unsafeFromHs exeMain
          [".hs or .lhs file containing the Main module."]
          True
@@ -230,9 +230,9 @@ mkTestStanza opts (TestTarget testMain dirs lang otherMods exts deps tools) =
            NoCommonStanzas -> PrettyEmpty
            _ -> field "import" (hsep . map text) ["warnings"]
              ["Import common warning flags."]
-             False 
+             False
              opts
-      
+
        , field "default-language" id lang
          ["Base language which the package is written in."]
          True

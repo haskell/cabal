@@ -18,7 +18,7 @@
 module Bio.Character.Exportable.Class where
 
 
-import Foreign.C.Types 
+import Foreign.C.Types
 
 
 -- |
@@ -42,7 +42,7 @@ data ExportableCharacterSequence
    { exportedElementCountSequence :: Int
    , exportedElementWidthSequence :: Int
    , exportedBufferChunks :: [CULong]
-   } deriving (Eq, Show)   
+   } deriving (Eq, Show)
 
 
 -- |
@@ -51,6 +51,6 @@ data ExportableCharacterSequence
 data ExportableCharacterElements
    = ExportableCharacterElements
    { exportedElementCountElements :: Int
-   , exportedElementWidthElements :: Int 
+   , exportedElementWidthElements :: Int
    , exportedCharacterElements :: [CUInt]
-   } deriving (Eq, Show)   
+   } deriving (Eq, Show)

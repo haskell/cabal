@@ -78,7 +78,7 @@ versionGuardMultilibs = do
     ]
 
 -- | Smart constructor of 'Mixin', enforces invariant.
--- 
+--
 -- @since 3.4.0.0
 mkMixin :: PackageName -> LibraryName -> IncludeRenaming -> Mixin
 mkMixin pn (LSubLibName uqn) incl

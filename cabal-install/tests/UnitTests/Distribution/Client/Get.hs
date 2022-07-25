@@ -39,7 +39,7 @@ tests =
   , askOption $ \(RunNetworkTests doRunNetTests) ->
     testGroup "forkPackages, network tests" $
     includeTestsIf doRunNetTests $
-    [ testCase "git clone"                   testNetworkGitClone 
+    [ testCase "git clone"                   testNetworkGitClone
     ]
   ]
   where
@@ -234,7 +234,7 @@ assertException action = do
     case r of
       Left e  -> return e
       Right _ -> assertFailure $ "expected exception of type "
-                              ++ show (typeOf (undefined :: e)) 
+                              ++ show (typeOf (undefined :: e))
 
 
 -- | Expect that one line in a file matches exactly the given words (i.e. at

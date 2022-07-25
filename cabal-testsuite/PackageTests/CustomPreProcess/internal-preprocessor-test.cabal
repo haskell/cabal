@@ -12,7 +12,7 @@ cabal-version:       >=1.10
 custom-setup
   setup-depends: Cabal, base, process, filepath
 
--- Note that exe comes before the library. 
+-- Note that exe comes before the library.
 -- The reason is backwards compat: old versions of Cabal (< 1.18)
 -- don't have a proper component build graph, so components are
 -- built in declaration order.

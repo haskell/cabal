@@ -17,7 +17,7 @@ executable an-exe
 
 test-suite a-testsuite
   main-is: Test.hs
-  other-modules: AModule  
+  other-modules: AModule
 
 benchmark a-benchmark
   type: exitcode-stdio-1.0

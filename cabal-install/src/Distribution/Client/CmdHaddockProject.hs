@@ -85,7 +85,7 @@ haddockProjectAction flags _extraArgs globalFlags = do
     let outputDir = normalise $ fromFlag (haddockProjectDir flags)
     createDirectoryIfMissingVerbose verbosity True outputDir
 
-    when ((2::Int) <= 
+    when ((2::Int) <=
             ( flagElim 0 (bool 0 1) (haddockProjectHackage flags)
             + flagElim 0 (bool 0 1) (haddockProjectLocal flags)
             + flagElim 0 (const 1)  (haddockProjectHtmlLocation flags)
@@ -305,9 +305,9 @@ haddockProjectAction flags _extraArgs globalFlags = do
           hackage  = fromFlagOrDefault False (haddockProjectHackage flags)
           location = fromFlagOrDefault False (const True <$> haddockProjectHtmlLocation flags)
       in        local && not hackage && not location
-         -- or if none of the flags is given set `localStyle` to `True` 
+         -- or if none of the flags is given set `localStyle` to `True`
          || not local && not hackage && not location
-      
+
 
     localOrHackage =
       any id $ flagToList (haddockProjectLocal flags)

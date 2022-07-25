@@ -139,7 +139,7 @@ createProject comp v pkgIx srcDb initFlags = do
       return $ ProjectSettings
         (mkOpts comments cabalSpec) pkgDesc (Just libTarget)
         (Just exeTarget) testTarget
-    
+
     TestSuite -> do
       testTarget <- genTestTarget initFlags comp pkgIx cabalSpec
 
@@ -358,7 +358,7 @@ exposedModulesHeuristics flags = do
 
           otherModules' <- libOtherModulesHeuristics flags
           return $ filter (`notElem` otherModules') modulesNames
-        
+
         else
           return []
 

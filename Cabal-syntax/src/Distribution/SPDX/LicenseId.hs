@@ -32,7 +32,7 @@ import qualified Text.PrettyPrint as Disp
 -- LicenseId
 -------------------------------------------------------------------------------
 
--- | SPDX License identifiers list v3.16 
+-- | SPDX License identifiers list v3.16
 data LicenseId
     = NullBSD -- ^ @0BSD@, BSD Zero Clause License
     | AAL -- ^ @AAL@, Attribution Assurance License

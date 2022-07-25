@@ -8,7 +8,7 @@ version:            1.0.0.0
 author:             Alex Washburn
 maintainer:         github@recursion.ninja
 copyright:          2018 Alex Washburn (recursion.ninja)
-                    
+
 synopsis:           A binding to a C++ hashtable for thread-safe memoization.
 
 description:        This package is designed to provide a "minimal working example"
@@ -23,7 +23,7 @@ common ffi-build-info
                     memoized-tcm/dynamicCharacterOperations.c
 
   cc-options:       --std=c11
-                     
+
   cxx-sources:      memoized-tcm/costMatrix.cpp
 
   cxx-options:      --std=c++11
@@ -46,12 +46,12 @@ common language-spec
 
   build-depends:    base       >=4.5.1
 --                  , lens
-       
+
   default-language: Haskell2010
 
   ghc-options:      -O2 -Wall
 
-                    
+
 common lib-build-info
 
   hs-source-dirs:   lib
@@ -61,7 +61,7 @@ common lib-build-info
                     Data.TCM.Memoized
                     Data.TCM.Memoized.FFI
 
-                    
+
 library
 
   import:           ffi-build-info
@@ -73,7 +73,7 @@ library
                     Data.TCM.Memoized.FFI
 
   hs-source-dirs:   lib
-                    
+
 
 executable exe-no-lib
 
@@ -106,10 +106,10 @@ benchmark bench-no-lib
   main-is:          Main.hs
 
   type:             exitcode-stdio-1.0
-                     
+
   hs-source-dirs:   app
 
- 
+
 benchmark bench-with-lib
 
   import:           language-spec
@@ -122,7 +122,7 @@ benchmark bench-with-lib
 
   hs-source-dirs:   app
 
- 
+
 test-suite test-no-lib
 
   import:           ffi-build-info
@@ -132,7 +132,7 @@ test-suite test-no-lib
   main-is:          Main.hs
 
   type:             exitcode-stdio-1.0
-                     
+
   hs-source-dirs:   app
 
 
@@ -143,7 +143,7 @@ test-suite test-with-lib
   main-is:          Main.hs
 
   type:             exitcode-stdio-1.0
-  
+
   build-depends:    T5309
-                     
+
   hs-source-dirs:   app
