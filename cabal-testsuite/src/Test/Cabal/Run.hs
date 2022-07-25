@@ -2,7 +2,6 @@
 -- | A module for running commands in a chatty way.
 module Test.Cabal.Run (
     run,
-    runAction,
     Result(..)
 ) where
 
@@ -25,14 +24,8 @@ data Result = Result
 
 -- | Run a command, streaming its output to stdout, and return a 'Result'
 -- with this information.
-run :: Verbosity -> Maybe FilePath -> [(String, Maybe String)] -> FilePath -> [String]
-    -> Maybe String -> IO Result
-run verbosity mb_cwd env_overrides path0 args input =
-    runAction verbosity mb_cwd env_overrides path0 args input (\_ -> return ())
-
-runAction :: Verbosity -> Maybe FilePath -> [(String, Maybe String)] -> FilePath -> [String]
-    -> Maybe String -> (ProcessHandle -> IO ()) -> IO Result
-runAction _verbosity mb_cwd env_overrides path0 args input action = do
+run :: Verbosity -> Maybe FilePath -> [(String, Maybe String)] -> FilePath -> [String] -> Maybe String -> IO Result
+run _verbosity mb_cwd env_overrides path0 args input = do
     -- In our test runner, we allow a path to be relative to the
     -- current directory using the same heuristic as shells:
     -- 'foo' refers to an executable in the PATH, but './foo'
@@ -78,8 +71,6 @@ runAction _verbosity mb_cwd env_overrides path0 args input action = do
           Just h -> hPutStr h x >> hClose h
           Nothing -> error "No stdin handle when input was specified!"
       Nothing -> return ()
-
-    action procHandle
 
     -- wait for the program to terminate
     exitcode <- waitForProcess procHandle

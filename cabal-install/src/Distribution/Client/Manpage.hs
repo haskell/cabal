@@ -27,14 +27,15 @@ import qualified Data.List.NonEmpty as List1
 import Distribution.Client.Init.Utils   (trim)
 import Distribution.Client.ManpageFlags
 import Distribution.Client.Setup        (globalCommand)
-import Distribution.Compat.Process      (proc)
 import Distribution.Simple.Command
-import Distribution.Simple.Flag         (fromFlag, fromFlagOrDefault)
+import Distribution.Simple.Flag         (fromFlagOrDefault)
 import Distribution.Simple.Utils
-  ( IOData(..), IODataMode(..), ignoreSigPipe, rawSystemStdInOut, rawSystemProcAction, fromCreatePipe )
+  ( IOData(..), IODataMode(..), createProcessWithEnv, ignoreSigPipe, rawSystemStdInOut )
+import qualified Distribution.Verbosity as Verbosity
 import System.IO                        (hClose, hPutStr)
 import System.Environment               (lookupEnv)
 import System.FilePath                  (takeFileName)
+
 import qualified System.Process as Process
 
 data FileInfo = FileInfo String String -- ^ path, description
@@ -68,7 +69,7 @@ manpageCmd pname commands flags
 
         -- Feed contents into @nroff -man /dev/stdin@
         (formatted, _errors, ec1) <- rawSystemStdInOut
-          verbosity
+          Verbosity.normal
           "nroff"
           [ "-man", "/dev/stdin" ]
           Nothing  -- Inherit working directory
@@ -82,17 +83,22 @@ manpageCmd pname commands flags
         -- 'less' is borked with color sequences otherwise
         let pagerArgs = if takeFileName pager == "less" then ["-R"] else []
         -- Pipe output of @nroff@ into @less@
-        (ec2, _) <- rawSystemProcAction verbosity
-            (proc pager pagerArgs) { Process.std_in = Process.CreatePipe }
-              $ \mIn _ _ -> do
-          let wIn = fromCreatePipe mIn
-          hPutStr wIn formatted
-          hClose  wIn
-        exitWith ec2
+        (Just inLess, _, _, procLess) <- createProcessWithEnv
+          Verbosity.normal
+          pager
+          pagerArgs
+          Nothing  -- Inherit working directory
+          Nothing  -- Inherit environment
+          Process.CreatePipe  -- in
+          Process.Inherit     -- out
+          Process.Inherit     -- err
+
+        hPutStr inLess formatted
+        hClose  inLess
+        exitWith =<< Process.waitForProcess procLess
   where
     contents :: String
     contents = manpage pname commands
-    verbosity = fromFlag $ manpageVerbosity flags
 
 -- | Produces a manual page with @troff@ markup.
 manpage :: String -> [CommandSpec a] -> String
