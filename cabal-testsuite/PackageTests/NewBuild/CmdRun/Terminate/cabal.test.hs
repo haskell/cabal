@@ -15,7 +15,7 @@ without forking in the future.)
 -}
 
 main :: IO ()
-main = cabalTest $ do
+main = cabalTest . expectBroken 8319 $ do
   skipIfWindows -- test project relies on Posix
 
   dir <- fmap testCurrentDir getTestEnv
